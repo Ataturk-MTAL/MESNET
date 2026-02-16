@@ -6,9 +6,9 @@ namespace MESNET.Payment.Application.Handlers;
 
 public static class ConfirmSalaryHandler
 {
-    public static Result<SalaryConfirmedByStudent> Handle(ConfirmSalary command)
+    public static (Result, SalaryConfirmedByStudent?) Handle(ConfirmSalary command)
     {
-        return Result<SalaryConfirmedByStudent>.Success(new SalaryConfirmedByStudent(
+        return (Result.Success(), new SalaryConfirmedByStudent(
             command.SalaryPeriodId,
             command.StudentId,
             DateTime.UtcNow

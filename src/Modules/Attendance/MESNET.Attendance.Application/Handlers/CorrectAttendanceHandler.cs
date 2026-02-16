@@ -11,19 +11,19 @@ namespace MESNET.Attendance.Application.Handlers;
 public static class CorrectAttendanceHandler
 {
     [AggregateHandler]
-    public static Result<AttendanceCorrected> Handle(
+    public static (Result, AttendanceCorrected?) Handle(
         CorrectAttendance command, AttendanceRecord record)
     {
         if (!record.Status.CanTransitionTo(AttendanceStatus.Corrected))
-            return Result<AttendanceCorrected>.Failure(
+            return (Result.Failure(
                 AttendanceErrors.InvalidStatus(record.Id, record.Status.Slug,
-                    "Devamsızlık kaydı bu durumdan düzeltilemez."));
+                    "Devamsızlık kaydı bu durumdan düzeltilemez.")), null);
 
         if (!AbsenceType.TryFromName(command.NewAbsenceType, true, out _))
-            return Result<AttendanceCorrected>.Failure(
-                AttendanceErrors.OperationFailed("Correct", $"Geçersiz devamsızlık türü: {command.NewAbsenceType}"));
+            return (Result.Failure(
+                AttendanceErrors.OperationFailed("Correct", $"Geçersiz devamsızlık türü: {command.NewAbsenceType}")), null);
 
-        return Result<AttendanceCorrected>.Success(new AttendanceCorrected(
+        return (Result.Success(), new AttendanceCorrected(
             record.Id, record.StudentId, command.CorrectedBy,
             command.NewAbsenceType, command.Reason, DateTime.UtcNow));
     }

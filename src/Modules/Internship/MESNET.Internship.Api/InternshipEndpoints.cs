@@ -60,7 +60,7 @@ public static class InternshipEndpoints
     public static async Task<IResult> PostRequestTermination(
         Guid internshipId, RequestTermination command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<InternshipTerminationRequested>>(
+        var (result, @event) = await bus.InvokeAsync<(Result, InternshipTerminationRequested)>(
             command with { InternshipId = internshipId });
 
         if (result.IsFailure)

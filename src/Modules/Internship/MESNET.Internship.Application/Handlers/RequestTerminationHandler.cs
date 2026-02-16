@@ -6,9 +6,9 @@ namespace MESNET.Internship.Application.Handlers;
 
 public static class RequestTerminationHandler
 {
-    public static Result<InternshipTerminationRequested> Handle(RequestTermination command)
+    public static (Result, InternshipTerminationRequested?) Handle(RequestTermination command)
     {
-        return Result<InternshipTerminationRequested>.Success(new InternshipTerminationRequested(
+        return (Result.Success(), new InternshipTerminationRequested(
             command.InternshipId,
             Guid.Empty,
             command.Reason,

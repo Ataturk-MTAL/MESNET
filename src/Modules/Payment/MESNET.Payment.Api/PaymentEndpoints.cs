@@ -134,7 +134,7 @@ public static class PaymentEndpoints
             year,
             receiptFile);
 
-        var result = await bus.InvokeAsync<Result<ReceiptUploadedByBusiness>>(command);
+        var (result, @event) = await bus.InvokeAsync<(Result, ReceiptUploadedByBusiness)>(command);
 
         if (result.IsFailure)
         {
@@ -145,7 +145,7 @@ public static class PaymentEndpoints
         }
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { receiptId = result.Value.ReceiptId })
+            .AddData(new { receiptId = @event.ReceiptId })
             .AddMessage("İşletme dekontu yüklendi.")
             .Build());
     }
@@ -204,7 +204,7 @@ public static class PaymentEndpoints
             year,
             receiptFile);
 
-        var result = await bus.InvokeAsync<Result<ReceiptUploadedByStudent>>(command);
+        var (result, @event) = await bus.InvokeAsync<(Result, ReceiptUploadedByStudent)>(command);
 
         if (result.IsFailure)
         {
@@ -215,7 +215,7 @@ public static class PaymentEndpoints
         }
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { receiptId = result.Value.ReceiptId })
+            .AddData(new { receiptId = @event.ReceiptId })
             .AddMessage("Öğrenci dekontu yüklendi.")
             .Build());
     }
@@ -227,7 +227,7 @@ public static class PaymentEndpoints
     public static async Task<IResult> PostConfirm(
         Guid id, ConfirmSalary command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<SalaryConfirmedByStudent>>(
+        var (result, @event) = await bus.InvokeAsync<(Result, SalaryConfirmedByStudent)>(
             command with { SalaryPeriodId = id });
 
         if (result.IsFailure)
@@ -250,7 +250,7 @@ public static class PaymentEndpoints
     public static async Task<IResult> PostApproveTeacher(
         Guid id, ApproveReceiptByTeacher command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<ReceiptApprovedByTeacher>>(
+        var (result, @event) = await bus.InvokeAsync<(Result, ReceiptApprovedByTeacher)>(
             command with { SalaryPeriodId = id });
 
         if (result.IsFailure)
@@ -273,7 +273,7 @@ public static class PaymentEndpoints
     public static async Task<IResult> PostApproveDeputy(
         Guid id, ApproveReceiptByDeputy command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<ReceiptApprovedByDeputy>>(
+        var (result, @event) = await bus.InvokeAsync<(Result, ReceiptApprovedByDeputy)>(
             command with { SalaryPeriodId = id });
 
         if (result.IsFailure)
@@ -296,7 +296,7 @@ public static class PaymentEndpoints
     public static async Task<IResult> PostReject(
         Guid id, RejectReceipt command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<ReceiptRejected>>(
+        var (result, @event) = await bus.InvokeAsync<(Result, ReceiptRejected)>(
             command with { SalaryPeriodId = id });
 
         if (result.IsFailure)

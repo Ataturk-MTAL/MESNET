@@ -20,7 +20,7 @@ public static class ContractEndpoints
     public static async Task<IResult> Post(
         CreateContract command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<ContractCreated>>(command);
+        var (result, @event) = await bus.InvokeAsync<(Result, ContractCreated)>(command);
 
         if (result.IsFailure)
         {
@@ -31,9 +31,9 @@ public static class ContractEndpoints
         }
 
         return Results.Created(
-            $"/api/contracts/{result.Value.ContractId}",
+            $"/api/contracts/{@event.ContractId}",
             ResponseBuilder.Success(201)
-                .AddData(new { contractId = result.Value.ContractId })
+                .AddData(new { contractId = @event.ContractId })
                 .AddMessage("Sözleşme oluşturuldu.")
                 .Build());
     }

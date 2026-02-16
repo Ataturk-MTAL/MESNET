@@ -8,7 +8,7 @@ namespace MESNET.Contract.Application.Handlers;
 
 public static class CreateContractHandler
 {
-    public static Result<ContractCreated> Handle(CreateContract command, IDocumentSession session)
+    public static (Result, ContractCreated) Handle(CreateContract command, IDocumentSession session)
     {
         var contractId = Guid.NewGuid();
         var @event = new ContractCreated(
@@ -22,6 +22,6 @@ public static class CreateContractHandler
             DateTime.UtcNow);
 
         session.Events.StartStream<InternshipContract>(contractId, @event);
-        return Result<ContractCreated>.Success(@event);
+        return (Result.Success(), @event);
     }
 }

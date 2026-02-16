@@ -18,7 +18,7 @@ public static class AttendanceEndpoints
     public static async Task<IResult> Post(
         MarkAttendance command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<AttendanceMarked>>(command);
+        var (result, @event) = await bus.InvokeAsync<(Result, AttendanceMarked)>(command);
 
         if (result.IsFailure)
         {
@@ -29,9 +29,9 @@ public static class AttendanceEndpoints
         }
 
         return Results.Created(
-            $"/api/attendance/{result.Value.AttendanceId}",
+            $"/api/attendance/{@event.AttendanceId}",
             ResponseBuilder.Success(201)
-                .AddData(new { attendanceId = result.Value.AttendanceId })
+                .AddData(new { attendanceId = @event.AttendanceId })
                 .AddMessage("Devamsızlık kaydı oluşturuldu.")
                 .Build());
     }
@@ -40,7 +40,7 @@ public static class AttendanceEndpoints
     public static async Task<IResult> PostVerify(
         Guid attendanceId, VerifyAttendance command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<AttendanceVerified>>(
+        var (result, @event) = await bus.InvokeAsync<(Result, AttendanceVerified)>(
             command with { AttendanceId = attendanceId });
 
         if (result.IsFailure)
@@ -60,7 +60,7 @@ public static class AttendanceEndpoints
     public static async Task<IResult> PostCorrect(
         Guid attendanceId, CorrectAttendance command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<AttendanceCorrected>>(
+        var (result, @event) = await bus.InvokeAsync<(Result, AttendanceCorrected)>(
             command with { AttendanceId = attendanceId });
 
         if (result.IsFailure)
@@ -80,7 +80,7 @@ public static class AttendanceEndpoints
     public static async Task<IResult> PostHealthReport(
         Guid attendanceId, AttachHealthReport command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<HealthReportAttached>>(
+        var (result, @event) = await bus.InvokeAsync<(Result, HealthReportAttached)>(
             command with { AttendanceId = attendanceId });
 
         if (result.IsFailure)

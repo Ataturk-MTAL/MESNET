@@ -6,9 +6,9 @@ namespace MESNET.Payment.Application.Handlers;
 
 public static class RejectReceiptHandler
 {
-    public static Result<ReceiptRejected> Handle(RejectReceipt command, Guid receiptId)
+    public static (Result, ReceiptRejected?) Handle(RejectReceipt command, Guid receiptId)
     {
-        return Result<ReceiptRejected>.Success(new ReceiptRejected(
+        return (Result.Success(), new ReceiptRejected(
             command.SalaryPeriodId,
             receiptId,
             command.RejectedBy,

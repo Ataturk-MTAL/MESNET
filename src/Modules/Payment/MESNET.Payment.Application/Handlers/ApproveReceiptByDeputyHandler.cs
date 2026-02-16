@@ -6,9 +6,9 @@ namespace MESNET.Payment.Application.Handlers;
 
 public static class ApproveReceiptByDeputyHandler
 {
-    public static Result<ReceiptApprovedByDeputy> Handle(ApproveReceiptByDeputy command, Guid receiptId)
+    public static (Result, ReceiptApprovedByDeputy?) Handle(ApproveReceiptByDeputy command, Guid receiptId)
     {
-        return Result<ReceiptApprovedByDeputy>.Success(new ReceiptApprovedByDeputy(
+        return (Result.Success(), new ReceiptApprovedByDeputy(
             command.SalaryPeriodId,
             receiptId,
             command.ApprovedBy,
