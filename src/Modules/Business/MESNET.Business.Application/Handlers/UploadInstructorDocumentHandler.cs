@@ -17,7 +17,7 @@ public static class UploadInstructorDocumentHandler
     private const string AllowedContentType = "application/pdf";
     private static readonly byte[] PdfMagicBytes = "%PDF-"u8.ToArray();
 
-    public static async Task<Result<InstructorDocumentUploaded>> Handle(
+    public static async Task<(Result, InstructorDocumentUploaded?)> Handle(
         UploadInstructorDocument command,
         IDocumentSession session,
         IFileStorageService fileStorage,
@@ -29,26 +29,26 @@ public static class UploadInstructorDocumentHandler
         var business = await session.LoadAsync<Core.Entities.Business>(command.BusinessId, cancellationToken);
         if (business is null)
         {
-            return Result<InstructorDocumentUploaded>.Failure(
-                new Error("BUSINESS_NOT_FOUND", $"İşletme bulunamadı: {command.BusinessId}"));
+            return (Result.Failure(
+                new Error("BUSINESS_NOT_FOUND", $"İşletme bulunamadı: {command.BusinessId}")), null);
         }
 
         // 2. Dosya validasyonu
         if (command.DocumentFile is null || command.DocumentFile.Length == 0)
         {
-            return Result<InstructorDocumentUploaded>.Failure(FileUploadError.FileNull());
+            return (Result.Failure(FileUploadError.FileNull()), null);
         }
 
         if (command.DocumentFile.Length > MaxFileSizeBytes)
         {
-            return Result<InstructorDocumentUploaded>.Failure(
-                FileUploadError.FileTooLarge(command.DocumentFile.Length, MaxFileSizeBytes));
+            return (Result.Failure(
+                FileUploadError.FileTooLarge(command.DocumentFile.Length, MaxFileSizeBytes)), null);
         }
 
         if (!command.DocumentFile.ContentType.Equals(AllowedContentType, StringComparison.OrdinalIgnoreCase))
         {
-            return Result<InstructorDocumentUploaded>.Failure(
-                FileUploadError.InvalidFileType(command.DocumentFile.ContentType));
+            return (Result.Failure(
+                FileUploadError.InvalidFileType(command.DocumentFile.ContentType)), null);
         }
 
         // 3. Magic byte kontrolü
@@ -58,7 +58,7 @@ public static class UploadInstructorDocumentHandler
 
         if (bytesRead < PdfMagicBytes.Length || !buffer.AsSpan().SequenceEqual(PdfMagicBytes))
         {
-            return Result<InstructorDocumentUploaded>.Failure(FileUploadError.InvalidFileContent());
+            return (Result.Failure(FileUploadError.InvalidFileContent()), null);
         }
 
         // 4. Object path: businesses/{businessId}/instructor-cert_{timestamp}.pdf
@@ -95,7 +95,7 @@ public static class UploadInstructorDocumentHandler
         {
             var logger = loggerFactory.CreateLogger("UploadInstructorDocument");
             logger.LogError("MinIO upload başarısız: {Error}", uploadResult.Error.Description);
-            return Result<InstructorDocumentUploaded>.Failure(uploadResult.Error);
+            return (Result.Failure(uploadResult.Error), null);
         }
 
         // 7. Business entity'ye document ekle (objectPath ile, URL on-demand generate edilecek)
@@ -129,6 +129,6 @@ public static class UploadInstructorDocumentHandler
             "Usta öğretici belgesi yüklendi: BusinessId={BusinessId}, DocumentId={DocumentId}",
             command.BusinessId, documentId);
 
-        return Result<InstructorDocumentUploaded>.Success(@event);
+        return (Result.Success(), @event);
     }
 }

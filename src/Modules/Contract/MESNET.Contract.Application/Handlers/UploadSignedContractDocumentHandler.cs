@@ -16,7 +16,7 @@ public static class UploadSignedContractDocumentHandler
     private const string AllowedContentType = "application/pdf";
     private static readonly byte[] PdfMagicBytes = "%PDF-"u8.ToArray();
 
-    public static async Task<Result<SignedContractDocumentUploaded>> Handle(
+    public static async Task<(Result, SignedContractDocumentUploaded?)> Handle(
         UploadSignedContractDocument command,
         IDocumentSession session,
         IFileStorageService fileStorage,
@@ -28,26 +28,26 @@ public static class UploadSignedContractDocumentHandler
         var contract = await session.LoadAsync<InternshipContract>(command.ContractId, cancellationToken);
         if (contract is null)
         {
-            return Result<SignedContractDocumentUploaded>.Failure(
-                new Error("CONTRACT_NOT_FOUND", $"Sözleşme bulunamadı: {command.ContractId}"));
+            return (Result.Failure(
+                new Error("CONTRACT_NOT_FOUND", $"Sözleşme bulunamadı: {command.ContractId}")), null);
         }
 
         // 2. Dosya validasyonu
         if (command.DocumentFile is null || command.DocumentFile.Length == 0)
         {
-            return Result<SignedContractDocumentUploaded>.Failure(FileUploadError.FileNull());
+            return (Result.Failure(FileUploadError.FileNull()), null);
         }
 
         if (command.DocumentFile.Length > MaxFileSizeBytes)
         {
-            return Result<SignedContractDocumentUploaded>.Failure(
-                FileUploadError.FileTooLarge(command.DocumentFile.Length, MaxFileSizeBytes));
+            return (Result.Failure(
+                FileUploadError.FileTooLarge(command.DocumentFile.Length, MaxFileSizeBytes)), null);
         }
 
         if (!command.DocumentFile.ContentType.Equals(AllowedContentType, StringComparison.OrdinalIgnoreCase))
         {
-            return Result<SignedContractDocumentUploaded>.Failure(
-                FileUploadError.InvalidFileType(command.DocumentFile.ContentType));
+            return (Result.Failure(
+                FileUploadError.InvalidFileType(command.DocumentFile.ContentType)), null);
         }
 
         // 3. Magic byte kontrolü
@@ -57,7 +57,7 @@ public static class UploadSignedContractDocumentHandler
 
         if (bytesRead < PdfMagicBytes.Length || !buffer.AsSpan().SequenceEqual(PdfMagicBytes))
         {
-            return Result<SignedContractDocumentUploaded>.Failure(FileUploadError.InvalidFileContent());
+            return (Result.Failure(FileUploadError.InvalidFileContent()), null);
         }
 
         // 4. Object path: contracts/{contractId}/signed-contract_{timestamp}.pdf
@@ -87,7 +87,7 @@ public static class UploadSignedContractDocumentHandler
         {
             var logger = loggerFactory.CreateLogger("UploadSignedContractDocument");
             logger.LogError("MinIO upload başarısız: {Error}", uploadResult.Error.Description);
-            return Result<SignedContractDocumentUploaded>.Failure(uploadResult.Error);
+            return (Result.Failure(uploadResult.Error), null);
         }
 
         // 7. Event döndür (objectPath ile, URL on-demand generate edilecek)
@@ -103,6 +103,6 @@ public static class UploadSignedContractDocumentHandler
             "Islak imzalı sözleşme yüklendi: ContractId={ContractId}, UploadedBy={UploadedBy}",
             command.ContractId, command.UploadedBy);
 
-        return Result<SignedContractDocumentUploaded>.Success(@event);
+        return (Result.Success(), @event);
     }
 }
