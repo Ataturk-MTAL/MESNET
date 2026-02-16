@@ -1,25 +1,29 @@
 using Marten;
 using MESNET.Attendance.Application.Commands;
+using MESNET.Attendance.Application.Errors;
 using MESNET.Attendance.Core.Entities;
 using MESNET.Attendance.Core.Enums;
 using MESNET.Attendance.Core.ValueObjects;
 using MESNET.Attendance.Shared.Events;
+using MESNET.Common.Shared;
 
 namespace MESNET.Attendance.Application.Handlers;
 
 public static class UpdateWorkCalendarHandler
 {
-    public static WorkCalendarUpdated Handle(UpdateWorkCalendar command, IDocumentSession session)
+    public static Result<WorkCalendarUpdated> Handle(UpdateWorkCalendar command, IDocumentSession session)
     {
         var calendar = session.Query<WorkCalendar>()
             .FirstOrDefault(c => c.InstitutionId == command.InstitutionId && c.Year == command.Year);
 
-        var restrictedDays = command.RestrictedDays.Select(d =>
+        var restrictedDays = new List<CalendarDay>();
+        foreach (var d in command.RestrictedDays)
         {
             if (!CalendarDayType.TryFromName(d.Type, true, out var type))
-                throw new InvalidOperationException($"Geçersiz takvim gün türü: {d.Type}");
-            return new CalendarDay(d.Date, type, d.Description);
-        }).ToList();
+                return Result<WorkCalendarUpdated>.Failure(
+                    AttendanceErrors.OperationFailed("UpdateCalendar", $"Geçersiz takvim gün türü: {d.Type}"));
+            restrictedDays.Add(new CalendarDay(d.Date, type, d.Description));
+        }
 
         if (calendar is null)
         {
@@ -42,8 +46,8 @@ public static class UpdateWorkCalendarHandler
 
         session.Store(calendar);
 
-        return new WorkCalendarUpdated(
+        return Result<WorkCalendarUpdated>.Success(new WorkCalendarUpdated(
             calendar.Id, calendar.InstitutionId, calendar.Year,
-            restrictedDays.Count, command.UpdatedBy);
+            restrictedDays.Count, command.UpdatedBy));
     }
 }

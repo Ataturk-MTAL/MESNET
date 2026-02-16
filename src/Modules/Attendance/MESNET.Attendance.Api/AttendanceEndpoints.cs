@@ -18,87 +18,82 @@ public static class AttendanceEndpoints
     public static async Task<IResult> Post(
         MarkAttendance command, IMessageBus bus)
     {
-        try
+        var result = await bus.InvokeAsync<Result<AttendanceMarked>>(command);
+
+        if (result.IsFailure)
         {
-            var @event = await bus.InvokeAsync<AttendanceMarked>(command);
-            return Results.Created(
-                $"/api/attendance/{@event.AttendanceId}",
-                ResponseBuilder.Success(201)
-                    .AddData(new { attendanceId = @event.AttendanceId })
-                    .AddMessage("Devamsızlık kaydı oluşturuldu.")
-                    .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = AttendanceErrors.OperationFailed("Mark", ex.Message);
             return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
+                .AddMessage(result.Error.Description)
+                .AddErrors(result.Error)
                 .Build());
         }
+
+        return Results.Created(
+            $"/api/attendance/{result.Value.AttendanceId}",
+            ResponseBuilder.Success(201)
+                .AddData(new { attendanceId = result.Value.AttendanceId })
+                .AddMessage("Devamsızlık kaydı oluşturuldu.")
+                .Build());
     }
 
     [WolverinePost("/api/attendance/{attendanceId}/verify")]
     public static async Task<IResult> PostVerify(
         Guid attendanceId, VerifyAttendance command, IMessageBus bus)
     {
-        try
+        var result = await bus.InvokeAsync<Result<AttendanceVerified>>(
+            command with { AttendanceId = attendanceId });
+
+        if (result.IsFailure)
         {
-            await bus.InvokeAsync(command with { AttendanceId = attendanceId });
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Devamsızlık kaydı doğrulandı.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = AttendanceErrors.OperationFailed("Verify", ex.Message);
             return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
+                .AddMessage(result.Error.Description)
+                .AddErrors(result.Error)
                 .Build());
         }
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Devamsızlık kaydı doğrulandı.")
+            .Build());
     }
 
     [WolverinePost("/api/attendance/{attendanceId}/correct")]
     public static async Task<IResult> PostCorrect(
         Guid attendanceId, CorrectAttendance command, IMessageBus bus)
     {
-        try
+        var result = await bus.InvokeAsync<Result<AttendanceCorrected>>(
+            command with { AttendanceId = attendanceId });
+
+        if (result.IsFailure)
         {
-            await bus.InvokeAsync(command with { AttendanceId = attendanceId });
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Devamsızlık kaydı düzeltildi.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = AttendanceErrors.OperationFailed("Correct", ex.Message);
             return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
+                .AddMessage(result.Error.Description)
+                .AddErrors(result.Error)
                 .Build());
         }
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Devamsızlık kaydı düzeltildi.")
+            .Build());
     }
 
     [WolverinePost("/api/attendance/{attendanceId}/health-report")]
     public static async Task<IResult> PostHealthReport(
         Guid attendanceId, AttachHealthReport command, IMessageBus bus)
     {
-        try
+        var result = await bus.InvokeAsync<Result<HealthReportAttached>>(
+            command with { AttendanceId = attendanceId });
+
+        if (result.IsFailure)
         {
-            await bus.InvokeAsync(command with { AttendanceId = attendanceId });
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Sağlık raporu ilişkilendirildi.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = AttendanceErrors.OperationFailed("AttachHealthReport", ex.Message);
             return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
+                .AddMessage(result.Error.Description)
+                .AddErrors(result.Error)
                 .Build());
         }
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Sağlık raporu ilişkilendirildi.")
+            .Build());
     }
 
     [WolverineGet("/api/attendance/{attendanceId}")]

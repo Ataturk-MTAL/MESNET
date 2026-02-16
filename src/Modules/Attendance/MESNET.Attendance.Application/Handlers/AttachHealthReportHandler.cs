@@ -1,6 +1,7 @@
 using MESNET.Attendance.Application.Commands;
 using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Shared.Events;
+using MESNET.Common.Shared;
 using Wolverine.Marten;
 
 namespace MESNET.Attendance.Application.Handlers;
@@ -8,10 +9,10 @@ namespace MESNET.Attendance.Application.Handlers;
 public static class AttachHealthReportHandler
 {
     [AggregateHandler]
-    public static HealthReportAttached Handle(
+    public static Result<HealthReportAttached> Handle(
         AttachHealthReport command, AttendanceRecord record)
     {
-        return new HealthReportAttached(
-            record.Id, record.StudentId, command.ReportUrl, DateTime.UtcNow);
+        return Result<HealthReportAttached>.Success(new HealthReportAttached(
+            record.Id, record.StudentId, command.ReportUrl, DateTime.UtcNow));
     }
 }

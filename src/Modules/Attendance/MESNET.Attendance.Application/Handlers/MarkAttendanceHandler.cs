@@ -1,26 +1,28 @@
 using Marten;
 using MESNET.Attendance.Application.Commands;
+using MESNET.Attendance.Application.Errors;
 using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Entities;
 using MESNET.Attendance.Core.Enums;
 using MESNET.Attendance.Shared.Events;
+using MESNET.Common.Shared;
 
 namespace MESNET.Attendance.Application.Handlers;
 
 public static class MarkAttendanceHandler
 {
-    public static AttendanceMarked Handle(MarkAttendance command, IDocumentSession session)
+    public static Result<AttendanceMarked> Handle(MarkAttendance command, IDocumentSession session)
     {
         var calendar = session.Query<WorkCalendar>()
             .FirstOrDefault(c => c.InstitutionId == command.InstitutionId && c.Year == command.Date.Year);
 
         if (calendar?.RestrictedDays.Any(d => d.Date.Date == command.Date.Date) == true)
-            throw new InvalidOperationException(
-                "Bu tarih kısıtlı bir gündür, devamsızlık girişi yapılamaz.");
+            return Result<AttendanceMarked>.Failure(
+                AttendanceErrors.OperationFailed("Mark", "Bu tarih kısıtlı bir gündür, devamsızlık girişi yapılamaz."));
 
         if (!AbsenceType.TryFromName(command.AbsenceType, true, out _))
-            throw new InvalidOperationException(
-                $"Geçersiz devamsızlık türü: {command.AbsenceType}");
+            return Result<AttendanceMarked>.Failure(
+                AttendanceErrors.OperationFailed("Mark", $"Geçersiz devamsızlık türü: {command.AbsenceType}"));
 
         var id = Guid.NewGuid();
         var @event = new AttendanceMarked(
@@ -28,6 +30,6 @@ public static class MarkAttendanceHandler
             command.InstitutionId, command.Date, command.AbsenceType);
 
         session.Events.StartStream<AttendanceRecord>(id, @event);
-        return @event;
+        return Result<AttendanceMarked>.Success(@event);
     }
 }

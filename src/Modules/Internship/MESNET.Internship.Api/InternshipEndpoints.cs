@@ -5,6 +5,7 @@ using MESNET.Internship.Application.Errors;
 using MESNET.Internship.Application.Extensions;
 using MESNET.Internship.Core.Entities;
 using MESNET.Internship.Core.Enums;
+using MESNET.Internship.Shared.Events;
 using Microsoft.AspNetCore.Http;
 using Wolverine;
 using Wolverine.Http;
@@ -59,146 +60,79 @@ public static class InternshipEndpoints
     public static async Task<IResult> PostRequestTermination(
         Guid internshipId, RequestTermination command, IMessageBus bus)
     {
-        try
+        var result = await bus.InvokeAsync<Result<InternshipTerminationRequested>>(
+            command with { InternshipId = internshipId });
+
+        if (result.IsFailure)
         {
-            await bus.InvokeAsync(command with { InternshipId = internshipId });
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Fesih talebi oluşturuldu.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = InternshipErrors.OperationFailed("Terminate", ex.Message);
             return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
+                .AddMessage(result.Error.Description)
+                .AddErrors(result.Error)
                 .Build());
         }
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Fesih talebi oluşturuldu.")
+            .Build());
     }
 
     [WolverinePost("/api/internships/{internshipId}/approve/parent")]
     public static async Task<IResult> PostApproveParent(
         Guid internshipId, IMessageBus bus)
     {
-        try
-        {
-            await bus.InvokeAsync(new ApproveTerminationByParent(internshipId));
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Veli onayı verildi.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = InternshipErrors.OperationFailed("ApproveParent", ex.Message);
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
-                .Build());
-        }
+        await bus.InvokeAsync(new ApproveTerminationByParent(internshipId));
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Veli onayı verildi.")
+            .Build());
     }
 
     [WolverinePost("/api/internships/{internshipId}/approve/teacher")]
     public static async Task<IResult> PostApproveTeacher(
         Guid internshipId, IMessageBus bus)
     {
-        try
-        {
-            await bus.InvokeAsync(new ApproveTerminationByTeacher(internshipId));
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Koordinatör öğretmen onayı verildi.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = InternshipErrors.OperationFailed("ApproveTeacher", ex.Message);
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
-                .Build());
-        }
+        await bus.InvokeAsync(new ApproveTerminationByTeacher(internshipId));
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Koordinatör öğretmen onayı verildi.")
+            .Build());
     }
 
     [WolverinePost("/api/internships/{internshipId}/approve/deputy")]
     public static async Task<IResult> PostApproveDeputy(
         Guid internshipId, IMessageBus bus)
     {
-        try
-        {
-            await bus.InvokeAsync(new ApproveTerminationByDeputy(internshipId));
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Müdür yardımcısı onayı verildi.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = InternshipErrors.OperationFailed("ApproveDeputy", ex.Message);
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
-                .Build());
-        }
+        await bus.InvokeAsync(new ApproveTerminationByDeputy(internshipId));
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Müdür yardımcısı onayı verildi.")
+            .Build());
     }
 
     [WolverinePost("/api/internships/{internshipId}/approve/director")]
     public static async Task<IResult> PostApproveDirector(
         Guid internshipId, IMessageBus bus)
     {
-        try
-        {
-            await bus.InvokeAsync(new ApproveTerminationByDirector(internshipId));
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Müdür onayı verildi.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = InternshipErrors.OperationFailed("ApproveDirector", ex.Message);
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
-                .Build());
-        }
+        await bus.InvokeAsync(new ApproveTerminationByDirector(internshipId));
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Müdür onayı verildi.")
+            .Build());
     }
 
     [WolverinePost("/api/internships/{internshipId}/approve/business")]
     public static async Task<IResult> PostApproveBusinessRep(
         Guid internshipId, IMessageBus bus)
     {
-        try
-        {
-            await bus.InvokeAsync(new ApproveTerminationByBusinessRep(internshipId));
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("İşletme yetkilisi onayı verildi.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = InternshipErrors.OperationFailed("ApproveBusinessRep", ex.Message);
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
-                .Build());
-        }
+        await bus.InvokeAsync(new ApproveTerminationByBusinessRep(internshipId));
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("İşletme yetkilisi onayı verildi.")
+            .Build());
     }
 
     [WolverinePost("/api/internships/{internshipId}/approve/override")]
     public static async Task<IResult> PostOverride(
         Guid internshipId, OverrideTerminationApproval command, IMessageBus bus)
     {
-        try
-        {
-            await bus.InvokeAsync(command with { InternshipId = internshipId });
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Onay zinciri override edildi.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = InternshipErrors.OperationFailed("Override", ex.Message);
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { InternshipId = internshipId });
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Onay zinciri override edildi.")
+            .Build());
     }
 }

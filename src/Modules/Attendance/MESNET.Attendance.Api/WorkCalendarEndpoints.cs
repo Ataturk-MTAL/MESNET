@@ -17,22 +17,20 @@ public static class WorkCalendarEndpoints
     public static async Task<IResult> Post(
         UpdateWorkCalendar command, IMessageBus bus)
     {
-        try
+        var result = await bus.InvokeAsync<Result<WorkCalendarUpdated>>(command);
+
+        if (result.IsFailure)
         {
-            var @event = await bus.InvokeAsync<WorkCalendarUpdated>(command);
-            return Results.Ok(ResponseBuilder.Success()
-                .AddData(new { calendarId = @event.CalendarId })
-                .AddMessage("Çalışma takvimi güncellendi.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
-        {
-            var error = AttendanceErrors.OperationFailed("UpdateCalendar", ex.Message);
             return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(error.Description)
-                .AddErrors(error)
+                .AddMessage(result.Error.Description)
+                .AddErrors(result.Error)
                 .Build());
         }
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(new { calendarId = result.Value.CalendarId })
+            .AddMessage("Çalışma takvimi güncellendi.")
+            .Build());
     }
 
     [WolverineGet("/api/work-calendar")]

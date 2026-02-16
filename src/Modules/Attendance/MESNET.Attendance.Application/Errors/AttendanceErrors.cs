@@ -17,4 +17,8 @@ public static class AttendanceErrors
 
     public static Error OperationFailed(string operation, string message) =>
         new($"Attendance.{operation}Failed", message);
+
+    public static Error InvalidStatus(Guid attendanceId, string currentStatus, string message) =>
+        new("Attendance.InvalidStatus",
+            $"{message} Mevcut durum: {currentStatus}. Devamsızlık: {attendanceId}");
 }

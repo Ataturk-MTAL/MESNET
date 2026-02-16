@@ -1,7 +1,9 @@
 using MESNET.Attendance.Application.Commands;
+using MESNET.Attendance.Application.Errors;
 using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Enums;
 using MESNET.Attendance.Shared.Events;
+using MESNET.Common.Shared;
 using Wolverine.Marten;
 
 namespace MESNET.Attendance.Application.Handlers;
@@ -9,19 +11,20 @@ namespace MESNET.Attendance.Application.Handlers;
 public static class CorrectAttendanceHandler
 {
     [AggregateHandler]
-    public static AttendanceCorrected Handle(
+    public static Result<AttendanceCorrected> Handle(
         CorrectAttendance command, AttendanceRecord record)
     {
         if (!record.Status.CanTransitionTo(AttendanceStatus.Corrected))
-            throw new InvalidOperationException(
-                $"Devamsızlık kaydı {record.Status.Name} durumundan düzeltilemez.");
+            return Result<AttendanceCorrected>.Failure(
+                AttendanceErrors.InvalidStatus(record.Id, record.Status.Slug,
+                    "Devamsızlık kaydı bu durumdan düzeltilemez."));
 
         if (!AbsenceType.TryFromName(command.NewAbsenceType, true, out _))
-            throw new InvalidOperationException(
-                $"Geçersiz devamsızlık türü: {command.NewAbsenceType}");
+            return Result<AttendanceCorrected>.Failure(
+                AttendanceErrors.OperationFailed("Correct", $"Geçersiz devamsızlık türü: {command.NewAbsenceType}"));
 
-        return new AttendanceCorrected(
+        return Result<AttendanceCorrected>.Success(new AttendanceCorrected(
             record.Id, record.StudentId, command.CorrectedBy,
-            command.NewAbsenceType, command.Reason, DateTime.UtcNow);
+            command.NewAbsenceType, command.Reason, DateTime.UtcNow));
     }
 }
