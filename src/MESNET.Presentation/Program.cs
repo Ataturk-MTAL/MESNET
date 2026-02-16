@@ -1,6 +1,7 @@
 using JasperFx;
 using JasperFx.Events.Daemon;
 using Marten;
+using MESNET.Coordination.Persistence;
 using MESNET.Institution.Persistence.SeedData;
 using Scalar.AspNetCore;
 using Serilog;
@@ -50,6 +51,9 @@ try
     .InitializeWith(new FieldOfStudySeedData())
     .IntegrateWithWolverine()
     .AddAsyncDaemon(DaemonMode.HotCold);
+
+    // Modül Persistence Registrations (Her modül kendi schema'sını kaydeder)
+    builder.Services.AddCoordinationPersistence();
 
     // Keycloak Authentication (disabled in dev until realm is configured)
     // builder.Services

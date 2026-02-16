@@ -15,4 +15,8 @@ public static class InstitutionErrors
 
     public static Error BranchNotFound(string fieldCode) =>
         new("Institution.BranchNotFound", $"Aktif alan bulunamadı: {fieldCode}");
+
+    public static Error InvalidPeriodCount(int count, int min, int max) =>
+        new("Institution.InvalidPeriodCount",
+            $"Günlük ders sayısı {min}-{max} arasında olmalıdır. Girilen: {count}");
 }

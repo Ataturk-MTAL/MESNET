@@ -117,4 +117,55 @@ public static class InstitutionEndpoints
                 .AddMessage("Personel yetkilendirildi.")
                 .Build());
     }
+
+    [WolverinePut("/api/institutions/{institutionId}/schedule-config")]
+    public static async Task<IResult> PutScheduleConfig(
+        Guid institutionId,
+        UpdateScheduleConfiguration command,
+        IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<Result>(
+            command with { InstitutionId = institutionId });
+
+        if (result.IsFailure)
+        {
+            return Results.BadRequest(ResponseBuilder.Fail()
+                .AddMessage(result.Error.Description)
+                .AddErrors(result.Error)
+                .Build());
+        }
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Ders programı ayarları güncellendi.")
+            .Build());
+    }
+
+    [WolverineGet("/api/institutions/{institutionId}/schedule-config")]
+    public static async Task<IResult> GetScheduleConfig(
+        Guid institutionId,
+        IQuerySession session)
+    {
+        var institution = await session.LoadAsync<Core.Entities.Institution>(institutionId);
+        if (institution is null)
+            return Results.NotFound(ResponseBuilder.Fail(404)
+                .AddMessage(InstitutionErrors.NotFound(institutionId).Description)
+                .AddErrors(InstitutionErrors.NotFound(institutionId))
+                .Build());
+
+        if (institution.ScheduleConfig is null)
+            return Results.Ok(ResponseBuilder.Success()
+                .AddData(new { configured = false })
+                .AddMessage("Ders programı ayarları henüz yapılmamış.")
+                .Build());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(new
+            {
+                configured = true,
+                dailyPeriodCount = institution.ScheduleConfig.DailyPeriodCount,
+                updatedAt = institution.ScheduleConfig.UpdatedAt,
+                updatedBy = institution.ScheduleConfig.UpdatedBy
+            })
+            .Build());
+    }
 }

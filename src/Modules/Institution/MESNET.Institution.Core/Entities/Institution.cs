@@ -14,6 +14,18 @@ public class Institution
     public string? Email { get; set; }
     public string? WebUrl { get; set; }
     public Location? Location { get; set; }
+    public ScheduleConfiguration? ScheduleConfig { get; set; }
     public List<InstitutionBranch> Branches { get; set; } = [];
     public List<StaffMember> Staff { get; set; } = [];
+}
+
+public sealed class ScheduleConfiguration
+{
+    /// <summary>
+    /// Günlük ders sayısı (örn: 8 ders/gün)
+    /// </summary>
+    public int DailyPeriodCount { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
+    public string UpdatedBy { get; set; } = string.Empty;
 }

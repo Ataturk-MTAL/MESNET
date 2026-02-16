@@ -1,2 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Marten" />
+    <PackageReference Include="WolverineFx.Http" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../MESNET.Coordination.Application/MESNET.Coordination.Application.csproj" />
+    <ProjectReference Include="../../../MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
+  </ItemGroup>
 </Project>
