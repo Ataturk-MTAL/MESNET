@@ -1,0 +1,53 @@
+@startuml ESASequenceDiagram
+autonumber
+
+actor "İşletme Yetkilisi" as BusRep
+participant "Web UI" as UI
+participant "MESNET.Attendance.Api\nAttendanceEndpoints" as API
+participant "MESNET.Attendance.Application\nMarkAttendanceHandler" as Handler #LightBlue
+participant "Marten\nIEventStore" as EventStore #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nInternship.Application" as InternshipHandler #LightBlue
+database "attendance schema" as DB
+
+' Devamsızlık listesini getirme
+BusRep -> UI: Öğrenci devamsızlık sayfasını aç
+UI -> API: GET /api/attendance/{studentId}
+API -> Handler: Handle(GetAttendanceQuery)
+Handler -> EventStore: session.Events.AggregateStreamAsync<AttendanceRecord>(id)
+EventStore -> DB: SELECT events
+DB --> EventStore: Event stream
+EventStore --> Handler: AttendanceRecord aggregate
+Handler --> API: AttendanceDTO
+API --> UI: Devamsızlık listesi
+UI --> BusRep: Mevcut devamsızlık bilgileri
+
+' Devamsızlık kaydı
+BusRep -> UI: Devamsızlık bilgisini kaydet
+UI -> API: POST /api/attendance
+API -> Handler: Handle(MarkAttendance command)
+Handler -> EventStore: session.Events.Append(streamId, AttendanceMarked)
+EventStore -> DB: INSERT event
+DB --> EventStore: Success
+
+' Cascading message
+Handler --> API: AttendanceMarked (cascading)
+API --> UI: Success
+UI --> BusRep: "Devamsızlık kaydı oluşturuldu" mesajı
+
+' Asenkron event dağıtımı
+Handler -> MessageBroker: PublishAsync<AttendanceMarked>
+MessageBroker ->> InternshipHandler: Handle(AttendanceMarked)
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+  - Durable Local Queues
+
+  Event Sourcing:
+  - AttendanceRecord aggregate
+  - Marten Event Store
+end note
+
+@enduml

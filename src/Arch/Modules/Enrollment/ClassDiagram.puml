@@ -1,0 +1,178 @@
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Enrollment.Api" {
+    class EnrollmentEndpoints {
+        +[WolverinePost] RegisterStudent(command)
+        +[WolverinePost] RegisterTeacher(command)
+        +[WolverinePost] ApplyForInternship(command)
+        +[WolverinePost] RequestStudent(command)
+        +[WolverinePost] PlaceStudent(command)
+        +[WolverinePost] TransferStudent(command)
+        +[WolverineGet] GetStudentProfile(studentId)
+        +[WolverineGet] ListPlacements(query)
+    }
+}
+
+package "MESNET.Enrollment.Application" {
+    class RegisterStudentHandler {
+        +static StudentRegistered Handle(RegisterStudent command, IDocumentSession session)
+    }
+
+    class RegisterTeacherHandler {
+        +static TeacherRegistered Handle(RegisterTeacher command, IDocumentSession session)
+    }
+
+    class ApplyForInternshipHandler {
+        +static InternshipApplied Handle(ApplyForInternship command, IDocumentSession session)
+    }
+
+    class RequestStudentHandler {
+        +static InternshipApplied Handle(RequestStudent command, IDocumentSession session)
+    }
+
+    class PlaceStudentHandler {
+        +static StudentPlaced Handle(PlaceStudent command, IDocumentSession session)
+    }
+
+    class TransferStudentHandler {
+        +static StudentTransferred Handle(TransferStudent command, IDocumentSession session)
+    }
+}
+
+package "MESNET.Enrollment.Core" {
+    class StudentProfile <<AggregateRoot>> {
+        +Guid Id
+        +Guid KeycloakUserId
+        +string FullName
+        +Guid InstitutionId
+        +string BranchCode
+        +string BranchName
+        +int ClassYear
+        +StudentStatus Status
+        +DateTime RegisteredAt
+    }
+
+    class TeacherProfile <<Document>> {
+        +Guid Id
+        +Guid KeycloakUserId
+        +string FullName
+        +Guid InstitutionId
+        +DateTime RegisteredAt
+    }
+
+    class InternshipPlacement <<AggregateRoot>> {
+        +Guid Id
+        +Guid StudentId
+        +Guid BusinessId
+        +Guid InstitutionId
+        +Guid TeacherId
+        +PlacementStatus Status
+        +DateTime PlacedAt
+        +DateTime? TransferredAt
+        +string? TransferReason
+    }
+
+    class BusinessProfile <<Projection>> {
+        +Guid Id
+        +Guid BusinessId
+        +string BusinessName
+        +string BranchCode
+        +int AvailableCapacity
+        +Location Location
+        +DateTime LastUpdated
+    }
+
+    class Location <<Value Object>> {
+        +double Latitude
+        +double Longitude
+    }
+
+    enum StudentStatus <<Enum>> {
+        #KAYITLI
+        #BASVURDU
+        #YERLESTI
+        #AKTIF_STAJ
+        #TAMAMLADI
+    }
+
+    enum PlacementStatus <<Enum>> {
+        #ESLESTI
+        #AKTIF
+        #TRANSFER_EDILDI
+        #TAMAMLANDI
+    }
+
+    note "BusinessProfile, Business modülü\nevent'lerinden oluşturulan\nMarten Async Projection.\nBaşka modül DB'sine erişim YOK." as ProjectionNote
+    BusinessProfile .. ProjectionNote
+}
+
+package "MESNET.Enrollment.Shared" {
+    class StudentRegistered {
+        +Guid StudentId
+        +string FullName
+        +Guid InstitutionId
+        +string BranchCode
+    }
+
+    class TeacherRegistered {
+        +Guid TeacherId
+        +string FullName
+        +Guid InstitutionId
+    }
+
+    class InternshipApplied {
+        +Guid StudentId
+        +Guid? BusinessId
+        +string BranchCode
+        +string Source
+    }
+
+    class StudentPlaced {
+        +Guid PlacementId
+        +Guid StudentId
+        +Guid BusinessId
+        +Guid InstitutionId
+        +DateTime PlacedAt
+    }
+
+    class StudentTransferred {
+        +Guid PlacementId
+        +Guid StudentId
+        +Guid OldBusinessId
+        +Guid NewBusinessId
+        +string Reason
+    }
+}
+
+package "MESNET.Enrollment.Persistence" {
+    class EnrollmentMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: enrollment\nHybrid Storage:\n- StudentProfile → Document\n- TeacherProfile → Document\n- InternshipPlacement → Event Sourcing\n- BusinessProfile → Async Projection" as PersistenceNote
+    EnrollmentMartenConfig .. PersistenceNote
+}
+
+' Domain Relationships
+StudentProfile --> StudentStatus : enum
+InternshipPlacement --> PlacementStatus : enum
+BusinessProfile --> Location : has one
+
+' API -> Handler
+EnrollmentEndpoints --> RegisterStudentHandler : Wolverine InvokeAsync
+EnrollmentEndpoints --> RegisterTeacherHandler : Wolverine InvokeAsync
+EnrollmentEndpoints --> ApplyForInternshipHandler : Wolverine InvokeAsync
+EnrollmentEndpoints --> RequestStudentHandler : Wolverine InvokeAsync
+EnrollmentEndpoints --> PlaceStudentHandler : Wolverine InvokeAsync
+EnrollmentEndpoints --> TransferStudentHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading)
+RegisterStudentHandler --> StudentRegistered : returns (cascading)
+RegisterTeacherHandler --> TeacherRegistered : returns (cascading)
+ApplyForInternshipHandler --> InternshipApplied : returns (cascading)
+RequestStudentHandler --> InternshipApplied : returns (cascading)
+PlaceStudentHandler --> StudentPlaced : returns (cascading)
+TransferStudentHandler --> StudentTransferred : returns (cascading)
+
+@enduml

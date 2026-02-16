@@ -1,0 +1,4 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+:Business Representative: as BusRep
+@enduml

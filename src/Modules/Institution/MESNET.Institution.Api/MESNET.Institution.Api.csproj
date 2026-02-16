@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="WolverineFx.Http" />
+    <PackageReference Include="WolverineFx.Http.Marten" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../MESNET.Institution.Application/MESNET.Institution.Application.csproj" />
+  </ItemGroup>
+</Project>

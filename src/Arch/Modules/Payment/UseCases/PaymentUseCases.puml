@@ -1,0 +1,41 @@
+@startuml PaymentUseCasesDiagram
+title Payment Modülü Use Cases
+left to right direction
+
+!include ../../../Actors/BusinessRepresentative.puml
+!include ../../../Actors/Teacher.puml
+!include ../../../Actors/InstitutionAdmin.puml
+!include ../../../Actors/Student.puml
+
+package Payment {
+    usecase "PUR: Dekont Yükleme" as PUR
+    usecase "PTA: Öğretmen Dekont Onayı" as PTA
+    usecase "PIA: Kurum Dekont Onayı" as PIA
+    usecase "PSC: Öğrenci Maaş Onayı" as PSC
+    usecase "PPL: Ödeme Listesi Oluşturma" as PPL
+    usecase "PMW: Asgari Ücret Yönetimi" as PMW
+    usecase "PVW: Maaş Görüntüleme" as PVW
+}
+
+BusRep --> PUR
+BusRep --> PVW
+Teacher --> PTA
+Teacher --> PVW
+InstAdmin --> PIA
+InstAdmin --> PPL
+InstAdmin --> PMW
+InstAdmin --> PVW
+Student --> PSC
+Student --> PVW
+
+json Notes {
+    "PUR": "İşletme yetkilisi, aylık maaş dekontunu\nsisteme yükler.",
+    "PTA": "Koordinatör öğretmen, yüklenen dekontu\nkontrol edip onaylar.",
+    "PIA": "Kurum yönetimi, öğretmen onaylı dekontu\nnihai olarak onaylar.",
+    "PSC": "Öğrenci, maaşını aldığını onaylar.",
+    "PPL": "Kurum yönetimi, dönemsel ödeme\nlistesi oluşturur.",
+    "PMW": "Kurum yönetimi, asgari ücret\nparametresini günceller.",
+    "PVW": "Öğrenci kendi maaş bilgilerini, öğretmen kooridnatörlüğünü yaptığı tüm öğrencilerim maaş bilgilerini, kurum ise tüm öğrenci maaş\nbilgilerini görüntüler."
+}
+
+@enduml

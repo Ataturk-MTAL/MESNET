@@ -1,0 +1,195 @@
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Attendance.Api" {
+    class AttendanceEndpoints {
+        +[WolverinePost] MarkAttendance(command)
+        +[WolverinePost] VerifyAttendance(command)
+        +[WolverinePost] CorrectAttendance(command)
+        +[WolverinePost] AttachHealthReport(command)
+        +[WolverinePost] UpdateWorkCalendar(command)
+        +[WolverineGet] GetStudentAttendance(studentId)
+        +[WolverineGet] GetWorkCalendar(query)
+        +[WolverineGet] ListAttendance(query)
+    }
+}
+
+package "MESNET.Attendance.Application" {
+    class MarkAttendanceHandler {
+        +static AttendanceMarked Handle(MarkAttendance command, IDocumentSession session)
+    }
+
+    class VerifyAttendanceHandler {
+        +static AttendanceVerified Handle(VerifyAttendance command, IDocumentSession session)
+    }
+
+    class CorrectAttendanceHandler {
+        +static AttendanceCorrected Handle(CorrectAttendance command, IDocumentSession session)
+    }
+
+    class AttachHealthReportHandler {
+        +static HealthReportAttached Handle(AttachHealthReport command, IDocumentSession session)
+    }
+
+    class CheckAttendanceLimitHandler {
+        +static AttendanceLimitExceeded? Handle(AttendanceMarked event, IDocumentSession session)
+    }
+
+    class UpdateWorkCalendarHandler {
+        +static WorkCalendarUpdated Handle(UpdateWorkCalendar command, IDocumentSession session)
+    }
+
+    class ValidateAttendanceDateHandler {
+        +static void Load(MarkAttendance command, IDocumentSession session)
+    }
+
+    note "CheckAttendanceLimitHandler,\nAttendanceMarked event'ini\ndinler ve limit aşılınca\nAttendanceLimitExceeded döner.\n\nValidateAttendanceDateHandler,\nMarkAttendance öncesi WorkCalendar'ı\nkontrol eder. Resmi tatil ve okul izin\ngünlerinde devamsızlık girişini engeller." as LimitNote
+    CheckAttendanceLimitHandler .. LimitNote
+}
+
+package "MESNET.Attendance.Core" {
+    class AttendanceRecord <<AggregateRoot>> {
+        +Guid Id
+        +Guid StudentId
+        +Guid BusinessId
+        +Guid InstitutionId
+        +DateTime Date
+        +AbsenceType Type
+        +string? Reason
+        +AttendanceStatus Status
+        +string? HealthReportUrl
+        +string MarkedBy
+        +DateTime MarkedAt
+        +string? VerifiedBy
+        +DateTime? VerifiedAt
+    }
+
+    class AttendanceView <<Projection>> {
+        +Guid Id
+        +Guid StudentId
+        +string StudentName
+        +Guid BusinessId
+        +int TotalAbsenceDays
+        +int ExcusedDays
+        +int UnexcusedDays
+        +bool LimitExceeded
+        +DateTime LastUpdated
+    }
+
+    enum AbsenceType <<Enum>> {
+        #MAZERETLI
+        #MAZERETSIZ
+        #SAGLIK_RAPORU
+    }
+
+    enum AttendanceStatus <<Enum>> {
+        #KAYDEDILDI
+        #DOGRULANDI
+        #DUZELTILDI
+    }
+
+    class WorkCalendar <<Document>> {
+        +Guid Id
+        +Guid InstitutionId
+        +int Year
+        +List<CalendarDay> RestrictedDays
+        +string UpdatedBy
+        +DateTime UpdatedAt
+    }
+
+    class CalendarDay <<Value Object>> {
+        +DateTime Date
+        +CalendarDayType Type
+        +string Description
+    }
+
+    enum CalendarDayType <<Enum>> {
+        #RESMI_TATIL
+        #HAFTA_SONU
+        #OKUL_IZNI
+        #SOMESTR_TATILI
+        #ARA_TATIL
+        #OLAGANUSTU_TATIL
+    }
+}
+
+package "MESNET.Attendance.Shared" {
+    class AttendanceMarked {
+        +Guid AttendanceId
+        +Guid StudentId
+        +Guid BusinessId
+        +DateTime Date
+        +AbsenceType Type
+    }
+
+    class AttendanceVerified {
+        +Guid AttendanceId
+        +Guid StudentId
+        +string VerifiedBy
+        +DateTime VerifiedAt
+    }
+
+    class AttendanceCorrected {
+        +Guid AttendanceId
+        +Guid StudentId
+        +string CorrectedBy
+        +string Reason
+    }
+
+    class HealthReportAttached {
+        +Guid AttendanceId
+        +Guid StudentId
+        +string ReportUrl
+    }
+
+    class AttendanceLimitExceeded {
+        +Guid StudentId
+        +Guid InstitutionId
+        +int TotalAbsenceDays
+        +int Limit
+    }
+
+    class WorkCalendarUpdated {
+        +Guid InstitutionId
+        +int Year
+        +int RestrictedDayCount
+        +string UpdatedBy
+    }
+}
+
+package "MESNET.Attendance.Persistence" {
+    class AttendanceMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: attendance\nEvent Sourcing (Marten)\nAttendanceRecord stream\nAttendanceView → Async Projection\n\nWorkCalendar → Document Storage\nKısıtlı günler (2429 sayılı Kanun +\nMEB Yönetmeliği Madde 14-15):\n- Resmi tatiller (ulusal bayramlar)\n- Hafta sonu tatili\n- Yarıyıl ve ara tatiller\n- Olağanüstü tatiller (afet, salgın)\n\nİşletmede staj: 60 dk/ders saati\n(MEB Yönetmeliği Madde 9/3)\nGündüz esası, max 8 saat/gün" as PersistenceNote
+    AttendanceMartenConfig .. PersistenceNote
+}
+
+' Domain Relationships
+AttendanceRecord --> AbsenceType : enum
+AttendanceRecord --> AttendanceStatus : enum
+WorkCalendar --> CalendarDay : has many
+CalendarDay --> CalendarDayType : enum
+
+' API -> Handler
+AttendanceEndpoints --> MarkAttendanceHandler : Wolverine InvokeAsync
+AttendanceEndpoints --> VerifyAttendanceHandler : Wolverine InvokeAsync
+AttendanceEndpoints --> CorrectAttendanceHandler : Wolverine InvokeAsync
+AttendanceEndpoints --> AttachHealthReportHandler : Wolverine InvokeAsync
+AttendanceEndpoints --> UpdateWorkCalendarHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading)
+MarkAttendanceHandler --> AttendanceMarked : returns (cascading)
+VerifyAttendanceHandler --> AttendanceVerified : returns (cascading)
+CorrectAttendanceHandler --> AttendanceCorrected : returns (cascading)
+AttachHealthReportHandler --> HealthReportAttached : returns (cascading)
+UpdateWorkCalendarHandler --> WorkCalendarUpdated : returns (cascading)
+
+' Middleware: tarih validasyonu
+ValidateAttendanceDateHandler ..> WorkCalendar : reads
+
+' Internal event chain
+CheckAttendanceLimitHandler --> AttendanceLimitExceeded : returns (cascading)
+
+@enduml

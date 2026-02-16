@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../../../MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
+    <ProjectReference Include="../MESNET.Internship.Shared/MESNET.Internship.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

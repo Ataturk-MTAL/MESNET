@@ -1,0 +1,157 @@
+@startuml C2_ContainerDiagram
+caption C2 Container Diagram — Modüler Monolitik Yapı (Phase 1 - Çekirdek Staj Süreçleri)
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+skinparam NoteBorderColor lightgray
+skinparam NoteBackgroundColor darkgray
+skinparam NoteFontColor white
+
+LAYOUT_TOP_DOWN()
+LAYOUT_WITH_LEGEND()
+
+' ===== AKTÖRLER =====
+
+'Person(tenant_admin, "Tenant Yöneticisi", "Phase 2 — Çoklu kurum yönetimi")
+Person(inst_admin, "Kurum Yönetimi", "Müdür, müdür yardımcısı, personel")
+Person(teacher, "Koordinatör Öğretmen", "Ziyaret, rapor, dekont onayı")
+Person(bus_rep, "İşletme Yetkilisi", "İşletme, belge, devamsızlık, dekont")
+Person(student, "Stajyer Öğrenci", "Başvuru, devamsızlık görüntüleme, maaş onayı")
+
+' ===== ANA UYGULAMA =====
+
+Enterprise_Boundary(eb, "MESNET Sistemi") {
+
+    Container(ui, "MESNET Web Arayüzü", "Vue 3 + TypeScript + Pinia", "Tüm aktörlerin kullandığı SPA")
+    Container(main_api, "MESNET Ana Uygulama", ".NET 10, Wolverine HTTP Endpoints", "Tüm modülleri host eden modüler monolit")
+
+    note as db_note
+        Tüm veritabanı tek PostgreSQL sunucu,
+        modül başına ayrı Marten schema
+    end note
+
+    ' ===== DOMAIN MODÜLLERİ =====
+
+    System_Boundary(business_mod, "Business Modülü") {
+        Container(business, "Business", "Document Storage (Marten)", "İşletme kaydı, belge,\nkonum, kontenjan")
+        ContainerDb(business_db, "business\nschema")
+    }
+
+    System_Boundary(enrollment_mod, "Enrollment Modülü") {
+        Container(enrollment, "Enrollment", "Hybrid (Document + Event)", "Öğrenci-işletme eşleştirme,\nbaşvuru, yerleştirme")
+        ContainerDb(enrollment_db, "enrollment\nschema")
+    }
+
+    System_Boundary(contract_mod, "Contract Modülü") {
+        Container(contract, "Contract", "Event Sourcing (Marten)", "Sözleşme yaşam döngüsü,\nimza, fesih")
+        ContainerDb(contract_db, "contract\nschema")
+    }
+
+    System_Boundary(attendance_mod, "Attendance Modülü") {
+        Container(attendance, "Attendance", "Event Sourcing (Marten)", "Devamsızlık kaydı,\ndoğrulama, limit kontrolü")
+        ContainerDb(attendance_db, "attendance\nschema")
+    }
+
+    System_Boundary(payment_mod, "Payment Modülü") {
+        Container(payment, "Payment", "Event Sourcing (Marten)", "Maaş hesaplama,\ndekont onay zinciri")
+        ContainerDb(payment_db, "payment\nschema")
+    }
+
+    System_Boundary(coordination_mod, "Coordination Modülü") {
+        Container(coordination, "Coordination", "Hybrid (Document + Event)", "Öğretmen ziyaret programı,\nrapor, evrak takibi")
+        ContainerDb(coordination_db, "coordination\nschema")
+    }
+
+    System_Boundary(institution_mod, "Institution Modülü") {
+        Container(institution, "Institution", "Document Storage (Marten)", "Kurum bilgileri, personel,\nalan/dal, parametreler")
+        ContainerDb(institution_db, "institution\nschema")
+    }
+
+    'System_Boundary(tenant_mod, "Tenant Modülü — Phase 2") {
+    '    Container(tenant, "Tenant", "Document Storage (Marten)", "Çoklu kurum yönetimi,\nsistem yapılandırma")
+    '    ContainerDb(tenant_db, "tenant\nschema")
+    '}
+
+    System_Boundary(internship_mod, "Internship Modülü (Saga)") {
+        Container(internship, "Internship Saga", "Wolverine Saga + Marten Projection", "Staj yaşam döngüsü\norkestrasyonu")
+        ContainerDb(internship_db, "internship\nschema")
+    }
+
+    System_Boundary(reporting_mod, "Reporting Modülü") {
+        Container(reporting, "Reporting", "Denormalize Document (Marten) + QuestPDF", "Denormalize veri,\nPDF rapor üretimi")
+        ContainerDb(reporting_db, "reporting\nschema")
+    }
+
+    ' ===== ALTYAPI =====
+
+    Boundary(infra, "Altyapı") {
+        Container_Ext(keycloak, "Keycloak", "OAuth2 / OpenID Connect", "Kimlik doğrulama ve yetkilendirme")
+        Container_Ext(rabbitmq, "RabbitMQ", "Wolverine Transport", "Modüller arası asenkron mesajlaşma")
+        ContainerDb(wolverine_db, "wolverine\nschema", "PostgreSQL", "Durable messaging")
+    }
+}
+
+' ===== AKTÖR → UI İLİŞKİLERİ =====
+
+Rel(inst_admin, ui, "Kullanır")
+Rel(teacher, ui, "Kullanır")
+Rel(bus_rep, ui, "Kullanır")
+Rel(student, ui, "Kullanır")
+
+Rel(ui, main_api, "HTTP/JSON")
+Rel(ui, keycloak, "OAuth2 Login")
+Rel(main_api, keycloak, "Token doğrulama")
+
+' ===== ANA API → MODÜLLER (IN-PROCESS) =====
+
+Rel(main_api, business, "In-process")
+Rel(main_api, enrollment, "In-process")
+Rel(main_api, contract, "In-process")
+Rel(main_api, attendance, "In-process")
+Rel(main_api, payment, "In-process")
+Rel(main_api, coordination, "In-process")
+Rel(main_api, institution, "In-process")
+'Rel(main_api, tenant, "In-process") ' Phase 2
+
+' ===== MODÜLLER → DB (MARTEN) =====
+
+Rel(business, business_db, "Marten JSONB")
+Rel(enrollment, enrollment_db, "Marten JSONB\n+ Event Store")
+Rel(contract, contract_db, "Marten\nEvent Store")
+Rel(attendance, attendance_db, "Marten\nEvent Store")
+Rel(payment, payment_db, "Marten\nEvent Store")
+Rel(coordination, coordination_db, "Marten JSONB\n+ Event Store")
+Rel(institution, institution_db, "Marten JSONB")
+'Rel(tenant, tenant_db, "Marten JSONB") ' Phase 2
+Rel(internship, internship_db, "Saga State\n+ Projection")
+Rel(reporting, reporting_db, "Denormalize\nDocuments")
+
+' ===== MODÜLLER → RABBITMQ (WOLVERINE EVENT PUBLISHING) =====
+
+Rel(business, rabbitmq, "PublishAsync")
+Rel(enrollment, rabbitmq, "PublishAsync")
+Rel(contract, rabbitmq, "PublishAsync")
+Rel(attendance, rabbitmq, "PublishAsync")
+Rel(payment, rabbitmq, "PublishAsync")
+Rel(coordination, rabbitmq, "PublishAsync")
+Rel(institution, rabbitmq, "PublishAsync")
+
+' ===== RABBITMQ → DİNLEYEN MODÜLLER =====
+
+Rel(rabbitmq, internship, "Tüm event'leri\ndinler (Saga)")
+Rel(rabbitmq, reporting, "Tüm event'leri\ndinler (Denormalize)")
+
+' ===== WOLVERINE MESSAGING =====
+
+Rel(main_api, wolverine_db, "Durable messaging")
+
+note as N1
+  **Mimari Kurallar:**
+  - Modüller arası iletişim: yalnızca Wolverine events (PublishAsync)
+  - Senkron çağrı (InvokeAsync) modüller arasında YASAK
+  - Internship: saga/orchestrator — kendi domain verisi yok
+  - Reporting: tüm event'leri denormalize eder, QuestPDF ile PDF üretir
+  - Cross-module veri okuma: her modül kendi projection'ı ile yapar
+end note
+
+@enduml

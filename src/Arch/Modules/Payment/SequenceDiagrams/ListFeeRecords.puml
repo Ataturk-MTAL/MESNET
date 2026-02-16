@@ -1,0 +1,30 @@
+@startuml LFRSequenceDiagram
+autonumber
+
+actor "İşletme Yetkilisi" as BusRep
+participant "Web UI" as UI
+participant "MESNET.Payment.Api\nPaymentEndpoints" as API
+participant "MESNET.Payment.Application\nListReceiptsHandler" as Handler #LightBlue
+participant "Marten\nIQuerySession" as Marten #LightGreen
+database "payment schema" as DB
+
+BusRep -> UI: Dekont kayıtları sayfasını aç
+UI -> API: GET /api/payment/receipts?businessId={businessId}
+API -> Handler: Handle(ListReceiptsQuery)
+Handler -> Marten: session.Query<ReceiptView>()\n.Where(x => x.BusinessId == businessId)
+Marten -> DB: SELECT (projection)
+DB --> Marten: ReceiptView documents
+Marten --> Handler: ReceiptView list
+Handler --> API: ReceiptListDTO
+API --> UI: Dekont listesi
+UI --> BusRep: Dekont kayıtları görüntülenir
+
+note right of Handler
+  Marten Async Projection:
+  - ReceiptView, event'lerden
+    türetilen denormalize read model
+  - Onay durumu, tutar, tarih bilgileri
+    tek document'ta birleşik
+end note
+
+@enduml

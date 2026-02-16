@@ -1,0 +1,226 @@
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Payment.Api" {
+    class PaymentEndpoints {
+        +[WolverinePost] UploadReceipt(command)
+        +[WolverinePost] ApproveReceiptByTeacher(command)
+        +[WolverinePost] ApproveReceiptByInstitution(command)
+        +[WolverinePost] RejectReceipt(command)
+        +[WolverinePost] ConfirmSalary(command)
+        +[WolverinePost] GeneratePaymentList(command)
+        +[WolverineGet] GetReceipt(receiptId)
+        +[WolverineGet] ListReceipts(query)
+    }
+}
+
+package "MESNET.Payment.Application" {
+    class UploadReceiptHandler {
+        +static ReceiptUploaded Handle(UploadReceipt command, IDocumentSession session)
+    }
+
+    class ApproveReceiptByTeacherHandler {
+        +static ReceiptApprovedByTeacher Handle(ApproveReceiptByTeacher command, IDocumentSession session)
+    }
+
+    class ApproveReceiptByInstitutionHandler {
+        +static ReceiptApprovedByInstitution Handle(ApproveReceiptByInstitution command, IDocumentSession session)
+    }
+
+    class RejectReceiptHandler {
+        +static ReceiptRejected Handle(RejectReceipt command, IDocumentSession session)
+    }
+
+    class ConfirmSalaryHandler {
+        +static SalaryConfirmedByStudent Handle(ConfirmSalary command, IDocumentSession session)
+    }
+
+    class GeneratePaymentListHandler {
+        +static PaymentListGenerated Handle(GeneratePaymentList command, IDocumentSession session)
+    }
+
+    class CalculateSalaryHandler {
+        +static SalaryCalculated Handle(AttendanceMarked event, IDocumentSession session)
+    }
+
+    note "CalculateSalaryHandler,\nAttendance modülünden gelen\nAttendanceMarked event'ini\ndinleyerek maaş hesaplar.\n\n3308 Madde 25 Formül:\nTabanÜcret = NetAsgarıÜcret × Oran\n  ≥20 personel → %30\n  <20 personel → %15\n  MEM 12. sınıf → %50\n\nKesinti = (TabanÜcret/30) × DevamsızGün\nÖdenen = TabanÜcret - Kesinti\nDevletKatkısı = Ödenen × DevletOranı\nİşverenPayı = Ödenen - DevletKatkısı" as CalcNote
+    CalculateSalaryHandler .. CalcNote
+}
+
+package "MESNET.Payment.Core" {
+    class FeeReceipt <<AggregateRoot>> {
+        +Guid Id
+        +Guid StudentId
+        +Guid BusinessId
+        +Guid InstitutionId
+        +string Month
+        +decimal Amount
+        +string ReceiptUrl
+        +ReceiptStatus Status
+        +string UploadedBy
+        +DateTime UploadedAt
+        +string? TeacherApprovedBy
+        +DateTime? TeacherApprovedAt
+        +string? InstitutionApprovedBy
+        +DateTime? InstitutionApprovedAt
+        +string? RejectedBy
+        +string? RejectionReason
+    }
+
+    class SalaryPeriod <<AggregateRoot>> {
+        +Guid Id
+        +Guid StudentId
+        +Guid BusinessId
+        +Guid InstitutionId
+        +string Month
+        +decimal BaseWage
+        +int WorkingDays
+        +int UnexcusedAbsenceDays
+        +decimal DeductionAmount
+        +decimal GrossAmount
+        +decimal NetAmount
+        +decimal GovernmentContribution
+        +decimal EmployerPayment
+        +SalaryStatus Status
+        +DateTime CalculatedAt
+        +DateTime? PaidAt
+    }
+
+    class ReceiptView <<Projection>> {
+        +Guid Id
+        +Guid StudentId
+        +string StudentName
+        +Guid BusinessId
+        +string BusinessName
+        +string Month
+        +decimal Amount
+        +ReceiptStatus Status
+        +DateTime LastUpdated
+    }
+
+    enum ReceiptStatus <<Enum>> {
+        #YUKLENDI
+        #OGRETMEN_ONAYLADI
+        #KURUM_ONAYLADI
+        #REDDEDILDI
+        #OGRENCI_ONAYLADI
+    }
+
+    enum SalaryStatus <<Enum>> {
+        #HESAPLANDI
+        #DEKONT_BEKLENIYOR
+        #ONAYLANDI
+        #OGRENCI_ONAYLADI
+    }
+
+    class SalaryCalculationConfig <<Document>> {
+        +Guid Id
+        +Guid InstitutionId
+        +decimal MinimumWage
+        +int PersonnelThreshold
+        +decimal LargeBusinessRate
+        +decimal SmallBusinessRate
+        +decimal MEM12thGradeRate
+        +decimal GovContribSmallNonMEM
+        +decimal GovContribLargeNonMEM
+        +decimal GovContribMEM
+        +DateTime EffectiveFrom
+        +DateTime? EffectiveTo
+        +string UpdatedBy
+    }
+
+    enum BusinessSizeCategory <<Enum>> {
+        #BUYUK_ISLETME
+        #KUCUK_ISLETME
+    }
+
+    enum GovernmentContributionType <<Enum>> {
+        #MEM_OGRENCISI
+        #MEM_DISI_BUYUK
+        #MEM_DISI_KUCUK
+        #KAMU_KURUMU
+    }
+}
+
+package "MESNET.Payment.Shared" {
+    class SalaryCalculated {
+        +Guid SalaryPeriodId
+        +Guid StudentId
+        +string Month
+        +decimal Amount
+    }
+
+    class ReceiptUploaded {
+        +Guid ReceiptId
+        +Guid StudentId
+        +Guid BusinessId
+        +string Month
+        +decimal Amount
+    }
+
+    class ReceiptApprovedByTeacher {
+        +Guid ReceiptId
+        +string ApprovedBy
+        +DateTime ApprovedAt
+    }
+
+    class ReceiptApprovedByInstitution {
+        +Guid ReceiptId
+        +string ApprovedBy
+        +DateTime ApprovedAt
+    }
+
+    class ReceiptRejected {
+        +Guid ReceiptId
+        +string RejectedBy
+        +string Reason
+    }
+
+    class SalaryConfirmedByStudent {
+        +Guid ReceiptId
+        +Guid StudentId
+        +DateTime ConfirmedAt
+    }
+
+    class PaymentListGenerated {
+        +Guid InstitutionId
+        +string Month
+        +int StudentCount
+        +decimal TotalAmount
+    }
+}
+
+package "MESNET.Payment.Persistence" {
+    class PaymentMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: payment\nHybrid Storage:\n- FeeReceipt & SalaryPeriod → Event Sourcing\n- SalaryCalculationConfig → Document Storage\n- ReceiptView → Async Projection\n- Onay zinciri audit trail\n\n3308 Madde 25:\n- Stajyer ücretleri vergiden muaf\n- SGK primleri asgari ücretin %50'si\n  üzerinden Bakanlık bütçesinden\n- Ödeme her ayın 8'ine kadar\n- Dekont her ayın 25'ine kadar" as PersistenceNote
+    PaymentMartenConfig .. PersistenceNote
+}
+
+' Domain Relationships
+FeeReceipt --> ReceiptStatus : enum
+SalaryPeriod --> SalaryStatus : enum
+SalaryPeriod --> SalaryCalculationConfig : uses
+
+' API -> Handler
+PaymentEndpoints --> UploadReceiptHandler : Wolverine InvokeAsync
+PaymentEndpoints --> ApproveReceiptByTeacherHandler : Wolverine InvokeAsync
+PaymentEndpoints --> ApproveReceiptByInstitutionHandler : Wolverine InvokeAsync
+PaymentEndpoints --> RejectReceiptHandler : Wolverine InvokeAsync
+PaymentEndpoints --> ConfirmSalaryHandler : Wolverine InvokeAsync
+PaymentEndpoints --> GeneratePaymentListHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading)
+UploadReceiptHandler --> ReceiptUploaded : returns (cascading)
+ApproveReceiptByTeacherHandler --> ReceiptApprovedByTeacher : returns (cascading)
+ApproveReceiptByInstitutionHandler --> ReceiptApprovedByInstitution : returns (cascading)
+RejectReceiptHandler --> ReceiptRejected : returns (cascading)
+ConfirmSalaryHandler --> SalaryConfirmedByStudent : returns (cascading)
+GeneratePaymentListHandler --> PaymentListGenerated : returns (cascading)
+
+' Cross-module event consumer
+CalculateSalaryHandler --> SalaryCalculated : returns (cascading)
+
+@enduml

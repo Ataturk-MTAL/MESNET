@@ -1,0 +1,39 @@
+## .NET
+bin/
+obj/
+/packages/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+## IDE
+.vs/
+.idea/
+*.swp
+*~
+._*
+
+## Rider
+/_ReSharper.Caches/
+riderModule.iml
+*.sln.iml
+
+## macOS
+.DS_Store
+**/.DS_Store
+
+## Logs
+*.log
+logs/
+
+## Secrets (local overrides)
+appsettings.*.local.json
+
+## Aspire
+.aspire/

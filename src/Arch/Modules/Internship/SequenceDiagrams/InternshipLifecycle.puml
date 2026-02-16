@@ -1,0 +1,110 @@
+@startuml ILTSequenceDiagram
+autonumber
+
+participant "Enrollment Module" as Enrollment #LightYellow
+participant "MESNET.Internship.Application\nInternshipSaga" as Saga #LightBlue
+participant "Contract Module" as Contract #LightYellow
+participant "Attendance Module" as Attendance #LightYellow
+participant "Coordination Module" as Coordination #LightYellow
+participant "Payment Module" as Payment #LightYellow
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Marten\nIDocumentSession" as Marten #LightGreen
+database "internship schema" as DB
+
+== Faz 1: Yerleştirme → Sözleşme ==
+
+Enrollment -> MessageBroker: PublishAsync<StudentPlaced>
+MessageBroker -> Saga: Start(StudentPlaced)
+note right of Saga: Saga başlatıldı\nPhase = YERLESTI
+
+Saga -> Marten: InternshipSummary projection güncelle
+Marten -> DB: UPSERT (JSONB)
+
+Saga -> MessageBroker: PublishAsync<InternshipStarted>
+note right of Saga: Phase = SOZLESME_BEKLENIYOR
+
+== Faz 2: Sözleşme Aktivasyonu → Aktif Staj ==
+
+Contract -> MessageBroker: PublishAsync<ContractActivated>
+MessageBroker -> Saga: Handle(ContractActivated)
+note right of Saga: Phase = AKTIF
+
+Saga -> Marten: InternshipSummary.ContractId güncelle
+Marten -> DB: UPDATE (JSONB)
+
+note over Saga
+  Artık devamsızlık, maaş ve
+  ziyaret event'leri dinleniyor.
+end note
+
+== Faz 3: Aktif Staj Süresince ==
+
+Attendance -> MessageBroker: PublishAsync<AttendanceMarked>
+MessageBroker -> Saga: (consumer) InternshipSummary güncelle
+Saga -> Marten: TotalAbsenceDays++
+Marten -> DB: UPDATE (JSONB)
+
+Payment -> MessageBroker: PublishAsync<SalaryConfirmedByStudent>
+MessageBroker -> Saga: (consumer) InternshipSummary güncelle
+Saga -> Marten: ConfirmedPayments++
+Marten -> DB: UPDATE (JSONB)
+
+Coordination -> MessageBroker: PublishAsync<VisitCompleted>
+MessageBroker -> Saga: (consumer) InternshipSummary güncelle
+Saga -> Marten: CompletedVisits++
+Marten -> DB: UPDATE (JSONB)
+
+== Faz 4a: Normal Tamamlama ==
+
+Contract -> MessageBroker: PublishAsync<ContractCompleted>
+MessageBroker -> Saga: Handle(ContractCompleted)
+note right of Saga: Phase = TAMAMLANDI
+
+Saga -> Marten: InternshipSummary.CompletedAt güncelle
+Marten -> DB: UPDATE (JSONB)
+
+Saga -> MessageBroker: PublishAsync<InternshipCompleted>
+
+== Faz 4b: Devamsızlık Aşımı → Fesih ==
+
+Attendance -> MessageBroker: PublishAsync<AttendanceLimitExceeded>
+MessageBroker -> Saga: Handle(AttendanceLimitExceeded)
+note right of Saga: Phase = FESIH_SURECINDE
+
+Saga -> MessageBroker: PublishAsync<InternshipTerminationApprovalChainStarted>
+
+note right of Saga
+  Fesih Onay Zinciri:
+  1. Veli onayı (18 yaş altı ise)
+  2. Koordinatör öğretmen onayı
+  3. Müdür yardımcısı onayı
+  4. Müdür onayı
+
+  Her onay ayrı event olarak gelir.
+  Tüm onaylar tamamlanınca:
+end note
+
+Saga -> MessageBroker: PublishAsync<InternshipReplacementRequested>
+note right of Saga: Phase = FESHEDILDI
+
+MessageBroker -> Enrollment: Handle(InternshipReplacementRequested)
+note right of Enrollment
+  Enrollment modülü öğrenciyi
+  yeni işletmeye yerleştirir
+  → yeni StudentPlaced event
+  → yeni saga başlar
+end note
+
+note over Saga
+  Wolverine Saga Özellikleri:
+  - Saga state otomatik persist
+  - Timeout desteği (onay zinciri)
+  - Compensating actions
+  - Durable messaging garantisi
+
+  Bu modül SADECE orkestrasyon yapar.
+  Kendi domain verisi yoktur.
+  Tüm bilgi diğer modüllerden gelir.
+end note
+
+@enduml

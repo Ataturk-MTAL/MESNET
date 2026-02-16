@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Marten" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../MESNET.Attendance.Core/MESNET.Attendance.Core.csproj" />
+    <ProjectReference Include="../MESNET.Attendance.Application/MESNET.Attendance.Application.csproj" />
+  </ItemGroup>
+
+</Project>

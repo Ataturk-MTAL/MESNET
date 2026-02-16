@@ -1,0 +1,55 @@
+@startuml RISSequenceDiagram
+autonumber
+
+actor "İşletme Yetkilisi" as BusRep
+participant "Web UI" as UI
+participant "MESNET.Enrollment.Api\nEnrollmentEndpoints" as API
+participant "MESNET.Enrollment.Application\nRequestStudentHandler" as Handler #LightBlue
+participant "Marten\nIDocumentSession" as Marten #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nInternship.Application" as InternshipHandler #LightBlue
+database "enrollment schema" as DB
+
+' Form getirme
+BusRep -> UI: Stajyer talep formunu aç
+UI -> API: GET /api/enrollment/request-form?businessId={businessId}
+API -> Handler: Handle(GetRequestFormQuery)
+Handler -> Marten: session.LoadAsync<BusinessProfile>(businessId)
+Marten -> DB: SELECT (JSONB)
+DB --> Marten: BusinessProfile document
+Marten --> Handler: BusinessProfile
+Handler --> API: RequestFormDTO
+API --> UI: Form bilgileri
+UI --> BusRep: Stajyer talep formu
+
+' Talep oluşturma
+BusRep -> UI: Stajyer talebini gönder
+UI -> API: POST /api/enrollment/requests
+API -> Handler: Handle(RequestStudent command)
+
+Handler -> Marten: session.Store(studentRequest)
+Marten -> DB: INSERT (JSONB)
+DB --> Marten: Success
+
+' Cascading message
+Handler --> API: InternshipApplied (cascading)
+API --> UI: Success
+UI --> BusRep: "Stajyer talebi oluşturuldu" mesajı
+
+' Asenkron event dağıtımı
+Handler -> MessageBroker: PublishAsync<InternshipApplied>
+MessageBroker ->> InternshipHandler: Handle(InternshipApplied)
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+  - Durable Local Queues
+
+  Enrollment modülü:
+  - BusinessProfile, Business modülünün
+    event'lerinden oluşturulan projection
+  - Doğrudan Business DB'sine sorgu ATMAZ
+end note
+
+@enduml

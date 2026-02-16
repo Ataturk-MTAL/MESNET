@@ -1,0 +1,82 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
+    <Project Path="src/MESNET.Presentation/MESNET.Presentation.csproj" />
+    <Project Path="src/MESNET.AppHost/MESNET.AppHost.csproj" />
+    <Project Path="src/MESNET.ServiceDefaults/MESNET.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/src/Arch/" />
+  <Folder Name="/src/Arch/Actors/">
+    <File Path="src/Arch/Actors/Admin.puml" />
+    <File Path="src/Arch/Actors/BusinessRepresentative.puml" />
+    <File Path="src/Arch/Actors/InstitutionAdmin.puml" />
+    <File Path="src/Arch/Actors/InternshipManager.puml" />
+    <File Path="src/Arch/Actors/Student.puml" />
+    <File Path="src/Arch/Actors/Teacher.puml" />
+  </Folder>
+  <Folder Name="/src/Arch/Modules/" />
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Business/">
+    <Project Path="src/Modules/Business/MESNET.Business.Core/MESNET.Business.Core.csproj" />
+    <Project Path="src/Modules/Business/MESNET.Business.Api/MESNET.Business.Api.csproj" />
+    <Project Path="src/Modules/Business/MESNET.Business.Application/MESNET.Business.Application.csproj" />
+    <Project Path="src/Modules/Business/MESNET.Business.Persistence/MESNET.Business.Persistence.csproj" />
+    <Project Path="src/Modules/Business/MESNET.Business.Shared/MESNET.Business.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Institution/">
+    <Project Path="src/Modules/Institution/MESNET.Institution.Api/MESNET.Institution.Api.csproj" />
+    <Project Path="src/Modules/Institution/MESNET.Institution.Application/MESNET.Institution.Application.csproj" />
+    <Project Path="src/Modules/Institution/MESNET.Institution.Core/MESNET.Institution.Core.csproj" />
+    <Project Path="src/Modules/Institution/MESNET.Institution.Persistence/MESNET.Institution.Persistence.csproj" />
+    <Project Path="src/Modules/Institution/MESNET.Institution.Shared/MESNET.Institution.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Internship/">
+    <Project Path="src/Modules/Internship/MESNET.Internship.Api/MESNET.Internship.Api.csproj" />
+    <Project Path="src/Modules/Internship/MESNET.Internship.Application/MESNET.Internship.Application.csproj" />
+    <Project Path="src/Modules/Internship/MESNET.Internship.Core/MESNET.Internship.Core.csproj" />
+    <Project Path="src/Modules/Internship/MESNET.Internship.Persistence/MESNET.Internship.Persistence.csproj" />
+    <Project Path="src/Modules/Internship/MESNET.Internship.Shared/MESNET.Internship.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Enrollment/">
+    <Project Path="src/Modules/Enrollment/MESNET.Enrollment.Api/MESNET.Enrollment.Api.csproj" />
+    <Project Path="src/Modules/Enrollment/MESNET.Enrollment.Application/MESNET.Enrollment.Application.csproj" />
+    <Project Path="src/Modules/Enrollment/MESNET.Enrollment.Core/MESNET.Enrollment.Core.csproj" />
+    <Project Path="src/Modules/Enrollment/MESNET.Enrollment.Persistence/MESNET.Enrollment.Persistence.csproj" />
+    <Project Path="src/Modules/Enrollment/MESNET.Enrollment.Shared/MESNET.Enrollment.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Contract/">
+    <Project Path="src/Modules/Contract/MESNET.Contract.Api/MESNET.Contract.Api.csproj" />
+    <Project Path="src/Modules/Contract/MESNET.Contract.Application/MESNET.Contract.Application.csproj" />
+    <Project Path="src/Modules/Contract/MESNET.Contract.Core/MESNET.Contract.Core.csproj" />
+    <Project Path="src/Modules/Contract/MESNET.Contract.Persistence/MESNET.Contract.Persistence.csproj" />
+    <Project Path="src/Modules/Contract/MESNET.Contract.Shared/MESNET.Contract.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Attendance/">
+    <Project Path="src/Modules/Attendance/MESNET.Attendance.Api/MESNET.Attendance.Api.csproj" />
+    <Project Path="src/Modules/Attendance/MESNET.Attendance.Application/MESNET.Attendance.Application.csproj" />
+    <Project Path="src/Modules/Attendance/MESNET.Attendance.Core/MESNET.Attendance.Core.csproj" />
+    <Project Path="src/Modules/Attendance/MESNET.Attendance.Persistence/MESNET.Attendance.Persistence.csproj" />
+    <Project Path="src/Modules/Attendance/MESNET.Attendance.Shared/MESNET.Attendance.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Payment/">
+    <Project Path="src/Modules/Payment/MESNET.Payment.Api/MESNET.Payment.Api.csproj" />
+    <Project Path="src/Modules/Payment/MESNET.Payment.Application/MESNET.Payment.Application.csproj" />
+    <Project Path="src/Modules/Payment/MESNET.Payment.Core/MESNET.Payment.Core.csproj" />
+    <Project Path="src/Modules/Payment/MESNET.Payment.Persistence/MESNET.Payment.Persistence.csproj" />
+    <Project Path="src/Modules/Payment/MESNET.Payment.Shared/MESNET.Payment.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Coordination/">
+    <Project Path="src/Modules/Coordination/MESNET.Coordination.Api/MESNET.Coordination.Api.csproj" />
+    <Project Path="src/Modules/Coordination/MESNET.Coordination.Application/MESNET.Coordination.Application.csproj" />
+    <Project Path="src/Modules/Coordination/MESNET.Coordination.Core/MESNET.Coordination.Core.csproj" />
+    <Project Path="src/Modules/Coordination/MESNET.Coordination.Persistence/MESNET.Coordination.Persistence.csproj" />
+    <Project Path="src/Modules/Coordination/MESNET.Coordination.Shared/MESNET.Coordination.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Reporting/">
+    <Project Path="src/Modules/Reporting/MESNET.Reporting.Api/MESNET.Reporting.Api.csproj" />
+    <Project Path="src/Modules/Reporting/MESNET.Reporting.Application/MESNET.Reporting.Application.csproj" />
+    <Project Path="src/Modules/Reporting/MESNET.Reporting.Core/MESNET.Reporting.Core.csproj" />
+    <Project Path="src/Modules/Reporting/MESNET.Reporting.Persistence/MESNET.Reporting.Persistence.csproj" />
+    <Project Path="src/Modules/Reporting/MESNET.Reporting.Shared/MESNET.Reporting.Shared.csproj" />
+  </Folder>
+</Solution>

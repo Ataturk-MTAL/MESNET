@@ -1,0 +1,5 @@
+@startuml InstitutionAdminDiagram
+'https://plantuml.com/use-case-diagram
+
+:Kurum Yönetimi: as InstAdmin
+@enduml

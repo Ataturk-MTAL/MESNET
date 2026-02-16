@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="WolverineFx.Marten" />
+    <PackageReference Include="Marten" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../MESNET.Internship.Core/MESNET.Internship.Core.csproj" />
+    <ProjectReference Include="../MESNET.Internship.Shared/MESNET.Internship.Shared.csproj" />
+    <!-- Diğer modül Shared projeleri — saga event'leri dinlemek için -->
+    <ProjectReference Include="../../Enrollment/MESNET.Enrollment.Shared/MESNET.Enrollment.Shared.csproj" />
+    <ProjectReference Include="../../Contract/MESNET.Contract.Shared/MESNET.Contract.Shared.csproj" />
+    <ProjectReference Include="../../Attendance/MESNET.Attendance.Shared/MESNET.Attendance.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

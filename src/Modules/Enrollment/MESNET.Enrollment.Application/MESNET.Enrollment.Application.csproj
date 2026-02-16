@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="Marten" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../MESNET.Enrollment.Core/MESNET.Enrollment.Core.csproj" />
+    <ProjectReference Include="../MESNET.Enrollment.Shared/MESNET.Enrollment.Shared.csproj" />
+    <ProjectReference Include="../../Business/MESNET.Business.Shared/MESNET.Business.Shared.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,29 @@
+@startuml TenantUseCasesDiagram
+title Tenant Modülü Use Cases
+left to right direction
+
+!include ../../../Actors/Admin.puml
+
+package Tenant {
+    usecase "TCR: Kurum Yönetimi" as TCR
+    usecase "TUA: Kurum Müdürü Hesap Yönetimi" as TUA
+    usecase "TSP: Sistem Parametreleri" as TSP
+    usecase "TSR: Sistem İstatistikleri" as TSR
+    usecase "TCX: Çapraz Kurum Raporları" as TCX
+}
+
+TenantAdmin --> TCR
+TenantAdmin --> TUA
+TenantAdmin --> TSP
+TenantAdmin --> TSR
+TenantAdmin --> TCX
+
+json Notes {
+    "TCR": "Kurum ekleme, düzenleme ve\npasif/aktif duruma alma.",
+    "TUA": "Kurum müdürü hesapları oluşturma,\nKeycloak ile entegre yetkilendirme.",
+    "TSP": "Asgari ücret, dönem tarihleri gibi\nsistem geneli parametreler.",
+    "TSR": "Tüm kurumların staj, devamsızlık,\nödeme istatistikleri.",
+    "TCX": "Birden fazla kurumu kapsayan\nkarşılaştırmalı raporlar."
+}
+
+@enduml

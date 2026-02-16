@@ -1,0 +1,5 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+:Tenant Yöneticisi: as TenantAdmin
+@enduml

@@ -1,0 +1,43 @@
+@startuml InternshipUseCasesDiagram
+title Internship Modülü Use Cases (Saga/Orchestrator)
+left to right direction
+
+!include ../../../Actors/InstitutionAdmin.puml
+!include ../../../Actors/Teacher.puml
+
+package Internship {
+    usecase "ILT: Staj Yaşam Döngüsü Takibi" as ILT
+    usecase "ITR: Fesih Süreci Koordinasyonu" as ITR
+    usecase "ISQ: Staj Durumu Sorgulama" as ISQ
+    usecase "IRP: Yeni Yerleştirme Koordinasyonu" as IRP
+}
+
+InstAdmin --> ILT
+InstAdmin --> ITR
+InstAdmin --> ISQ
+InstAdmin --> IRP
+
+Teacher --> ISQ
+
+note as N1
+    **Saga/Orchestrator Modülü**
+    Kendi domain verisi yoktur.
+    Diğer modüllerin event'lerini dinleyerek
+    çapraz modül iş akışlarını koordine eder.
+
+    **Dinlediği eventler:**
+    - StudentPlaced (Enrollment)
+    - ContractActivated (Contract)
+    - ContractTerminated (Contract)
+    - AttendanceLimitExceeded (Attendance)
+    - SalaryConfirmedByStudent (Payment)
+end note
+
+json Notes {
+    "ILT": "Staj sürecinin uçtan uca takibi.\nKayıt → Sözleşme → Aktif → Tamamlama/Fesih",
+    "ITR": "Fesih onay zincirinin koordinasyonu.\nVeli, koordinatör, müdür yardımcısı, müdür onayları",
+    "ISQ": "InternshipSummary projection üzerinden\nçapraz modül staj durumu sorgulama",
+    "IRP": "Fesih sonrası öğrencinin yeni işletmeye\nyerleştirme sürecini başlatma"
+}
+
+@enduml

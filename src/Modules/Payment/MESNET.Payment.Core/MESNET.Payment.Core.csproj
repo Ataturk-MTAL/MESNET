@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../../../MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
+    <ProjectReference Include="../MESNET.Payment.Shared/MESNET.Payment.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

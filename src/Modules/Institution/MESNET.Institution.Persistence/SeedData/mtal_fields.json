@@ -1,0 +1,513 @@
+[
+  {
+    "code": "ADALET",
+    "name": "Adalet",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "ADALET-INF", "name": "İnfaz ve Koruma" },
+      { "code": "ADALET-ZAB", "name": "Zabıt Kâtipliği" }
+    ]
+  },
+  {
+    "code": "ATH",
+    "name": "Aile ve Tüketici Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "ATH-SDH", "name": "Sosyal Destek Hizmetleri" },
+      { "code": "ATH-TUK", "name": "Tüketici Hizmetleri" }
+    ]
+  },
+  {
+    "code": "BT",
+    "name": "Bilişim Teknolojileri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "BT-AG", "name": "Ağ İşletmenliği" },
+      { "code": "BT-YAZ", "name": "Yazılım Geliştirme" }
+    ]
+  },
+  {
+    "code": "BCT",
+    "name": "Biyomedikal Cihaz Teknolojileri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "BCT-FSI", "name": "Fizyolojik Sinyal İzleme Teşhis ve Kayıt Cihazları" },
+      { "code": "BCT-TGS", "name": "Tıbbi Görüntüleme Sistemleri" },
+      { "code": "BCT-TLH", "name": "Tıbbi Laboratuvar ve Hasta Dışı Uygulama Cihazları" },
+      { "code": "BCT-YDT", "name": "Yaşam Destek ve Tedavi Cihazları" }
+    ]
+  },
+  {
+    "code": "BYYA",
+    "name": "Büro Yönetimi ve Yönetici Asistanlığı",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "BYYA-BYYA", "name": "Büro Yönetimi ve Yönetici Asistanlığı" }
+    ]
+  },
+  {
+    "code": "CGE",
+    "name": "Çocuk Gelişimi ve Eğitimi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "CGE-ECOE", "name": "Erken Çocukluk ve Özel Eğitim" }
+    ]
+  },
+  {
+    "code": "DEN",
+    "name": "Denizcilik",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "DEN-GUV", "name": "Güverte İşletme" },
+      { "code": "DEN-GMI", "name": "Gemi Makineleri İşletme" },
+      { "code": "DEN-GEH", "name": "Gemi Elektroniği ve Haberleşme" }
+    ]
+  },
+  {
+    "code": "EST",
+    "name": "El Sanatları Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "EST-DES", "name": "Dekoratif El Sanatları" },
+      { "code": "EST-DET", "name": "Dekoratif Ev Tekstili" }
+    ]
+  },
+  {
+    "code": "EET",
+    "name": "Elektrik-Elektronik Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "EET-ASN", "name": "Asansör Sistemleri" },
+      { "code": "EET-ECT", "name": "Elektrikli Cihazlar Teknik Servisi" },
+      { "code": "EET-ETD", "name": "Elektrik Tesisatları ve Dağıtımı" },
+      { "code": "EET-EBO", "name": "Endüstriyel Bakım Onarım" },
+      { "code": "EET-ELH", "name": "Elektronik ve Haberleşme" },
+      { "code": "EET-SES", "name": "Savunma Elektronik Sistemleri (Sadece Anadolu Teknik Programında)" }
+    ]
+  },
+  {
+    "code": "EOT",
+    "name": "Endüstriyel Otomasyon Teknolojileri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "EOT-EOT", "name": "Endüstriyel Otomasyon Teknolojileri" }
+    ]
+  },
+  {
+    "code": "GAZ",
+    "name": "Gazetecilik",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "GAZ-GAZ", "name": "Gazetecilik" }
+    ]
+  },
+  {
+    "code": "GTS",
+    "name": "Geleneksel Türk Sanatları",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "GTS-GTS", "name": "Geleneksel Türk Sanatları" }
+    ]
+  },
+  {
+    "code": "GYP",
+    "name": "Gemi Yapımı",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "GYP-GIN", "name": "Gemi İnşa" },
+      { "code": "GYP-YIN", "name": "Yat İnşa" },
+      { "code": "GYP-GDN", "name": "Gemi Donatım" }
+    ]
+  },
+  {
+    "code": "GTEK",
+    "name": "Gıda Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "GTEK-GTEK", "name": "Gıda Teknolojisi" }
+    ]
+  },
+  {
+    "code": "GRF",
+    "name": "Grafik ve Fotoğraf",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "GRF-FOT", "name": "Fotoğraf" },
+      { "code": "GRF-GRF", "name": "Grafik" }
+    ]
+  },
+  {
+    "code": "GUZ",
+    "name": "Güzellik Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "GUZ-GUZ", "name": "Güzellik Hizmetleri" }
+    ]
+  },
+  {
+    "code": "HIL",
+    "name": "Halkla İlişkiler",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "HIL-HIL", "name": "Halkla İlişkiler" }
+    ]
+  },
+  {
+    "code": "HTK",
+    "name": "Harita-Tapu-Kadastro",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "HTK-HK", "name": "Harita Kadastro" },
+      { "code": "HTK-TAP", "name": "Tapu" }
+    ]
+  },
+  {
+    "code": "HYH",
+    "name": "Hasta ve Yaşlı Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "HYH-HYB", "name": "Hasta ve Yaşlı Bakımı" }
+    ]
+  },
+  {
+    "code": "HYS",
+    "name": "Hayvan Yetiştiriciliği ve Sağlığı",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "HYS-HYS", "name": "Hayvan Yetiştiriciliği ve Sağlığı" }
+    ]
+  },
+  {
+    "code": "INS",
+    "name": "İnşaat Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "INS-UST", "name": "İnşaat Üstyapı" },
+      { "code": "INS-ALT", "name": "İnşaat Altyapı" },
+      { "code": "INS-MYR", "name": "Mimari Yapı Teknik Ressamlığı" },
+      { "code": "INS-SYR", "name": "Statik Yapı Teknik Ressamlığı" },
+      { "code": "INS-MRS", "name": "Mimari Restorasyon" },
+      { "code": "INS-YYK", "name": "Yapı Yüzey Kaplama ve Yalıtım" }
+    ]
+  },
+  {
+    "code": "IYG",
+    "name": "İtfaiyecilik ve Yangın Güvenliği",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "IYG-IYG", "name": "İtfaiyecilik ve Yangın Güvenliği" }
+    ]
+  },
+  {
+    "code": "KIM",
+    "name": "Kimya Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "KIM-LAB", "name": "Kimya Laboratuvarı" },
+      { "code": "KIM-PET", "name": "Petrol Endüstrisi" },
+      { "code": "KIM-PRS", "name": "Proses" }
+    ]
+  },
+  {
+    "code": "KSH",
+    "name": "Konaklama ve Seyahat Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "KSH-ANM", "name": "Animatörlük" },
+      { "code": "KSH-KON", "name": "Konaklama Hizmetleri" },
+      { "code": "KSH-SAC", "name": "Seyahat Acenteciliği" }
+    ]
+  },
+  {
+    "code": "KUY",
+    "name": "Kuyumculuk Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "KUY-TIM", "name": "Takı İmalatı" }
+    ]
+  },
+  {
+    "code": "LBH",
+    "name": "Laboratuvar Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "LBH-GTH", "name": "Gıda, Tarım ve Hayvan Sağlığı Laboratuvarı" }
+    ]
+  },
+  {
+    "code": "MDN",
+    "name": "Maden Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MDN-MDN", "name": "Madencilik" }
+    ]
+  },
+  {
+    "code": "MTT",
+    "name": "Makine ve Tasarım Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MTT-BEM", "name": "Bilgisayar Destekli Endüstriyel Modelleme" },
+      { "code": "MTT-BMR", "name": "Bilgisayar Destekli Makine Ressamlığı" },
+      { "code": "MTT-BMI", "name": "Bilgisayarlı Makine İmalatı" },
+      { "code": "MTT-DEG", "name": "Değirmencilik" },
+      { "code": "MTT-EKL", "name": "Endüstriyel Kalıp" },
+      { "code": "MTT-MBO", "name": "Makine Bakım Onarım" },
+      { "code": "MTT-SMS", "name": "Savunma Mekanik Sistemleri (Sadece Anadolu Teknik Programında)" },
+      { "code": "MTT-TCU", "name": "Tıbbi Cihaz Üretimi" }
+    ]
+  },
+  {
+    "code": "MAT",
+    "name": "Matbaa Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MAT-EUT", "name": "Endüstriyel Ürünler Tasarımı" },
+      { "code": "MAT-BON", "name": "Baskı Öncesi" },
+      { "code": "MAT-OBS", "name": "Ofset Baskı Sistemleri" }
+    ]
+  },
+  {
+    "code": "MET",
+    "name": "Metal Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MET-MDG", "name": "Metal Doğrama" },
+      { "code": "MET-KAY", "name": "Kaynakçılık" }
+    ]
+  },
+  {
+    "code": "MLT",
+    "name": "Metalürji Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MLT-DOK", "name": "Döküm" },
+      { "code": "MLT-IZB", "name": "İzabe" }
+    ]
+  },
+  {
+    "code": "MIK",
+    "name": "Mikromekanik",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MIK-MIS", "name": "Mikromekanik ve Saatçilik" }
+    ]
+  },
+  {
+    "code": "MIT",
+    "name": "Mobilya ve İç Mekân Tasarımı",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MIT-MUT", "name": "Mobilya Üretim Teknolojisi" },
+      { "code": "MIT-MIR", "name": "Mobilya İç Mekân Ressamlığı" }
+    ]
+  },
+  {
+    "code": "MDT",
+    "name": "Moda Tasarım Teknolojileri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MDT-TRZ", "name": "Terzilik" },
+      { "code": "MDT-GKT", "name": "Giysi Kalıp Tasarımı ve Üretimi" }
+    ]
+  },
+  {
+    "code": "MAR",
+    "name": "Motorlu Araçlar Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MAR-ISM", "name": "İş Makineleri" },
+      { "code": "MAR-OTB", "name": "Otomotiv Boya" },
+      { "code": "MAR-OTE", "name": "Otomotiv Elektromekanik" },
+      { "code": "MAR-OTG", "name": "Otomotiv Gövde" },
+      { "code": "MAR-ELA", "name": "Elektrikli Araçlar" }
+    ]
+  },
+  {
+    "code": "MUF",
+    "name": "Muhasebe ve Finansman",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MUF-MUH", "name": "Muhasebe" },
+      { "code": "MUF-DIS", "name": "Dış Ticaret" }
+    ]
+  },
+  {
+    "code": "PAZ",
+    "name": "Pazarlama ve Perakende",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "PAZ-SDN", "name": "Satış Danışmanlığı" },
+      { "code": "PAZ-SIG", "name": "Sigortacılık" }
+    ]
+  },
+  {
+    "code": "PLT",
+    "name": "Plastik Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "PLT-PLT", "name": "Plastik Teknolojisi" }
+    ]
+  },
+  {
+    "code": "PLS",
+    "name": "Plastik Sanatlar",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "PLS-PLS", "name": "Plastik Sanatlar" }
+    ]
+  },
+  {
+    "code": "RTV",
+    "name": "Radyo-Televizyon",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "RTV-RTV", "name": "Radyo-Televizyon" }
+    ]
+  },
+  {
+    "code": "RST",
+    "name": "Raylı Sistemler Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "RST-REE", "name": "Raylı Sistemler Elektrik-Elektronik" },
+      { "code": "RST-RSY", "name": "Raylı Sistemler Yol" },
+      { "code": "RST-RSA", "name": "Raylı Sistem Araçları" }
+    ]
+  },
+  {
+    "code": "SAG",
+    "name": "Sağlık Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "SAG-EBY", "name": "Ebe Yardımcılığı" },
+      { "code": "SAG-HMY", "name": "Hemşire Yardımcılığı" },
+      { "code": "SAG-SBT", "name": "Sağlık Bakım Teknisyenliği" }
+    ]
+  },
+  {
+    "code": "SBG",
+    "name": "Siber Güvenlik",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "SBG-SBG", "name": "Siber Güvenlik" }
+    ]
+  },
+  {
+    "code": "TAR",
+    "name": "Tarım",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "TAR-TAR", "name": "Tarım" }
+    ]
+  },
+  {
+    "code": "TEK",
+    "name": "Tekstil Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "TEK-DUT", "name": "Dokuma Üretim Teknolojisi" },
+      { "code": "TEK-OUT", "name": "Örme Üretim Teknolojisi" },
+      { "code": "TEK-IUT", "name": "İplik Üretim Teknolojisi" },
+      { "code": "TEK-TBD", "name": "Tekstil Baskı ve Desenciliği" },
+      { "code": "TEK-TBA", "name": "Tekstil Boya Apre ve Laborantlığı" }
+    ]
+  },
+  {
+    "code": "TTI",
+    "name": "Tesisat Teknolojisi ve İklimlendirme",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "TTI-SIS", "name": "Soğutma ve İklimlendirme Sistemleri" },
+      { "code": "TTI-TES", "name": "Tesisat ve Enerji Sistemleri" }
+    ]
+  },
+  {
+    "code": "UBK",
+    "name": "Uçak Bakım",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "UBK-UEL", "name": "Uçak Elektroniği" },
+      { "code": "UBK-UGM", "name": "Uçak Gövde-Motor" }
+    ]
+  },
+  {
+    "code": "ULH",
+    "name": "Ulaştırma Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "ULH-SHV", "name": "Sivil Havacılık" },
+      { "code": "ULH-LOJ", "name": "Lojistik" }
+    ]
+  },
+  {
+    "code": "YET",
+    "name": "Yenilenebilir Enerji Teknolojileri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "YET-YET", "name": "Yenilenebilir Enerji Teknolojileri" }
+    ]
+  },
+  {
+    "code": "YIH",
+    "name": "Yiyecek İçecek Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "YIH-YIH", "name": "Yiyecek İçecek Hizmetleri" }
+    ]
+  },
+  {
+    "code": "AST",
+    "name": "Ayakkabı ve Saraciye Teknolojisi",
+    "isProtocolBased": true,
+    "specializations": [
+      { "code": "AST-ATU", "name": "Ayakkabı Tasarımı ve Üretimi" },
+      { "code": "AST-STU", "name": "Saraciye Tasarımı ve Üretimi" }
+    ]
+  },
+  {
+    "code": "SCT",
+    "name": "Seramik ve Cam Teknolojisi",
+    "isProtocolBased": true,
+    "specializations": [
+      { "code": "SCT-SER", "name": "Seramik" },
+      { "code": "SCT-CAM", "name": "Cam" }
+    ]
+  },
+  {
+    "code": "HUT",
+    "name": "Havacılık ve Uzay Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "HUT-TIM", "name": "Tasarım ve İmalat" },
+      { "code": "HUT-ITS", "name": "İtki Sistemleri" },
+      { "code": "HUT-ELS", "name": "Elektronik Sistemler" }
+    ]
+  },
+  {
+    "code": "YPZ",
+    "name": "Yapay Zekâ",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "YPZ-YPZ", "name": "Yapay Zekâ" }
+    ]
+  },
+  {
+    "code": "EKK",
+    "name": "Endüstriyel Kalite Kontrol",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "EKK-EKK", "name": "Endüstriyel Kalite Kontrol" }
+    ]
+  },
+  {
+    "code": "GMS",
+    "name": "Gastronomi ve Mutfak Sanatları",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "GMS-MUT", "name": "Mutfak Sanatları" },
+      { "code": "GMS-PEK", "name": "Pastacılık ve Ekmekçilik" },
+      { "code": "GMS-SKH", "name": "Servis ve Kahve Hazırlama" }
+    ]
+  }
+]

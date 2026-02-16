@@ -1,0 +1,468 @@
+[
+  {
+    "code": "AST",
+    "name": "Ayakkab\u0131 ve Saraciye Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "AST-AMOD", "name": "Ayakkab\u0131 Modelistli\u011fi" },
+      { "code": "AST-AURT", "name": "Ayakkab\u0131 \u00dcretimi" },
+      { "code": "AST-SMOD", "name": "Saraciye Modelistli\u011fi" },
+      { "code": "AST-SURT", "name": "Saraciye \u00dcretimi" }
+    ]
+  },
+  {
+    "code": "BT",
+    "name": "Bili\u015fim Teknolojileri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "BT-SERV", "name": "Bilgisayar Teknik Servisi" },
+      { "code": "BT-YZLM", "name": "Yaz\u0131l\u0131m Geli\u015ftirme" }
+    ]
+  },
+  {
+    "code": "BY",
+    "name": "B\u00fcro Y\u00f6netimi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "BY-YSEK", "name": "Y\u00f6netici Sekreterli\u011fi" }
+    ]
+  },
+  {
+    "code": "DNZ",
+    "name": "Denizcilik",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "DNZ-BLKC", "name": "Bal\u0131k\u00e7\u0131l\u0131k ve Su \u00dcr\u00fcnleri" }
+    ]
+  },
+  {
+    "code": "EST",
+    "name": "El Sanatlar\u0131 Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "EST-DEKS", "name": "Dekoratif El Sanatlar\u0131" },
+      { "code": "EST-DEVT", "name": "Dekoratif Ev Tekstili" },
+      { "code": "EST-ELDK", "name": "El Dokuma" },
+      { "code": "EST-ELMN", "name": "El ve Makine Nak\u0131\u015f\u0131" },
+      { "code": "EST-HLDS", "name": "Hal\u0131 Desinat\u00f6rl\u00fc\u011f\u00fc" },
+      { "code": "EST-SNKR", "name": "Sanayi Nak\u0131\u015f\u0131" }
+    ]
+  },
+  {
+    "code": "EET",
+    "name": "Elektrik-Elektronik Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "EET-ASNS", "name": "Asans\u00f6r Sistemleri" },
+      { "code": "EET-BOB", "name": "Bobinaj" },
+      { "code": "EET-BMTS", "name": "B\u00fcro Makineleri Teknik Servisi" },
+      { "code": "EET-ETPM", "name": "Elektrik Tesisatlar\u0131 ve Pano Mont\u00f6rl\u00fc\u011f\u00fc" },
+      { "code": "EET-EATS", "name": "Elektrikli Ev Aletleri Teknik Servisi" },
+      { "code": "EET-ENBO", "name": "End\u00fcstriyel Bak\u0131m Onar\u0131m" },
+      { "code": "EET-GRSS", "name": "G\u00f6r\u00fcnt\u00fc ve Ses Sistemleri" },
+      { "code": "EET-GVNL", "name": "G\u00fcvenlik Sistemleri" },
+      { "code": "EET-HBRL", "name": "Haberle\u015fme Sistemleri" },
+      { "code": "EET-YKGR", "name": "Y\u00fcksek Gerilim Sistemleri" }
+    ]
+  },
+  {
+    "code": "EOT",
+    "name": "End\u00fcstriyel Otomasyon Teknolojileri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "EOT-ENKN", "name": "End\u00fcstriyel Kontrol" }
+    ]
+  },
+  {
+    "code": "GY",
+    "name": "Gemi Yap\u0131m\u0131",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "GY-GDNT", "name": "Gemi Donat\u0131m\u0131" },
+      { "code": "GY-GINS", "name": "Gemi \u0130n\u015fa" },
+      { "code": "GY-KOMP", "name": "Kompozit Tekne \u0130malat\u0131" },
+      { "code": "GY-YINS", "name": "Yat \u0130n\u015fa" }
+    ]
+  },
+  {
+    "code": "GT",
+    "name": "G\u0131da Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "GT-BTKY", "name": "Bitkisel Ya\u011f \u00dcretim" },
+      { "code": "GT-CYIS", "name": "\u00c7ay \u0130\u015fleme" },
+      { "code": "GT-ENET", "name": "End\u00fcstriyel Et \u0130\u015fleme" },
+      { "code": "GT-HBBT", "name": "Hububat \u0130\u015fleme" },
+      { "code": "GT-SBMY", "name": "Sebze ve Meyve \u0130\u015fleme" },
+      { "code": "GT-SUIS", "name": "Su \u00dcr\u00fcnleri \u0130\u015fleme" },
+      { "code": "GT-STIS", "name": "S\u00fct \u0130\u015fleme" },
+      { "code": "GT-SKCK", "name": "\u015eekerleme ve \u00c7ikolata \u00dcretim" },
+      { "code": "GT-ZYTN", "name": "Zeytin \u0130\u015fleme" }
+    ]
+  },
+  {
+    "code": "GF",
+    "name": "Grafik ve Foto\u011fraf",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "GF-FOTO", "name": "Foto\u011fraf" },
+      { "code": "GF-ANMS", "name": "Animasyon" },
+      { "code": "GF-GRFK", "name": "Grafik" }
+    ]
+  },
+  {
+    "code": "GSBH",
+    "name": "G\u00fczellik ve Sa\u00e7 Bak\u0131m Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "GSBH-CILT", "name": "Cilt Bak\u0131m\u0131 ve Makyaj" },
+      { "code": "GSBH-ERKK", "name": "Erkek Kuaf\u00f6rl\u00fc\u011f\u00fc" },
+      { "code": "GSBH-KADK", "name": "Kad\u0131n Kuaf\u00f6rl\u00fc\u011f\u00fc" }
+    ]
+  },
+  {
+    "code": "HTK",
+    "name": "Harita-Tapu-Kadastro",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "HTK-HRKD", "name": "Harita Kadastro" }
+    ]
+  },
+  {
+    "code": "HYS",
+    "name": "Hayvan Yeti\u015ftiricili\u011fi ve Sa\u011fl\u0131\u011f\u0131",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "HYS-ARIC", "name": "Ar\u0131c\u0131l\u0131k" },
+      { "code": "HYS-BBHY", "name": "B\u00fcy\u00fckba\u015f Hayvan Yeti\u015ftiricili\u011fi" },
+      { "code": "HYS-EVSH", "name": "Ev ve S\u00fcs Hayvanlar\u0131" },
+      { "code": "HYS-EVHK", "name": "Evcil Hayvan Kuaf\u00f6rl\u00fc\u011f\u00fc" },
+      { "code": "HYS-KNTH", "name": "Kanatl\u0131 Hayvan Yeti\u015ftiricili\u011fi" },
+      { "code": "HYS-KBHY", "name": "K\u00fc\u00e7\u00fckba\u015f Hayvan Yeti\u015ftiricili\u011fi" }
+    ]
+  },
+  {
+    "code": "INT",
+    "name": "\u0130n\u015faat Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "INT-AHYS", "name": "Ah\u015fap Yap\u0131 Sistemleri" },
+      { "code": "INT-BKDS", "name": "Betonarme Kal\u0131p ve Donat\u0131 Sistemleri" },
+      { "code": "INT-YDSS", "name": "Yap\u0131 Duvar ve S\u0131va Sistemleri" },
+      { "code": "INT-BCZT", "name": "Beton-\u00c7imento ve Zemin Teknolojisi" },
+      { "code": "INT-CSPD", "name": "Cephe Sistemleri ve PVC Do\u011frama" },
+      { "code": "INT-CTSS", "name": "\u00c7at\u0131 Sistemleri" },
+      { "code": "INT-CYTR", "name": "\u00c7elik Yap\u0131 Teknik Ressaml\u0131\u011f\u0131" },
+      { "code": "INT-IMTR", "name": "\u0130\u00e7 Mek\u00e2n Teknik Ressaml\u0131\u011f\u0131" },
+      { "code": "INT-MRST", "name": "Mimari Restorasyon" },
+      { "code": "INT-MYTR", "name": "Mimari Yap\u0131 Teknik Ressaml\u0131\u011f\u0131" },
+      { "code": "INT-SYTR", "name": "Statik Yap\u0131 Teknik Ressaml\u0131\u011f\u0131" },
+      { "code": "INT-YDEK", "name": "Yap\u0131 Dekorasyonu" },
+      { "code": "INT-YYAL", "name": "Yap\u0131 Yal\u0131t\u0131m\u0131" },
+      { "code": "INT-YYUZ", "name": "Yap\u0131 Y\u00fczey Kaplama" }
+    ]
+  },
+  {
+    "code": "KT",
+    "name": "Kimya Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "KT-BOYA", "name": "Boya \u00dcretimi ve Kontrol\u00fc" },
+      { "code": "KT-CYKM", "name": "\u00c7imento ve Yap\u0131 Kimyasallar\u0131 \u00dcretimi" },
+      { "code": "KT-DRIS", "name": "Deri \u0130\u015fleme" },
+      { "code": "KT-KGRT", "name": "Ka\u011f\u0131t \u00dcretimi" },
+      { "code": "KT-TKPU", "name": "Temizlik Kozmetik ve Parf\u00fcmeri \u00dcr\u00fcnleri \u00dcretimi" },
+      { "code": "KT-HLTB", "name": "Hal\u0131 Temizleme ve Bak\u0131m" },
+      { "code": "KT-KRTM", "name": "Kuru Temizleme" }
+    ]
+  },
+  {
+    "code": "KSH",
+    "name": "Konaklama ve Seyahat Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "KSH-KATH", "name": "Kat Hizmetleri" },
+      { "code": "KSH-OPER", "name": "Operasyon" },
+      { "code": "KSH-ONBR", "name": "\u00d6n B\u00fcro" },
+      { "code": "KSH-REZR", "name": "Rezervasyon" }
+    ]
+  },
+  {
+    "code": "KYT",
+    "name": "Kuyumculuk Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "KYT-DYDT", "name": "De\u011ferli ve Yar\u0131 De\u011ferli Ta\u015f \u0130\u015flemecili\u011fi" },
+      { "code": "KYT-TKIM", "name": "Tak\u0131 \u0130malat\u0131" },
+      { "code": "KYT-VTRN", "name": "Vitrin Kuyumculu\u011fu" }
+    ]
+  },
+  {
+    "code": "MKT",
+    "name": "Makine Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MKT-ANHT", "name": "Anahtarc\u0131l\u0131k ve \u00c7ilingirlik" },
+      { "code": "MKT-BDEM", "name": "Bilgisayar Destekli End\u00fcstriyel Modelleme" },
+      { "code": "MKT-BDMR", "name": "Bilgisayar Destekli Makine Ressaml\u0131\u011f\u0131" },
+      { "code": "MKT-BLMI", "name": "Bilgisayarl\u0131 Makine \u0130malat\u0131" },
+      { "code": "MKT-DGRM", "name": "De\u011firmencilik" },
+      { "code": "MKT-ENDK", "name": "End\u00fcstriyel Kal\u0131p" },
+      { "code": "MKT-MKBO", "name": "Makine Bak\u0131m Onar\u0131m" },
+      { "code": "MKT-MRMR", "name": "Mermer \u0130\u015fleme" },
+      { "code": "MKT-STTM", "name": "Saat Tamircili\u011fi" }
+    ]
+  },
+  {
+    "code": "MBT",
+    "name": "Matbaa Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MBT-BSON", "name": "Bask\u0131 \u00d6ncesi" },
+      { "code": "MBT-BSNR", "name": "Bask\u0131 Sonras\u0131" },
+      { "code": "MBT-DJBS", "name": "Dijital Bask\u0131" },
+      { "code": "MBT-FLKS", "name": "Flekso Bask\u0131" },
+      { "code": "MBT-OFST", "name": "Ofset Bask\u0131" },
+      { "code": "MBT-SRGR", "name": "Serigrafi Bask\u0131" },
+      { "code": "MBT-TMPN", "name": "Tampon Bask\u0131" },
+      { "code": "MBT-TFDR", "name": "Tifdruk Bask\u0131" }
+    ]
+  },
+  {
+    "code": "MTT",
+    "name": "Metal Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MTT-AVZC", "name": "Avizecilik" },
+      { "code": "MTT-CLKN", "name": "\u00c7elik Konstr\u00fcksiyon" },
+      { "code": "MTT-ERKT", "name": "End\u00fcstriyel Reklam Tabelac\u0131l\u0131\u011f\u0131" },
+      { "code": "MTT-ISIL", "name": "Is\u0131l \u0130\u015flem" },
+      { "code": "MTT-KRSR", "name": "Karosercilik" },
+      { "code": "MTT-KYNC", "name": "Kaynak\u00e7\u0131l\u0131k" },
+      { "code": "MTT-MTDG", "name": "Metal Do\u011frama" },
+      { "code": "MTT-MTLV", "name": "Metal Levha \u0130\u015flemecili\u011fi" },
+      { "code": "MTT-MTYB", "name": "Metal Y\u00fczey Boyama" },
+      { "code": "MTT-SCIS", "name": "Sac \u0130\u015fleri" }
+    ]
+  },
+  {
+    "code": "MTLR",
+    "name": "Metal\u00fcrji Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MTLR-DOKM", "name": "D\u00f6k\u00fcm" },
+      { "code": "MTLR-IZHD", "name": "\u0130zabe ve Haddecilik" }
+    ]
+  },
+  {
+    "code": "MIT",
+    "name": "Mobilya ve \u0130\u00e7 Mek\u00e2n Tasar\u0131m\u0131",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MIT-AHDT", "name": "Ah\u015fap Do\u011frama Teknolojisi" },
+      { "code": "MIT-IMMT", "name": "\u0130\u00e7 Mek\u00e2n ve Mobilya Teknolojisi" },
+      { "code": "MIT-MISD", "name": "Mobilya \u0130skeleti ve D\u00f6\u015femesi" },
+      { "code": "MIT-MSSS", "name": "Mobilya S\u00fcsleme Sanatlar\u0131" },
+      { "code": "MIT-OTDS", "name": "Oto D\u00f6\u015femecili\u011fi" }
+    ]
+  },
+  {
+    "code": "MDT",
+    "name": "Moda Tasar\u0131m Teknolojileri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MDT-DRGM", "name": "Deri Giyim" },
+      { "code": "MDT-ERKZ", "name": "Erkek Terzili\u011fi" },
+      { "code": "MDT-HGMM", "name": "Haz\u0131r Giyim Model Makinecili\u011fi" },
+      { "code": "MDT-IGMD", "name": "\u0130\u00e7 Giyim Modelistli\u011fi" },
+      { "code": "MDT-KADZ", "name": "Kad\u0131n Terzili\u011fi" },
+      { "code": "MDT-KESM", "name": "Kesim" },
+      { "code": "MDT-MDLS", "name": "Modelistlik" }
+    ]
+  },
+  {
+    "code": "MAT",
+    "name": "Motorlu Ara\u00e7lar Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MAT-DMYE", "name": "Dizel Motorlar\u0131 Yak\u0131t Pompas\u0131 ve Enj\u00e7kt\u00f6r Ayarc\u0131l\u0131\u011f\u0131" },
+      { "code": "MAT-ISMK", "name": "\u0130\u015f Makineleri" },
+      { "code": "MAT-MLPG", "name": "Motorlu Ara\u00e7lar LPG Sistemleri Bak\u0131m ve Onar\u0131mc\u0131l\u0131\u011f\u0131" },
+      { "code": "MAT-MSTM", "name": "Motosiklet Tamircili\u011fi" },
+      { "code": "MAT-OTBY", "name": "Otomotiv Boya" },
+      { "code": "MAT-OTEL", "name": "Otomotiv Elektrik\u00e7ili\u011fi" },
+      { "code": "MAT-OTEM", "name": "Otomotiv Elektromekanik" },
+      { "code": "MAT-OTGV", "name": "Otomotiv G\u00f6vde" },
+      { "code": "MAT-OTMK", "name": "Otomotiv Mekaniklerli\u011fi" },
+      { "code": "MAT-OTMY", "name": "Otomotiv Motor Yenile\u015ftirmecili\u011fi" },
+      { "code": "MAT-ODAL", "name": "\u00d6n D\u00fczen Ayarc\u0131l\u0131\u011f\u0131 ve Lastik\u00e7ilik" }
+    ]
+  },
+  {
+    "code": "MF",
+    "name": "Muhasebe ve Finansman",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MF-MHSB", "name": "Muhasebe" }
+    ]
+  },
+  {
+    "code": "MAY",
+    "name": "M\u00fczik Aletleri Yap\u0131m\u0131",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "MAY-MBME", "name": "M\u0131zrapl\u0131 Bat\u0131 M\u00fczik Enstr\u00fcmanlar\u0131 Yap\u0131m\u0131" },
+      { "code": "MAY-MHME", "name": "M\u0131zrapl\u0131 Halk M\u00fczik Enstr\u00fcmanlar\u0131 Yap\u0131m\u0131" },
+      { "code": "MAY-MSME", "name": "M\u0131zrapl\u0131 Sanat M\u00fczik Enstr\u00fcmanlar\u0131 Yap\u0131m\u0131" },
+      { "code": "MAY-YLEY", "name": "Yayl\u0131 Enstr\u00fcman Yap\u0131m\u0131" }
+    ]
+  },
+  {
+    "code": "PP",
+    "name": "Pazarlama ve Perakende",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "PP-EMLK", "name": "Emlak Komisyonculugu" },
+      { "code": "PP-STEL", "name": "Sat\u0131\u015f Elemanl\u0131\u011f\u0131" },
+      { "code": "PP-SGRT", "name": "Sigortac\u0131l\u0131k" }
+    ]
+  },
+  {
+    "code": "PLT",
+    "name": "Plastik Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "PLT-PLIS", "name": "Plastik \u0130\u015fleme" },
+      { "code": "PLT-PLKL", "name": "Plastik Kal\u0131p" }
+    ]
+  },
+  {
+    "code": "SCT",
+    "name": "Seramik ve Cam Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "SCT-ALMK", "name": "Al\u00e7\u0131 Model Kal\u0131p" },
+      { "code": "SCT-CINC", "name": "\u00c7inicilik" },
+      { "code": "SCT-DKCM", "name": "Dekoratif Cam" },
+      { "code": "SCT-ENCM", "name": "End\u00fcstriyel Cam" },
+      { "code": "SCT-SRSS", "name": "Serbest Seramik \u015eekillendirme" },
+      { "code": "SCT-SUDK", "name": "S\u0131r \u00dcst\u00fc Dekorlama" },
+      { "code": "SCT-TRFS", "name": "Tornada Form \u015eekillendirme" }
+    ]
+  },
+  {
+    "code": "TRM",
+    "name": "Tar\u0131m",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "TRM-BGCL", "name": "Ba\u011fc\u0131l\u0131k" },
+      { "code": "TRM-MNTR", "name": "Mantar Yeti\u015ftiricili\u011fi" },
+      { "code": "TRM-MYVT", "name": "Meyve Yeti\u015ftiricili\u011fi" },
+      { "code": "TRM-SBZY", "name": "Sebze Yeti\u015ftiricili\u011fi" },
+      { "code": "TRM-BHCV", "name": "Bah\u00e7\u0131vanl\u0131k" },
+      { "code": "TRM-ENDB", "name": "End\u00fcstri Bitkileri Yeti\u015ftiricili\u011fi" },
+      { "code": "TRM-TRBL", "name": "Tarla Bitkileri Yeti\u015ftiricili\u011fi" },
+      { "code": "TRM-TABB", "name": "T\u0131bbi Aromatik Bitkiler Yeti\u015ftiricili\u011fi" },
+      { "code": "TRM-CCSB", "name": "\u00c7i\u00e7ek\u00e7ilik ve S\u00fcs Bitkileri" },
+      { "code": "TRM-SERC", "name": "Serac\u0131l\u0131k" },
+      { "code": "TRM-CYYT", "name": "\u00c7ay Yeti\u015ftiricili\u011fi" },
+      { "code": "TRM-ORYT", "name": "Orman Yeti\u015ftiricili\u011fi" }
+    ]
+  },
+  {
+    "code": "TKT",
+    "name": "Tekstil Teknolojisi",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "TKT-DKOP", "name": "Dokuma Operat\u00f6rl\u00fc\u011f\u00fc" },
+      { "code": "TKT-DKSY", "name": "Dokusuz Y\u00fczeyler" },
+      { "code": "TKT-ENCR", "name": "End\u00fcstriyel \u00c7orap \u00d6rme" },
+      { "code": "TKT-ENDO", "name": "End\u00fcstriyel D\u00fcz \u00d6rme" },
+      { "code": "TKT-ENYO", "name": "End\u00fcstriyel Yuvarlak \u00d6rme" },
+      { "code": "TKT-IPUT", "name": "\u0130plik \u00dcretim Teknolojisi" },
+      { "code": "TKT-TBDS", "name": "Tekstil Bask\u0131 ve Desencili\u011fi" },
+      { "code": "TKT-TBIT", "name": "Tekstil Bitim \u0130\u015flemleri (Apre)" },
+      { "code": "TKT-TBYC", "name": "Tekstil Boyac\u0131l\u0131\u011f\u0131" }
+    ]
+  },
+  {
+    "code": "TTI",
+    "name": "Tesisat Teknolojisi ve \u0130klimlendirme",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "TTI-GZTS", "name": "Gaz Tesisat Sistemleri" },
+      { "code": "TTI-GZYC", "name": "Gaz Yak\u0131c\u0131 Cihazlar ve Servis" },
+      { "code": "TTI-ISTS", "name": "Is\u0131tma ve S\u0131hhi Tesisat Sistemleri" },
+      { "code": "TTI-KZYB", "name": "Kazan Yakma ve Bak\u0131m\u0131" },
+      { "code": "TTI-SART", "name": "Su Ar\u0131tma Sistemleri" },
+      { "code": "TTI-GETS", "name": "G\u00fcne\u015f Enerjisi ve Tesisat Sistemleri" },
+      { "code": "TTI-IKLM", "name": "\u0130klimlendirme Sistemleri" },
+      { "code": "TTI-SGTS", "name": "So\u011futma Sistemleri" }
+    ]
+  },
+  {
+    "code": "UH",
+    "name": "Ula\u015ft\u0131rma Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "UH-LJST", "name": "Lojistik" },
+      { "code": "UH-KRKR", "name": "Kargo ve Kurye Hizmetleri" },
+      { "code": "UH-OPVL", "name": "Otopark ve Vale Hizmetleri" }
+    ]
+  },
+  {
+    "code": "YIH",
+    "name": "Yiyecek \u0130\u00e7ecek Hizmetleri",
+    "isProtocolBased": false,
+    "specializations": [
+      { "code": "YIH-ASCL", "name": "A\u015f\u00e7\u0131l\u0131k" },
+      { "code": "YIH-FRNC", "name": "F\u0131r\u0131nc\u0131l\u0131k" },
+      { "code": "YIH-KNIS", "name": "Kantin \u0130\u015fletmecili\u011fi" },
+      { "code": "YIH-KSPL", "name": "Kasapl\u0131k" },
+      { "code": "YIH-PTTY", "name": "Pasta ve Tatl\u0131 Yap\u0131m\u0131" },
+      { "code": "YIH-SRVS", "name": "Servis" }
+    ]
+  },
+  {
+    "code": "SBG",
+    "name": "Siber G\u00fcvenlik",
+    "isProtocolBased": true,
+    "specializations": [
+      { "code": "SBG-SBGV", "name": "Siber G\u00fcvenlik" }
+    ]
+  },
+  {
+    "code": "GZT",
+    "name": "Gazetecilik",
+    "isProtocolBased": true,
+    "specializations": [
+      { "code": "GZT-WBIE", "name": "Web \u0130\u00e7erik Edit\u00f6r\u00fc" },
+      { "code": "GZT-SSMD", "name": "Sosyal Medya" },
+      { "code": "GZT-MDYZ", "name": "Medya Yaz\u0131l\u0131m\u0131" }
+    ]
+  },
+  {
+    "code": "RTV",
+    "name": "Radyo-Televizyon",
+    "isProtocolBased": true,
+    "specializations": [
+      { "code": "RTV-VDSK", "name": "Video, Ses \u00dcretim ve Kurgu" }
+    ]
+  },
+  {
+    "code": "YET",
+    "name": "Yenilenebilir Enerji Teknolojileri",
+    "isProtocolBased": true,
+    "specializations": [
+      { "code": "YET-GPES", "name": "G\u00fcne\u015f Panel Entegre Sistemleri" }
+    ]
+  },
+  {
+    "code": "UBK",
+    "name": "U\u00e7ak Bak\u0131m",
+    "isProtocolBased": true,
+    "specializations": [
+      { "code": "UBK-HAMN", "name": "Hava Arac\u0131 Montaj" }
+    ]
+  }
+]

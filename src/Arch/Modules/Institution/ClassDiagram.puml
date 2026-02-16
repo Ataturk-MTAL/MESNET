@@ -1,0 +1,219 @@
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Institution.Api" {
+    class InstitutionEndpoints {
+        +[WolverineGet] GetInstitution(institutionId)
+        +[WolverinePost] CreateInstitution(command)
+        +[WolverinePut] UpdateInstitution(command)
+        +[WolverinePost] AuthorizeStaff(command)
+        +[WolverinePut] UpdateMinimumWage(command)
+    }
+
+    class FieldCatalogEndpoints {
+        +[WolverineGet] GetFieldCatalog(educationType)
+        +[WolverinePost] ActivateBranch(command)
+        +[WolverinePost] DeactivateBranch(command)
+        +[WolverinePut] UpdateBranchSpecializations(command)
+    }
+}
+
+package "MESNET.Institution.Application" {
+    class CreateInstitutionHandler {
+        +static InstitutionUpdated Handle(CreateInstitution command, IDocumentSession session)
+    }
+
+    class UpdateInstitutionHandler {
+        +static InstitutionUpdated Handle(UpdateInstitution command, IDocumentSession session)
+    }
+
+    class AuthorizeStaffHandler {
+        +static StaffAuthorized Handle(AuthorizeStaff command, IDocumentSession session)
+    }
+
+    class UpdateMinimumWageHandler {
+        +static MinimumWageUpdated Handle(UpdateMinimumWage command, IDocumentSession session)
+    }
+
+    class GetFieldCatalogHandler {
+        +static IReadOnlyList<FieldOfStudy> Handle(GetFieldCatalog query, IQuerySession session)
+    }
+
+    class ActivateBranchHandler {
+        +static BranchActivated Handle(ActivateBranch command, IDocumentSession session)
+    }
+
+    class DeactivateBranchHandler {
+        +static BranchDeactivated Handle(DeactivateBranch command, IDocumentSession session)
+    }
+
+    class UpdateBranchSpecializationsHandler {
+        +static BranchSpecializationsUpdated Handle(UpdateBranchSpecializations command, IDocumentSession session)
+    }
+}
+
+package "MESNET.Institution.Core" {
+    class Institution <<AggregateRoot>> {
+        +Guid Id
+        +Guid TenantId
+        +int InstitutionCode
+        +string FullName
+        +string Address
+        +string PhoneNumber
+        +string Email
+        +string WebUrl
+        +Location Location
+        +List<InstitutionBranch> Branches
+        +List<StaffMember> Staff
+    }
+
+    class FieldOfStudy <<Document>> {
+        +Guid Id
+        +string Code
+        +string Name
+        +EducationType Type
+        +List<Specialization> Specializations
+        +bool IsProtocolBased
+        +bool IsActive
+    }
+
+    note "MEB resmi alan/dal kataloğu.\nSistem geneli referans data.\nSeed data ile yüklenir.\nKurum bağımsızdır." as FieldNote
+    FieldOfStudy .. FieldNote
+
+    class Specialization <<Value Object>> {
+        +string Code
+        +string Name
+        +bool IsActive
+    }
+
+    class InstitutionBranch <<Value Object>> {
+        +string FieldCode
+        +string FieldName
+        +EducationType Type
+        +List<string> ActiveSpecializations
+        +int AvailableCount
+        +int AtWorkCount
+        +int TotalCount
+        +bool IsActive
+    }
+
+    note "FieldCode = FieldOfStudy.Code referansı.\nKurumun aktifleştirdiği alan/dal bilgisi.\nActiveSpecializations: aktif dal kodları." as BranchNote
+    InstitutionBranch .. BranchNote
+
+    class StaffMember {
+        +Guid Id
+        +string KeycloakId
+        +string FullName
+        +StaffRole Role
+        +string? BranchCode
+        +DateTime AuthorizedAt
+    }
+
+    class SystemParameter {
+        +Guid Id
+        +string Key
+        +string Value
+        +DateTime UpdatedAt
+    }
+
+    class Location <<Value Object>> {
+        +double Latitude
+        +double Longitude
+    }
+
+    enum EducationType <<Enum>> {
+        #MESEM
+        #ORGUN
+    }
+
+    enum StaffRole <<Enum>> {
+        #MUDUR
+        #MUDUR_YARDIMCISI
+        #KOORDINATOR
+        #ALAN_SEFI
+        #PERSONEL
+    }
+
+    note "BranchCode: Alan şefinin sorumlu\nolduğu alan kodu (FieldOfStudy.Code).\nSadece ALAN_SEFI rolü için\ndoldurulur (diğerleri null)." as StaffNote
+    StaffMember .. StaffNote
+}
+
+package "MESNET.Institution.Shared" {
+    class InstitutionUpdated {
+        +Guid InstitutionId
+        +string FullName
+        +Location Location
+    }
+
+    class StaffAuthorized {
+        +Guid InstitutionId
+        +Guid StaffMemberId
+        +StaffRole Role
+        +string? BranchCode
+    }
+
+    class MinimumWageUpdated {
+        +Guid InstitutionId
+        +decimal Amount
+        +DateTime EffectiveDate
+    }
+
+    class BranchActivated {
+        +Guid InstitutionId
+        +string FieldCode
+        +string FieldName
+        +EducationType Type
+    }
+
+    class BranchDeactivated {
+        +Guid InstitutionId
+        +string FieldCode
+    }
+
+    class BranchSpecializationsUpdated {
+        +Guid InstitutionId
+        +string FieldCode
+        +List<string> ActiveSpecializations
+    }
+}
+
+package "MESNET.Institution.Persistence" {
+    class InstitutionMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: institution\nMarten Document Storage\nJSONB serialization\n\nSeed data: FieldOfStudy\n  - mtal_fields.json (56 alan, 119 dal, ORGUN)\n  - mesem_fields.json (39 alan, 193 dal, MESEM)\n  Marten InitialData ile yüklenir" as PersistenceNote
+    InstitutionMartenConfig .. PersistenceNote
+}
+
+' Domain Relationships
+Institution --> InstitutionBranch : has many
+Institution --> StaffMember : has many
+Institution --> Location : has one
+InstitutionBranch --> EducationType : enum
+FieldOfStudy --> Specialization : has many
+FieldOfStudy --> EducationType : enum
+StaffMember --> StaffRole : enum
+
+' API -> Handler (Institution)
+InstitutionEndpoints --> CreateInstitutionHandler : Wolverine InvokeAsync
+InstitutionEndpoints --> UpdateInstitutionHandler : Wolverine InvokeAsync
+InstitutionEndpoints --> AuthorizeStaffHandler : Wolverine InvokeAsync
+InstitutionEndpoints --> UpdateMinimumWageHandler : Wolverine InvokeAsync
+
+' API -> Handler (Field Catalog & Branch)
+FieldCatalogEndpoints --> GetFieldCatalogHandler : Wolverine InvokeAsync
+FieldCatalogEndpoints --> ActivateBranchHandler : Wolverine InvokeAsync
+FieldCatalogEndpoints --> DeactivateBranchHandler : Wolverine InvokeAsync
+FieldCatalogEndpoints --> UpdateBranchSpecializationsHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading)
+CreateInstitutionHandler --> InstitutionUpdated : returns (cascading)
+UpdateInstitutionHandler --> InstitutionUpdated : returns (cascading)
+AuthorizeStaffHandler --> StaffAuthorized : returns (cascading)
+UpdateMinimumWageHandler --> MinimumWageUpdated : returns (cascading)
+ActivateBranchHandler --> BranchActivated : returns (cascading)
+DeactivateBranchHandler --> BranchDeactivated : returns (cascading)
+UpdateBranchSpecializationsHandler --> BranchSpecializationsUpdated : returns (cascading)
+
+@enduml

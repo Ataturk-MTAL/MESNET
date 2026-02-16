@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Marten" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../MESNET.Payment.Core/MESNET.Payment.Core.csproj" />
+    <ProjectReference Include="../MESNET.Payment.Application/MESNET.Payment.Application.csproj" />
+  </ItemGroup>
+
+</Project>

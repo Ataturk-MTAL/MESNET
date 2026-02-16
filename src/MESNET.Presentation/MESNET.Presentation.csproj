@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="WolverineFx.Http" />
+    <PackageReference Include="WolverineFx.Marten" />
+    <PackageReference Include="WolverineFx.RabbitMQ" />
+    <PackageReference Include="Marten" />
+    <PackageReference Include="Aspire.Npgsql" />
+    <PackageReference Include="Aspire.RabbitMQ.Client" />
+    <PackageReference Include="Keycloak.AuthServices.Authentication" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.OpenTelemetry" />
+    <PackageReference Include="Serilog.Enrichers.Environment" />
+    <PackageReference Include="Serilog.Enrichers.Thread" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../MESNET.ServiceDefaults/MESNET.ServiceDefaults.csproj" />
+    <ProjectReference Include="../Modules/Institution/MESNET.Institution.Api/MESNET.Institution.Api.csproj" />
+    <ProjectReference Include="../Modules/Institution/MESNET.Institution.Persistence/MESNET.Institution.Persistence.csproj" />
+    <ProjectReference Include="../Modules/Business/MESNET.Business.Api/MESNET.Business.Api.csproj" />
+    <ProjectReference Include="../Modules/Business/MESNET.Business.Persistence/MESNET.Business.Persistence.csproj" />
+    <ProjectReference Include="../Modules/Internship/MESNET.Internship.Api/MESNET.Internship.Api.csproj" />
+    <ProjectReference Include="../Modules/Internship/MESNET.Internship.Persistence/MESNET.Internship.Persistence.csproj" />
+    <ProjectReference Include="../Modules/Enrollment/MESNET.Enrollment.Api/MESNET.Enrollment.Api.csproj" />
+    <ProjectReference Include="../Modules/Enrollment/MESNET.Enrollment.Persistence/MESNET.Enrollment.Persistence.csproj" />
+    <ProjectReference Include="../Modules/Contract/MESNET.Contract.Api/MESNET.Contract.Api.csproj" />
+    <ProjectReference Include="../Modules/Contract/MESNET.Contract.Persistence/MESNET.Contract.Persistence.csproj" />
+    <ProjectReference Include="../Modules/Attendance/MESNET.Attendance.Api/MESNET.Attendance.Api.csproj" />
+    <ProjectReference Include="../Modules/Attendance/MESNET.Attendance.Persistence/MESNET.Attendance.Persistence.csproj" />
+    <ProjectReference Include="../Modules/Payment/MESNET.Payment.Api/MESNET.Payment.Api.csproj" />
+    <ProjectReference Include="../Modules/Payment/MESNET.Payment.Persistence/MESNET.Payment.Persistence.csproj" />
+    <ProjectReference Include="../Modules/Coordination/MESNET.Coordination.Api/MESNET.Coordination.Api.csproj" />
+    <ProjectReference Include="../Modules/Coordination/MESNET.Coordination.Persistence/MESNET.Coordination.Persistence.csproj" />
+    <ProjectReference Include="../Modules/Reporting/MESNET.Reporting.Api/MESNET.Reporting.Api.csproj" />
+    <ProjectReference Include="../Modules/Reporting/MESNET.Reporting.Persistence/MESNET.Reporting.Persistence.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,53 @@
+@startuml ReportingUseCasesDiagram
+title Reporting Modülü Use Cases
+left to right direction
+
+!include ../../../Actors/InstitutionAdmin.puml
+!include ../../../Actors/Teacher.puml
+
+package Reporting {
+    usecase "RAR: Devamsızlık Raporu" as RAR
+    usecase "RPR: Maaş/Dekont Raporu" as RPR
+    usecase "RSR: Staj Durum Raporu" as RSR
+    usecase "RIR: Kurum İstatistikleri" as RIR
+    usecase "RBE: Toplu Liste Çıktısı\n(Excel/PDF)" as RBE
+    usecase "RTR: Fesih Formu\n(Islak İmzalı PDF)" as RTR
+    usecase "RDF: Koordinatör Günlük Form" as RDF
+    usecase "RMF: Koordinatör Aylık Form" as RMF
+    usecase "RAS: Devamsızlık Çizelgesi" as RAS
+}
+
+note "Phase 2: RCR (Çapraz Kurum Raporu)\nTenant modülü aktifleştirildiğinde\neklenecektir." as Phase2Note
+
+Teacher --> RAR
+Teacher --> RPR
+Teacher --> RSR
+
+InstAdmin --> RAR
+InstAdmin --> RPR
+InstAdmin --> RSR
+InstAdmin --> RIR
+InstAdmin --> RBE
+
+InstAdmin --> RTR
+
+Teacher --> RDF
+Teacher --> RMF
+Teacher --> RAS
+
+InstAdmin --> RMF
+InstAdmin --> RAS
+
+json Notes {
+    "RAR": "Öğrenci/sınıf bazlı devamsızlık\nlisteleri, QuestPDF ile PDF çıktı.",
+    "RPR": "Maaş/dekont onay durumu raporları,\nödeme takip listeleri.",
+    "RSR": "Aktif stajlar, sözleşme durumları,\nöğrenci bazlı staj özeti.",
+    "RIR": "Kurum bazlı istatistikler:\nöğrenci sayısı, devamsızlık oranı vb.",
+    "RBE": "Dönemsel toplu listeler,\nExcel ve PDF formatında dışa aktarım.",
+    "RTR": "Fesih onay zinciri tamamlandığında\nveya müdür yardımcısı override ettiğinde\nQuestPDF ile ıslak imzalı fesih\nformu PDF üretir. Yazdırılıp\nimzalanır, taranarak sisteme yüklenir.",
+    "RDF": "Koordinatör öğretmen işletme ziyareti\nsırasında günlük yoklama ve gözlem\nformu üretir. QuestPDF ile PDF.",
+    "RMF": "Aylık öğrenci devam durumu, maaş\nbilgisi ve sözleşme durumu özet\nformu. QuestPDF ile PDF.",
+    "RAS": "Ay boyunca günlük bazda öğrenci\ndevam/devamsızlık tablosu.\nDurum kodları: V/Y/M/S/T.\nQuestPDF ile PDF."
+}
+
+@enduml

@@ -1,0 +1,39 @@
+@startuml EnrollmentUseCasesDiagram
+title Enrollment Modülü Use Cases
+left to right direction
+
+!include ../../../Actors/BusinessRepresentative.puml
+!include ../../../Actors/InstitutionAdmin.puml
+!include ../../../Actors/Student.puml
+
+package Enrollment {
+    usecase "ESR: Öğrenci Kaydı" as ESR
+    usecase "ETR: Öğretmen Kaydı" as ETR
+    usecase "EIA: Staj Başvurusu" as EIA
+    usecase "EBR: İşletme Öğrenci Talebi" as EBR
+    usecase "EMC: Öğrenci-İşletme Eşleştirme" as EMC
+    usecase "EPL: Yeni İşletmeye Yerleştirme" as EPL
+    usecase "ELB: Lokasyon Bazlı Eşleştirme" as ELB
+}
+
+InstAdmin --> ESR
+InstAdmin --> ETR
+InstAdmin --> EMC
+InstAdmin --> EPL
+InstAdmin --> ELB
+
+Student --> EIA
+
+BusRep --> EBR
+
+json Notes {
+    "ESR": "Kurum yönetimi, öğrencinin staj\nprofilini sisteme kaydeder.",
+    "ETR": "Kurum yönetimi, koordinatör öğretmeni\nsisteme kaydeder.",
+    "EIA": "Öğrenci, staj başvurusu oluşturur.\nAlan/dal ve tercihler belirtilir.",
+    "EBR": "İşletme yetkilisi, alan/dal bazlı\nstajyer öğrenci talep eder.",
+    "EMC": "Kurum yönetimi, öğrenci ve işletmeyi\neşleştirir. Kontenjan kontrolü yapılır.",
+    "EPL": "Fesih sonrası veya yeni başlayan\nöğrenci uygun işletmeye yerleştirilir.",
+    "ELB": "Lokasyon bazlı filtreleme ile\nen uygun işletme bulunur."
+}
+
+@enduml

@@ -1,0 +1,48 @@
+@startuml BusinessUseCasesDiagram
+title Business Modülü Use Cases
+left to right direction
+
+!include ../../../Actors/BusinessRepresentative.puml
+!include ../../../Actors/InstitutionAdmin.puml
+
+package Business {
+    usecase "BRG: İşletme Kaydı" as BRG
+    usecase "BRA: İşletme Onay Süreci" as BRA
+    usecase "EBI: İşletme Bilgisi Düzenleme" as EBI
+    usecase "BSD: İşletme Durum Yönetimi" as BSD
+    usecase "BDM: Belge Yönetimi" as BDM
+    usecase "BDA: Belge Onaylama" as BDA
+    usecase "BLM: Konum Yönetimi" as BLM
+    usecase "BCM: Kontenjan Yönetimi" as BCM
+    usecase "BNS: Yakın İşletme Arama" as BNS
+    usecase "BTR: İşletme Fesih Talebi" as BTR
+}
+
+BusRep --> BRG
+BusRep --> EBI
+BusRep --> BDM
+BusRep --> BLM
+BusRep --> BCM
+BusRep --> BTR
+
+InstAdmin --> BRG
+InstAdmin --> BRA
+InstAdmin --> BSD
+InstAdmin --> BDA
+InstAdmin --> BNS
+InstAdmin --> BCM
+
+json Notes {
+    "BRG": "İşletme yetkilisi veya kurum yönetimi,\nişletmeyi sisteme kaydeder. İşletme kendi\nkaydını açarsa kurum onayı zorunludur.",
+    "BRA": "Kurum yönetimi, işletmenin kendi açtığı\nkaydı onaylar veya reddeder.",
+    "EBI": "İşletme yetkilisi, işletme bilgilerini düzenler.",
+    "BSD": "Kurum yönetimi, işletmeyi aktif/pasif\nyapar veya kalıcı kapatır.",
+    "BDM": "İşletme yetkilisi, ustalık/usta öğreticilik\nbelgelerini yükler ve günceller.",
+    "BDA": "Kurum yönetimi, yüklenen belgeleri\nonaylar veya reddeder.",
+    "BLM": "İşletme yetkilisi, harita üzerinden veya\nadres ile konum kaydeder.",
+    "BCM": "İşletme yetkilisi veya kurum, stajyer\nkontenjan bilgisini günceller.",
+    "BNS": "Kurum yönetimi, lokasyona göre yakın\nişletmeleri arar ve filtreler.",
+    "BTR": "İşletme yetkilisi, gerekçeli staj fesih\ntalebi oluşturur. Internship saga'ya iletilir."
+}
+
+@enduml

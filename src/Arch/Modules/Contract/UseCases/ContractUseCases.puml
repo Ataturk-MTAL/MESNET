@@ -1,0 +1,40 @@
+@startuml ContractUseCasesDiagram
+title Contract Modülü Use Cases
+left to right direction
+
+!include ../../../Actors/InstitutionAdmin.puml
+!include ../../../Actors/BusinessRepresentative.puml
+!include ../../../Actors/Student.puml
+
+package Contract {
+    usecase "CCR: Sözleşme Oluşturma" as CCR
+    usecase "CST: İmza Süreci Takibi" as CST
+    usecase "CAC: Sözleşme Aktivasyonu" as CAC
+    usecase "CTR: Sözleşme Fesih İşlemi" as CTR
+    usecase "CCM: Sözleşme Tamamlama" as CCM
+    usecase "CSV: Sözleşme Görüntüleme" as CSV
+}
+
+InstAdmin --> CCR
+InstAdmin --> CST
+InstAdmin --> CAC
+InstAdmin --> CTR
+InstAdmin --> CCM
+InstAdmin --> CSV
+
+BusRep --> CST
+BusRep --> CSV
+
+Student --> CST
+Student --> CSV
+
+json Notes {
+    "CCR": "Kurum, öğrenci ve işletme arasında\nstaj sözleşmesi oluşturur.",
+    "CST": "Kurum, işletme ve öğrenci/veli\nimza durumlarını takip eder.",
+    "CAC": "Tüm imzalar tamamlandığında\nsözleşme aktif hale getirilir.",
+    "CTR": "Çeşitli nedenlerle (disiplin, sağlık,\ndevamsızlık aşımı vb.) sözleşme feshedilir.",
+    "CCM": "Staj süresi tamamlandığında\nsözleşme kapatılır.",
+    "CSV": "Aktörler kendi sözleşmelerini\ngörüntüler."
+}
+
+@enduml

@@ -1,0 +1,51 @@
+@startuml ISASequenceDiagram
+autonumber
+
+actor "Kurum Müdürü" as InstAdmin
+participant "Web UI" as UI
+participant "MESNET.Institution.Api\nInstitutionEndpoints" as API
+participant "MESNET.Institution.Application\nAuthorizeStaffHandler" as Handler #LightBlue
+participant "Marten\nIDocumentSession" as Marten #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+database "institution schema" as DB
+
+' Personel listesini getirme
+InstAdmin -> UI: Personel yönetimi sayfasını aç
+UI -> API: GET /api/institution/{id}/staff
+API -> Handler: Handle(GetStaffListQuery)
+Handler -> Marten: session.LoadAsync<Institution>(id)
+Marten -> DB: SELECT (JSONB)
+DB --> Marten: Institution document
+Marten --> Handler: Institution entity
+Handler --> API: StaffListDTO
+API --> UI: Personel listesi
+UI --> InstAdmin: Mevcut personel ve rolleri gösterilir
+
+' Personel yetkilendirme
+InstAdmin -> UI: Personele rol ata
+UI -> API: POST /api/institution/{id}/staff/authorize
+API -> Handler: Handle(AuthorizeStaff command)
+Handler -> Marten: institution.Staff.Add(newStaff)\nsession.Store(institution)
+Marten -> DB: UPDATE (JSONB)
+DB --> Marten: Success
+
+' Cascading message
+Handler --> API: StaffAuthorized (cascading)
+API --> UI: Success
+UI --> InstAdmin: "Personel yetkilendirildi" mesajı
+
+' Asenkron event dağıtımı
+Handler -> MessageBroker: PublishAsync<StaffAuthorized>
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+  - Durable Local Queues
+
+  Document Storage:
+  - Institution aggregate JSONB olarak saklanır
+  - Staff, Branch listesi embedded
+end note
+
+@enduml

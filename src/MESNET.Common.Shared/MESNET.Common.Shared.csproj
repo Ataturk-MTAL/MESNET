@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+<ItemGroup>
+    <PackageReference Include="Ardalis.SmartEnum" />
+    <PackageReference Include="Ardalis.SmartEnum.SystemTextJson" />
+  </ItemGroup>
+
+</Project>

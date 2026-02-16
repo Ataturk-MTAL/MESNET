@@ -1,0 +1,179 @@
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Contract.Api" {
+    class ContractEndpoints {
+        +[WolverinePost] CreateContract(command)
+        +[WolverinePost] SignContract(command)
+        +[WolverinePost] ActivateContract(command)
+        +[WolverinePost] SuspendContract(command)
+        +[WolverinePost] TerminateContract(command)
+        +[WolverinePost] CompleteContract(command)
+        +[WolverineGet] GetContract(contractId)
+    }
+}
+
+package "MESNET.Contract.Application" {
+    class CreateContractHandler {
+        +static ContractCreated Handle(CreateContract command, IDocumentSession session)
+    }
+
+    class SignContractHandler {
+        +static object Handle(SignContract command, IDocumentSession session)
+    }
+
+    class ActivateContractHandler {
+        +static ContractActivated Handle(ActivateContract command, IDocumentSession session)
+    }
+
+    class SuspendContractHandler {
+        +static ContractSuspended Handle(SuspendContract command, IDocumentSession session)
+    }
+
+    class TerminateContractHandler {
+        +static ContractTerminated Handle(TerminateContract command, IDocumentSession session)
+    }
+
+    class CompleteContractHandler {
+        +static ContractCompleted Handle(CompleteContract command, IDocumentSession session)
+    }
+
+    note "SignContractHandler imzalayan\ntarafa göre farklı event döner:\nContractSignedByInstitution,\nContractSignedByBusiness,\nContractSignedByStudent" as SignNote
+    SignContractHandler .. SignNote
+}
+
+package "MESNET.Contract.Core" {
+    class InternshipContract <<AggregateRoot>> {
+        +Guid Id
+        +Guid StudentId
+        +Guid BusinessId
+        +Guid InstitutionId
+        +Guid TeacherId
+        +ContractStatus Status
+        +DateTime StartDate
+        +DateTime EndDate
+        +SignatureStatus InstitutionSignature
+        +SignatureStatus BusinessSignature
+        +SignatureStatus StudentSignature
+        +string? TerminationReason
+        +DateTime CreatedAt
+    }
+
+    class SignatureStatus <<Value Object>> {
+        +bool IsSigned
+        +string? SignedBy
+        +DateTime? SignedAt
+    }
+
+    enum ContractStatus <<Enum>> {
+        #TASLAK
+        #IMZA_BEKLIYOR
+        #AKTIF
+        #ASKIDA
+        #FESHEDILMIS
+        #TAMAMLANMIS
+    }
+
+    enum TerminationReason <<Enum>> {
+        #DISIPLIN
+        #SAGLIK
+        #DEVAMSIZLIK_ASIMI
+        #ISLETME_FESIH_TALEBI
+        #OGRENCI_TALEBI
+        #DIGER
+    }
+
+    note "Fesih Nedenleri (3308):\n- DİSİPLİN: Disiplin kurallarına aykırılık\n- SAĞLIK: Staja engel sağlık durumu\n- DEVAMSIZLIK_AŞIMI: Otomatik tetikleme\n- İŞLETME_FESİH_TALEBİ: İşletmenin\n  gerekçeli fesih talebi (Business modülünden)\n- ÖĞRENCİ_TALEBİ: Öğrenci/veli talebi\n- DİĞER: Kategori dışı durumlar" as TermNote
+    TerminationReason .. TermNote
+}
+
+package "MESNET.Contract.Shared" {
+    class ContractCreated {
+        +Guid ContractId
+        +Guid StudentId
+        +Guid BusinessId
+        +Guid InstitutionId
+        +DateTime StartDate
+        +DateTime EndDate
+    }
+
+    class ContractSignedByInstitution {
+        +Guid ContractId
+        +string SignedBy
+        +DateTime SignedAt
+    }
+
+    class ContractSignedByBusiness {
+        +Guid ContractId
+        +string SignedBy
+        +DateTime SignedAt
+    }
+
+    class ContractSignedByStudent {
+        +Guid ContractId
+        +string SignedBy
+        +DateTime SignedAt
+    }
+
+    class ContractActivated {
+        +Guid ContractId
+        +Guid StudentId
+        +Guid BusinessId
+        +DateTime ActivatedAt
+    }
+
+    class ContractSuspended {
+        +Guid ContractId
+        +string Reason
+        +DateTime SuspendedAt
+    }
+
+    class ContractTerminated {
+        +Guid ContractId
+        +Guid StudentId
+        +Guid BusinessId
+        +TerminationReason Reason
+        +DateTime TerminatedAt
+    }
+
+    class ContractCompleted {
+        +Guid ContractId
+        +Guid StudentId
+        +Guid BusinessId
+        +DateTime CompletedAt
+    }
+}
+
+package "MESNET.Contract.Persistence" {
+    class ContractMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: contract\nEvent Sourcing (Marten)\nInternshipContract stream\nDurum geçişleri event olarak saklanır" as PersistenceNote
+    ContractMartenConfig .. PersistenceNote
+}
+
+' Domain Relationships
+InternshipContract --> ContractStatus : enum
+InternshipContract --> SignatureStatus : has three
+InternshipContract --> TerminationReason : optional
+
+' API -> Handler
+ContractEndpoints --> CreateContractHandler : Wolverine InvokeAsync
+ContractEndpoints --> SignContractHandler : Wolverine InvokeAsync
+ContractEndpoints --> ActivateContractHandler : Wolverine InvokeAsync
+ContractEndpoints --> SuspendContractHandler : Wolverine InvokeAsync
+ContractEndpoints --> TerminateContractHandler : Wolverine InvokeAsync
+ContractEndpoints --> CompleteContractHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading)
+CreateContractHandler --> ContractCreated : returns (cascading)
+SignContractHandler --> ContractSignedByInstitution : returns (cascading)
+SignContractHandler --> ContractSignedByBusiness : returns (cascading)
+SignContractHandler --> ContractSignedByStudent : returns (cascading)
+ActivateContractHandler --> ContractActivated : returns (cascading)
+SuspendContractHandler --> ContractSuspended : returns (cascading)
+TerminateContractHandler --> ContractTerminated : returns (cascading)
+CompleteContractHandler --> ContractCompleted : returns (cascading)
+
+@enduml

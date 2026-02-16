@@ -1,0 +1,30 @@
+@startuml LSASequenceDiagram
+autonumber
+
+actor "İşletme Yetkilisi" as BusRep
+participant "Web UI" as UI
+participant "MESNET.Attendance.Api\nAttendanceEndpoints" as API
+participant "MESNET.Attendance.Application\nListAttendanceHandler" as Handler #LightBlue
+participant "Marten\nIQuerySession" as Marten #LightGreen
+database "attendance schema" as DB
+
+BusRep -> UI: Devamsızlık listesi sayfasını aç
+UI -> API: GET /api/attendance?businessId={businessId}
+API -> Handler: Handle(ListAttendanceQuery)
+Handler -> Marten: session.Query<AttendanceView>()\n.Where(x => x.BusinessId == businessId)
+Marten -> DB: SELECT (projection)
+DB --> Marten: AttendanceView documents
+Marten --> Handler: AttendanceView list
+Handler --> API: AttendanceListDTO
+API --> UI: Devamsızlık listesi
+UI --> BusRep: Devamsızlık listesi görüntülenir
+
+note right of Handler
+  Marten Async Projection:
+  - AttendanceView, event'lerden
+    türetilen denormalize read model
+  - Query handler sadece okuma yapar,
+    side effect yok
+end note
+
+@enduml

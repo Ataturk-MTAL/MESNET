@@ -1,0 +1,47 @@
+@startuml InstitutionUseCasesDiagram
+title Institution Modülü Use Cases
+left to right direction
+
+!include ../../../Actors/InstitutionAdmin.puml
+
+package Institution {
+    usecase "ICR: Kurum Bilgileri Yönetimi" as ICR
+    usecase "ISA: Personel Yetkilendirme" as ISA
+    usecase "IBM: Alan/Dal Yönetimi" as IBM
+    usecase "ISP: Sistem Parametreleri" as ISP
+    usecase "IVW: Kurum Bilgisi Görüntüleme" as IVW
+
+    package "IBM Alt Use Case'leri" {
+        usecase "IBM-CAT: Alan Kataloğu\nGörüntüleme" as IBM_CAT
+        usecase "IBM-ACT: Alan Aktifleştirme" as IBM_ACT
+        usecase "IBM-DAC: Alan Pasifleştirme" as IBM_DAC
+        usecase "IBM-SPE: Dal Seçimi\nGüncelleme" as IBM_SPE
+    }
+}
+
+note "Phase 2: TenantAdmin aktörü\nTenant modülü aktifleştirildiğinde\nICR ve ISP'ye bağlanacak." as Phase2Note
+
+InstAdmin --> ICR
+InstAdmin --> ISA
+InstAdmin --> IBM
+InstAdmin --> ISP
+InstAdmin --> IVW
+
+IBM ..> IBM_CAT : <<include>>
+IBM ..> IBM_ACT : <<include>>
+IBM ..> IBM_DAC : <<include>>
+IBM ..> IBM_SPE : <<include>>
+
+json Notes {
+    "ICR": "Kurum bilgileri (ad, adres, iletişim)\noluşturma ve güncelleme.",
+    "ISA": "Kurum müdürü, personele rol ve\nyetki ataması yapar.",
+    "IBM": "Kurumun mesleki alan ve dallarını\nyönetir. MEB kataloğundan seçim\nyapılır, alan/dal aktifleştirilir.",
+    "IBM-CAT": "MEB resmi alan/dal kataloğunu\neğitim türüne göre (MTAL/MESEM)\nlisteler.",
+    "IBM-ACT": "Katalogdan seçilen alanı kurum\niçin aktifleştirir. BranchActivated\nevent'i yayınlanır.",
+    "IBM-DAC": "Kurumun aktif alanını pasife alır.\nBranchDeactivated event'i yayınlanır.",
+    "IBM-SPE": "Aktif alandaki dalları günceller.\nBranchSpecializationsUpdated\nevent'i yayınlanır.",
+    "ISP": "Asgari ücret gibi sistem geneli\nparametreleri yapılandırır.",
+    "IVW": "Kurum detay bilgilerini\ngörüntüler."
+}
+
+@enduml

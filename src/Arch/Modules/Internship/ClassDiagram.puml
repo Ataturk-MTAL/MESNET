@@ -1,0 +1,177 @@
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Internship.Api" {
+    class InternshipEndpoints {
+        +[WolverineGet] GetInternshipSummary(studentId)
+        +[WolverineGet] ListActiveInternships(query)
+        +[WolverinePost] RequestTermination(command)
+    }
+}
+
+package "MESNET.Internship.Application\n«Wolverine Saga»" {
+    class InternshipSaga <<Saga>> {
+        +Guid InternshipId
+        +Guid StudentId
+        +Guid BusinessId
+        +Guid InstitutionId
+        +Guid ContractId
+        +InternshipPhase Phase
+        --
+        +void Start(StudentPlaced event)
+        +void Handle(ContractActivated event)
+        +void Handle(ContractTerminated event)
+        +void Handle(ContractCompleted event)
+        +void Handle(AttendanceLimitExceeded event)
+        +void Handle(TerminationApproved event)
+    }
+
+    class RequestTerminationHandler {
+        +static InternshipTerminationRequested Handle(RequestTermination command, IDocumentSession session)
+    }
+
+    note "Saga state Wolverine tarafından\nyönetilir. Kendi domain verisi\nYOKTUR. Diğer modüllerin\nevent'lerini dinleyerek\norkestrasyonu koordine eder." as SagaNote
+    InternshipSaga .. SagaNote
+}
+
+package "MESNET.Internship.Application\n«Event Consumers»" {
+    class SalaryEventConsumer {
+        +Handle(SalaryConfirmedByStudent event, IDocumentSession session)
+    }
+
+    class VisitEventConsumer {
+        +Handle(VisitCompleted event, IDocumentSession session)
+    }
+
+    note "Bu consumer'lar InternshipSummary\nprojection'ını güncellerler.\nSaga akışını tetiklemezler." as ConsumerNote
+    SalaryEventConsumer .. ConsumerNote
+    VisitEventConsumer .. ConsumerNote
+}
+
+package "MESNET.Internship.Core" {
+    class InternshipSummary <<Projection>> {
+        +Guid Id
+        +Guid StudentId
+        +string StudentName
+        +Guid BusinessId
+        +string BusinessName
+        +Guid InstitutionId
+        +string InstitutionName
+        +Guid? ContractId
+        +InternshipPhase Phase
+        +DateTime StartedAt
+        +DateTime? CompletedAt
+        +int TotalAbsenceDays
+        +int CompletedVisits
+        +int ConfirmedPayments
+        +DateTime LastUpdated
+    }
+
+    enum InternshipPhase <<Enum>> {
+        #YERLESTI
+        #SOZLESME_BEKLENIYOR
+        #AKTIF
+        #FESIH_SURECINDE
+        #FESHEDILDI
+        #TAMAMLANDI
+    }
+
+    class TerminationApprovalChain <<Value Object>> {
+        +bool ParentApproved
+        +bool TeacherApproved
+        +bool DeputyApproved
+        +bool DirectorApproved
+        +bool BusinessRepApproved
+        +bool IsOverridden
+        +string? OverriddenBy
+        +DateTime? OverriddenAt
+        +DateTime? CompletedAt
+    }
+
+    note "Dijital Fesih Onay Zinciri:\n1. Veli onayı (18 yaş altı zorunlu)\n2. Koordinatör öğretmen\n3. Müdür yardımcısı\n4. Müdür\n5. İşletme yetkilisi\n\nTakılma Kuralı:\nVeli veya öğretmen onaylamıyorsa\nmüdür yardımcısı override yetkisiyle\nformu onaylayıp ıslak imzaya\ngönderebilir.\n\nIslak İmza:\nQuestPDF ile fesih formu üretilir.\nTüm tarafların ıslak imzası alınır.\nİmzalı form taranarak sisteme\nyüklenir." as ApprovalNote
+    TerminationApprovalChain .. ApprovalNote
+}
+
+package "MESNET.Internship.Shared" {
+    class InternshipStarted {
+        +Guid InternshipId
+        +Guid StudentId
+        +Guid BusinessId
+        +DateTime StartedAt
+    }
+
+    class InternshipCompleted {
+        +Guid InternshipId
+        +Guid StudentId
+        +Guid BusinessId
+        +DateTime CompletedAt
+    }
+
+    class InternshipTerminationRequested {
+        +Guid InternshipId
+        +Guid StudentId
+        +string Reason
+        +string RequestedBy
+    }
+
+    class InternshipTerminationApprovalChainStarted {
+        +Guid InternshipId
+        +Guid StudentId
+        +bool RequiresParentApproval
+    }
+
+    class InternshipReplacementRequested {
+        +Guid StudentId
+        +Guid OldBusinessId
+        +string BranchCode
+    }
+
+    class TerminationApprovalOverridden {
+        +Guid InternshipId
+        +Guid StudentId
+        +string OverriddenBy
+        +string Reason
+        +DateTime OverriddenAt
+    }
+
+    class TerminationFormRequested {
+        +Guid InternshipId
+        +Guid StudentId
+        +Guid BusinessId
+        +TerminationApprovalChain ApprovalChain
+    }
+}
+
+package "MESNET.Internship.Persistence" {
+    class InternshipMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: internship\nSaga state → Wolverine managed\nInternshipSummary → Marten\nAsync Projection (denormalize)" as PersistenceNote
+    InternshipMartenConfig .. PersistenceNote
+}
+
+' Domain Relationships
+InternshipSummary --> InternshipPhase : enum
+InternshipSaga --> InternshipPhase : tracks
+InternshipSaga --> TerminationApprovalChain : uses
+
+' API -> Handler
+InternshipEndpoints --> RequestTerminationHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading)
+RequestTerminationHandler --> InternshipTerminationRequested : returns (cascading)
+
+' Saga -> Events (published)
+InternshipSaga --> InternshipStarted : publishes
+InternshipSaga --> InternshipCompleted : publishes
+InternshipSaga --> InternshipTerminationApprovalChainStarted : publishes
+InternshipSaga --> InternshipReplacementRequested : publishes
+InternshipSaga --> TerminationApprovalOverridden : publishes
+InternshipSaga --> TerminationFormRequested : publishes
+
+' Event Consumers -> Projection
+SalaryEventConsumer ..> InternshipSummary : updates
+VisitEventConsumer ..> InternshipSummary : updates
+
+@enduml

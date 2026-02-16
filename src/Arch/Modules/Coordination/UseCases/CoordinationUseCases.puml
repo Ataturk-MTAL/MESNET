@@ -1,0 +1,52 @@
+@startuml CoordinationUseCasesDiagram
+title Coordination Modülü Use Cases
+left to right direction
+
+!include ../../../Actors/Teacher.puml
+!include ../../../Actors/InstitutionAdmin.puml
+!include ../../../Actors/DeptHead.puml
+
+package Coordination {
+    usecase "CTA: Öğretmen-İşletme Atama" as CTA
+    usecase "CVS: Ziyaret Programı Oluşturma" as CVS
+    usecase "CLR: Lokasyon Bazlı Rota Optimizasyonu" as CLR
+    usecase "CQR: Karekodlu Rapor Oluşturma" as CQR
+    usecase "CVR: Ziyaret Raporu Doldurma" as CVR
+    usecase "CDT: Evrak Teslim Takibi" as CDT
+    usecase "CCI: Koordinatör-Öğrenci İletişimi" as CCI
+    usecase "CTS: Öğretmen Ders Programı\nYönetimi" as CTS
+    usecase "CDD: Alan Bazlı İşletme\nDağıtımı" as CDD
+    usecase "CWC: İş Yükü Hesaplama" as CWC
+    usecase "CDA: Dağıtım Onay Süreci" as CDA
+}
+
+InstAdmin --> CTA
+InstAdmin --> CVS
+InstAdmin --> CLR
+InstAdmin --> CTS
+InstAdmin --> CDA
+
+Teacher --> CVS
+Teacher --> CQR
+Teacher --> CVR
+Teacher --> CDT
+Teacher --> CCI
+
+DeptHead --> CDD
+DeptHead --> CWC
+
+json Notes {
+    "CTA": "Kurum yönetimi, koordinatör öğretmeni\nişletmelere atar.",
+    "CVS": "Haftalık ziyaret programı oluşturulur.\nDers programı formatında gösterilir.",
+    "CLR": "İşletme konumlarına göre ziyaret\nrotası optimize edilir.",
+    "CQR": "Koordinatör öğretmen, karekodlu\nziyaret raporunu yazdırır.",
+    "CVR": "Koordinatör öğretmen, ziyaret sonrası\nraporu sisteme girer.",
+    "CDT": "Evrak teslim durumu karekod veya\nmanuel olarak takip edilir.",
+    "CCI": "Koordinatör öğretmen, sorumlu olduğu\nöğrencilerle iletişim kurar.",
+    "CTS": "Kurum yönetimi öğretmenlerin ders\nprogramlarını yükler/günceller.\nBoş saatler tespit edilir.",
+    "CDD": "Alan şefi, öğretmenlerin boş\nsaatlerine göre işletme dağıtımı\nyapar. Mesafe ve ek ders sınırı\nkontrol edilir.",
+    "CWC": "Alan şefi, öğretmenlerin toplam\nek ders yükünü hesaplar.\nŞeflik indirimi ve mesafe kontrolü.",
+    "CDA": "Zümre karar tutanağı oluşturulur,\nmüdür onayına sunulur.\nOnay/red sonucu atamalar güncellenir."
+}
+
+@enduml

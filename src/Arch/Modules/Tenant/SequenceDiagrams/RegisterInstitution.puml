@@ -1,0 +1,60 @@
+@startuml TRISequenceDiagram
+autonumber
+
+actor "Tenant Yöneticisi" as TenantAdmin
+participant "Web UI" as UI
+participant "MESNET.Tenant.Api\nTenantEndpoints" as API
+participant "MESNET.Tenant.Application\nRegisterInstitutionHandler" as Handler #LightBlue
+participant "Marten\nIDocumentSession" as Marten #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nInstitution.Application" as InstitutionHandler #LightBlue
+database "tenant schema" as DB
+
+' Mevcut kurumları listeleme
+TenantAdmin -> UI: Kurum yönetimi sayfasını aç
+UI -> API: GET /api/tenant/{id}
+API -> Handler: Handle(GetTenantQuery)
+Handler -> Marten: session.LoadAsync<Tenant>(id)
+Marten -> DB: SELECT (JSONB)
+DB --> Marten: Tenant document
+Marten --> Handler: Tenant entity
+Handler --> API: TenantDTO
+API --> UI: Tenant bilgileri ve kurum listesi
+UI --> TenantAdmin: Kayıtlı kurumlar gösterilir
+
+' Yeni kurum kaydı
+TenantAdmin -> UI: Yeni kurum bilgilerini gir
+UI -> API: POST /api/tenant/{id}/institutions
+API -> Handler: Handle(RegisterInstitution command)
+Handler -> Marten: tenant.Institutions.Add(newRef)\nsession.Store(tenant)
+Marten -> DB: UPDATE (JSONB)
+DB --> Marten: Success
+
+' Cascading message
+Handler --> API: InstitutionRegistered (cascading)
+API --> UI: Success
+UI --> TenantAdmin: "Kurum başarıyla kaydedildi" mesajı
+
+' Asenkron event dağıtımı
+Handler -> MessageBroker: PublishAsync<InstitutionRegistered>
+MessageBroker ->> InstitutionHandler: Handle(InstitutionRegistered)
+
+note right of InstitutionHandler
+  Institution modülü bu event'i dinler ve
+  kendi schema'sında Institution aggregate
+  oluşturur (CreateInstitution saga step).
+end note
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+  - Durable Local Queues
+
+  Document Storage:
+  - Tenant aggregate JSONB olarak saklanır
+  - InstitutionRef listesi embedded
+  - SystemParameter listesi embedded
+end note
+
+@enduml

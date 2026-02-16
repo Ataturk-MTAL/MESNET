@@ -1,0 +1,54 @@
+@startuml CVRSequenceDiagram
+autonumber
+
+actor "Koordinatör Öğretmen" as Teacher
+participant "Web UI" as UI
+participant "MESNET.Coordination.Api\nCoordinationEndpoints" as API
+participant "MESNET.Coordination.Application\nCompleteVisitHandler" as Handler #LightBlue
+participant "Marten\nIEventStore" as EventStore #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nInternship.Application" as InternshipHandler #LightBlue
+participant "Wolverine Handler\nReporting.Application" as ReportingHandler #LightBlue
+database "coordination schema" as DB
+
+' Ziyaret programını görüntüleme
+Teacher -> UI: Haftalık ziyaret programını aç
+UI -> API: GET /api/coordination/schedule/{teacherId}
+API -> Handler: Handle(GetVisitScheduleQuery)
+Handler -> EventStore: session.LoadAsync<VisitSchedule>(id)
+EventStore -> DB: SELECT (JSONB)
+DB --> EventStore: VisitSchedule document
+EventStore --> Handler: VisitSchedule
+Handler --> API: VisitScheduleDTO
+API --> UI: Ziyaret programı
+UI --> Teacher: Günün ziyaret programı gösterilir
+
+' Ziyaret raporu doldurma
+Teacher -> UI: Ziyaret raporunu doldur
+UI -> API: POST /api/coordination/visits
+API -> Handler: Handle(CompleteVisit command)
+Handler -> EventStore: session.Events.Append(streamId, VisitCompleted)
+EventStore -> DB: INSERT event
+DB --> EventStore: Success
+
+' Cascading message
+Handler --> API: VisitCompleted (cascading)
+API --> UI: Success
+UI --> Teacher: "Ziyaret raporu kaydedildi" mesajı
+
+' Asenkron event dağıtımı
+Handler -> MessageBroker: PublishAsync<VisitCompleted>
+MessageBroker ->> InternshipHandler: Handle(VisitCompleted)
+MessageBroker ->> ReportingHandler: Handle(VisitCompleted)
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+
+  Hybrid Storage:
+  - VisitSchedule → Document (Marten JSONB)
+  - VisitReport → Event Sourcing
+end note
+
+@enduml

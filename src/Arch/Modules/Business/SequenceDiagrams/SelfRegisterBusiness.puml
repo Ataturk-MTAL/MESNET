@@ -1,0 +1,90 @@
+@startuml BRASequenceDiagram
+autonumber
+
+actor "İşletme Yetkilisi" as BusRep
+actor "Kurum Yönetimi" as InstAdmin
+participant "Web UI" as UI
+participant "MESNET.Business.Api\nBusinessEndpoints" as API
+participant "MESNET.Business.Application\nHandlers" as Handler #LightBlue
+participant "Marten\nIDocumentSession" as Marten #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+database "business schema" as DB
+
+== 1. İşletme Kendi Kaydını Açma ==
+
+BusRep -> UI: İşletme kayıt formunu doldur
+UI -> API: POST /api/business/self-register
+API -> Handler: Handle(SelfRegisterBusiness command)
+Handler -> Marten: session.Store(business)\n(status = ONAY_BEKLIYOR)
+Marten -> DB: INSERT (JSONB)
+DB --> Marten: Success
+
+Handler --> API: BusinessApprovalRequested (cascading)
+API --> UI: Success
+UI --> BusRep: "Kaydınız alındı.\nKurum onayı bekleniyor."
+
+Handler -> MessageBroker: PublishAsync<BusinessApprovalRequested>
+
+note right of Handler
+  İşletme kendi kaydını açtığında:
+  - Status = ONAY_BEKLIYOR
+  - Sisteme üye olamaz (login yapamaz)
+  - Kurum onaylamadan aktif olmaz
+end note
+
+== 2. Kurum Bilgilendirilir ==
+
+MessageBroker ->> InstAdmin: Bildirim: "Yeni işletme kaydı onay bekliyor"
+
+== 3a. Kurum Onaylarsa ==
+
+InstAdmin -> UI: İşletme kaydını incele ve onayla
+UI -> API: POST /api/business/{id}/approve
+API -> Handler: Handle(ApproveBusiness command)
+Handler -> Marten: business.Status = AKTİF\nsession.Store(business)
+Marten -> DB: UPDATE (JSONB)
+DB --> Marten: Success
+
+Handler --> API: BusinessApproved (cascading)
+API --> UI: Success
+UI --> InstAdmin: "İşletme kaydı onaylandı"
+
+Handler -> MessageBroker: PublishAsync<BusinessApproved>
+
+note right of Handler
+  Onay sonrası:
+  - Status = AKTİF
+  - İşletme sisteme giriş yapabilir
+  - Stajyer kabul edebilir
+  - Tüm durum geçişleri event sourcing
+    ile kayıt altında
+end note
+
+== 3b. Kurum Reddederse ==
+
+InstAdmin -> UI: İşletme kaydını incele ve reddet
+UI -> API: POST /api/business/{id}/reject
+API -> Handler: Handle(RejectBusiness command)
+Handler -> Marten: business.Status = REDDEDİLDİ\nsession.Store(business)
+Marten -> DB: UPDATE (JSONB)
+DB --> Marten: Success
+
+Handler --> API: BusinessRejected (cascading)
+API --> UI: Success
+UI --> InstAdmin: "İşletme kaydı reddedildi"
+
+Handler -> MessageBroker: PublishAsync<BusinessRejected>
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+  - Durable Local Queues
+
+  Hybrid Storage:
+  - İşletme bilgileri → Document (JSONB)
+  - Durum geçişleri → Event Sourcing
+  - Geçmiş veriler kaybolmaz
+end note
+
+@enduml

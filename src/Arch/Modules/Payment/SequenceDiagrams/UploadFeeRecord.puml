@@ -1,0 +1,43 @@
+@startuml UFRSequenceDiagram
+autonumber
+
+actor "İşletme Yetkilisi" as BusRep
+participant "Web UI" as UI
+participant "MESNET.Payment.Api\nPaymentEndpoints" as API
+participant "MESNET.Payment.Application\nUploadReceiptHandler" as Handler #LightBlue
+participant "Marten\nIEventStore" as EventStore #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nReporting.Application" as ReportingHandler #LightBlue
+database "payment schema" as DB
+
+BusRep -> UI: Dekont yükle
+UI -> API: POST /api/payment/receipts
+API -> Handler: Handle(UploadReceipt command)
+
+Handler -> EventStore: session.Events.Append(streamId, ReceiptUploaded)
+EventStore -> DB: INSERT event
+DB --> EventStore: Success
+
+' Cascading message
+Handler --> API: ReceiptUploaded (cascading)
+API --> UI: Success
+UI --> BusRep: "Dekont başarıyla yüklendi" mesajı
+
+' Asenkron event dağıtımı
+Handler -> MessageBroker: PublishAsync<ReceiptUploaded>
+MessageBroker ->> ReportingHandler: Handle(ReceiptUploaded)
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+  - Durable Local Queues
+
+  Onay zinciri:
+  1. İşletme yükler (ReceiptUploaded)
+  2. Öğretmen onaylar (ReceiptApprovedByTeacher)
+  3. Kurum onaylar (ReceiptApprovedByInstitution)
+  4. Öğrenci onaylar (SalaryConfirmedByStudent)
+end note
+
+@enduml

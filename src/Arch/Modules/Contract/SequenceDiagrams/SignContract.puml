@@ -1,0 +1,104 @@
+@startuml CSFSequenceDiagram
+autonumber
+
+actor "Kurum Yönetimi" as InstAdmin
+actor "İşletme Yetkilisi" as BusRep
+actor "Stajyer Öğrenci" as Student
+participant "Web UI" as UI
+participant "MESNET.Contract.Api\nContractEndpoints" as API
+participant "MESNET.Contract.Application\nHandlers" as Handler #LightBlue
+participant "Marten\nIDocumentSession" as EventStore #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nInternship.Application" as InternshipHandler #LightBlue
+database "contract schema" as DB
+
+== 1. Sözleşme Oluşturma ==
+
+InstAdmin -> UI: Sözleşme oluştur\n(öğrenci, işletme, tarihler)
+UI -> API: POST /api/contract
+API -> Handler: Handle(CreateContract command)
+Handler -> EventStore: session.Events.Append(streamId, ContractCreated)
+EventStore -> DB: INSERT event
+DB --> EventStore: Success
+Handler --> API: ContractCreated (cascading)
+API --> UI: Success
+UI --> InstAdmin: "Sözleşme taslak olarak oluşturuldu"
+
+Handler -> MessageBroker: PublishAsync<ContractCreated>
+
+== 2. Kurum İmzası ==
+
+InstAdmin -> UI: Sözleşmeyi imzala
+UI -> API: POST /api/contract/{id}/sign
+API -> Handler: Handle(SignContract {Party: Institution})
+Handler -> EventStore: session.Events.Append(streamId,\nContractSignedByInstitution)
+EventStore -> DB: INSERT event
+DB --> EventStore: Success
+Handler --> API: ContractSignedByInstitution (cascading)
+API --> UI: Success
+UI --> InstAdmin: "Kurum imzası tamamlandı"
+
+Handler -> MessageBroker: PublishAsync<ContractSignedByInstitution>
+
+== 3. İşletme İmzası ==
+
+BusRep -> UI: Sözleşmeyi imzala
+UI -> API: POST /api/contract/{id}/sign
+API -> Handler: Handle(SignContract {Party: Business})
+Handler -> EventStore: session.Events.Append(streamId,\nContractSignedByBusiness)
+EventStore -> DB: INSERT event
+DB --> EventStore: Success
+Handler --> API: ContractSignedByBusiness (cascading)
+API --> UI: Success
+UI --> BusRep: "İşletme imzası tamamlandı"
+
+Handler -> MessageBroker: PublishAsync<ContractSignedByBusiness>
+
+== 4. Öğrenci/Veli İmzası ==
+
+Student -> UI: Sözleşmeyi imzala
+UI -> API: POST /api/contract/{id}/sign
+API -> Handler: Handle(SignContract {Party: Student})
+Handler -> EventStore: session.Events.Append(streamId,\nContractSignedByStudent)
+EventStore -> DB: INSERT event
+DB --> EventStore: Success
+Handler --> API: ContractSignedByStudent (cascading)
+API --> UI: Success
+UI --> Student: "Öğrenci imzası tamamlandı"
+
+Handler -> MessageBroker: PublishAsync<ContractSignedByStudent>
+
+== 5. Sözleşme Aktivasyonu ==
+
+InstAdmin -> UI: Tüm imzalar tamam,\nsözleşmeyi aktifleştir
+UI -> API: POST /api/contract/{id}/activate
+API -> Handler: Handle(ActivateContract command)
+Handler -> EventStore: session.Events.Append(streamId,\nContractActivated)
+EventStore -> DB: INSERT event
+DB --> EventStore: Success
+Handler --> API: ContractActivated (cascading)
+API --> UI: Success
+UI --> InstAdmin: "Sözleşme aktifleştirildi"
+
+Handler -> MessageBroker: PublishAsync<ContractActivated>
+MessageBroker ->> InternshipHandler: Handle(ContractActivated)
+
+note right of InternshipHandler
+  Internship Saga bu event'i dinler:
+  - Stajı "Aktif" olarak işaretler
+  - Devamsızlık ve maaş takibi başlar
+end note
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+
+  Event Sourcing:
+  - Her durum geçişi ayrı event
+  - İmza sırası zorunlu değil
+  - Aktivasyon için 3 imza gerekli
+  - Tüm geçmişi audit trail olarak saklar
+end note
+
+@enduml

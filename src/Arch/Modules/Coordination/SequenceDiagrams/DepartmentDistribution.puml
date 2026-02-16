@@ -1,0 +1,106 @@
+@startuml CDDSequenceDiagram
+autonumber
+
+actor "Alan Şefi" as DeptHead
+actor "Müdür" as Principal
+participant "Web UI" as UI
+participant "MESNET.Coordination.Api\nCoordinationEndpoints" as API
+participant "MESNET.Coordination.Application\nCreateDepartmentDistributionHandler" as CreateHandler #LightBlue
+participant "MESNET.Coordination.Application\nCalculateWorkloadHandler" as WorkloadHandler #LightBlue
+participant "MESNET.Coordination.Application\nApproveDepartmentDistributionHandler" as ApproveHandler #LightBlue
+participant "Marten\nIDocumentSession" as DocSession #LightGreen
+participant "Marten\nIEventStore" as EventStore #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nReporting.Application" as ReportingHandler #LightBlue
+database "coordination schema" as DB
+
+' 1. Alan şefi öğretmen ders programlarını ve boş saatleri görüntüler
+DeptHead -> UI: Dağıtım ekranını aç
+UI -> API: GET /api/coordination/schedule/{teacherId}
+API -> DocSession: session.LoadAsync<TeacherSchedule>(teacherId)
+DocSession -> DB: SELECT (JSONB)
+DB --> DocSession: TeacherSchedule documents
+DocSession --> API: Öğretmen ders programları
+API --> UI: Öğretmenlerin boş saatleri listelenir
+UI --> DeptHead: Boş saat tablosu gösterilir
+
+' 2. İş yükü hesaplama
+DeptHead -> UI: Öğretmen seçip iş yükü hesapla
+UI -> API: GET /api/coordination/workload/{teacherId}
+API -> WorkloadHandler: Handle(CalculateWorkload query)
+WorkloadHandler -> DocSession: TeacherSchedule + WorkloadConfig yükle
+DocSession -> DB: SELECT (JSONB)
+DB --> DocSession: Schedule + Config
+WorkloadHandler -> WorkloadHandler: Formül hesapla:\nKullanılabilir = Azami - ŞeflikIndirimi\nKullanılan = Σ(AtananSaatler)\nKalan = Kullanılabilir - Kullanılan
+WorkloadHandler --> API: TeacherWorkloadCalculated
+API --> UI: İş yükü sonuçları
+UI --> DeptHead: Kullanılabilir/kullanılan/kalan saat gösterilir
+
+' 3. Alan şefi atamaları yapar
+DeptHead -> UI: İşletmeleri öğretmenlere dağıt
+note right of UI
+  Her atama için:
+  - Mesafe kontrolü (MaxDistanceKm)
+  - Ek ders sınırı kontrolü
+  - Boş saat uyumu kontrolü
+end note
+UI -> UI: Client-side validasyon\n(mesafe, saat sınırı)
+
+' 4. Zümre karar tutanağı eklenir
+DeptHead -> UI: Zümre karar tutanağı notunu ekle
+UI -> UI: CommitteeDecisionNotes alanı doldurulur
+
+' 5. Dağıtım oluşturulur
+DeptHead -> UI: Dağıtımı kaydet
+UI -> API: POST /api/coordination/distributions
+API -> CreateHandler: Handle(CreateDepartmentDistribution command)
+CreateHandler -> CreateHandler: Validasyon:\n- Tüm atamalar ek ders sınırı içinde mi?\n- Mesafe limiti aşılıyor mu?\n- Boş saat uyumu var mı?
+CreateHandler -> EventStore: session.Events.StartStream(DepartmentDistributionCreated)
+EventStore -> DB: INSERT event
+DB --> EventStore: Success
+CreateHandler --> API: DepartmentDistributionCreated (cascading)
+API --> UI: Success
+UI --> DeptHead: "Dağıtım kaydedildi, müdür onayı bekleniyor"
+
+' 6. Müdüre onay gönderilir
+CreateHandler -> MessageBroker: PublishAsync<DepartmentDistributionCreated>
+
+' 7. Müdür onay/red
+Principal -> UI: Dağıtım onay ekranını aç
+UI -> API: Dağıtım detaylarını getir
+API --> UI: DepartmentDistribution + Assignments
+UI --> Principal: Dağıtım detayları gösterilir
+
+alt Müdür onaylarsa
+    Principal -> UI: Onayla
+    UI -> API: POST /api/coordination/distributions/approve
+    API -> ApproveHandler: Handle(ApproveDepartmentDistribution command)
+    ApproveHandler -> EventStore: session.Events.Append(streamId, DepartmentDistributionApprovedByPrincipal)
+    EventStore -> DB: INSERT event
+    DB --> EventStore: Success
+    ApproveHandler --> API: DepartmentDistributionApprovedByPrincipal (cascading)
+    API --> UI: Success
+    UI --> Principal: "Dağıtım onaylandı"
+
+    ' Asenkron event dağıtımı
+    ApproveHandler -> MessageBroker: PublishAsync<DepartmentDistributionApprovedByPrincipal>
+    MessageBroker ->> ReportingHandler: Handle(DepartmentDistributionApprovedByPrincipal)
+else Müdür reddederse
+    Principal -> UI: Reddet (gerekçe gir)
+    UI -> API: POST /api/coordination/distributions/reject
+    API -> EventStore: DepartmentDistributionRejected event
+    EventStore -> DB: INSERT event
+    API --> UI: Success
+    UI --> Principal: "Dağıtım reddedildi"
+end
+
+note right of EventStore
+  DepartmentDistribution Event Sourcing:
+  - Tüm dağıtım kararları audit trail
+  - Zümre karar tutanağı saklanır
+  - Müdür onay/red gerekçesi saklanır
+  - Status geçişleri: TASLAK → ZÜMRE_KARARI_ALINDI
+    → MÜDÜR_ONAY_BEKLİYOR → ONAYLANDI/REDDEDİLDİ
+end note
+
+@enduml

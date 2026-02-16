@@ -1,0 +1,50 @@
+@startuml EBISequenceDiagram
+autonumber
+
+actor "İşletme Yetkilisi" as BusRep
+participant "Web UI" as UI
+participant "MESNET.Business.Api\nBusinessEndpoints" as API
+participant "MESNET.Business.Application\nUpdateBusinessInfoHandler" as Handler #LightBlue
+participant "Marten\nIDocumentSession" as Marten #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nInstitution.Application" as InstHandler #LightBlue
+database "business schema" as DB
+
+' Mevcut bilgileri getirme (Query)
+BusRep -> UI: İş yeri bilgilerini düzenleme sayfası açılır
+UI -> API: GET /api/business/{businessId}
+API -> Handler: Handle(GetBusinessInfoQuery)
+Handler -> Marten: session.LoadAsync<Business>(id)
+Marten -> DB: SELECT (JSONB)
+DB --> Marten: Business document
+Marten --> Handler: Business entity
+Handler --> API: BusinessInfoDTO
+API --> UI: BusinessInfoDTO
+UI --> BusRep: Mevcut bilgiler gösterilir
+
+' Bilgileri güncelleme (Command)
+BusRep -> UI: Güncellenmiş bilgileri gönder
+UI -> API: PUT /api/business/{businessId}
+API -> Handler: Handle(UpdateBusinessInfo command)
+Handler -> Marten: session.Store(updatedBusiness)
+Marten -> DB: UPDATE (JSONB)
+DB --> Marten: Success
+
+' Cascading message — handler return değeri otomatik publish edilir
+Handler --> API: BusinessUpdated (cascading)
+API --> UI: Success
+UI --> BusRep: "Bilgiler güncellendi" mesajı
+
+' Asenkron event dağıtımı
+Handler -> MessageBroker: PublishAsync<BusinessUpdated>
+MessageBroker ->> InstHandler: Handle(BusinessUpdated)
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - Logging
+  - AutoApplyTransactions (Marten)
+  - Durable Local Queues
+end note
+
+@enduml

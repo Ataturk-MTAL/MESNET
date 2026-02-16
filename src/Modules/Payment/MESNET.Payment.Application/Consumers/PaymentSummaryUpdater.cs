@@ -1,0 +1,111 @@
+using Marten;
+using MESNET.Payment.Core.Entities;
+using MESNET.Payment.Core.Enums;
+using MESNET.Payment.Shared.Events;
+
+namespace MESNET.Payment.Application.Consumers;
+
+public static class PaymentSummaryUpdater
+{
+    public static void Handle(SalaryCalculated @event, IDocumentSession session)
+    {
+        var summary = new PaymentSummary
+        {
+            Id = @event.SalaryPeriodId,
+            StudentId = @event.StudentId,
+            Month = @event.Month,
+            BaseWage = @event.BaseWage,
+            DeductionAmount = @event.Deduction,
+            NetAmount = @event.NetAmount,
+            GovernmentContribution = @event.GovContribution,
+            EmployerPayment = @event.NetAmount - @event.GovContribution,
+            Phase = PaymentPhase.Calculated,
+            LastUpdated = DateTime.UtcNow
+        };
+        session.Store(summary);
+    }
+
+    public static async Task Handle(ReceiptUploadedByBusiness @event, IDocumentSession session)
+    {
+        var summary = await session.LoadAsync<PaymentSummary>(@event.SalaryPeriodId);
+        if (summary is null) return;
+
+        summary.ReceiptId = @event.ReceiptId;
+        summary.ReceiptObjectPath = @event.ObjectPath;
+        summary.UploadedByStudent = false;
+        summary.Phase = PaymentPhase.ReceiptUploaded;
+        summary.LastUpdated = DateTime.UtcNow;
+        session.Store(summary);
+    }
+
+    public static async Task Handle(ReceiptUploadedByStudent @event, IDocumentSession session)
+    {
+        var summary = await session.LoadAsync<PaymentSummary>(@event.SalaryPeriodId);
+        if (summary is null) return;
+
+        summary.ReceiptId = @event.ReceiptId;
+        summary.ReceiptObjectPath = @event.ObjectPath;
+        summary.UploadedByStudent = true;
+        summary.Phase = PaymentPhase.ReceiptUploaded;
+        summary.LastUpdated = DateTime.UtcNow;
+        session.Store(summary);
+    }
+
+    public static async Task Handle(SalaryConfirmedByStudent @event, IDocumentSession session)
+    {
+        var summary = await session.LoadAsync<PaymentSummary>(@event.SalaryPeriodId);
+        if (summary is null) return;
+
+        summary.Phase = PaymentPhase.StudentConfirmed;
+        summary.StudentConfirmedAt = @event.ConfirmedAt;
+        summary.LastUpdated = DateTime.UtcNow;
+        session.Store(summary);
+    }
+
+    public static async Task Handle(ReceiptApprovedByTeacher @event, IDocumentSession session)
+    {
+        var summary = await session.LoadAsync<PaymentSummary>(@event.SalaryPeriodId);
+        if (summary is null) return;
+
+        summary.Phase = PaymentPhase.TeacherApproved;
+        summary.TeacherApprovedAt = @event.ApprovedAt;
+        summary.LastUpdated = DateTime.UtcNow;
+        session.Store(summary);
+    }
+
+    public static async Task Handle(ReceiptApprovedByDeputy @event, IDocumentSession session)
+    {
+        var summary = await session.LoadAsync<PaymentSummary>(@event.SalaryPeriodId);
+        if (summary is null) return;
+
+        summary.Phase = PaymentPhase.DeputyApproved;
+        summary.DeputyApprovedAt = @event.ApprovedAt;
+        summary.LastUpdated = DateTime.UtcNow;
+        session.Store(summary);
+    }
+
+    public static async Task Handle(PaymentCompleted @event, IDocumentSession session)
+    {
+        var summary = await session.LoadAsync<PaymentSummary>(@event.SalaryPeriodId);
+        if (summary is null) return;
+
+        summary.Phase = PaymentPhase.Completed;
+        summary.LastUpdated = DateTime.UtcNow;
+        session.Store(summary);
+    }
+
+    public static async Task Handle(ReceiptRejected @event, IDocumentSession session)
+    {
+        var summary = await session.LoadAsync<PaymentSummary>(@event.SalaryPeriodId);
+        if (summary is null) return;
+
+        summary.Phase = PaymentPhase.Rejected;
+        summary.ReceiptId = null;
+        summary.ReceiptObjectPath = null;
+        summary.StudentConfirmedAt = null;
+        summary.TeacherApprovedAt = null;
+        summary.DeputyApprovedAt = null;
+        summary.LastUpdated = DateTime.UtcNow;
+        session.Store(summary);
+    }
+}

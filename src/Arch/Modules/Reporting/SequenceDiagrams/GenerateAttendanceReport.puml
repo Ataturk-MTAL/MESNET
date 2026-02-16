@@ -1,0 +1,71 @@
+@startuml RARSequenceDiagram
+autonumber
+
+actor "Kurum Yönetimi" as InstAdmin
+participant "Web UI" as UI
+participant "MESNET.Reporting.Api\nReportingEndpoints" as API
+participant "MESNET.Reporting.Application\nGeneratePdfReportHandler" as Handler #LightBlue
+participant "Marten\nIQuerySession" as QuerySession #LightGreen
+participant "QuestPDF\nDocument Engine" as QuestPDF #Pink
+participant "Marten\nIDocumentSession" as DocSession #LightGreen
+database "reporting schema" as DB
+
+' Denormalize veri akışı (arka plan)
+note over DB
+  Diğer modül event'leri (AttendanceMarked,
+  AttendanceVerified vb.) sürekli dinlenir
+  ve AttendanceReportView güncellenir.
+end note
+
+' Rapor sayfasını açma
+InstAdmin -> UI: Raporlar sayfasını aç
+UI -> API: GET /api/reporting/attendance?institutionId=...&month=...
+API -> Handler: Handle(GetAttendanceReportQuery)
+Handler -> QuerySession: query.Query<AttendanceReportView>()\n.Where(x => x.InstitutionId == id)
+QuerySession -> DB: SELECT (JSONB)
+DB --> QuerySession: AttendanceReportView[] documents
+QuerySession --> Handler: Denormalize rapor verisi
+Handler --> API: AttendanceReportDTO
+API --> UI: Rapor verisi (JSON)
+UI --> InstAdmin: Devamsızlık tablosu gösterilir
+
+' PDF üretimi
+InstAdmin -> UI: "PDF İndir" butonuna tıkla
+UI -> API: POST /api/reporting/generate-pdf
+API -> Handler: Handle(GeneratePdfReport command)
+Handler -> QuerySession: query.Query<AttendanceReportView>()
+QuerySession -> DB: SELECT (JSONB)
+DB --> QuerySession: AttendanceReportView[] documents
+QuerySession --> Handler: Rapor verisi
+
+Handler -> QuestPDF: Document.Create(container => ...)\n.GeneratePdf(stream)
+QuestPDF --> Handler: byte[] pdfContent
+
+Handler -> DocSession: session.Store(reportRecord)
+DocSession -> DB: INSERT (JSONB)
+DB --> DocSession: Success
+
+' Cascading message
+Handler --> API: ReportGenerated (cascading)
+API --> UI: PDF dosya (binary response)
+UI --> InstAdmin: PDF indirilir
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+
+  QuestPDF kullanımı:
+  - Denormalize veriden doğrudan üretim
+  - Başka modülün DB'sine erişim YOK
+  - Tüm veri reporting schema'sında
+end note
+
+note right of QuestPDF
+  QuestPDF Document yapısı:
+  - Page header: Kurum bilgileri, tarih
+  - Table: Öğrenci listesi, devamsızlık
+  - Footer: Sayfa numarası, imza alanı
+end note
+
+@enduml

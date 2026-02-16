@@ -1,0 +1,36 @@
+@startuml AttendanceUseCasesDiagram
+title Attendance Modülü Use Cases
+left to right direction
+
+!include ../../../Actors/BusinessRepresentative.puml
+!include ../../../Actors/Teacher.puml
+!include ../../../Actors/InstitutionAdmin.puml
+!include ../../../Actors/Student.puml
+
+package Attendance {
+    usecase "AMK: Devamsızlık Kaydı Oluşturma" as AMK
+    usecase "AVR: Devamsızlık Doğrulama" as AVR
+    usecase "AHR: Sağlık Raporu İlişkilendirme" as AHR
+    usecase "ALC: Devamsızlık Limiti Kontrolü" as ALC
+    usecase "AVW: Devamsızlık Görüntüleme" as AVW
+    usecase "ARP: Devamsızlık Raporlama" as ARP
+}
+
+BusRep --> AMK
+Teacher --> AVR
+Teacher --> AVW
+InstAdmin --> ARP
+InstAdmin --> ALC
+Student --> AVW
+Student --> AHR
+
+json Notes {
+    "AMK": "İşletme yetkilisi, öğrencinin günlük\ndevamsızlık kaydını oluşturur.",
+    "AVR": "Koordinatör öğretmen, işletmenin girdiği\ndevamsızlık kaydını doğrular.",
+    "AHR": "Öğrenci, sağlık raporunu yükleyerek\ndevamsızlık kaydıyla ilişkilendirir.",
+    "ALC": "Kurum yönetimi, devamsızlık limitini\nkontrol eder. Aşımda event tetiklenir.",
+    "AVW": "Öğrenci ve öğretmen, devamsızlık\nkayıtlarını görüntüler.",
+    "ARP": "Kurum yönetimi, devamsızlık\nraporlarını oluşturur."
+}
+
+@enduml

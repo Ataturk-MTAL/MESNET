@@ -1,0 +1,128 @@
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Tenant.Api" {
+    class TenantEndpoints {
+        +[WolverineGet] GetTenant(tenantId)
+        +[WolverinePost] CreateTenant(command)
+        +[WolverinePut] UpdateTenant(command)
+        +[WolverinePost] RegisterInstitution(command)
+        +[WolverinePost] AssignInstitutionAdmin(command)
+        +[WolverinePut] UpdateSystemParameter(command)
+    }
+}
+
+package "MESNET.Tenant.Application" {
+    class CreateTenantHandler {
+        +static TenantCreated Handle(CreateTenant command, IDocumentSession session)
+    }
+
+    class UpdateTenantHandler {
+        +static TenantUpdated Handle(UpdateTenant command, IDocumentSession session)
+    }
+
+    class RegisterInstitutionHandler {
+        +static InstitutionRegistered Handle(RegisterInstitution command, IDocumentSession session)
+    }
+
+    class AssignInstitutionAdminHandler {
+        +static InstitutionAdminAssigned Handle(AssignInstitutionAdmin command, IDocumentSession session)
+    }
+
+    class UpdateSystemParameterHandler {
+        +static SystemParameterUpdated Handle(UpdateSystemParameter command, IDocumentSession session)
+    }
+}
+
+package "MESNET.Tenant.Core" {
+    class Tenant <<AggregateRoot>> {
+        +Guid Id
+        +string Name
+        +string Code
+        +TenantStatus Status
+        +DateTime CreatedAt
+        +List<InstitutionRef> Institutions
+        +List<SystemParameter> Parameters
+    }
+
+    class InstitutionRef {
+        +Guid InstitutionId
+        +string FullName
+        +int InstitutionCode
+        +bool IsActive
+        +DateTime RegisteredAt
+    }
+
+    class SystemParameter <<Value Object>> {
+        +string Key
+        +string Value
+        +DateTime UpdatedAt
+        +string UpdatedBy
+    }
+
+    enum TenantStatus <<Enum>> {
+        #AKTIF
+        #PASIF
+    }
+}
+
+package "MESNET.Tenant.Shared" {
+    class TenantCreated {
+        +Guid TenantId
+        +string Name
+    }
+
+    class TenantUpdated {
+        +Guid TenantId
+        +string Name
+    }
+
+    class InstitutionRegistered {
+        +Guid TenantId
+        +Guid InstitutionId
+        +string FullName
+        +int InstitutionCode
+    }
+
+    class InstitutionAdminAssigned {
+        +Guid TenantId
+        +Guid InstitutionId
+        +string KeycloakUserId
+    }
+
+    class SystemParameterUpdated {
+        +Guid TenantId
+        +string Key
+        +string Value
+    }
+}
+
+package "MESNET.Tenant.Persistence" {
+    class TenantMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: tenant\nMarten Document Storage\nJSONB serialization" as PersistenceNote
+    TenantMartenConfig .. PersistenceNote
+}
+
+' Domain Relationships
+Tenant --> InstitutionRef : has many
+Tenant --> SystemParameter : has many
+Tenant --> TenantStatus : enum
+
+' API -> Handler
+TenantEndpoints --> CreateTenantHandler : Wolverine InvokeAsync
+TenantEndpoints --> UpdateTenantHandler : Wolverine InvokeAsync
+TenantEndpoints --> RegisterInstitutionHandler : Wolverine InvokeAsync
+TenantEndpoints --> AssignInstitutionAdminHandler : Wolverine InvokeAsync
+TenantEndpoints --> UpdateSystemParameterHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading)
+CreateTenantHandler --> TenantCreated : returns (cascading)
+UpdateTenantHandler --> TenantUpdated : returns (cascading)
+RegisterInstitutionHandler --> InstitutionRegistered : returns (cascading)
+AssignInstitutionAdminHandler --> InstitutionAdminAssigned : returns (cascading)
+UpdateSystemParameterHandler --> SystemParameterUpdated : returns (cascading)
+
+@enduml

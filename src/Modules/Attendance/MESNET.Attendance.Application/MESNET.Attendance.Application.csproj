@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="WolverineFx.Marten" />
+    <PackageReference Include="Marten" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../MESNET.Attendance.Core/MESNET.Attendance.Core.csproj" />
+    <ProjectReference Include="../MESNET.Attendance.Shared/MESNET.Attendance.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

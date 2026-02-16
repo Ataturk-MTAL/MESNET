@@ -1,0 +1,5 @@
+@startuml DeptHeadDiagram
+'https://plantuml.com/use-case-diagram
+
+:Alan Şefi: as DeptHead
+@enduml
