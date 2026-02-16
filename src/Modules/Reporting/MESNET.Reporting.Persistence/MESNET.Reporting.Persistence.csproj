@@ -1,2 +1,2 @@
 <Project Sdk="Microsoft.NET.Sdk">
-</Project>
+<ItemGroup><PackageReference Include="Marten" /></ItemGroup></Project>

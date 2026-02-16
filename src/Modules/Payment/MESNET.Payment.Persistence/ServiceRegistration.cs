@@ -1,15 +1,15 @@
 using Marten;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MESNET.Coordination.Persistence;
+namespace MESNET.Payment.Persistence;
 
 public static class ServiceRegistration
 {
-    public static IServiceCollection AddCoordinationPersistence(this IServiceCollection services)
+    public static IServiceCollection AddPaymentPersistence(this IServiceCollection services)
     {
         services.ConfigureMarten(opts =>
         {
-            opts.ConfigureCoordinationSchema();
+            opts.ConfigurePaymentSchema();
         });
         return services;
     }

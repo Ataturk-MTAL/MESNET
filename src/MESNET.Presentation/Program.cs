@@ -1,8 +1,16 @@
 using JasperFx;
 using JasperFx.Events.Daemon;
 using Marten;
+using MESNET.Attendance.Persistence;
+using MESNET.Business.Persistence;
+using MESNET.Contract.Persistence;
 using MESNET.Coordination.Persistence;
+using MESNET.Enrollment.Persistence;
+using MESNET.Institution.Persistence;
 using MESNET.Institution.Persistence.SeedData;
+using MESNET.Internship.Persistence;
+using MESNET.Payment.Persistence;
+using MESNET.Reporting.Persistence;
 using Scalar.AspNetCore;
 using Serilog;
 using Wolverine;
@@ -52,8 +60,18 @@ try
     .IntegrateWithWolverine()
     .AddAsyncDaemon(DaemonMode.HotCold);
 
-    // Modül Persistence Registrations (Her modül kendi schema'sını kaydeder)
+    // ────────────────────────────────────────────────────────────────────────────────
+    // Modül Registrations (Her modül kendi servislerini kaydeder)
+    // ────────────────────────────────────────────────────────────────────────────────
+    builder.Services.AddInstitutionPersistence();
+    builder.Services.AddBusinessPersistence();
+    builder.Services.AddEnrollmentPersistence();
+    builder.Services.AddContractPersistence();
+    builder.Services.AddAttendancePersistence();
+    builder.Services.AddPaymentPersistence();
     builder.Services.AddCoordinationPersistence();
+    builder.Services.AddInternshipPersistence();
+    builder.Services.AddReportingPersistence();
 
     // Keycloak Authentication (disabled in dev until realm is configured)
     // builder.Services
