@@ -5,6 +5,7 @@ using MESNET.Payment.Application.Errors;
 using MESNET.Payment.Application.Extensions;
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.Enums;
+using MESNET.Payment.Shared.Events;
 using Microsoft.AspNetCore.Http;
 using Wolverine;
 using Wolverine.Http;
@@ -133,7 +134,7 @@ public static class PaymentEndpoints
             year,
             receiptFile);
 
-        var result = await bus.InvokeAsync<Result<MESNET.Payment.Shared.Events.ReceiptUploadedByBusiness>>(command);
+        var result = await bus.InvokeAsync<Result<ReceiptUploadedByBusiness>>(command);
 
         if (result.IsFailure)
         {
@@ -203,7 +204,7 @@ public static class PaymentEndpoints
             year,
             receiptFile);
 
-        var result = await bus.InvokeAsync<Result<MESNET.Payment.Shared.Events.ReceiptUploadedByStudent>>(command);
+        var result = await bus.InvokeAsync<Result<ReceiptUploadedByStudent>>(command);
 
         if (result.IsFailure)
         {
@@ -226,20 +227,20 @@ public static class PaymentEndpoints
     public static async Task<IResult> PostConfirm(
         Guid id, ConfirmSalary command, IMessageBus bus)
     {
-        try
-        {
-            await bus.InvokeAsync(command with { SalaryPeriodId = id });
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Öğrenci maaşı aldığını onayladı.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
+        var result = await bus.InvokeAsync<Result<SalaryConfirmedByStudent>>(
+            command with { SalaryPeriodId = id });
+
+        if (result.IsFailure)
         {
             return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(ex.Message)
-                .AddErrors(PaymentErrors.OperationFailed("ConfirmSalary", ex.Message))
+                .AddMessage(result.Error.Description)
+                .AddErrors(result.Error)
                 .Build());
         }
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Öğrenci maaşı aldığını onayladı.")
+            .Build());
     }
 
     // ────────────────────────────────────────────────────────────────────────────────
@@ -249,20 +250,20 @@ public static class PaymentEndpoints
     public static async Task<IResult> PostApproveTeacher(
         Guid id, ApproveReceiptByTeacher command, IMessageBus bus)
     {
-        try
-        {
-            await bus.InvokeAsync(command with { SalaryPeriodId = id });
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Koordinatör öğretmen dekontu onayladı.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
+        var result = await bus.InvokeAsync<Result<ReceiptApprovedByTeacher>>(
+            command with { SalaryPeriodId = id });
+
+        if (result.IsFailure)
         {
             return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(ex.Message)
-                .AddErrors(PaymentErrors.ApprovalRequired("Öğrenci onayı"))
+                .AddMessage(result.Error.Description)
+                .AddErrors(result.Error)
                 .Build());
         }
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Koordinatör öğretmen dekontu onayladı.")
+            .Build());
     }
 
     // ────────────────────────────────────────────────────────────────────────────────
@@ -272,20 +273,20 @@ public static class PaymentEndpoints
     public static async Task<IResult> PostApproveDeputy(
         Guid id, ApproveReceiptByDeputy command, IMessageBus bus)
     {
-        try
-        {
-            await bus.InvokeAsync(command with { SalaryPeriodId = id });
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Müdür yardımcısı dekontu onayladı. Ödeme tamamlandı.")
-                .Build());
-        }
-        catch (InvalidOperationException ex)
+        var result = await bus.InvokeAsync<Result<ReceiptApprovedByDeputy>>(
+            command with { SalaryPeriodId = id });
+
+        if (result.IsFailure)
         {
             return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(ex.Message)
-                .AddErrors(PaymentErrors.ApprovalRequired("Öğrenci ve öğretmen onayı"))
+                .AddMessage(result.Error.Description)
+                .AddErrors(result.Error)
                 .Build());
         }
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Müdür yardımcısı dekontu onayladı. Ödeme tamamlandı.")
+            .Build());
     }
 
     // ────────────────────────────────────────────────────────────────────────────────
@@ -295,20 +296,20 @@ public static class PaymentEndpoints
     public static async Task<IResult> PostReject(
         Guid id, RejectReceipt command, IMessageBus bus)
     {
-        try
-        {
-            await bus.InvokeAsync(command with { SalaryPeriodId = id });
-            return Results.Ok(ResponseBuilder.Success()
-                .AddMessage("Dekont reddedildi.")
-                .Build());
-        }
-        catch (Exception ex)
+        var result = await bus.InvokeAsync<Result<ReceiptRejected>>(
+            command with { SalaryPeriodId = id });
+
+        if (result.IsFailure)
         {
             return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(PaymentErrors.OperationFailed("RejectReceipt", ex.Message).Description)
-                .AddErrors(PaymentErrors.OperationFailed("RejectReceipt", ex.Message))
+                .AddMessage(result.Error.Description)
+                .AddErrors(result.Error)
                 .Build());
         }
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Dekont reddedildi.")
+            .Build());
     }
 
     // ────────────────────────────────────────────────────────────────────────────────
@@ -318,44 +319,34 @@ public static class PaymentEndpoints
     public static async Task<IResult> PutMinimumWage(
         UpdateMinimumWage command, IDocumentSession session)
     {
-        try
+        // Önceki config'i expire et
+        var currentConfig = session.Query<SalaryCalculationConfig>()
+            .Where(c => c.InstitutionId == command.InstitutionId)
+            .Where(c => c.EffectiveTo == null)
+            .FirstOrDefault();
+
+        if (currentConfig is not null)
         {
-            // Önceki config'i expire et
-            var currentConfig = session.Query<SalaryCalculationConfig>()
-                .Where(c => c.InstitutionId == command.InstitutionId)
-                .Where(c => c.EffectiveTo == null)
-                .FirstOrDefault();
-
-            if (currentConfig is not null)
-            {
-                currentConfig.EffectiveTo = command.EffectiveFrom.AddDays(-1);
-                session.Store(currentConfig);
-            }
-
-            // Yeni config oluştur
-            var newConfig = new SalaryCalculationConfig
-            {
-                Id = Guid.NewGuid(),
-                InstitutionId = command.InstitutionId,
-                MinimumWage = command.NewMinimumWage,
-                EffectiveFrom = command.EffectiveFrom,
-                UpdatedBy = command.UpdatedBy
-            };
-            session.Store(newConfig);
-
-            await session.SaveChangesAsync();
-
-            return Results.Ok(ResponseBuilder.Success()
-                .AddData(new { configId = newConfig.Id })
-                .AddMessage("Asgari ücret güncellendi.")
-                .Build());
+            currentConfig.EffectiveTo = command.EffectiveFrom.AddDays(-1);
+            session.Store(currentConfig);
         }
-        catch (Exception ex)
+
+        // Yeni config oluştur
+        var newConfig = new SalaryCalculationConfig
         {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(PaymentErrors.OperationFailed("UpdateMinimumWage", ex.Message).Description)
-                .AddErrors(PaymentErrors.OperationFailed("UpdateMinimumWage", ex.Message))
-                .Build());
-        }
+            Id = Guid.NewGuid(),
+            InstitutionId = command.InstitutionId,
+            MinimumWage = command.NewMinimumWage,
+            EffectiveFrom = command.EffectiveFrom,
+            UpdatedBy = command.UpdatedBy
+        };
+        session.Store(newConfig);
+
+        await session.SaveChangesAsync();
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(new { configId = newConfig.Id })
+            .AddMessage("Asgari ücret güncellendi.")
+            .Build());
     }
 }
