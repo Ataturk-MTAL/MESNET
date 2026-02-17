@@ -8,5 +8,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../MESNET.Institution.Application/MESNET.Institution.Application.csproj" />
+    <ProjectReference Include="../MESNET.Institution.Persistence/MESNET.Institution.Persistence.csproj" />
   </ItemGroup>
 </Project>

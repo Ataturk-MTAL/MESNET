@@ -1,5 +1,5 @@
 using Marten;
-using MESNET.Enrollment.Application.ReadModels;
+using MESNET.Enrollment.Core.ReadModels;
 using MESNET.Enrollment.Core.Entities;
 
 namespace MESNET.Enrollment.Persistence;

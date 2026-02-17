@@ -1,5 +1,4 @@
 using Marten;
-using MESNET.Payment.Application.Sagas;
 using MESNET.Payment.Core.Entities;
 
 namespace MESNET.Payment.Persistence;
@@ -8,9 +7,6 @@ public class PaymentMartenConfig : IConfigureMarten
 {
     public void Configure(IServiceProvider services, StoreOptions options)
     {
-        // PaymentSaga — Wolverine otomatik yönetir, sadece schema belirt
-        options.Schema.For<PaymentSaga>().DatabaseSchemaName("payment");
-
         // SalaryCalculationConfig — institution başına parametreler
         options.Schema.For<SalaryCalculationConfig>().DatabaseSchemaName("payment");
         options.Schema.For<SalaryCalculationConfig>().Index(x => x.InstitutionId);

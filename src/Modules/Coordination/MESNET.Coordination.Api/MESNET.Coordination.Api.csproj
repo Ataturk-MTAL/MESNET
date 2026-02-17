@@ -5,6 +5,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../MESNET.Coordination.Application/MESNET.Coordination.Application.csproj" />
+    <ProjectReference Include="../MESNET.Coordination.Persistence/MESNET.Coordination.Persistence.csproj" />
     <ProjectReference Include="../../../MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
   </ItemGroup>
 </Project>

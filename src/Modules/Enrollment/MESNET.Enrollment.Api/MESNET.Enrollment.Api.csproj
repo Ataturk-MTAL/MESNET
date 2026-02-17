@@ -7,5 +7,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../MESNET.Enrollment.Application/MESNET.Enrollment.Application.csproj" />
+    <ProjectReference Include="../MESNET.Enrollment.Persistence/MESNET.Enrollment.Persistence.csproj" />
   </ItemGroup>
 </Project>

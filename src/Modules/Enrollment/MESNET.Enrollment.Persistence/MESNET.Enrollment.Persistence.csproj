@@ -4,6 +4,5 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../MESNET.Enrollment.Core/MESNET.Enrollment.Core.csproj" />
-    <ProjectReference Include="../MESNET.Enrollment.Application/MESNET.Enrollment.Application.csproj" />
   </ItemGroup>
 </Project>

@@ -1,21 +1,27 @@
 using JasperFx;
 using JasperFx.Events.Daemon;
 using Marten;
-using MESNET.Attendance.Persistence;
-using MESNET.Business.Persistence;
-using MESNET.Contract.Persistence;
-using MESNET.Coordination.Persistence;
-using MESNET.Enrollment.Persistence;
-using MESNET.Institution.Persistence;
+using MESNET.Attendance.Api;
+using MESNET.Business.Api;
+using MESNET.Contract.Api;
+using MESNET.Coordination.Api;
+using MESNET.Enrollment.Api;
+using MESNET.Institution.Api;
+using MESNET.Common.Infrastructure.Notifications;
 using MESNET.Institution.Persistence.SeedData;
-using MESNET.Internship.Persistence;
-using MESNET.Payment.Persistence;
-using MESNET.Reporting.Persistence;
+using MESNET.Presentation;
+using MESNET.Internship.Api;
+using MESNET.Payment.Api;
+using MESNET.Reporting.Api;
 using Scalar.AspNetCore;
 using Serilog;
 using Wolverine;
 using Wolverine.Http;
 using Wolverine.Marten;
+using Keycloak.AuthServices.Authentication;
+using Keycloak.AuthServices.Sdk;
+using MESNET.Common.Infrastructure.Security;
+using MESNET.Security.Api;
 using Wolverine.RabbitMQ;
 
 // Bootstrap logger — uygulama ayağa kalkmadan önceki loglar için
@@ -49,6 +55,9 @@ try
     // MinIO File Storage
     builder.AddMinioFileStorage();
 
+    // SSE Notification Altyapısı
+    builder.AddSseNotifications();
+
     // Marten — PostgreSQL Document DB + Event Store
     builder.Services.AddMarten(opts =>
     {
@@ -61,23 +70,33 @@ try
     .AddAsyncDaemon(DaemonMode.HotCold);
 
     // ────────────────────────────────────────────────────────────────────────────────
-    // Modül Registrations (Her modül kendi servislerini kaydeder)
+    // Modül Registrations (Her modül kendi katmanlarını kaydeder)
     // ────────────────────────────────────────────────────────────────────────────────
-    builder.Services.AddInstitutionPersistence();
-    builder.Services.AddBusinessPersistence();
-    builder.Services.AddEnrollmentPersistence();
-    builder.Services.AddContractPersistence();
-    builder.Services.AddAttendancePersistence();
-    builder.Services.AddPaymentPersistence();
-    builder.Services.AddCoordinationPersistence();
-    builder.Services.AddInternshipPersistence();
-    builder.Services.AddReportingPersistence();
+    builder.Services.AddInstitutionModule();
+    builder.Services.AddBusinessModule();
+    builder.Services.AddEnrollmentModule();
+    builder.Services.AddContractModule();
+    builder.Services.AddAttendanceModule();
+    builder.Services.AddPaymentModule();
+    builder.Services.AddCoordinationModule();
+    builder.Services.AddInternshipModule();
+    builder.Services.AddReportingModule();
+    builder.Services.AddSecurityModule();
 
-    // Keycloak Authentication (disabled in dev until realm is configured)
-    // builder.Services
-    //     .AddAuthentication()
-    //     .AddKeycloakWebApi(builder.Configuration);
-    // builder.Services.AddAuthorization();
+    // ────────────────────────────────────────────────────────────────────────────────
+    // Authentication + Authorization
+    // ────────────────────────────────────────────────────────────────────────────────
+    // 1. Keycloak JWT Bearer Authentication
+    builder.Services
+        .AddKeycloakWebApiAuthentication(builder.Configuration);
+
+    // 2. Authorization Policies + Custom Permission Handler + Claims Transformation
+    builder.Services.AddMesnetSecurity(builder.Configuration);
+
+    // 3. Keycloak Admin SDK (client credentials flow — Admin API erişimi)
+    builder.Services.AddDistributedMemoryCache();
+    builder.Services
+        .AddKeycloakAdminHttpClient(builder.Configuration);
 
     // OpenAPI
     builder.Services.AddOpenApi();
@@ -112,6 +131,12 @@ try
         {
             app.Logger.LogWarning("MinIO bucket oluşturulamadı: {Error}", bucketResult.Error.Description);
         }
+
+        var mebFormsBucketResult = await fileStorage.EnsureBucketExistsAsync("meb-forms");
+        if (mebFormsBucketResult.IsFailure)
+        {
+            app.Logger.LogWarning("MinIO meb-forms bucket oluşturulamadı: {Error}", mebFormsBucketResult.Error.Description);
+        }
     }
 
     app.UseSerilogRequestLogging();
@@ -124,10 +149,13 @@ try
         app.MapScalarApiReference();
     }
 
-    // app.UseAuthentication();
-    // app.UseAuthorization();
+    app.UseAuthentication();
+    app.UseAuthorization();
 
     app.MapWolverineEndpoints();
+
+    // SSE Notification Endpoint (Minimal API)
+    app.MapSseNotificationEndpoint();
 
     app.Run();
 }

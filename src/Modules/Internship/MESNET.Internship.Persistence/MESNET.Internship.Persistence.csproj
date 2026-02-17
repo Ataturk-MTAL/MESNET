@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../MESNET.Internship.Core/MESNET.Internship.Core.csproj" />
-    <ProjectReference Include="../MESNET.Internship.Application/MESNET.Internship.Application.csproj" />
+
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,5 @@
 using Marten;
-using MESNET.Business.Application.ReadModels;
+using MESNET.Business.Core.ReadModels;
 
 namespace MESNET.Business.Persistence;
 

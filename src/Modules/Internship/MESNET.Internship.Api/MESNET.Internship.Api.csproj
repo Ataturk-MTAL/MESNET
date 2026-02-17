@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../MESNET.Internship.Application/MESNET.Internship.Application.csproj" />
+    <ProjectReference Include="../MESNET.Internship.Persistence/MESNET.Internship.Persistence.csproj" />
   </ItemGroup>
 
 </Project>

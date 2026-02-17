@@ -1,2 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
-<ItemGroup><PackageReference Include="Marten" /></ItemGroup></Project>
+  <ItemGroup>
+    <PackageReference Include="Marten" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../MESNET.Reporting.Core/MESNET.Reporting.Core.csproj" />
+  </ItemGroup>
+</Project>

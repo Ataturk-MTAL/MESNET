@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../MESNET.Payment.Core/MESNET.Payment.Core.csproj" />
-    <ProjectReference Include="../MESNET.Payment.Application/MESNET.Payment.Application.csproj" />
+
   </ItemGroup>
 
 </Project>
