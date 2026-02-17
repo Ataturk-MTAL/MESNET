@@ -26,12 +26,20 @@
     <!-- PDF -->
     <PackageVersion Include="QuestPDF" Version="2026.2.0" />
 
+    <!-- Barcode / QR Code -->
+    <PackageVersion Include="ZXing.Net" Version="0.16.11" />
+
     <!-- MinIO (Object Storage) -->
     <PackageVersion Include="Minio" Version="6.0.4" />
 
     <!-- Auth -->
     <PackageVersion Include="Keycloak.AuthServices.Authentication" Version="2.8.0" />
     <PackageVersion Include="Keycloak.AuthServices.Authorization" Version="2.8.0" />
+    <PackageVersion Include="Keycloak.AuthServices.Sdk" Version="2.8.0" />
+    <PackageVersion Include="Duende.AccessTokenManagement" Version="4.1.1" />
+
+    <!-- Caching -->
+    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.1" />
 
     <!-- Aspire -->
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.1.1" />
