@@ -26,6 +26,10 @@ public class Business
     public Location? Location { get; set; }
     public BusinessCapacity Capacity { get; set; } = new();
     public List<BusinessRepresentative> Representatives { get; set; } = [];
+    public string? TaxNumber { get; set; }
+    public string? SgkNumber { get; set; }
+    public string? ActivityField { get; set; }
+    public MasterInstructorInfo? MasterInstructor { get; set; }
     public List<BusinessDocument> Documents { get; set; } = [];
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ApprovedAt { get; set; }

@@ -1,4 +1,4 @@
-namespace MESNET.Business.Application.ReadModels;
+namespace MESNET.Business.Core.ReadModels;
 
 public class PlacedStudentView
 {

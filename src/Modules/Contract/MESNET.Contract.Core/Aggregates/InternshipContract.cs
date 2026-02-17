@@ -16,6 +16,7 @@ public sealed record InternshipContract(
     SignatureStatus InstitutionSignature,
     SignatureStatus BusinessSignature,
     SignatureStatus StudentSignature,
+    SignatureStatus ParentSignature,
     string? TerminationReason,
     TerminationReason? TerminationReasonType,
     string? SignedDocumentUrl,
@@ -25,7 +26,7 @@ public sealed record InternshipContract(
     public static InternshipContract Create(ContractCreated e) => new(
         e.ContractId, e.StudentId, e.BusinessId, e.InstitutionId, e.TeacherId,
         ContractStatus.Draft, e.StartDate, e.EndDate,
-        SignatureStatus.Unsigned, SignatureStatus.Unsigned, SignatureStatus.Unsigned,
+        SignatureStatus.Unsigned, SignatureStatus.Unsigned, SignatureStatus.Unsigned, SignatureStatus.Unsigned,
         null, null, null, null, e.CreatedAt);
 
     public InternshipContract Apply(ContractSubmittedForSignature _)
@@ -39,6 +40,9 @@ public sealed record InternshipContract(
 
     public InternshipContract Apply(ContractSignedByStudent e)
         => this with { StudentSignature = SignatureStatus.Sign(e.SignedBy) };
+
+    public InternshipContract Apply(ContractSignedByParent e)
+        => this with { ParentSignature = SignatureStatus.Sign(e.SignedBy) };
 
     public InternshipContract Apply(ContractActivated _)
         => this with { Status = ContractStatus.Active };
@@ -67,5 +71,6 @@ public sealed record InternshipContract(
         => this with { TerminationDocumentUrl = e.ObjectPath };
 
     public bool AllSignaturesComplete
-        => InstitutionSignature.IsSigned && BusinessSignature.IsSigned && StudentSignature.IsSigned;
+        => InstitutionSignature.IsSigned && BusinessSignature.IsSigned
+           && StudentSignature.IsSigned && ParentSignature.IsSigned;
 }

@@ -1,5 +1,5 @@
 using Marten;
-using MESNET.Business.Application.ReadModels;
+using MESNET.Business.Core.ReadModels;
 using MESNET.Business.Core.ValueObjects;
 using MESNET.Business.Shared.Events;
 using MESNET.Enrollment.Shared.Events;

@@ -1,6 +1,6 @@
 using MESNET.Common.Shared;
 
-namespace MESNET.Enrollment.Application.ReadModels;
+namespace MESNET.Enrollment.Core.ReadModels;
 
 public class BusinessProfileView
 {

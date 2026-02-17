@@ -1,6 +1,6 @@
 using Marten;
 using MESNET.Enrollment.Application.Commands;
-using MESNET.Enrollment.Application.ReadModels;
+using MESNET.Enrollment.Core.ReadModels;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.Enums;
 using MESNET.Enrollment.Shared.Events;

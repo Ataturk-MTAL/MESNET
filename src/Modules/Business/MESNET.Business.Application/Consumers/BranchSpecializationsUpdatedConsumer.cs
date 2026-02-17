@@ -1,5 +1,5 @@
 using Marten;
-using MESNET.Business.Application.ReadModels;
+using MESNET.Business.Core.ReadModels;
 using MESNET.Institution.Shared.Events;
 
 namespace MESNET.Business.Application.Consumers;

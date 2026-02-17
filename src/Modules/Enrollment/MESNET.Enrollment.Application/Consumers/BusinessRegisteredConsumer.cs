@@ -1,6 +1,6 @@
 using Marten;
 using MESNET.Business.Shared.Events;
-using MESNET.Enrollment.Application.ReadModels;
+using MESNET.Enrollment.Core.ReadModels;
 
 namespace MESNET.Enrollment.Application.Consumers;
 
