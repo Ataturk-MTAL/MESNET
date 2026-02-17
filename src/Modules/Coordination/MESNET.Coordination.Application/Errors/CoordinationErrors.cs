@@ -38,4 +38,48 @@ public static class CoordinationErrors
     public static Error InvalidSlotStatus(string status) =>
         new("Coordination.InvalidSlotStatus",
             $"Geçersiz ders durumu: {status}. Geçerli değerler: Occupied, Free");
+
+    // MonthlyActivityReport
+    public static Error ReportNotFound(Guid reportId) =>
+        new("Coordination.ReportNotFound",
+            $"Aylık faaliyet raporu bulunamadı: {reportId}");
+
+    public static Error ReportNotDraft(Guid reportId) =>
+        new("Coordination.ReportNotDraft",
+            $"Rapor taslak durumunda değil, düzenlenemez: {reportId}");
+
+    public static Error ReportNotSubmitted(Guid reportId) =>
+        new("Coordination.ReportNotSubmitted",
+            $"Rapor gönderilmiş durumda değil, onaylanamaz: {reportId}");
+
+    // GuidanceVisit
+    public static Error VisitNotFound(Guid visitId) =>
+        new("Coordination.VisitNotFound",
+            $"Rehberlik ziyareti bulunamadı: {visitId}");
+
+    public static Error VisitNotDraft(Guid visitId) =>
+        new("Coordination.VisitNotDraft",
+            $"Ziyaret taslak durumunda değil, düzenlenemez: {visitId}");
+
+    public static Error VisitNotSubmitted(Guid visitId) =>
+        new("Coordination.VisitNotSubmitted",
+            $"Ziyaret gönderilmiş durumda değil, onaylanamaz: {visitId}");
+
+    // SkillExam
+    public static Error ExamNotFound(Guid examId) =>
+        new("Coordination.ExamNotFound",
+            $"Beceri sınavı bulunamadı: {examId}");
+
+    public static Error InvalidExamResult(string result) =>
+        new("Coordination.InvalidExamResult",
+            $"Geçersiz sınav sonucu: {result}. Geçerli değerler: Passed, Failed");
+
+    // BusinessEvaluation
+    public static Error EvaluationNotFound(Guid evaluationId) =>
+        new("Coordination.EvaluationNotFound",
+            $"İşletme değerlendirmesi bulunamadı: {evaluationId}");
+
+    public static Error InvalidEvaluationResult(string result) =>
+        new("Coordination.InvalidEvaluationResult",
+            $"Geçersiz değerlendirme sonucu: {result}. Geçerli değerler: Suitable, Unsuitable, Conditional");
 }
