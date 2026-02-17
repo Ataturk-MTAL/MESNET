@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="Marten" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Keycloak.AuthServices.Sdk" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../MESNET.Security.Core/MESNET.Security.Core.csproj" />
+    <ProjectReference Include="../MESNET.Security.Shared/MESNET.Security.Shared.csproj" />
+    <ProjectReference Include="../../../MESNET.Common.Infrastructure/MESNET.Common.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
