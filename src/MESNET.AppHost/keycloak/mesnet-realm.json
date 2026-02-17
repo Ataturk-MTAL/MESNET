@@ -1,0 +1,297 @@
+{
+  "realm": "mesnet",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "InstitutionManager",
+        "description": "Kurum yöneticisi (Müdür / Müdür Yardımcısı)"
+      },
+      {
+        "name": "InstitutionStaff",
+        "description": "Kurum personeli"
+      },
+      {
+        "name": "Teacher",
+        "description": "Koordinatör öğretmen"
+      },
+      {
+        "name": "Student",
+        "description": "Öğrenci"
+      },
+      {
+        "name": "DepartmentHead",
+        "description": "Alan şefi"
+      },
+      {
+        "name": "CompanyManager",
+        "description": "İşletme yetkilisi"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "mesnet-api",
+      "name": "MESNET API",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-secret",
+      "publicClient": false,
+      "bearerOnly": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "audience-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "mesnet-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "institution_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "institution_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "institution_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "business_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "business_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "business_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "student_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "student_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "student_id",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "mesnet-web",
+      "name": "MESNET Frontend",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "audience-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "mesnet-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "institution_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "institution_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "institution_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "business_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "business_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "business_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "student_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "student_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "student_id",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "Kullanıcı",
+      "email": "admin@mesnet.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["InstitutionManager"],
+      "attributes": {
+        "institution_id": ["00000000-0000-0000-0000-000000000001"]
+      }
+    },
+    {
+      "username": "teacher1",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ahmet",
+      "lastName": "Öğretmen",
+      "email": "teacher1@mesnet.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "teacher1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["Teacher"],
+      "attributes": {
+        "institution_id": ["00000000-0000-0000-0000-000000000001"]
+      }
+    },
+    {
+      "username": "student1",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Mehmet",
+      "lastName": "Öğrenci",
+      "email": "student1@mesnet.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "student1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["Student"],
+      "attributes": {
+        "institution_id": ["00000000-0000-0000-0000-000000000001"]
+      }
+    }
+  ],
+  "scopeMappings": [
+    {
+      "client": "mesnet-api",
+      "roles": [
+        "manage-users",
+        "view-users",
+        "query-users",
+        "manage-realm"
+      ]
+    }
+  ],
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "client": "mesnet-api",
+        "roles": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "manage-realm"
+        ]
+      }
+    ]
+  }
+}

@@ -7,7 +7,8 @@ var postgres = builder.AddPostgres("postgres")
 var rabbitmq = builder.AddRabbitMQ("rabbitmq")
     .WithManagementPlugin();
 
-var keycloak = builder.AddKeycloak("keycloak", port: 8080);
+var keycloak = builder.AddKeycloak("keycloak", port: 8080)
+    .WithRealmImport("./keycloak");
 
 // MinIO (S3-compatible object storage)
 var minio = builder.AddContainer("minio", "minio/minio", "latest")
