@@ -6,19 +6,34 @@ using MESNET.Payment.Application.Extensions;
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.Enums;
 using MESNET.Payment.Shared.Events;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Payment.Api;
 
 public static class PaymentEndpoints
 {
+    public static void MapPaymentEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/payments");
+
+        group.MapGet("/{id:guid}", Get);
+        group.MapGet("/", GetAll);
+        group.MapPost("/{id:guid}/upload-receipt/business", PostUploadReceiptByBusiness);
+        group.MapPost("/{id:guid}/upload-receipt/student", PostUploadReceiptByStudent);
+        group.MapPost("/{id:guid}/confirm", PostConfirm);
+        group.MapPost("/{id:guid}/approve/teacher", PostApproveTeacher);
+        group.MapPost("/{id:guid}/approve/deputy", PostApproveDeputy);
+        group.MapPost("/{id:guid}/reject", PostReject);
+        group.MapPut("/config/minimum-wage", PutMinimumWage);
+    }
+
     // ────────────────────────────────────────────────────────────────────────────────
     // GET /api/payments/{id} — PaymentSummary getir
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverineGet("/api/payments/{id}")]
-    public static async Task<IResult> Get(Guid id, IDocumentSession session)
+    private static async Task<IResult> Get(Guid id, IDocumentSession session)
     {
         var summary = await session.LoadAsync<PaymentSummary>(id);
         if (summary is null)
@@ -35,8 +50,7 @@ public static class PaymentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // GET /api/payments — Liste (filtreli)
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverineGet("/api/payments")]
-    public static async Task<IResult> GetAll(
+    private static async Task<IResult> GetAll(
         IDocumentSession session,
         Guid? studentId = null,
         Guid? businessId = null,
@@ -75,8 +89,7 @@ public static class PaymentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/payments/{id}/upload-receipt/business — İşletme dekontu yükler
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/payments/{id}/upload-receipt/business")]
-    public static async Task<IResult> PostUploadReceiptByBusiness(
+    private static async Task<IResult> PostUploadReceiptByBusiness(
         Guid id, HttpRequest request, IMessageBus bus)
     {
         // Manuel form parsing (Wolverine IFormFile binding desteklemez)
@@ -153,8 +166,7 @@ public static class PaymentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/payments/{id}/upload-receipt/student — Öğrenci dekontu yükler (fallback)
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/payments/{id}/upload-receipt/student")]
-    public static async Task<IResult> PostUploadReceiptByStudent(
+    private static async Task<IResult> PostUploadReceiptByStudent(
         Guid id, HttpRequest request, IMessageBus bus)
     {
         // Manuel form parsing (Wolverine IFormFile binding desteklemez)
@@ -223,8 +235,7 @@ public static class PaymentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/payments/{id}/confirm — Öğrenci "aldım" onayı (1. adım)
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/payments/{id}/confirm")]
-    public static async Task<IResult> PostConfirm(
+    private static async Task<IResult> PostConfirm(
         Guid id, ConfirmSalary command, IMessageBus bus)
     {
         var (result, @event) = await bus.InvokeAsync<(Result, SalaryConfirmedByStudent)>(
@@ -246,8 +257,7 @@ public static class PaymentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/payments/{id}/approve/teacher — Koordinatör öğretmen onayı (2. adım)
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/payments/{id}/approve/teacher")]
-    public static async Task<IResult> PostApproveTeacher(
+    private static async Task<IResult> PostApproveTeacher(
         Guid id, ApproveReceiptByTeacher command, IMessageBus bus)
     {
         var (result, @event) = await bus.InvokeAsync<(Result, ReceiptApprovedByTeacher)>(
@@ -269,8 +279,7 @@ public static class PaymentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/payments/{id}/approve/deputy — Müdür yardımcısı onayı (3. adım — final)
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/payments/{id}/approve/deputy")]
-    public static async Task<IResult> PostApproveDeputy(
+    private static async Task<IResult> PostApproveDeputy(
         Guid id, ApproveReceiptByDeputy command, IMessageBus bus)
     {
         var (result, @event) = await bus.InvokeAsync<(Result, ReceiptApprovedByDeputy)>(
@@ -292,8 +301,7 @@ public static class PaymentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/payments/{id}/reject — Dekont reddet
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/payments/{id}/reject")]
-    public static async Task<IResult> PostReject(
+    private static async Task<IResult> PostReject(
         Guid id, RejectReceipt command, IMessageBus bus)
     {
         var (result, @event) = await bus.InvokeAsync<(Result, ReceiptRejected)>(
@@ -315,8 +323,7 @@ public static class PaymentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // PUT /api/payments/config/minimum-wage — Asgari ücreti güncelle (admin)
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePut("/api/payments/config/minimum-wage")]
-    public static async Task<IResult> PutMinimumWage(
+    private static async Task<IResult> PutMinimumWage(
         UpdateMinimumWage command, IDocumentSession session)
     {
         // Önceki config'i expire et

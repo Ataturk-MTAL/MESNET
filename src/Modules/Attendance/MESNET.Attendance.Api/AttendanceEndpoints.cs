@@ -6,16 +6,28 @@ using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Enums;
 using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Shared;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Attendance.Api;
 
 public static class AttendanceEndpoints
 {
-    [WolverinePost("/api/attendance")]
-    public static async Task<IResult> Post(
+    public static void MapAttendanceEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/attendance");
+
+        group.MapPost("/", Post);
+        group.MapPost("/{attendanceId:guid}/verify", PostVerify);
+        group.MapPost("/{attendanceId:guid}/correct", PostCorrect);
+        group.MapPost("/{attendanceId:guid}/health-report", PostHealthReport);
+        group.MapGet("/{attendanceId:guid}", Get);
+        group.MapGet("/", GetAll);
+    }
+
+    private static async Task<IResult> Post(
         MarkAttendance command, IMessageBus bus)
     {
         var (result, @event) = await bus.InvokeAsync<(Result, AttendanceMarked)>(command);
@@ -36,8 +48,7 @@ public static class AttendanceEndpoints
                 .Build());
     }
 
-    [WolverinePost("/api/attendance/{attendanceId}/verify")]
-    public static async Task<IResult> PostVerify(
+    private static async Task<IResult> PostVerify(
         Guid attendanceId, VerifyAttendance command, IMessageBus bus)
     {
         var (result, @event) = await bus.InvokeAsync<(Result, AttendanceVerified)>(
@@ -56,8 +67,7 @@ public static class AttendanceEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/attendance/{attendanceId}/correct")]
-    public static async Task<IResult> PostCorrect(
+    private static async Task<IResult> PostCorrect(
         Guid attendanceId, CorrectAttendance command, IMessageBus bus)
     {
         var (result, @event) = await bus.InvokeAsync<(Result, AttendanceCorrected)>(
@@ -76,8 +86,7 @@ public static class AttendanceEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/attendance/{attendanceId}/health-report")]
-    public static async Task<IResult> PostHealthReport(
+    private static async Task<IResult> PostHealthReport(
         Guid attendanceId, AttachHealthReport command, IMessageBus bus)
     {
         var (result, @event) = await bus.InvokeAsync<(Result, HealthReportAttached)>(
@@ -96,8 +105,7 @@ public static class AttendanceEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/attendance/{attendanceId}")]
-    public static async Task<IResult> Get(
+    private static async Task<IResult> Get(
         Guid attendanceId, IQuerySession session)
     {
         var record = await session.Events.AggregateStreamAsync<AttendanceRecord>(attendanceId);
@@ -112,8 +120,7 @@ public static class AttendanceEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/attendance")]
-    public static async Task<IResult> GetAll(
+    private static async Task<IResult> GetAll(
         Guid? studentId, Guid? businessId, Guid? institutionId, string? status,
         IQuerySession session)
     {

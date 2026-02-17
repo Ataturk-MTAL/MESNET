@@ -1,9 +1,10 @@
 using MESNET.Business.Application.Commands;
 using MESNET.Business.Shared.Events;
 using MESNET.Common.Shared;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Business.Api;
 
@@ -12,11 +13,25 @@ namespace MESNET.Business.Api;
 /// </summary>
 public static class BusinessInstructorDocumentEndpoints
 {
+    public static IEndpointRouteBuilder MapBusinessInstructorDocumentEndpoints(this IEndpointRouteBuilder app)
+    {
+        var docGroup = app.MapGroup("/api/businesses/{businessId:guid}/instructor-document")
+            .WithTags("BusinessInstructorDocument");
+        docGroup.MapPost("/", PostUploadInstructorDocument);
+        docGroup.MapPost("/{documentId:guid}/invalidate", PostInvalidate);
+        docGroup.MapDelete("/{documentId:guid}", Delete);
+        docGroup.MapPost("/request", PostRequest);
+
+        app.MapPost("/api/businesses/{businessId:guid}/suspend", PostSuspend)
+            .WithTags("Business");
+
+        return app;
+    }
+
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/businesses/{businessId}/instructor-document — Usta öğretici belgesi yükle
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/businesses/{businessId}/instructor-document")]
-    public static async Task<IResult> PostUploadInstructorDocument(
+    private static async Task<IResult> PostUploadInstructorDocument(
         Guid businessId, HttpRequest request, IMessageBus bus)
     {
         // Manuel form parsing
@@ -76,8 +91,7 @@ public static class BusinessInstructorDocumentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/businesses/{businessId}/instructor-document/{documentId}/invalidate — Belgeyi geçersiz kıl
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/businesses/{businessId}/instructor-document/{documentId}/invalidate")]
-    public static async Task<IResult> PostInvalidate(
+    private static async Task<IResult> PostInvalidate(
         Guid businessId, Guid documentId, InvalidateInstructorDocument command, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<InstructorDocumentInvalidated>>(
@@ -99,8 +113,7 @@ public static class BusinessInstructorDocumentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // DELETE /api/businesses/{businessId}/instructor-document/{documentId} — Belgeyi sil
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverineDelete("/api/businesses/{businessId}/instructor-document/{documentId}")]
-    public static async Task<IResult> Delete(
+    private static async Task<IResult> Delete(
         Guid businessId, Guid documentId, DeleteInstructorDocument command, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<InstructorDocumentDeleted>>(
@@ -122,8 +135,7 @@ public static class BusinessInstructorDocumentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/businesses/{businessId}/instructor-document/request — Belge talebi gönder
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/businesses/{businessId}/instructor-document/request")]
-    public static async Task<IResult> PostRequest(
+    private static async Task<IResult> PostRequest(
         Guid businessId, RequestInstructorDocument command, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<InstructorDocumentRequested>>(
@@ -145,8 +157,7 @@ public static class BusinessInstructorDocumentEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/businesses/{businessId}/suspend — İşletmeyi pasife al
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/businesses/{businessId}/suspend")]
-    public static async Task<IResult> PostSuspend(
+    private static async Task<IResult> PostSuspend(
         Guid businessId, SuspendBusiness command, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<BusinessSuspended>>(

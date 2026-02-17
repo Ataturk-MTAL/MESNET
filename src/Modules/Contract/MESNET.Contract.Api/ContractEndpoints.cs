@@ -8,16 +8,34 @@ using MESNET.Contract.Application.Queries;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
 using MESNET.Contract.Shared.Events;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Contract.Api;
 
 public static class ContractEndpoints
 {
-    [WolverinePost("/api/contracts")]
-    public static async Task<IResult> Post(
+    public static void MapContractEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/contracts");
+
+        group.MapPost("/", Post);
+        group.MapPost("/{contractId:guid}/submit", PostSubmit);
+        group.MapPost("/{contractId:guid}/sign", PostSign);
+        group.MapPost("/{contractId:guid}/activate", PostActivate);
+        group.MapPost("/{contractId:guid}/suspend", PostSuspend);
+        group.MapPost("/{contractId:guid}/resume", PostResume);
+        group.MapPost("/{contractId:guid}/terminate", PostTerminate);
+        group.MapPost("/{contractId:guid}/complete", PostComplete);
+        group.MapGet("/{contractId:guid}", Get);
+        group.MapGet("/", GetAll);
+        group.MapPost("/{contractId:guid}/upload-signed", PostUploadSigned);
+        group.MapPost("/{contractId:guid}/upload-termination", PostUploadTermination);
+    }
+
+    private static async Task<IResult> Post(
         CreateContract command, IMessageBus bus)
     {
         var (result, @event) = await bus.InvokeAsync<(Result, ContractCreated)>(command);
@@ -38,8 +56,7 @@ public static class ContractEndpoints
                 .Build());
     }
 
-    [WolverinePost("/api/contracts/{contractId}/submit")]
-    public static async Task<IResult> PostSubmit(
+    private static async Task<IResult> PostSubmit(
         Guid contractId, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<ContractSubmittedForSignature>>(
@@ -58,8 +75,7 @@ public static class ContractEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/contracts/{contractId}/sign")]
-    public static async Task<IResult> PostSign(
+    private static async Task<IResult> PostSign(
         Guid contractId, SignContract command, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<object>>(command with { ContractId = contractId });
@@ -77,8 +93,7 @@ public static class ContractEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/contracts/{contractId}/activate")]
-    public static async Task<IResult> PostActivate(
+    private static async Task<IResult> PostActivate(
         Guid contractId, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<ContractActivated>>(
@@ -97,8 +112,7 @@ public static class ContractEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/contracts/{contractId}/suspend")]
-    public static async Task<IResult> PostSuspend(
+    private static async Task<IResult> PostSuspend(
         Guid contractId, SuspendContract command, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<ContractSuspended>>(
@@ -117,8 +131,7 @@ public static class ContractEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/contracts/{contractId}/resume")]
-    public static async Task<IResult> PostResume(
+    private static async Task<IResult> PostResume(
         Guid contractId, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<ContractResumed>>(
@@ -137,8 +150,7 @@ public static class ContractEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/contracts/{contractId}/terminate")]
-    public static async Task<IResult> PostTerminate(
+    private static async Task<IResult> PostTerminate(
         Guid contractId, TerminateContract command, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<ContractTerminated>>(
@@ -157,8 +169,7 @@ public static class ContractEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/contracts/{contractId}/complete")]
-    public static async Task<IResult> PostComplete(
+    private static async Task<IResult> PostComplete(
         Guid contractId, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<ContractCompleted>>(
@@ -177,8 +188,7 @@ public static class ContractEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/contracts/{contractId}")]
-    public static async Task<IResult> Get(
+    private static async Task<IResult> Get(
         Guid contractId, IQuerySession session)
     {
         var contract = await session.Events.AggregateStreamAsync<InternshipContract>(contractId);
@@ -193,8 +203,7 @@ public static class ContractEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/contracts")]
-    public static async Task<IResult> GetAll(
+    private static async Task<IResult> GetAll(
         Guid? studentId, Guid? businessId, Guid? institutionId, string? status,
         IQuerySession session)
     {
@@ -222,8 +231,7 @@ public static class ContractEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/contracts/{contractId}/upload-signed — Islak imzalı sözleşme yükle
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/contracts/{contractId}/upload-signed")]
-    public static async Task<IResult> PostUploadSigned(
+    private static async Task<IResult> PostUploadSigned(
         Guid contractId, HttpRequest request, IMessageBus bus)
     {
         // Manuel form parsing (Wolverine IFormFile binding desteklemez)
@@ -275,8 +283,7 @@ public static class ContractEndpoints
     // ────────────────────────────────────────────────────────────────────────────────
     // POST /api/contracts/{contractId}/upload-termination — Islak imzalı fesih belgesi yükle
     // ────────────────────────────────────────────────────────────────────────────────
-    [WolverinePost("/api/contracts/{contractId}/upload-termination")]
-    public static async Task<IResult> PostUploadTermination(
+    private static async Task<IResult> PostUploadTermination(
         Guid contractId, HttpRequest request, IMessageBus bus)
     {
         // Manuel form parsing (Wolverine IFormFile binding desteklemez)

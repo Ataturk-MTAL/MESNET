@@ -4,20 +4,32 @@ using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Application.Dtos;
 using MESNET.Enrollment.Application.Errors;
 using MESNET.Enrollment.Application.Extensions;
-using MESNET.Enrollment.Application.ReadModels;
+using MESNET.Enrollment.Core.ReadModels;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.Enums;
 using MESNET.Enrollment.Shared.Events;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Enrollment.Api;
 
 public static class PlacementEndpoints
 {
-    [WolverinePost("/api/placements")]
-    public static async Task<IResult> Post(
+    public static IEndpointRouteBuilder MapPlacementEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/placements");
+
+        group.MapPost("/", Post);
+        group.MapPost("/{placementId:guid}/transfer", PostTransfer);
+        group.MapGet("/{placementId:guid}", Get);
+        group.MapGet("/", GetAll);
+
+        return app;
+    }
+
+    private static async Task<IResult> Post(
         PlaceStudent command, IDocumentSession session, IMessageBus bus)
     {
         var student = await session.LoadAsync<StudentProfile>(command.StudentId);
@@ -85,8 +97,7 @@ public static class PlacementEndpoints
                 .Build());
     }
 
-    [WolverinePost("/api/placements/{placementId}/transfer")]
-    public static async Task<IResult> PostTransfer(
+    private static async Task<IResult> PostTransfer(
         Guid placementId, TransferStudent command, IDocumentSession session, IMessageBus bus)
     {
         var oldPlacement = await session.LoadAsync<InternshipPlacement>(placementId);
@@ -154,8 +165,7 @@ public static class PlacementEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/placements/{placementId}")]
-    public static async Task<IResult> Get(Guid placementId, IQuerySession session)
+    private static async Task<IResult> Get(Guid placementId, IQuerySession session)
     {
         var placement = await session.LoadAsync<InternshipPlacement>(placementId);
         if (placement is null)
@@ -169,8 +179,7 @@ public static class PlacementEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/placements")]
-    public static async Task<IResult> GetAll(
+    private static async Task<IResult> GetAll(
         Guid? businessId, Guid? studentId, string? status, IQuerySession session)
     {
         IQueryable<InternshipPlacement> queryable = session.Query<InternshipPlacement>();

@@ -5,16 +5,24 @@ using MESNET.Business.Core.Enums;
 using MESNET.Business.Core.ValueObjects;
 using MESNET.Business.Shared.Events;
 using MESNET.Common.Shared;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Business.Api;
 
 public static class BusinessDocumentEndpoints
 {
-    [WolverinePost("/api/businesses/{businessId}/documents")]
-    public static async Task<IResult> Post(
+    public static IEndpointRouteBuilder MapBusinessDocumentEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/businesses/{businessId:guid}/documents").WithTags("BusinessDocument");
+        group.MapPost("/", Post);
+        group.MapPost("/{documentId:guid}/approve", PostApprove);
+        return app;
+    }
+
+    private static async Task<IResult> Post(
         Guid businessId, UploadDocument command, IDocumentSession session, IMessageBus bus)
     {
         var business = await session.LoadAsync<Core.Entities.Business>(businessId);
@@ -46,8 +54,7 @@ public static class BusinessDocumentEndpoints
                 .Build());
     }
 
-    [WolverinePost("/api/businesses/{businessId}/documents/{documentId}/approve")]
-    public static async Task<IResult> PostApprove(
+    private static async Task<IResult> PostApprove(
         Guid businessId, Guid documentId, IDocumentSession session, IMessageBus bus)
     {
         var business = await session.LoadAsync<Core.Entities.Business>(businessId);

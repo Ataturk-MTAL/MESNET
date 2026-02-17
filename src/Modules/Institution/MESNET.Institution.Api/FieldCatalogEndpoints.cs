@@ -1,23 +1,37 @@
 using Marten;
 using MESNET.Common.Shared;
 using MESNET.Institution.Application.Commands;
-using MESNET.Institution.Application.Dtos;
 using MESNET.Institution.Application.Errors;
 using MESNET.Institution.Application.Extensions;
 using MESNET.Institution.Core.Entities;
 using MESNET.Institution.Core.Enums;
 using MESNET.Institution.Core.ValueObjects;
 using MESNET.Institution.Shared.Events;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Institution.Api;
 
 public static class FieldCatalogEndpoints
 {
-    [WolverineGet("/api/field-catalog")]
-    public static async Task<IResult> Get(
+    public static IEndpointRouteBuilder MapFieldCatalogEndpoints(this IEndpointRouteBuilder app)
+    {
+        app.MapGet("/api/field-catalog", GetFieldCatalog)
+            .WithTags("FieldCatalog");
+
+        var branches = app.MapGroup("/api/institutions/{institutionId:guid}/branches")
+            .WithTags("FieldCatalog");
+
+        branches.MapPost("/", PostBranch);
+        branches.MapDelete("/{fieldCode}", DeleteBranch);
+        branches.MapPut("/{fieldCode}/specializations", PutSpecializations);
+
+        return app;
+    }
+
+    private static async Task<IResult> GetFieldCatalog(
         string? educationType, IQuerySession session)
     {
         if (educationType is not null && EducationType.TryFromName(educationType, true, out var type))
@@ -38,8 +52,7 @@ public static class FieldCatalogEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/institutions/{institutionId}/branches")]
-    public static async Task<IResult> Post(
+    private static async Task<IResult> PostBranch(
         Guid institutionId, ActivateBranch command, IDocumentSession session, IMessageBus bus)
     {
         var institution = await session.LoadAsync<Core.Entities.Institution>(institutionId);
@@ -81,8 +94,7 @@ public static class FieldCatalogEndpoints
             .Build());
     }
 
-    [WolverineDelete("/api/institutions/{institutionId}/branches/{fieldCode}")]
-    public static async Task<IResult> Delete(
+    private static async Task<IResult> DeleteBranch(
         Guid institutionId, string fieldCode, IDocumentSession session, IMessageBus bus)
     {
         var institution = await session.LoadAsync<Core.Entities.Institution>(institutionId);
@@ -110,8 +122,7 @@ public static class FieldCatalogEndpoints
             .Build());
     }
 
-    [WolverinePut("/api/institutions/{institutionId}/branches/{fieldCode}/specializations")]
-    public static async Task<IResult> Put(
+    private static async Task<IResult> PutSpecializations(
         Guid institutionId, string fieldCode,
         UpdateBranchSpecializations command, IDocumentSession session, IMessageBus bus)
     {

@@ -7,16 +7,25 @@ using MESNET.Business.Core.Enums;
 using MESNET.Business.Core.ValueObjects;
 using MESNET.Business.Shared.Events;
 using MESNET.Common.Shared;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Business.Api;
 
 public static class BusinessQueryEndpoints
 {
-    [WolverineGet("/api/businesses")]
-    public static async Task<IResult> GetByStatus(
+    public static IEndpointRouteBuilder MapBusinessQueryEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/businesses").WithTags("BusinessQuery");
+        group.MapGet("/", GetByStatus);
+        group.MapGet("/nearby", GetNearby);
+        group.MapPut("/{businessId:guid}/capacity", PutCapacity);
+        return app;
+    }
+
+    private static async Task<IResult> GetByStatus(
         string? status, IQuerySession session)
     {
         if (status is not null && BusinessStatus.TryFromName(status, true, out var businessStatus))
@@ -36,8 +45,7 @@ public static class BusinessQueryEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/businesses/nearby")]
-    public static async Task<IResult> GetNearby(
+    private static async Task<IResult> GetNearby(
         double lat, double lng, double radius, IQuerySession session)
     {
         var allActive = await session.Query<Core.Entities.Business>()
@@ -55,8 +63,7 @@ public static class BusinessQueryEndpoints
             .Build());
     }
 
-    [WolverinePut("/api/businesses/{businessId}/capacity")]
-    public static async Task<IResult> PutCapacity(
+    private static async Task<IResult> PutCapacity(
         Guid businessId, UpdateCapacity command, IDocumentSession session, IMessageBus bus)
     {
         var business = await session.LoadAsync<Core.Entities.Business>(businessId);

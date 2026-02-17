@@ -7,16 +7,28 @@ using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.Enums;
 using MESNET.Enrollment.Shared.Events;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Enrollment.Api;
 
 public static class StudentEndpoints
 {
-    [WolverinePost("/api/students")]
-    public static async Task<IResult> Post(
+    public static IEndpointRouteBuilder MapStudentEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/students");
+
+        group.MapPost("/", Post);
+        group.MapPut("/{studentId:guid}", Put);
+        group.MapGet("/{studentId:guid}", Get);
+        group.MapGet("/", GetAll);
+
+        return app;
+    }
+
+    private static async Task<IResult> Post(
         RegisterStudent command, IDocumentSession session, IMessageBus bus)
     {
         var student = new StudentProfile
@@ -42,8 +54,7 @@ public static class StudentEndpoints
                 .Build());
     }
 
-    [WolverinePut("/api/students/{studentId}")]
-    public static async Task<IResult> Put(
+    private static async Task<IResult> Put(
         Guid studentId, UpdateStudentProfile command, IDocumentSession session)
     {
         var student = await session.LoadAsync<StudentProfile>(studentId);
@@ -65,8 +76,7 @@ public static class StudentEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/students/{studentId}")]
-    public static async Task<IResult> Get(Guid studentId, IQuerySession session)
+    private static async Task<IResult> Get(Guid studentId, IQuerySession session)
     {
         var student = await session.LoadAsync<StudentProfile>(studentId);
         if (student is null)
@@ -80,8 +90,7 @@ public static class StudentEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/students")]
-    public static async Task<IResult> GetAll(
+    private static async Task<IResult> GetAll(
         Guid? institutionId, string? branchCode, string? status, IQuerySession session)
     {
         IQueryable<StudentProfile> queryable = session.Query<StudentProfile>();

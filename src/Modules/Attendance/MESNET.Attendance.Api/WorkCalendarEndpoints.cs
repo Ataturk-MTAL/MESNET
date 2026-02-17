@@ -5,16 +5,24 @@ using MESNET.Attendance.Application.Extensions;
 using MESNET.Attendance.Core.Entities;
 using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Shared;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Attendance.Api;
 
 public static class WorkCalendarEndpoints
 {
-    [WolverinePost("/api/work-calendar")]
-    public static async Task<IResult> Post(
+    public static void MapWorkCalendarEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/work-calendar");
+
+        group.MapPost("/", Post);
+        group.MapGet("/", Get);
+    }
+
+    private static async Task<IResult> Post(
         UpdateWorkCalendar command, IMessageBus bus)
     {
         var (result, @event) = await bus.InvokeAsync<(Result, WorkCalendarUpdated)>(command);
@@ -33,8 +41,7 @@ public static class WorkCalendarEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/work-calendar")]
-    public static async Task<IResult> Get(
+    private static async Task<IResult> Get(
         Guid institutionId, int year, IQuerySession session)
     {
         var calendar = await session.Query<WorkCalendar>()

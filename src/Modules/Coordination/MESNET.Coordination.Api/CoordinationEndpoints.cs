@@ -3,16 +3,29 @@ using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Handlers;
 using MESNET.Coordination.Application.Queries;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Coordination.Api;
 
 public static class CoordinationEndpoints
 {
-    [WolverinePost("/api/coordination/teachers/{teacherId}/schedule")]
-    public static async Task<IResult> PostTeacherSchedule(
+    public static IEndpointRouteBuilder MapCoordinationEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/coordination/teachers")
+            .WithTags("Coordination");
+
+        group.MapPost("/{teacherId:guid}/schedule", PostTeacherSchedule);
+        group.MapGet("/{teacherId:guid}/schedule", GetTeacherSchedule);
+        group.MapGet("/{teacherId:guid}/free-slots", GetTeacherFreeSlots);
+        group.MapPost("/{teacherId:guid}/assign-business", PostAssignBusiness);
+
+        return app;
+    }
+
+    private static async Task<IResult> PostTeacherSchedule(
         Guid teacherId,
         UpsertTeacherSchedule command,
         IMessageBus bus)
@@ -38,8 +51,7 @@ public static class CoordinationEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/coordination/teachers/{teacherId}/schedule")]
-    public static IResult GetTeacherSchedule(
+    private static IResult GetTeacherSchedule(
         Guid teacherId,
         int year,
         string semester,
@@ -61,8 +73,7 @@ public static class CoordinationEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/coordination/teachers/{teacherId}/free-slots")]
-    public static IResult GetTeacherFreeSlots(
+    private static IResult GetTeacherFreeSlots(
         Guid teacherId,
         int year,
         string semester,
@@ -85,8 +96,7 @@ public static class CoordinationEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/coordination/teachers/{teacherId}/assign-business")]
-    public static async Task<IResult> PostAssignBusiness(
+    private static async Task<IResult> PostAssignBusiness(
         Guid teacherId,
         AssignBusinessToFreeSlot command,
         IMessageBus bus)

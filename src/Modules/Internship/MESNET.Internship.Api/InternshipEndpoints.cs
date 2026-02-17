@@ -6,16 +6,31 @@ using MESNET.Internship.Application.Extensions;
 using MESNET.Internship.Core.Entities;
 using MESNET.Internship.Core.Enums;
 using MESNET.Internship.Shared.Events;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Internship.Api;
 
 public static class InternshipEndpoints
 {
-    [WolverineGet("/api/internships/{internshipId}")]
-    public static async Task<IResult> Get(
+    public static void MapInternshipEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/internships").WithTags("Internship");
+
+        group.MapGet("/{internshipId:guid}", Get);
+        group.MapGet("/", GetAll);
+        group.MapPost("/{internshipId:guid}/terminate", PostRequestTermination);
+        group.MapPost("/{internshipId:guid}/approve/parent", PostApproveParent);
+        group.MapPost("/{internshipId:guid}/approve/teacher", PostApproveTeacher);
+        group.MapPost("/{internshipId:guid}/approve/deputy", PostApproveDeputy);
+        group.MapPost("/{internshipId:guid}/approve/director", PostApproveDirector);
+        group.MapPost("/{internshipId:guid}/approve/business", PostApproveBusinessRep);
+        group.MapPost("/{internshipId:guid}/approve/override", PostOverride);
+    }
+
+    private static async Task<IResult> Get(
         Guid internshipId, IQuerySession session)
     {
         var summary = await session.LoadAsync<InternshipSummary>(internshipId);
@@ -30,8 +45,7 @@ public static class InternshipEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/internships")]
-    public static async Task<IResult> GetAll(
+    private static async Task<IResult> GetAll(
         Guid? studentId, Guid? businessId, Guid? institutionId, string? phase,
         IQuerySession session)
     {
@@ -56,8 +70,7 @@ public static class InternshipEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/internships/{internshipId}/terminate")]
-    public static async Task<IResult> PostRequestTermination(
+    private static async Task<IResult> PostRequestTermination(
         Guid internshipId, RequestTermination command, IMessageBus bus)
     {
         var (result, @event) = await bus.InvokeAsync<(Result, InternshipTerminationRequested)>(
@@ -76,8 +89,7 @@ public static class InternshipEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/internships/{internshipId}/approve/parent")]
-    public static async Task<IResult> PostApproveParent(
+    private static async Task<IResult> PostApproveParent(
         Guid internshipId, IMessageBus bus)
     {
         await bus.InvokeAsync(new ApproveTerminationByParent(internshipId));
@@ -86,8 +98,7 @@ public static class InternshipEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/internships/{internshipId}/approve/teacher")]
-    public static async Task<IResult> PostApproveTeacher(
+    private static async Task<IResult> PostApproveTeacher(
         Guid internshipId, IMessageBus bus)
     {
         await bus.InvokeAsync(new ApproveTerminationByTeacher(internshipId));
@@ -96,8 +107,7 @@ public static class InternshipEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/internships/{internshipId}/approve/deputy")]
-    public static async Task<IResult> PostApproveDeputy(
+    private static async Task<IResult> PostApproveDeputy(
         Guid internshipId, IMessageBus bus)
     {
         await bus.InvokeAsync(new ApproveTerminationByDeputy(internshipId));
@@ -106,8 +116,7 @@ public static class InternshipEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/internships/{internshipId}/approve/director")]
-    public static async Task<IResult> PostApproveDirector(
+    private static async Task<IResult> PostApproveDirector(
         Guid internshipId, IMessageBus bus)
     {
         await bus.InvokeAsync(new ApproveTerminationByDirector(internshipId));
@@ -116,8 +125,7 @@ public static class InternshipEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/internships/{internshipId}/approve/business")]
-    public static async Task<IResult> PostApproveBusinessRep(
+    private static async Task<IResult> PostApproveBusinessRep(
         Guid internshipId, IMessageBus bus)
     {
         await bus.InvokeAsync(new ApproveTerminationByBusinessRep(internshipId));
@@ -126,8 +134,7 @@ public static class InternshipEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/internships/{internshipId}/approve/override")]
-    public static async Task<IResult> PostOverride(
+    private static async Task<IResult> PostOverride(
         Guid internshipId, OverrideTerminationApproval command, IMessageBus bus)
     {
         await bus.InvokeAsync(command with { InternshipId = internshipId });

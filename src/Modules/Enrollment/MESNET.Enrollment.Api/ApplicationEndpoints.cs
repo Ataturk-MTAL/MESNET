@@ -5,16 +5,26 @@ using MESNET.Enrollment.Application.Errors;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.Enums;
 using MESNET.Enrollment.Shared.Events;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Enrollment.Api;
 
 public static class ApplicationEndpoints
 {
-    [WolverinePost("/api/internship-applications")]
-    public static async Task<IResult> Post(
+    public static IEndpointRouteBuilder MapApplicationEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/internship-applications");
+
+        group.MapPost("/", Post);
+        group.MapPost("/request", PostRequest);
+
+        return app;
+    }
+
+    private static async Task<IResult> Post(
         ApplyForInternship command, IDocumentSession session, IMessageBus bus)
     {
         var student = await session.LoadAsync<StudentProfile>(command.StudentId);
@@ -51,8 +61,7 @@ public static class ApplicationEndpoints
                 .Build());
     }
 
-    [WolverinePost("/api/internship-applications/request")]
-    public static async Task<IResult> PostRequest(
+    private static async Task<IResult> PostRequest(
         RequestStudent command, IMessageBus bus)
     {
         await bus.PublishAsync(

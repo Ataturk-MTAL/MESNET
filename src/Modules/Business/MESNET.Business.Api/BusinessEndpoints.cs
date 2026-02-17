@@ -6,16 +6,31 @@ using MESNET.Business.Application.Extensions;
 using MESNET.Business.Core.Enums;
 using MESNET.Business.Shared.Events;
 using MESNET.Common.Shared;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Business.Api;
 
 public static class BusinessEndpoints
 {
-    [WolverineGet("/api/businesses/{businessId}")]
-    public static async Task<IResult> Get(Guid businessId, IQuerySession session)
+    public static IEndpointRouteBuilder MapBusinessEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/businesses").WithTags("Business");
+        group.MapGet("/{businessId:guid}", Get);
+        group.MapPost("/", Post);
+        group.MapPost("/self-register", PostSelfRegister);
+        group.MapPut("/{businessId:guid}", Put);
+        group.MapPost("/{businessId:guid}/approve", PostApprove);
+        group.MapPost("/{businessId:guid}/reject", PostReject);
+        group.MapPost("/{businessId:guid}/deactivate", PostDeactivate);
+        group.MapPost("/{businessId:guid}/activate", PostActivate);
+        group.MapPost("/{businessId:guid}/close", PostClose);
+        return app;
+    }
+
+    private static async Task<IResult> Get(Guid businessId, IQuerySession session)
     {
         var business = await session.LoadAsync<Core.Entities.Business>(businessId);
         if (business is null)
@@ -29,8 +44,7 @@ public static class BusinessEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/businesses")]
-    public static async Task<IResult> Post(
+    private static async Task<IResult> Post(
         RegisterBusiness command, IDocumentSession session, IMessageBus bus)
     {
         var business = new Core.Entities.Business
@@ -64,8 +78,7 @@ public static class BusinessEndpoints
                 .Build());
     }
 
-    [WolverinePost("/api/businesses/self-register")]
-    public static async Task<IResult> PostSelfRegister(
+    private static async Task<IResult> PostSelfRegister(
         SelfRegisterBusiness command, IDocumentSession session, IMessageBus bus)
     {
         var business = new Core.Entities.Business
@@ -109,8 +122,7 @@ public static class BusinessEndpoints
                 .Build());
     }
 
-    [WolverinePut("/api/businesses/{businessId}")]
-    public static async Task<IResult> Put(
+    private static async Task<IResult> Put(
         Guid businessId, UpdateBusinessInfo command, IDocumentSession session, IMessageBus bus)
     {
         var business = await session.LoadAsync<Core.Entities.Business>(businessId);
@@ -137,8 +149,7 @@ public static class BusinessEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/businesses/{businessId}/approve")]
-    public static async Task<IResult> PostApprove(
+    private static async Task<IResult> PostApprove(
         Guid businessId, ApproveBusiness command, IDocumentSession session, IMessageBus bus)
     {
         var business = await session.LoadAsync<Core.Entities.Business>(businessId);
@@ -169,8 +180,7 @@ public static class BusinessEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/businesses/{businessId}/reject")]
-    public static async Task<IResult> PostReject(
+    private static async Task<IResult> PostReject(
         Guid businessId, RejectBusiness command, IDocumentSession session, IMessageBus bus)
     {
         var business = await session.LoadAsync<Core.Entities.Business>(businessId);
@@ -200,8 +210,7 @@ public static class BusinessEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/businesses/{businessId}/deactivate")]
-    public static async Task<IResult> PostDeactivate(
+    private static async Task<IResult> PostDeactivate(
         Guid businessId, DeactivateBusiness command, IDocumentSession session, IMessageBus bus)
     {
         var business = await session.LoadAsync<Core.Entities.Business>(businessId);
@@ -231,8 +240,7 @@ public static class BusinessEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/businesses/{businessId}/activate")]
-    public static async Task<IResult> PostActivate(
+    private static async Task<IResult> PostActivate(
         Guid businessId, IDocumentSession session, IMessageBus bus)
     {
         var business = await session.LoadAsync<Core.Entities.Business>(businessId);
@@ -262,8 +270,7 @@ public static class BusinessEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/businesses/{businessId}/close")]
-    public static async Task<IResult> PostClose(
+    private static async Task<IResult> PostClose(
         Guid businessId, IDocumentSession session, IMessageBus bus)
     {
         var business = await session.LoadAsync<Core.Entities.Business>(businessId);

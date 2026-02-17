@@ -6,16 +6,27 @@ using MESNET.Enrollment.Application.Errors;
 using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Shared.Events;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Enrollment.Api;
 
 public static class TeacherEndpoints
 {
-    [WolverinePost("/api/teachers")]
-    public static async Task<IResult> Post(
+    public static IEndpointRouteBuilder MapTeacherEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/teachers");
+
+        group.MapPost("/", Post);
+        group.MapGet("/{teacherId:guid}", Get);
+        group.MapGet("/", GetAll);
+
+        return app;
+    }
+
+    private static async Task<IResult> Post(
         RegisterTeacher command, IDocumentSession session, IMessageBus bus)
     {
         var teacher = new TeacherProfile
@@ -38,8 +49,7 @@ public static class TeacherEndpoints
                 .Build());
     }
 
-    [WolverineGet("/api/teachers/{teacherId}")]
-    public static async Task<IResult> Get(Guid teacherId, IQuerySession session)
+    private static async Task<IResult> Get(Guid teacherId, IQuerySession session)
     {
         var teacher = await session.LoadAsync<TeacherProfile>(teacherId);
         if (teacher is null)
@@ -53,8 +63,7 @@ public static class TeacherEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/teachers")]
-    public static async Task<IResult> GetAll(Guid? institutionId, IQuerySession session)
+    private static async Task<IResult> GetAll(Guid? institutionId, IQuerySession session)
     {
         IQueryable<TeacherProfile> queryable = session.Query<TeacherProfile>();
 

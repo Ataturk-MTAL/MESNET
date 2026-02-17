@@ -1,20 +1,34 @@
 using Marten;
 using MESNET.Common.Shared;
 using MESNET.Institution.Application.Commands;
-using MESNET.Institution.Application.Dtos;
 using MESNET.Institution.Application.Errors;
 using MESNET.Institution.Application.Extensions;
 using MESNET.Institution.Shared.Events;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Wolverine;
-using Wolverine.Http;
 
 namespace MESNET.Institution.Api;
 
 public static class InstitutionEndpoints
 {
-    [WolverineGet("/api/institutions/{institutionId}")]
-    public static async Task<IResult> Get(Guid institutionId, IQuerySession session)
+    public static IEndpointRouteBuilder MapInstitutionEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/institutions")
+            .WithTags("Institution");
+
+        group.MapGet("/{institutionId:guid}", Get);
+        group.MapPost("/", Post);
+        group.MapPut("/{institutionId:guid}", Put);
+        group.MapPost("/{institutionId:guid}/staff", PostStaff);
+        group.MapPut("/{institutionId:guid}/schedule-config", PutScheduleConfig);
+        group.MapGet("/{institutionId:guid}/schedule-config", GetScheduleConfig);
+
+        return app;
+    }
+
+    private static async Task<IResult> Get(Guid institutionId, IQuerySession session)
     {
         var institution = await session.LoadAsync<Core.Entities.Institution>(institutionId);
         if (institution is null)
@@ -28,8 +42,7 @@ public static class InstitutionEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/institutions")]
-    public static async Task<IResult> Post(
+    private static async Task<IResult> Post(
         CreateInstitution command, IDocumentSession session, IMessageBus bus)
     {
         var institution = new Core.Entities.Institution
@@ -57,8 +70,7 @@ public static class InstitutionEndpoints
                 .Build());
     }
 
-    [WolverinePut("/api/institutions/{institutionId}")]
-    public static async Task<IResult> Put(
+    private static async Task<IResult> Put(
         Guid institutionId, UpdateInstitution command, IDocumentSession session, IMessageBus bus)
     {
         var institution = await session.LoadAsync<Core.Entities.Institution>(institutionId);
@@ -85,8 +97,7 @@ public static class InstitutionEndpoints
             .Build());
     }
 
-    [WolverinePost("/api/institutions/{institutionId}/staff")]
-    public static async Task<IResult> PostStaff(
+    private static async Task<IResult> PostStaff(
         Guid institutionId, AuthorizeStaff command, IDocumentSession session, IMessageBus bus)
     {
         var institution = await session.LoadAsync<Core.Entities.Institution>(institutionId);
@@ -118,8 +129,7 @@ public static class InstitutionEndpoints
                 .Build());
     }
 
-    [WolverinePut("/api/institutions/{institutionId}/schedule-config")]
-    public static async Task<IResult> PutScheduleConfig(
+    private static async Task<IResult> PutScheduleConfig(
         Guid institutionId,
         UpdateScheduleConfiguration command,
         IMessageBus bus)
@@ -140,8 +150,7 @@ public static class InstitutionEndpoints
             .Build());
     }
 
-    [WolverineGet("/api/institutions/{institutionId}/schedule-config")]
-    public static async Task<IResult> GetScheduleConfig(
+    private static async Task<IResult> GetScheduleConfig(
         Guid institutionId,
         IQuerySession session)
     {
