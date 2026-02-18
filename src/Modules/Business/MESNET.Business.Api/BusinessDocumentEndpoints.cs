@@ -5,6 +5,7 @@ using MESNET.Business.Core.Enums;
 using MESNET.Business.Core.ValueObjects;
 using MESNET.Business.Shared.Events;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -16,9 +17,9 @@ public static class BusinessDocumentEndpoints
 {
     public static IEndpointRouteBuilder MapBusinessDocumentEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/businesses/{businessId:guid}/documents").WithTags("BusinessDocument");
-        group.MapPost("/", Post);
-        group.MapPost("/{documentId:guid}/approve", PostApprove);
+        var group = app.MapGroup("/api/businesses/{businessId:guid}/documents").WithTags("BusinessDocument").RequireAuthorization();
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Company.Document);
+        group.MapPost("/{documentId:guid}/approve", PostApprove).RequireAuthorization(Permissions.Document.Approve);
         return app;
     }
 

@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Core.Entities;
 using Microsoft.AspNetCore.Builder;
@@ -14,12 +15,12 @@ public static class SkillExamEndpoints
     public static IEndpointRouteBuilder MapSkillExamEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/coordination/skill-exams")
-            .WithTags("SkillExam");
+            .WithTags("SkillExam").RequireAuthorization();
 
-        group.MapPost("/", Post);
-        group.MapPut("/{examId:guid}", Put);
-        group.MapGet("/{examId:guid}", Get);
-        group.MapGet("/", GetAll);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Coordinator.Visit);
+        group.MapPut("/{examId:guid}", Put).RequireAuthorization(Permissions.Coordinator.Visit);
+        group.MapGet("/{examId:guid}", Get).RequireAuthorization(Permissions.Coordinator.Visit);
+        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Coordinator.Visit);
 
         return app;
     }

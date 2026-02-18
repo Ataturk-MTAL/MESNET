@@ -6,4 +6,5 @@ public sealed record RegisterStudent(
     string FullName,
     string BranchCode,
     string BranchName,
-    int ClassYear);
+    int ClassYear,
+    string? Section);

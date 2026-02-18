@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Application.Dtos;
 using MESNET.Enrollment.Application.Errors;
@@ -17,11 +18,11 @@ public static class TeacherEndpoints
 {
     public static IEndpointRouteBuilder MapTeacherEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/teachers");
+        var group = app.MapGroup("/api/teachers").RequireAuthorization();
 
-        group.MapPost("/", Post);
-        group.MapGet("/{teacherId:guid}", Get);
-        group.MapGet("/", GetAll);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Institution.Staff);
+        group.MapGet("/{teacherId:guid}", Get).RequireAuthorization(Permissions.Institution.View);
+        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Institution.View);
 
         return app;
     }

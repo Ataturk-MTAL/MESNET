@@ -1,6 +1,7 @@
 using MESNET.Business.Application.Commands;
 using MESNET.Business.Shared.Events;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -16,14 +17,14 @@ public static class BusinessInstructorDocumentEndpoints
     public static IEndpointRouteBuilder MapBusinessInstructorDocumentEndpoints(this IEndpointRouteBuilder app)
     {
         var docGroup = app.MapGroup("/api/businesses/{businessId:guid}/instructor-document")
-            .WithTags("BusinessInstructorDocument");
-        docGroup.MapPost("/", PostUploadInstructorDocument);
-        docGroup.MapPost("/{documentId:guid}/invalidate", PostInvalidate);
-        docGroup.MapDelete("/{documentId:guid}", Delete);
-        docGroup.MapPost("/request", PostRequest);
+            .WithTags("BusinessInstructorDocument").RequireAuthorization();
+        docGroup.MapPost("/", PostUploadInstructorDocument).RequireAuthorization(Permissions.Company.MasterTrainer);
+        docGroup.MapPost("/{documentId:guid}/invalidate", PostInvalidate).RequireAuthorization(Permissions.Company.MasterTrainer);
+        docGroup.MapPost("/{documentId:guid}/delete", Delete).RequireAuthorization(Permissions.Company.MasterTrainer);
+        docGroup.MapPost("/request", PostRequest).RequireAuthorization(Permissions.Company.MasterTrainer);
 
         app.MapPost("/api/businesses/{businessId:guid}/suspend", PostSuspend)
-            .WithTags("Business");
+            .WithTags("Business").RequireAuthorization(Permissions.Company.Manage);
 
         return app;
     }

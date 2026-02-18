@@ -19,6 +19,9 @@ public static class ListStudentsHandler
         if (!string.IsNullOrWhiteSpace(query.BranchCode))
             queryable = queryable.Where(s => s.BranchCode == query.BranchCode);
 
+        if (!string.IsNullOrWhiteSpace(query.Section))
+            queryable = queryable.Where(s => s.Section == query.Section);
+
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             StudentStatus.TryFromName(query.Status, true, out var status))
             queryable = queryable.Where(s => s.Status == status);

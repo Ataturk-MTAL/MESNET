@@ -1,0 +1,188 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from 'stores/auth'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    {
+      path: '/auth/callback',
+      name: 'AuthCallback',
+      component: () => import('pages/auth/CallbackPage.vue'),
+      meta: { public: true },
+    },
+
+    {
+      path: '/',
+      component: () => import('src/layouts/MainLayout.vue'),
+      children: [
+        {
+          path: '',
+          redirect: '/dashboard',
+        },
+        {
+          path: 'dashboard',
+          name: 'Dashboard',
+          component: () => import('pages/DashboardPage.vue'),
+        },
+
+        // Kurum
+        {
+          path: 'institution',
+          name: 'Institution',
+          component: () => import('pages/institution/InstitutionPage.vue'),
+          meta: { permissions: ['institution:view'] },
+        },
+
+        // İşletme (Company)
+        {
+          path: 'companies',
+          name: 'CompanyList',
+          component: () => import('pages/business/BusinessListPage.vue'),
+          meta: { permissions: ['company:view'] },
+        },
+
+        // Kayıt / Başvuru
+        {
+          path: 'enrollment',
+          children: [
+            {
+              path: 'students',
+              name: 'StudentList',
+              component: () => import('pages/StudentList.vue'),
+              meta: { permissions: ['student:view'] },
+            },
+            // Phase 2 — MEB Protokolü modülü implement edilince açılacak
+            // {
+            //   path: 'protocols',
+            //   name: 'ProtocolList',
+            //   component: () => import('pages/enrollment/ProtocolListPage.vue'),
+            //   meta: { permissions: ['protocol:view'] },
+            // },
+          ],
+        },
+
+        // Staj
+        {
+          path: 'internship',
+          children: [
+            // Sözleşme listesi ve detayı — internship:contract:manage
+            // Durum değiştirme (askı, fesih, tamamlama) — internship:manage — sayfa içinde kontrol edilir
+            {
+              path: 'contracts',
+              name: 'ContractList',
+              component: () => import('pages/contract/ContractListPage.vue'),
+              meta: { permissions: ['internship:contract:manage'] },
+            },
+            {
+              path: 'overview',
+              name: 'InternshipOverview',
+              component: () => import('pages/internship/InternshipOverviewPage.vue'),
+              // internship:view — personel görüntüleyebilir
+              // internship:manage — durum değişikliklerini sayfa içi PermissionGuard kontrol eder
+              meta: { permissions: ['internship:view', 'internship:manage'] },
+            },
+          ],
+        },
+
+        // Devamsızlık
+        {
+          path: 'attendance',
+          name: 'AttendanceList',
+          component: () => import('pages/attendance/AttendancePage.vue'),
+          meta: { permissions: ['attendance:view'] },
+        },
+
+        // Ücret / Maaş (Salary)
+        {
+          path: 'salary',
+          name: 'SalaryList',
+          component: () => import('pages/payment/PaymentPage.vue'),
+          meta: { permissions: ['salary:view'] },
+        },
+
+        // Koordinatör
+        {
+          path: 'coordination',
+          name: 'Coordination',
+          component: () => import('pages/coordination/CoordinationPage.vue'),
+          meta: { permissions: ['coordinator:visit:manage', 'coordinator:schedule:manage'] },
+        },
+
+        // Belgeler
+        {
+          path: 'documents',
+          name: 'Documents',
+          component: () => import('pages/reporting/DocumentsPage.vue'),
+          meta: { permissions: ['document:view'] },
+        },
+
+        // Raporlar
+        {
+          path: 'reporting',
+          name: 'Reporting',
+          component: () => import('pages/reporting/ReportingPage.vue'),
+          meta: { permissions: ['internship:report:manage'] },
+        },
+
+        // Admin / Kullanıcı Yönetimi
+        {
+          path: 'admin',
+          children: [
+            {
+              path: 'users',
+              name: 'UserManagement',
+              component: () => import('pages/admin/UserManagementPage.vue'),
+              meta: { permissions: ['user:view', 'user:create'] },
+            },
+            {
+              path: 'roles',
+              name: 'RoleManagement',
+              component: () => import('pages/admin/RolePage.vue'),
+              meta: { permissions: ['user:roles:manage'] },
+            },
+          ],
+        },
+      ],
+    },
+
+    // 403
+    {
+      path: '/unauthorized',
+      name: 'Unauthorized',
+      component: () => import('pages/errors/UnauthorizedPage.vue'),
+      meta: { public: true },
+    },
+
+    // 404
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'NotFound',
+      component: () => import('pages/errors/NotFoundPage.vue'),
+      meta: { public: true },
+    },
+  ],
+})
+
+// Navigation Guard — auth + izin kontrolü
+router.beforeEach((to) => {
+  if (to.meta.public) return true
+
+  const authStore = useAuthStore()
+
+  if (!authStore.isInitialized) return true
+
+  if (!authStore.isAuthenticated) {
+    return { name: 'Unauthorized' }
+  }
+
+  const requiredPermissions = to.meta.permissions as string[] | undefined
+  if (requiredPermissions && requiredPermissions.length > 0) {
+    if (!authStore.hasAnyPermission(requiredPermissions)) {
+      return { name: 'Unauthorized' }
+    }
+  }
+
+  return true
+})
+
+export default router

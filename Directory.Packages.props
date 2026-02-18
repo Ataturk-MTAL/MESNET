@@ -1,54 +1,44 @@
 <Project>
-
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
-
   <ItemGroup>
     <!-- Wolverine -->
+    <PackageVersion Include="Aspire.Hosting.Docker" Version="13.1.1-preview.1.26105.8" />
     <PackageVersion Include="WolverineFx" Version="5.15.0" />
     <PackageVersion Include="WolverineFx.Http" Version="5.15.0" />
     <PackageVersion Include="WolverineFx.Marten" Version="5.15.0" />
     <PackageVersion Include="WolverineFx.Http.Marten" Version="5.15.0" />
     <PackageVersion Include="WolverineFx.RabbitMQ" Version="5.15.0" />
     <PackageVersion Include="WolverineFx.FluentValidation" Version="5.15.0" />
-
     <!-- Marten -->
     <PackageVersion Include="Marten" Version="8.21.0" />
-
     <!-- SmartEnum -->
     <PackageVersion Include="Ardalis.SmartEnum" Version="8.2.0" />
     <PackageVersion Include="Ardalis.SmartEnum.SystemTextJson" Version="8.1.0" />
-
     <!-- Validation -->
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
-
     <!-- PDF -->
     <PackageVersion Include="QuestPDF" Version="2026.2.0" />
-
     <!-- Barcode / QR Code -->
     <PackageVersion Include="ZXing.Net" Version="0.16.11" />
-
     <!-- MinIO (Object Storage) -->
     <PackageVersion Include="Minio" Version="6.0.4" />
-
     <!-- Auth -->
     <PackageVersion Include="Keycloak.AuthServices.Authentication" Version="2.8.0" />
     <PackageVersion Include="Keycloak.AuthServices.Authorization" Version="2.8.0" />
     <PackageVersion Include="Keycloak.AuthServices.Sdk" Version="2.8.0" />
     <PackageVersion Include="Duende.AccessTokenManagement" Version="4.1.1" />
-
     <!-- Caching -->
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.1" />
-
     <!-- Aspire -->
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.1.1" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.1.1" />
     <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.1.1" />
     <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.1.1-preview.1.26105.8" />
+    <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
     <PackageVersion Include="Aspire.Npgsql" Version="13.1.1" />
     <PackageVersion Include="Aspire.RabbitMQ.Client" Version="13.1.1" />
-
     <!-- Telemetry (ServiceDefaults) -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.3.0" />
@@ -59,16 +49,13 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
-
     <!-- Logging -->
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
     <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
     <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
-
     <!-- ASP.NET Core -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.12.40" />
   </ItemGroup>
-
 </Project>

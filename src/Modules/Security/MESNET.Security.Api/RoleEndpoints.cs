@@ -12,16 +12,16 @@ public static class RoleEndpoints
     {
         var group = app.MapGroup("/api/security").WithTags("Role");
 
-        group.MapGet("/roles", GetRoles).RequireAuthorization("user:view");
-        group.MapGet("/roles/{roleName}/permissions", GetRolePermissions).RequireAuthorization("user:view");
-        group.MapGet("/permissions", GetAllPermissions).RequireAuthorization("user:view");
+        group.MapGet("/roles", GetRoles).RequireAuthorization(Permissions.UserManagement.View);
+        group.MapGet("/roles/{roleName}/permissions", GetRolePermissions).RequireAuthorization(Permissions.UserManagement.View);
+        group.MapGet("/permissions", GetAllPermissions).RequireAuthorization(Permissions.UserManagement.View);
     }
 
     private static IResult GetRoles()
     {
         var roles = MesnetRoles.All.Select(r => new
         {
-            Name = r,
+            RoleName = r,
             Permissions = RolePermissionMap.GetRawPermissionsForRole(r)
         });
 

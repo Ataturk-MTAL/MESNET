@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Institution.Application.Commands;
 using MESNET.Institution.Application.Errors;
 using MESNET.Institution.Application.Extensions;
@@ -16,14 +17,14 @@ public static class InstitutionEndpoints
     public static IEndpointRouteBuilder MapInstitutionEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/institutions")
-            .WithTags("Institution");
+            .WithTags("Institution").RequireAuthorization();
 
-        group.MapGet("/{institutionId:guid}", Get);
-        group.MapPost("/", Post);
-        group.MapPut("/{institutionId:guid}", Put);
-        group.MapPost("/{institutionId:guid}/staff", PostStaff);
-        group.MapPut("/{institutionId:guid}/schedule-config", PutScheduleConfig);
-        group.MapGet("/{institutionId:guid}/schedule-config", GetScheduleConfig);
+        group.MapGet("/{institutionId:guid}", Get).RequireAuthorization(Permissions.Institution.View);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Institution.Manage);
+        group.MapPut("/{institutionId:guid}", Put).RequireAuthorization(Permissions.Institution.Manage);
+        group.MapPost("/{institutionId:guid}/staff", PostStaff).RequireAuthorization(Permissions.Institution.Staff);
+        group.MapPut("/{institutionId:guid}/schedule-config", PutScheduleConfig).RequireAuthorization(Permissions.Institution.Manage);
+        group.MapGet("/{institutionId:guid}/schedule-config", GetScheduleConfig).RequireAuthorization(Permissions.Institution.View);
 
         return app;
     }

@@ -16,6 +16,8 @@ public static class SseNotificationEndpoint
         app.MapGet("/api/notifications/stream", HandleSseStream)
             .WithName("SseNotificationStream")
             .WithTags("Notifications")
+            .RequireAuthorization()
+            .RequireRateLimiting("SseConnections")
             .ExcludeFromDescription();
 
         return app;

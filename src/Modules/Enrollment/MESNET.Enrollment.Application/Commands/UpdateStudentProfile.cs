@@ -5,4 +5,5 @@ public sealed record UpdateStudentProfile(
     string FullName,
     string BranchCode,
     string BranchName,
-    int ClassYear);
+    int ClassYear,
+    string? Section);

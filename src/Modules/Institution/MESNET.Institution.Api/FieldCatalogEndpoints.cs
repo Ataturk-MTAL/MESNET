@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Institution.Application.Commands;
 using MESNET.Institution.Application.Errors;
 using MESNET.Institution.Application.Extensions;
@@ -19,14 +20,14 @@ public static class FieldCatalogEndpoints
     public static IEndpointRouteBuilder MapFieldCatalogEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/field-catalog", GetFieldCatalog)
-            .WithTags("FieldCatalog");
+            .WithTags("FieldCatalog").RequireAuthorization(Permissions.Institution.View);
 
         var branches = app.MapGroup("/api/institutions/{institutionId:guid}/branches")
-            .WithTags("FieldCatalog");
+            .WithTags("FieldCatalog").RequireAuthorization();
 
-        branches.MapPost("/", PostBranch);
-        branches.MapDelete("/{fieldCode}", DeleteBranch);
-        branches.MapPut("/{fieldCode}/specializations", PutSpecializations);
+        branches.MapPost("/", PostBranch).RequireAuthorization(Permissions.Institution.Manage);
+        branches.MapDelete("/{fieldCode}", DeleteBranch).RequireAuthorization(Permissions.Institution.Manage);
+        branches.MapPut("/{fieldCode}/specializations", PutSpecializations).RequireAuthorization(Permissions.Institution.Manage);
 
         return app;
     }

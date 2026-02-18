@@ -18,10 +18,12 @@ using Serilog;
 using Wolverine;
 using Wolverine.Http;
 using Wolverine.Marten;
-using Keycloak.AuthServices.Authentication;
 using Keycloak.AuthServices.Sdk;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Security.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
+using Wolverine.FluentValidation;
 using Wolverine.RabbitMQ;
 
 // Bootstrap logger — uygulama ayağa kalkmadan önceki loglar için
@@ -87,8 +89,35 @@ try
     // Authentication + Authorization
     // ────────────────────────────────────────────────────────────────────────────────
     // 1. Keycloak JWT Bearer Authentication
-    builder.Services
-        .AddKeycloakWebApiAuthentication(builder.Configuration);
+    // Keycloak.AuthServices kütüphanesi yerine direkt AddJwtBearer kullanıyoruz.
+    // Kütüphanenin Configure<IServiceProvider> sıralama sorunlarından kaçınmak için.
+    var keycloakAuthority = builder.Configuration["Keycloak:auth-server-url"]?.TrimEnd('/')
+        + "/realms/" + builder.Configuration["Keycloak:realm"];
+    var keycloakAudience = builder.Configuration["Keycloak:resource"];
+
+    builder.Services.AddAuthentication(options =>
+        {
+            options.DefaultScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.Authority = keycloakAuthority;
+            options.Audience = keycloakAudience;
+            options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+            // JWT claim'lerin orijinal isimleriyle gelmesi için mapping'i kapat
+            // Yoksa "sub" → ClaimTypes.NameIdentifier, "email" → ClaimTypes.Email olarak map edilir
+            options.MapInboundClaims = false;
+            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            {
+                ValidateIssuer = !builder.Environment.IsDevelopment(),
+                ValidateAudience = !builder.Environment.IsDevelopment(),
+                ValidateLifetime = true,
+                NameClaimType = "preferred_username",
+                RoleClaimType = "role"
+            };
+        });
 
     // 2. Authorization Policies + Custom Permission Handler + Claims Transformation
     builder.Services.AddMesnetSecurity(builder.Configuration);
@@ -98,24 +127,89 @@ try
     builder.Services
         .AddKeycloakAdminHttpClient(builder.Configuration);
 
+    // ────────────────────────────────────────────────────────────────────────────────
+    // CORS — Sadece frontend origin'e izin ver
+    // ────────────────────────────────────────────────────────────────────────────────
+    var frontendUrl = builder.Configuration["FrontendUrl"] ?? "http://localhost:5173";
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("MesnetCors", policy =>
+        {
+            policy
+                .WithOrigins(frontendUrl)
+                .AllowAnyHeader()
+                .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH")
+                .AllowCredentials(); // SSE için gerekli
+        });
+    });
+
+    // ────────────────────────────────────────────────────────────────────────────────
+    // Rate Limiting
+    // ────────────────────────────────────────────────────────────────────────────────
+    builder.Services.AddRateLimiter(options =>
+    {
+        // Global sabit pencere — genel API koruması
+        options.AddFixedWindowLimiter("GlobalApi", limiterOptions =>
+        {
+            limiterOptions.PermitLimit = 300;
+            limiterOptions.Window = TimeSpan.FromMinutes(1);
+            limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+            limiterOptions.QueueLimit = 10;
+        });
+
+        // SSE endpoint'i — bağlantı başına uzun süreli, düşük limit
+        options.AddFixedWindowLimiter("SseConnections", limiterOptions =>
+        {
+            limiterOptions.PermitLimit = 5;
+            limiterOptions.Window = TimeSpan.FromMinutes(1);
+        });
+
+        options.RejectionStatusCode = 429;
+    });
+
     // OpenAPI
     builder.Services.AddOpenApi();
+
+    // Wolverine HTTP — modül Api projelerindeki WolverineFx.Http bağımlılığı için gerekli
+    builder.Services.AddWolverineHttp();
 
     // Wolverine — CQRS + Messaging
     builder.Host.UseWolverine(opts =>
     {
+        opts.UseFluentValidation();
         opts.MultipleHandlerBehavior = MultipleHandlerBehavior.Separated;
         opts.Durability.MessageStorageSchemaName = "wolverine";
         opts.Policies.AutoApplyTransactions();
         opts.Policies.UseDurableLocalQueues();
 
-        // RabbitMQ Transport
-        opts.UseRabbitMq(rabbit =>
+        // Modül Application assembly'lerini handler keşfi için tanıt
+        // Wolverine varsayılan olarak sadece host assembly'yi tarar
+        opts.Discovery.IncludeAssembly(typeof(MESNET.Institution.Application.Commands.CreateInstitution).Assembly);
+        opts.Discovery.IncludeAssembly(typeof(MESNET.Business.Application.Commands.RegisterBusiness).Assembly);
+        opts.Discovery.IncludeAssembly(typeof(MESNET.Enrollment.Application.Commands.RegisterStudent).Assembly);
+        opts.Discovery.IncludeAssembly(typeof(MESNET.Contract.Application.Commands.CreateContract).Assembly);
+        opts.Discovery.IncludeAssembly(typeof(MESNET.Attendance.Application.Commands.MarkAttendance).Assembly);
+        opts.Discovery.IncludeAssembly(typeof(MESNET.Payment.Application.Commands.UploadReceiptByStudent).Assembly);
+        opts.Discovery.IncludeAssembly(typeof(MESNET.Coordination.Application.Commands.CreateBusinessEvaluation).Assembly);
+        opts.Discovery.IncludeAssembly(typeof(MESNET.Internship.Application.Commands.RequestTermination).Assembly);
+        opts.Discovery.IncludeAssembly(typeof(MESNET.Reporting.Application.Commands.GenerateInternshipContractDocument).Assembly);
+        opts.Discovery.IncludeAssembly(typeof(MESNET.Security.Application.Commands.CreateUser).Assembly);
+
+        // RabbitMQ Transport — Aspire connection string'inden okur
+        var rabbitUri = builder.Configuration.GetConnectionString("rabbitmq");
+        if (!string.IsNullOrEmpty(rabbitUri))
         {
-            rabbit.HostName = builder.Configuration["RabbitMQ:HostName"] ?? "localhost";
-            rabbit.UserName = builder.Configuration["RabbitMQ:UserName"] ?? "mesnet";
-            rabbit.Password = builder.Configuration["RabbitMQ:Password"] ?? "mesnet_dev";
-        }).AutoProvision();
+            opts.UseRabbitMq(new Uri(rabbitUri)).AutoProvision();
+        }
+        else
+        {
+            opts.UseRabbitMq(rabbit =>
+            {
+                rabbit.HostName = builder.Configuration["RabbitMQ:HostName"] ?? "localhost";
+                rabbit.UserName = builder.Configuration["RabbitMQ:UserName"] ?? "guest";
+                rabbit.Password = builder.Configuration["RabbitMQ:Password"] ?? "guest";
+            }).AutoProvision();
+        }
     });
 
     var app = builder.Build();
@@ -141,6 +235,53 @@ try
 
     app.UseSerilogRequestLogging();
 
+    // ──── Security Headers ────
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path.Value ?? "";
+
+        // Scalar UI ve OpenAPI dokümanları CSP'den muaf — inline script gerektirir
+        if (path.StartsWith("/scalar", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/openapi", StringComparison.OrdinalIgnoreCase))
+        {
+            await next();
+            return;
+        }
+
+        var headers = context.Response.Headers;
+
+        // XSS kaynağını kes: frontend ve Keycloak dışına istek gidemesin
+        var keycloakUrl = builder.Configuration["Keycloak:auth-server-url"] ?? "http://localhost:8080";
+        headers.Append("Content-Security-Policy",
+            $"default-src 'self'; " +
+            $"script-src 'self'; " +
+            $"style-src 'self' 'unsafe-inline'; " +
+            $"img-src 'self' data: blob:; " +
+            $"font-src 'self'; " +
+            $"connect-src 'self' {keycloakUrl}; " +
+            $"frame-src {keycloakUrl}; " +
+            $"object-src 'none'; " +
+            $"base-uri 'self';");
+
+        // Clickjacking koruması
+        headers.Append("X-Frame-Options", "DENY");
+
+        // MIME sniffing koruması
+        headers.Append("X-Content-Type-Options", "nosniff");
+
+        // Referrer bilgisi sızdırma
+        headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+
+        // Hassas browser feature'larını kapat
+        headers.Append("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+
+        await next();
+    });
+
+    // ──── CORS & Rate Limiting ────
+    app.UseCors("MesnetCors");
+    app.UseRateLimiter();
+
     app.MapDefaultEndpoints();
 
     if (app.Environment.IsDevelopment())
@@ -153,6 +294,46 @@ try
     app.UseAuthorization();
 
     app.MapWolverineEndpoints();
+
+    // ──── Modül Endpoint Registrations ────
+    // Institution
+    app.MapInstitutionEndpoints();
+    app.MapFieldCatalogEndpoints();
+    // Business
+    app.MapBusinessEndpoints();
+    app.MapBusinessQueryEndpoints();
+    app.MapBusinessDocumentEndpoints();
+    app.MapBusinessInstructorDocumentEndpoints();
+    // Enrollment
+    app.MapStudentEndpoints();
+    app.MapTeacherEndpoints();
+    app.MapApplicationEndpoints();
+    app.MapPlacementEndpoints();
+    // Contract
+    app.MapContractEndpoints();
+    // Attendance
+    app.MapAttendanceEndpoints();
+    app.MapWorkCalendarEndpoints();
+    // Payment
+    app.MapPaymentEndpoints();
+    // Coordination
+    app.MapCoordinationEndpoints();
+    app.MapBusinessEvaluationEndpoints();
+    app.MapGuidanceVisitEndpoints();
+    app.MapMonthlyActivityReportEndpoints();
+    app.MapSkillExamEndpoints();
+    // Internship
+    app.MapInternshipEndpoints();
+    // Reporting
+    app.MapReportingEndpoints();
+    app.MapDocumentLifecycleEndpoints();
+    // Security
+    app.MapUserManagementEndpoints();
+    app.MapInvitationEndpoints();
+    app.MapRoleEndpoints();
+
+    // Auth (kullanıcı bilgileri + permission listesi)
+    app.MapAuthEndpoint();
 
     // SSE Notification Endpoint (Minimal API)
     app.MapSseNotificationEndpoint();

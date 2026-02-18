@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Application.Errors;
 using MESNET.Enrollment.Core.Entities;
@@ -16,10 +17,10 @@ public static class ApplicationEndpoints
 {
     public static IEndpointRouteBuilder MapApplicationEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/internship-applications");
+        var group = app.MapGroup("/api/internship-applications").RequireAuthorization();
 
-        group.MapPost("/", Post);
-        group.MapPost("/request", PostRequest);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Internship.Apply);
+        group.MapPost("/request", PostRequest).RequireAuthorization(Permissions.Company.RequestStudent);
 
         return app;
     }

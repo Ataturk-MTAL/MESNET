@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Caching.Memory;
@@ -36,7 +37,9 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         if (principal.HasClaim(c => c.Type == "permissions"))
             return principal;
 
-        var sub = principal.FindFirst("sub")?.Value;
+        // .NET JWT handler "sub" claim'ini ClaimTypes.NameIdentifier'a map eder
+        var sub = principal.FindFirst("sub")?.Value
+            ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(sub))
             return principal;
 
@@ -52,29 +55,43 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
             }
         }
 
-        if (entry is null)
-            return principal;
-
-        // Kullanıcı deaktive edilmişse permission eklenmez → erişim engellenir
-        if (!entry.IsEnabled)
-        {
-            _logger.LogWarning("Deaktive kullanıcı erişim denemesi: {KeycloakUserId}", sub);
-            return principal;
-        }
-
         // Permission claim'lerini ekle
         var identity = principal.Identity as ClaimsIdentity;
         if (identity is null)
             return principal;
 
-        // Rollerden türetilen permission'lar
-        var rolePermissions = RolePermissionMap.GetPermissionsForRoles(entry.Roles);
+        IEnumerable<string> allPermissions;
 
-        // Nihai set = rollerden türetilen UNION doğrudan atanan
-        var allPermissions = new HashSet<string>(rolePermissions, StringComparer.OrdinalIgnoreCase);
-        foreach (var directPermission in entry.DirectPermissions)
+        if (entry is not null)
         {
-            allPermissions.Add(directPermission);
+            // Kullanıcı deaktive edilmişse permission eklenmez → erişim engellenir
+            if (!entry.IsEnabled)
+            {
+                _logger.LogWarning("Deaktive kullanıcı erişim denemesi: {KeycloakUserId}", sub);
+                return principal;
+            }
+
+            // Marten'dan gelen roller + doğrudan atanan permission'lar
+            var rolePermissions = RolePermissionMap.GetPermissionsForRoles(entry.Roles);
+            var permSet = new HashSet<string>(rolePermissions, StringComparer.OrdinalIgnoreCase);
+            foreach (var dp in entry.DirectPermissions)
+                permSet.Add(dp);
+
+            allPermissions = permSet;
+        }
+        else
+        {
+            // UserAccount Marten'da henüz yok — JWT token'daki realm_access rollerinden
+            // permission'ları türet. İlk login veya seed öncesi kullanıcılar için fallback.
+            var tokenRoles = ExtractRealmRolesFromToken(principal);
+            if (tokenRoles.Count == 0)
+                return principal;
+
+            _logger.LogInformation(
+                "UserAccount bulunamadı, JWT realm roles'dan permission türetiliyor: {KeycloakUserId}, Roles={Roles}",
+                sub, string.Join(", ", tokenRoles));
+
+            allPermissions = RolePermissionMap.GetPermissionsForRoles(tokenRoles);
         }
 
         foreach (var permission in allPermissions)
@@ -117,6 +134,41 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     public static void InvalidateCache(IMemoryCache cache, string keycloakUserId)
     {
         cache.Remove($"user-permissions:{keycloakUserId}");
+    }
+
+    /// <summary>
+    /// JWT token'daki realm_access claim'inden roller çıkarır.
+    /// Claim değeri JSON: {"roles":["InstitutionManager","Teacher"]}
+    /// </summary>
+    private static IReadOnlyList<string> ExtractRealmRolesFromToken(ClaimsPrincipal principal)
+    {
+        // Önce ClaimTypes.Role (KeycloakRolesClaimsTransformation tarafından eklenir)
+        var roleClaims = principal.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        if (roleClaims.Count > 0)
+            return roleClaims;
+
+        // Fallback: realm_access JSON claim'ini parse et
+        var realmAccessClaim = principal.FindFirst("realm_access")?.Value;
+        if (string.IsNullOrEmpty(realmAccessClaim))
+            return [];
+
+        try
+        {
+            using var doc = JsonDocument.Parse(realmAccessClaim);
+            if (doc.RootElement.TryGetProperty("roles", out var rolesElement))
+            {
+                return rolesElement.EnumerateArray()
+                    .Select(r => r.GetString()!)
+                    .Where(r => !string.IsNullOrEmpty(r))
+                    .ToList();
+            }
+        }
+        catch (JsonException)
+        {
+            // Geçersiz JSON — boş dön
+        }
+
+        return [];
     }
 
     private sealed record PermissionCacheEntry(

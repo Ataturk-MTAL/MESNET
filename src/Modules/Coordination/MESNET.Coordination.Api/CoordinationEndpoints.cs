@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Handlers;
 using MESNET.Coordination.Application.Queries;
@@ -15,12 +16,12 @@ public static class CoordinationEndpoints
     public static IEndpointRouteBuilder MapCoordinationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/coordination/teachers")
-            .WithTags("Coordination");
+            .WithTags("Coordination").RequireAuthorization();
 
-        group.MapPost("/{teacherId:guid}/schedule", PostTeacherSchedule);
-        group.MapGet("/{teacherId:guid}/schedule", GetTeacherSchedule);
-        group.MapGet("/{teacherId:guid}/free-slots", GetTeacherFreeSlots);
-        group.MapPost("/{teacherId:guid}/assign-business", PostAssignBusiness);
+        group.MapPost("/{teacherId:guid}/schedule", PostTeacherSchedule).RequireAuthorization(Permissions.Coordinator.Schedule);
+        group.MapGet("/{teacherId:guid}/schedule", GetTeacherSchedule).RequireAuthorization(Permissions.Coordinator.Schedule);
+        group.MapGet("/{teacherId:guid}/free-slots", GetTeacherFreeSlots).RequireAuthorization(Permissions.Coordinator.Schedule);
+        group.MapPost("/{teacherId:guid}/assign-business", PostAssignBusiness).RequireAuthorization(Permissions.Coordinator.Schedule);
 
         return app;
     }

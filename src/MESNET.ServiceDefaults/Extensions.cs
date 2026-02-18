@@ -104,8 +104,18 @@ public static class Extensions
         {
             var options = sp.GetRequiredService<IOptions<MinioStorageOptions>>().Value;
 
+            // Aspire endpoint "http://host:port" formatında geliyor,
+            // MinIO client sadece "host:port" bekliyor — scheme'i strip et
+            var endpoint = options.Endpoint;
+            if (Uri.TryCreate(endpoint, UriKind.Absolute, out var uri))
+            {
+                endpoint = uri.Authority;
+                if (uri.Scheme == "https")
+                    options.UseSSL = true;
+            }
+
             var minioClient = new MinioClient()
-                .WithEndpoint(options.Endpoint)
+                .WithEndpoint(endpoint)
                 .WithCredentials(options.AccessKey, options.SecretKey);
 
             if (options.UseSSL)

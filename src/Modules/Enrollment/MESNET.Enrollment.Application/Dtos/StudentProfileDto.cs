@@ -8,6 +8,7 @@ public sealed record StudentProfileDto(
     string BranchCode,
     string BranchName,
     int ClassYear,
+    string? Section,
     string Status,
     string StatusSlug,
     DateTime RegisteredAt);

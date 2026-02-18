@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Payment.Application.Commands;
 using MESNET.Payment.Application.Errors;
 using MESNET.Payment.Application.Extensions;
@@ -17,17 +18,17 @@ public static class PaymentEndpoints
 {
     public static void MapPaymentEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/payments");
+        var group = app.MapGroup("/api/payments").RequireAuthorization();
 
-        group.MapGet("/{id:guid}", Get);
-        group.MapGet("/", GetAll);
-        group.MapPost("/{id:guid}/upload-receipt/business", PostUploadReceiptByBusiness);
-        group.MapPost("/{id:guid}/upload-receipt/student", PostUploadReceiptByStudent);
-        group.MapPost("/{id:guid}/confirm", PostConfirm);
-        group.MapPost("/{id:guid}/approve/teacher", PostApproveTeacher);
-        group.MapPost("/{id:guid}/approve/deputy", PostApproveDeputy);
-        group.MapPost("/{id:guid}/reject", PostReject);
-        group.MapPut("/config/minimum-wage", PutMinimumWage);
+        group.MapGet("/{id:guid}", Get).RequireAuthorization(Permissions.Salary.View);
+        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Salary.View);
+        group.MapPost("/{id:guid}/upload-receipt/business", PostUploadReceiptByBusiness).RequireAuthorization(Permissions.Company.UploadReceipt);
+        group.MapPost("/{id:guid}/upload-receipt/student", PostUploadReceiptByStudent).RequireAuthorization(Permissions.Salary.Receipt);
+        group.MapPost("/{id:guid}/confirm", PostConfirm).RequireAuthorization(Permissions.Salary.Receipt);
+        group.MapPost("/{id:guid}/approve/teacher", PostApproveTeacher).RequireAuthorization(Permissions.Salary.Approve);
+        group.MapPost("/{id:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Salary.Approve);
+        group.MapPost("/{id:guid}/reject", PostReject).RequireAuthorization(Permissions.Salary.Approve);
+        group.MapPut("/config/minimum-wage", PutMinimumWage).RequireAuthorization(Permissions.Salary.Parameter);
     }
 
     // ────────────────────────────────────────────────────────────────────────────────

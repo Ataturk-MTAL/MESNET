@@ -5,6 +5,7 @@ using MESNET.Attendance.Application.Extensions;
 using MESNET.Attendance.Core.Entities;
 using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -16,10 +17,10 @@ public static class WorkCalendarEndpoints
 {
     public static void MapWorkCalendarEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/work-calendar");
+        var group = app.MapGroup("/api/work-calendar").RequireAuthorization();
 
-        group.MapPost("/", Post);
-        group.MapGet("/", Get);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Institution.Manage);
+        group.MapGet("/", Get).RequireAuthorization(Permissions.Attendance.View);
     }
 
     private static async Task<IResult> Post(

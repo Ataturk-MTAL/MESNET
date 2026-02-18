@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Application.Dtos;
 using MESNET.Contract.Application.Errors;
@@ -19,20 +20,20 @@ public static class ContractEndpoints
 {
     public static void MapContractEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/contracts");
+        var group = app.MapGroup("/api/contracts").RequireAuthorization();
 
-        group.MapPost("/", Post);
-        group.MapPost("/{contractId:guid}/submit", PostSubmit);
-        group.MapPost("/{contractId:guid}/sign", PostSign);
-        group.MapPost("/{contractId:guid}/activate", PostActivate);
-        group.MapPost("/{contractId:guid}/suspend", PostSuspend);
-        group.MapPost("/{contractId:guid}/resume", PostResume);
-        group.MapPost("/{contractId:guid}/terminate", PostTerminate);
-        group.MapPost("/{contractId:guid}/complete", PostComplete);
-        group.MapGet("/{contractId:guid}", Get);
-        group.MapGet("/", GetAll);
-        group.MapPost("/{contractId:guid}/upload-signed", PostUploadSigned);
-        group.MapPost("/{contractId:guid}/upload-termination", PostUploadTermination);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Internship.Contract);
+        group.MapPost("/{contractId:guid}/submit", PostSubmit).RequireAuthorization(Permissions.Internship.Contract);
+        group.MapPost("/{contractId:guid}/sign", PostSign).RequireAuthorization(Permissions.Internship.Contract);
+        group.MapPost("/{contractId:guid}/activate", PostActivate).RequireAuthorization(Permissions.Internship.Contract);
+        group.MapPost("/{contractId:guid}/suspend", PostSuspend).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapPost("/{contractId:guid}/resume", PostResume).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapPost("/{contractId:guid}/terminate", PostTerminate).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapPost("/{contractId:guid}/complete", PostComplete).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapGet("/{contractId:guid}", Get).RequireAuthorization(Permissions.Internship.Contract);
+        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Internship.Contract);
+        group.MapPost("/{contractId:guid}/upload-signed", PostUploadSigned).RequireAuthorization(Permissions.Document.Upload);
+        group.MapPost("/{contractId:guid}/upload-termination", PostUploadTermination).RequireAuthorization(Permissions.Document.Upload);
     }
 
     private static async Task<IResult> Post(

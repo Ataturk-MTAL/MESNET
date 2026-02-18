@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Core.Entities;
 using Microsoft.AspNetCore.Builder;
@@ -14,12 +15,12 @@ public static class BusinessEvaluationEndpoints
     public static IEndpointRouteBuilder MapBusinessEvaluationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/coordination/business-evaluations")
-            .WithTags("BusinessEvaluation");
+            .WithTags("BusinessEvaluation").RequireAuthorization();
 
-        group.MapPost("/", Post);
-        group.MapPut("/{evaluationId:guid}", Put);
-        group.MapGet("/{evaluationId:guid}", Get);
-        group.MapGet("/", GetAll);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Coordinator.Visit);
+        group.MapPut("/{evaluationId:guid}", Put).RequireAuthorization(Permissions.Coordinator.Visit);
+        group.MapGet("/{evaluationId:guid}", Get).RequireAuthorization(Permissions.Coordinator.Visit);
+        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Coordinator.Visit);
 
         return app;
     }

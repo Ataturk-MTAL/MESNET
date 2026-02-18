@@ -13,24 +13,39 @@ public static class RolePermissionMap
         [
             "institution:*",
             "student:*",
-            "protocol:*",
             "internship:*",
             "attendance:*",
             "salary:*",
             "document:*",
             "communication:*",
-            "user:*"
+            "user:*",
+            "coordinator:*",
+            "department:*",
+            "company:*"
         ],
         [MesnetRoles.InstitutionStaff] =
         [
+            "user:*",
             Permissions.Institution.View,
             Permissions.Student.View,
             Permissions.Student.Manage,
-            Permissions.Protocol.View,
-            Permissions.Protocol.Create,
+            Permissions.Internship.View,       // staj listesi görüntüleme
+            Permissions.Internship.Manage,     // fesih talebi başlatma, genel yönetim
+            Permissions.Internship.Approve,    // fesih onay zinciri (veli ıslak imzası + kendi adımı)
+            Permissions.Internship.Contract,   // sözleşme yönetimi
+            Permissions.Salary.View,
+            Permissions.Salary.Approve,        // dekont onay zinciri
+            Permissions.Salary.Parameter,      // asgari ücret güncelleme
+            Permissions.Attendance.View,
+            Permissions.Attendance.Manage,
+            Permissions.Attendance.Approve,
             Permissions.Document.View,
             Permissions.Document.Upload,
             Permissions.Document.Track,
+            Permissions.Document.Approve,
+            Permissions.Company.View,
+            Permissions.Company.Manage,
+            Permissions.Company.Document,
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage
         ],
@@ -38,9 +53,15 @@ public static class RolePermissionMap
         [
             Permissions.Student.View,
             Permissions.Student.Manage,
+            Permissions.Internship.View,
+            Permissions.Internship.Review,     // başvuru inceleme
+            Permissions.Internship.Approve,    // fesih onay zincirinde kendi adımı
             Permissions.Attendance.View,
             Permissions.Attendance.Manage,
             Permissions.Attendance.Report,
+            Permissions.Attendance.Approve,
+            Permissions.Salary.View,
+            Permissions.Salary.Approve,        // dekont ilk onay (öğretmen adımı)
             Permissions.Coordinator.Schedule,
             Permissions.Coordinator.Visit,
             Permissions.Coordinator.Report,

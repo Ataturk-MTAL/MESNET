@@ -20,6 +20,7 @@ public class StudentProfile
     public required string BranchCode { get; set; }
     public required string BranchName { get; set; }
     public int ClassYear { get; set; }
+    public string? Section { get; set; }
 
     [JsonConverter(typeof(SmartEnumNameConverter<StudentStatus, int>))]
     public StudentStatus Status { get; set; } = StudentStatus.Registered;

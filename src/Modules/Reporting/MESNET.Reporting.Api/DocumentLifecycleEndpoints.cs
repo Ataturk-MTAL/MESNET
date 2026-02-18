@@ -14,17 +14,17 @@ public static class DocumentLifecycleEndpoints
 {
     public static void MapDocumentLifecycleEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/reports/documents").WithTags("DocumentLifecycle");
+        var group = app.MapGroup("/api/reports/documents").WithTags("DocumentLifecycle").RequireAuthorization();
 
-        group.MapGet("/{documentId:guid}", GetDocument);
-        group.MapGet("/{documentId:guid}/pdf", GetDocumentPdf);
-        group.MapGet("/", GetDocuments);
-        group.MapGet("/by-student/{studentId:guid}", GetDocumentsByStudent);
-        group.MapPost("/{documentId:guid}/print", MarkAsPrinted);
-        group.MapPost("/{documentId:guid}/sign-and-return", MarkAsSignedAndReturned);
-        group.MapPost("/{documentId:guid}/archive", MarkAsArchived);
-        group.MapDelete("/{documentId:guid}", DeleteDocument);
-        group.MapPost("/batch-delete", DeleteDocumentsBatch);
+        group.MapGet("/{documentId:guid}", GetDocument).RequireAuthorization(Permissions.Document.View);
+        group.MapGet("/{documentId:guid}/pdf", GetDocumentPdf).RequireAuthorization(Permissions.Document.View);
+        group.MapGet("/", GetDocuments).RequireAuthorization(Permissions.Document.View);
+        group.MapGet("/by-student/{studentId:guid}", GetDocumentsByStudent).RequireAuthorization(Permissions.Document.View);
+        group.MapPost("/{documentId:guid}/print", MarkAsPrinted).RequireAuthorization(Permissions.Document.Track);
+        group.MapPost("/{documentId:guid}/sign-and-return", MarkAsSignedAndReturned).RequireAuthorization(Permissions.Document.Verify);
+        group.MapPost("/{documentId:guid}/archive", MarkAsArchived).RequireAuthorization(Permissions.Document.Approve);
+        group.MapDelete("/{documentId:guid}", DeleteDocument).RequireAuthorization(Permissions.Institution.Manage);
+        group.MapPost("/batch-delete", DeleteDocumentsBatch).RequireAuthorization(Permissions.Institution.Manage);
     }
 
     // --- Dokuman detayi (FormDataJson haric) ---

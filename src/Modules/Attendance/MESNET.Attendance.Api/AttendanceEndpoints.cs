@@ -6,6 +6,7 @@ using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Enums;
 using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -17,14 +18,14 @@ public static class AttendanceEndpoints
 {
     public static void MapAttendanceEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/attendance");
+        var group = app.MapGroup("/api/attendance").RequireAuthorization();
 
-        group.MapPost("/", Post);
-        group.MapPost("/{attendanceId:guid}/verify", PostVerify);
-        group.MapPost("/{attendanceId:guid}/correct", PostCorrect);
-        group.MapPost("/{attendanceId:guid}/health-report", PostHealthReport);
-        group.MapGet("/{attendanceId:guid}", Get);
-        group.MapGet("/", GetAll);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Attendance.Manage);
+        group.MapPost("/{attendanceId:guid}/verify", PostVerify).RequireAuthorization(Permissions.Attendance.Approve);
+        group.MapPost("/{attendanceId:guid}/correct", PostCorrect).RequireAuthorization(Permissions.Attendance.Manage);
+        group.MapPost("/{attendanceId:guid}/health-report", PostHealthReport).RequireAuthorization(Permissions.Attendance.Manage);
+        group.MapGet("/{attendanceId:guid}", Get).RequireAuthorization(Permissions.Attendance.View);
+        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Attendance.View);
     }
 
     private static async Task<IResult> Post(

@@ -37,3 +37,14 @@ appsettings.*.local.json
 
 ## Aspire
 .aspire/
+src/MESNET.AppHost/appsettings.json
+
+## Node / Frontend (src/WebUI)
+src/WebUI/node_modules/
+src/WebUI/dist/
+src/WebUI/.env.local
+src/WebUI/.env.*.local
+
+# Production secrets
+.env
+*.env.local

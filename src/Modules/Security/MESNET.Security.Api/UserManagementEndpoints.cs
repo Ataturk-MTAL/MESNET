@@ -1,4 +1,5 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Handlers;
 using Microsoft.AspNetCore.Builder;
@@ -14,14 +15,14 @@ public static class UserManagementEndpoints
     {
         var group = app.MapGroup("/api/security/users").WithTags("UserManagement");
 
-        group.MapPost("/", CreateUser).RequireAuthorization("user:create");
-        group.MapGet("/", GetUsers).RequireAuthorization("user:view");
-        group.MapGet("/{userAccountId:guid}", GetUser).RequireAuthorization("user:view");
-        group.MapPut("/{userAccountId:guid}", UpdateUser).RequireAuthorization("user:update");
-        group.MapPost("/{userAccountId:guid}/roles", ChangeRoles).RequireAuthorization("user:roles:manage");
-        group.MapPost("/{userAccountId:guid}/permissions", ChangePermissions).RequireAuthorization("user:roles:manage");
-        group.MapPost("/{userAccountId:guid}/toggle-status", ToggleStatus).RequireAuthorization("user:update");
-        group.MapDelete("/{userAccountId:guid}", DeleteUser).RequireAuthorization("user:delete");
+        group.MapPost("/", CreateUser).RequireAuthorization(Permissions.UserManagement.Create);
+        group.MapGet("/", GetUsers).RequireAuthorization(Permissions.UserManagement.View);
+        group.MapGet("/{userAccountId:guid}", GetUser).RequireAuthorization(Permissions.UserManagement.View);
+        group.MapPut("/{userAccountId:guid}", UpdateUser).RequireAuthorization(Permissions.UserManagement.Update);
+        group.MapPost("/{userAccountId:guid}/roles", ChangeRoles).RequireAuthorization(Permissions.UserManagement.RolesManage);
+        group.MapPost("/{userAccountId:guid}/permissions", ChangePermissions).RequireAuthorization(Permissions.UserManagement.RolesManage);
+        group.MapPost("/{userAccountId:guid}/toggle-status", ToggleStatus).RequireAuthorization(Permissions.UserManagement.Update);
+        group.MapDelete("/{userAccountId:guid}", DeleteUser).RequireAuthorization(Permissions.UserManagement.Delete);
     }
 
     private static async Task<IResult> CreateUser(

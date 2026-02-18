@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Core.Entities;
 using Microsoft.AspNetCore.Builder;
@@ -14,14 +15,14 @@ public static class GuidanceVisitEndpoints
     public static IEndpointRouteBuilder MapGuidanceVisitEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/coordination/guidance-visits")
-            .WithTags("GuidanceVisit");
+            .WithTags("GuidanceVisit").RequireAuthorization();
 
-        group.MapPost("/", Post);
-        group.MapPut("/{visitId:guid}", Put);
-        group.MapPost("/{visitId:guid}/submit", PostSubmit);
-        group.MapPost("/{visitId:guid}/approve", PostApprove);
-        group.MapGet("/{visitId:guid}", Get);
-        group.MapGet("/", GetAll);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Coordinator.Visit);
+        group.MapPut("/{visitId:guid}", Put).RequireAuthorization(Permissions.Coordinator.Visit);
+        group.MapPost("/{visitId:guid}/submit", PostSubmit).RequireAuthorization(Permissions.Coordinator.Visit);
+        group.MapPost("/{visitId:guid}/approve", PostApprove).RequireAuthorization(Permissions.Coordinator.Report);
+        group.MapGet("/{visitId:guid}", Get).RequireAuthorization(Permissions.Coordinator.Visit);
+        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Coordinator.Visit);
 
         return app;
     }

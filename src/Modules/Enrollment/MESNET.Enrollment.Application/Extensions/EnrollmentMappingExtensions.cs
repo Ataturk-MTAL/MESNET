@@ -13,6 +13,7 @@ public static class EnrollmentMappingExtensions
         entity.BranchCode,
         entity.BranchName,
         entity.ClassYear,
+        entity.Section,
         entity.Status.Name,
         entity.Status.Slug,
         entity.RegisteredAt);

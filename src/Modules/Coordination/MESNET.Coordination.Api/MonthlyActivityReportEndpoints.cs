@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Core.Entities;
 using Microsoft.AspNetCore.Builder;
@@ -14,14 +15,14 @@ public static class MonthlyActivityReportEndpoints
     public static IEndpointRouteBuilder MapMonthlyActivityReportEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/coordination/activity-reports")
-            .WithTags("MonthlyActivityReport");
+            .WithTags("MonthlyActivityReport").RequireAuthorization();
 
-        group.MapPost("/", Post);
-        group.MapPut("/{reportId:guid}", Put);
-        group.MapPost("/{reportId:guid}/submit", PostSubmit);
-        group.MapPost("/{reportId:guid}/approve", PostApprove);
-        group.MapGet("/{reportId:guid}", Get);
-        group.MapGet("/", GetAll);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Coordinator.Report);
+        group.MapPut("/{reportId:guid}", Put).RequireAuthorization(Permissions.Coordinator.Report);
+        group.MapPost("/{reportId:guid}/submit", PostSubmit).RequireAuthorization(Permissions.Coordinator.Report);
+        group.MapPost("/{reportId:guid}/approve", PostApprove).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapGet("/{reportId:guid}", Get).RequireAuthorization(Permissions.Coordinator.Report);
+        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Coordinator.Report);
 
         return app;
     }

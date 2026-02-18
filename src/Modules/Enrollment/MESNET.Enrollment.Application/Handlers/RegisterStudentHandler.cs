@@ -17,7 +17,8 @@ public static class RegisterStudentHandler
             FullName = command.FullName,
             BranchCode = command.BranchCode,
             BranchName = command.BranchName,
-            ClassYear = command.ClassYear
+            ClassYear = command.ClassYear,
+            Section = command.Section
         };
 
         session.Store(student);

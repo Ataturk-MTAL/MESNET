@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Internship.Application.Commands;
 using MESNET.Internship.Application.Errors;
 using MESNET.Internship.Application.Extensions;
@@ -17,17 +18,17 @@ public static class InternshipEndpoints
 {
     public static void MapInternshipEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/internships").WithTags("Internship");
+        var group = app.MapGroup("/api/internships").WithTags("Internship").RequireAuthorization();
 
-        group.MapGet("/{internshipId:guid}", Get);
-        group.MapGet("/", GetAll);
-        group.MapPost("/{internshipId:guid}/terminate", PostRequestTermination);
-        group.MapPost("/{internshipId:guid}/approve/parent", PostApproveParent);
-        group.MapPost("/{internshipId:guid}/approve/teacher", PostApproveTeacher);
-        group.MapPost("/{internshipId:guid}/approve/deputy", PostApproveDeputy);
-        group.MapPost("/{internshipId:guid}/approve/director", PostApproveDirector);
-        group.MapPost("/{internshipId:guid}/approve/business", PostApproveBusinessRep);
-        group.MapPost("/{internshipId:guid}/approve/override", PostOverride);
+        group.MapGet("/{internshipId:guid}", Get).RequireAuthorization(Permissions.Internship.View);
+        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Internship.View);
+        group.MapPost("/{internshipId:guid}/terminate", PostRequestTermination).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapPost("/{internshipId:guid}/approve/parent", PostApproveParent).RequireAuthorization(Permissions.Internship.Approve);
+        group.MapPost("/{internshipId:guid}/approve/teacher", PostApproveTeacher).RequireAuthorization(Permissions.Internship.Approve);
+        group.MapPost("/{internshipId:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Internship.Approve);
+        group.MapPost("/{internshipId:guid}/approve/director", PostApproveDirector).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapPost("/{internshipId:guid}/approve/business", PostApproveBusinessRep).RequireAuthorization(Permissions.Company.Student);
+        group.MapPost("/{internshipId:guid}/approve/override", PostOverride).RequireAuthorization(Permissions.Internship.Manage);
     }
 
     private static async Task<IResult> Get(

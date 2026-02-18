@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Application.Dtos;
 using MESNET.Enrollment.Application.Errors;
@@ -18,12 +19,12 @@ public static class StudentEndpoints
 {
     public static IEndpointRouteBuilder MapStudentEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/students");
+        var group = app.MapGroup("/api/students").RequireAuthorization();
 
-        group.MapPost("/", Post);
-        group.MapPut("/{studentId:guid}", Put);
-        group.MapGet("/{studentId:guid}", Get);
-        group.MapGet("/", GetAll);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Student.Manage);
+        group.MapPut("/{studentId:guid}", Put).RequireAuthorization(Permissions.Student.Manage);
+        group.MapGet("/{studentId:guid}", Get).RequireAuthorization(Permissions.Student.View);
+        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Student.View);
 
         return app;
     }
@@ -39,7 +40,8 @@ public static class StudentEndpoints
             FullName = command.FullName,
             BranchCode = command.BranchCode,
             BranchName = command.BranchName,
-            ClassYear = command.ClassYear
+            ClassYear = command.ClassYear,
+            Section = command.Section
         };
 
         session.Store(student);
@@ -68,6 +70,7 @@ public static class StudentEndpoints
         student.BranchCode = command.BranchCode;
         student.BranchName = command.BranchName;
         student.ClassYear = command.ClassYear;
+        student.Section = command.Section;
 
         session.Store(student);
 
@@ -91,7 +94,7 @@ public static class StudentEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? institutionId, string? branchCode, string? status, IQuerySession session)
+        Guid? institutionId, string? branchCode, string? section, string? status, IQuerySession session)
     {
         IQueryable<StudentProfile> queryable = session.Query<StudentProfile>();
 
@@ -100,6 +103,9 @@ public static class StudentEndpoints
 
         if (!string.IsNullOrWhiteSpace(branchCode))
             queryable = queryable.Where(s => s.BranchCode == branchCode);
+
+        if (!string.IsNullOrWhiteSpace(section))
+            queryable = queryable.Where(s => s.Section == section);
 
         if (!string.IsNullOrWhiteSpace(status) &&
             StudentStatus.TryFromName(status, true, out var studentStatus))

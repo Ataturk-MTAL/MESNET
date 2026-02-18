@@ -1,4 +1,5 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Handlers;
 using Microsoft.AspNetCore.Builder;
@@ -14,12 +15,12 @@ public static class InvitationEndpoints
     {
         var group = app.MapGroup("/api/security/invitations").WithTags("Invitation");
 
-        group.MapPost("/", CreateInvitation).RequireAuthorization("user:create");
-        group.MapGet("/", GetInvitations).RequireAuthorization("user:view");
-        group.MapPost("/{invitationId:guid}/approve", ApproveInvitation).RequireAuthorization("user:approve");
-        group.MapPost("/{invitationId:guid}/reject", RejectInvitation).RequireAuthorization("user:approve");
+        group.MapPost("/", CreateInvitation).RequireAuthorization(Permissions.UserManagement.Create);
+        group.MapGet("/", GetInvitations).RequireAuthorization(Permissions.UserManagement.View);
+        group.MapPost("/{invitationId:guid}/approve", ApproveInvitation).RequireAuthorization(Permissions.UserManagement.Approve);
+        group.MapPost("/{invitationId:guid}/reject", RejectInvitation).RequireAuthorization(Permissions.UserManagement.Approve);
         group.MapPost("/{invitationId:guid}/complete", CompleteInvitation).AllowAnonymous();
-        group.MapPost("/{invitationId:guid}/resend", ResendInvitation).RequireAuthorization("user:create");
+        group.MapPost("/{invitationId:guid}/resend", ResendInvitation).RequireAuthorization(Permissions.UserManagement.Create);
     }
 
     private static async Task<IResult> CreateInvitation(

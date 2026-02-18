@@ -14,14 +14,14 @@ public static class ReportingEndpoints
 {
     public static void MapReportingEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/reports").WithTags("Reporting");
+        var group = app.MapGroup("/api/reports").WithTags("Reporting").RequireAuthorization();
 
-        group.MapPost("/internship-contract", PostInternshipContract);
-        group.MapPost("/monthly-activity", PostMonthlyActivity);
-        group.MapPost("/guidance-visit", PostGuidanceVisit);
-        group.MapPost("/attendance-sheet", PostAttendanceSheet);
-        group.MapPost("/skill-exam", PostSkillExam);
-        group.MapPost("/business-evaluation", PostBusinessEvaluation);
+        group.MapPost("/internship-contract", PostInternshipContract).RequireAuthorization(Permissions.Internship.Report);
+        group.MapPost("/monthly-activity", PostMonthlyActivity).RequireAuthorization(Permissions.Coordinator.Report);
+        group.MapPost("/guidance-visit", PostGuidanceVisit).RequireAuthorization(Permissions.Coordinator.Report);
+        group.MapPost("/attendance-sheet", PostAttendanceSheet).RequireAuthorization(Permissions.Attendance.Report);
+        group.MapPost("/skill-exam", PostSkillExam).RequireAuthorization(Permissions.Coordinator.Report);
+        group.MapPost("/business-evaluation", PostBusinessEvaluation).RequireAuthorization(Permissions.Coordinator.Visit);
     }
 
     // --- Form 1: Isletme Staj Sozlesmesi ---

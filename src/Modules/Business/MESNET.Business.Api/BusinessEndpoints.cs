@@ -6,6 +6,7 @@ using MESNET.Business.Application.Extensions;
 using MESNET.Business.Core.Enums;
 using MESNET.Business.Shared.Events;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -17,16 +18,16 @@ public static class BusinessEndpoints
 {
     public static IEndpointRouteBuilder MapBusinessEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/businesses").WithTags("Business");
-        group.MapGet("/{businessId:guid}", Get);
-        group.MapPost("/", Post);
-        group.MapPost("/self-register", PostSelfRegister);
-        group.MapPut("/{businessId:guid}", Put);
-        group.MapPost("/{businessId:guid}/approve", PostApprove);
-        group.MapPost("/{businessId:guid}/reject", PostReject);
-        group.MapPost("/{businessId:guid}/deactivate", PostDeactivate);
-        group.MapPost("/{businessId:guid}/activate", PostActivate);
-        group.MapPost("/{businessId:guid}/close", PostClose);
+        var group = app.MapGroup("/api/businesses").WithTags("Business").RequireAuthorization();
+        group.MapGet("/{businessId:guid}", Get).RequireAuthorization(Permissions.Company.View);
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Company.Manage);
+        group.MapPost("/self-register", PostSelfRegister);  // Authenticate kullanıcı — CompanyManager kendi kaydeder
+        group.MapPut("/{businessId:guid}", Put).RequireAuthorization(Permissions.Company.Manage);
+        group.MapPost("/{businessId:guid}/approve", PostApprove).RequireAuthorization(Permissions.Company.Manage);
+        group.MapPost("/{businessId:guid}/reject", PostReject).RequireAuthorization(Permissions.Company.Manage);
+        group.MapPost("/{businessId:guid}/deactivate", PostDeactivate).RequireAuthorization(Permissions.Company.Manage);
+        group.MapPost("/{businessId:guid}/activate", PostActivate).RequireAuthorization(Permissions.Company.Manage);
+        group.MapPost("/{businessId:guid}/close", PostClose).RequireAuthorization(Permissions.Company.Manage);
         return app;
     }
 

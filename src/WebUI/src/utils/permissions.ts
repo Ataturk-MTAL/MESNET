@@ -1,31 +1,134 @@
-import { useAuthStore } from 'stores/auth';
+import { useAuthStore } from 'stores/auth'
 
+/**
+ * MESNET Phase 1 izin sabitleri.
+ * Backend: src/MESNET.Common.Shared/Security/Permissions.cs ile senkronize.
+ * Format: "kaynak:eylem"
+ * Wildcard: "student:*" → student altındaki tüm izinleri kapsar.
+ */
 export const Permissions = {
-  Tenant: {
-    View: 'tenant:view',
-    Manage: 'tenant:manage',
-    Configure: 'tenant:configure',
+  Institution: {
+    View: 'institution:view',
+    Manage: 'institution:manage',
+    Delete: 'institution:delete',
+    Staff: 'institution:staff:manage',
+    Report: 'institution:report:view',
   },
+
   Student: {
     View: 'student:view',
     Manage: 'student:manage',
     ViewOwn: 'student:view-own',
+    UpdateOwn: 'student:update-own',
+    Attendance: 'student:attendance:manage',
+    Salary: 'student:salary:manage',
   },
-  // ...diğer izinler
-} as const;
 
+  // ── Phase 2 ────────────────────────────────────────────────────────────────
+  // Protocol: MEB protokolü modülü henüz implement edilmedi.
+  // Backend modülü oluşturulduğunda bu bloğu aktif hale getir
+  // ve router/index.ts ile MainLayout.vue'daki yorum satırlarını aç.
+  //
+  // Protocol: {
+  //   View: 'protocol:view',
+  //   Create: 'protocol:create',
+  //   Approve: 'protocol:approve',
+  //   Manage: 'protocol:manage',
+  //   Program: 'protocol:program:manage',
+  // },
+  // ────────────────────────────────────────────────────────────────────────────
+
+  Company: {
+    View: 'company:view',
+    Manage: 'company:manage',
+    Document: 'company:document:manage',
+    Student: 'company:student:manage',
+    Visit: 'company:visit:manage',
+    RequestStudent: 'company:student:request',
+    Attendance: 'company:attendance:manage',
+    UploadReceipt: 'company:receipt:upload',
+    MasterTrainer: 'company:trainer:manage',
+  },
+
+  Internship: {
+    Apply: 'internship:apply',
+    View: 'internship:view',
+    Review: 'internship:review',
+    Approve: 'internship:approve',
+    ViewOwn: 'internship:view-own',
+    Manage: 'internship:manage',
+    Contract: 'internship:contract:manage',
+    Report: 'internship:report:manage',
+  },
+
+  Attendance: {
+    View: 'attendance:view',
+    ViewOwn: 'attendance:view-own',
+    Manage: 'attendance:manage',
+    Report: 'attendance:report',
+    Upload: 'attendance:upload',
+    Approve: 'attendance:approve',
+  },
+
+  Salary: {
+    View: 'salary:view',
+    ViewOwn: 'salary:view-own',
+    Calculate: 'salary:calculate',
+    Approve: 'salary:approve',
+    Receipt: 'salary:receipt:manage',
+    Parameter: 'salary:parameter:manage',
+  },
+
+  Coordinator: {
+    Assign: 'coordinator:assign',
+    Schedule: 'coordinator:schedule:manage',
+    Visit: 'coordinator:visit:manage',
+    Report: 'coordinator:report:manage',
+    Communication: 'coordinator:communication',
+  },
+
+  DepartmentHead: {
+    Distribution: 'department:distribution:manage',
+    Workload: 'department:workload:view',
+    TeacherAssign: 'department:teacher:assign',
+    ScheduleView: 'department:schedule:view',
+  },
+
+  Document: {
+    View: 'document:view',
+    Upload: 'document:upload',
+    Approve: 'document:approve',
+    Scan: 'document:scan',
+    Verify: 'document:verify',
+    Track: 'document:track',
+  },
+
+  Communication: {
+    SendMessage: 'communication:send',
+    ViewMessages: 'communication:view',
+    ReportIssue: 'communication:issue:report',
+    ManageIssues: 'communication:issue:manage',
+  },
+
+  UserManagement: {
+    View: 'user:view',
+    Create: 'user:create',
+    Update: 'user:update',
+    Delete: 'user:delete',
+    RolesManage: 'user:roles:manage',
+    Approve: 'user:approve',
+  },
+} as const
+
+export type Permission = (typeof Permissions)[keyof typeof Permissions][keyof (typeof Permissions)[keyof typeof Permissions]]
+
+// Composable — bileşenler ve composable'lar için
 export function usePermissions() {
-  const authStore = useAuthStore();
-
-  const hasPermission = (permission: string) => {
-    const permissions = authStore.permissions;
-    return permissions.some(p => 
-      p === permission || 
-      (p.endsWith(':*') && permission.startsWith(p.slice(0, -1)))
-    );
-  };
+  const authStore = useAuthStore()
 
   return {
-    hasPermission,
-  };
+    hasPermission: (permission: string) => authStore.hasPermission(permission),
+    hasAnyPermission: (permissions: string[]) => authStore.hasAnyPermission(permissions),
+    hasAllPermissions: (permissions: string[]) => authStore.hasAllPermissions(permissions),
+  }
 }

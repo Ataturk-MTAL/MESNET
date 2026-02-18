@@ -7,6 +7,7 @@ using MESNET.Business.Core.Enums;
 using MESNET.Business.Core.ValueObjects;
 using MESNET.Business.Shared.Events;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -18,10 +19,10 @@ public static class BusinessQueryEndpoints
 {
     public static IEndpointRouteBuilder MapBusinessQueryEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/businesses").WithTags("BusinessQuery");
-        group.MapGet("/", GetByStatus);
-        group.MapGet("/nearby", GetNearby);
-        group.MapPut("/{businessId:guid}/capacity", PutCapacity);
+        var group = app.MapGroup("/api/businesses").WithTags("BusinessQuery").RequireAuthorization();
+        group.MapGet("/", GetByStatus).RequireAuthorization(Permissions.Company.View);
+        group.MapGet("/nearby", GetNearby).RequireAuthorization(Permissions.Company.View);
+        group.MapPut("/{businessId:guid}/capacity", PutCapacity).RequireAuthorization(Permissions.Company.Manage);
         return app;
     }
 

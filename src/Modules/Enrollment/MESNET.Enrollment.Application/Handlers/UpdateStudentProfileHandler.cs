@@ -15,6 +15,7 @@ public static class UpdateStudentProfileHandler
         student.BranchCode = command.BranchCode;
         student.BranchName = command.BranchName;
         student.ClassYear = command.ClassYear;
+        student.Section = command.Section;
 
         session.Store(student);
     }

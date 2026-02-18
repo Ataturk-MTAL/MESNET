@@ -46,7 +46,8 @@ public static class UserCreatedConsumer
                     InstitutionId = @event.InstitutionId.Value,
                     BranchCode = @event.Metadata.GetValueOrDefault("BranchCode", ""),
                     BranchName = @event.Metadata.GetValueOrDefault("BranchName", ""),
-                    ClassYear = int.TryParse(@event.Metadata.GetValueOrDefault("ClassYear", "0"), out var cy) ? cy : 0
+                    ClassYear = int.TryParse(@event.Metadata.GetValueOrDefault("ClassYear", "0"), out var cy) ? cy : 0,
+                    Section = @event.Metadata.TryGetValue("Section", out var sec) ? sec : null
                 };
                 session.Store(student);
             }
