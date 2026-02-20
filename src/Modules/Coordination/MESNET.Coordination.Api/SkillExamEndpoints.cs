@@ -28,7 +28,7 @@ public static class SkillExamEndpoints
     private static async Task<IResult> Post(
         CreateSkillExam command, IMessageBus bus)
     {
-        var (result, examId) = await bus.InvokeAsync<(Result, Guid?)>(command);
+        var result = await bus.InvokeAsync<Result<Guid>>(command);
 
         if (result.IsFailure)
             return Results.BadRequest(ResponseBuilder.Fail()
@@ -36,6 +36,7 @@ public static class SkillExamEndpoints
                 .AddErrors(result.Error)
                 .Build());
 
+        var examId = result.Value;
         return Results.Created(
             $"/api/coordination/skill-exams/{examId}",
             ResponseBuilder.Success(201)

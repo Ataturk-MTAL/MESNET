@@ -69,6 +69,7 @@ public static class BusinessEndpoints
         };
 
         session.Store(business);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(new BusinessRegistered(business.Id, business.Name, business.Location, business.Source));
 
@@ -112,6 +113,7 @@ public static class BusinessEndpoints
         };
 
         session.Store(business);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(new BusinessRegistered(business.Id, business.Name, business.Location, business.Source));
         await bus.PublishAsync(new BusinessApprovalRequested(business.Id, business.Name));
@@ -142,6 +144,7 @@ public static class BusinessEndpoints
         business.Location = command.Location;
 
         session.Store(business);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(new BusinessUpdated(business.Id, business.Name, business.Location));
 
@@ -173,6 +176,7 @@ public static class BusinessEndpoints
         business.ApprovedAt = DateTime.UtcNow;
 
         session.Store(business);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(new BusinessApproved(business.Id, command.ApprovedBy, business.ApprovedAt.Value));
 
@@ -203,6 +207,7 @@ public static class BusinessEndpoints
         business.Status = BusinessStatus.Rejected;
 
         session.Store(business);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(new BusinessRejected(business.Id, command.Reason));
 
@@ -233,6 +238,7 @@ public static class BusinessEndpoints
         business.Status = BusinessStatus.Inactive;
 
         session.Store(business);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(new BusinessDeactivated(business.Id, command.Reason));
 
@@ -263,6 +269,7 @@ public static class BusinessEndpoints
         business.Status = BusinessStatus.Active;
 
         session.Store(business);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(new BusinessActivated(business.Id));
 
@@ -294,6 +301,7 @@ public static class BusinessEndpoints
         business.ClosedAt = DateTime.UtcNow;
 
         session.Store(business);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(new BusinessClosed(business.Id, business.ClosedAt.Value));
 

@@ -28,7 +28,7 @@ public static class BusinessEvaluationEndpoints
     private static async Task<IResult> Post(
         CreateBusinessEvaluation command, IMessageBus bus)
     {
-        var (result, evaluationId) = await bus.InvokeAsync<(Result, Guid?)>(command);
+        var result = await bus.InvokeAsync<Result<Guid>>(command);
 
         if (result.IsFailure)
             return Results.BadRequest(ResponseBuilder.Fail()
@@ -36,6 +36,7 @@ public static class BusinessEvaluationEndpoints
                 .AddErrors(result.Error)
                 .Build());
 
+        var evaluationId = result.Value;
         return Results.Created(
             $"/api/coordination/business-evaluations/{evaluationId}",
             ResponseBuilder.Success(201)

@@ -6,7 +6,6 @@ using MESNET.Payment.Application.Errors;
 using MESNET.Payment.Application.Extensions;
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.Enums;
-using MESNET.Payment.Shared.Events;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -148,7 +147,7 @@ public static class PaymentEndpoints
             year,
             receiptFile);
 
-        var (result, @event) = await bus.InvokeAsync<(Result, ReceiptUploadedByBusiness)>(command);
+        var result = await bus.InvokeAsync<Result<Guid>>(command);
 
         if (result.IsFailure)
         {
@@ -159,7 +158,7 @@ public static class PaymentEndpoints
         }
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { receiptId = @event.ReceiptId })
+            .AddData(new { receiptId = result.Value })
             .AddMessage("İşletme dekontu yüklendi.")
             .Build());
     }
@@ -217,7 +216,7 @@ public static class PaymentEndpoints
             year,
             receiptFile);
 
-        var (result, @event) = await bus.InvokeAsync<(Result, ReceiptUploadedByStudent)>(command);
+        var result = await bus.InvokeAsync<Result<Guid>>(command);
 
         if (result.IsFailure)
         {
@@ -228,7 +227,7 @@ public static class PaymentEndpoints
         }
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { receiptId = @event.ReceiptId })
+            .AddData(new { receiptId = result.Value })
             .AddMessage("Öğrenci dekontu yüklendi.")
             .Build());
     }
@@ -239,7 +238,7 @@ public static class PaymentEndpoints
     private static async Task<IResult> PostConfirm(
         Guid id, ConfirmSalary command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, SalaryConfirmedByStudent)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { SalaryPeriodId = id });
 
         if (result.IsFailure)
@@ -261,7 +260,7 @@ public static class PaymentEndpoints
     private static async Task<IResult> PostApproveTeacher(
         Guid id, ApproveReceiptByTeacher command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, ReceiptApprovedByTeacher)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { SalaryPeriodId = id });
 
         if (result.IsFailure)
@@ -283,7 +282,7 @@ public static class PaymentEndpoints
     private static async Task<IResult> PostApproveDeputy(
         Guid id, ApproveReceiptByDeputy command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, ReceiptApprovedByDeputy)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { SalaryPeriodId = id });
 
         if (result.IsFailure)
@@ -305,7 +304,7 @@ public static class PaymentEndpoints
     private static async Task<IResult> PostReject(
         Guid id, RejectReceipt command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, ReceiptRejected)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { SalaryPeriodId = id });
 
         if (result.IsFailure)

@@ -72,6 +72,22 @@ export interface FieldOfStudyDto {
   isActive: boolean
 }
 
+export interface ScheduleConfigDto {
+  configured: boolean
+  dailyPeriodCount?: number
+  updatedAt?: string
+  updatedBy?: string
+}
+
+export interface UpdateScheduleConfigRequest {
+  dailyPeriodCount: number
+  updatedBy: string
+}
+
+export interface UpdateSpecializationsRequest {
+  activeSpecializations: string[]
+}
+
 export const institutionApi = {
   get: (institutionId: string) =>
     api.get<InstitutionDto>(`/institutions/${institutionId}`),
@@ -88,8 +104,17 @@ export const institutionApi = {
     }),
 
   activateBranch: (institutionId: string, fieldCode: string) =>
-    api.post(`/field-catalog/institutions/${institutionId}/branches/`, { fieldCode }),
+    api.post(`/institutions/${institutionId}/branches`, { fieldCode }),
 
   deactivateBranch: (institutionId: string, fieldCode: string) =>
-    api.delete(`/field-catalog/institutions/${institutionId}/branches/${fieldCode}`),
+    api.delete(`/institutions/${institutionId}/branches/${fieldCode}`),
+
+  getScheduleConfig: (institutionId: string) =>
+    api.get<ScheduleConfigDto>(`/institutions/${institutionId}/schedule-config`),
+
+  updateScheduleConfig: (institutionId: string, data: UpdateScheduleConfigRequest) =>
+    api.put(`/institutions/${institutionId}/schedule-config`, data),
+
+  updateSpecializations: (institutionId: string, fieldCode: string, data: UpdateSpecializationsRequest) =>
+    api.put(`/institutions/${institutionId}/branches/${fieldCode}/specializations`, data),
 }

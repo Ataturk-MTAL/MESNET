@@ -30,7 +30,7 @@ public static class MonthlyActivityReportEndpoints
     private static async Task<IResult> Post(
         CreateMonthlyActivityReport command, IMessageBus bus)
     {
-        var (result, reportId) = await bus.InvokeAsync<(Result, Guid?)>(command);
+        var result = await bus.InvokeAsync<Result<Guid>>(command);
 
         if (result.IsFailure)
             return Results.BadRequest(ResponseBuilder.Fail()
@@ -38,6 +38,7 @@ public static class MonthlyActivityReportEndpoints
                 .AddErrors(result.Error)
                 .Build());
 
+        var reportId = result.Value;
         return Results.Created(
             $"/api/coordination/activity-reports/{reportId}",
             ResponseBuilder.Success(201)

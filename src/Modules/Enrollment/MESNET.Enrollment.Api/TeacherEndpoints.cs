@@ -39,6 +39,7 @@ public static class TeacherEndpoints
         };
 
         session.Store(teacher);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(
             new TeacherRegistered(teacher.Id, teacher.FullName, teacher.InstitutionId));

@@ -9,7 +9,7 @@ namespace MESNET.Coordination.Application.Handlers;
 
 public static class GuidanceVisitHandler
 {
-    public static async Task<(Result, Guid?)> Handle(
+    public static async Task<Result<Guid>> Handle(
         CreateGuidanceVisit command,
         IDocumentSession session,
         CancellationToken ct)
@@ -32,7 +32,7 @@ public static class GuidanceVisitHandler
         session.Store(visit);
         await session.SaveChangesAsync(ct);
 
-        return (Result.Success(), visit.Id);
+        return Result<Guid>.Success(visit.Id);
     }
 
     public static async Task<Result> Handle(

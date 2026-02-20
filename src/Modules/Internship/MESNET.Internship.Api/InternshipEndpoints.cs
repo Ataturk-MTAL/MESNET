@@ -6,7 +6,6 @@ using MESNET.Internship.Application.Errors;
 using MESNET.Internship.Application.Extensions;
 using MESNET.Internship.Core.Entities;
 using MESNET.Internship.Core.Enums;
-using MESNET.Internship.Shared.Events;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -74,7 +73,7 @@ public static class InternshipEndpoints
     private static async Task<IResult> PostRequestTermination(
         Guid internshipId, RequestTermination command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, InternshipTerminationRequested)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { InternshipId = internshipId });
 
         if (result.IsFailure)

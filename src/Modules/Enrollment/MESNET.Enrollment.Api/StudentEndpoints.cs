@@ -45,6 +45,7 @@ public static class StudentEndpoints
         };
 
         session.Store(student);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(
             new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.BranchCode));
@@ -73,6 +74,7 @@ public static class StudentEndpoints
         student.Section = command.Section;
 
         session.Store(student);
+        await session.SaveChangesAsync();
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Öğrenci profili güncellendi.")
@@ -109,7 +111,7 @@ public static class StudentEndpoints
 
         if (!string.IsNullOrWhiteSpace(status) &&
             StudentStatus.TryFromName(status, true, out var studentStatus))
-            queryable = queryable.Where(s => s.Status == studentStatus);
+            queryable = queryable.Where(s => s.Status.Name == studentStatus.Name);
 
         var students = await queryable.ToListAsync();
         return Results.Ok(ResponseBuilder.Success()

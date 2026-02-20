@@ -26,7 +26,7 @@ public static class WorkCalendarEndpoints
     private static async Task<IResult> Post(
         UpdateWorkCalendar command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, WorkCalendarUpdated)>(command);
+        var result = await bus.InvokeAsync<Result<Guid>>(command);
 
         if (result.IsFailure)
         {
@@ -37,7 +37,7 @@ public static class WorkCalendarEndpoints
         }
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { calendarId = @event.CalendarId })
+            .AddData(new { calendarId = result.Value })
             .AddMessage("Çalışma takvimi güncellendi.")
             .Build());
     }

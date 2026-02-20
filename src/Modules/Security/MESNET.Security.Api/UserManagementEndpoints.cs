@@ -28,7 +28,7 @@ public static class UserManagementEndpoints
     private static async Task<IResult> CreateUser(
         CreateUser command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result<Guid>, object?)>(command);
+        var result = await bus.InvokeAsync<Result<Guid>>(command);
 
         if (result.IsFailure)
             return Results.BadRequest(ResponseBuilder.Fail()
@@ -75,7 +75,7 @@ public static class UserManagementEndpoints
     private static async Task<IResult> UpdateUser(
         Guid userAccountId, UpdateUser command, IMessageBus bus)
     {
-        var (result, _) = await bus.InvokeAsync<(Result, object?)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { UserAccountId = userAccountId });
 
         if (result.IsFailure)
@@ -92,7 +92,7 @@ public static class UserManagementEndpoints
     private static async Task<IResult> ChangeRoles(
         Guid userAccountId, ChangeUserRoles command, IMessageBus bus)
     {
-        var (result, _) = await bus.InvokeAsync<(Result, object?)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { UserAccountId = userAccountId });
 
         if (result.IsFailure)
@@ -109,7 +109,7 @@ public static class UserManagementEndpoints
     private static async Task<IResult> ChangePermissions(
         Guid userAccountId, ChangeUserPermissions command, IMessageBus bus)
     {
-        var (result, _) = await bus.InvokeAsync<(Result, object?)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { UserAccountId = userAccountId });
 
         if (result.IsFailure)
@@ -126,7 +126,7 @@ public static class UserManagementEndpoints
     private static async Task<IResult> ToggleStatus(
         Guid userAccountId, ToggleUserStatus command, IMessageBus bus)
     {
-        var (result, _) = await bus.InvokeAsync<(Result, object?)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { UserAccountId = userAccountId });
 
         if (result.IsFailure)
@@ -144,7 +144,7 @@ public static class UserManagementEndpoints
     private static async Task<IResult> DeleteUser(
         Guid userAccountId, IMessageBus bus)
     {
-        var (result, _) = await bus.InvokeAsync<(Result, object?)>(new DeleteUser(userAccountId));
+        var result = await bus.InvokeAsync<Result>(new DeleteUser(userAccountId));
 
         if (result.IsFailure)
             return Results.BadRequest(ResponseBuilder.Fail()

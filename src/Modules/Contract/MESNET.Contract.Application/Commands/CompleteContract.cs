@@ -1,3 +1,3 @@
 namespace MESNET.Contract.Application.Commands;
 
-public sealed record CompleteContract(Guid ContractId);
+public sealed record CompleteContract(Guid InternshipContractId);

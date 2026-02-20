@@ -38,7 +38,7 @@ public static class FieldCatalogEndpoints
         if (educationType is not null && EducationType.TryFromName(educationType, true, out var type))
         {
             var filtered = await session.Query<FieldOfStudy>()
-                .Where(f => f.Type == type && f.IsActive)
+                .Where(f => f.Type.Name == type.Name && f.IsActive)
                 .ToListAsync();
             return Results.Ok(ResponseBuilder.Success()
                 .AddData(filtered.Select(f => f.ToDto()).ToList())
@@ -86,6 +86,7 @@ public static class FieldCatalogEndpoints
 
         institution.Branches.Add(branch);
         session.Store(institution);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(
             new BranchActivated(institution.Id, field.Code, field.Name, field.Type));
@@ -114,6 +115,7 @@ public static class FieldCatalogEndpoints
 
         branch.IsActive = false;
         session.Store(institution);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(
             new BranchDeactivated(institution.Id, fieldCode));
@@ -146,6 +148,7 @@ public static class FieldCatalogEndpoints
         institution.Branches[index] = updated;
 
         session.Store(institution);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(
             new BranchSpecializationsUpdated(institution.Id, fieldCode, command.ActiveSpecializations));

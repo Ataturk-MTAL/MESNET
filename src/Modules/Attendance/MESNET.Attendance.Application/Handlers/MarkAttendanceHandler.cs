@@ -11,17 +11,17 @@ namespace MESNET.Attendance.Application.Handlers;
 
 public static class MarkAttendanceHandler
 {
-    public static (Result, AttendanceMarked?) Handle(MarkAttendance command, IDocumentSession session)
+    public static (Result<Guid>, AttendanceMarked?) Handle(MarkAttendance command, IDocumentSession session)
     {
         var calendar = session.Query<WorkCalendar>()
             .FirstOrDefault(c => c.InstitutionId == command.InstitutionId && c.Year == command.Date.Year);
 
         if (calendar?.RestrictedDays.Any(d => d.Date.Date == command.Date.Date) == true)
-            return (Result.Failure(
+            return (Result<Guid>.Failure(
                 AttendanceErrors.OperationFailed("Mark", "Bu tarih kısıtlı bir gündür, devamsızlık girişi yapılamaz.")), null);
 
         if (!AbsenceType.TryFromName(command.AbsenceType, true, out _))
-            return (Result.Failure(
+            return (Result<Guid>.Failure(
                 AttendanceErrors.OperationFailed("Mark", $"Geçersiz devamsızlık türü: {command.AbsenceType}")), null);
 
         var id = Guid.NewGuid();
@@ -30,6 +30,6 @@ public static class MarkAttendanceHandler
             command.InstitutionId, command.Date, command.AbsenceType);
 
         session.Events.StartStream<AttendanceRecord>(id, @event);
-        return (Result.Success(), @event);
+        return (Result<Guid>.Success(id), @event);
     }
 }

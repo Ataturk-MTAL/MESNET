@@ -82,6 +82,7 @@ public static class PlacementEndpoints
 
         session.Store(placement);
         session.Store(student);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(
             new StudentPlaced(
@@ -152,6 +153,7 @@ public static class PlacementEndpoints
 
         session.Store(oldPlacement);
         session.Store(newPlacement);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(
             new StudentTransferred(
@@ -193,7 +195,7 @@ public static class PlacementEndpoints
 
         if (!string.IsNullOrWhiteSpace(status) &&
             PlacementStatus.TryFromName(status, true, out var placementStatus))
-            queryable = queryable.Where(p => p.Status == placementStatus);
+            queryable = queryable.Where(p => p.Status.Name == placementStatus.Name);
 
         var placements = await queryable.ToListAsync();
         return Results.Ok(ResponseBuilder.Success()

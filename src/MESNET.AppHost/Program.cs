@@ -52,6 +52,19 @@ var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WaitFor(rabbitmq)
     .WaitFor(minio);
 
+// Seeder — sadece dev modunda çalışır, API + Keycloak hazır olduktan sonra
+if (!builder.ExecutionContext.IsPublishMode)
+{
+    builder.AddProject<Projects.MESNET_Seeder>("mesnet-seeder")
+        .WithReference(api)
+        .WithReference(keycloak)
+        .WithEnvironment("Seeder__ApiBaseUrl", api.GetEndpoint("http"))
+        .WithEnvironment("Seeder__KeycloakTokenUrl", () =>
+            $"{keycloak.GetEndpoint("http").Url}/realms/mesnet/protocol/openid-connect/token")
+        .WaitFor(api)
+        .WaitFor(keycloak);
+}
+
 // Frontend
 if (builder.ExecutionContext.IsPublishMode)
 {

@@ -31,7 +31,7 @@ public static class AttendanceEndpoints
     private static async Task<IResult> Post(
         MarkAttendance command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, AttendanceMarked)>(command);
+        var result = await bus.InvokeAsync<Result<Guid>>(command);
 
         if (result.IsFailure)
         {
@@ -42,9 +42,9 @@ public static class AttendanceEndpoints
         }
 
         return Results.Created(
-            $"/api/attendance/{@event.AttendanceId}",
+            $"/api/attendance/{result.Value}",
             ResponseBuilder.Success(201)
-                .AddData(new { attendanceId = @event.AttendanceId })
+                .AddData(new { attendanceId = result.Value })
                 .AddMessage("Devamsızlık kaydı oluşturuldu.")
                 .Build());
     }
@@ -52,7 +52,7 @@ public static class AttendanceEndpoints
     private static async Task<IResult> PostVerify(
         Guid attendanceId, VerifyAttendance command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, AttendanceVerified)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { AttendanceId = attendanceId });
 
         if (result.IsFailure)
@@ -71,7 +71,7 @@ public static class AttendanceEndpoints
     private static async Task<IResult> PostCorrect(
         Guid attendanceId, CorrectAttendance command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, AttendanceCorrected)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { AttendanceId = attendanceId });
 
         if (result.IsFailure)
@@ -90,7 +90,7 @@ public static class AttendanceEndpoints
     private static async Task<IResult> PostHealthReport(
         Guid attendanceId, AttachHealthReport command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, HealthReportAttached)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { AttendanceId = attendanceId });
 
         if (result.IsFailure)
@@ -138,7 +138,7 @@ public static class AttendanceEndpoints
 
         if (!string.IsNullOrWhiteSpace(status) &&
             AttendanceStatus.TryFromName(status, true, out var attendanceStatus))
-            queryable = queryable.Where(r => r.Status == attendanceStatus);
+            queryable = queryable.Where(r => r.Status.Name == attendanceStatus.Name);
 
         var records = await queryable.ToListAsync();
         return Results.Ok(ResponseBuilder.Success()

@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../MESNET.Presentation/MESNET.Presentation.csproj" />
+    <ProjectReference Include="../MESNET.Seeder/MESNET.Seeder.csproj" />
   </ItemGroup>
 
 </Project>

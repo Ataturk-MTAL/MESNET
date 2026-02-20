@@ -14,7 +14,7 @@ public static class UploadReceiptByStudentHandler
     private const string AllowedContentType = "application/pdf";
     private static readonly byte[] PdfMagicBytes = "%PDF-"u8.ToArray();
 
-    public static async Task<(Result, ReceiptUploadedByStudent?)> Handle(
+    public static async Task<(Result<Guid>, ReceiptUploadedByStudent?)> Handle(
         UploadReceiptByStudent command,
         IFileStorageService fileStorage,
         IOptions<MinioStorageOptions> minioOptions,
@@ -24,20 +24,20 @@ public static class UploadReceiptByStudentHandler
         // 1. Dosya null kontrolü
         if (command.ReceiptFile is null || command.ReceiptFile.Length == 0)
         {
-            return (Result.Failure(FileUploadError.FileNull()), null);
+            return (Result<Guid>.Failure(FileUploadError.FileNull()), null);
         }
 
         // 2. Boyut kontrolü
         if (command.ReceiptFile.Length > MaxFileSizeBytes)
         {
-            return (Result.Failure(
+            return (Result<Guid>.Failure(
                 FileUploadError.FileTooLarge(command.ReceiptFile.Length, MaxFileSizeBytes)), null);
         }
 
         // 3. Content-Type kontrolü
         if (!command.ReceiptFile.ContentType.Equals(AllowedContentType, StringComparison.OrdinalIgnoreCase))
         {
-            return (Result.Failure(
+            return (Result<Guid>.Failure(
                 FileUploadError.InvalidFileType(command.ReceiptFile.ContentType)), null);
         }
 
@@ -48,7 +48,7 @@ public static class UploadReceiptByStudentHandler
 
         if (bytesRead < PdfMagicBytes.Length || !buffer.AsSpan().SequenceEqual(PdfMagicBytes))
         {
-            return (Result.Failure(FileUploadError.InvalidFileContent()), null);
+            return (Result<Guid>.Failure(FileUploadError.InvalidFileContent()), null);
         }
 
         // 5. Object path oluştur: default/{studentId}/{year-MM}/{guid}_{timestamp}.pdf
@@ -80,7 +80,7 @@ public static class UploadReceiptByStudentHandler
         {
             var logger = loggerFactory.CreateLogger("UploadReceiptByStudent");
             logger.LogError("MinIO upload başarısız: {Error}", uploadResult.Error.Description);
-            return (Result.Failure(uploadResult.Error), null);
+            return (Result<Guid>.Failure(uploadResult.Error), null);
         }
 
         // 8. Event döndür (objectPath ile, URL on-demand generate edilecek)
@@ -96,6 +96,6 @@ public static class UploadReceiptByStudentHandler
             "Dekont öğrenci tarafından yüklendi: SalaryPeriodId={SalaryPeriodId}, ReceiptId={ReceiptId}, StudentId={StudentId}",
             command.SalaryPeriodId, receiptId, command.StudentId);
 
-        return (Result.Success(), @event);
+        return (Result<Guid>.Success(receiptId), @event);
     }
 }

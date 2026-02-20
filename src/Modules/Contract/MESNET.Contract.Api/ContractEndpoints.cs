@@ -39,7 +39,7 @@ public static class ContractEndpoints
     private static async Task<IResult> Post(
         CreateContract command, IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, ContractCreated)>(command);
+        var result = await bus.InvokeAsync<Result<Guid>>(command);
 
         if (result.IsFailure)
         {
@@ -50,9 +50,9 @@ public static class ContractEndpoints
         }
 
         return Results.Created(
-            $"/api/contracts/{@event.ContractId}",
+            $"/api/contracts/{result.Value}",
             ResponseBuilder.Success(201)
-                .AddData(new { contractId = @event.ContractId })
+                .AddData(new { contractId = result.Value })
                 .AddMessage("Sözleşme oluşturuldu.")
                 .Build());
     }
@@ -79,7 +79,7 @@ public static class ContractEndpoints
     private static async Task<IResult> PostSign(
         Guid contractId, SignContract command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<object>>(command with { ContractId = contractId });
+        var result = await bus.InvokeAsync<Result<object>>(command with { InternshipContractId = contractId });
 
         if (result.IsFailure)
         {
@@ -117,7 +117,7 @@ public static class ContractEndpoints
         Guid contractId, SuspendContract command, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<ContractSuspended>>(
-            command with { ContractId = contractId });
+            command with { InternshipContractId = contractId });
 
         if (result.IsFailure)
         {
@@ -155,7 +155,7 @@ public static class ContractEndpoints
         Guid contractId, TerminateContract command, IMessageBus bus)
     {
         var result = await bus.InvokeAsync<Result<ContractTerminated>>(
-            command with { ContractId = contractId });
+            command with { InternshipContractId = contractId });
 
         if (result.IsFailure)
         {
@@ -221,7 +221,7 @@ public static class ContractEndpoints
 
         if (!string.IsNullOrWhiteSpace(status) &&
             ContractStatus.TryFromName(status, true, out var contractStatus))
-            queryable = queryable.Where(c => c.Status == contractStatus);
+            queryable = queryable.Where(c => c.Status.Name == contractStatus.Name);
 
         var contracts = await queryable.ToListAsync();
         return Results.Ok(ResponseBuilder.Success()

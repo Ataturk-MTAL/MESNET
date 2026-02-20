@@ -31,7 +31,7 @@ public static class CoordinationEndpoints
         UpsertTeacherSchedule command,
         IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, TeacherScheduleUpserted)>(
+        var result = await bus.InvokeAsync<Result<TeacherScheduleUpserted>>(
             command with { TeacherId = teacherId });
 
         if (result.IsFailure)
@@ -42,6 +42,7 @@ public static class CoordinationEndpoints
                 .Build());
         }
 
+        var @event = result.Value;
         var message = @event.IsNew
             ? "Öğretmen ders programı oluşturuldu."
             : "Öğretmen ders programı güncellendi.";
@@ -102,7 +103,7 @@ public static class CoordinationEndpoints
         AssignBusinessToFreeSlot command,
         IMessageBus bus)
     {
-        var (result, @event) = await bus.InvokeAsync<(Result, BusinessAssignedToTeacher)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { TeacherId = teacherId });
 
         if (result.IsFailure)

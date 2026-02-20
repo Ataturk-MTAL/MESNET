@@ -32,7 +32,7 @@ public static class BusinessQueryEndpoints
         if (status is not null && BusinessStatus.TryFromName(status, true, out var businessStatus))
         {
             var filtered = await session.Query<Core.Entities.Business>()
-                .Where(b => b.Status == businessStatus)
+                .Where(b => b.Status.Name == businessStatus.Name)
                 .ToListAsync();
             return Results.Ok(ResponseBuilder.Success()
                 .AddData(filtered.Select(b => b.ToDto()).ToList())
@@ -50,7 +50,7 @@ public static class BusinessQueryEndpoints
         double lat, double lng, double radius, IQuerySession session)
     {
         var allActive = await session.Query<Core.Entities.Business>()
-            .Where(b => b.Status == BusinessStatus.Active && b.Location != null)
+            .Where(b => b.Status.Name == BusinessStatus.Active.Name && b.Location != null)
             .ToListAsync();
 
         var nearby = allActive

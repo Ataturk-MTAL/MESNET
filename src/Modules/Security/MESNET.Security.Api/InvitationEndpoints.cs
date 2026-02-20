@@ -26,7 +26,7 @@ public static class InvitationEndpoints
     private static async Task<IResult> CreateInvitation(
         CreateInvitation command, IMessageBus bus)
     {
-        var (result, _) = await bus.InvokeAsync<(Result<Guid>, object?)>(command);
+        var result = await bus.InvokeAsync<Result<Guid>>(command);
 
         if (result.IsFailure)
             return Results.BadRequest(ResponseBuilder.Fail()
@@ -57,7 +57,7 @@ public static class InvitationEndpoints
     private static async Task<IResult> ApproveInvitation(
         Guid invitationId, ApproveInvitation command, IMessageBus bus)
     {
-        var (result, _) = await bus.InvokeAsync<(Result, object?)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { InvitationId = invitationId });
 
         if (result.IsFailure)
@@ -74,7 +74,7 @@ public static class InvitationEndpoints
     private static async Task<IResult> RejectInvitation(
         Guid invitationId, RejectInvitation command, IMessageBus bus)
     {
-        var (result, _) = await bus.InvokeAsync<(Result, object?)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { InvitationId = invitationId });
 
         if (result.IsFailure)
@@ -91,7 +91,7 @@ public static class InvitationEndpoints
     private static async Task<IResult> CompleteInvitation(
         Guid invitationId, CompleteInvitation command, IMessageBus bus)
     {
-        var (result, _) = await bus.InvokeAsync<(Result, object[]?)>(
+        var result = await bus.InvokeAsync<Result>(
             command with { InvitationId = invitationId });
 
         if (result.IsFailure)

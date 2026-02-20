@@ -9,7 +9,7 @@ namespace MESNET.Coordination.Application.Handlers;
 
 public static class MonthlyActivityReportHandler
 {
-    public static async Task<(Result, Guid?)> Handle(
+    public static async Task<Result<Guid>> Handle(
         CreateMonthlyActivityReport command,
         IDocumentSession session,
         CancellationToken ct)
@@ -32,7 +32,7 @@ public static class MonthlyActivityReportHandler
         session.Store(report);
         await session.SaveChangesAsync(ct);
 
-        return (Result.Success(), report.Id);
+        return Result<Guid>.Success(report.Id);
     }
 
     public static async Task<Result> Handle(

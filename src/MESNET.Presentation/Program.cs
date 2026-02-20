@@ -1,6 +1,7 @@
 using JasperFx;
 using JasperFx.Events.Daemon;
 using Marten;
+using Weasel.Core;
 using MESNET.Attendance.Api;
 using MESNET.Business.Api;
 using MESNET.Contract.Api;
@@ -8,6 +9,7 @@ using MESNET.Coordination.Api;
 using MESNET.Enrollment.Api;
 using MESNET.Institution.Api;
 using MESNET.Common.Infrastructure.Notifications;
+using MESNET.Common.Shared;
 using MESNET.Institution.Persistence.SeedData;
 using MESNET.Presentation;
 using MESNET.Internship.Api;
@@ -66,6 +68,13 @@ try
         opts.Connection(builder.Configuration.GetConnectionString("mesnet")!);
         opts.DatabaseSchemaName = "shared";
         opts.AutoCreateSchemaObjects = AutoCreate.All;
+
+        // SmartEnum → Name-based JSON serialization (tüm modüllerdeki SmartEnum tipleri otomatik tanınır)
+        // Marten varsayılan STJ serializer'ını kullanmaya devam et, sadece SmartEnum converter ekle
+        opts.UseSystemTextJsonForSerialization(
+            EnumStorage.AsString,
+            Casing.CamelCase,
+            configure: o => o.Converters.Add(new SmartEnumJsonConverterFactory()));
     })
     .InitializeWith(new FieldOfStudySeedData())
     .IntegrateWithWolverine()
@@ -166,6 +175,10 @@ try
 
         options.RejectionStatusCode = 429;
     });
+
+    // SmartEnum → Name-based JSON serialization (ASP.NET Core request/response)
+    builder.Services.ConfigureHttpJsonOptions(o =>
+        o.SerializerOptions.Converters.Add(new SmartEnumJsonConverterFactory()));
 
     // OpenAPI
     builder.Services.AddOpenApi();

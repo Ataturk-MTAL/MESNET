@@ -5,6 +5,7 @@
     <Project Path="src/MESNET.Presentation/MESNET.Presentation.csproj" />
     <Project Path="src/MESNET.AppHost/MESNET.AppHost.csproj" />
     <Project Path="src/MESNET.ServiceDefaults/MESNET.ServiceDefaults.csproj" />
+    <Project Path="src/MESNET.Seeder/MESNET.Seeder.csproj" />
   </Folder>
   <Folder Name="/src/Arch/" />
   <Folder Name="/src/Arch/Actors/">

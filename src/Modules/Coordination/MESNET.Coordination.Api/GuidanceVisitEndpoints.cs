@@ -30,7 +30,7 @@ public static class GuidanceVisitEndpoints
     private static async Task<IResult> Post(
         CreateGuidanceVisit command, IMessageBus bus)
     {
-        var (result, visitId) = await bus.InvokeAsync<(Result, Guid?)>(command);
+        var result = await bus.InvokeAsync<Result<Guid>>(command);
 
         if (result.IsFailure)
             return Results.BadRequest(ResponseBuilder.Fail()
@@ -38,6 +38,7 @@ public static class GuidanceVisitEndpoints
                 .AddErrors(result.Error)
                 .Build());
 
+        var visitId = result.Value;
         return Results.Created(
             $"/api/coordination/guidance-visits/{visitId}",
             ResponseBuilder.Success(201)

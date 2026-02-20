@@ -7,7 +7,7 @@ public class SuspendContractValidator : AbstractValidator<SuspendContract>
 {
     public SuspendContractValidator()
     {
-        RuleFor(x => x.ContractId).NotEmpty().WithMessage("Sözleşme belirtilmelidir.");
+        RuleFor(x => x.InternshipContractId).NotEmpty().WithMessage("Sözleşme belirtilmelidir.");
         RuleFor(x => x.Reason).NotEmpty().WithMessage("Askıya alma gerekçesi belirtilmelidir.");
     }
 }

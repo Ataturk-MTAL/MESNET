@@ -9,16 +9,16 @@ namespace MESNET.Coordination.Application.Handlers;
 
 public static class SkillExamHandler
 {
-    public static async Task<(Result, Guid?)> Handle(
+    public static async Task<Result<Guid>> Handle(
         CreateSkillExam command,
         IDocumentSession session,
         CancellationToken ct)
     {
         if (!AcademicSemester.TryFromName(command.Semester, true, out var semester))
-            return (Result.Failure(CoordinationErrors.InvalidSemester(command.Semester)), null);
+            return Result<Guid>.Failure(CoordinationErrors.InvalidSemester(command.Semester));
 
         if (!ExamResult.TryFromName(command.Result, true, out var examResult))
-            return (Result.Failure(CoordinationErrors.InvalidExamResult(command.Result)), null);
+            return Result<Guid>.Failure(CoordinationErrors.InvalidExamResult(command.Result));
 
         var exam = new SkillExam
         {
@@ -38,7 +38,7 @@ public static class SkillExamHandler
         session.Store(exam);
         await session.SaveChangesAsync(ct);
 
-        return (Result.Success(), exam.Id);
+        return Result<Guid>.Success(exam.Id);
     }
 
     public static async Task<Result> Handle(

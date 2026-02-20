@@ -60,6 +60,7 @@ public static class InstitutionEndpoints
         };
 
         session.Store(institution);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(
             new InstitutionUpdated(institution.Id, institution.FullName, institution.Location));
@@ -89,6 +90,7 @@ public static class InstitutionEndpoints
         institution.Location = command.Location;
 
         session.Store(institution);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(
             new InstitutionUpdated(institution.Id, institution.FullName, institution.Location));
@@ -118,6 +120,7 @@ public static class InstitutionEndpoints
 
         institution.Staff.Add(staff);
         session.Store(institution);
+        await session.SaveChangesAsync();
 
         await bus.PublishAsync(
             new StaffAuthorized(institution.Id, staff.Id, staff.Role, staff.BranchCode));

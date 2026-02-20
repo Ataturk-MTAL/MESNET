@@ -7,7 +7,7 @@ public class TerminateContractValidator : AbstractValidator<TerminateContract>
 {
     public TerminateContractValidator()
     {
-        RuleFor(x => x.ContractId).NotEmpty().WithMessage("Sözleşme belirtilmelidir.");
+        RuleFor(x => x.InternshipContractId).NotEmpty().WithMessage("Sözleşme belirtilmelidir.");
         RuleFor(x => x.Reason).NotEmpty().WithMessage("Fesih gerekçesi belirtilmelidir.");
         RuleFor(x => x.ReasonType).NotEmpty().WithMessage("Fesih nedeni türü belirtilmelidir.");
     }

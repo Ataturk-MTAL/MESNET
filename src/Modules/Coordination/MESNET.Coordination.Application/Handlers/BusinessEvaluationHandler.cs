@@ -9,13 +9,13 @@ namespace MESNET.Coordination.Application.Handlers;
 
 public static class BusinessEvaluationHandler
 {
-    public static async Task<(Result, Guid?)> Handle(
+    public static async Task<Result<Guid>> Handle(
         CreateBusinessEvaluation command,
         IDocumentSession session,
         CancellationToken ct)
     {
         if (!EvaluationResult.TryFromName(command.Result, true, out var evalResult))
-            return (Result.Failure(CoordinationErrors.InvalidEvaluationResult(command.Result)), null);
+            return Result<Guid>.Failure(CoordinationErrors.InvalidEvaluationResult(command.Result));
 
         var evaluation = new BusinessEvaluation
         {
@@ -32,7 +32,7 @@ public static class BusinessEvaluationHandler
         session.Store(evaluation);
         await session.SaveChangesAsync(ct);
 
-        return (Result.Success(), evaluation.Id);
+        return Result<Guid>.Success(evaluation.Id);
     }
 
     public static async Task<Result> Handle(
