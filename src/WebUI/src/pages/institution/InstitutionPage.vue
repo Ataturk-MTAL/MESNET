@@ -484,7 +484,7 @@ const fieldCatalog = ref<FieldOfStudyDto[]>([])
 const loadingCatalog = ref(false)
 
 const tab = ref('info')
-const institutionId = authStore.user?.institutionId ?? ''
+const institutionId = ref<string>('')
 
 // ── Computed ──
 const activeBranches = computed(() =>
@@ -579,16 +579,23 @@ function getSpecializationName(fieldCode: string, specCode: string): string {
 
 // ── Data Loading ──
 async function load() {
-  if (!institutionId) {
-    error.value = 'Kurum bilgisi bulunamadı.'
-    return
-  }
   loading.value = true
   error.value = null
   try {
+    // Önce kurum listesini al — token'daki ID'ye bağımlı olmadan
+    if (!institutionId.value) {
+      const listRes = await institutionApi.list()
+      const institutions = listRes.data
+      if (!institutions || institutions.length === 0) {
+        error.value = 'Kayıtlı kurum bulunamadı.'
+        return
+      }
+      institutionId.value = institutions[0].id
+    }
+
     const [instRes, schedRes] = await Promise.all([
-      institutionApi.get(institutionId),
-      institutionApi.getScheduleConfig(institutionId),
+      institutionApi.get(institutionId.value),
+      institutionApi.getScheduleConfig(institutionId.value),
     ])
     institution.value = instRes.data
     scheduleConfig.value = schedRes.data
@@ -625,7 +632,7 @@ async function loadFieldCatalog(educationType?: string) {
 async function saveInstitution() {
   saving.value = true
   try {
-    await institutionApi.update(institutionId, {
+    await institutionApi.update(institutionId.value, {
       fullName: editForm.fullName,
       address: editForm.address || undefined,
       phoneNumber: editForm.phoneNumber || undefined,
@@ -649,7 +656,7 @@ function openStaffDialog() {
   staffForm.role = ''
   staffForm.branchCode = null
   userOpts.reset()
-  userOpts.load({ institutionId })
+  userOpts.load({ institutionId: institutionId.value })
   staffDialog.value = true
 }
 
@@ -665,7 +672,7 @@ function onUserSelect(val: string | null) {
 async function addStaff() {
   saving.value = true
   try {
-    await institutionApi.authorizeStaff(institutionId, {
+    await institutionApi.authorizeStaff(institutionId.value, {
       keycloakUserId: staffForm.keycloakUserId,
       fullName: staffForm.fullName,
       role: staffForm.role,
@@ -709,7 +716,7 @@ function filterFields(val: string, update: (fn: () => void) => void) {
 async function activateBranch() {
   saving.value = true
   try {
-    await institutionApi.activateBranch(institutionId, branchForm.fieldCode)
+    await institutionApi.activateBranch(institutionId.value, branchForm.fieldCode)
     notify.success('Alan aktifleştirildi.')
     branchDialog.value = false
     await load()
@@ -730,7 +737,7 @@ function confirmDeactivateBranch(branch: InstitutionBranchDto) {
   }).onOk(async () => {
     saving.value = true
     try {
-      await institutionApi.deactivateBranch(institutionId, branch.fieldCode)
+      await institutionApi.deactivateBranch(institutionId.value, branch.fieldCode)
       notify.success('Alan pasife alındı.')
       await load()
     } catch {
@@ -757,7 +764,7 @@ async function openSpecializationDialog(branch: InstitutionBranchDto) {
 async function saveSpecializations() {
   saving.value = true
   try {
-    await institutionApi.updateSpecializations(institutionId, specForm.fieldCode, {
+    await institutionApi.updateSpecializations(institutionId.value, specForm.fieldCode, {
       activeSpecializations: specForm.selectedCodes,
     })
     notify.success('Uzmanlık alanları güncellendi.')
@@ -779,13 +786,13 @@ function openScheduleDialog() {
 async function saveScheduleConfig() {
   saving.value = true
   try {
-    await institutionApi.updateScheduleConfig(institutionId, {
+    await institutionApi.updateScheduleConfig(institutionId.value, {
       dailyPeriodCount: scheduleForm.dailyPeriodCount,
       updatedBy: authStore.user?.fullName ?? '',
     })
     notify.success('Ders programı ayarları güncellendi.')
     scheduleDialog.value = false
-    const res = await institutionApi.getScheduleConfig(institutionId)
+    const res = await institutionApi.getScheduleConfig(institutionId.value)
     scheduleConfig.value = res.data
   } catch {
     notify.error('Ayarlar kaydedilirken hata oluştu.')

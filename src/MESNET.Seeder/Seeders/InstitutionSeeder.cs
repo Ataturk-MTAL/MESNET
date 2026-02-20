@@ -13,6 +13,24 @@ public static class InstitutionSeeder
                                && el.GetArrayLength() > 0)
         {
             Console.WriteLine("  ⊘ Veriler zaten mevcut, atlanıyor.");
+
+            // Keycloak'ı mevcut institution_id ile senkronize et
+            var institutions = await api.GetAsync("/api/institutions");
+            if (institutions is { } instArr && instArr.ValueKind == System.Text.Json.JsonValueKind.Array
+                                            && instArr.GetArrayLength() > 0)
+            {
+                var existingId = instArr[0].GetProperty("id").GetGuid();
+                ctx.Set("Institution", existingId);
+                try
+                {
+                    await keycloak.UpdateAllUsersInstitutionIdAsync(existingId);
+                    Console.WriteLine($"  ✓ Keycloak institution_id senkronize edildi ({existingId.ToString()[..8]}...)");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  ⚠ Keycloak senkronizasyon başarısız: {ex.Message}");
+                }
+            }
             return;
         }
 

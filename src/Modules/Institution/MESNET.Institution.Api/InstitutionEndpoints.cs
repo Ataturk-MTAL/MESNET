@@ -19,6 +19,7 @@ public static class InstitutionEndpoints
         var group = app.MapGroup("/api/institutions")
             .WithTags("Institution").RequireAuthorization();
 
+        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Institution.View);
         group.MapGet("/{institutionId:guid}", Get).RequireAuthorization(Permissions.Institution.View);
         group.MapPost("/", Post).RequireAuthorization(Permissions.Institution.Manage);
         group.MapPut("/{institutionId:guid}", Put).RequireAuthorization(Permissions.Institution.Manage);
@@ -27,6 +28,14 @@ public static class InstitutionEndpoints
         group.MapGet("/{institutionId:guid}/schedule-config", GetScheduleConfig).RequireAuthorization(Permissions.Institution.View);
 
         return app;
+    }
+
+    private static async Task<IResult> GetAll(IQuerySession session)
+    {
+        var institutions = await session.Query<Core.Entities.Institution>().ToListAsync();
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(institutions.Select(i => i.ToDto()))
+            .Build());
     }
 
     private static async Task<IResult> Get(Guid institutionId, IQuerySession session)

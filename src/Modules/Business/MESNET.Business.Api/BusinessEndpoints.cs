@@ -5,6 +5,7 @@ using MESNET.Business.Application.Errors;
 using MESNET.Business.Application.Extensions;
 using MESNET.Business.Core.Enums;
 using MESNET.Business.Shared.Events;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
@@ -154,7 +155,7 @@ public static class BusinessEndpoints
     }
 
     private static async Task<IResult> PostApprove(
-        Guid businessId, ApproveBusiness command, IDocumentSession session, IMessageBus bus)
+        Guid businessId, IDocumentSession session, IMessageBus bus, ICurrentUserService currentUser)
     {
         var business = await session.LoadAsync<Core.Entities.Business>(businessId);
         if (business is null)
@@ -178,7 +179,7 @@ public static class BusinessEndpoints
         session.Store(business);
         await session.SaveChangesAsync();
 
-        await bus.PublishAsync(new BusinessApproved(business.Id, command.ApprovedBy, business.ApprovedAt.Value));
+        await bus.PublishAsync(new BusinessApproved(business.Id, currentUser.GetFullName(), business.ApprovedAt.Value));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme onaylandı.")

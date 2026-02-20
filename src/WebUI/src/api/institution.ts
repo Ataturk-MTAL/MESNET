@@ -89,6 +89,9 @@ export interface UpdateSpecializationsRequest {
 }
 
 export const institutionApi = {
+  list: () =>
+    api.get<InstitutionDto[]>('/institutions'),
+
   get: (institutionId: string) =>
     api.get<InstitutionDto>(`/institutions/${institutionId}`),
 

@@ -9,6 +9,6 @@
   <ItemGroup>
     <ProjectReference Include="../MESNET.Business.Application/MESNET.Business.Application.csproj" />
     <ProjectReference Include="../MESNET.Business.Persistence/MESNET.Business.Persistence.csproj" />
-
+    <ProjectReference Include="../../../MESNET.Common.Infrastructure/MESNET.Common.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
