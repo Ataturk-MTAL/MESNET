@@ -1,6 +1,4 @@
-using MESNET.Common.Shared;
 using MESNET.Contract.Application.Commands;
-using MESNET.Contract.Application.Errors;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
 using MESNET.Contract.Shared.Events;
@@ -11,13 +9,12 @@ namespace MESNET.Contract.Application.Handlers;
 public static class SuspendContractHandler
 {
     [AggregateHandler]
-    public static Result<ContractSuspended> Handle(SuspendContract command, InternshipContract contract)
+    public static ContractSuspended Handle(SuspendContract command, InternshipContract contract)
     {
         if (!contract.Status.CanTransitionTo(ContractStatus.Suspended))
-            return Result<ContractSuspended>.Failure(
-                ContractErrors.InvalidStatus(contract.Id, contract.Status.Slug, "Sözleşme askıya alınamaz."));
+            throw new InvalidOperationException(
+                $"Sözleşme askıya alınamaz. Mevcut durum: {contract.Status.Slug}.");
 
-        return Result<ContractSuspended>.Success(
-            new ContractSuspended(contract.Id, command.Reason, DateTime.UtcNow));
+        return new ContractSuspended(contract.Id, command.Reason, DateTime.UtcNow);
     }
 }
