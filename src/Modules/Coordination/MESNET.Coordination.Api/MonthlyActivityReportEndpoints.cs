@@ -30,15 +30,8 @@ public static class MonthlyActivityReportEndpoints
     private static async Task<IResult> Post(
         CreateMonthlyActivityReport command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<Guid>>(command);
+        var reportId = await bus.InvokeAsync<Guid>(command);
 
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-
-        var reportId = result.Value;
         return Results.Created(
             $"/api/coordination/activity-reports/{reportId}",
             ResponseBuilder.Success(201)
@@ -50,13 +43,7 @@ public static class MonthlyActivityReportEndpoints
     private static async Task<IResult> Put(
         Guid reportId, UpdateMonthlyActivityReport command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(command with { ReportId = reportId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { ReportId = reportId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Aylık faaliyet raporu güncellendi.")
@@ -66,13 +53,7 @@ public static class MonthlyActivityReportEndpoints
     private static async Task<IResult> PostSubmit(
         Guid reportId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(new SubmitMonthlyActivityReport(reportId));
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(new SubmitMonthlyActivityReport(reportId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Aylık faaliyet raporu gönderildi.")
@@ -82,13 +63,7 @@ public static class MonthlyActivityReportEndpoints
     private static async Task<IResult> PostApprove(
         Guid reportId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(new ApproveMonthlyActivityReport(reportId));
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(new ApproveMonthlyActivityReport(reportId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Aylık faaliyet raporu onaylandı.")

@@ -3,7 +3,6 @@ using MESNET.Attendance.Application.Commands;
 using MESNET.Attendance.Application.Errors;
 using MESNET.Attendance.Application.Extensions;
 using MESNET.Attendance.Core.Entities;
-using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
@@ -26,18 +25,10 @@ public static class WorkCalendarEndpoints
     private static async Task<IResult> Post(
         UpdateWorkCalendar command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<Guid>>(command);
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        var calendarId = await bus.InvokeAsync<Guid>(command);
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { calendarId = result.Value })
+            .AddData(new { calendarId })
             .AddMessage("Çalışma takvimi güncellendi.")
             .Build());
     }

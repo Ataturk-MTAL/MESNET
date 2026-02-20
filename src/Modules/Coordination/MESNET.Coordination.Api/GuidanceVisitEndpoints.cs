@@ -30,15 +30,8 @@ public static class GuidanceVisitEndpoints
     private static async Task<IResult> Post(
         CreateGuidanceVisit command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<Guid>>(command);
+        var visitId = await bus.InvokeAsync<Guid>(command);
 
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-
-        var visitId = result.Value;
         return Results.Created(
             $"/api/coordination/guidance-visits/{visitId}",
             ResponseBuilder.Success(201)
@@ -50,13 +43,7 @@ public static class GuidanceVisitEndpoints
     private static async Task<IResult> Put(
         Guid visitId, UpdateGuidanceVisit command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(command with { VisitId = visitId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { VisitId = visitId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Rehberlik ziyareti güncellendi.")
@@ -66,13 +53,7 @@ public static class GuidanceVisitEndpoints
     private static async Task<IResult> PostSubmit(
         Guid visitId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(new SubmitGuidanceVisit(visitId));
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(new SubmitGuidanceVisit(visitId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Rehberlik ziyareti gönderildi.")
@@ -82,13 +63,7 @@ public static class GuidanceVisitEndpoints
     private static async Task<IResult> PostApprove(
         Guid visitId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(new ApproveGuidanceVisit(visitId));
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(new ApproveGuidanceVisit(visitId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Rehberlik ziyareti onaylandı.")

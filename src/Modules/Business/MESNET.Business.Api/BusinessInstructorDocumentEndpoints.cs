@@ -73,18 +73,10 @@ public static class BusinessInstructorDocumentEndpoints
             uploadedBy,
             expiresAt);
 
-        var result = await bus.InvokeAsync<Result<InstructorDocumentUploaded>>(command);
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        var ev = await bus.InvokeAsync<InstructorDocumentUploaded>(command);
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { documentId = result.Value.DocumentId })
+            .AddData(new { documentId = ev.DocumentId })
             .AddMessage("Usta öğretici belgesi yüklendi.")
             .Build());
     }
@@ -95,16 +87,7 @@ public static class BusinessInstructorDocumentEndpoints
     private static async Task<IResult> PostInvalidate(
         Guid businessId, Guid documentId, InvalidateInstructorDocument command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<InstructorDocumentInvalidated>>(
-            command with { BusinessId = businessId, DocumentId = documentId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { BusinessId = businessId, DocumentId = documentId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Usta öğretici belgesi geçersiz kılındı.")
@@ -117,16 +100,7 @@ public static class BusinessInstructorDocumentEndpoints
     private static async Task<IResult> Delete(
         Guid businessId, Guid documentId, DeleteInstructorDocument command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<InstructorDocumentDeleted>>(
-            command with { BusinessId = businessId, DocumentId = documentId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { BusinessId = businessId, DocumentId = documentId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Usta öğretici belgesi silindi.")
@@ -139,16 +113,7 @@ public static class BusinessInstructorDocumentEndpoints
     private static async Task<IResult> PostRequest(
         Guid businessId, RequestInstructorDocument command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<InstructorDocumentRequested>>(
-            command with { BusinessId = businessId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { BusinessId = businessId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Usta öğretici belgesi talebi gönderildi.")
@@ -161,16 +126,7 @@ public static class BusinessInstructorDocumentEndpoints
     private static async Task<IResult> PostSuspend(
         Guid businessId, SuspendBusiness command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<BusinessSuspended>>(
-            command with { BusinessId = businessId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { BusinessId = businessId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme pasife alındı.")

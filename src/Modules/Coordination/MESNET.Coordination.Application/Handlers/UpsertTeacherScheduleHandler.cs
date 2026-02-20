@@ -14,7 +14,7 @@ public static class UpsertTeacherScheduleHandler
         "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"
     };
 
-    public static async Task<Result<TeacherScheduleUpserted>> Handle(
+    public static async Task<TeacherScheduleUpserted> Handle(
         UpsertTeacherSchedule command,
         IDocumentSession session,
         CancellationToken cancellationToken)
@@ -25,8 +25,7 @@ public static class UpsertTeacherScheduleHandler
 
         if (institution?.ScheduleConfig is null)
         {
-            return Result<TeacherScheduleUpserted>.Failure(
-                CoordinationErrors.ConfigurationMissing("Kurum ders programı ayarları yapılmamış."));
+            throw new DomainException(CoordinationErrors.ConfigurationMissing("Kurum ders programı ayarları yapılmamış."));
         }
 
         var maxPeriods = institution.ScheduleConfig.DailyPeriodCount;
@@ -34,7 +33,7 @@ public static class UpsertTeacherScheduleHandler
         // 2. Semester validation
         if (!AcademicSemester.TryFromName(command.Semester, true, out var semester))
         {
-            return Result<TeacherScheduleUpserted>.Failure(CoordinationErrors.InvalidSemester(command.Semester));
+            throw new DomainException(CoordinationErrors.InvalidSemester(command.Semester));
         }
 
         // 3. WeeklySchedule validation
@@ -43,14 +42,13 @@ public static class UpsertTeacherScheduleHandler
             // 3a. Day validation
             if (!ValidDays.Contains(dayInput.Day))
             {
-                return Result<TeacherScheduleUpserted>.Failure(CoordinationErrors.InvalidDay(dayInput.Day));
+                throw new DomainException(CoordinationErrors.InvalidDay(dayInput.Day));
             }
 
             // 3b. Period count validation
             if (dayInput.Periods.Count != maxPeriods)
             {
-                return Result<TeacherScheduleUpserted>.Failure(
-                    CoordinationErrors.InvalidPeriodCount(dayInput.Day, maxPeriods, dayInput.Periods.Count));
+                throw new DomainException(CoordinationErrors.InvalidPeriodCount(dayInput.Day, maxPeriods, dayInput.Periods.Count));
             }
 
             // 3c. Period sequence validation (1, 2, 3, ..., maxPeriods)
@@ -59,8 +57,7 @@ public static class UpsertTeacherScheduleHandler
 
             if (!expectedNumbers.SequenceEqual(actualNumbers))
             {
-                return Result<TeacherScheduleUpserted>.Failure(
-                    CoordinationErrors.InvalidPeriodSequence(dayInput.Day));
+                throw new DomainException(CoordinationErrors.InvalidPeriodSequence(dayInput.Day));
             }
 
             // 3d. SlotStatus validation
@@ -68,8 +65,7 @@ public static class UpsertTeacherScheduleHandler
             {
                 if (!SlotStatus.TryFromName(period.Status, true, out _))
                 {
-                    return Result<TeacherScheduleUpserted>.Failure(
-                        CoordinationErrors.InvalidSlotStatus(period.Status));
+                    throw new DomainException(CoordinationErrors.InvalidSlotStatus(period.Status));
                 }
             }
         }
@@ -90,12 +86,12 @@ public static class UpsertTeacherScheduleHandler
             session.Store(existingSchedule);
             await session.SaveChangesAsync(cancellationToken);
 
-            return Result<TeacherScheduleUpserted>.Success(new TeacherScheduleUpserted(
+            return new TeacherScheduleUpserted(
                 existingSchedule.Id,
                 command.TeacherId,
                 command.AcademicYear,
                 command.Semester,
-                IsNew: false));
+                IsNew: false);
         }
         else
         {
@@ -115,12 +111,12 @@ public static class UpsertTeacherScheduleHandler
             session.Store(newSchedule);
             await session.SaveChangesAsync(cancellationToken);
 
-            return Result<TeacherScheduleUpserted>.Success(new TeacherScheduleUpserted(
+            return new TeacherScheduleUpserted(
                 newSchedule.Id,
                 command.TeacherId,
                 command.AcademicYear,
                 command.Semester,
-                IsNew: true));
+                IsNew: true);
         }
     }
 

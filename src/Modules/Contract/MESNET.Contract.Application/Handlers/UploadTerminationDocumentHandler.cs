@@ -16,7 +16,7 @@ public static class UploadTerminationDocumentHandler
     private const string AllowedContentType = "application/pdf";
     private static readonly byte[] PdfMagicBytes = "%PDF-"u8.ToArray();
 
-    public static async Task<(Result, TerminationDocumentUploaded?)> Handle(
+    public static async Task<TerminationDocumentUploaded> Handle(
         UploadTerminationDocument command,
         IDocumentSession session,
         IFileStorageService fileStorage,
@@ -27,28 +27,17 @@ public static class UploadTerminationDocumentHandler
         // 1. Sözleşme mevcut mu kontrol et
         var contract = await session.LoadAsync<InternshipContract>(command.ContractId, cancellationToken);
         if (contract is null)
-        {
-            return (Result.Failure(
-                new Error("CONTRACT_NOT_FOUND", $"Sözleşme bulunamadı: {command.ContractId}")), null);
-        }
+            throw new DomainException("CONTRACT_NOT_FOUND", $"Sözleşme bulunamadı: {command.ContractId}");
 
         // 2. Dosya validasyonu
         if (command.DocumentFile is null || command.DocumentFile.Length == 0)
-        {
-            return (Result.Failure(FileUploadError.FileNull()), null);
-        }
+            throw new DomainException(FileUploadError.FileNull());
 
         if (command.DocumentFile.Length > MaxFileSizeBytes)
-        {
-            return (Result.Failure(
-                FileUploadError.FileTooLarge(command.DocumentFile.Length, MaxFileSizeBytes)), null);
-        }
+            throw new DomainException(FileUploadError.FileTooLarge(command.DocumentFile.Length, MaxFileSizeBytes));
 
         if (!command.DocumentFile.ContentType.Equals(AllowedContentType, StringComparison.OrdinalIgnoreCase))
-        {
-            return (Result.Failure(
-                FileUploadError.InvalidFileType(command.DocumentFile.ContentType)), null);
-        }
+            throw new DomainException(FileUploadError.InvalidFileType(command.DocumentFile.ContentType));
 
         // 3. Magic byte kontrolü
         await using var stream = command.DocumentFile.OpenReadStream();
@@ -56,9 +45,7 @@ public static class UploadTerminationDocumentHandler
         var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
 
         if (bytesRead < PdfMagicBytes.Length || !buffer.AsSpan().SequenceEqual(PdfMagicBytes))
-        {
-            return (Result.Failure(FileUploadError.InvalidFileContent()), null);
-        }
+            throw new DomainException(FileUploadError.InvalidFileContent());
 
         // 4. Object path: contracts/{contractId}/termination_{timestamp}.pdf
         var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
@@ -85,24 +72,20 @@ public static class UploadTerminationDocumentHandler
 
         if (uploadResult.IsFailure)
         {
-            var logger = loggerFactory.CreateLogger("UploadTerminationDocument");
-            logger.LogError("MinIO upload başarısız: {Error}", uploadResult.Error.Description);
-            return (Result.Failure(uploadResult.Error), null);
+            loggerFactory.CreateLogger("UploadTerminationDocument")
+                .LogError("MinIO upload başarısız: {Error}", uploadResult.Error.Description);
+            throw new DomainException(uploadResult.Error);
         }
 
-        // 7. Event döndür (objectPath ile, URL on-demand generate edilecek)
-        var @event = new TerminationDocumentUploaded(
+        loggerFactory.CreateLogger("UploadTerminationDocument")
+            .LogInformation(
+                "Islak imzalı fesih belgesi yüklendi: ContractId={ContractId}, UploadedBy={UploadedBy}",
+                command.ContractId, command.UploadedBy);
+
+        return new TerminationDocumentUploaded(
             command.ContractId,
             objectPath,
             command.UploadedBy,
-            DateTime.UtcNow
-        );
-
-        var successLogger = loggerFactory.CreateLogger("UploadTerminationDocument");
-        successLogger.LogInformation(
-            "Islak imzalı fesih belgesi yüklendi: ContractId={ContractId}, UploadedBy={UploadedBy}",
-            command.ContractId, command.UploadedBy);
-
-        return (Result.Success(), @event);
+            DateTime.UtcNow);
     }
 }

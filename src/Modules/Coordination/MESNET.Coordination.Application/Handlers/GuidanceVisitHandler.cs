@@ -9,7 +9,7 @@ namespace MESNET.Coordination.Application.Handlers;
 
 public static class GuidanceVisitHandler
 {
-    public static async Task<Result<Guid>> Handle(
+    public static async Task<Guid> Handle(
         CreateGuidanceVisit command,
         IDocumentSession session,
         CancellationToken ct)
@@ -32,20 +32,20 @@ public static class GuidanceVisitHandler
         session.Store(visit);
         await session.SaveChangesAsync(ct);
 
-        return Result<Guid>.Success(visit.Id);
+        return visit.Id;
     }
 
-    public static async Task<Result> Handle(
+    public static async Task Handle(
         UpdateGuidanceVisit command,
         IDocumentSession session,
         CancellationToken ct)
     {
         var visit = await session.LoadAsync<GuidanceVisit>(command.VisitId, ct);
         if (visit is null)
-            return Result.Failure(CoordinationErrors.VisitNotFound(command.VisitId));
+            throw new DomainException(CoordinationErrors.VisitNotFound(command.VisitId));
 
         if (visit.Status != VisitStatus.Draft)
-            return Result.Failure(CoordinationErrors.VisitNotDraft(command.VisitId));
+            throw new DomainException(CoordinationErrors.VisitNotDraft(command.VisitId));
 
         visit.VisitDate = command.VisitDate;
         visit.StudentNotes = command.StudentNotes;
@@ -56,49 +56,43 @@ public static class GuidanceVisitHandler
 
         session.Store(visit);
         await session.SaveChangesAsync(ct);
-
-        return Result.Success();
     }
 
-    public static async Task<Result> Handle(
+    public static async Task Handle(
         SubmitGuidanceVisit command,
         IDocumentSession session,
         CancellationToken ct)
     {
         var visit = await session.LoadAsync<GuidanceVisit>(command.VisitId, ct);
         if (visit is null)
-            return Result.Failure(CoordinationErrors.VisitNotFound(command.VisitId));
+            throw new DomainException(CoordinationErrors.VisitNotFound(command.VisitId));
 
         if (visit.Status != VisitStatus.Draft)
-            return Result.Failure(CoordinationErrors.VisitNotDraft(command.VisitId));
+            throw new DomainException(CoordinationErrors.VisitNotDraft(command.VisitId));
 
         visit.Status = VisitStatus.Submitted;
         visit.SubmittedAt = DateTime.UtcNow;
 
         session.Store(visit);
         await session.SaveChangesAsync(ct);
-
-        return Result.Success();
     }
 
-    public static async Task<Result> Handle(
+    public static async Task Handle(
         ApproveGuidanceVisit command,
         IDocumentSession session,
         CancellationToken ct)
     {
         var visit = await session.LoadAsync<GuidanceVisit>(command.VisitId, ct);
         if (visit is null)
-            return Result.Failure(CoordinationErrors.VisitNotFound(command.VisitId));
+            throw new DomainException(CoordinationErrors.VisitNotFound(command.VisitId));
 
         if (visit.Status != VisitStatus.Submitted)
-            return Result.Failure(CoordinationErrors.VisitNotSubmitted(command.VisitId));
+            throw new DomainException(CoordinationErrors.VisitNotSubmitted(command.VisitId));
 
         visit.Status = VisitStatus.Approved;
         visit.ApprovedAt = DateTime.UtcNow;
 
         session.Store(visit);
         await session.SaveChangesAsync(ct);
-
-        return Result.Success();
     }
 }

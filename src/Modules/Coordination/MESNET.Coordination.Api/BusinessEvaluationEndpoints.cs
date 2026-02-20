@@ -28,15 +28,8 @@ public static class BusinessEvaluationEndpoints
     private static async Task<IResult> Post(
         CreateBusinessEvaluation command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<Guid>>(command);
+        var evaluationId = await bus.InvokeAsync<Guid>(command);
 
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-
-        var evaluationId = result.Value;
         return Results.Created(
             $"/api/coordination/business-evaluations/{evaluationId}",
             ResponseBuilder.Success(201)
@@ -48,13 +41,7 @@ public static class BusinessEvaluationEndpoints
     private static async Task<IResult> Put(
         Guid evaluationId, UpdateBusinessEvaluation command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(command with { EvaluationId = evaluationId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { EvaluationId = evaluationId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme değerlendirmesi güncellendi.")

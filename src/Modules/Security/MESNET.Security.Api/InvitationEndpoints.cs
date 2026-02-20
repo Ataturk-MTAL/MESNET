@@ -26,18 +26,12 @@ public static class InvitationEndpoints
     private static async Task<IResult> CreateInvitation(
         CreateInvitation command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<Guid>>(command);
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        var invitationId = await bus.InvokeAsync<Guid>(command);
 
         return Results.Created(
-            $"/api/security/invitations/{result.Value}",
+            $"/api/security/invitations/{invitationId}",
             ResponseBuilder.Success(201)
-                .AddData(new { invitationId = result.Value })
+                .AddData(new { invitationId })
                 .AddMessage("Davet oluşturuldu.")
                 .Build());
     }
@@ -57,14 +51,7 @@ public static class InvitationEndpoints
     private static async Task<IResult> ApproveInvitation(
         Guid invitationId, ApproveInvitation command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { InvitationId = invitationId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { InvitationId = invitationId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Davet onaylandı. Kayıt bağlantısı e-posta ile gönderildi.")
@@ -74,14 +61,7 @@ public static class InvitationEndpoints
     private static async Task<IResult> RejectInvitation(
         Guid invitationId, RejectInvitation command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { InvitationId = invitationId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { InvitationId = invitationId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Davet reddedildi.")
@@ -91,14 +71,7 @@ public static class InvitationEndpoints
     private static async Task<IResult> CompleteInvitation(
         Guid invitationId, CompleteInvitation command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { InvitationId = invitationId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { InvitationId = invitationId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Kayıt tamamlandı. Artık giriş yapabilirsiniz.")
@@ -108,14 +81,7 @@ public static class InvitationEndpoints
     private static async Task<IResult> ResendInvitation(
         Guid invitationId, ResendInvitation command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { InvitationId = invitationId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { InvitationId = invitationId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Davet e-postası yeniden gönderildi.")

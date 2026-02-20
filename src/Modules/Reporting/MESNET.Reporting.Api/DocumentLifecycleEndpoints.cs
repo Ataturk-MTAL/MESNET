@@ -30,31 +30,17 @@ public static class DocumentLifecycleEndpoints
     // --- Dokuman detayi (FormDataJson haric) ---
     private static async Task<IResult> GetDocument(Guid documentId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<GeneratedDocumentSummary>>(new GetDocumentById(documentId));
-
-        if (result.IsFailure)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        var summary = await bus.InvokeAsync<GeneratedDocumentSummary>(new GetDocumentById(documentId));
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(result.Value)
+            .AddData(summary)
             .Build());
     }
 
     // --- PDF indir (presigned URL veya on-demand fallback) ---
     private static async Task<IResult> GetDocumentPdf(Guid documentId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<PdfDownloadResult>>(new GetDocumentPdf(documentId));
-
-        if (result.IsFailure)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-
-        var download = result.Value;
+        var download = await bus.InvokeAsync<PdfDownloadResult>(new GetDocumentPdf(documentId));
 
         // MinIO presigned URL varsa redirect
         if (download.HasPresignedUrl)
@@ -95,13 +81,7 @@ public static class DocumentLifecycleEndpoints
     private static async Task<IResult> MarkAsPrinted(Guid documentId, IMessageBus bus, HttpContext http)
     {
         var user = ExtractUserContext(http);
-        var result = await bus.InvokeAsync<Result>(new MarkDocumentAsPrinted(documentId, user));
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(new MarkDocumentAsPrinted(documentId, user));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Doküman yazdırıldı olarak işaretlendi.")
@@ -112,13 +92,7 @@ public static class DocumentLifecycleEndpoints
     private static async Task<IResult> MarkAsSignedAndReturned(Guid documentId, IMessageBus bus, HttpContext http)
     {
         var user = ExtractUserContext(http);
-        var result = await bus.InvokeAsync<Result>(new MarkDocumentAsSignedAndReturned(documentId, user));
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(new MarkDocumentAsSignedAndReturned(documentId, user));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Doküman imzalanıp teslim edildi olarak işaretlendi.")
@@ -129,13 +103,7 @@ public static class DocumentLifecycleEndpoints
     private static async Task<IResult> MarkAsArchived(Guid documentId, IMessageBus bus, HttpContext http)
     {
         var user = ExtractUserContext(http);
-        var result = await bus.InvokeAsync<Result>(new MarkDocumentAsArchived(documentId, user));
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(new MarkDocumentAsArchived(documentId, user));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Doküman arşivlendi.")
@@ -146,13 +114,7 @@ public static class DocumentLifecycleEndpoints
     private static async Task<IResult> DeleteDocument(Guid documentId, IMessageBus bus, HttpContext http)
     {
         var user = ExtractUserContext(http);
-        var result = await bus.InvokeAsync<Result>(new DeleteDocument(documentId, user));
-
-        if (result.IsFailure)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(new DeleteDocument(documentId, user));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Doküman silindi.")
@@ -163,13 +125,7 @@ public static class DocumentLifecycleEndpoints
     private static async Task<IResult> DeleteDocumentsBatch(DeleteDocumentsBatchRequest request, IMessageBus bus, HttpContext http)
     {
         var user = ExtractUserContext(http);
-        var result = await bus.InvokeAsync<Result>(new DeleteDocumentsBatch(request.DocumentIds, user));
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(new DeleteDocumentsBatch(request.DocumentIds, user));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage($"{request.DocumentIds.Count} doküman silindi.")

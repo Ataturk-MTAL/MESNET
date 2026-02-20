@@ -2,13 +2,10 @@ using Marten;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Contract.Application.Commands;
-using MESNET.Contract.Application.Dtos;
 using MESNET.Contract.Application.Errors;
 using MESNET.Contract.Application.Extensions;
-using MESNET.Contract.Application.Queries;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
-using MESNET.Contract.Shared.Events;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -39,20 +36,12 @@ public static class ContractEndpoints
     private static async Task<IResult> Post(
         CreateContract command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<Guid>>(command);
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        var contractId = await bus.InvokeAsync<Guid>(command);
 
         return Results.Created(
-            $"/api/contracts/{result.Value}",
+            $"/api/contracts/{contractId}",
             ResponseBuilder.Success(201)
-                .AddData(new { contractId = result.Value })
+                .AddData(new { contractId })
                 .AddMessage("Sözleşme oluşturuldu.")
                 .Build());
     }
@@ -60,16 +49,7 @@ public static class ContractEndpoints
     private static async Task<IResult> PostSubmit(
         Guid contractId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<ContractSubmittedForSignature>>(
-            new SubmitContractForSignature(contractId));
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(new SubmitContractForSignature(contractId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Sözleşme imzaya gönderildi.")
@@ -79,15 +59,7 @@ public static class ContractEndpoints
     private static async Task<IResult> PostSign(
         Guid contractId, SignContract command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<object>>(command with { InternshipContractId = contractId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { InternshipContractId = contractId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Sözleşme imzalandı.")
@@ -97,16 +69,7 @@ public static class ContractEndpoints
     private static async Task<IResult> PostActivate(
         Guid contractId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<ContractActivated>>(
-            new ActivateContract(contractId));
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(new ActivateContract(contractId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Sözleşme aktifleştirildi.")
@@ -116,16 +79,7 @@ public static class ContractEndpoints
     private static async Task<IResult> PostSuspend(
         Guid contractId, SuspendContract command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<ContractSuspended>>(
-            command with { InternshipContractId = contractId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { InternshipContractId = contractId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Sözleşme askıya alındı.")
@@ -135,16 +89,7 @@ public static class ContractEndpoints
     private static async Task<IResult> PostResume(
         Guid contractId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<ContractResumed>>(
-            new ResumeContract(contractId));
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(new ResumeContract(contractId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Sözleşme devam ettirildi.")
@@ -154,16 +99,7 @@ public static class ContractEndpoints
     private static async Task<IResult> PostTerminate(
         Guid contractId, TerminateContract command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<ContractTerminated>>(
-            command with { InternshipContractId = contractId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { InternshipContractId = contractId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Sözleşme feshedildi.")
@@ -173,16 +109,7 @@ public static class ContractEndpoints
     private static async Task<IResult> PostComplete(
         Guid contractId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<ContractCompleted>>(
-            new CompleteContract(contractId));
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(new CompleteContract(contractId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Sözleşme tamamlandı.")
@@ -235,7 +162,6 @@ public static class ContractEndpoints
     private static async Task<IResult> PostUploadSigned(
         Guid contractId, HttpRequest request, IMessageBus bus)
     {
-        // Manuel form parsing (Wolverine IFormFile binding desteklemez)
         if (!request.HasFormContentType)
         {
             return Results.BadRequest(ResponseBuilder.Fail()
@@ -261,20 +187,8 @@ public static class ContractEndpoints
                 .Build());
         }
 
-        var command = new UploadSignedContractDocument(
-            contractId,
-            documentFile,
-            uploadedBy);
-
-        var result = await bus.InvokeAsync<Result<SignedContractDocumentUploaded>>(command);
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        var command = new UploadSignedContractDocument(contractId, documentFile, uploadedBy);
+        await bus.InvokeAsync(command);
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Islak imzalı sözleşme yüklendi.")
@@ -287,7 +201,6 @@ public static class ContractEndpoints
     private static async Task<IResult> PostUploadTermination(
         Guid contractId, HttpRequest request, IMessageBus bus)
     {
-        // Manuel form parsing (Wolverine IFormFile binding desteklemez)
         if (!request.HasFormContentType)
         {
             return Results.BadRequest(ResponseBuilder.Fail()
@@ -313,20 +226,8 @@ public static class ContractEndpoints
                 .Build());
         }
 
-        var command = new UploadTerminationDocument(
-            contractId,
-            documentFile,
-            uploadedBy);
-
-        var result = await bus.InvokeAsync<Result<TerminationDocumentUploaded>>(command);
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        var command = new UploadTerminationDocument(contractId, documentFile, uploadedBy);
+        await bus.InvokeAsync(command);
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Islak imzalı fesih belgesi yüklendi.")

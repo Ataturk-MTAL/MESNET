@@ -28,18 +28,12 @@ public static class UserManagementEndpoints
     private static async Task<IResult> CreateUser(
         CreateUser command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<Guid>>(command);
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        var userId = await bus.InvokeAsync<Guid>(command);
 
         return Results.Created(
-            $"/api/security/users/{result.Value}",
+            $"/api/security/users/{userId}",
             ResponseBuilder.Success(201)
-                .AddData(new { userId = result.Value })
+                .AddData(new { userId })
                 .AddMessage("Kullanıcı oluşturuldu.")
                 .Build());
     }
@@ -59,30 +53,17 @@ public static class UserManagementEndpoints
     private static async Task<IResult> GetUser(
         Guid userAccountId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<UserAccountDto>>(new GetUserAccount(userAccountId));
-
-        if (result.IsFailure)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        var user = await bus.InvokeAsync<UserAccountDto>(new GetUserAccount(userAccountId));
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(result.Value)
+            .AddData(user)
             .Build());
     }
 
     private static async Task<IResult> UpdateUser(
         Guid userAccountId, UpdateUser command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { UserAccountId = userAccountId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { UserAccountId = userAccountId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Kullanıcı güncellendi.")
@@ -92,14 +73,7 @@ public static class UserManagementEndpoints
     private static async Task<IResult> ChangeRoles(
         Guid userAccountId, ChangeUserRoles command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { UserAccountId = userAccountId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { UserAccountId = userAccountId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Kullanıcı rolleri güncellendi.")
@@ -109,14 +83,7 @@ public static class UserManagementEndpoints
     private static async Task<IResult> ChangePermissions(
         Guid userAccountId, ChangeUserPermissions command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { UserAccountId = userAccountId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { UserAccountId = userAccountId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Kullanıcı yetkileri güncellendi.")
@@ -126,14 +93,7 @@ public static class UserManagementEndpoints
     private static async Task<IResult> ToggleStatus(
         Guid userAccountId, ToggleUserStatus command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { UserAccountId = userAccountId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { UserAccountId = userAccountId });
 
         var action = command.Enable ? "aktif" : "pasif";
         return Results.Ok(ResponseBuilder.Success()
@@ -144,13 +104,7 @@ public static class UserManagementEndpoints
     private static async Task<IResult> DeleteUser(
         Guid userAccountId, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(new DeleteUser(userAccountId));
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(new DeleteUser(userAccountId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Kullanıcı silindi.")

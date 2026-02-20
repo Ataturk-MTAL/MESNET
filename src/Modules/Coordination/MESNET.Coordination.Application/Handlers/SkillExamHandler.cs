@@ -9,16 +9,16 @@ namespace MESNET.Coordination.Application.Handlers;
 
 public static class SkillExamHandler
 {
-    public static async Task<Result<Guid>> Handle(
+    public static async Task<Guid> Handle(
         CreateSkillExam command,
         IDocumentSession session,
         CancellationToken ct)
     {
         if (!AcademicSemester.TryFromName(command.Semester, true, out var semester))
-            return Result<Guid>.Failure(CoordinationErrors.InvalidSemester(command.Semester));
+            throw new DomainException(CoordinationErrors.InvalidSemester(command.Semester));
 
         if (!ExamResult.TryFromName(command.Result, true, out var examResult))
-            return Result<Guid>.Failure(CoordinationErrors.InvalidExamResult(command.Result));
+            throw new DomainException(CoordinationErrors.InvalidExamResult(command.Result));
 
         var exam = new SkillExam
         {
@@ -38,20 +38,20 @@ public static class SkillExamHandler
         session.Store(exam);
         await session.SaveChangesAsync(ct);
 
-        return Result<Guid>.Success(exam.Id);
+        return exam.Id;
     }
 
-    public static async Task<Result> Handle(
+    public static async Task Handle(
         UpdateSkillExam command,
         IDocumentSession session,
         CancellationToken ct)
     {
         var exam = await session.LoadAsync<SkillExam>(command.ExamId, ct);
         if (exam is null)
-            return Result.Failure(CoordinationErrors.ExamNotFound(command.ExamId));
+            throw new DomainException(CoordinationErrors.ExamNotFound(command.ExamId));
 
         if (!ExamResult.TryFromName(command.Result, true, out var examResult))
-            return Result.Failure(CoordinationErrors.InvalidExamResult(command.Result));
+            throw new DomainException(CoordinationErrors.InvalidExamResult(command.Result));
 
         exam.ExamDate = command.ExamDate;
         exam.Score = command.Score;
@@ -61,7 +61,5 @@ public static class SkillExamHandler
 
         session.Store(exam);
         await session.SaveChangesAsync(ct);
-
-        return Result.Success();
     }
 }

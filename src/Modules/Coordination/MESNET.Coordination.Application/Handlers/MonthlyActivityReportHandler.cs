@@ -9,7 +9,7 @@ namespace MESNET.Coordination.Application.Handlers;
 
 public static class MonthlyActivityReportHandler
 {
-    public static async Task<Result<Guid>> Handle(
+    public static async Task<Guid> Handle(
         CreateMonthlyActivityReport command,
         IDocumentSession session,
         CancellationToken ct)
@@ -32,20 +32,20 @@ public static class MonthlyActivityReportHandler
         session.Store(report);
         await session.SaveChangesAsync(ct);
 
-        return Result<Guid>.Success(report.Id);
+        return report.Id;
     }
 
-    public static async Task<Result> Handle(
+    public static async Task Handle(
         UpdateMonthlyActivityReport command,
         IDocumentSession session,
         CancellationToken ct)
     {
         var report = await session.LoadAsync<MonthlyActivityReport>(command.ReportId, ct);
         if (report is null)
-            return Result.Failure(CoordinationErrors.ReportNotFound(command.ReportId));
+            throw new DomainException(CoordinationErrors.ReportNotFound(command.ReportId));
 
         if (report.Status != ReportStatus.Draft)
-            return Result.Failure(CoordinationErrors.ReportNotDraft(command.ReportId));
+            throw new DomainException(CoordinationErrors.ReportNotDraft(command.ReportId));
 
         report.Activities = command.Activities;
         report.InstructorComment = command.InstructorComment;
@@ -53,49 +53,43 @@ public static class MonthlyActivityReportHandler
 
         session.Store(report);
         await session.SaveChangesAsync(ct);
-
-        return Result.Success();
     }
 
-    public static async Task<Result> Handle(
+    public static async Task Handle(
         SubmitMonthlyActivityReport command,
         IDocumentSession session,
         CancellationToken ct)
     {
         var report = await session.LoadAsync<MonthlyActivityReport>(command.ReportId, ct);
         if (report is null)
-            return Result.Failure(CoordinationErrors.ReportNotFound(command.ReportId));
+            throw new DomainException(CoordinationErrors.ReportNotFound(command.ReportId));
 
         if (report.Status != ReportStatus.Draft)
-            return Result.Failure(CoordinationErrors.ReportNotDraft(command.ReportId));
+            throw new DomainException(CoordinationErrors.ReportNotDraft(command.ReportId));
 
         report.Status = ReportStatus.Submitted;
         report.SubmittedAt = DateTime.UtcNow;
 
         session.Store(report);
         await session.SaveChangesAsync(ct);
-
-        return Result.Success();
     }
 
-    public static async Task<Result> Handle(
+    public static async Task Handle(
         ApproveMonthlyActivityReport command,
         IDocumentSession session,
         CancellationToken ct)
     {
         var report = await session.LoadAsync<MonthlyActivityReport>(command.ReportId, ct);
         if (report is null)
-            return Result.Failure(CoordinationErrors.ReportNotFound(command.ReportId));
+            throw new DomainException(CoordinationErrors.ReportNotFound(command.ReportId));
 
         if (report.Status != ReportStatus.Submitted)
-            return Result.Failure(CoordinationErrors.ReportNotSubmitted(command.ReportId));
+            throw new DomainException(CoordinationErrors.ReportNotSubmitted(command.ReportId));
 
         report.Status = ReportStatus.Approved;
         report.ApprovedAt = DateTime.UtcNow;
 
         session.Store(report);
         await session.SaveChangesAsync(ct);
-
-        return Result.Success();
     }
 }

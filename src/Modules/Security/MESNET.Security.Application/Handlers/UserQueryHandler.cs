@@ -45,18 +45,18 @@ public static class GetUserAccountsHandler
 
 public static class GetUserAccountHandler
 {
-    public static async Task<Result<UserAccountDto>> Handle(
+    public static async Task<UserAccountDto> Handle(
         GetUserAccount query, IQuerySession session)
     {
         var account = await session.LoadAsync<UserAccount>(query.UserAccountId);
         if (account is null)
-            return Result<UserAccountDto>.Failure(SecurityErrors.UserNotFound(query.UserAccountId));
+            throw new DomainException(SecurityErrors.UserNotFound(query.UserAccountId));
 
-        return Result<UserAccountDto>.Success(new UserAccountDto(
+        return new UserAccountDto(
             account.Id, account.KeycloakUserId, account.Username, account.Email,
             account.FirstName, account.LastName, account.FullName,
             account.IsEnabled, account.InstitutionId, account.BusinessId,
             account.Roles, account.DirectPermissions,
-            account.CreatedAt, account.UpdatedAt));
+            account.CreatedAt, account.UpdatedAt);
     }
 }

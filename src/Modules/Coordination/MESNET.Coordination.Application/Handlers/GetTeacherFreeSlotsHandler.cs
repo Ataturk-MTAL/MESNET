@@ -9,15 +9,14 @@ namespace MESNET.Coordination.Application.Handlers;
 
 public static class GetTeacherFreeSlotsHandler
 {
-    public static Result<List<FreeSlotDto>> Handle(
+    public static List<FreeSlotDto> Handle(
         GetTeacherFreeSlots query,
         IQuerySession session)
     {
         // Semester validation
         if (!AcademicSemester.TryFromName(query.Semester, true, out var semester))
         {
-            return Result<List<FreeSlotDto>>.Failure(
-                CoordinationErrors.InvalidSemester(query.Semester));
+            throw new DomainException(CoordinationErrors.InvalidSemester(query.Semester));
         }
 
         // Schedule'ı bul
@@ -29,8 +28,7 @@ public static class GetTeacherFreeSlotsHandler
 
         if (schedule is null)
         {
-            return Result<List<FreeSlotDto>>.Failure(
-                CoordinationErrors.ScheduleNotFound(query.TeacherId, query.AcademicYear, query.Semester));
+            throw new DomainException(CoordinationErrors.ScheduleNotFound(query.TeacherId, query.AcademicYear, query.Semester));
         }
 
         // Boş saatleri filtrele
@@ -54,7 +52,7 @@ public static class GetTeacherFreeSlotsHandler
             }
         }
 
-        return Result<List<FreeSlotDto>>.Success(freeSlots);
+        return freeSlots;
     }
 }
 

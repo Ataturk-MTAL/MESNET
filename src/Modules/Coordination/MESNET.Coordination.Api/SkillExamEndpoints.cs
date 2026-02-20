@@ -28,15 +28,8 @@ public static class SkillExamEndpoints
     private static async Task<IResult> Post(
         CreateSkillExam command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<Guid>>(command);
+        var examId = await bus.InvokeAsync<Guid>(command);
 
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-
-        var examId = result.Value;
         return Results.Created(
             $"/api/coordination/skill-exams/{examId}",
             ResponseBuilder.Success(201)
@@ -48,13 +41,7 @@ public static class SkillExamEndpoints
     private static async Task<IResult> Put(
         Guid examId, UpdateSkillExam command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(command with { ExamId = examId });
-
-        if (result.IsFailure)
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
+        await bus.InvokeAsync(command with { ExamId = examId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Beceri sınavı güncellendi.")

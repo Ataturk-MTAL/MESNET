@@ -1,5 +1,4 @@
 using Marten;
-using MESNET.Common.Shared;
 using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Shared.Events;
@@ -8,7 +7,7 @@ namespace MESNET.Contract.Application.Handlers;
 
 public static class CreateContractHandler
 {
-    public static (Result<Guid>, ContractCreated) Handle(CreateContract command, IDocumentSession session)
+    public static (Guid, ContractCreated) Handle(CreateContract command, IDocumentSession session)
     {
         var contractId = Guid.NewGuid();
         var @event = new ContractCreated(
@@ -22,6 +21,6 @@ public static class CreateContractHandler
             DateTime.UtcNow);
 
         session.Events.StartStream<InternshipContract>(contractId, @event);
-        return (Result<Guid>.Success(contractId), @event);
+        return (contractId, @event);
     }
 }

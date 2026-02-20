@@ -14,78 +14,78 @@ public static class DocumentLifecycleHandler
     private const string BucketName = "meb-forms";
 
     // ─── Yazdırıldı ───
-    public static async Task<(Result, NotifyDocumentStatusChanged?)> Handle(
+    public static async Task<NotifyDocumentStatusChanged> Handle(
         MarkDocumentAsPrinted command, IDocumentSession session)
     {
         var doc = await session.LoadAsync<GeneratedDocument>(command.DocumentId);
         if (doc is null)
-            return (Result.Failure(ReportingErrors.DocumentNotFound(command.DocumentId)), null);
+            throw new DomainException(ReportingErrors.DocumentNotFound(command.DocumentId));
 
         if (!doc.Status.CanTransitionTo(PhysicalDocumentStatus.Printed))
-            return (Result.Failure(ReportingErrors.InvalidStatusTransition(
-                doc.Status.Slug, PhysicalDocumentStatus.Printed.Slug)), null);
+            throw new DomainException(ReportingErrors.InvalidStatusTransition(
+                doc.Status.Slug, PhysicalDocumentStatus.Printed.Slug));
 
         doc.MarkAsPrinted(command.User.FullName, command.User.UserId);
         session.Store(doc);
 
-        return (Result.Success(), BuildStatusNotification(doc, PhysicalDocumentStatus.Printed, command.User));
+        return BuildStatusNotification(doc, PhysicalDocumentStatus.Printed, command.User);
     }
 
     // ─── İmzalanıp Teslim Edildi ───
-    public static async Task<(Result, NotifyDocumentStatusChanged?)> Handle(
+    public static async Task<NotifyDocumentStatusChanged> Handle(
         MarkDocumentAsSignedAndReturned command, IDocumentSession session)
     {
         var doc = await session.LoadAsync<GeneratedDocument>(command.DocumentId);
         if (doc is null)
-            return (Result.Failure(ReportingErrors.DocumentNotFound(command.DocumentId)), null);
+            throw new DomainException(ReportingErrors.DocumentNotFound(command.DocumentId));
 
         if (!doc.Status.CanTransitionTo(PhysicalDocumentStatus.SignedAndReturned))
-            return (Result.Failure(ReportingErrors.InvalidStatusTransition(
-                doc.Status.Slug, PhysicalDocumentStatus.SignedAndReturned.Slug)), null);
+            throw new DomainException(ReportingErrors.InvalidStatusTransition(
+                doc.Status.Slug, PhysicalDocumentStatus.SignedAndReturned.Slug));
 
         doc.MarkAsSignedAndReturned(command.User.FullName, command.User.UserId);
         session.Store(doc);
 
-        return (Result.Success(), BuildStatusNotification(doc, PhysicalDocumentStatus.SignedAndReturned, command.User));
+        return BuildStatusNotification(doc, PhysicalDocumentStatus.SignedAndReturned, command.User);
     }
 
     // ─── Arşivlendi ───
-    public static async Task<(Result, NotifyDocumentStatusChanged?)> Handle(
+    public static async Task<NotifyDocumentStatusChanged> Handle(
         MarkDocumentAsArchived command, IDocumentSession session)
     {
         var doc = await session.LoadAsync<GeneratedDocument>(command.DocumentId);
         if (doc is null)
-            return (Result.Failure(ReportingErrors.DocumentNotFound(command.DocumentId)), null);
+            throw new DomainException(ReportingErrors.DocumentNotFound(command.DocumentId));
 
         if (!doc.Status.CanTransitionTo(PhysicalDocumentStatus.Archived))
-            return (Result.Failure(ReportingErrors.InvalidStatusTransition(
-                doc.Status.Slug, PhysicalDocumentStatus.Archived.Slug)), null);
+            throw new DomainException(ReportingErrors.InvalidStatusTransition(
+                doc.Status.Slug, PhysicalDocumentStatus.Archived.Slug));
 
         doc.MarkAsArchived(command.User.FullName, command.User.UserId);
         session.Store(doc);
 
-        return (Result.Success(), BuildStatusNotification(doc, PhysicalDocumentStatus.Archived, command.User));
+        return BuildStatusNotification(doc, PhysicalDocumentStatus.Archived, command.User);
     }
 
     // ─── Tekil Silme ───
-    public static async Task<(Result, NotifyDocumentDeleted?)> Handle(
+    public static async Task<NotifyDocumentDeleted> Handle(
         DeleteDocument command, IDocumentSession session, IFileStorageService storage)
     {
         var doc = await session.LoadAsync<GeneratedDocument>(command.DocumentId);
         if (doc is null)
-            return (Result.Failure(ReportingErrors.DocumentNotFound(command.DocumentId)), null);
+            throw new DomainException(ReportingErrors.DocumentNotFound(command.DocumentId));
 
         if (!string.IsNullOrEmpty(doc.PdfStoragePath))
             await storage.DeleteFileAsync(BucketName, doc.PdfStoragePath);
 
         session.Delete(doc);
 
-        return (Result.Success(), new NotifyDocumentDeleted(
-            doc.Id, doc.FormType.Name, doc.InstitutionId, doc.TeacherId, command.User.FullName));
+        return new NotifyDocumentDeleted(
+            doc.Id, doc.FormType.Name, doc.InstitutionId, doc.TeacherId, command.User.FullName);
     }
 
     // ─── Toplu Silme ───
-    public static async Task<(Result, NotifyDocumentDeleted?)> Handle(
+    public static async Task<NotifyDocumentDeleted> Handle(
         DeleteDocumentsBatch command, IDocumentSession session, IFileStorageService storage)
     {
         var docs = await session.LoadManyAsync<GeneratedDocument>(command.DocumentIds.ToArray());
@@ -94,9 +94,9 @@ public static class DocumentLifecycleHandler
             .ToList();
 
         if (notFoundIds.Count > 0)
-            return (Result.Failure(ReportingErrors.DocumentDeleteFailed(
+            throw new DomainException(ReportingErrors.DocumentDeleteFailed(
                 notFoundIds.First(),
-                $"{notFoundIds.Count} doküman bulunamadı.")), null);
+                $"{notFoundIds.Count} doküman bulunamadı."));
 
         foreach (var doc in docs)
         {
@@ -108,8 +108,8 @@ public static class DocumentLifecycleHandler
 
         // Toplu silme için ilk dokümanın bilgileriyle notification gönder
         var first = docs.First();
-        return (Result.Success(), new NotifyDocumentDeleted(
-            first.Id, $"Toplu ({docs.Count} doküman)", first.InstitutionId, first.TeacherId, command.User.FullName));
+        return new NotifyDocumentDeleted(
+            first.Id, $"Toplu ({docs.Count} doküman)", first.InstitutionId, first.TeacherId, command.User.FullName);
     }
 
     private static NotifyDocumentStatusChanged BuildStatusNotification(

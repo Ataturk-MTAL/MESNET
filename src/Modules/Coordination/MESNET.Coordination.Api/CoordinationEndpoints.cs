@@ -31,18 +31,9 @@ public static class CoordinationEndpoints
         UpsertTeacherSchedule command,
         IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<TeacherScheduleUpserted>>(
+        var @event = await bus.InvokeAsync<TeacherScheduleUpserted>(
             command with { TeacherId = teacherId });
 
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
-
-        var @event = result.Value;
         var message = @event.IsNew
             ? "Öğretmen ders programı oluşturuldu."
             : "Öğretmen ders programı güncellendi.";
@@ -60,18 +51,10 @@ public static class CoordinationEndpoints
         IQuerySession session)
     {
         var query = new GetTeacherSchedule(teacherId, year, semester);
-        var result = GetTeacherScheduleHandler.Handle(query, session);
-
-        if (result.IsFailure)
-        {
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        var schedule = GetTeacherScheduleHandler.Handle(query, session);
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(result.Value)
+            .AddData(schedule)
             .Build());
     }
 
@@ -83,18 +66,10 @@ public static class CoordinationEndpoints
         IQuerySession session)
     {
         var query = new GetTeacherFreeSlots(teacherId, year, semester, day);
-        var result = GetTeacherFreeSlotsHandler.Handle(query, session);
-
-        if (result.IsFailure)
-        {
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        var freeSlots = GetTeacherFreeSlotsHandler.Handle(query, session);
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { freeSlots = result.Value })
+            .AddData(new { freeSlots })
             .Build());
     }
 
@@ -103,16 +78,7 @@ public static class CoordinationEndpoints
         AssignBusinessToFreeSlot command,
         IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { TeacherId = teacherId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { TeacherId = teacherId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme öğretmene atandı.")

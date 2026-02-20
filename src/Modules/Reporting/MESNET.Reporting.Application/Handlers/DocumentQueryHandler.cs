@@ -18,22 +18,22 @@ public static class DocumentQueryHandler
     private const string BucketName = "meb-forms";
 
     // ─── Doküman detayı ───
-    public static async Task<Result<GeneratedDocumentSummary>> Handle(GetDocumentById query, IQuerySession session)
+    public static async Task<GeneratedDocumentSummary> Handle(GetDocumentById query, IQuerySession session)
     {
         var doc = await session.LoadAsync<GeneratedDocument>(query.DocumentId);
         if (doc is null)
-            return Result<GeneratedDocumentSummary>.Failure(ReportingErrors.DocumentNotFound(query.DocumentId));
+            throw new DomainException(ReportingErrors.DocumentNotFound(query.DocumentId));
 
         return MapToSummary(doc);
     }
 
     // ─── PDF indir (presigned URL veya on-demand fallback) ───
-    public static async Task<Result<PdfDownloadResult>> Handle(
+    public static async Task<PdfDownloadResult> Handle(
         GetDocumentPdf query, IQuerySession session, IFileStorageService storage)
     {
         var doc = await session.LoadAsync<GeneratedDocument>(query.DocumentId);
         if (doc is null)
-            return Result<PdfDownloadResult>.Failure(ReportingErrors.DocumentNotFound(query.DocumentId));
+            throw new DomainException(ReportingErrors.DocumentNotFound(query.DocumentId));
 
         // MinIO'da PDF snapshot varsa presigned URL döndür
         if (!string.IsNullOrEmpty(doc.PdfStoragePath))

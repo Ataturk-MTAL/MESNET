@@ -8,7 +8,7 @@ namespace MESNET.Business.Application.Handlers;
 
 public static class DeleteInstructorDocumentHandler
 {
-    public static async Task<Result<InstructorDocumentDeleted>> Handle(
+    public static async Task<InstructorDocumentDeleted> Handle(
         DeleteInstructorDocument command,
         IDocumentSession session,
         CancellationToken cancellationToken)
@@ -17,8 +17,7 @@ public static class DeleteInstructorDocumentHandler
         var business = await session.LoadAsync<Core.Entities.Business>(command.BusinessId, cancellationToken);
         if (business is null)
         {
-            return Result<InstructorDocumentDeleted>.Failure(
-                new Error("BUSINESS_NOT_FOUND", $"İşletme bulunamadı: {command.BusinessId}"));
+            throw new DomainException(new Error("BUSINESS_NOT_FOUND", $"İşletme bulunamadı: {command.BusinessId}"));
         }
 
         var document = business.Documents.FirstOrDefault(d =>
@@ -26,8 +25,7 @@ public static class DeleteInstructorDocumentHandler
 
         if (document is null)
         {
-            return Result<InstructorDocumentDeleted>.Failure(
-                new Error("DOCUMENT_NOT_FOUND", $"Usta öğretici belgesi bulunamadı: {command.DocumentId}"));
+            throw new DomainException(new Error("DOCUMENT_NOT_FOUND", $"Usta öğretici belgesi bulunamadı: {command.DocumentId}"));
         }
 
         // 2. Belgeyi sil (listeden çıkar)
@@ -37,14 +35,12 @@ public static class DeleteInstructorDocumentHandler
         await session.SaveChangesAsync(cancellationToken);
 
         // 3. Event döndür
-        var @event = new InstructorDocumentDeleted(
+        return new InstructorDocumentDeleted(
             command.BusinessId,
             command.DocumentId,
             command.DeletedBy,
             command.Reason,
             DateTime.UtcNow
         );
-
-        return Result<InstructorDocumentDeleted>.Success(@event);
     }
 }

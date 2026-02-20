@@ -14,7 +14,7 @@ public static class UploadReceiptByBusinessHandler
     private const string AllowedContentType = "application/pdf";
     private static readonly byte[] PdfMagicBytes = "%PDF-"u8.ToArray();
 
-    public static async Task<(Result<Guid>, ReceiptUploadedByBusiness?)> Handle(
+    public static async Task<(Guid, ReceiptUploadedByBusiness)> Handle(
         UploadReceiptByBusiness command,
         IFileStorageService fileStorage,
         IOptions<MinioStorageOptions> minioOptions,
@@ -23,23 +23,15 @@ public static class UploadReceiptByBusinessHandler
     {
         // 1. Dosya null kontrolü
         if (command.ReceiptFile is null || command.ReceiptFile.Length == 0)
-        {
-            return (Result<Guid>.Failure(FileUploadError.FileNull()), null);
-        }
+            throw new DomainException(FileUploadError.FileNull());
 
         // 2. Boyut kontrolü
         if (command.ReceiptFile.Length > MaxFileSizeBytes)
-        {
-            return (Result<Guid>.Failure(
-                FileUploadError.FileTooLarge(command.ReceiptFile.Length, MaxFileSizeBytes)), null);
-        }
+            throw new DomainException(FileUploadError.FileTooLarge(command.ReceiptFile.Length, MaxFileSizeBytes));
 
         // 3. Content-Type kontrolü
         if (!command.ReceiptFile.ContentType.Equals(AllowedContentType, StringComparison.OrdinalIgnoreCase))
-        {
-            return (Result<Guid>.Failure(
-                FileUploadError.InvalidFileType(command.ReceiptFile.ContentType)), null);
-        }
+            throw new DomainException(FileUploadError.InvalidFileType(command.ReceiptFile.ContentType));
 
         // 4. Magic byte kontrolü (ilk 5 byte: %PDF-)
         await using var stream = command.ReceiptFile.OpenReadStream();
@@ -47,9 +39,7 @@ public static class UploadReceiptByBusinessHandler
         var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
 
         if (bytesRead < PdfMagicBytes.Length || !buffer.AsSpan().SequenceEqual(PdfMagicBytes))
-        {
-            return (Result<Guid>.Failure(FileUploadError.InvalidFileContent()), null);
-        }
+            throw new DomainException(FileUploadError.InvalidFileContent());
 
         // 5. Object path oluştur: default/{studentId}/{year-MM}/{guid}_{timestamp}.pdf
         var receiptId = Guid.NewGuid();
@@ -70,34 +60,21 @@ public static class UploadReceiptByBusinessHandler
         // 7. MinIO'ya upload
         stream.Position = 0;
         var uploadResult = await fileStorage.UploadFileAsync(
-            minioOptions.Value.DefaultBucket,
-            objectPath,
-            stream,
-            AllowedContentType,
-            metadata,
-            cancellationToken);
+            minioOptions.Value.DefaultBucket, objectPath, stream,
+            AllowedContentType, metadata, cancellationToken);
 
         if (uploadResult.IsFailure)
         {
-            var logger = loggerFactory.CreateLogger("UploadReceiptByBusiness");
-            logger.LogError("MinIO upload başarısız: {Error}", uploadResult.Error.Description);
-            return (Result<Guid>.Failure(uploadResult.Error), null);
+            loggerFactory.CreateLogger("UploadReceiptByBusiness")
+                .LogError("MinIO upload başarısız: {Error}", uploadResult.Error.Description);
+            throw new DomainException(uploadResult.Error);
         }
 
-        // 8. Event döndür (objectPath ile, URL on-demand generate edilecek)
-        var @event = new ReceiptUploadedByBusiness(
-            command.SalaryPeriodId,
-            receiptId,
-            objectPath,
-            "Business", // UploadedBy
-            DateTime.UtcNow
-        );
+        loggerFactory.CreateLogger("UploadReceiptByBusiness")
+            .LogInformation("Dekont işletme tarafından yüklendi: SalaryPeriodId={SalaryPeriodId}, ReceiptId={ReceiptId}",
+                command.SalaryPeriodId, receiptId);
 
-        var successLogger = loggerFactory.CreateLogger("UploadReceiptByBusiness");
-        successLogger.LogInformation(
-            "Dekont işletme tarafından yüklendi: SalaryPeriodId={SalaryPeriodId}, ReceiptId={ReceiptId}, StudentId={StudentId}",
-            command.SalaryPeriodId, receiptId, command.StudentId);
-
-        return (Result<Guid>.Success(receiptId), @event);
+        return (receiptId, new ReceiptUploadedByBusiness(
+            command.SalaryPeriodId, receiptId, objectPath, "Business", DateTime.UtcNow));
     }
 }

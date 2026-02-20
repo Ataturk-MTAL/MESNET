@@ -147,18 +147,10 @@ public static class PaymentEndpoints
             year,
             receiptFile);
 
-        var result = await bus.InvokeAsync<Result<Guid>>(command);
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        var receiptId = await bus.InvokeAsync<Guid>(command);
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { receiptId = result.Value })
+            .AddData(new { receiptId })
             .AddMessage("İşletme dekontu yüklendi.")
             .Build());
     }
@@ -216,18 +208,10 @@ public static class PaymentEndpoints
             year,
             receiptFile);
 
-        var result = await bus.InvokeAsync<Result<Guid>>(command);
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        var receiptId = await bus.InvokeAsync<Guid>(command);
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { receiptId = result.Value })
+            .AddData(new { receiptId })
             .AddMessage("Öğrenci dekontu yüklendi.")
             .Build());
     }
@@ -238,16 +222,7 @@ public static class PaymentEndpoints
     private static async Task<IResult> PostConfirm(
         Guid id, ConfirmSalary command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { SalaryPeriodId = id });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { SalaryPeriodId = id });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Öğrenci maaşı aldığını onayladı.")
@@ -260,16 +235,7 @@ public static class PaymentEndpoints
     private static async Task<IResult> PostApproveTeacher(
         Guid id, ApproveReceiptByTeacher command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { SalaryPeriodId = id });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { SalaryPeriodId = id });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Koordinatör öğretmen dekontu onayladı.")
@@ -282,16 +248,7 @@ public static class PaymentEndpoints
     private static async Task<IResult> PostApproveDeputy(
         Guid id, ApproveReceiptByDeputy command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { SalaryPeriodId = id });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { SalaryPeriodId = id });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Müdür yardımcısı dekontu onayladı. Ödeme tamamlandı.")
@@ -304,16 +261,7 @@ public static class PaymentEndpoints
     private static async Task<IResult> PostReject(
         Guid id, RejectReceipt command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { SalaryPeriodId = id });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { SalaryPeriodId = id });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Dekont reddedildi.")

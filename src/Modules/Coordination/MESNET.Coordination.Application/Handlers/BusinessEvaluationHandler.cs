@@ -9,13 +9,13 @@ namespace MESNET.Coordination.Application.Handlers;
 
 public static class BusinessEvaluationHandler
 {
-    public static async Task<Result<Guid>> Handle(
+    public static async Task<Guid> Handle(
         CreateBusinessEvaluation command,
         IDocumentSession session,
         CancellationToken ct)
     {
         if (!EvaluationResult.TryFromName(command.Result, true, out var evalResult))
-            return Result<Guid>.Failure(CoordinationErrors.InvalidEvaluationResult(command.Result));
+            throw new DomainException(CoordinationErrors.InvalidEvaluationResult(command.Result));
 
         var evaluation = new BusinessEvaluation
         {
@@ -32,20 +32,20 @@ public static class BusinessEvaluationHandler
         session.Store(evaluation);
         await session.SaveChangesAsync(ct);
 
-        return Result<Guid>.Success(evaluation.Id);
+        return evaluation.Id;
     }
 
-    public static async Task<Result> Handle(
+    public static async Task Handle(
         UpdateBusinessEvaluation command,
         IDocumentSession session,
         CancellationToken ct)
     {
         var evaluation = await session.LoadAsync<BusinessEvaluation>(command.EvaluationId, ct);
         if (evaluation is null)
-            return Result.Failure(CoordinationErrors.EvaluationNotFound(command.EvaluationId));
+            throw new DomainException(CoordinationErrors.EvaluationNotFound(command.EvaluationId));
 
         if (!EvaluationResult.TryFromName(command.Result, true, out var evalResult))
-            return Result.Failure(CoordinationErrors.InvalidEvaluationResult(command.Result));
+            throw new DomainException(CoordinationErrors.InvalidEvaluationResult(command.Result));
 
         evaluation.EvaluationDate = command.EvaluationDate;
         evaluation.Items = command.Items;
@@ -54,7 +54,5 @@ public static class BusinessEvaluationHandler
 
         session.Store(evaluation);
         await session.SaveChangesAsync(ct);
-
-        return Result.Success();
     }
 }

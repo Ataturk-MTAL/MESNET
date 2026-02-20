@@ -4,7 +4,6 @@ using MESNET.Attendance.Application.Errors;
 using MESNET.Attendance.Application.Extensions;
 using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Enums;
-using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
@@ -31,20 +30,12 @@ public static class AttendanceEndpoints
     private static async Task<IResult> Post(
         MarkAttendance command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result<Guid>>(command);
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        var attendanceId = await bus.InvokeAsync<Guid>(command);
 
         return Results.Created(
-            $"/api/attendance/{result.Value}",
+            $"/api/attendance/{attendanceId}",
             ResponseBuilder.Success(201)
-                .AddData(new { attendanceId = result.Value })
+                .AddData(new { attendanceId })
                 .AddMessage("Devamsızlık kaydı oluşturuldu.")
                 .Build());
     }
@@ -52,16 +43,7 @@ public static class AttendanceEndpoints
     private static async Task<IResult> PostVerify(
         Guid attendanceId, VerifyAttendance command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { AttendanceId = attendanceId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { AttendanceId = attendanceId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Devamsızlık kaydı doğrulandı.")
@@ -71,16 +53,7 @@ public static class AttendanceEndpoints
     private static async Task<IResult> PostCorrect(
         Guid attendanceId, CorrectAttendance command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { AttendanceId = attendanceId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { AttendanceId = attendanceId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Devamsızlık kaydı düzeltildi.")
@@ -90,16 +63,7 @@ public static class AttendanceEndpoints
     private static async Task<IResult> PostHealthReport(
         Guid attendanceId, AttachHealthReport command, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { AttendanceId = attendanceId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        await bus.InvokeAsync(command with { AttendanceId = attendanceId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Sağlık raporu ilişkilendirildi.")

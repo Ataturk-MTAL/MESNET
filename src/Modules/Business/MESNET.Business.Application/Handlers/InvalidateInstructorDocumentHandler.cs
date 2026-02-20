@@ -8,7 +8,7 @@ namespace MESNET.Business.Application.Handlers;
 
 public static class InvalidateInstructorDocumentHandler
 {
-    public static async Task<Result<InstructorDocumentInvalidated>> Handle(
+    public static async Task<InstructorDocumentInvalidated> Handle(
         InvalidateInstructorDocument command,
         IDocumentSession session,
         CancellationToken cancellationToken)
@@ -17,8 +17,7 @@ public static class InvalidateInstructorDocumentHandler
         var business = await session.LoadAsync<Core.Entities.Business>(command.BusinessId, cancellationToken);
         if (business is null)
         {
-            return Result<InstructorDocumentInvalidated>.Failure(
-                new Error("BUSINESS_NOT_FOUND", $"İşletme bulunamadı: {command.BusinessId}"));
+            throw new DomainException(new Error("BUSINESS_NOT_FOUND", $"İşletme bulunamadı: {command.BusinessId}"));
         }
 
         var document = business.Documents.FirstOrDefault(d =>
@@ -26,8 +25,7 @@ public static class InvalidateInstructorDocumentHandler
 
         if (document is null)
         {
-            return Result<InstructorDocumentInvalidated>.Failure(
-                new Error("DOCUMENT_NOT_FOUND", $"Usta öğretici belgesi bulunamadı: {command.DocumentId}"));
+            throw new DomainException(new Error("DOCUMENT_NOT_FOUND", $"Usta öğretici belgesi bulunamadı: {command.DocumentId}"));
         }
 
         // 2. Belgeyi geçersiz kıl
@@ -38,14 +36,12 @@ public static class InvalidateInstructorDocumentHandler
         await session.SaveChangesAsync(cancellationToken);
 
         // 3. Event döndür
-        var @event = new InstructorDocumentInvalidated(
+        return new InstructorDocumentInvalidated(
             command.BusinessId,
             command.DocumentId,
             command.InvalidatedBy,
             command.Reason,
             DateTime.UtcNow
         );
-
-        return Result<InstructorDocumentInvalidated>.Success(@event);
     }
 }

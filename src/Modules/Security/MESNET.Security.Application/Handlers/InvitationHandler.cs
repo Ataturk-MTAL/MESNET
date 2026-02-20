@@ -11,10 +11,9 @@ namespace MESNET.Security.Application.Handlers;
 
 public static class CreateInvitationHandler
 {
-    public static async Task<(Result<Guid>, InvitationCreated?)> Handle(
+    public static async Task<(Guid, InvitationCreated)> Handle(
         CreateInvitation command, IDocumentSession session)
     {
-        // Aynı email + aynı rol + aktif davet var mı kontrol
         var existing = await session.Query<UserInvitation>()
             .Where(i => i.Email == command.Email
                         && i.TargetRole == command.TargetRole
@@ -22,7 +21,7 @@ public static class CreateInvitationHandler
             .FirstOrDefaultAsync();
 
         if (existing is not null)
-            return (Result<Guid>.Failure(SecurityErrors.InvitationAlreadyExists(command.Email, command.TargetRole)), null);
+            throw new DomainException(SecurityErrors.InvitationAlreadyExists(command.Email, command.TargetRole));
 
         var invitation = new UserInvitation
         {
@@ -44,22 +43,22 @@ public static class CreateInvitationHandler
             invitation.Id, command.Email, invitation.FullName,
             command.TargetRole, command.InstitutionId, command.BusinessId);
 
-        return (Result<Guid>.Success(invitation.Id), @event);
+        return (invitation.Id, @event);
     }
 }
 
 public static class ApproveInvitationHandler
 {
-    public static async Task<(Result, InvitationApproved?)> Handle(
+    public static async Task<InvitationApproved> Handle(
         ApproveInvitation command, IDocumentSession session, IEmailService emailService)
     {
         var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId);
         if (invitation is null)
-            return (Result.Failure(SecurityErrors.InvitationNotFound(command.InvitationId)), null);
+            throw new DomainException(SecurityErrors.InvitationNotFound(command.InvitationId));
 
         if (invitation.Status != InvitationStatus.PendingApproval)
-            return (Result.Failure(SecurityErrors.InvalidInvitationStatus(
-                command.InvitationId, invitation.Status.ToString(), InvitationStatus.PendingApproval.ToString())), null);
+            throw new DomainException(SecurityErrors.InvalidInvitationStatus(
+                command.InvitationId, invitation.Status.ToString(), InvitationStatus.PendingApproval.ToString()));
 
         invitation.Status = InvitationStatus.Approved;
         invitation.ApprovedAt = DateTime.UtcNow;
@@ -67,28 +66,27 @@ public static class ApproveInvitationHandler
         invitation.ExpiresAt = DateTime.UtcNow.AddDays(7);
         session.Store(invitation);
 
-        // Email ile kayıt bağlantısı gönder
         await emailService.SendInvitationEmailAsync(
             invitation.Email, invitation.FullName, invitation.TargetRole, invitation.Id);
 
-        return (Result.Success(), new InvitationApproved(
+        return new InvitationApproved(
             invitation.Id, invitation.Email, invitation.FullName,
-            invitation.TargetRole, command.ApprovedByName));
+            invitation.TargetRole, command.ApprovedByName);
     }
 }
 
 public static class RejectInvitationHandler
 {
-    public static async Task<(Result, InvitationRejected?)> Handle(
+    public static async Task<InvitationRejected> Handle(
         RejectInvitation command, IDocumentSession session)
     {
         var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId);
         if (invitation is null)
-            return (Result.Failure(SecurityErrors.InvitationNotFound(command.InvitationId)), null);
+            throw new DomainException(SecurityErrors.InvitationNotFound(command.InvitationId));
 
         if (invitation.Status != InvitationStatus.PendingApproval)
-            return (Result.Failure(SecurityErrors.InvalidInvitationStatus(
-                command.InvitationId, invitation.Status.ToString(), InvitationStatus.PendingApproval.ToString())), null);
+            throw new DomainException(SecurityErrors.InvalidInvitationStatus(
+                command.InvitationId, invitation.Status.ToString(), InvitationStatus.PendingApproval.ToString()));
 
         invitation.Status = InvitationStatus.Rejected;
         invitation.RejectedAt = DateTime.UtcNow;
@@ -96,43 +94,40 @@ public static class RejectInvitationHandler
         invitation.RejectionReason = command.Reason;
         session.Store(invitation);
 
-        return (Result.Success(), new InvitationRejected(
+        return new InvitationRejected(
             invitation.Id, invitation.Email, invitation.TargetRole,
-            command.RejectedByName, command.Reason));
+            command.RejectedByName, command.Reason);
     }
 }
 
 public static class CompleteInvitationHandler
 {
-    public static async Task<(Result, object[]?)> Handle(
+    public static async Task<object[]> Handle(
         CompleteInvitation command, IKeycloakAdminService keycloak, IDocumentSession session)
     {
         var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId);
         if (invitation is null)
-            return (Result.Failure(SecurityErrors.InvitationNotFound(command.InvitationId)), null);
+            throw new DomainException(SecurityErrors.InvitationNotFound(command.InvitationId));
 
         if (invitation.Status != InvitationStatus.Approved)
-            return (Result.Failure(SecurityErrors.InvitationNotApproved(command.InvitationId)), null);
+            throw new DomainException(SecurityErrors.InvitationNotApproved(command.InvitationId));
 
         if (invitation.ExpiresAt < DateTime.UtcNow)
-            return (Result.Failure(SecurityErrors.InvitationExpired(command.InvitationId)), null);
+            throw new DomainException(SecurityErrors.InvitationExpired(command.InvitationId));
 
-        // 1. Keycloak'ta kullanıcı oluştur
         var kcResult = await keycloak.CreateUserAsync(
             command.Username, invitation.Email, invitation.FirstName, invitation.LastName,
             command.Password);
 
         if (kcResult.IsFailure)
-            return (kcResult, null);
+            throw new DomainException(kcResult.Error);
 
         var keycloakUserId = kcResult.Value;
 
-        // 2. Keycloak'ta rol ata
         var roleResult = await keycloak.AssignRealmRolesAsync(keycloakUserId, [invitation.TargetRole]);
         if (roleResult.IsFailure)
-            return (roleResult, null);
+            throw new DomainException(roleResult.Error);
 
-        // 3. User attributes ata
         var attributes = new Dictionary<string, string>();
         if (invitation.InstitutionId.HasValue)
             attributes["institution_id"] = invitation.InstitutionId.Value.ToString();
@@ -141,7 +136,6 @@ public static class CompleteInvitationHandler
         if (attributes.Count > 0)
             await keycloak.SetUserAttributesAsync(keycloakUserId, attributes);
 
-        // 4. UserAccount oluştur
         var account = new UserAccount
         {
             Id = Guid.NewGuid(),
@@ -156,13 +150,11 @@ public static class CompleteInvitationHandler
         };
         session.Store(account);
 
-        // 5. Davet tamamla
         invitation.Status = InvitationStatus.Completed;
         invitation.CompletedAt = DateTime.UtcNow;
         invitation.CreatedUserAccountId = account.Id;
         session.Store(invitation);
 
-        // 6. Cascading event'ler
         var invitationCompleted = new InvitationCompleted(
             invitation.Id, account.Id, keycloakUserId, account.FullName, invitation.TargetRole);
 
@@ -171,7 +163,7 @@ public static class CompleteInvitationHandler
             [invitation.TargetRole], invitation.InstitutionId, invitation.BusinessId,
             invitation.Metadata);
 
-        return (Result.Success(), new object[] { invitationCompleted, userCreated });
+        return [invitationCompleted, userCreated];
     }
 }
 
@@ -205,17 +197,16 @@ public static class GetInvitationsHandler
 
 public static class ResendInvitationHandler
 {
-    public static async Task<Result> Handle(
+    public static async Task Handle(
         ResendInvitation command, IDocumentSession session, IEmailService emailService)
     {
         var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId);
         if (invitation is null)
-            return Result.Failure(SecurityErrors.InvitationNotFound(command.InvitationId));
+            throw new DomainException(SecurityErrors.InvitationNotFound(command.InvitationId));
 
         if (invitation.Status != InvitationStatus.Approved)
-            return Result.Failure(SecurityErrors.InvitationNotApproved(command.InvitationId));
+            throw new DomainException(SecurityErrors.InvitationNotApproved(command.InvitationId));
 
-        // Süre dolmuşsa yenile
         if (invitation.ExpiresAt < DateTime.UtcNow)
         {
             invitation.ExpiresAt = DateTime.UtcNow.AddDays(7);
@@ -224,8 +215,6 @@ public static class ResendInvitationHandler
 
         await emailService.SendInvitationEmailAsync(
             invitation.Email, invitation.FullName, invitation.TargetRole, invitation.Id);
-
-        return Result.Success();
     }
 }
 
