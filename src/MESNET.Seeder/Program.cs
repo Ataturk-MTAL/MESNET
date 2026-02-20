@@ -49,12 +49,17 @@ httpClient.BaseAddress = new Uri(options.ApiBaseUrl);
 var api = new MesnetApiClient(httpClient, tokenService);
 var ctx = new SeedContext();
 
+// Keycloak Admin API — token URL'inden base URL'i çıkar (örn. http://localhost:8080)
+var keycloakBaseUrl = new Uri(options.KeycloakTokenUrl).GetLeftPart(UriPartial.Authority);
+var adminHttp = new HttpClient();
+var keycloak = new KeycloakAdminService(adminHttp, keycloakBaseUrl);
+
 var sw = Stopwatch.StartNew();
 
 try
 {
-    // Step 1: Institution (kurum, branch, personel, schedule)
-    await InstitutionSeeder.SeedAsync(api, ctx);
+    // Step 1: Institution (kurum, branch, personel, schedule) + Keycloak güncelleme
+    await InstitutionSeeder.SeedAsync(api, ctx, keycloak);
 
     // İdempotency check — InstitutionSeeder skip ettiyse diğer adımları da atla
     if (!ctx.Has("Institution"))

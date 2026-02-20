@@ -2,7 +2,7 @@ namespace MESNET.Seeder.Seeders;
 
 public static class InstitutionSeeder
 {
-    public static async Task SeedAsync(MesnetApiClient api, SeedContext ctx)
+    public static async Task SeedAsync(MesnetApiClient api, SeedContext ctx, KeycloakAdminService keycloak)
     {
         Console.WriteLine();
         Console.WriteLine("── Kurum ──────────────────────────");
@@ -33,6 +33,17 @@ public static class InstitutionSeeder
         var institutionId = data.Value.GetProperty("id").GetGuid();
         ctx.Set("Institution", institutionId);
         Console.WriteLine($"  ✓ Kurum oluşturuldu (id: {institutionId.ToString()[..8]}...)");
+
+        // Keycloak'taki tüm kullanıcıların institution_id attribute'unu güncelle
+        try
+        {
+            await keycloak.UpdateAllUsersInstitutionIdAsync(institutionId);
+            Console.WriteLine("  ✓ Keycloak kullanıcıları institution_id ile güncellendi");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  ⚠ Keycloak güncelleme başarısız (manuel yapılabilir): {ex.Message}");
+        }
 
         // 2. Alanları aktifleştir
         await api.PostAsync($"/api/institutions/{institutionId}/branches", new { fieldCode = "BT" });

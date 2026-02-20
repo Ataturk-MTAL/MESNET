@@ -48,7 +48,7 @@ public static class InstitutionEndpoints
     {
         var institution = new Core.Entities.Institution
         {
-            Id = Guid.NewGuid(),
+            Id = command.Id ?? Guid.NewGuid(),
             TenantId = command.TenantId,
             InstitutionCode = command.InstitutionCode,
             FullName = command.FullName,

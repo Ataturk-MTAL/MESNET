@@ -10,4 +10,5 @@ public sealed record CreateInstitution(
     string? PhoneNumber,
     string? Email,
     string? WebUrl,
-    Location? Location);
+    Location? Location,
+    Guid? Id = null);
