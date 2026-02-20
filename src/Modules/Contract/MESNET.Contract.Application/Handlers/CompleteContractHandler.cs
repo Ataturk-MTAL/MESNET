@@ -1,3 +1,4 @@
+using MESNET.Common.Shared;
 using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
@@ -12,7 +13,7 @@ public static class CompleteContractHandler
     public static ContractCompleted Handle(CompleteContract command, InternshipContract contract)
     {
         if (!contract.Status.CanTransitionTo(ContractStatus.Completed))
-            throw new InvalidOperationException(
+            throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Sözleşme tamamlanamaz. Mevcut durum: {contract.Status.Slug}.");
 
         return new ContractCompleted(contract.Id, contract.StudentId, contract.BusinessId, DateTime.UtcNow);

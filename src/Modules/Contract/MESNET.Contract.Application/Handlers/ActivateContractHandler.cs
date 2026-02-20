@@ -1,3 +1,4 @@
+using MESNET.Common.Shared;
 using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
@@ -12,11 +13,11 @@ public static class ActivateContractHandler
     public static ContractActivated Handle(ActivateContract command, InternshipContract contract)
     {
         if (!contract.Status.CanTransitionTo(ContractStatus.Active))
-            throw new InvalidOperationException(
+            throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Sözleşme aktif edilemez. Mevcut durum: {contract.Status.Slug}.");
 
         if (!contract.AllSignaturesComplete)
-            throw new InvalidOperationException("Tüm tarafların imzası tamamlanmalı.");
+            throw new DomainException("CONTRACT_SIGNATURES_INCOMPLETE", "Tüm tarafların imzası tamamlanmalı.");
 
         return new ContractActivated(contract.Id, contract.StudentId, contract.BusinessId, DateTime.UtcNow);
     }

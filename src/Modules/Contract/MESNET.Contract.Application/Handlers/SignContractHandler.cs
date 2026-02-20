@@ -1,3 +1,4 @@
+using MESNET.Common.Shared;
 using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
@@ -12,27 +13,27 @@ public static class SignContractHandler
     public static object Handle(SignContract command, InternshipContract contract)
     {
         if (contract.Status != ContractStatus.AwaitingSignature)
-            throw new InvalidOperationException(
+            throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"İmzalama için sözleşme imza bekliyor durumunda olmalı. Mevcut durum: {contract.Status.Slug}.");
 
         if (!SignerParty.TryFromName(command.Party, true, out var party))
-            throw new InvalidOperationException($"Bilinmeyen imzalayan taraf: {command.Party}.");
+            throw new DomainException("CONTRACT_UNKNOWN_SIGNER", $"Bilinmeyen imzalayan taraf: {command.Party}.");
 
         return party.Name switch
         {
             nameof(SignerParty.Institution) => contract.InstitutionSignature.IsSigned
-                ? throw new InvalidOperationException("Kurum zaten imzalamış.")
+                ? throw new DomainException("CONTRACT_ALREADY_SIGNED", "Kurum zaten imzalamış.")
                 : (object)new ContractSignedByInstitution(contract.Id, command.SignedBy, DateTime.UtcNow),
 
             nameof(SignerParty.Business) => contract.BusinessSignature.IsSigned
-                ? throw new InvalidOperationException("İşletme zaten imzalamış.")
+                ? throw new DomainException("CONTRACT_ALREADY_SIGNED", "İşletme zaten imzalamış.")
                 : (object)new ContractSignedByBusiness(contract.Id, command.SignedBy, DateTime.UtcNow),
 
             nameof(SignerParty.Student) => contract.StudentSignature.IsSigned
-                ? throw new InvalidOperationException("Öğrenci zaten imzalamış.")
+                ? throw new DomainException("CONTRACT_ALREADY_SIGNED", "Öğrenci zaten imzalamış.")
                 : (object)new ContractSignedByStudent(contract.Id, command.SignedBy, DateTime.UtcNow),
 
-            _ => throw new InvalidOperationException($"Bilinmeyen imzalayan taraf: {command.Party}.")
+            _ => throw new DomainException("CONTRACT_UNKNOWN_SIGNER", $"Bilinmeyen imzalayan taraf: {command.Party}.")
         };
     }
 }

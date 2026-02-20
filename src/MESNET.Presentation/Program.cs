@@ -248,6 +248,24 @@ try
 
     app.UseSerilogRequestLogging();
 
+    // ──── Domain Exception → 422 ProblemDetails ────
+    app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
+    {
+        var ex = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+        if (ex is MESNET.Common.Shared.DomainException domainEx)
+        {
+            ctx.Response.StatusCode = 422;
+            ctx.Response.ContentType = "application/problem+json";
+            await ctx.Response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails
+            {
+                Status = 422,
+                Title = "İş kuralı ihlali",
+                Detail = domainEx.Error.Description,
+                Extensions = { ["code"] = domainEx.Error.Code }
+            });
+        }
+    }));
+
     // ──── Security Headers ────
     app.Use(async (context, next) =>
     {

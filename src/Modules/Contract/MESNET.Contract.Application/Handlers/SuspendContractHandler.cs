@@ -1,3 +1,4 @@
+using MESNET.Common.Shared;
 using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
@@ -12,7 +13,7 @@ public static class SuspendContractHandler
     public static ContractSuspended Handle(SuspendContract command, InternshipContract contract)
     {
         if (!contract.Status.CanTransitionTo(ContractStatus.Suspended))
-            throw new InvalidOperationException(
+            throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Sözleşme askıya alınamaz. Mevcut durum: {contract.Status.Slug}.");
 
         return new ContractSuspended(contract.Id, command.Reason, DateTime.UtcNow);

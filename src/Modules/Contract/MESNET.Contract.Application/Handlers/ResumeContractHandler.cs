@@ -1,3 +1,4 @@
+using MESNET.Common.Shared;
 using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
@@ -12,7 +13,7 @@ public static class ResumeContractHandler
     public static ContractResumed Handle(ResumeContract command, InternshipContract contract)
     {
         if (!contract.Status.CanTransitionTo(ContractStatus.Active))
-            throw new InvalidOperationException(
+            throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Sözleşme devam ettirilemez. Mevcut durum: {contract.Status.Slug}.");
 
         return new ContractResumed(contract.Id, DateTime.UtcNow);

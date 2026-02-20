@@ -1,3 +1,4 @@
+using MESNET.Common.Shared;
 using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
@@ -13,7 +14,7 @@ public static class SubmitContractForSignatureHandler
         SubmitContractForSignature command, InternshipContract contract)
     {
         if (!contract.Status.CanTransitionTo(ContractStatus.AwaitingSignature))
-            throw new InvalidOperationException(
+            throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Sözleşme imzaya gönderilemez. Mevcut durum: {contract.Status.Slug}.");
 
         return new ContractSubmittedForSignature(contract.Id, DateTime.UtcNow);

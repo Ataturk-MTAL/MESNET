@@ -1,3 +1,4 @@
+using MESNET.Common.Shared;
 using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
@@ -12,11 +13,12 @@ public static class TerminateContractHandler
     public static ContractTerminated Handle(TerminateContract command, InternshipContract contract)
     {
         if (!contract.Status.CanTransitionTo(ContractStatus.Terminated))
-            throw new InvalidOperationException(
+            throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Sözleşme feshedilemez. Mevcut durum: {contract.Status.Slug}.");
 
         if (!TerminationReason.TryFromName(command.ReasonType, true, out _))
-            throw new InvalidOperationException($"Bilinmeyen fesih nedeni: {command.ReasonType}.");
+            throw new DomainException("CONTRACT_UNKNOWN_TERMINATION_REASON",
+                $"Bilinmeyen fesih nedeni: {command.ReasonType}.");
 
         return new ContractTerminated(
             contract.Id, contract.StudentId, contract.BusinessId,
