@@ -13,11 +13,11 @@ public static class UpdateStudentProfileHandler
         var student = await session.LoadAsync<StudentProfile>(command.StudentId)
             ?? throw new DomainException(EnrollmentErrors.StudentNotFound(command.StudentId));
 
-        student.FullName = command.FullName;
-        student.BranchCode = command.BranchCode;
-        student.BranchName = command.BranchName;
-        student.ClassYear = command.ClassYear;
-        student.Section = command.Section;
+        if (command.FullName is not null) student.FullName = command.FullName;
+        if (command.BranchCode is not null) student.BranchCode = command.BranchCode;
+        if (command.BranchName is not null) student.BranchName = command.BranchName;
+        if (command.ClassYear is not null) student.ClassYear = command.ClassYear.Value;
+        if (command.Section is not null) student.Section = command.Section;
 
         session.Store(student);
     }

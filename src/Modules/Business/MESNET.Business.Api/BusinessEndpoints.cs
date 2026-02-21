@@ -19,7 +19,7 @@ public static class BusinessEndpoints
         group.MapGet("/{businessId:guid}", Get).RequireAuthorization(Permissions.Company.View);
         group.MapPost("/", Post).RequireAuthorization(Permissions.Company.Manage);
         group.MapPost("/self-register", PostSelfRegister);  // Authenticate kullanıcı — CompanyManager kendi kaydeder
-        group.MapPut("/{businessId:guid}", Put).RequireAuthorization(Permissions.Company.Manage);
+        group.MapPatch("/{businessId:guid}", Patch).RequireAuthorization(Permissions.Company.Manage);
         group.MapPost("/{businessId:guid}/approve", PostApprove).RequireAuthorization(Permissions.Company.Manage);
         group.MapPost("/{businessId:guid}/reject", PostReject).RequireAuthorization(Permissions.Company.Manage);
         group.MapPost("/{businessId:guid}/deactivate", PostDeactivate).RequireAuthorization(Permissions.Company.Manage);
@@ -54,7 +54,7 @@ public static class BusinessEndpoints
                 .Build());
     }
 
-    private static async Task<IResult> Put(Guid businessId, UpdateBusinessInfo command, IMessageBus bus)
+    private static async Task<IResult> Patch(Guid businessId, UpdateBusinessInfo command, IMessageBus bus)
     {
         await bus.InvokeAsync(command with { BusinessId = businessId });
         return Results.Ok(ResponseBuilder.Success()

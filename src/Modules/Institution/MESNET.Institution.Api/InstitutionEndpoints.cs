@@ -20,7 +20,7 @@ public static class InstitutionEndpoints
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Institution.View);
         group.MapGet("/{institutionId:guid}", Get).RequireAuthorization(Permissions.Institution.View);
         group.MapPost("/", Post).RequireAuthorization(Permissions.Institution.Manage);
-        group.MapPut("/{institutionId:guid}", Put).RequireAuthorization(Permissions.Institution.Manage);
+        group.MapPatch("/{institutionId:guid}", Patch).RequireAuthorization(Permissions.Institution.Manage);
         group.MapPost("/{institutionId:guid}/staff", PostStaff).RequireAuthorization(Permissions.Institution.Staff);
         group.MapPut("/{institutionId:guid}/schedule-config", PutScheduleConfig).RequireAuthorization(Permissions.Institution.Manage);
         group.MapGet("/{institutionId:guid}/schedule-config", GetScheduleConfig).RequireAuthorization(Permissions.Institution.View);
@@ -54,7 +54,7 @@ public static class InstitutionEndpoints
                 .Build());
     }
 
-    private static async Task<IResult> Put(Guid institutionId, UpdateInstitution command, IMessageBus bus)
+    private static async Task<IResult> Patch(Guid institutionId, UpdateInstitution command, IMessageBus bus)
     {
         await bus.InvokeAsync(command with { InstitutionId = institutionId });
         return Results.Ok(ResponseBuilder.Success()

@@ -17,7 +17,7 @@ public static class StudentEndpoints
         var group = app.MapGroup("/api/students").RequireAuthorization();
 
         group.MapPost("/", Post).RequireAuthorization(Permissions.Student.Manage);
-        group.MapPut("/{studentId:guid}", Put).RequireAuthorization(Permissions.Student.Manage);
+        group.MapPatch("/{studentId:guid}", Patch).RequireAuthorization(Permissions.Student.Manage);
         group.MapGet("/{studentId:guid}", Get).RequireAuthorization(Permissions.Student.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Student.View);
 
@@ -34,7 +34,7 @@ public static class StudentEndpoints
                 .Build());
     }
 
-    private static async Task<IResult> Put(Guid studentId, UpdateStudentProfile command, IMessageBus bus)
+    private static async Task<IResult> Patch(Guid studentId, UpdateStudentProfile command, IMessageBus bus)
     {
         await bus.InvokeAsync(command with { StudentId = studentId });
         return Results.Ok(ResponseBuilder.Success()

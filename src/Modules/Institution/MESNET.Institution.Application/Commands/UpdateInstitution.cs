@@ -4,7 +4,7 @@ namespace MESNET.Institution.Application.Commands;
 
 public sealed record UpdateInstitution(
     Guid InstitutionId,
-    string FullName,
+    string? FullName,
     string? Address,
     string? PhoneNumber,
     string? Email,

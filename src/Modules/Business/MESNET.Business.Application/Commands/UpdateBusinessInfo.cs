@@ -4,10 +4,10 @@ namespace MESNET.Business.Application.Commands;
 
 public sealed record UpdateBusinessInfo(
     Guid BusinessId,
-    string Name,
-    string Address,
+    string? Name,
+    string? Address,
     string? PhoneNumber,
     string? Email,
     string? Website,
-    int PersonnelCount,
+    int? PersonnelCount,
     Location? Location);

@@ -14,13 +14,13 @@ public static class UpdateBusinessInfoHandler
         if (business is null)
             throw new DomainException(BusinessErrors.NotFound(command.BusinessId));
 
-        business.Name = command.Name;
-        business.Address = command.Address;
-        business.PhoneNumber = command.PhoneNumber;
-        business.Email = command.Email;
-        business.Website = command.Website;
-        business.PersonnelCount = command.PersonnelCount;
-        business.Location = command.Location;
+        if (command.Name is not null) business.Name = command.Name;
+        if (command.Address is not null) business.Address = command.Address;
+        if (command.PhoneNumber is not null) business.PhoneNumber = command.PhoneNumber;
+        if (command.Email is not null) business.Email = command.Email;
+        if (command.Website is not null) business.Website = command.Website;
+        if (command.PersonnelCount is not null) business.PersonnelCount = command.PersonnelCount.Value;
+        if (command.Location is not null) business.Location = command.Location;
 
         session.Store(business);
 

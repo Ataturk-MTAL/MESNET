@@ -14,12 +14,12 @@ public static class UpdateInstitutionHandler
         if (institution is null)
             throw new DomainException(InstitutionErrors.NotFound(command.InstitutionId));
 
-        institution.FullName = command.FullName;
-        institution.Address = command.Address;
-        institution.PhoneNumber = command.PhoneNumber;
-        institution.Email = command.Email;
-        institution.WebUrl = command.WebUrl;
-        institution.Location = command.Location;
+        if (command.FullName is not null) institution.FullName = command.FullName;
+        if (command.Address is not null) institution.Address = command.Address;
+        if (command.PhoneNumber is not null) institution.PhoneNumber = command.PhoneNumber;
+        if (command.Email is not null) institution.Email = command.Email;
+        if (command.WebUrl is not null) institution.WebUrl = command.WebUrl;
+        if (command.Location is not null) institution.Location = command.Location;
 
         session.Store(institution);
 
