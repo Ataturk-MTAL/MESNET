@@ -1,12 +1,8 @@
-using Marten;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Application.Dtos;
-using MESNET.Enrollment.Application.Errors;
-using MESNET.Enrollment.Application.Extensions;
-using MESNET.Enrollment.Core.Entities;
-using MESNET.Enrollment.Shared.Events;
+using MESNET.Enrollment.Application.Queries;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -27,54 +23,29 @@ public static class TeacherEndpoints
         return app;
     }
 
-    private static async Task<IResult> Post(
-        RegisterTeacher command, IDocumentSession session, IMessageBus bus)
+    private static async Task<IResult> Post(RegisterTeacher command, IMessageBus bus)
     {
-        var teacher = new TeacherProfile
-        {
-            Id = Guid.NewGuid(),
-            InstitutionId = command.InstitutionId,
-            KeycloakUserId = command.KeycloakUserId,
-            FullName = command.FullName
-        };
-
-        session.Store(teacher);
-        await session.SaveChangesAsync();
-
-        await bus.PublishAsync(
-            new TeacherRegistered(teacher.Id, teacher.FullName, teacher.InstitutionId));
-
-        return Results.Created($"/api/teachers/{teacher.Id}",
+        var dto = await bus.InvokeAsync<TeacherProfileDto>(command);
+        return Results.Created($"/api/teachers/{dto.Id}",
             ResponseBuilder.Success(201)
-                .AddData(teacher.ToDto())
+                .AddData(dto)
                 .AddMessage("Öğretmen kaydedildi.")
                 .Build());
     }
 
-    private static async Task<IResult> Get(Guid teacherId, IQuerySession session)
+    private static async Task<IResult> Get(Guid teacherId, IMessageBus bus)
     {
-        var teacher = await session.LoadAsync<TeacherProfile>(teacherId);
-        if (teacher is null)
+        var dto = await bus.InvokeAsync<TeacherProfileDto?>(new GetTeacherProfile(teacherId));
+        if (dto is null)
             return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(EnrollmentErrors.TeacherNotFound(teacherId).Description)
-                .AddErrors(EnrollmentErrors.TeacherNotFound(teacherId))
-                .Build());
+                .AddMessage($"Öğretmen bulunamadı: {teacherId}").Build());
 
-        return Results.Ok(ResponseBuilder.Success()
-            .AddData(teacher.ToDto())
-            .Build());
+        return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
     }
 
-    private static async Task<IResult> GetAll(Guid? institutionId, IQuerySession session)
+    private static async Task<IResult> GetAll(Guid? institutionId, IMessageBus bus)
     {
-        IQueryable<TeacherProfile> queryable = session.Query<TeacherProfile>();
-
-        if (institutionId.HasValue)
-            queryable = queryable.Where(t => t.InstitutionId == institutionId.Value);
-
-        var teachers = await queryable.ToListAsync();
-        return Results.Ok(ResponseBuilder.Success()
-            .AddData(teachers.Select(t => t.ToDto()).ToList())
-            .Build());
+        var dtos = await bus.InvokeAsync<IReadOnlyList<TeacherProfileDto>>(new ListTeachers(institutionId));
+        return Results.Ok(ResponseBuilder.Success().AddData(dtos).Build());
     }
 }

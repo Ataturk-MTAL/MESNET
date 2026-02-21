@@ -8,19 +8,20 @@ namespace MESNET.Institution.Application.Handlers;
 
 public static class GetFieldCatalogHandler
 {
-    public static async Task<IReadOnlyList<FieldOfStudyDto>> Handle(GetFieldCatalog query, IQuerySession session)
+    public static async Task<List<FieldOfStudyDto>> Handle(GetFieldCatalog query, IQuerySession session)
     {
-        if (query.EducationType is not null)
-        {
-            var filtered = await session.Query<FieldOfStudy>()
-                .Where(f => f.Type == query.EducationType && f.IsActive)
-                .ToListAsync();
-            return filtered.Select(f => f.ToDto()).ToList();
-        }
-
+        // Marten SmartEnum LINQ kısıtı: SmartEnum doğrudan karşılaştırılamaz.
+        // Tüm aktif kayıtları çekip in-memory filtrele.
         var all = await session.Query<FieldOfStudy>()
             .Where(f => f.IsActive)
             .ToListAsync();
+
+        if (query.EducationType is not null)
+        {
+            var filtered = all.Where(f => f.Type.Name == query.EducationType.Name).ToList();
+            return filtered.Select(f => f.ToDto()).ToList();
+        }
+
         return all.Select(f => f.ToDto()).ToList();
     }
 }

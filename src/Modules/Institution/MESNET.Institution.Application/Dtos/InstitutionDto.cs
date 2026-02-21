@@ -32,3 +32,9 @@ public sealed record StaffMemberDto(
     string RoleSlug,
     string? BranchCode,
     DateTime AuthorizedAt);
+
+public sealed record ScheduleConfigDto(
+    bool Configured,
+    int? DailyPeriodCount,
+    DateTime? UpdatedAt,
+    string? UpdatedBy);

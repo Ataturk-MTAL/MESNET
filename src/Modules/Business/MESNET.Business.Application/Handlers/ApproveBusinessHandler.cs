@@ -1,26 +1,30 @@
 using Marten;
 using MESNET.Business.Application.Commands;
+using MESNET.Business.Application.Errors;
 using MESNET.Business.Core.Enums;
 using MESNET.Business.Shared.Events;
+using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Shared;
 
 namespace MESNET.Business.Application.Handlers;
 
 public static class ApproveBusinessHandler
 {
-    public static async Task<BusinessApproved> Handle(ApproveBusiness command, IDocumentSession session)
+    public static async Task<BusinessApproved> Handle(
+        ApproveBusiness command, IDocumentSession session, ICurrentUserService currentUser)
     {
-        var business = await session.LoadAsync<Core.Entities.Business>(command.BusinessId)
-            ?? throw new InvalidOperationException($"İşletme bulunamadı: {command.BusinessId}");
+        var business = await session.LoadAsync<Core.Entities.Business>(command.BusinessId);
+        if (business is null)
+            throw new DomainException(BusinessErrors.NotFound(command.BusinessId));
 
         if (!business.Status.CanTransitionTo(BusinessStatus.Active))
-            throw new InvalidOperationException(
-                $"İşletme '{business.Status.Slug}' durumundan 'Aktif' durumuna geçirilemez.");
+            throw new DomainException(BusinessErrors.InvalidTransition(business.Status.Slug, BusinessStatus.Active.Slug));
 
         business.Status = BusinessStatus.Active;
         business.ApprovedAt = DateTime.UtcNow;
 
         session.Store(business);
 
-        return new BusinessApproved(business.Id, command.ApprovedBy, business.ApprovedAt.Value);
+        return new BusinessApproved(business.Id, currentUser.GetFullName(), business.ApprovedAt.Value);
     }
 }

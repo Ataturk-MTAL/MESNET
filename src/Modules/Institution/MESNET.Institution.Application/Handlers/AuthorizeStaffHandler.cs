@@ -1,16 +1,20 @@
 using Marten;
+using MESNET.Common.Shared;
 using MESNET.Institution.Application.Commands;
+using MESNET.Institution.Application.Errors;
 using MESNET.Institution.Core.ValueObjects;
 using MESNET.Institution.Shared.Events;
+using Wolverine;
 
 namespace MESNET.Institution.Application.Handlers;
 
 public static class AuthorizeStaffHandler
 {
-    public static async Task<StaffAuthorized> Handle(AuthorizeStaff command, IDocumentSession session)
+    public static async Task<Guid> Handle(AuthorizeStaff command, IDocumentSession session, IMessageBus bus)
     {
-        var institution = await session.LoadAsync<Core.Entities.Institution>(command.InstitutionId)
-            ?? throw new InvalidOperationException($"Institution {command.InstitutionId} not found.");
+        var institution = await session.LoadAsync<Core.Entities.Institution>(command.InstitutionId);
+        if (institution is null)
+            throw new DomainException(InstitutionErrors.NotFound(command.InstitutionId));
 
         var staff = new StaffMember
         {
@@ -23,6 +27,8 @@ public static class AuthorizeStaffHandler
         institution.Staff.Add(staff);
         session.Store(institution);
 
-        return new StaffAuthorized(institution.Id, staff.Id, staff.Role, staff.BranchCode);
+        await bus.PublishAsync(new StaffAuthorized(institution.Id, staff.Id, staff.Role, staff.BranchCode));
+
+        return staff.Id;
     }
 }

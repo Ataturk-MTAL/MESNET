@@ -1,16 +1,17 @@
 using Marten;
 using MESNET.Institution.Application.Commands;
 using MESNET.Institution.Shared.Events;
+using Wolverine;
 
 namespace MESNET.Institution.Application.Handlers;
 
 public static class CreateInstitutionHandler
 {
-    public static InstitutionUpdated Handle(CreateInstitution command, IDocumentSession session)
+    public static async Task<Guid> Handle(CreateInstitution command, IDocumentSession session, IMessageBus bus)
     {
         var institution = new Core.Entities.Institution
         {
-            Id = Guid.NewGuid(),
+            Id = command.Id ?? Guid.NewGuid(),
             TenantId = command.TenantId,
             InstitutionCode = command.InstitutionCode,
             FullName = command.FullName,
@@ -23,6 +24,8 @@ public static class CreateInstitutionHandler
 
         session.Store(institution);
 
-        return new InstitutionUpdated(institution.Id, institution.FullName, institution.Location);
+        await bus.PublishAsync(new InstitutionUpdated(institution.Id, institution.FullName, institution.Location));
+
+        return institution.Id;
     }
 }

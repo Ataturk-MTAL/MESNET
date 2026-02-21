@@ -22,11 +22,13 @@ public static class ListStudentsHandler
         if (!string.IsNullOrWhiteSpace(query.Section))
             queryable = queryable.Where(s => s.Section == query.Section);
 
+        var students = await queryable.ToListAsync();
+
+        // SmartEnum LINQ kısıtı: in-memory filtrele
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             StudentStatus.TryFromName(query.Status, true, out var status))
-            queryable = queryable.Where(s => s.Status == status);
+            students = students.Where(s => s.Status.Name == status.Name).ToList();
 
-        var students = await queryable.ToListAsync();
         return students.Select(s => s.ToDto()).ToList();
     }
 }

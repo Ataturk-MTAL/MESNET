@@ -199,12 +199,49 @@ Her modül şu katmanlara sahiptir:
 - `MESNET.{Module}.Persistence` — Marten document/event store konfigürasyonu
 - `MESNET.{Module}.Shared` — Domain events (diğer modüllerin consume edebileceği)
 
+### Endpoint — Handler Mimarisi (KESİN KURAL)
+
+Tüm endpoint metodları istek işlemeyi **Wolverine handler'larına** devreder. Endpoint'ler ince bir HTTP adaptör katmanıdır; iş mantığı veya Marten erişimi içermez.
+
+**Yazma (Command) endpoint'i şablonu:**
+
+```csharp
+private static async Task<IResult> Post(CreateBusiness command, IMessageBus bus)
+{
+    var id = await bus.InvokeAsync<Guid>(command);
+    return Results.Created($"/api/businesses/{id}", ResponseBuilder.Success(201)
+        .AddData(new { id }).Build());
+}
+```
+
+**Okuma (Query) endpoint'i şablonu:**
+
+```csharp
+private static async Task<IResult> Get(Guid id, IMessageBus bus)
+{
+    var dto = await bus.InvokeAsync<BusinessDto>(new GetBusiness(id));
+    return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
+}
+```
+
+**Kesinlikle YASAK olan pattern'lar:**
+
+- Endpoint metodunda `IDocumentSession` veya `IQuerySession` inject etmek
+- Endpoint metodunda `session.Store()`, `session.LoadAsync()`, `session.Query()` çağırmak
+- Endpoint metodunda business logic veya domain kural kontrolü yapmak
+- Endpoint metodunda doğrudan `bus.PublishAsync()` ile event yayınlamak (bu handler'ın işi)
+
+**İzin verilen tek istisna:**
+
+- `ICurrentUserService` — token'dan kullanıcı bilgisi okumak için endpoint'e inject edilebilir
+
 ### CQRS Kuralları
 
-- Command handler'lar yazma işlemi yapar, event döndürür
+- Command handler'lar yazma işlemi yapar, event döndürür (`DomainException` fırlatır, `Result<T>` DÖNDÜRMEZ)
 - Query handler'lar sadece okuma yapar, hiçbir side effect oluşturmaz
 - Event sourcing kullanan aggregate'ler için Decider pattern (`[AggregateHandler]`) kullan
-- Document-based entity'ler için Marten IDocumentSession kullan
+- Document-based entity'ler için Marten `IDocumentSession` (yazma) ve `IQuerySession` (okuma) kullan — SADECE handler içinde
+- Handler'dan hata bildirimi: `throw new DomainException(error)` — HTTP 422 olarak döner
 
 ### Event Sourcing vs Document Storage
 

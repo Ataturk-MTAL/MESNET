@@ -1,14 +1,18 @@
 using Marten;
 using MESNET.Business.Application.Commands;
+using MESNET.Business.Application.Dtos;
+using MESNET.Business.Application.Extensions;
 using MESNET.Business.Core.Enums;
 using MESNET.Business.Core.ValueObjects;
 using MESNET.Business.Shared.Events;
+using Wolverine;
 
 namespace MESNET.Business.Application.Handlers;
 
 public static class RegisterBusinessHandler
 {
-    public static BusinessRegistered Handle(RegisterBusiness command, IDocumentSession session)
+    public static async Task<BusinessDto> Handle(
+        RegisterBusiness command, IDocumentSession session, IMessageBus bus)
     {
         var business = new Core.Entities.Business
         {
@@ -31,7 +35,10 @@ public static class RegisterBusinessHandler
         };
 
         session.Store(business);
+        await session.SaveChangesAsync();
 
-        return new BusinessRegistered(business.Id, business.Name, business.Location, business.Source);
+        await bus.PublishAsync(new BusinessRegistered(business.Id, business.Name, business.Location, business.Source));
+
+        return business.ToDto();
     }
 }

@@ -1,5 +1,7 @@
 using Marten;
+using MESNET.Common.Shared;
 using MESNET.Enrollment.Application.Commands;
+using MESNET.Enrollment.Application.Errors;
 using MESNET.Enrollment.Core.ReadModels;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.Enums;
@@ -12,20 +14,20 @@ public static class TransferStudentHandler
     public static async Task<StudentTransferred> Handle(TransferStudent command, IDocumentSession session)
     {
         var oldPlacement = await session.LoadAsync<InternshipPlacement>(command.PlacementId)
-            ?? throw new InvalidOperationException($"Yerleştirme bulunamadı: {command.PlacementId}");
+            ?? throw new DomainException(EnrollmentErrors.PlacementNotFound(command.PlacementId));
 
         if (!oldPlacement.Status.CanTransitionTo(PlacementStatus.Transferred))
-            throw new InvalidOperationException(
-                $"Yerleştirme '{oldPlacement.Status.Slug}' durumundan '{PlacementStatus.Transferred.Slug}' durumuna geçirilemez.");
+            throw new DomainException(
+                EnrollmentErrors.InvalidTransition("Yerleştirme", oldPlacement.Status.Slug, PlacementStatus.Transferred.Slug));
 
         var newBusiness = await session.LoadAsync<BusinessProfileView>(command.NewBusinessId)
-            ?? throw new InvalidOperationException($"Yeni işletme bulunamadı: {command.NewBusinessId}");
+            ?? throw new DomainException(EnrollmentErrors.BusinessNotFound(command.NewBusinessId));
 
         if (!newBusiness.IsActive)
-            throw new InvalidOperationException("Yeni işletme aktif değil, transfer yapılamaz.");
+            throw new DomainException(EnrollmentErrors.BusinessNotActive);
 
         if (newBusiness.AvailableCapacity <= 0)
-            throw new InvalidOperationException("Yeni işletme kapasitesi dolu, transfer yapılamaz.");
+            throw new DomainException(EnrollmentErrors.BusinessCapacityFull);
 
         oldPlacement.Status = PlacementStatus.Transferred;
         oldPlacement.TransferredAt = DateTime.UtcNow;

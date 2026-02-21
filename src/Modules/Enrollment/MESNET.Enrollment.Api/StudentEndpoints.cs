@@ -1,13 +1,8 @@
-using Marten;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Application.Dtos;
-using MESNET.Enrollment.Application.Errors;
-using MESNET.Enrollment.Application.Extensions;
-using MESNET.Enrollment.Core.Entities;
-using MESNET.Enrollment.Core.Enums;
-using MESNET.Enrollment.Shared.Events;
+using MESNET.Enrollment.Application.Queries;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -29,93 +24,39 @@ public static class StudentEndpoints
         return app;
     }
 
-    private static async Task<IResult> Post(
-        RegisterStudent command, IDocumentSession session, IMessageBus bus)
+    private static async Task<IResult> Post(RegisterStudent command, IMessageBus bus)
     {
-        var student = new StudentProfile
-        {
-            Id = Guid.NewGuid(),
-            InstitutionId = command.InstitutionId,
-            KeycloakUserId = command.KeycloakUserId,
-            FullName = command.FullName,
-            BranchCode = command.BranchCode,
-            BranchName = command.BranchName,
-            ClassYear = command.ClassYear,
-            Section = command.Section
-        };
-
-        session.Store(student);
-        await session.SaveChangesAsync();
-
-        await bus.PublishAsync(
-            new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.BranchCode));
-
-        return Results.Created($"/api/students/{student.Id}",
+        var dto = await bus.InvokeAsync<StudentProfileDto>(command);
+        return Results.Created($"/api/students/{dto.Id}",
             ResponseBuilder.Success(201)
-                .AddData(student.ToDto())
+                .AddData(dto)
                 .AddMessage("Öğrenci kaydedildi.")
                 .Build());
     }
 
-    private static async Task<IResult> Put(
-        Guid studentId, UpdateStudentProfile command, IDocumentSession session)
+    private static async Task<IResult> Put(Guid studentId, UpdateStudentProfile command, IMessageBus bus)
     {
-        var student = await session.LoadAsync<StudentProfile>(studentId);
-        if (student is null)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(EnrollmentErrors.StudentNotFound(studentId).Description)
-                .AddErrors(EnrollmentErrors.StudentNotFound(studentId))
-                .Build());
-
-        student.FullName = command.FullName;
-        student.BranchCode = command.BranchCode;
-        student.BranchName = command.BranchName;
-        student.ClassYear = command.ClassYear;
-        student.Section = command.Section;
-
-        session.Store(student);
-        await session.SaveChangesAsync();
-
+        await bus.InvokeAsync(command with { StudentId = studentId });
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Öğrenci profili güncellendi.")
             .Build());
     }
 
-    private static async Task<IResult> Get(Guid studentId, IQuerySession session)
+    private static async Task<IResult> Get(Guid studentId, IMessageBus bus)
     {
-        var student = await session.LoadAsync<StudentProfile>(studentId);
-        if (student is null)
+        var dto = await bus.InvokeAsync<StudentProfileDto?>(new GetStudentProfile(studentId));
+        if (dto is null)
             return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(EnrollmentErrors.StudentNotFound(studentId).Description)
-                .AddErrors(EnrollmentErrors.StudentNotFound(studentId))
-                .Build());
+                .AddMessage($"Öğrenci bulunamadı: {studentId}").Build());
 
-        return Results.Ok(ResponseBuilder.Success()
-            .AddData(student.ToDto())
-            .Build());
+        return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
     }
 
     private static async Task<IResult> GetAll(
-        Guid? institutionId, string? branchCode, string? section, string? status, IQuerySession session)
+        Guid? institutionId, string? branchCode, string? section, string? status, IMessageBus bus)
     {
-        IQueryable<StudentProfile> queryable = session.Query<StudentProfile>();
-
-        if (institutionId.HasValue)
-            queryable = queryable.Where(s => s.InstitutionId == institutionId.Value);
-
-        if (!string.IsNullOrWhiteSpace(branchCode))
-            queryable = queryable.Where(s => s.BranchCode == branchCode);
-
-        if (!string.IsNullOrWhiteSpace(section))
-            queryable = queryable.Where(s => s.Section == section);
-
-        if (!string.IsNullOrWhiteSpace(status) &&
-            StudentStatus.TryFromName(status, true, out var studentStatus))
-            queryable = queryable.Where(s => s.Status.Name == studentStatus.Name);
-
-        var students = await queryable.ToListAsync();
-        return Results.Ok(ResponseBuilder.Success()
-            .AddData(students.Select(s => s.ToDto()).ToList())
-            .Build());
+        var dtos = await bus.InvokeAsync<IReadOnlyList<StudentProfileDto>>(
+            new ListStudents(institutionId, branchCode, section, status));
+        return Results.Ok(ResponseBuilder.Success().AddData(dtos).Build());
     }
 }

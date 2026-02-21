@@ -1,5 +1,7 @@
 using Marten;
 using MESNET.Enrollment.Application.Commands;
+using MESNET.Enrollment.Application.Dtos;
+using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Shared.Events;
 
@@ -7,7 +9,7 @@ namespace MESNET.Enrollment.Application.Handlers;
 
 public static class RegisterStudentHandler
 {
-    public static StudentRegistered Handle(RegisterStudent command, IDocumentSession session)
+    public static (StudentProfileDto, StudentRegistered) Handle(RegisterStudent command, IDocumentSession session)
     {
         var student = new StudentProfile
         {
@@ -23,6 +25,6 @@ public static class RegisterStudentHandler
 
         session.Store(student);
 
-        return new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.BranchCode);
+        return (student.ToDto(), new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.BranchCode));
     }
 }

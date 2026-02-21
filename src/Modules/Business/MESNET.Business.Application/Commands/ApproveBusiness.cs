@@ -1,5 +1,3 @@
 namespace MESNET.Business.Application.Commands;
 
-public sealed record ApproveBusiness(
-    Guid BusinessId,
-    string ApprovedBy);
+public sealed record ApproveBusiness(Guid BusinessId);
