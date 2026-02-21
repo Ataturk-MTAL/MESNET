@@ -35,19 +35,20 @@ public static class FieldCatalogEndpoints
     private static async Task<IResult> GetFieldCatalog(
         string? educationType, IQuerySession session)
     {
+        // FieldOfStudy.Type SmartEnum olarak "Formal"/"Mesem" (Name) şeklinde JSON'da saklanır.
+        // Marten SmartEnum LINQ kısıtı: f.Type.Name yerine string olarak çekip filtrele.
+        var all = await session.Query<FieldOfStudy>()
+            .Where(f => f.IsActive)
+            .ToListAsync();
+
         if (educationType is not null && EducationType.TryFromName(educationType, true, out var type))
         {
-            var filtered = await session.Query<FieldOfStudy>()
-                .Where(f => f.Type.Name == type.Name && f.IsActive)
-                .ToListAsync();
+            var filtered = all.Where(f => f.Type.Name == type.Name).ToList();
             return Results.Ok(ResponseBuilder.Success()
                 .AddData(filtered.Select(f => f.ToDto()).ToList())
                 .Build());
         }
 
-        var all = await session.Query<FieldOfStudy>()
-            .Where(f => f.IsActive)
-            .ToListAsync();
         return Results.Ok(ResponseBuilder.Success()
             .AddData(all.Select(f => f.ToDto()).ToList())
             .Build());
