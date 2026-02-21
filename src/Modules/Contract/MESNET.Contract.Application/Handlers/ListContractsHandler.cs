@@ -23,11 +23,12 @@ public static class ListContractsHandler
         if (query.InstitutionId.HasValue)
             queryable = queryable.Where(c => c.InstitutionId == query.InstitutionId.Value);
 
+        var contracts = await queryable.ToListAsync();
+
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             ContractStatus.TryFromName(query.Status, true, out var status))
-            queryable = queryable.Where(c => c.Status == status);
+            contracts = contracts.Where(c => c.Status.Name == status.Name).ToList();
 
-        var contracts = await queryable.ToListAsync();
         return contracts.Select(c => c.ToDto()).ToList();
     }
 }

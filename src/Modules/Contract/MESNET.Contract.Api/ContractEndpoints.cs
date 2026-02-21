@@ -1,11 +1,9 @@
-using Marten;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Contract.Application.Commands;
+using MESNET.Contract.Application.Dtos;
 using MESNET.Contract.Application.Errors;
-using MESNET.Contract.Application.Extensions;
-using MESNET.Contract.Core.Aggregates;
-using MESNET.Contract.Core.Enums;
+using MESNET.Contract.Application.Queries;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -117,42 +115,28 @@ public static class ContractEndpoints
     }
 
     private static async Task<IResult> Get(
-        Guid contractId, IQuerySession session)
+        Guid contractId, IMessageBus bus)
     {
-        var contract = await session.Events.AggregateStreamAsync<InternshipContract>(contractId);
-        if (contract is null)
+        var dto = await bus.InvokeAsync<InternshipContractDto?>(new GetContract(contractId));
+        if (dto is null)
             return Results.NotFound(ResponseBuilder.Fail(404)
                 .AddMessage(ContractErrors.NotFound(contractId).Description)
                 .AddErrors(ContractErrors.NotFound(contractId))
                 .Build());
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(contract.ToDto())
+            .AddData(dto)
             .Build());
     }
 
     private static async Task<IResult> GetAll(
         Guid? studentId, Guid? businessId, Guid? institutionId, string? status,
-        IQuerySession session)
+        IMessageBus bus)
     {
-        IQueryable<InternshipContract> queryable = session.Query<InternshipContract>();
-
-        if (studentId.HasValue)
-            queryable = queryable.Where(c => c.StudentId == studentId.Value);
-
-        if (businessId.HasValue)
-            queryable = queryable.Where(c => c.BusinessId == businessId.Value);
-
-        if (institutionId.HasValue)
-            queryable = queryable.Where(c => c.InstitutionId == institutionId.Value);
-
-        if (!string.IsNullOrWhiteSpace(status) &&
-            ContractStatus.TryFromName(status, true, out var contractStatus))
-            queryable = queryable.Where(c => c.Status.Name == contractStatus.Name);
-
-        var contracts = await queryable.ToListAsync();
+        var query = new ListContracts(studentId, businessId, institutionId, status);
+        var contracts = await bus.InvokeAsync<IReadOnlyList<InternshipContractDto>>(query);
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(contracts.Select(c => c.ToDto()).ToList())
+            .AddData(contracts)
             .Build());
     }
 
