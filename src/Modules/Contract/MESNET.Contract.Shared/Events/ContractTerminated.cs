@@ -6,4 +6,5 @@ public sealed record ContractTerminated(
     Guid BusinessId,
     string Reason,
     string ReasonType,
+    DateTime EndDate,
     DateTime TerminatedAt);

@@ -15,7 +15,7 @@ export interface InternshipContractDto {
   status: string
   statusSlug: string
   startDate: string
-  endDate: string
+  endDate: string | null
   institutionSignature: SignatureStatusDto
   businessSignature: SignatureStatusDto
   studentSignature: SignatureStatusDto
@@ -31,7 +31,6 @@ export interface CreateContractRequest {
   institutionId: string
   teacherId?: string
   startDate: string
-  endDate: string
 }
 
 export interface SignContractRequest {

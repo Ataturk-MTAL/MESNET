@@ -4,4 +4,5 @@ public sealed record ContractCompleted(
     Guid ContractId,
     Guid StudentId,
     Guid BusinessId,
+    DateTime EndDate,
     DateTime CompletedAt);

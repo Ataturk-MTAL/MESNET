@@ -12,7 +12,7 @@ public sealed record InternshipContract(
     Guid? TeacherId,
     ContractStatus Status,
     DateTime StartDate,
-    DateTime EndDate,
+    DateTime? EndDate,
     SignatureStatus InstitutionSignature,
     SignatureStatus BusinessSignature,
     SignatureStatus StudentSignature,
@@ -25,7 +25,7 @@ public sealed record InternshipContract(
 {
     public static InternshipContract Create(ContractCreated e) => new(
         e.ContractId, e.StudentId, e.BusinessId, e.InstitutionId, e.TeacherId,
-        ContractStatus.Draft, e.StartDate, e.EndDate,
+        ContractStatus.Draft, e.StartDate, null,
         SignatureStatus.Unsigned, SignatureStatus.Unsigned, SignatureStatus.Unsigned, SignatureStatus.Unsigned,
         null, null, null, null, e.CreatedAt);
 
@@ -57,12 +57,13 @@ public sealed record InternshipContract(
         => this with
         {
             Status = ContractStatus.Terminated,
+            EndDate = e.EndDate,
             TerminationReason = e.Reason,
             TerminationReasonType = Enums.TerminationReason.TryFromName(e.ReasonType, true, out var reason) ? reason : null
         };
 
-    public InternshipContract Apply(ContractCompleted _)
-        => this with { Status = ContractStatus.Completed };
+    public InternshipContract Apply(ContractCompleted e)
+        => this with { Status = ContractStatus.Completed, EndDate = e.EndDate };
 
     public InternshipContract Apply(SignedContractDocumentUploaded e)
         => this with { SignedDocumentUrl = e.ObjectPath };

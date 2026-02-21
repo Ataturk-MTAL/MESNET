@@ -288,7 +288,6 @@
             </template>
           </q-select>
           <q-input v-model="createForm.startDate" label="Başlangıç Tarihi" filled type="date" />
-          <q-input v-model="createForm.endDate" label="Bitiş Tarihi" filled type="date" />
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="İptal" @click="createDialog = false" />
@@ -459,7 +458,6 @@ const createForm = reactive({
   businessId: '',
   teacherId: '',
   startDate: '',
-  endDate: '',
 })
 
 const signForm = reactive<{ party: 'Institution' | 'Business' | 'Student'; signedBy: string }>({
@@ -512,7 +510,6 @@ function openCreateDialog() {
   createForm.businessId = ''
   createForm.teacherId = ''
   createForm.startDate = ''
-  createForm.endDate = ''
   studentOpts.reset()
   studentOpts.load()
   businessOpts.reset()
@@ -536,7 +533,6 @@ async function createContract() {
       institutionId: authStore.user?.institutionId ?? '',
       teacherId: createForm.teacherId || undefined,
       startDate: new Date(createForm.startDate).toISOString(),
-      endDate: new Date(createForm.endDate).toISOString(),
     })
     notify.success('Sözleşme oluşturuldu.')
     createDialog.value = false

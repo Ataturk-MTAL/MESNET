@@ -7,5 +7,4 @@ public sealed record ContractCreated(
     Guid InstitutionId,
     Guid? TeacherId,
     DateTime StartDate,
-    DateTime EndDate,
     DateTime CreatedAt);

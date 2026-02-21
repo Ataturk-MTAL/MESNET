@@ -16,6 +16,7 @@ public static class CompleteContractHandler
             throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Sözleşme tamamlanamaz. Mevcut durum: {contract.Status.Slug}.");
 
-        return new ContractCompleted(contract.Id, contract.StudentId, contract.BusinessId, DateTime.UtcNow);
+        var endDate = command.EndDate ?? DateTime.UtcNow;
+        return new ContractCompleted(contract.Id, contract.StudentId, contract.BusinessId, endDate, DateTime.UtcNow);
     }
 }

@@ -5,5 +5,4 @@ public sealed record CreateContract(
     Guid BusinessId,
     Guid InstitutionId,
     Guid? TeacherId,
-    DateTime StartDate,
-    DateTime EndDate);
+    DateTime StartDate);

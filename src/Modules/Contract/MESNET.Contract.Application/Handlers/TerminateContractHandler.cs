@@ -20,8 +20,9 @@ public static class TerminateContractHandler
             throw new DomainException("CONTRACT_UNKNOWN_TERMINATION_REASON",
                 $"Bilinmeyen fesih nedeni: {command.ReasonType}.");
 
+        var endDate = command.EndDate ?? DateTime.UtcNow;
         return new ContractTerminated(
             contract.Id, contract.StudentId, contract.BusinessId,
-            command.Reason, command.ReasonType, DateTime.UtcNow);
+            command.Reason, command.ReasonType, endDate, DateTime.UtcNow);
     }
 }

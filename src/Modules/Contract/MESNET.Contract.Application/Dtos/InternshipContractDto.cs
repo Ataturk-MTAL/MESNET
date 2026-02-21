@@ -9,7 +9,7 @@ public sealed record InternshipContractDto(
     string Status,
     string StatusSlug,
     DateTime StartDate,
-    DateTime EndDate,
+    DateTime? EndDate,
     SignatureStatusDto InstitutionSignature,
     SignatureStatusDto BusinessSignature,
     SignatureStatusDto StudentSignature,
