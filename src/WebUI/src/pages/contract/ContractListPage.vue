@@ -21,7 +21,6 @@
         dense
         emit-value
         map-options
-        clearable
         style="min-width: 180px"
         @update:model-value="load"
       />
@@ -549,6 +548,7 @@ const uploadFile = ref<File | null>(null)
 const uploadedBy = ref('')
 
 const statusOptions = [
+  { label: 'Tüm Durumlar', value: null },
   { label: 'Taslak', value: 'Draft' },
   { label: 'İmza Bekliyor', value: 'AwaitingSignature' },
   { label: 'Aktif', value: 'Active' },
@@ -609,7 +609,7 @@ async function load() {
   loading.value = true
   try {
     const res = await contractApi.list({ status: statusFilter.value ?? undefined })
-    contracts.value = res.data
+    contracts.value = Array.isArray(res.data) ? res.data : (res.data as any)?.data ?? []
   } catch {
     notify.error('Sözleşmeler yüklenirken bir hata oluştu.')
   } finally {
