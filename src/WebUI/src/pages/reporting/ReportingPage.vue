@@ -1,180 +1,263 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">Raporlar</div>
+    <div class="row items-center q-mb-lg">
+      <div class="text-h5 text-weight-bold col">MEB Formları ve Dokümanlar</div>
+      <q-btn
+        color="primary"
+        icon="refresh"
+        flat
+        round
+        :loading="loading"
+        @click="loadDocuments"
+      />
+    </div>
 
-    <div class="row q-col-gutter-md">
-      <!-- Staj Raporu -->
-      <div class="col-12 col-md-4">
-        <q-card flat bordered>
-          <q-card-section>
-            <div class="row items-center q-mb-md">
-              <q-icon name="work_history" size="32px" color="primary" class="q-mr-md" />
-              <div>
-                <div class="text-subtitle1 text-weight-medium">Staj Raporu</div>
-                <div class="text-caption text-grey">Yerleştirme ve staj istatistikleri</div>
-              </div>
-            </div>
-            <q-input v-model="internshipFilters.year" label="Yıl" filled dense type="number" class="q-mb-sm" />
-            <q-input v-model="internshipFilters.branchCode" label="Alan Kodu (opsiyonel)" filled dense class="q-mb-md" />
-            <q-btn
-              color="primary"
-              icon="download"
-              label="PDF İndir"
-              :loading="downloading.internship"
-              class="full-width"
-              @click="downloadInternship"
-            />
-          </q-card-section>
-        </q-card>
-      </div>
-
-      <!-- Devamsızlık Raporu -->
-      <div class="col-12 col-md-4">
-        <q-card flat bordered>
-          <q-card-section>
-            <div class="row items-center q-mb-md">
-              <q-icon name="event_busy" size="32px" color="orange" class="q-mr-md" />
-              <div>
-                <div class="text-subtitle1 text-weight-medium">Devamsızlık Raporu</div>
-                <div class="text-caption text-grey">Devamsızlık özeti ve detayları</div>
-              </div>
-            </div>
-            <q-input v-model="attendanceFilters.month" label="Ay (YYYY-MM)" filled dense class="q-mb-sm" />
+    <!-- Filtreler -->
+    <q-card flat bordered class="q-mb-md">
+      <q-card-section>
+        <div class="row q-col-gutter-sm items-end">
+          <div class="col-12 col-sm-4">
             <q-select
-              v-model="attendanceFilters.studentId"
-              :options="studentOpts.options.value"
-              :loading="studentOpts.loading.value"
-              label="Öğrenci (opsiyonel)"
+              v-model="filters.formType"
+              :options="formTypeOptions"
+              label="Form Tipi"
               filled
               dense
-              use-input
-              input-debounce="0"
+              clearable
               emit-value
               map-options
-              option-label="label"
-              option-value="value"
+            />
+          </div>
+          <div class="col-12 col-sm-4">
+            <q-select
+              v-model="filters.status"
+              :options="statusOptions"
+              label="Durum"
+              filled
+              dense
               clearable
-              class="q-mb-md"
-              @filter="studentOpts.filter"
-            >
-              <template #option="{ itemProps, opt }">
-                <q-item v-bind="itemProps">
-                  <q-item-section>
-                    <q-item-label>{{ opt.label }}</q-item-label>
-                    <q-item-label caption v-if="opt.caption">{{ opt.caption }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </template>
-              <template #no-option>
-                <q-item>
-                  <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-                </q-item>
-              </template>
-            </q-select>
-            <q-btn
-              color="orange"
-              icon="download"
-              label="PDF İndir"
-              :loading="downloading.attendance"
-              class="full-width"
-              @click="downloadAttendance"
+              emit-value
+              map-options
             />
-          </q-card-section>
-        </q-card>
-      </div>
+          </div>
+          <div class="col-12 col-sm-4">
+            <q-btn
+              color="primary"
+              label="Filtrele"
+              icon="filter_alt"
+              unelevated
+              class="full-width"
+              @click="loadDocuments"
+            />
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
 
-      <!-- Maaş Raporu -->
-      <div class="col-12 col-md-4">
-        <q-card flat bordered>
-          <q-card-section>
-            <div class="row items-center q-mb-md">
-              <q-icon name="payments" size="32px" color="green" class="q-mr-md" />
-              <div>
-                <div class="text-subtitle1 text-weight-medium">Maaş Raporu</div>
-                <div class="text-caption text-grey">Ödeme ve dekont özeti</div>
-              </div>
-            </div>
-            <q-input v-model="paymentFilters.month" label="Ay (YYYY-MM)" filled dense class="q-mb-md" />
+    <!-- Doküman Tablosu -->
+    <q-card flat bordered>
+      <q-table
+        :rows="documents"
+        :columns="columns"
+        row-key="id"
+        :loading="loading"
+        flat
+        bordered
+        :rows-per-page-options="[15, 30, 50]"
+        no-data-label="Henüz doküman bulunmuyor"
+        loading-label="Yükleniyor..."
+      >
+        <template #body-cell-formType="{ row }">
+          <q-td>
+            <q-badge color="blue-grey" :label="formTypeLabel(row.formType)" />
+          </q-td>
+        </template>
+
+        <template #body-cell-status="{ row }">
+          <q-td>
+            <q-badge :color="statusColor(row.status)" :label="statusLabel(row.status)" />
+          </q-td>
+        </template>
+
+        <template #body-cell-generatedAt="{ row }">
+          <q-td>{{ formatDate(row.generatedAt) }}</q-td>
+        </template>
+
+        <template #body-cell-actions="{ row }">
+          <q-td class="q-gutter-xs">
             <q-btn
-              color="green"
+              flat
+              round
+              dense
               icon="download"
-              label="PDF İndir"
-              :loading="downloading.payment"
-              class="full-width"
-              @click="downloadPayment"
+              color="primary"
+              title="PDF İndir"
+              :loading="downloading === row.id"
+              @click="downloadPdf(row)"
             />
-          </q-card-section>
-        </q-card>
-      </div>
-    </div>
+            <q-btn
+              v-if="row.status === 'Generated'"
+              flat
+              round
+              dense
+              icon="print"
+              color="orange"
+              title="Yazdırıldı Olarak İşaretle"
+              @click="markPrinted(row.id)"
+            />
+            <q-btn
+              v-if="row.status === 'Printed'"
+              flat
+              round
+              dense
+              icon="assignment_turned_in"
+              color="green"
+              title="İmzalanıp Teslim Edildi"
+              @click="markSignedReturned(row.id)"
+            />
+            <q-btn
+              v-if="row.status === 'SignedAndReturned'"
+              flat
+              round
+              dense
+              icon="archive"
+              color="grey"
+              title="Arşivle"
+              @click="archiveDoc(row.id)"
+            />
+          </q-td>
+        </template>
+      </q-table>
+    </q-card>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { reactive, onMounted } from 'vue'
-import { reportingApi, downloadBlob } from 'src/api/reporting'
+import { ref, reactive, onMounted } from 'vue'
+import {
+  reportingApi,
+  downloadBlob,
+  MEB_FORM_LABELS,
+  DOCUMENT_STATUS_LABELS,
+  DOCUMENT_STATUS_COLORS,
+  type GeneratedDocumentSummaryDto,
+} from 'src/api/reporting'
 import { useNotify } from 'src/composables/useNotify'
-import { useStudentOptions } from 'src/composables/useEntityOptions'
 import { useAuthStore } from 'stores/auth'
 
 const notify = useNotify()
 const authStore = useAuthStore()
-const institutionId = authStore.user?.institutionId ?? ''
-const studentOpts = useStudentOptions()
 
-onMounted(() => studentOpts.load())
+const loading = ref(false)
+const downloading = ref<string | null>(null)
+const documents = ref<GeneratedDocumentSummaryDto[]>([])
 
-const downloading = reactive({
-  internship: false,
-  attendance: false,
-  payment: false,
+const filters = reactive({
+  formType: null as string | null,
+  status: null as string | null,
 })
 
-const internshipFilters = reactive({ year: new Date().getFullYear(), branchCode: '' })
-const attendanceFilters = reactive({ month: '', studentId: '' })
-const paymentFilters = reactive({ month: '' })
+const formTypeOptions = Object.entries(MEB_FORM_LABELS).map(([value, label]) => ({ value, label }))
+const statusOptions = Object.entries(DOCUMENT_STATUS_LABELS).map(([value, label]) => ({ value, label }))
 
-async function downloadInternship() {
-  downloading.internship = true
+const columns = [
+  { name: 'formType', label: 'Form Tipi', field: 'formType', align: 'left' as const },
+  { name: 'status', label: 'Durum', field: 'status', align: 'left' as const },
+  { name: 'generatedByName', label: 'Oluşturan', field: 'generatedByName', align: 'left' as const },
+  { name: 'academicYear', label: 'Eğitim Yılı', field: 'academicYear', align: 'left' as const },
+  { name: 'generatedAt', label: 'Tarih', field: 'generatedAt', align: 'left' as const },
+  { name: 'actions', label: 'İşlemler', field: 'id', align: 'center' as const },
+]
+
+async function loadDocuments() {
+  loading.value = true
   try {
-    const res = await reportingApi.getInternshipReport(institutionId, {
-      year: internshipFilters.year,
-      branchCode: internshipFilters.branchCode || undefined,
-    })
-    downloadBlob(res.data as Blob, `staj-raporu-${internshipFilters.year}.pdf`)
+    const institutionId = authStore.user?.institutionId
+    const params = {
+      formType: filters.formType ?? undefined,
+      status: filters.status ?? undefined,
+      institutionId: institutionId ?? undefined,
+    }
+    const res = await reportingApi.listDocuments(params)
+    documents.value = Array.isArray(res.data) ? res.data : (res.data as any)?.data ?? []
   } catch {
-    notify.error('Rapor oluşturulurken bir hata oluştu.')
+    notify.error('Dokümanlar yüklenirken bir hata oluştu.')
   } finally {
-    downloading.internship = false
+    loading.value = false
   }
 }
 
-async function downloadAttendance() {
-  downloading.attendance = true
+async function downloadPdf(doc: GeneratedDocumentSummaryDto) {
+  downloading.value = doc.id
   try {
-    const res = await reportingApi.getAttendanceReport(institutionId, {
-      month: attendanceFilters.month || undefined,
-      studentId: attendanceFilters.studentId || undefined,
-    })
-    downloadBlob(res.data as Blob, `devamsizlik-raporu-${attendanceFilters.month || 'tum'}.pdf`)
+    const res = await reportingApi.getDocumentPdfUrl(doc.id)
+    const result = (res.data as any)?.data ?? res.data
+    if (result?.url) {
+      window.open(result.url, '_blank')
+    } else {
+      // Fallback: blob olarak indir
+      const blobRes = await reportingApi.getDocumentPdfBlob(doc.id)
+      const label = formTypeLabel(doc.formType).replace(/\s+/g, '-').toLowerCase()
+      downloadBlob(blobRes.data as Blob, `${label}-${doc.id.slice(0, 8)}.pdf`)
+    }
   } catch {
-    notify.error('Rapor oluşturulurken bir hata oluştu.')
+    notify.error('PDF indirirken bir hata oluştu.')
   } finally {
-    downloading.attendance = false
+    downloading.value = null
   }
 }
 
-async function downloadPayment() {
-  downloading.payment = true
+async function markPrinted(id: string) {
   try {
-    const res = await reportingApi.getPaymentReport(institutionId, {
-      month: paymentFilters.month || undefined,
-    })
-    downloadBlob(res.data as Blob, `maas-raporu-${paymentFilters.month || 'tum'}.pdf`)
+    await reportingApi.markAsPrinted(id)
+    notify.success('Yazdırıldı olarak işaretlendi.')
+    await loadDocuments()
   } catch {
-    notify.error('Rapor oluşturulurken bir hata oluştu.')
-  } finally {
-    downloading.payment = false
+    notify.error('İşlem başarısız.')
   }
 }
+
+async function markSignedReturned(id: string) {
+  try {
+    await reportingApi.markAsSignedAndReturned(id)
+    notify.success('İmzalanıp teslim edildi olarak işaretlendi.')
+    await loadDocuments()
+  } catch {
+    notify.error('İşlem başarısız.')
+  }
+}
+
+async function archiveDoc(id: string) {
+  try {
+    await reportingApi.markAsArchived(id)
+    notify.success('Doküman arşivlendi.')
+    await loadDocuments()
+  } catch {
+    notify.error('İşlem başarısız.')
+  }
+}
+
+function formTypeLabel(formType: string): string {
+  return MEB_FORM_LABELS[formType] ?? formType
+}
+
+function statusLabel(status: string): string {
+  return DOCUMENT_STATUS_LABELS[status] ?? status
+}
+
+function statusColor(status: string): string {
+  return DOCUMENT_STATUS_COLORS[status] ?? 'grey'
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('tr-TR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+onMounted(loadDocuments)
 </script>

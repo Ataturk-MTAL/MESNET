@@ -110,14 +110,14 @@
     </q-drawer>
 
     <!-- Yeni Öğrenci Dialog -->
-    <q-dialog v-model="addDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Yeni Öğrenci Ekle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="addDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <q-dialog v-model="addDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-primary text-white">
+          <q-icon name="person_add" class="q-mr-sm" />
+          <q-toolbar-title>Yeni Öğrenci Ekle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
             v-model="addForm.keycloakUserId"
             :options="userOpts.options.value"
@@ -133,6 +133,9 @@
             @filter="userOpts.filter"
             @update:model-value="onUserSelect"
           >
+            <template #prepend>
+              <q-icon name="person_search" />
+            </template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
@@ -147,27 +150,44 @@
               </q-item>
             </template>
           </q-select>
-          <q-input v-model="addForm.fullName" label="Ad Soyad *" filled readonly />
-          <q-input v-model="addForm.branchCode" label="Alan Kodu *" filled />
-          <q-input v-model.number="addForm.classYear" label="Sınıf (9-12)" filled type="number" min="9" max="12" />
-          <q-input v-model="addForm.section" label="Şube (A, B, C...)" filled />
+          <q-input v-model="addForm.fullName" label="Ad Soyad *" filled readonly>
+            <template #prepend>
+              <q-icon name="badge" />
+            </template>
+          </q-input>
+          <q-input v-model="addForm.branchCode" label="Alan Kodu *" filled>
+            <template #prepend>
+              <q-icon name="category" />
+            </template>
+          </q-input>
+          <q-input v-model.number="addForm.classYear" label="Sınıf (9-12)" filled type="number" min="9" max="12">
+            <template #prepend>
+              <q-icon name="class" />
+            </template>
+          </q-input>
+          <q-input v-model="addForm.section" label="Şube (A, B, C...)" filled>
+            <template #prepend>
+              <q-icon name="sort_by_alpha" />
+            </template>
+          </q-input>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="addDialog = false" />
-          <q-btn color="primary" label="Kaydet" :loading="saving" @click="registerStudent" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="registerStudent" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Yerleştirme Dialog -->
-    <q-dialog v-model="placementDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Öğrenci Yerleştir</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="placementDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <q-dialog v-model="placementDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-teal text-white">
+          <q-icon name="place" class="q-mr-sm" />
+          <q-toolbar-title>Öğrenci Yerleştir</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <div v-if="selected" class="text-subtitle2 q-mb-sm">Öğrenci: {{ selected.fullName }}</div>
           <q-select
             v-model="placementForm.businessId"
@@ -183,6 +203,9 @@
             option-value="value"
             @filter="businessOpts.filter"
           >
+            <template #prepend>
+              <q-icon name="business" />
+            </template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
@@ -212,6 +235,9 @@
             clearable
             @filter="teacherOpts.filter"
           >
+            <template #prepend>
+              <q-icon name="person" />
+            </template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
@@ -226,22 +252,23 @@
             </template>
           </q-select>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="placementDialog = false" />
-          <q-btn color="primary" label="Yerleştir" :loading="saving" @click="placementStudent" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="teal" label="Yerleştir" :loading="saving" @click="placementStudent" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Transfer Dialog -->
-    <q-dialog v-model="transferDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Öğrenci Transfer Et</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="transferDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <q-dialog v-model="transferDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-orange text-white">
+          <q-icon name="transfer_within_a_station" class="q-mr-sm" />
+          <q-toolbar-title>Öğrenci Transfer Et</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <div v-if="selected" class="text-subtitle2 q-mb-sm">Öğrenci: {{ selected.fullName }}</div>
           <q-select
             v-model="transferForm.newBusinessId"
@@ -257,6 +284,9 @@
             option-value="value"
             @filter="transferBusinessOpts.filter"
           >
+            <template #prepend>
+              <q-icon name="business" />
+            </template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
@@ -271,11 +301,16 @@
               </q-item>
             </template>
           </q-select>
-          <q-input v-model="transferForm.reason" label="Transfer Gerekçesi" filled type="textarea" rows="2" />
+          <q-input v-model="transferForm.reason" label="Transfer Gerekçesi" filled type="textarea" rows="2">
+            <template #prepend>
+              <q-icon name="notes" />
+            </template>
+          </q-input>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="transferDialog = false" />
-          <q-btn color="warning" label="Transfer Et" :loading="saving" @click="doTransfer" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="warning" label="Transfer Et" :loading="saving" @click="doTransfer" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -285,6 +320,7 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import type { QTableProps } from 'quasar'
+import { useQuasar } from 'quasar'
 import { enrollmentApi, type StudentProfileDto } from 'src/api/enrollment'
 import { useNotify } from 'src/composables/useNotify'
 import { useKeycloakUserOptions, useBusinessOptions, useTeacherOptions } from 'src/composables/useEntityOptions'
@@ -293,6 +329,7 @@ import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 
+const $q = useQuasar()
 const notify = useNotify()
 const userOpts = useKeycloakUserOptions()
 const businessOpts = useBusinessOptions()

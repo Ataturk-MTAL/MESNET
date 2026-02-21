@@ -6,7 +6,7 @@
       </div>
       <div class="col-auto">
         <PermissionGuard :permission="Permissions.Internship.Contract">
-          <q-btn color="primary" icon="add" label="Yeni Sözleşme" @click="openCreateDialog" />
+          <q-btn color="primary" icon="add" label="Yeni Sözleşme" unelevated @click="openCreateDialog" />
         </PermissionGuard>
       </div>
     </div>
@@ -68,54 +68,66 @@
     <!-- Detay Drawer -->
     <q-drawer v-model="detailOpen" side="right" bordered :width="520" overlay>
       <template v-if="selected">
-        <q-toolbar>
-          <q-toolbar-title class="text-subtitle2 text-weight-bold">
+        <q-toolbar class="bg-primary text-white">
+          <q-btn flat round dense icon="arrow_back" color="white" @click="detailOpen = false" />
+          <q-toolbar-title class="text-subtitle1 text-weight-medium">
             Sözleşme Detayı
           </q-toolbar-title>
-          <q-btn flat round dense icon="close" @click="detailOpen = false" />
         </q-toolbar>
-        <q-separator />
         <q-scroll-area class="fit">
-          <div class="q-pa-md q-gutter-sm">
-            <!-- Durum -->
-            <div class="row items-center q-mb-sm">
-              <StatusBadge :slug="selected.statusSlug" class="q-mr-sm" />
-              <span class="text-caption text-grey">{{ formatDate(selected.startDate) }} – {{ formatDate(selected.endDate) }}</span>
+          <div class="q-pa-md">
+            <!-- Durum & Tarih -->
+            <div class="row items-center q-mb-md q-gutter-sm">
+              <StatusBadge :slug="selected.statusSlug" />
+              <q-chip icon="calendar_today" dense outline color="grey-7">
+                {{ formatDate(selected.startDate) }}
+                <span v-if="selected.endDate"> – {{ formatDate(selected.endDate) }}</span>
+              </q-chip>
             </div>
 
             <!-- İmza durumu -->
-            <q-card flat bordered class="q-mb-sm">
-              <q-card-section>
-                <div class="text-subtitle2 q-mb-xs">İmza Durumu</div>
-                <div class="row q-gutter-md">
-                  <div v-for="sig in signatureList" :key="sig.label" class="col-auto text-center">
+            <q-card flat bordered class="q-mb-md">
+              <q-card-section class="q-pb-sm">
+                <div class="text-subtitle2 text-weight-medium q-mb-sm">İmza Durumu</div>
+                <div class="row q-gutter-md justify-start">
+                  <div v-for="sig in signatureList" :key="sig.label" class="text-center">
                     <q-icon
                       :name="sig.dto.isSigned ? 'check_circle' : 'pending'"
-                      :color="sig.dto.isSigned ? 'positive' : 'grey-5'"
-                      size="32px"
+                      :color="sig.dto.isSigned ? 'positive' : 'grey-4'"
+                      size="36px"
                     />
-                    <div class="text-caption">{{ sig.label }}</div>
-                    <div v-if="sig.dto.signedAt" class="text-caption text-grey">{{ formatDate(sig.dto.signedAt) }}</div>
+                    <div class="text-caption text-weight-medium q-mt-xs">{{ sig.label }}</div>
+                    <div v-if="sig.dto.signedAt" class="text-caption text-grey-6">
+                      {{ formatDate(sig.dto.signedAt) }}
+                    </div>
                   </div>
                 </div>
               </q-card-section>
             </q-card>
 
             <!-- Fesih bilgisi -->
-            <q-banner v-if="selected.terminationReason" type="warning" class="q-mb-sm" dense>
-              <div class="text-caption">Fesih: {{ selected.terminationReasonTypeSlug }}</div>
-              <div>{{ selected.terminationReason }}</div>
+            <q-banner
+              v-if="selected.terminationReason"
+              class="q-mb-md text-white bg-deep-orange-7 rounded-borders"
+              dense
+            >
+              <template #avatar>
+                <q-icon name="gavel" />
+              </template>
+              <div class="text-caption text-weight-medium">{{ selected.terminationReasonTypeSlug }}</div>
+              <div class="text-body2">{{ selected.terminationReason }}</div>
             </q-banner>
 
             <!-- Eylemler -->
-            <div class="text-subtitle2 q-mb-xs">İşlemler</div>
-            <div class="q-gutter-sm">
+            <div class="text-subtitle2 text-weight-medium q-mb-sm">İşlemler</div>
+            <div class="column q-gutter-sm">
               <PermissionGuard :permission="Permissions.Internship.Contract">
                 <q-btn
                   v-if="selected.status === 'Draft'"
                   color="primary"
                   icon="send"
                   label="İmzaya Gönder"
+                  unelevated
                   :loading="saving"
                   @click="doSubmit"
                 />
@@ -124,6 +136,7 @@
                   color="teal"
                   icon="draw"
                   label="İmzala"
+                  unelevated
                   :loading="saving"
                   @click="signDialog = true"
                 />
@@ -132,6 +145,7 @@
                   color="green"
                   icon="play_arrow"
                   label="Aktifleştir"
+                  unelevated
                   :loading="saving"
                   @click="doActivate"
                 />
@@ -143,6 +157,7 @@
                   color="orange"
                   icon="pause"
                   label="Askıya Al"
+                  unelevated
                   :loading="saving"
                   @click="suspendDialog = true"
                 />
@@ -151,6 +166,7 @@
                   color="green"
                   icon="play_arrow"
                   label="Devam Ettir"
+                  unelevated
                   :loading="saving"
                   @click="doResume"
                 />
@@ -159,6 +175,7 @@
                   color="negative"
                   icon="cancel"
                   label="Feshet"
+                  unelevated
                   :loading="saving"
                   @click="terminateDialog = true"
                 />
@@ -167,6 +184,7 @@
                   color="purple"
                   icon="done_all"
                   label="Tamamla"
+                  unelevated
                   :loading="saving"
                   @click="doComplete"
                 />
@@ -178,6 +196,7 @@
                   color="secondary"
                   icon="upload_file"
                   label="Islak İmzalı Belge Yükle"
+                  outline
                   @click="uploadSignedDialog = true"
                 />
                 <q-btn
@@ -185,6 +204,7 @@
                   color="secondary"
                   icon="upload_file"
                   label="Fesih Belgesi Yükle"
+                  outline
                   @click="uploadTermDialog = true"
                 />
               </PermissionGuard>
@@ -194,15 +214,22 @@
       </template>
     </q-drawer>
 
-    <!-- Yeni Sözleşme Dialog -->
-    <q-dialog v-model="createDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Yeni Sözleşme Oluştur</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="createDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <!-- ── Yeni Sözleşme Dialog ── -->
+    <q-dialog
+      v-model="createDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card :style="$q.screen.gt.xs ? 'width: 520px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-primary text-white">
+          <q-icon name="description" class="q-mr-sm" />
+          <q-toolbar-title>Yeni Sözleşme Oluştur</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+
+        <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
             v-model="createForm.studentId"
             :options="studentOpts.options.value"
@@ -217,20 +244,20 @@
             option-value="value"
             @filter="studentOpts.filter"
           >
+            <template #prepend><q-icon name="school" /></template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
                   <q-item-label>{{ opt.label }}</q-item-label>
-                  <q-item-label caption v-if="opt.caption">{{ opt.caption }}</q-item-label>
+                  <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
                 </q-item-section>
               </q-item>
             </template>
             <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-              </q-item>
+              <q-item><q-item-section class="text-grey">Sonuç bulunamadı</q-item-section></q-item>
             </template>
           </q-select>
+
           <q-select
             v-model="createForm.businessId"
             :options="businessOpts.options.value"
@@ -245,25 +272,25 @@
             option-value="value"
             @filter="businessOpts.filter"
           >
+            <template #prepend><q-icon name="business" /></template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
                   <q-item-label>{{ opt.label }}</q-item-label>
-                  <q-item-label caption v-if="opt.caption">{{ opt.caption }}</q-item-label>
+                  <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
                 </q-item-section>
               </q-item>
             </template>
             <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-              </q-item>
+              <q-item><q-item-section class="text-grey">Sonuç bulunamadı</q-item-section></q-item>
             </template>
           </q-select>
+
           <q-select
             v-model="createForm.teacherId"
             :options="teacherOpts.options.value"
             :loading="teacherOpts.loading.value"
-            label="Öğretmen (opsiyonel)"
+            label="Koordinatör Öğretmen (opsiyonel)"
             filled
             use-input
             input-debounce="0"
@@ -274,37 +301,46 @@
             clearable
             @filter="teacherOpts.filter"
           >
+            <template #prepend><q-icon name="person" /></template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
-                <q-item-section>
-                  <q-item-label>{{ opt.label }}</q-item-label>
-                </q-item-section>
+                <q-item-section><q-item-label>{{ opt.label }}</q-item-label></q-item-section>
               </q-item>
             </template>
             <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-              </q-item>
+              <q-item><q-item-section class="text-grey">Sonuç bulunamadı</q-item-section></q-item>
             </template>
           </q-select>
-          <q-input v-model="createForm.startDate" label="Başlangıç Tarihi" filled type="date" />
+
+          <q-input v-model="createForm.startDate" label="Başlangıç Tarihi *" filled type="date">
+            <template #prepend><q-icon name="calendar_today" /></template>
+          </q-input>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="createDialog = false" />
-          <q-btn color="primary" label="Oluştur" :loading="saving" @click="createContract" />
+
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="primary" label="Oluştur" :loading="saving" @click="createContract" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
-    <!-- İmzala Dialog -->
-    <q-dialog v-model="signDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Sözleşme İmzala</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="signDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <!-- ── İmzala Dialog ── -->
+    <q-dialog
+      v-model="signDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card :style="$q.screen.gt.xs ? 'width: 420px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-teal text-white">
+          <q-icon name="draw" class="q-mr-sm" />
+          <q-toolbar-title>Sözleşme İmzala</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+
+        <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
             v-model="signForm.party"
             :options="partyOptions"
@@ -312,90 +348,164 @@
             filled
             emit-value
             map-options
-          />
-          <q-input v-model="signForm.signedBy" label="İmzalayan" filled />
+          >
+            <template #prepend><q-icon name="group" /></template>
+          </q-select>
+          <q-input v-model="signForm.signedBy" label="İmzalayan Adı" filled>
+            <template #prepend><q-icon name="badge" /></template>
+          </q-input>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="signDialog = false" />
-          <q-btn color="teal" label="İmzala" :loading="saving" @click="doSign" />
+
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="teal" label="İmzala" :loading="saving" @click="doSign" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
-    <!-- Askıya Al Dialog -->
-    <q-dialog v-model="suspendDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section>
-          <div class="text-h6">Sözleşmeyi Askıya Al</div>
+    <!-- ── Askıya Al Dialog ── -->
+    <q-dialog
+      v-model="suspendDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card :style="$q.screen.gt.xs ? 'width: 420px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-orange text-white">
+          <q-icon name="pause_circle" class="q-mr-sm" />
+          <q-toolbar-title>Sözleşmeyi Askıya Al</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+
+        <q-card-section class="q-pt-lg">
+          <q-input
+            v-model="suspendReason"
+            label="Askıya alma gerekçesi"
+            filled
+            type="textarea"
+            :rows="3"
+            autogrow
+          >
+            <template #prepend><q-icon name="notes" /></template>
+          </q-input>
         </q-card-section>
-        <q-card-section>
-          <q-input v-model="suspendReason" label="Gerekçe" filled type="textarea" rows="3" />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="suspendDialog = false" />
-          <q-btn color="orange" label="Askıya Al" :loading="saving" @click="doSuspend" />
+
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="orange" label="Askıya Al" :loading="saving" @click="doSuspend" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
-    <!-- Feshet Dialog -->
-    <q-dialog v-model="terminateDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section>
-          <div class="text-h6">Sözleşmeyi Feshet</div>
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <!-- ── Feshet Dialog ── -->
+    <q-dialog
+      v-model="terminateDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card :style="$q.screen.gt.xs ? 'width: 460px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-negative text-white">
+          <q-icon name="gavel" class="q-mr-sm" />
+          <q-toolbar-title>Sözleşmeyi Feshet</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+
+        <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
             v-model="terminateForm.reasonType"
             :options="terminationReasonOptions"
-            label="Fesih Sebebi"
+            label="Fesih Sebebi *"
             filled
             emit-value
             map-options
-          />
-          <q-input v-model="terminateForm.reason" label="Açıklama" filled type="textarea" rows="3" />
+          >
+            <template #prepend><q-icon name="category" /></template>
+          </q-select>
+          <q-input
+            v-model="terminateForm.reason"
+            label="Açıklama"
+            filled
+            type="textarea"
+            :rows="3"
+            autogrow
+          >
+            <template #prepend><q-icon name="notes" /></template>
+          </q-input>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="terminateDialog = false" />
-          <q-btn color="negative" label="Feshet" :loading="saving" @click="doTerminate" />
+
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="negative" label="Feshet" :loading="saving" @click="doTerminate" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
-    <!-- Islak İmzalı Belge Yükleme -->
-    <q-dialog v-model="uploadSignedDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Islak İmzalı Belge Yükle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="uploadSignedDialog = false" />
+    <!-- ── Islak İmzalı Belge Yükleme ── -->
+    <q-dialog
+      v-model="uploadSignedDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card :style="$q.screen.gt.xs ? 'width: 420px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-secondary text-white">
+          <q-icon name="upload_file" class="q-mr-sm" />
+          <q-toolbar-title>Islak İmzalı Belge Yükle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-file v-model="uploadFile" label="PDF veya Görsel Seç" filled accept=".pdf,.jpg,.jpeg,.png">
+            <template #prepend><q-icon name="attach_file" /></template>
+          </q-file>
+          <q-input v-model="uploadedBy" label="Yükleyen" filled>
+            <template #prepend><q-icon name="person" /></template>
+          </q-input>
         </q-card-section>
-        <q-card-section class="q-gutter-sm">
-          <q-file v-model="uploadFile" label="Dosya Seç" filled accept=".pdf,.jpg,.jpeg,.png" />
-          <q-input v-model="uploadedBy" label="Yükleyen" filled />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="uploadSignedDialog = false" />
-          <q-btn color="primary" label="Yükle" :loading="saving" @click="doUploadSigned" />
+
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="secondary" label="Yükle" :loading="saving" @click="doUploadSigned" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
-    <!-- Fesih Belgesi Yükleme -->
-    <q-dialog v-model="uploadTermDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Fesih Belgesi Yükle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="uploadTermDialog = false" />
+    <!-- ── Fesih Belgesi Yükleme ── -->
+    <q-dialog
+      v-model="uploadTermDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card :style="$q.screen.gt.xs ? 'width: 420px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-deep-orange text-white">
+          <q-icon name="upload_file" class="q-mr-sm" />
+          <q-toolbar-title>Fesih Belgesi Yükle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-file v-model="uploadFile" label="PDF veya Görsel Seç" filled accept=".pdf,.jpg,.jpeg,.png">
+            <template #prepend><q-icon name="attach_file" /></template>
+          </q-file>
+          <q-input v-model="uploadedBy" label="Yükleyen" filled>
+            <template #prepend><q-icon name="person" /></template>
+          </q-input>
         </q-card-section>
-        <q-card-section class="q-gutter-sm">
-          <q-file v-model="uploadFile" label="Dosya Seç" filled accept=".pdf,.jpg,.jpeg,.png" />
-          <q-input v-model="uploadedBy" label="Yükleyen" filled />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="uploadTermDialog = false" />
-          <q-btn color="primary" label="Yükle" :loading="saving" @click="doUploadTermination" />
+
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="deep-orange" label="Yükle" :loading="saving" @click="doUploadTermination" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -404,6 +514,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
+import { useQuasar } from 'quasar'
 import type { QTableProps } from 'quasar'
 import { contractApi, type InternshipContractDto, TERMINATION_REASONS } from 'src/api/contract'
 import { useNotify } from 'src/composables/useNotify'
@@ -414,6 +525,7 @@ import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import { useAuthStore } from 'stores/auth'
 
+const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
 const studentOpts = useStudentOptions()
@@ -488,7 +600,7 @@ const columns: QTableProps['columns'] = [
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ]
 
-function formatDate(iso: string | null) {
+function formatDate(iso: string | null | undefined) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }

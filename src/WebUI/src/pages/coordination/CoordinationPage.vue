@@ -143,14 +143,14 @@
     </q-tab-panels>
 
     <!-- Ziyaret Ekle Dialog -->
-    <q-dialog v-model="visitDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Ziyaret Ekle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="visitDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <q-dialog v-model="visitDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-primary text-white">
+          <q-icon name="directions_walk" class="q-mr-sm" />
+          <q-toolbar-title>Ziyaret Ekle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
             v-model="visitForm.teacherId"
             :options="teacherOpts.options.value"
@@ -165,6 +165,9 @@
             option-value="value"
             @filter="teacherOpts.filter"
           >
+            <template #prepend>
+              <q-icon name="person" />
+            </template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
@@ -192,6 +195,9 @@
             option-value="value"
             @filter="visitBusinessOpts.filter"
           >
+            <template #prepend>
+              <q-icon name="business" />
+            </template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
@@ -206,25 +212,34 @@
               </q-item>
             </template>
           </q-select>
-          <q-input v-model="visitForm.visitDate" label="Ziyaret Tarihi" filled type="date" />
-          <q-input v-model="visitForm.generalAssessment" label="Genel Değerlendirme" filled type="textarea" rows="3" />
+          <q-input v-model="visitForm.visitDate" label="Ziyaret Tarihi" filled type="date">
+            <template #prepend>
+              <q-icon name="calendar_today" />
+            </template>
+          </q-input>
+          <q-input v-model="visitForm.generalAssessment" label="Genel Değerlendirme" filled type="textarea" rows="3">
+            <template #prepend>
+              <q-icon name="rate_review" />
+            </template>
+          </q-input>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="visitDialog = false" />
-          <q-btn color="primary" label="Kaydet" :loading="saving" @click="createVisit" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="createVisit" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Değerlendirme Ekle Dialog -->
-    <q-dialog v-model="evalDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Değerlendirme Ekle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="evalDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <q-dialog v-model="evalDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-teal text-white">
+          <q-icon name="rate_review" class="q-mr-sm" />
+          <q-toolbar-title>Değerlendirme Ekle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
             v-model="evalForm.businessId"
             :options="evalBusinessOpts.options.value"
@@ -239,6 +254,9 @@
             option-value="value"
             @filter="evalBusinessOpts.filter"
           >
+            <template #prepend>
+              <q-icon name="business" />
+            </template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
@@ -253,18 +271,31 @@
               </q-item>
             </template>
           </q-select>
-          <q-input v-model="evalForm.evaluationDate" label="Değerlendirme Tarihi" filled type="date" />
+          <q-input v-model="evalForm.evaluationDate" label="Değerlendirme Tarihi" filled type="date">
+            <template #prepend>
+              <q-icon name="calendar_today" />
+            </template>
+          </q-input>
           <q-select
             v-model="evalForm.result"
             :options="evalResultOptions"
             label="Sonuç"
             filled emit-value map-options
-          />
-          <q-input v-model="evalForm.notes" label="Notlar" filled type="textarea" rows="2" />
+          >
+            <template #prepend>
+              <q-icon name="fact_check" />
+            </template>
+          </q-select>
+          <q-input v-model="evalForm.notes" label="Notlar" filled type="textarea" rows="2">
+            <template #prepend>
+              <q-icon name="notes" />
+            </template>
+          </q-input>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="evalDialog = false" />
-          <q-btn color="primary" label="Kaydet" :loading="saving" @click="createEvaluation" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="teal" label="Kaydet" :loading="saving" @click="createEvaluation" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -274,6 +305,7 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import type { QTableProps } from 'quasar'
+import { useQuasar } from 'quasar'
 import {
   coordinationApi,
   type GuidanceVisitDto,
@@ -289,6 +321,7 @@ import { useAuthStore } from 'stores/auth'
 import AppTable from 'components/AppTable.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 
+const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
 const teacherOpts = useTeacherOptions()

@@ -88,14 +88,14 @@
     </AppTable>
 
     <!-- Devamsızlık Ekle Dialog -->
-    <q-dialog v-model="addDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Devamsızlık Ekle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="addDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <q-dialog v-model="addDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-primary text-white">
+          <q-icon name="event_busy" class="q-mr-sm" />
+          <q-toolbar-title>Devamsızlık Ekle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
             v-model="addForm.studentId"
             :options="studentOpts.options.value"
@@ -110,6 +110,9 @@
             option-value="value"
             @filter="studentOpts.filter"
           >
+            <template #prepend>
+              <q-icon name="person" />
+            </template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
@@ -138,6 +141,9 @@
             option-value="value"
             @filter="businessOpts.filter"
           >
+            <template #prepend>
+              <q-icon name="business" />
+            </template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
@@ -152,42 +158,64 @@
               </q-item>
             </template>
           </q-select>
-          <q-input v-model="addForm.date" label="Tarih" filled type="date" />
+          <q-input v-model="addForm.date" label="Tarih" filled type="date">
+            <template #prepend>
+              <q-icon name="calendar_today" />
+            </template>
+          </q-input>
           <q-select
             v-model="addForm.absenceType"
             :options="absenceTypeOptions"
             label="Devamsızlık Türü"
             filled emit-value map-options
-          />
-          <q-input v-model="addForm.reason" label="Gerekçe (opsiyonel)" filled />
+          >
+            <template #prepend>
+              <q-icon name="category" />
+            </template>
+          </q-select>
+          <q-input v-model="addForm.reason" label="Gerekçe (opsiyonel)" filled>
+            <template #prepend>
+              <q-icon name="notes" />
+            </template>
+          </q-input>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="addDialog = false" />
-          <q-btn color="primary" label="Kaydet" :loading="saving" @click="createRecord" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="createRecord" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Düzeltme Dialog -->
-    <q-dialog v-model="correctDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Devamsızlık Düzelt</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="correctDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <q-dialog v-model="correctDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 400px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-orange text-white">
+          <q-icon name="edit_calendar" class="q-mr-sm" />
+          <q-toolbar-title>Devamsızlık Düzelt</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
             v-model="correctForm.absenceType"
             :options="absenceTypeOptions"
             label="Devamsızlık Türü"
             filled emit-value map-options
-          />
-          <q-input v-model="correctForm.reason" label="Gerekçe" filled />
+          >
+            <template #prepend>
+              <q-icon name="category" />
+            </template>
+          </q-select>
+          <q-input v-model="correctForm.reason" label="Gerekçe" filled>
+            <template #prepend>
+              <q-icon name="notes" />
+            </template>
+          </q-input>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="correctDialog = false" />
-          <q-btn color="primary" label="Düzelt" :loading="saving" @click="correctRecord" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="orange" label="Düzelt" :loading="saving" @click="correctRecord" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -197,6 +225,7 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import type { QTableProps } from 'quasar'
+import { useQuasar } from 'quasar'
 import { attendanceApi, type AttendanceRecordDto, ABSENCE_TYPES } from 'src/api/attendance'
 import { useNotify } from 'src/composables/useNotify'
 import { useStudentOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
@@ -206,6 +235,7 @@ import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import { useAuthStore } from 'stores/auth'
 
+const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
 const studentOpts = useStudentOptions()

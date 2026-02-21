@@ -238,36 +238,57 @@
     </template>
 
     <!-- Kurum Düzenleme Dialog -->
-    <q-dialog v-model="editDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Kurum Bilgilerini Güncelle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="editDialog = false" />
+    <q-dialog v-model="editDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-primary text-white">
+          <q-icon name="edit" class="q-mr-sm" />
+          <q-toolbar-title>Kurum Bilgilerini Güncelle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-input v-model="editForm.fullName" label="Kurum Adı" filled>
+            <template #prepend>
+              <q-icon name="account_balance" />
+            </template>
+          </q-input>
+          <q-input v-model="editForm.address" label="Adres" filled>
+            <template #prepend>
+              <q-icon name="location_on" />
+            </template>
+          </q-input>
+          <q-input v-model="editForm.phoneNumber" label="Telefon" filled>
+            <template #prepend>
+              <q-icon name="phone" />
+            </template>
+          </q-input>
+          <q-input v-model="editForm.email" label="E-posta" filled type="email">
+            <template #prepend>
+              <q-icon name="email" />
+            </template>
+          </q-input>
+          <q-input v-model="editForm.webUrl" label="Web Sitesi" filled>
+            <template #prepend>
+              <q-icon name="language" />
+            </template>
+          </q-input>
         </q-card-section>
-        <q-card-section class="q-gutter-sm">
-          <q-input v-model="editForm.fullName" label="Kurum Adı" filled />
-          <q-input v-model="editForm.address" label="Adres" filled />
-          <q-input v-model="editForm.phoneNumber" label="Telefon" filled />
-          <q-input v-model="editForm.email" label="E-posta" filled type="email" />
-          <q-input v-model="editForm.webUrl" label="Web Sitesi" filled />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="editDialog = false" />
-          <q-btn color="primary" label="Kaydet" :loading="saving" @click="saveInstitution" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="saveInstitution" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Personel Ekleme Dialog -->
-    <q-dialog v-model="staffDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Personel Yetkilendir</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="staffDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <q-dialog v-model="staffDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-teal text-white">
+          <q-icon name="person_add" class="q-mr-sm" />
+          <q-toolbar-title>Personel Yetkilendir</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
             v-model="staffForm.keycloakUserId"
             :options="userOpts.options.value"
@@ -283,6 +304,9 @@
             @filter="userOpts.filter"
             @update:model-value="onUserSelect"
           >
+            <template #prepend>
+              <q-icon name="person_search" />
+            </template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
@@ -297,7 +321,11 @@
               </q-item>
             </template>
           </q-select>
-          <q-input v-model="staffForm.fullName" label="Ad Soyad" filled readonly />
+          <q-input v-model="staffForm.fullName" label="Ad Soyad" filled readonly>
+            <template #prepend>
+              <q-icon name="badge" />
+            </template>
+          </q-input>
           <q-select
             v-model="staffForm.role"
             :options="staffRoleOptions"
@@ -305,7 +333,11 @@
             filled
             emit-value
             map-options
-          />
+          >
+            <template #prepend>
+              <q-icon name="manage_accounts" />
+            </template>
+          </q-select>
           <q-select
             v-model="staffForm.branchCode"
             :options="branchSelectOptions"
@@ -314,24 +346,29 @@
             emit-value
             map-options
             clearable
-          />
+          >
+            <template #prepend>
+              <q-icon name="category" />
+            </template>
+          </q-select>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="staffDialog = false" />
-          <q-btn color="primary" label="Yetkilendir" :loading="saving" @click="addStaff" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="teal" label="Yetkilendir" :loading="saving" @click="addStaff" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Alan Ekleme Dialog -->
-    <q-dialog v-model="branchDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Alan Ekle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="branchDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
+    <q-dialog v-model="branchDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-green text-white">
+          <q-icon name="add_circle" class="q-mr-sm" />
+          <q-toolbar-title>Alan Ekle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
             v-model="branchForm.educationType"
             :options="educationTypeOptions"
@@ -340,7 +377,11 @@
             emit-value
             map-options
             @update:model-value="onEducationTypeChange"
-          />
+          >
+            <template #prepend>
+              <q-icon name="school" />
+            </template>
+          </q-select>
           <q-select
             v-model="branchForm.fieldCode"
             :options="availableFields"
@@ -356,6 +397,9 @@
             :disable="!branchForm.educationType"
             @filter="filterFields"
           >
+            <template #prepend>
+              <q-icon name="category" />
+            </template>
             <template #option="{ itemProps, opt }">
               <q-item v-bind="itemProps">
                 <q-item-section>
@@ -371,10 +415,12 @@
             </template>
           </q-select>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="branchDialog = false" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
           <q-btn
-            color="primary"
+            unelevated
+            color="green"
             label="Aktifleştir"
             :loading="saving"
             :disable="!branchForm.fieldCode"
@@ -385,14 +431,14 @@
     </q-dialog>
 
     <!-- Uzmanlık Düzenleme Dialog -->
-    <q-dialog v-model="specDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Uzmanlıkları Düzenle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="specDialog = false" />
-        </q-card-section>
-        <q-card-section>
+    <q-dialog v-model="specDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-secondary text-white">
+          <q-icon name="tune" class="q-mr-sm" />
+          <q-toolbar-title>Uzmanlıkları Düzenle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <div class="text-subtitle2 q-mb-sm">{{ specForm.fieldName }}</div>
           <div v-if="specForm.allSpecializations.length === 0" class="text-grey q-pa-md text-center">
             Bu alan için uzmanlık tanımlanmamış.
@@ -409,22 +455,23 @@
             </q-item>
           </q-list>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="specDialog = false" />
-          <q-btn color="primary" label="Kaydet" :loading="saving" @click="saveSpecializations" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="secondary" label="Kaydet" :loading="saving" @click="saveSpecializations" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Ders Programı Ayarları Dialog -->
-    <q-dialog v-model="scheduleDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Ders Programı Ayarları</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="scheduleDialog = false" />
-        </q-card-section>
-        <q-card-section>
+    <q-dialog v-model="scheduleDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 400px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-orange text-white">
+          <q-icon name="schedule" class="q-mr-sm" />
+          <q-toolbar-title>Ders Programı Ayarları</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <div class="text-subtitle2 q-mb-md">Günlük Ders Sayısı</div>
           <q-slider
             v-model="scheduleForm.dailyPeriodCount"
@@ -440,9 +487,10 @@
             {{ scheduleForm.dailyPeriodCount }} ders
           </div>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="scheduleDialog = false" />
-          <q-btn color="primary" label="Kaydet" :loading="saving" @click="saveScheduleConfig" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="orange" label="Kaydet" :loading="saving" @click="saveScheduleConfig" />
         </q-card-actions>
       </q-card>
     </q-dialog>

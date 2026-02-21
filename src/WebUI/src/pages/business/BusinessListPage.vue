@@ -159,57 +159,90 @@
     </q-drawer>
 
     <!-- İşletme Ekle Dialog -->
-    <q-dialog v-model="addDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Yeni İşletme Ekle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="addDialog = false" />
+    <q-dialog v-model="addDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-primary text-white">
+          <q-icon name="add_business" class="q-mr-sm" />
+          <q-toolbar-title>Yeni İşletme Ekle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-input v-model="addForm.name" label="İşletme Adı *" filled>
+            <template #prepend>
+              <q-icon name="business" />
+            </template>
+          </q-input>
+          <q-input v-model="addForm.address" label="Adres *" filled>
+            <template #prepend>
+              <q-icon name="location_on" />
+            </template>
+          </q-input>
+          <q-input v-model="addForm.phoneNumber" label="Telefon" filled>
+            <template #prepend>
+              <q-icon name="phone" />
+            </template>
+          </q-input>
+          <q-input v-model="addForm.email" label="E-posta" filled type="email">
+            <template #prepend>
+              <q-icon name="email" />
+            </template>
+          </q-input>
+          <q-input v-model.number="addForm.personnelCount" label="Personel Sayısı" filled type="number">
+            <template #prepend>
+              <q-icon name="groups" />
+            </template>
+          </q-input>
         </q-card-section>
-        <q-card-section class="q-gutter-sm">
-          <q-input v-model="addForm.name" label="İşletme Adı *" filled />
-          <q-input v-model="addForm.address" label="Adres *" filled />
-          <q-input v-model="addForm.phoneNumber" label="Telefon" filled />
-          <q-input v-model="addForm.email" label="E-posta" filled type="email" />
-          <q-input v-model.number="addForm.personnelCount" label="Personel Sayısı" filled type="number" />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="addDialog = false" />
-          <q-btn color="primary" label="Kaydet" :loading="saving" @click="registerBusiness" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="registerBusiness" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Red Dialog -->
-    <q-dialog v-model="rejectDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section>
-          <div class="text-h6">Reddetme Gerekçesi</div>
+    <q-dialog v-model="rejectDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 400px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-negative text-white">
+          <q-icon name="cancel" class="q-mr-sm" />
+          <q-toolbar-title>Reddetme Gerekçesi</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-input v-model="rejectReason" label="Gerekçe" filled type="textarea" rows="3">
+            <template #prepend>
+              <q-icon name="notes" />
+            </template>
+          </q-input>
         </q-card-section>
-        <q-card-section>
-          <q-input v-model="rejectReason" label="Gerekçe" filled type="textarea" rows="3" />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="rejectDialog = false" />
-          <q-btn color="negative" label="Reddet" :loading="saving" @click="rejectBusiness" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="negative" label="Reddet" :loading="saving" @click="rejectBusiness" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Belge Yükleme Dialog -->
-    <q-dialog v-model="docUploadDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Belge Yükle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="docUploadDialog = false" />
+    <q-dialog v-model="docUploadDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 400px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-secondary text-white">
+          <q-icon name="upload_file" class="q-mr-sm" />
+          <q-toolbar-title>Belge Yükle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-file v-model="docFile" label="Dosya Seç" filled accept=".pdf,.jpg,.jpeg,.png">
+            <template #prepend>
+              <q-icon name="attach_file" />
+            </template>
+          </q-file>
         </q-card-section>
-        <q-card-section>
-          <q-file v-model="docFile" label="Dosya Seç" filled accept=".pdf,.jpg,.jpeg,.png" />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="docUploadDialog = false" />
-          <q-btn color="primary" label="Yükle" :loading="saving" @click="uploadDocument" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="secondary" label="Yükle" :loading="saving" @click="uploadDocument" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -219,6 +252,7 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import type { QTableProps } from 'quasar'
+import { useQuasar } from 'quasar'
 import { businessApi, type BusinessDto } from 'src/api/business'
 import { useNotify } from 'src/composables/useNotify'
 import { Permissions } from 'utils/permissions'
@@ -226,6 +260,7 @@ import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 
+const $q = useQuasar()
 const notify = useNotify()
 
 const loading = ref(false)

@@ -163,35 +163,47 @@
     </q-drawer>
 
     <!-- Dekont Yükleme Dialog -->
-    <q-dialog v-model="uploadReceiptDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Dekont Yükle</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="uploadReceiptDialog = false" />
+    <q-dialog v-model="uploadReceiptDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 400px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-secondary text-white">
+          <q-icon name="upload_file" class="q-mr-sm" />
+          <q-toolbar-title>Dekont Yükle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-file v-model="uploadFile" label="Dosya Seç" filled accept=".pdf,.jpg,.jpeg,.png">
+            <template #prepend>
+              <q-icon name="attach_file" />
+            </template>
+          </q-file>
         </q-card-section>
-        <q-card-section>
-          <q-file v-model="uploadFile" label="Dosya Seç" filled accept=".pdf,.jpg,.jpeg,.png" />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="uploadReceiptDialog = false" />
-          <q-btn color="primary" label="Yükle" :loading="saving" @click="doUploadReceipt" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="secondary" label="Yükle" :loading="saving" @click="doUploadReceipt" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Reddetme Dialog -->
-    <q-dialog v-model="rejectDialog" persistent>
-      <q-card style="min-width: 400px">
-        <q-card-section>
-          <div class="text-h6">Reddetme Gerekçesi</div>
+    <q-dialog v-model="rejectDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 400px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-negative text-white">
+          <q-icon name="cancel" class="q-mr-sm" />
+          <q-toolbar-title>Reddetme Gerekçesi</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-input v-model="rejectReason" label="Gerekçe" filled type="textarea" rows="3">
+            <template #prepend>
+              <q-icon name="notes" />
+            </template>
+          </q-input>
         </q-card-section>
-        <q-card-section>
-          <q-input v-model="rejectReason" label="Gerekçe" filled type="textarea" rows="3" />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="rejectDialog = false" />
-          <q-btn color="negative" label="Reddet" :loading="saving" @click="doReject" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="negative" label="Reddet" :loading="saving" @click="doReject" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -201,6 +213,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import type { QTableProps } from 'quasar'
+import { useQuasar } from 'quasar'
 import { paymentApi, type PaymentSummaryDto, PAYMENT_PHASES } from 'src/api/payment'
 import { useNotify } from 'src/composables/useNotify'
 import { Permissions } from 'utils/permissions'
@@ -208,6 +221,7 @@ import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 
+const $q = useQuasar()
 const notify = useNotify()
 const loading = ref(false)
 const saving = ref(false)

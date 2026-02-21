@@ -102,49 +102,67 @@
     </q-tab-panels>
 
     <!-- Davet Gönder Dialog -->
-    <q-dialog v-model="inviteDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Kullanıcı Davet Et</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="inviteDialog = false" />
-        </q-card-section>
-        <q-card-section class="q-gutter-sm">
-          <q-input v-model="inviteForm.email" label="E-posta" filled type="email" />
-          <q-input v-model="inviteForm.firstName" label="Ad" filled />
-          <q-input v-model="inviteForm.lastName" label="Soyad" filled />
+    <q-dialog v-model="inviteDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-primary text-white">
+          <q-icon name="person_add" class="q-mr-sm" />
+          <q-toolbar-title>Kullanıcı Davet Et</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-input v-model="inviteForm.email" label="E-posta" filled type="email">
+            <template #prepend>
+              <q-icon name="email" />
+            </template>
+          </q-input>
+          <q-input v-model="inviteForm.firstName" label="Ad" filled>
+            <template #prepend>
+              <q-icon name="person" />
+            </template>
+          </q-input>
+          <q-input v-model="inviteForm.lastName" label="Soyad" filled>
+            <template #prepend>
+              <q-icon name="person" />
+            </template>
+          </q-input>
           <q-select
             v-model="inviteForm.targetRole"
             :options="roleOptions"
             label="Hedef Rol"
             filled emit-value map-options
-          />
+          >
+            <template #prepend>
+              <q-icon name="manage_accounts" />
+            </template>
+          </q-select>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="inviteDialog = false" />
-          <q-btn color="primary" label="Davet Gönder" :loading="saving" @click="sendInvitation" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="primary" label="Davet Gönder" :loading="saving" @click="sendInvitation" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Roller Dialog -->
-    <q-dialog v-model="rolesDialog" persistent>
-      <q-card style="min-width: 480px">
-        <q-card-section class="row items-center">
-          <div class="text-h6">Roller: {{ selectedUser?.fullName }}</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="rolesDialog = false" />
-        </q-card-section>
-        <q-card-section>
+    <q-dialog v-model="rolesDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-purple text-white">
+          <q-icon name="manage_accounts" class="q-mr-sm" />
+          <q-toolbar-title>Roller: {{ selectedUser?.fullName }}</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
           <q-option-group
             v-model="selectedRoles"
             :options="roleOptions"
             type="checkbox"
           />
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="İptal" @click="rolesDialog = false" />
-          <q-btn color="primary" label="Kaydet" :loading="saving" @click="saveRoles" />
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="purple" label="Kaydet" :loading="saving" @click="saveRoles" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -154,6 +172,7 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import type { QTableProps } from 'quasar'
+import { useQuasar } from 'quasar'
 import { securityApi, type UserAccountDto, type InvitationDto } from 'src/api/security'
 import { useNotify } from 'src/composables/useNotify'
 import { Permissions } from 'utils/permissions'
@@ -161,6 +180,7 @@ import { useAuthStore } from 'stores/auth'
 import AppTable from 'components/AppTable.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 
+const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
 
