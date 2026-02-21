@@ -46,7 +46,7 @@ export interface InstitutionDto {
 }
 
 export interface UpdateInstitutionRequest {
-  fullName: string
+  fullName?: string
   address?: string
   phoneNumber?: string
   email?: string
@@ -96,7 +96,7 @@ export const institutionApi = {
     api.get<InstitutionDto>(`/institutions/${institutionId}`),
 
   update: (institutionId: string, data: UpdateInstitutionRequest) =>
-    api.put(`/institutions/${institutionId}`, data),
+    api.patch(`/institutions/${institutionId}`, data),
 
   authorizeStaff: (institutionId: string, data: AuthorizeStaffRequest) =>
     api.post(`/institutions/${institutionId}/staff`, data),

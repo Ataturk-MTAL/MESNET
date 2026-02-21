@@ -60,6 +60,16 @@ export interface RegisterBusinessRequest {
   location?: GeoLocation
 }
 
+export interface UpdateBusinessRequest {
+  name?: string
+  address?: string
+  phoneNumber?: string
+  email?: string
+  website?: string
+  personnelCount?: number
+  location?: GeoLocation
+}
+
 export interface UpdateCapacityRequest {
   totalSlots: number
 }
@@ -73,6 +83,9 @@ export const businessApi = {
 
   register: (data: RegisterBusinessRequest) =>
     api.post<{ businessId: string }>('/businesses', data),
+
+  update: (businessId: string, data: UpdateBusinessRequest) =>
+    api.patch(`/businesses/${businessId}`, data),
 
   approve: (businessId: string) =>
     api.post(`/businesses/${businessId}/approve`),

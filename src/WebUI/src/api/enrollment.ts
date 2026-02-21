@@ -67,7 +67,7 @@ export const enrollmentApi = {
     api.post<{ studentId: string }>('/students', data),
 
   updateStudent: (studentId: string, data: Partial<RegisterStudentRequest>) =>
-    api.put(`/students/${studentId}`, data),
+    api.patch(`/students/${studentId}`, data),
 
   listPlacements: (params?: { businessId?: string; studentId?: string; status?: string }) =>
     api.get<InternshipPlacementDto[]>('/placements', { params }),
