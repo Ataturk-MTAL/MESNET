@@ -26,6 +26,9 @@ public static class InstitutionSeeder
             {
                 Console.WriteLine($"  ⚠ Keycloak senkronizasyon başarısız: {ex.Message}");
             }
+
+            // Aktif dönem yoksa oluştur
+            await EnsureAcademicPeriodAsync(api, existingId);
             return;
         }
 
@@ -88,5 +91,32 @@ public static class InstitutionSeeder
             updatedBy = "Sistem"
         });
         Console.WriteLine("  ✓ Ders programı (8 ders) ayarlandı");
+
+        // Akademik dönem
+        await EnsureAcademicPeriodAsync(api, institutionId);
+    }
+
+    private static async Task EnsureAcademicPeriodAsync(MesnetApiClient api, Guid institutionId)
+    {
+        try
+        {
+            var periods = await api.GetAsync($"/api/institutions/{institutionId}/academic-periods");
+            if (periods is { } pArr && pArr.ValueKind == System.Text.Json.JsonValueKind.Array && pArr.GetArrayLength() > 0)
+            {
+                Console.WriteLine("  → Akademik dönem mevcut, atlanıyor");
+                return;
+            }
+        }
+        catch { /* endpoint henüz yoksa veya hata varsa oluşturmayı dene */ }
+
+        await api.PostAsync($"/api/institutions/{institutionId}/academic-periods", new
+        {
+            name = "2025-2026",
+            startYear = 2025,
+            endYear = 2026,
+            startDate = "2025-09-08",
+            endDate = "2026-06-19"
+        });
+        Console.WriteLine("  ✓ Akademik dönem \"2025-2026\" oluşturuldu");
     }
 }

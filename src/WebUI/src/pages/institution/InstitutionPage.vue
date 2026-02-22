@@ -28,6 +28,7 @@
         <q-tab name="info" label="Genel Bilgi" icon="info" />
         <q-tab name="branches" label="Alanlar" icon="category" />
         <q-tab name="staff" label="Personel" icon="people" />
+        <q-tab name="periods" label="Dönemler" icon="date_range" />
       </q-tabs>
 
       <q-tab-panels v-model="tab" animated>
@@ -231,6 +232,57 @@
             </template>
             <template #body-cell-authorizedAt="{ row }">
               <q-td>{{ formatDate(row.authorizedAt) }}</q-td>
+            </template>
+          </AppTable>
+        </q-tab-panel>
+
+        <!-- DÖNEMLER -->
+        <q-tab-panel name="periods">
+          <div class="row items-center q-mb-md">
+            <div class="col text-subtitle1 text-weight-medium">Akademik Dönemler</div>
+            <div class="col-auto">
+              <PermissionGuard :permission="Permissions.Institution.Manage">
+                <q-btn color="primary" icon="add" label="Yeni Dönem" size="sm" @click="openPeriodDialog" />
+              </PermissionGuard>
+            </div>
+          </div>
+
+          <div v-if="periods.length === 0" class="text-center q-pa-xl text-grey-6">
+            <q-icon name="date_range" size="48px" class="q-mb-sm" />
+            <div>Henüz dönem oluşturulmamış.</div>
+          </div>
+
+          <AppTable v-else :rows="periods" :columns="periodColumns">
+            <template #body-cell-status="{ row }">
+              <q-td>
+                <q-badge
+                  :color="row.status === 'Active' ? 'green-7' : 'grey-5'"
+                  :label="row.statusSlug"
+                />
+              </q-td>
+            </template>
+            <template #body-cell-startDate="{ row }">
+              <q-td>{{ formatDate(row.startDate) }}</q-td>
+            </template>
+            <template #body-cell-endDate="{ row }">
+              <q-td>{{ formatDate(row.endDate) }}</q-td>
+            </template>
+            <template #body-cell-createdAt="{ row }">
+              <q-td>{{ formatDate(row.createdAt) }}</q-td>
+            </template>
+            <template #body-cell-actions="{ row }">
+              <q-td class="text-right">
+                <PermissionGuard :permission="Permissions.Institution.Manage">
+                  <q-btn
+                    v-if="row.status === 'Active'"
+                    flat dense size="sm"
+                    icon="lock"
+                    label="Kapat"
+                    color="orange-8"
+                    @click="confirmClosePeriod(row)"
+                  />
+                </PermissionGuard>
+              </q-td>
             </template>
           </AppTable>
         </q-tab-panel>
@@ -494,6 +546,73 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <!-- Dönem Oluşturma Dialog -->
+    <q-dialog v-model="periodDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-indigo text-white">
+          <q-icon name="date_range" class="q-mr-sm" />
+          <q-toolbar-title>Yeni Akademik Dönem</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-banner dense rounded class="bg-orange-1 text-orange-9 text-caption q-mb-sm">
+            <template #avatar>
+              <q-icon name="warning" color="orange-7" size="xs" />
+            </template>
+            Yeni dönem oluşturulduğunda mevcut aktif dönem otomatik kapatılır.
+          </q-banner>
+          <q-input v-model="periodForm.name" label="Dönem Adı *" filled hint="Örn: 2025-2026">
+            <template #prepend>
+              <q-icon name="label" />
+            </template>
+          </q-input>
+          <div class="row q-col-gutter-md">
+            <div class="col-6">
+              <q-input v-model.number="periodForm.startYear" label="Başlangıç Yılı *" filled type="number">
+                <template #prepend>
+                  <q-icon name="event" />
+                </template>
+              </q-input>
+            </div>
+            <div class="col-6">
+              <q-input v-model.number="periodForm.endYear" label="Bitiş Yılı *" filled type="number">
+                <template #prepend>
+                  <q-icon name="event" />
+                </template>
+              </q-input>
+            </div>
+          </div>
+          <div class="row q-col-gutter-md">
+            <div class="col-6">
+              <q-input v-model="periodForm.startDate" label="Başlangıç Tarihi *" filled type="date">
+                <template #prepend>
+                  <q-icon name="calendar_today" />
+                </template>
+              </q-input>
+            </div>
+            <div class="col-6">
+              <q-input v-model="periodForm.endDate" label="Bitiş Tarihi *" filled type="date">
+                <template #prepend>
+                  <q-icon name="calendar_today" />
+                </template>
+              </q-input>
+            </div>
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn
+            unelevated
+            color="indigo"
+            label="Oluştur"
+            :loading="saving"
+            :disable="!periodForm.name || !periodForm.startYear || !periodForm.endYear || !periodForm.startDate || !periodForm.endDate"
+            @click="createPeriod"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -508,6 +627,7 @@ import {
   type FieldOfStudyDto,
   type ScheduleConfigDto,
   type SpecializationDto,
+  type AcademicPeriodDto,
 } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { Permissions } from 'utils/permissions'
@@ -515,10 +635,12 @@ import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import { useAuthStore } from 'stores/auth'
+import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useKeycloakUserOptions } from 'src/composables/useEntityOptions'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
+const periodStore = useAcademicPeriodStore()
 const notify = useNotify()
 const userOpts = useKeycloakUserOptions()
 
@@ -533,6 +655,7 @@ const loadingCatalog = ref(false)
 
 const tab = ref('info')
 const institutionId = ref<string>('')
+const periods = ref<AcademicPeriodDto[]>([])
 
 // ── Computed ──
 const activeBranches = computed(() =>
@@ -549,6 +672,7 @@ const staffDialog = ref(false)
 const branchDialog = ref(false)
 const specDialog = ref(false)
 const scheduleDialog = ref(false)
+const periodDialog = ref(false)
 
 // ── Edit Form ──
 const editForm = reactive({
@@ -595,12 +719,30 @@ const specForm = reactive({
 // ── Schedule Form ──
 const scheduleForm = reactive({ dailyPeriodCount: 8 })
 
+// ── Period Form ──
+const periodForm = reactive({
+  name: '',
+  startYear: new Date().getFullYear(),
+  endYear: new Date().getFullYear() + 1,
+  startDate: '',
+  endDate: '',
+})
+
 // ── Table Columns ──
 const staffColumns: QTableProps['columns'] = [
   { name: 'fullName', label: 'Ad Soyad', field: 'fullName', align: 'left', sortable: true },
   { name: 'roleSlug', label: 'Rol', field: 'roleSlug', align: 'left' },
   { name: 'branchName', label: 'Alan', field: 'branchCode', align: 'left' },
   { name: 'authorizedAt', label: 'Yetkilendirme Tarihi', field: 'authorizedAt', align: 'left' },
+]
+
+const periodColumns: QTableProps['columns'] = [
+  { name: 'name', label: 'Dönem Adı', field: 'name', align: 'left', sortable: true },
+  { name: 'startDate', label: 'Başlangıç', field: 'startDate', align: 'left' },
+  { name: 'endDate', label: 'Bitiş', field: 'endDate', align: 'left' },
+  { name: 'status', label: 'Durum', field: 'status', align: 'left' },
+  { name: 'createdAt', label: 'Oluşturulma', field: 'createdAt', align: 'left' },
+  { name: 'actions', label: '', field: 'id', align: 'right' },
 ]
 
 // ── Helpers ──
@@ -641,12 +783,14 @@ async function load() {
       institutionId.value = institutions[0].id
     }
 
-    const [instRes, schedRes] = await Promise.all([
+    const [instRes, schedRes, periodsRes] = await Promise.all([
       institutionApi.get(institutionId.value),
       institutionApi.getScheduleConfig(institutionId.value),
+      institutionApi.listAcademicPeriods(institutionId.value),
     ])
     institution.value = instRes.data
     scheduleConfig.value = schedRes.data
+    periods.value = periodsRes.data ?? []
     editForm.fullName = instRes.data.fullName
     editForm.address = instRes.data.address ?? ''
     editForm.phoneNumber = instRes.data.phoneNumber ?? ''
@@ -847,6 +991,60 @@ async function saveScheduleConfig() {
   } finally {
     saving.value = false
   }
+}
+
+// ── Academic Period Management ──
+function openPeriodDialog() {
+  const year = new Date().getFullYear()
+  periodForm.name = `${year}-${year + 1}`
+  periodForm.startYear = year
+  periodForm.endYear = year + 1
+  periodForm.startDate = `${year}-09-08`
+  periodForm.endDate = `${year + 1}-06-19`
+  periodDialog.value = true
+}
+
+async function createPeriod() {
+  saving.value = true
+  try {
+    await institutionApi.createAcademicPeriod(institutionId.value, {
+      name: periodForm.name,
+      startYear: periodForm.startYear,
+      endYear: periodForm.endYear,
+      startDate: periodForm.startDate,
+      endDate: periodForm.endDate,
+    })
+    notify.success('Akademik dönem oluşturuldu.')
+    periodDialog.value = false
+    await load()
+    await periodStore.loadPeriods()
+  } catch {
+    notify.error('Dönem oluşturulurken bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
+}
+
+function confirmClosePeriod(period: AcademicPeriodDto) {
+  $q.dialog({
+    title: 'Dönemi Kapat',
+    message: `"${period.name}" dönemini kapatmak istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
+    cancel: { flat: true, label: 'İptal' },
+    ok: { color: 'orange-8', label: 'Kapat' },
+    persistent: true,
+  }).onOk(async () => {
+    saving.value = true
+    try {
+      await institutionApi.closeAcademicPeriod(institutionId.value, period.id)
+      notify.success('Dönem kapatıldı.')
+      await load()
+      await periodStore.loadPeriods()
+    } catch {
+      notify.error('Dönem kapatılırken bir hata oluştu.')
+    } finally {
+      saving.value = false
+    }
+  })
 }
 
 onMounted(load)
