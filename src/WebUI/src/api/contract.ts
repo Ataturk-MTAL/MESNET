@@ -6,6 +6,16 @@ export interface SignatureStatusDto {
   signedAt: string | null
 }
 
+export interface ContractDocumentDto {
+  documentId: string
+  documentType: string
+  documentTypeSlug: string
+  description: string | null
+  objectPath: string
+  uploadedBy: string
+  uploadedAt: string
+}
+
 export interface InternshipContractDto {
   id: string
   studentId: string
@@ -22,6 +32,7 @@ export interface InternshipContractDto {
   terminationReason: string | null
   terminationReasonType: string | null
   terminationReasonTypeSlug: string | null
+  documents: ContractDocumentDto[]
   createdAt: string
 }
 
@@ -46,6 +57,19 @@ export interface TerminateContractRequest {
   reason: string
   reasonType: string
 }
+
+export interface UploadContractDocumentRequest {
+  documentType: 'SignedContract' | 'TerminationLetter' | 'Other'
+  description?: string
+  uploadedBy: string
+  file: File
+}
+
+export const DOCUMENT_TYPES = [
+  { label: 'Islak İmzalı Sözleşme', value: 'SignedContract' },
+  { label: 'Fesih Belgesi', value: 'TerminationLetter' },
+  { label: 'Diğer', value: 'Other' },
+] as const
 
 export const TERMINATION_REASONS = [
   { label: 'Disiplin', value: 'Discipline' },
@@ -87,20 +111,13 @@ export const contractApi = {
   complete: (contractId: string) =>
     api.post(`/contracts/${contractId}/complete`),
 
-  uploadSigned: (contractId: string, file: File, uploadedBy: string) => {
+  uploadDocument: (contractId: string, req: UploadContractDocumentRequest) => {
     const formData = new FormData()
-    formData.append('DocumentFile', file)
-    formData.append('UploadedBy', uploadedBy)
-    return api.post(`/contracts/${contractId}/upload-signed`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-  },
-
-  uploadTermination: (contractId: string, file: File, uploadedBy: string) => {
-    const formData = new FormData()
-    formData.append('DocumentFile', file)
-    formData.append('UploadedBy', uploadedBy)
-    return api.post(`/contracts/${contractId}/upload-termination`, formData, {
+    formData.append('DocumentFile', req.file)
+    formData.append('DocumentType', req.documentType)
+    formData.append('UploadedBy', req.uploadedBy)
+    if (req.description) formData.append('Description', req.description)
+    return api.post(`/contracts/${contractId}/documents`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },

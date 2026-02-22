@@ -59,6 +59,24 @@
       </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
+          <PermissionGuard :permission="Permissions.Document.Upload">
+            <q-btn
+              flat round dense
+              icon="upload_file"
+              color="secondary"
+              title="Evrak Yükle"
+              @click.stop="openUploadDialog(row)"
+            />
+          </PermissionGuard>
+          <q-btn
+            flat round dense
+            icon="folder_open"
+            color="grey-7"
+            title="Evraklar"
+            :badge="row.documents?.length > 0 ? String(row.documents.length) : undefined"
+            badge-color="primary"
+            @click.stop="openDocumentsDialog(row)"
+          />
           <q-btn flat round dense icon="open_in_new" @click="openDetail(row)" />
         </q-td>
       </template>
@@ -101,6 +119,27 @@
                     </div>
                   </div>
                 </div>
+              </q-card-section>
+            </q-card>
+
+            <!-- Yüklü Evraklar -->
+            <q-card v-if="selected.documents?.length" flat bordered class="q-mb-md">
+              <q-card-section class="q-pb-sm">
+                <div class="text-subtitle2 text-weight-medium q-mb-sm">Yüklü Evraklar</div>
+                <q-list dense separator>
+                  <q-item v-for="doc in selected.documents" :key="doc.documentId" class="q-px-none">
+                    <q-item-section avatar>
+                      <q-icon name="picture_as_pdf" color="red-7" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="text-weight-medium">{{ doc.documentTypeSlug }}</q-item-label>
+                      <q-item-label v-if="doc.description" caption>{{ doc.description }}</q-item-label>
+                      <q-item-label caption class="text-grey-6">
+                        {{ doc.uploadedBy }} · {{ formatDate(doc.uploadedAt) }}
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
               </q-card-section>
             </q-card>
 
@@ -191,20 +230,11 @@
 
               <PermissionGuard :permission="Permissions.Document.Upload">
                 <q-btn
-                  v-if="selected.status !== 'Draft'"
                   color="secondary"
                   icon="upload_file"
-                  label="Islak İmzalı Belge Yükle"
+                  label="Evrak Yükle"
                   outline
-                  @click="uploadSignedDialog = true"
-                />
-                <q-btn
-                  v-if="selected.status === 'Terminated'"
-                  color="secondary"
-                  icon="upload_file"
-                  label="Fesih Belgesi Yükle"
-                  outline
-                  @click="uploadTermDialog = true"
+                  @click="openUploadDialog(selected)"
                 />
               </PermissionGuard>
             </div>
@@ -445,26 +475,56 @@
       </q-card>
     </q-dialog>
 
-    <!-- ── Islak İmzalı Belge Yükleme ── -->
+    <!-- ── Evrak Yükle Dialog ── -->
     <q-dialog
-      v-model="uploadSignedDialog"
+      v-model="uploadDialog"
       persistent
       :maximized="$q.screen.lt.sm"
       transition-show="slide-up"
       transition-hide="slide-down"
     >
-      <q-card :style="$q.screen.gt.xs ? 'width: 420px; max-width: 95vw' : ''">
+      <q-card :style="$q.screen.gt.xs ? 'width: 460px; max-width: 95vw' : ''">
         <q-toolbar class="bg-secondary text-white">
           <q-icon name="upload_file" class="q-mr-sm" />
-          <q-toolbar-title>Islak İmzalı Belge Yükle</q-toolbar-title>
+          <q-toolbar-title>Evrak Yükle</q-toolbar-title>
           <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-toolbar>
 
         <q-card-section class="q-pt-lg q-gutter-md">
-          <q-file v-model="uploadFile" label="PDF veya Görsel Seç" filled accept=".pdf,.jpg,.jpeg,.png">
+          <q-select
+            v-model="uploadForm.documentType"
+            :options="documentTypeOptions"
+            label="Evrak Türü *"
+            filled
+            emit-value
+            map-options
+          >
+            <template #prepend><q-icon name="category" /></template>
+          </q-select>
+
+          <q-file
+            v-model="uploadForm.file"
+            label="PDF Dosyası *"
+            filled
+            accept=".pdf"
+          >
             <template #prepend><q-icon name="attach_file" /></template>
+            <template #hint>Yalnızca PDF, maks. 10 MB</template>
           </q-file>
-          <q-input v-model="uploadedBy" label="Yükleyen" filled>
+
+          <q-input
+            v-model="uploadForm.description"
+            label="Açıklama (opsiyonel)"
+            filled
+          >
+            <template #prepend><q-icon name="notes" /></template>
+          </q-input>
+
+          <q-input
+            v-model="uploadForm.uploadedBy"
+            label="Yükleyen *"
+            filled
+          >
             <template #prepend><q-icon name="person" /></template>
           </q-input>
         </q-card-section>
@@ -472,39 +532,67 @@
         <q-separator />
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="secondary" label="Yükle" :loading="saving" @click="doUploadSigned" />
+          <q-btn
+            unelevated
+            color="secondary"
+            label="Yükle"
+            :loading="saving"
+            :disable="!uploadForm.file || !uploadForm.documentType || !uploadForm.uploadedBy"
+            @click="doUploadDocument"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
-    <!-- ── Fesih Belgesi Yükleme ── -->
+    <!-- ── Evraklar Dialog ── -->
     <q-dialog
-      v-model="uploadTermDialog"
-      persistent
+      v-model="documentsDialog"
       :maximized="$q.screen.lt.sm"
       transition-show="slide-up"
       transition-hide="slide-down"
     >
-      <q-card :style="$q.screen.gt.xs ? 'width: 420px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-deep-orange text-white">
-          <q-icon name="upload_file" class="q-mr-sm" />
-          <q-toolbar-title>Fesih Belgesi Yükle</q-toolbar-title>
+      <q-card :style="$q.screen.gt.xs ? 'width: 520px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-grey-8 text-white">
+          <q-icon name="folder_open" class="q-mr-sm" />
+          <q-toolbar-title>Yüklü Evraklar</q-toolbar-title>
           <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-toolbar>
 
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-file v-model="uploadFile" label="PDF veya Görsel Seç" filled accept=".pdf,.jpg,.jpeg,.png">
-            <template #prepend><q-icon name="attach_file" /></template>
-          </q-file>
-          <q-input v-model="uploadedBy" label="Yükleyen" filled>
-            <template #prepend><q-icon name="person" /></template>
-          </q-input>
+        <q-card-section>
+          <div v-if="!documentsTarget?.documents?.length" class="text-center q-py-lg text-grey-6">
+            <q-icon name="folder_off" size="48px" class="q-mb-sm" />
+            <div>Henüz evrak yüklenmemiş.</div>
+          </div>
+          <q-list v-else separator>
+            <q-item v-for="doc in documentsTarget?.documents" :key="doc.documentId">
+              <q-item-section avatar>
+                <q-avatar color="red-1" text-color="red-8" icon="picture_as_pdf" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-medium">{{ doc.documentTypeSlug }}</q-item-label>
+                <q-item-label v-if="doc.description" caption>{{ doc.description }}</q-item-label>
+                <q-item-label caption class="text-grey-6">
+                  <q-icon name="person" size="12px" /> {{ doc.uploadedBy }}
+                  &nbsp;·&nbsp;
+                  <q-icon name="schedule" size="12px" /> {{ formatDate(doc.uploadedAt) }}
+                </q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
         </q-card-section>
 
         <q-separator />
         <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="deep-orange" label="Yükle" :loading="saving" @click="doUploadTermination" />
+          <PermissionGuard :permission="Permissions.Document.Upload">
+            <q-btn
+              unelevated
+              color="secondary"
+              icon="upload_file"
+              label="Evrak Ekle"
+              @click="() => { documentsDialog = false; if (documentsTarget) openUploadDialog(documentsTarget) }"
+            />
+          </PermissionGuard>
+          <q-btn flat label="Kapat" color="grey-7" v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -515,7 +603,7 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useQuasar } from 'quasar'
 import type { QTableProps } from 'quasar'
-import { contractApi, type InternshipContractDto, TERMINATION_REASONS } from 'src/api/contract'
+import { contractApi, type InternshipContractDto, TERMINATION_REASONS, DOCUMENT_TYPES } from 'src/api/contract'
 import { useNotify } from 'src/composables/useNotify'
 import { useStudentOptions, useBusinessOptions, useTeacherOptions } from 'src/composables/useEntityOptions'
 import { Permissions } from 'utils/permissions'
@@ -540,12 +628,22 @@ const createDialog = ref(false)
 const signDialog = ref(false)
 const suspendDialog = ref(false)
 const terminateDialog = ref(false)
-const uploadSignedDialog = ref(false)
-const uploadTermDialog = ref(false)
+const uploadDialog = ref(false)
+const documentsDialog = ref(false)
 const statusFilter = ref<string | null>(null)
 const suspendReason = ref('')
-const uploadFile = ref<File | null>(null)
-const uploadedBy = ref('')
+
+// Evrak yükleme formu
+const uploadTarget = ref<InternshipContractDto | null>(null)
+const uploadForm = reactive({
+  documentType: 'SignedContract' as 'SignedContract' | 'TerminationLetter' | 'Other',
+  file: null as File | null,
+  description: '',
+  uploadedBy: '',
+})
+
+// Evraklar dialog hedef sözleşme
+const documentsTarget = ref<InternshipContractDto | null>(null)
 
 const statusOptions = [
   { label: 'Tüm Durumlar', value: null },
@@ -562,6 +660,8 @@ const partyOptions = [
   { label: 'İşletme', value: 'Business' },
   { label: 'Öğrenci', value: 'Student' },
 ]
+
+const documentTypeOptions = DOCUMENT_TYPES.map((d) => ({ label: d.label, value: d.value }))
 
 const terminationReasonOptions = TERMINATION_REASONS.map((r) => ({ label: r.label, value: r.value }))
 
@@ -634,6 +734,20 @@ function openCreateDialog() {
 function openDetail(row: InternshipContractDto) {
   selected.value = row
   detailOpen.value = true
+}
+
+function openUploadDialog(contract: InternshipContractDto) {
+  uploadTarget.value = contract
+  uploadForm.documentType = 'SignedContract'
+  uploadForm.file = null
+  uploadForm.description = ''
+  uploadForm.uploadedBy = authStore.user?.fullName ?? ''
+  uploadDialog.value = true
+}
+
+function openDocumentsDialog(contract: InternshipContractDto) {
+  documentsTarget.value = contract
+  documentsDialog.value = true
 }
 
 async function createContract() {
@@ -760,31 +874,25 @@ async function doComplete() {
   }
 }
 
-async function doUploadSigned() {
-  if (!selected.value || !uploadFile.value) return
+async function doUploadDocument() {
+  if (!uploadTarget.value || !uploadForm.file) return
   saving.value = true
   try {
-    await contractApi.uploadSigned(selected.value.id, uploadFile.value, uploadedBy.value)
-    notify.success('Islak imzalı belge yüklendi.')
-    uploadSignedDialog.value = false
-    uploadFile.value = null
+    await contractApi.uploadDocument(uploadTarget.value.id, {
+      documentType: uploadForm.documentType,
+      file: uploadForm.file,
+      description: uploadForm.description || undefined,
+      uploadedBy: uploadForm.uploadedBy,
+    })
+    notify.success('Evrak başarıyla yüklendi.')
+    uploadDialog.value = false
+    // Listeyi ve eğer aynı sözleşme seçiliyse detayı güncelle
+    await load()
+    if (selected.value?.id === uploadTarget.value.id) {
+      await refreshSelected()
+    }
   } catch {
-    notify.error('Belge yüklenirken bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function doUploadTermination() {
-  if (!selected.value || !uploadFile.value) return
-  saving.value = true
-  try {
-    await contractApi.uploadTermination(selected.value.id, uploadFile.value, uploadedBy.value)
-    notify.success('Fesih belgesi yüklendi.')
-    uploadTermDialog.value = false
-    uploadFile.value = null
-  } catch {
-    notify.error('Belge yüklenirken bir hata oluştu.')
+    notify.error('Evrak yüklenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
