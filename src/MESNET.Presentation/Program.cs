@@ -28,6 +28,10 @@ using System.Threading.RateLimiting;
 using Wolverine.FluentValidation;
 using Wolverine.RabbitMQ;
 
+// Npgsql 6+: UTC DateTime → timestamp without time zone uyumsuzluğunu önle
+// DateTime.Kind=UTC değerlerini legacy davranışla kabul et
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 // Bootstrap logger — uygulama ayağa kalkmadan önceki loglar için
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()

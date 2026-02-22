@@ -5,6 +5,7 @@ using MESNET.Business.Application.Extensions;
 using MESNET.Business.Core.Enums;
 using MESNET.Business.Core.ValueObjects;
 using MESNET.Business.Shared.Events;
+using MESNET.Enrollment.Core.ReadModels;
 using Wolverine;
 
 namespace MESNET.Business.Application.Handlers;
@@ -34,7 +35,20 @@ public static class RegisterBusinessHandler
             ApprovedAt = DateTime.UtcNow
         };
 
+        // Enrollment modülünün PlaceStudent için ihtiyaç duyduğu view — aynı transaction'da garantili oluştur
+        var profileView = new BusinessProfileView
+        {
+            Id = business.Id,
+            BusinessName = business.Name,
+            TotalSlots = business.Capacity.TotalSlots,
+            OccupiedSlots = 0,
+            Location = business.Location,
+            IsActive = true,
+            LastUpdated = DateTime.UtcNow
+        };
+
         session.Store(business);
+        session.Store(profileView);
         await session.SaveChangesAsync();
 
         await bus.PublishAsync(new BusinessRegistered(business.Id, business.Name, business.Location, business.Source, business.Capacity.TotalSlots));
