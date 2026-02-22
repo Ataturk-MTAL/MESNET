@@ -22,7 +22,7 @@ public sealed class StudentStatus : SmartEnum<StudentStatus>
 
     private static readonly Dictionary<StudentStatus, HashSet<StudentStatus>> Transitions = new()
     {
-        [Registered] = [Applied],
+        [Registered] = [Applied, Placed],
         [Applied] = [Placed],
         [Placed] = [ActiveInternship, Registered],
         [ActiveInternship] = [Completed],

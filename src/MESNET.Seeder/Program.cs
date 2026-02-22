@@ -61,14 +61,7 @@ try
     // Step 1: Institution (kurum, branch, personel, schedule) + Keycloak güncelleme
     await InstitutionSeeder.SeedAsync(api, ctx, keycloak);
 
-    // İdempotency check — InstitutionSeeder skip ettiyse diğer adımları da atla
-    if (!ctx.Has("Institution"))
-    {
-        Console.WriteLine();
-        Console.WriteLine("═══ Veriler zaten mevcut — seeder atlandı ═══");
-        return 0;
-    }
-
+    // Her seeder kendi GET kontrolünü yapar — bağımsız idempotency
     // Step 2: Businesses
     await BusinessSeeder.SeedAsync(api, ctx);
 

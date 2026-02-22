@@ -190,6 +190,55 @@ Document.Create(container =>
 - Her modülün kendi PostgreSQL schema'sı vardır
 - Wolverine message storage paylaşımlıdır: `opts.Durability.MessageStorageSchemaName = "wolverine"`
 
+#### KESİN YASAK: Modüller Arası Doğrudan Veri Yazma
+
+Bir modülün Application katmanı, başka bir modülün Core veya ReadModel'ine ASLA doğrudan yazamaz.
+
+**YANLIŞ — Mimariyi BOZAR:**
+
+```csharp
+// Business.Application → Enrollment.Core.ReadModels — KESİNLİKLE YASAK
+using MESNET.Enrollment.Core.ReadModels;
+
+session.Store(new BusinessProfileView { ... }); // YASAK: başka modülün document'ı
+```
+
+**DOĞRU — Olay yayınla, ilgili modül kendi view'ını oluştursun:**
+
+```csharp
+// Business.Application sadece kendi entity'sini yazar + event yayınlar
+session.Store(business);
+await bus.PublishAsync(new BusinessRegistered(business.Id, ...));
+
+// Enrollment.Application/Consumers/BusinessRegisteredConsumer.cs — kendi schema'sına yazar
+public static void Consume(BusinessRegistered @event, IDocumentSession session)
+{
+    session.Store(new BusinessProfileView { Id = @event.BusinessId, ... });
+}
+```
+
+#### Asenkron Eventlerin Timing Sorunu (Seeder / Test Bağlamı)
+
+`PublishAsync()` mesajı Wolverine durable local queue'a koyar — consumer **asenkron** işler, anında çalışmaz.
+Seeder veya entegrasyon testlerinde sıralı API çağrıları arasında gecikme gerekebilir.
+**Çözüm: Seeder'da `await Task.Delay(...)` ekle — API veya handler mantığını değiştirme.**
+
+#### csproj Proje Referansı Kuralları
+
+Her modülün `.Application.csproj`'u yalnızca şu referansları içerebilir:
+
+- `MESNET.Common.Shared` — ortak altyapı
+- `MESNET.Common.Infrastructure` — ortak altyapı
+- `MESNET.{KendiModülü}.Core` — kendi domain modeli
+- `MESNET.{KendiModülü}.Shared` — kendi paylaşılan event'leri
+- `MESNET.{DiğerModül}.Shared` — başka modülün **yalnızca** Shared katmanı (event tüketimi için)
+
+**YASAK referanslar (Application.csproj'da):**
+
+- `MESNET.{DiğerModül}.Core` — başka modülün domain modeli
+- `MESNET.{DiğerModül}.Application` — başka modülün handler'ları
+- `MESNET.{DiğerModül}.Persistence` — başka modülün DB katmanı
+
 ### Modül Katman Yapısı
 
 Her modül şu katmanlara sahiptir:

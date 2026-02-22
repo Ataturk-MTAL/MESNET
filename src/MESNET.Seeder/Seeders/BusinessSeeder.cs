@@ -10,8 +10,20 @@ public static class BusinessSeeder
         if (!ctx.Has("Institution")) return;
         var tenantId = ctx.Get("Institution");
 
-        // Business 1: Bilge Yazılım — Active (kurum kaydı)
-        var d1 = await api.PostAsync("/api/businesses", new
+        // Mevcut işletmeleri yükle — ada göre eşleştir
+        var existing = await api.GetAsync("/api/businesses");
+        var existingByName = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            foreach (var item in arr.EnumerateArray())
+            {
+                var name = item.GetProperty("name").GetString() ?? "";
+                var id = item.GetProperty("id").GetGuid();
+                existingByName[name] = id;
+            }
+        }
+
+        await SeedBusiness(api, ctx, existingByName, "Business1", "Bilge Yazılım A.Ş.", () => api.PostAsync("/api/businesses", new
         {
             tenantId,
             name = "Bilge Yazılım A.Ş.",
@@ -22,15 +34,9 @@ public static class BusinessSeeder
             personnelCount = 25,
             location = new { latitude = 39.9208, longitude = 32.8541 },
             totalSlots = 5
-        });
-        if (d1 is not null)
-        {
-            ctx.Set("Business1", d1.Value.GetProperty("id").GetGuid());
-            Console.WriteLine($"  ✓ \"Bilge Yazılım A.Ş.\" kaydedildi (Active)");
-        }
+        }));
 
-        // Business 2: Anadolu Otomasyon — Active
-        var d2 = await api.PostAsync("/api/businesses", new
+        await SeedBusiness(api, ctx, existingByName, "Business2", "Anadolu Otomasyon Ltd. Şti.", () => api.PostAsync("/api/businesses", new
         {
             tenantId,
             name = "Anadolu Otomasyon Ltd. Şti.",
@@ -40,15 +46,9 @@ public static class BusinessSeeder
             personnelCount = 45,
             location = new { latitude = 39.9725, longitude = 32.7398 },
             totalSlots = 8
-        });
-        if (d2 is not null)
-        {
-            ctx.Set("Business2", d2.Value.GetProperty("id").GetGuid());
-            Console.WriteLine($"  ✓ \"Anadolu Otomasyon Ltd.\" kaydedildi (Active)");
-        }
+        }));
 
-        // Business 3: Yeni Nesil Teknoloji — SelfRegistered → PendingApproval
-        var d3 = await api.PostAsync("/api/businesses/self-register", new
+        await SeedBusiness(api, ctx, existingByName, "Business3", "Yeni Nesil Teknoloji", () => api.PostAsync("/api/businesses/self-register", new
         {
             tenantId,
             keycloakId = "53000000-0000-0000-0000-000000000001",
@@ -62,15 +62,9 @@ public static class BusinessSeeder
             personnelCount = 8,
             location = new { latitude = 39.9255, longitude = 32.8658 },
             totalSlots = 3
-        });
-        if (d3 is not null)
-        {
-            ctx.Set("Business3", d3.Value.GetProperty("id").GetGuid());
-            Console.WriteLine($"  ✓ \"Yeni Nesil Teknoloji\" self-register (Onay Bekliyor)");
-        }
+        }));
 
-        // Business 4: Öz-Er Muhasebe — Active
-        var d4 = await api.PostAsync("/api/businesses", new
+        await SeedBusiness(api, ctx, existingByName, "Business4", "Öz-Er Muhasebe ve Danışmanlık", () => api.PostAsync("/api/businesses", new
         {
             tenantId,
             name = "Öz-Er Muhasebe ve Danışmanlık",
@@ -80,14 +74,36 @@ public static class BusinessSeeder
             personnelCount = 12,
             location = new { latitude = 39.9100, longitude = 32.8600 },
             totalSlots = 4
-        });
-        if (d4 is not null)
+        }));
+
+        // Herhangi bir yeni işletme oluşturulmuşsa, Enrollment modülünün event'i işlemesi için bekle
+        var newlyCreated = new[] { "Business1", "Business2", "Business3", "Business4" }
+            .Any(k => ctx.Has(k) && !existingByName.ContainsValue(ctx.Get(k)));
+        if (newlyCreated)
         {
-            ctx.Set("Business4", d4.Value.GetProperty("id").GetGuid());
-            Console.WriteLine($"  ✓ \"Öz-Er Muhasebe\" kaydedildi (Active)");
+            Console.WriteLine("  … Enrollment event consumer bekleniyor (3s)...");
+            await Task.Delay(TimeSpan.FromSeconds(3));
+        }
+    }
+
+    private static async Task SeedBusiness(
+        MesnetApiClient api, SeedContext ctx,
+        Dictionary<string, Guid> existingByName,
+        string ctxKey, string name,
+        Func<Task<System.Text.Json.JsonElement?>> createFn)
+    {
+        if (existingByName.TryGetValue(name, out var existingId))
+        {
+            ctx.Set(ctxKey, existingId);
+            Console.WriteLine($"  → \"{name}\" mevcut, yüklendi");
+            return;
         }
 
-        // Enrollment modülünün BusinessRegistered event'ini işlemesi için bekle
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        var data = await createFn();
+        if (data is not null)
+        {
+            ctx.Set(ctxKey, data.Value.GetProperty("id").GetGuid());
+            Console.WriteLine($"  ✓ \"{name}\" oluşturuldu");
+        }
     }
 }

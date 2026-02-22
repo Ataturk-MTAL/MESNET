@@ -7,34 +7,29 @@ public static class InstitutionSeeder
         Console.WriteLine();
         Console.WriteLine("── Kurum ──────────────────────────");
 
-        // İdempotency: İşletme varsa zaten seed edilmiş
-        var existing = await api.GetAsync("/api/businesses");
-        if (existing is { } el && el.ValueKind == System.Text.Json.JsonValueKind.Array
-                               && el.GetArrayLength() > 0)
+        // Mevcut kurumu kontrol et
+        var existing = await api.GetAsync("/api/institutions");
+        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array && arr.GetArrayLength() > 0)
         {
-            Console.WriteLine("  ⊘ Veriler zaten mevcut, atlanıyor.");
+            var inst = arr[0];
+            var existingId = inst.GetProperty("id").GetGuid();
+            ctx.Set("Institution", existingId);
+            Console.WriteLine($"  → Kurum mevcut (id: {existingId.ToString()[..8]}...), yüklendi");
 
-            // Keycloak'ı mevcut institution_id ile senkronize et
-            var institutions = await api.GetAsync("/api/institutions");
-            if (institutions is { } instArr && instArr.ValueKind == System.Text.Json.JsonValueKind.Array
-                                            && instArr.GetArrayLength() > 0)
+            // Keycloak'ı senkronize et
+            try
             {
-                var existingId = instArr[0].GetProperty("id").GetGuid();
-                ctx.Set("Institution", existingId);
-                try
-                {
-                    await keycloak.UpdateAllUsersInstitutionIdAsync(existingId);
-                    Console.WriteLine($"  ✓ Keycloak institution_id senkronize edildi ({existingId.ToString()[..8]}...)");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"  ⚠ Keycloak senkronizasyon başarısız: {ex.Message}");
-                }
+                await keycloak.UpdateAllUsersInstitutionIdAsync(existingId);
+                Console.WriteLine("  ✓ Keycloak institution_id senkronize edildi");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  ⚠ Keycloak senkronizasyon başarısız: {ex.Message}");
             }
             return;
         }
 
-        // 1. Kurum oluştur
+        // Kurum oluştur
         var data = await api.PostAsync("/api/institutions", new
         {
             tenantId = Guid.Parse("10000000-0000-0000-0000-000000000001"),
@@ -52,7 +47,6 @@ public static class InstitutionSeeder
         ctx.Set("Institution", institutionId);
         Console.WriteLine($"  ✓ Kurum oluşturuldu (id: {institutionId.ToString()[..8]}...)");
 
-        // Keycloak'taki tüm kullanıcıların institution_id attribute'unu güncelle
         try
         {
             await keycloak.UpdateAllUsersInstitutionIdAsync(institutionId);
@@ -60,17 +54,17 @@ public static class InstitutionSeeder
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"  ⚠ Keycloak güncelleme başarısız (manuel yapılabilir): {ex.Message}");
+            Console.WriteLine($"  ⚠ Keycloak güncelleme başarısız: {ex.Message}");
         }
 
-        // 2. Alanları aktifleştir
+        // Alanları aktifleştir
         await api.PostAsync($"/api/institutions/{institutionId}/branches", new { fieldCode = "BT" });
         Console.WriteLine("  ✓ Alan \"BT\" aktifleştirildi");
 
         await api.PostAsync($"/api/institutions/{institutionId}/branches", new { fieldCode = "MUF" });
         Console.WriteLine("  ✓ Alan \"MUF\" aktifleştirildi");
 
-        // 3. Personel ekle
+        // Personel ekle
         var staffMembers = new[]
         {
             new { keycloakId = "52000000-0000-0000-0000-000000000001", fullName = "Ahmet Yılmaz", role = "Principal", branchCode = (string?)null },
@@ -86,7 +80,7 @@ public static class InstitutionSeeder
             Console.WriteLine($"  ✓ Personel \"{s.fullName}\" ({s.role}) eklendi");
         }
 
-        // 4. Ders programı ayarları
+        // Ders programı
         await api.PutAsync($"/api/institutions/{institutionId}/schedule-config", new
         {
             institutionId,
