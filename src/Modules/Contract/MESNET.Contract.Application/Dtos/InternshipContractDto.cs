@@ -13,6 +13,7 @@ public sealed record InternshipContractDto(
     SignatureStatusDto InstitutionSignature,
     SignatureStatusDto BusinessSignature,
     SignatureStatusDto StudentSignature,
+    SignatureStatusDto ParentSignature,
     string? TerminationReason,
     string? TerminationReasonType,
     string? TerminationReasonTypeSlug,

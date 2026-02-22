@@ -70,7 +70,7 @@ export function useStudentOptions() {
       allOptions.value = (res.data ?? []).map((s) => ({
         label: s.fullName,
         value: s.id,
-        caption: `${s.branchName} - ${s.classYear}. Sınıf`,
+        caption: `${s.branchCode} · ${s.classYear}/${s.section ?? '—'}`,
       }))
       options.value = allOptions.value
       loaded = true

@@ -19,6 +19,7 @@ public static class ContractMappingExtensions
         contract.InstitutionSignature.ToDto(),
         contract.BusinessSignature.ToDto(),
         contract.StudentSignature.ToDto(),
+        contract.ParentSignature.ToDto(),
         contract.TerminationReason,
         contract.TerminationReasonType?.Name,
         contract.TerminationReasonType?.Slug,

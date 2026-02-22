@@ -29,6 +29,7 @@ export interface InternshipContractDto {
   institutionSignature: SignatureStatusDto
   businessSignature: SignatureStatusDto
   studentSignature: SignatureStatusDto
+  parentSignature: SignatureStatusDto
   terminationReason: string | null
   terminationReasonType: string | null
   terminationReasonTypeSlug: string | null

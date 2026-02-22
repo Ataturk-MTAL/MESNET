@@ -27,6 +27,17 @@
     </div>
 
     <AppTable :rows="contracts" :columns="columns" :loading="loading">
+      <template #body-cell-student="{ row }">
+        <q-td>
+          <div class="text-weight-medium">{{ studentMap[row.studentId]?.fullName ?? '—' }}</div>
+          <div v-if="studentMap[row.studentId]?.info" class="text-caption text-grey-6">
+            {{ studentMap[row.studentId].info }}
+          </div>
+        </q-td>
+      </template>
+      <template #body-cell-business="{ row }">
+        <q-td>{{ businessMap[row.businessId] ?? '—' }}</q-td>
+      </template>
       <template #body-cell-statusSlug="{ row }">
         <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
       </template>
@@ -37,24 +48,27 @@
         <q-td>
           <q-icon
             :name="row.institutionSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.institutionSignature.isSigned ? 'positive' : 'grey-4'"
+            :color="row.institutionSignature.isSigned ? 'green-7' : 'grey-4'"
             size="xs"
-            title="Kurum"
-          />
+          ><q-tooltip>Kurum{{ row.institutionSignature.signedBy ? ': ' + row.institutionSignature.signedBy : '' }}</q-tooltip></q-icon>
           <q-icon
             :name="row.businessSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.businessSignature.isSigned ? 'positive' : 'grey-4'"
+            :color="row.businessSignature.isSigned ? 'green-7' : 'grey-4'"
             size="xs"
-            title="İşletme"
             class="q-ml-xs"
-          />
+          ><q-tooltip>İşletme{{ row.businessSignature.signedBy ? ': ' + row.businessSignature.signedBy : '' }}</q-tooltip></q-icon>
           <q-icon
             :name="row.studentSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.studentSignature.isSigned ? 'positive' : 'grey-4'"
+            :color="row.studentSignature.isSigned ? 'green-7' : 'grey-4'"
             size="xs"
-            title="Öğrenci"
             class="q-ml-xs"
-          />
+          ><q-tooltip>Öğrenci{{ row.studentSignature.signedBy ? ': ' + row.studentSignature.signedBy : '' }}</q-tooltip></q-icon>
+          <q-icon
+            :name="row.parentSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
+            :color="row.parentSignature.isSigned ? 'green-7' : 'grey-4'"
+            size="xs"
+            class="q-ml-xs"
+          ><q-tooltip>Veli{{ row.parentSignature.signedBy ? ': ' + row.parentSignature.signedBy : '' }}</q-tooltip></q-icon>
         </q-td>
       </template>
       <template #body-cell-actions="{ row }">
@@ -110,10 +124,11 @@
                   <div v-for="sig in signatureList" :key="sig.label" class="text-center">
                     <q-icon
                       :name="sig.dto.isSigned ? 'check_circle' : 'pending'"
-                      :color="sig.dto.isSigned ? 'positive' : 'grey-4'"
+                      :color="sig.dto.isSigned ? 'green-7' : 'grey-4'"
                       size="36px"
                     />
                     <div class="text-caption text-weight-medium q-mt-xs">{{ sig.label }}</div>
+                    <div v-if="sig.dto.signedBy" class="text-caption text-grey-7">{{ sig.dto.signedBy }}</div>
                     <div v-if="sig.dto.signedAt" class="text-caption text-grey-6">
                       {{ formatDate(sig.dto.signedAt) }}
                     </div>
@@ -783,6 +798,25 @@ const studentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
 const teacherOpts = useTeacherOptions()
 
+// ID → metadata lookup map'leri (tablo satırlarında isim göstermek için)
+// useStudentOptions allOptions: { label: fullName, value: id, caption: "Alan - X. Sınıf" }
+const studentMap = computed<Record<string, { fullName: string; info: string }>>(() => {
+  const map: Record<string, { fullName: string; info: string }> = {}
+  for (const opt of studentOpts.allOptions.value) {
+    map[opt.value] = { fullName: opt.label, info: opt.caption ?? '' }
+  }
+  return map
+})
+
+// useBusinessOptions allOptions: { label: name, value: id, caption: address }
+const businessMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const opt of businessOpts.allOptions.value) {
+    map[opt.value] = opt.label
+  }
+  return map
+})
+
 const loading = ref(false)
 const saving = ref(false)
 const contracts = ref<InternshipContractDto[]>([])
@@ -863,19 +897,21 @@ const rejectTerminateForm = reactive({
 const signatureList = computed(() =>
   selected.value
     ? [
-        { label: 'Kurum', dto: selected.value.institutionSignature },
-        { label: 'İşletme', dto: selected.value.businessSignature },
-        { label: 'Öğrenci', dto: selected.value.studentSignature },
+        { label: 'Kurum',    dto: selected.value.institutionSignature },
+        { label: 'İşletme',  dto: selected.value.businessSignature },
+        { label: 'Öğrenci',  dto: selected.value.studentSignature },
+        { label: 'Veli',     dto: selected.value.parentSignature },
       ]
     : [],
 )
 
 const columns: QTableProps['columns'] = [
-  { name: 'id', label: 'ID', field: (row) => (row as InternshipContractDto).id.slice(0, 8) + '…', align: 'left' },
-  { name: 'statusSlug', label: 'Durum', field: 'statusSlug', align: 'left' },
-  { name: 'startDate', label: 'Dönem', field: 'startDate', align: 'left' },
-  { name: 'signatures', label: 'İmzalar', field: 'institutionSignature', align: 'center' },
-  { name: 'actions', label: '', field: 'id', align: 'right' },
+  { name: 'student',    label: 'Öğrenci',   field: 'studentId',            align: 'left' },
+  { name: 'business',   label: 'İşletme',   field: 'businessId',           align: 'left' },
+  { name: 'statusSlug', label: 'Durum',     field: 'statusSlug',           align: 'left' },
+  { name: 'startDate',  label: 'Dönem',     field: 'startDate',            align: 'left' },
+  { name: 'signatures', label: 'İmzalar',   field: 'institutionSignature', align: 'center' },
+  { name: 'actions',    label: '',          field: 'id',                   align: 'right' },
 ]
 
 function formatDate(iso: string | null | undefined) {
@@ -1123,5 +1159,10 @@ async function refreshSelected() {
   } catch { /* sessiz */ }
 }
 
-onMounted(load)
+onMounted(async () => {
+  // Tablo satırlarında isim göstermek için öğrenci ve işletme listelerini önceden yükle
+  studentOpts.load()
+  businessOpts.load()
+  await load()
+})
 </script>
