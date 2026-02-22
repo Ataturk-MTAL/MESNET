@@ -45,6 +45,51 @@
       <q-scroll-area class="fit">
         <q-list padding>
 
+          <!-- Dönem Seçici -->
+          <q-item v-if="periodStore.isLoaded && periodStore.periods.length > 0" class="q-mb-xs">
+            <q-item-section>
+              <q-select
+                v-model="periodStore.selectedPeriodId"
+                :options="periodOptions"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+                dense
+                outlined
+                label="Dönem"
+              >
+                <template #option="{ itemProps, opt }">
+                  <q-item v-bind="itemProps">
+                    <q-item-section>
+                      <q-item-label>{{ opt.label }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-badge
+                        :color="opt.active ? 'green-7' : 'grey-5'"
+                        :label="opt.active ? 'Aktif' : 'Kapalı'"
+                      />
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
+            </q-item-section>
+          </q-item>
+          <q-separator v-if="periodStore.isLoaded && periodStore.periods.length > 0" spaced />
+
+          <!-- Kapalı dönem uyarısı -->
+          <q-banner
+            v-if="periodStore.isReadOnly"
+            dense
+            rounded
+            class="bg-orange-1 text-orange-9 q-mx-sm q-mb-sm text-caption"
+          >
+            <template #avatar>
+              <q-icon name="lock" color="orange-7" size="xs" />
+            </template>
+            Geçmiş dönem — salt okunur
+          </q-banner>
+
           <q-item clickable v-ripple :to="{ name: 'Dashboard' }" exact>
             <q-item-section avatar><q-icon name="dashboard" /></q-item-section>
             <q-item-section>Ana Sayfa</q-item-section>
@@ -168,17 +213,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from 'stores/auth'
 import { useNotificationStore } from 'stores/notifications'
+import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import { logout } from 'boot/auth'
 
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
+const periodStore = useAcademicPeriodStore()
 const drawerOpen = ref(false)
 
 const unreadCount = computed(() => notificationStore.notifications.length)
+
+const periodOptions = computed(() =>
+  periodStore.periods.map((p) => ({
+    label: p.name,
+    value: p.id,
+    active: p.status === 'Active',
+  })),
+)
 
 const MODULE_ICONS: Record<string, string> = {
   Institution: 'account_balance',
@@ -197,6 +252,12 @@ const MODULE_ICONS: Record<string, string> = {
 function moduleIcon(module: string): string {
   return MODULE_ICONS[module] ?? 'notifications'
 }
+
+onMounted(async () => {
+  if (authStore.isAuthenticated && !periodStore.isLoaded) {
+    await periodStore.loadPeriods()
+  }
+})
 
 async function onLogout() {
   await logout()

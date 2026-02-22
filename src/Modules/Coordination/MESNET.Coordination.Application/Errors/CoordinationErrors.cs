@@ -82,4 +82,10 @@ public static class CoordinationErrors
     public static Error InvalidEvaluationResult(string result) =>
         new("Coordination.InvalidEvaluationResult",
             $"Geçersiz değerlendirme sonucu: {result}. Geçerli değerler: Suitable, Unsuitable, Conditional");
+
+    public static Error AcademicPeriodNotFound(Guid id) =>
+        new("Coordination.AcademicPeriodNotFound", $"Eğitim dönemi bulunamadı: {id}");
+
+    public static Error AcademicPeriodClosed(Guid id) =>
+        new("Coordination.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, işlem yapılamaz: {id}");
 }

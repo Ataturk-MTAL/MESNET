@@ -4,6 +4,7 @@ using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.Enums;
+using MESNET.Coordination.Core.ReadModels;
 
 namespace MESNET.Coordination.Application.Handlers;
 
@@ -19,6 +20,11 @@ public static class UpsertTeacherScheduleHandler
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
+        // Dönem aktiflik kontrolü
+        var period = await session.LoadAsync<AcademicPeriodView>(command.AcademicPeriodId, cancellationToken);
+        if (period is null) throw new DomainException(CoordinationErrors.AcademicPeriodNotFound(command.AcademicPeriodId));
+        if (!period.IsActive) throw new DomainException(CoordinationErrors.AcademicPeriodClosed(command.AcademicPeriodId));
+
         // 1. Kurum ayarlarını oku (günlük ders sayısı)
         var institution = await session.LoadAsync<MESNET.Institution.Core.Entities.Institution>(
             command.InstitutionId, cancellationToken);
@@ -61,11 +67,11 @@ public static class UpsertTeacherScheduleHandler
             }
 
             // 3d. SlotStatus validation
-            foreach (var period in dayInput.Periods)
+            foreach (var slot in dayInput.Periods)
             {
-                if (!SlotStatus.TryFromName(period.Status, true, out _))
+                if (!SlotStatus.TryFromName(slot.Status, true, out _))
                 {
-                    throw new DomainException(CoordinationErrors.InvalidSlotStatus(period.Status));
+                    throw new DomainException(CoordinationErrors.InvalidSlotStatus(slot.Status));
                 }
             }
         }
@@ -101,6 +107,7 @@ public static class UpsertTeacherScheduleHandler
                 Id = Guid.NewGuid(),
                 TeacherId = command.TeacherId,
                 InstitutionId = command.InstitutionId,
+                AcademicPeriodId = command.AcademicPeriodId,
                 AcademicYear = command.AcademicYear,
                 Semester = semester,
                 WeeklySchedule = MapWeeklySchedule(command.WeeklySchedule),

@@ -6,6 +6,7 @@ public sealed record CreateMonthlyActivityReport(
     Guid StudentId,
     Guid BusinessId,
     Guid InstitutionId,
+    Guid AcademicPeriodId,
     Guid TeacherId,
     int Year,
     int Month,

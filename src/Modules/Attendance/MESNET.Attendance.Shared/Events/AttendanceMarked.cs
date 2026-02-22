@@ -5,5 +5,6 @@ public sealed record AttendanceMarked(
     Guid StudentId,
     Guid BusinessId,
     Guid InstitutionId,
+    Guid AcademicPeriodId,
     DateTime Date,
     string AbsenceType);

@@ -43,9 +43,9 @@ public static class TeacherEndpoints
         return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
     }
 
-    private static async Task<IResult> GetAll(Guid? institutionId, IMessageBus bus)
+    private static async Task<IResult> GetAll(Guid? institutionId, Guid? academicPeriodId, IMessageBus bus)
     {
-        var dtos = await bus.InvokeAsync<IReadOnlyList<TeacherProfileDto>>(new ListTeachers(institutionId));
+        var dtos = await bus.InvokeAsync<IReadOnlyList<TeacherProfileDto>>(new ListTeachers(institutionId, academicPeriodId));
         return Results.Ok(ResponseBuilder.Success().AddData(dtos).Build());
     }
 }

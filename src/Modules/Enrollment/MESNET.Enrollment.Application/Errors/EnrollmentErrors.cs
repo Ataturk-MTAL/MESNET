@@ -24,4 +24,10 @@ public static class EnrollmentErrors
 
     public static Error BusinessCapacityFull =>
         new("Enrollment.BusinessCapacityFull", "İşletme kapasitesi dolu, yerleştirme yapılamaz.");
+
+    public static Error AcademicPeriodNotFound(Guid id) =>
+        new("Enrollment.AcademicPeriodNotFound", $"Eğitim dönemi bulunamadı: {id}");
+
+    public static Error AcademicPeriodClosed(Guid id) =>
+        new("Enrollment.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, işlem yapılamaz: {id}");
 }

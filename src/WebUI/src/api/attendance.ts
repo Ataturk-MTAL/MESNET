@@ -50,7 +50,7 @@ export const ABSENCE_TYPES = [
 ] as const
 
 export const attendanceApi = {
-  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; status?: string }) =>
+  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; academicPeriodId?: string; status?: string }) =>
     api.get<AttendanceRecordDto[]>('/attendance', { params }),
 
   get: (attendanceId: string) =>

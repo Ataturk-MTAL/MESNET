@@ -23,6 +23,9 @@ public static class ListContractsHandler
         if (query.InstitutionId.HasValue)
             queryable = queryable.Where(c => c.InstitutionId == query.InstitutionId.Value);
 
+        if (query.AcademicPeriodId.HasValue)
+            queryable = queryable.Where(c => c.AcademicPeriodId == query.AcademicPeriodId.Value);
+
         var contracts = await queryable.ToListAsync();
 
         if (!string.IsNullOrWhiteSpace(query.Status) &&

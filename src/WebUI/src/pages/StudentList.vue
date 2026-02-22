@@ -318,16 +318,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { enrollmentApi, type StudentProfileDto } from 'src/api/enrollment'
 import { useNotify } from 'src/composables/useNotify'
 import { useKeycloakUserOptions, useBusinessOptions, useTeacherOptions } from 'src/composables/useEntityOptions'
+import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
+
+const periodStore = useAcademicPeriodStore()
 
 const $q = useQuasar()
 const notify = useNotify()
@@ -397,6 +400,7 @@ async function load() {
   loading.value = true
   try {
     const res = await enrollmentApi.listStudents({
+      academicPeriodId: periodStore.selectedPeriodId ?? undefined,
       branchCode: branchFilter.value ?? undefined,
       status: statusFilter.value ?? undefined,
     })
@@ -520,5 +524,6 @@ async function doTransfer() {
   }
 }
 
+watch(() => periodStore.selectedPeriodId, () => load())
 onMounted(load)
 </script>

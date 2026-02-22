@@ -139,10 +139,10 @@ public static class ContractEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? studentId, Guid? businessId, Guid? institutionId, string? status,
+        Guid? studentId, Guid? businessId, Guid? institutionId, Guid? academicPeriodId, string? status,
         IMessageBus bus)
     {
-        var query = new ListContracts(studentId, businessId, institutionId, status);
+        var query = new ListContracts(studentId, businessId, institutionId, academicPeriodId, status);
         var contracts = await bus.InvokeAsync<IReadOnlyList<InternshipContractDto>>(query);
         return Results.Ok(ResponseBuilder.Success()
             .AddData(contracts)

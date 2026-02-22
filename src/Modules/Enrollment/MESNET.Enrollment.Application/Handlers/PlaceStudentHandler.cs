@@ -15,6 +15,10 @@ public static class PlaceStudentHandler
 {
     public static async Task<(InternshipPlacementDto, StudentPlaced)> Handle(PlaceStudent command, IDocumentSession session)
     {
+        var period = await session.LoadAsync<AcademicPeriodView>(command.AcademicPeriodId);
+        if (period is null) throw new DomainException(EnrollmentErrors.AcademicPeriodNotFound(command.AcademicPeriodId));
+        if (!period.IsActive) throw new DomainException(EnrollmentErrors.AcademicPeriodClosed(command.AcademicPeriodId));
+
         var student = await session.LoadAsync<StudentProfile>(command.StudentId)
             ?? throw new DomainException(EnrollmentErrors.StudentNotFound(command.StudentId));
 
@@ -37,6 +41,7 @@ public static class PlaceStudentHandler
             StudentId = command.StudentId,
             BusinessId = command.BusinessId,
             InstitutionId = command.InstitutionId,
+            AcademicPeriodId = command.AcademicPeriodId,
             TeacherId = command.TeacherId,
             Source = ApplicationSource.InstitutionAssignment
         };
@@ -51,6 +56,7 @@ public static class PlaceStudentHandler
             placement.StudentId,
             placement.BusinessId,
             placement.InstitutionId,
+            placement.AcademicPeriodId,
             placement.PlacedAt));
     }
 }

@@ -19,6 +19,9 @@ public static class ListPlacementsHandler
         if (query.StudentId.HasValue)
             queryable = queryable.Where(p => p.StudentId == query.StudentId.Value);
 
+        if (query.AcademicPeriodId.HasValue)
+            queryable = queryable.Where(p => p.AcademicPeriodId == query.AcademicPeriodId.Value);
+
         var placements = await queryable.ToListAsync();
 
         // SmartEnum LINQ kısıtı: in-memory filtrele

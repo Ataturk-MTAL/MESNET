@@ -1,6 +1,7 @@
 using Marten;
 using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Entities;
+using MESNET.Attendance.Core.ReadModels;
 
 namespace MESNET.Attendance.Persistence;
 
@@ -15,5 +16,8 @@ public class AttendanceMartenConfig : IConfigureMarten
         options.Schema.For<AttendanceView>().DatabaseSchemaName("attendance");
         options.Schema.For<AttendanceView>().Index(x => x.StudentId);
         options.Schema.For<AttendanceView>().Index(x => x.BusinessId);
+
+        options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("attendance");
+        options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
     }
 }

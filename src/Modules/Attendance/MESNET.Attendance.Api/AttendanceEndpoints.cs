@@ -86,7 +86,7 @@ public static class AttendanceEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? studentId, Guid? businessId, Guid? institutionId, string? status,
+        Guid? studentId, Guid? businessId, Guid? institutionId, Guid? academicPeriodId, string? status,
         IQuerySession session)
     {
         IQueryable<AttendanceRecord> queryable = session.Query<AttendanceRecord>();
@@ -99,6 +99,9 @@ public static class AttendanceEndpoints
 
         if (institutionId.HasValue)
             queryable = queryable.Where(r => r.InstitutionId == institutionId.Value);
+
+        if (academicPeriodId.HasValue)
+            queryable = queryable.Where(r => r.AcademicPeriodId == academicPeriodId.Value);
 
         if (!string.IsNullOrWhiteSpace(status) &&
             AttendanceStatus.TryFromName(status, true, out var attendanceStatus))

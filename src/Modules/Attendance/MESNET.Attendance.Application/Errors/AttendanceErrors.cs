@@ -21,4 +21,10 @@ public static class AttendanceErrors
     public static Error InvalidStatus(Guid attendanceId, string currentStatus, string message) =>
         new("Attendance.InvalidStatus",
             $"{message} Mevcut durum: {currentStatus}. Devamsızlık: {attendanceId}");
+
+    public static Error AcademicPeriodNotFound(Guid id) =>
+        new("Attendance.AcademicPeriodNotFound", $"Eğitim dönemi bulunamadı: {id}");
+
+    public static Error AcademicPeriodClosed(Guid id) =>
+        new("Attendance.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, işlem yapılamaz: {id}");
 }

@@ -6,6 +6,7 @@ namespace MESNET.Coordination.Application.Commands;
 public sealed record UpsertTeacherSchedule(
     Guid TeacherId,
     Guid InstitutionId,
+    Guid AcademicPeriodId,
     int AcademicYear,
     string Semester,  // "Fall" | "Spring"
     List<DailyScheduleInput> WeeklySchedule,

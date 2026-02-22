@@ -4,4 +4,5 @@ public sealed record StudentRegistered(
     Guid StudentId,
     string FullName,
     Guid InstitutionId,
+    Guid AcademicPeriodId,
     string BranchCode);

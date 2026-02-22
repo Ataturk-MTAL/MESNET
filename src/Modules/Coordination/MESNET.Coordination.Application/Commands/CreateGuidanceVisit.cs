@@ -6,6 +6,7 @@ public sealed record CreateGuidanceVisit(
     Guid TeacherId,
     Guid BusinessId,
     Guid InstitutionId,
+    Guid AcademicPeriodId,
     DateTime VisitDate,
     List<StudentVisitNote> StudentNotes,
     string? InstructorMeetingNotes,

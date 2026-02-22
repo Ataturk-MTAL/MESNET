@@ -11,6 +11,7 @@ public sealed class SkillExam
     public Guid StudentId { get; set; }
     public Guid BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
+    public Guid AcademicPeriodId { get; set; }
     public int AcademicYear { get; set; }
 
     [JsonConverter(typeof(SmartEnumNameConverter<AcademicSemester, int>))]

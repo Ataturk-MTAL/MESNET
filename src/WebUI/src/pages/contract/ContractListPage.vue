@@ -779,12 +779,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import type { QTableProps } from 'quasar'
 import { contractApi, type InternshipContractDto, TERMINATION_REASONS, DOCUMENT_TYPES } from 'src/api/contract'
 import { useNotify } from 'src/composables/useNotify'
 import { useStudentOptions, useBusinessOptions, useTeacherOptions } from 'src/composables/useEntityOptions'
+import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
@@ -794,6 +795,7 @@ import { useAuthStore } from 'stores/auth'
 const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
+const periodStore = useAcademicPeriodStore()
 const studentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
 const teacherOpts = useTeacherOptions()
@@ -922,7 +924,10 @@ function formatDate(iso: string | null | undefined) {
 async function load() {
   loading.value = true
   try {
-    const res = await contractApi.list({ status: statusFilter.value ?? undefined })
+    const res = await contractApi.list({
+      academicPeriodId: periodStore.selectedPeriodId ?? undefined,
+      status: statusFilter.value ?? undefined,
+    })
     contracts.value = Array.isArray(res.data) ? res.data : (res.data as any)?.data ?? []
   } catch {
     notify.error('Sözleşmeler yüklenirken bir hata oluştu.')
@@ -1158,6 +1163,8 @@ async function refreshSelected() {
     if (idx !== -1) contracts.value[idx] = res.data
   } catch { /* sessiz */ }
 }
+
+watch(() => periodStore.selectedPeriodId, () => load())
 
 onMounted(async () => {
   // Tablo satırlarında isim göstermek için öğrenci ve işletme listelerini önceden yükle

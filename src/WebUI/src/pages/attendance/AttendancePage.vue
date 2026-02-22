@@ -223,12 +223,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { attendanceApi, type AttendanceRecordDto, ABSENCE_TYPES } from 'src/api/attendance'
 import { useNotify } from 'src/composables/useNotify'
 import { useStudentOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
+import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
@@ -238,6 +239,7 @@ import { useAuthStore } from 'stores/auth'
 const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
+const periodStore = useAcademicPeriodStore()
 const studentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
 const filterStudentOpts = useStudentOptions()
@@ -282,6 +284,7 @@ async function load() {
   loading.value = true
   try {
     const res = await attendanceApi.list({
+      academicPeriodId: periodStore.selectedPeriodId ?? undefined,
       studentId: studentIdFilter.value || undefined,
       status: statusFilter.value ?? undefined,
     })
@@ -364,6 +367,8 @@ async function correctRecord() {
     saving.value = false
   }
 }
+
+watch(() => periodStore.selectedPeriodId, () => load())
 
 onMounted(() => {
   load()

@@ -10,6 +10,7 @@ public sealed class TeacherSchedule
     public Guid Id { get; init; }
     public Guid TeacherId { get; init; }
     public Guid InstitutionId { get; init; }
+    public Guid AcademicPeriodId { get; init; }
 
     /// <summary>
     /// Akademik yıl (örn: 2025)

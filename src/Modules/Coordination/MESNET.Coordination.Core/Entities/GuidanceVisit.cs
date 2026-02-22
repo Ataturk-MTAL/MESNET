@@ -11,6 +11,7 @@ public sealed class GuidanceVisit
     public Guid TeacherId { get; set; }
     public Guid BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
+    public Guid AcademicPeriodId { get; set; }
     public DateTime VisitDate { get; set; }
     public List<StudentVisitNote> StudentNotes { get; set; } = [];
     public string? InstructorMeetingNotes { get; set; }

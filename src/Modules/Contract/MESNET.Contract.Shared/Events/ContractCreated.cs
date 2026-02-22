@@ -5,6 +5,7 @@ public sealed record ContractCreated(
     Guid StudentId,
     Guid BusinessId,
     Guid InstitutionId,
+    Guid AcademicPeriodId,
     Guid? TeacherId,
     DateTime StartDate,
     DateTime CreatedAt);

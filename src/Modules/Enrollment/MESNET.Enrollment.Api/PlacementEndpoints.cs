@@ -54,10 +54,10 @@ public static class PlacementEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? businessId, Guid? studentId, string? status, IMessageBus bus)
+        Guid? businessId, Guid? studentId, Guid? academicPeriodId, string? status, IMessageBus bus)
     {
         var dtos = await bus.InvokeAsync<IReadOnlyList<InternshipPlacementDto>>(
-            new ListPlacements(businessId, studentId, status));
+            new ListPlacements(businessId, studentId, academicPeriodId, status));
         return Results.Ok(ResponseBuilder.Success().AddData(dtos).Build());
     }
 }

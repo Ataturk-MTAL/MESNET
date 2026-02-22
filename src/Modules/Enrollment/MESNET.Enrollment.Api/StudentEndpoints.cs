@@ -53,10 +53,10 @@ public static class StudentEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? institutionId, string? branchCode, string? section, string? status, IMessageBus bus)
+        Guid? institutionId, Guid? academicPeriodId, string? branchCode, string? section, string? status, IMessageBus bus)
     {
         var dtos = await bus.InvokeAsync<IReadOnlyList<StudentProfileDto>>(
-            new ListStudents(institutionId, branchCode, section, status));
+            new ListStudents(institutionId, academicPeriodId, branchCode, section, status));
         return Results.Ok(ResponseBuilder.Success().AddData(dtos).Build());
     }
 }

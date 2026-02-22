@@ -93,7 +93,7 @@ export const TERMINATION_REASONS = [
 ] as const
 
 export const contractApi = {
-  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; status?: string }) =>
+  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; academicPeriodId?: string; status?: string }) =>
     api.get<InternshipContractDto[]>('/contracts', { params }),
 
   get: (contractId: string) =>

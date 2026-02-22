@@ -16,6 +16,9 @@ public static class ListStudentsHandler
         if (query.InstitutionId.HasValue)
             queryable = queryable.Where(s => s.InstitutionId == query.InstitutionId.Value);
 
+        if (query.AcademicPeriodId.HasValue)
+            queryable = queryable.Where(s => s.AcademicPeriodId == query.AcademicPeriodId.Value);
+
         if (!string.IsNullOrWhiteSpace(query.BranchCode))
             queryable = queryable.Where(s => s.BranchCode == query.BranchCode);
 

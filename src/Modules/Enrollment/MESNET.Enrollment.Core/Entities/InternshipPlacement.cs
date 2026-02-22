@@ -10,6 +10,7 @@ public class InternshipPlacement
     public Guid StudentId { get; set; }
     public Guid BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
+    public Guid AcademicPeriodId { get; set; }
     public Guid? TeacherId { get; set; }
 
     [JsonConverter(typeof(SmartEnumNameConverter<PlacementStatus, int>))]

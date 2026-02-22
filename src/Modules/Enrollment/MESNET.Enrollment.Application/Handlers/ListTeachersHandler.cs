@@ -15,6 +15,8 @@ public static class ListTeachersHandler
         if (query.InstitutionId.HasValue)
             queryable = queryable.Where(t => t.InstitutionId == query.InstitutionId.Value);
 
+        // TeacherProfile dönem bağımsız — filtre uygulanmaz
+
         var teachers = await queryable.ToListAsync();
         return teachers.Select(t => t.ToDto()).ToList();
     }

@@ -88,6 +88,28 @@ export interface UpdateSpecializationsRequest {
   activeSpecializations: string[]
 }
 
+export interface AcademicPeriodDto {
+  id: string
+  institutionId: string
+  name: string
+  startYear: number
+  endYear: number
+  startDate: string
+  endDate: string
+  status: string
+  statusSlug: string
+  createdAt: string
+  closedAt: string | null
+}
+
+export interface CreateAcademicPeriodRequest {
+  name: string
+  startYear: number
+  endYear: number
+  startDate: string
+  endDate: string
+}
+
 export const institutionApi = {
   list: () =>
     api.get<InstitutionDto[]>('/institutions'),
@@ -120,4 +142,16 @@ export const institutionApi = {
 
   updateSpecializations: (institutionId: string, fieldCode: string, data: UpdateSpecializationsRequest) =>
     api.put(`/institutions/${institutionId}/branches/${fieldCode}/specializations`, data),
+
+  listAcademicPeriods: (institutionId: string) =>
+    api.get<AcademicPeriodDto[]>(`/institutions/${institutionId}/academic-periods`),
+
+  getActiveAcademicPeriod: (institutionId: string) =>
+    api.get<AcademicPeriodDto>(`/institutions/${institutionId}/academic-periods/active`),
+
+  createAcademicPeriod: (institutionId: string, data: CreateAcademicPeriodRequest) =>
+    api.post<{ id: string }>(`/institutions/${institutionId}/academic-periods`, data),
+
+  closeAcademicPeriod: (institutionId: string, periodId: string) =>
+    api.post(`/institutions/${institutionId}/academic-periods/${periodId}/close`),
 }

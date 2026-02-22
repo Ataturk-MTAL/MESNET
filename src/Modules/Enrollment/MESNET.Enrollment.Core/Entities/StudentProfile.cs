@@ -17,6 +17,7 @@ public class StudentProfile
     public string? MotherName { get; set; }
     public string? StudentNumber { get; set; }
     public Guid InstitutionId { get; set; }
+    public Guid AcademicPeriodId { get; set; }
     public required string BranchCode { get; set; }
     public required string BranchName { get; set; }
     public int ClassYear { get; set; }

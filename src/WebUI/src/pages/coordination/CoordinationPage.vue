@@ -303,7 +303,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import {
@@ -318,12 +318,14 @@ import { useNotify } from 'src/composables/useNotify'
 import { useTeacherOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
 import { Permissions } from 'utils/permissions'
 import { useAuthStore } from 'stores/auth'
+import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import AppTable from 'components/AppTable.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 
 const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
+const periodStore = useAcademicPeriodStore()
 const teacherOpts = useTeacherOptions()
 const visitBusinessOpts = useBusinessOptions()
 const evalBusinessOpts = useBusinessOptions()
@@ -392,7 +394,7 @@ function formatDate(iso: string) {
 async function loadVisits() {
   loadingVisits.value = true
   try {
-    const res = await coordinationApi.listVisits()
+    const res = await coordinationApi.listVisits({ academicPeriodId: periodStore.selectedPeriodId ?? undefined })
     visits.value = res.data
   } catch {
     notify.error('Ziyaretler yüklenirken bir hata oluştu.')
@@ -416,7 +418,7 @@ async function loadEvaluations() {
 async function loadExams() {
   loadingExams.value = true
   try {
-    const res = await coordinationApi.listSkillExams()
+    const res = await coordinationApi.listSkillExams({ academicPeriodId: periodStore.selectedPeriodId ?? undefined })
     exams.value = res.data
   } catch {
     notify.error('Sınavlar yüklenirken bir hata oluştu.')
@@ -428,7 +430,7 @@ async function loadExams() {
 async function loadReports() {
   loadingReports.value = true
   try {
-    const res = await coordinationApi.listActivityReports()
+    const res = await coordinationApi.listActivityReports({ academicPeriodId: periodStore.selectedPeriodId ?? undefined })
     activityReports.value = res.data
   } catch {
     notify.error('Raporlar yüklenirken bir hata oluştu.')
@@ -550,6 +552,12 @@ async function approveReport(row: MonthlyActivityReportDto) {
     saving.value = false
   }
 }
+
+watch(() => periodStore.selectedPeriodId, () => {
+  loadVisits()
+  loadExams()
+  loadReports()
+})
 
 onMounted(() => {
   loadVisits()

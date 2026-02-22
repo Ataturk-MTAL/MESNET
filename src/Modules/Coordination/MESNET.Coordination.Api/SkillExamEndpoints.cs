@@ -63,7 +63,7 @@ public static class SkillExamEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? studentId, Guid? businessId, int? academicYear, string? semester,
+        Guid? studentId, Guid? businessId, Guid? academicPeriodId, int? academicYear, string? semester,
         IQuerySession session)
     {
         IQueryable<SkillExam> queryable = session.Query<SkillExam>();
@@ -72,6 +72,8 @@ public static class SkillExamEndpoints
             queryable = queryable.Where(e => e.StudentId == studentId.Value);
         if (businessId.HasValue)
             queryable = queryable.Where(e => e.BusinessId == businessId.Value);
+        if (academicPeriodId.HasValue)
+            queryable = queryable.Where(e => e.AcademicPeriodId == academicPeriodId.Value);
         if (academicYear.HasValue)
             queryable = queryable.Where(e => e.AcademicYear == academicYear.Value);
 

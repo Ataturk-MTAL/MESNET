@@ -85,7 +85,7 @@ public static class MonthlyActivityReportEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? studentId, Guid? businessId, int? year, int? month,
+        Guid? studentId, Guid? businessId, Guid? academicPeriodId, int? year, int? month,
         IQuerySession session)
     {
         IQueryable<MonthlyActivityReport> queryable = session.Query<MonthlyActivityReport>();
@@ -94,6 +94,8 @@ public static class MonthlyActivityReportEndpoints
             queryable = queryable.Where(r => r.StudentId == studentId.Value);
         if (businessId.HasValue)
             queryable = queryable.Where(r => r.BusinessId == businessId.Value);
+        if (academicPeriodId.HasValue)
+            queryable = queryable.Where(r => r.AcademicPeriodId == academicPeriodId.Value);
         if (year.HasValue)
             queryable = queryable.Where(r => r.Year == year.Value);
         if (month.HasValue)

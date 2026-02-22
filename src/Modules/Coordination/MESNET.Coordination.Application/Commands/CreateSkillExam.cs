@@ -6,6 +6,7 @@ public sealed record CreateSkillExam(
     Guid StudentId,
     Guid BusinessId,
     Guid InstitutionId,
+    Guid AcademicPeriodId,
     int AcademicYear,
     string Semester,
     DateTime ExamDate,

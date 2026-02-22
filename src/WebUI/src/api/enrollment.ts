@@ -57,7 +57,7 @@ export interface TransferRequest {
 }
 
 export const enrollmentApi = {
-  listStudents: (params?: { institutionId?: string; branchCode?: string; section?: string; status?: string }) =>
+  listStudents: (params?: { institutionId?: string; academicPeriodId?: string; branchCode?: string; section?: string; status?: string }) =>
     api.get<StudentProfileDto[]>('/students', { params }),
 
   getStudent: (studentId: string) =>
@@ -69,7 +69,7 @@ export const enrollmentApi = {
   updateStudent: (studentId: string, data: Partial<RegisterStudentRequest>) =>
     api.patch(`/students/${studentId}`, data),
 
-  listPlacements: (params?: { businessId?: string; studentId?: string; status?: string }) =>
+  listPlacements: (params?: { businessId?: string; studentId?: string; academicPeriodId?: string; status?: string }) =>
     api.get<InternshipPlacementDto[]>('/placements', { params }),
 
   getPlacement: (placementId: string) =>
@@ -81,6 +81,6 @@ export const enrollmentApi = {
   transferStudent: (placementId: string, data: TransferRequest) =>
     api.post(`/placements/${placementId}/transfer`, data),
 
-  listTeachers: (institutionId?: string) =>
-    api.get<TeacherProfileDto[]>('/teachers', { params: institutionId ? { institutionId } : undefined }),
+  listTeachers: (params?: { institutionId?: string; academicPeriodId?: string }) =>
+    api.get<TeacherProfileDto[]>('/teachers', { params }),
 }

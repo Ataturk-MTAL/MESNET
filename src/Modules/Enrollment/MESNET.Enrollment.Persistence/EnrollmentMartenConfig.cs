@@ -10,6 +10,7 @@ public class EnrollmentMartenConfig : IConfigureMarten
     {
         options.Schema.For<StudentProfile>().DatabaseSchemaName("enrollment");
         options.Schema.For<StudentProfile>().Index(x => x.InstitutionId);
+        options.Schema.For<StudentProfile>().Index(x => x.AcademicPeriodId);
         options.Schema.For<StudentProfile>().Index(x => x.BranchCode);
         options.Schema.For<StudentProfile>().Index(x => x.KeycloakUserId);
 
@@ -19,8 +20,12 @@ public class EnrollmentMartenConfig : IConfigureMarten
         options.Schema.For<InternshipPlacement>().DatabaseSchemaName("enrollment");
         options.Schema.For<InternshipPlacement>().Index(x => x.StudentId);
         options.Schema.For<InternshipPlacement>().Index(x => x.BusinessId);
+        options.Schema.For<InternshipPlacement>().Index(x => x.AcademicPeriodId);
 
         options.Schema.For<BusinessProfileView>().DatabaseSchemaName("enrollment");
         options.Schema.For<BusinessProfileView>().Index(x => x.IsActive);
+
+        options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("enrollment");
+        options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
     }
 }

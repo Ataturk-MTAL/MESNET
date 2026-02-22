@@ -1,3 +1,3 @@
 namespace MESNET.Enrollment.Application.Queries;
 
-public sealed record ListTeachers(Guid? InstitutionId);
+public sealed record ListTeachers(Guid? InstitutionId, Guid? AcademicPeriodId);

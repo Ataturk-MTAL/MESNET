@@ -9,6 +9,7 @@ public sealed record InternshipContract(
     Guid StudentId,
     Guid BusinessId,
     Guid InstitutionId,
+    Guid AcademicPeriodId,
     Guid? TeacherId,
     ContractStatus Status,
     DateTime StartDate,
@@ -23,7 +24,7 @@ public sealed record InternshipContract(
     DateTime CreatedAt)
 {
     public static InternshipContract Create(ContractCreated e) => new(
-        e.ContractId, e.StudentId, e.BusinessId, e.InstitutionId, e.TeacherId,
+        e.ContractId, e.StudentId, e.BusinessId, e.InstitutionId, e.AcademicPeriodId, e.TeacherId,
         ContractStatus.Draft, e.StartDate, null,
         SignatureStatus.Unsigned, SignatureStatus.Unsigned, SignatureStatus.Unsigned, SignatureStatus.Unsigned,
         null, null, [], e.CreatedAt);

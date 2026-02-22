@@ -108,11 +108,11 @@ export function useTeacherOptions() {
   const loading = ref(false)
   let loaded = false
 
-  async function load(institutionId?: string) {
+  async function load(params?: { institutionId?: string; academicPeriodId?: string }) {
     if (loaded) return
     loading.value = true
     try {
-      const res = await enrollmentApi.listTeachers(institutionId)
+      const res = await enrollmentApi.listTeachers(params)
       allOptions.value = (res.data ?? []).map((t) => ({
         label: t.fullName,
         value: t.id,

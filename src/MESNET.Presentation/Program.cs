@@ -334,6 +334,7 @@ try
     // Institution
     app.MapInstitutionEndpoints();
     app.MapFieldCatalogEndpoints();
+    app.MapAcademicPeriodEndpoints();
     // Business
     app.MapBusinessEndpoints();
     app.MapBusinessQueryEndpoints();

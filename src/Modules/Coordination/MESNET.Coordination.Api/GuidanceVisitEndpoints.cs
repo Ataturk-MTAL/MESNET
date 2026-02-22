@@ -85,7 +85,7 @@ public static class GuidanceVisitEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? teacherId, Guid? businessId, DateTime? fromDate, DateTime? toDate,
+        Guid? teacherId, Guid? businessId, Guid? academicPeriodId, DateTime? fromDate, DateTime? toDate,
         IQuerySession session)
     {
         IQueryable<GuidanceVisit> queryable = session.Query<GuidanceVisit>();
@@ -94,6 +94,8 @@ public static class GuidanceVisitEndpoints
             queryable = queryable.Where(v => v.TeacherId == teacherId.Value);
         if (businessId.HasValue)
             queryable = queryable.Where(v => v.BusinessId == businessId.Value);
+        if (academicPeriodId.HasValue)
+            queryable = queryable.Where(v => v.AcademicPeriodId == academicPeriodId.Value);
         if (fromDate.HasValue)
             queryable = queryable.Where(v => v.VisitDate >= fromDate.Value);
         if (toDate.HasValue)

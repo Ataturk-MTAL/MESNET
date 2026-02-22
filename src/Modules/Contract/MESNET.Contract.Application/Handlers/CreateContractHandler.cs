@@ -4,6 +4,7 @@ using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Application.Errors;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
+using MESNET.Contract.Core.ReadModels;
 using MESNET.Contract.Shared.Events;
 
 namespace MESNET.Contract.Application.Handlers;
@@ -20,6 +21,11 @@ public static class CreateContractHandler
 
     public static async Task<(Guid, ContractCreated)> Handle(CreateContract command, IDocumentSession session)
     {
+        // Dönem aktiflik kontrolü
+        var period = await session.LoadAsync<AcademicPeriodView>(command.AcademicPeriodId);
+        if (period is null) throw new DomainException(ContractErrors.AcademicPeriodNotFound(command.AcademicPeriodId));
+        if (!period.IsActive) throw new DomainException(ContractErrors.AcademicPeriodClosed(command.AcademicPeriodId));
+
         // Öğrencinin devam eden sözleşmesi var mı kontrol et
         IQueryable<InternshipContract> queryable = session.Query<InternshipContract>();
         var existing = await queryable
@@ -36,6 +42,7 @@ public static class CreateContractHandler
             command.StudentId,
             command.BusinessId,
             command.InstitutionId,
+            command.AcademicPeriodId,
             command.TeacherId,
             command.StartDate,
             DateTime.UtcNow);

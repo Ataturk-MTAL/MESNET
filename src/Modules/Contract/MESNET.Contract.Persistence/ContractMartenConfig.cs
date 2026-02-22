@@ -1,6 +1,7 @@
 using Marten;
 using Marten.Events.Projections;
 using MESNET.Contract.Core.Aggregates;
+using MESNET.Contract.Core.ReadModels;
 
 namespace MESNET.Contract.Persistence;
 
@@ -16,5 +17,8 @@ public class ContractMartenConfig : IConfigureMarten
         options.Schema.For<InternshipContract>().Index(x => x.StudentId);
         options.Schema.For<InternshipContract>().Index(x => x.BusinessId);
         options.Schema.For<InternshipContract>().Index(x => x.InstitutionId);
+
+        options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("contract");
+        options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
     }
 }

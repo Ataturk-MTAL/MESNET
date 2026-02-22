@@ -83,7 +83,7 @@ export const EVALUATION_RESULTS = [
 ] as const
 
 export const coordinationApi = {
-  listVisits: (params?: { teacherId?: string; businessId?: string; fromDate?: string; toDate?: string }) =>
+  listVisits: (params?: { teacherId?: string; businessId?: string; academicPeriodId?: string; fromDate?: string; toDate?: string }) =>
     api.get<GuidanceVisitDto[]>('/coordination/guidance-visits', { params }),
 
   getVisit: (visitId: string) =>
@@ -107,10 +107,10 @@ export const coordinationApi = {
   createEvaluation: (data: CreateEvaluationRequest) =>
     api.post<{ evaluationId: string }>('/coordination/business-evaluations', data),
 
-  listSkillExams: (params?: { studentId?: string; businessId?: string; academicYear?: number }) =>
+  listSkillExams: (params?: { studentId?: string; businessId?: string; academicPeriodId?: string; academicYear?: number }) =>
     api.get<SkillExamDto[]>('/coordination/skill-exams', { params }),
 
-  listActivityReports: (params?: { studentId?: string; businessId?: string; year?: number; month?: number }) =>
+  listActivityReports: (params?: { studentId?: string; businessId?: string; academicPeriodId?: string; year?: number; month?: number }) =>
     api.get<MonthlyActivityReportDto[]>('/coordination/activity-reports', { params }),
 
   submitActivityReport: (reportId: string) =>
