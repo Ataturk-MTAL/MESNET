@@ -7,10 +7,7 @@ public static class ServiceRegistration
 {
     public static IServiceCollection AddInternshipPersistence(this IServiceCollection services)
     {
-        services.ConfigureMarten(opts =>
-        {
-            opts.ConfigureInternshipSchema();
-        });
+        services.AddSingleton<IConfigureMarten, InternshipMartenConfig>();
         return services;
     }
 }

@@ -7,10 +7,7 @@ public static class ServiceRegistration
 {
     public static IServiceCollection AddAttendancePersistence(this IServiceCollection services)
     {
-        services.ConfigureMarten(opts =>
-        {
-            opts.ConfigureAttendanceSchema();
-        });
+        services.AddSingleton<IConfigureMarten, AttendanceMartenConfig>();
         return services;
     }
 }

@@ -7,10 +7,7 @@ public static class ServiceRegistration
 {
     public static IServiceCollection AddSecurityPersistence(this IServiceCollection services)
     {
-        services.ConfigureMarten(opts =>
-        {
-            opts.ConfigureSecuritySchema();
-        });
+        services.AddSingleton<IConfigureMarten, SecurityMartenConfig>();
         return services;
     }
 }

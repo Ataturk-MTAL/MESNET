@@ -7,10 +7,7 @@ public static class ServiceRegistration
 {
     public static IServiceCollection AddPaymentPersistence(this IServiceCollection services)
     {
-        services.ConfigureMarten(opts =>
-        {
-            opts.ConfigurePaymentSchema();
-        });
+        services.AddSingleton<IConfigureMarten, PaymentMartenConfig>();
         return services;
     }
 }

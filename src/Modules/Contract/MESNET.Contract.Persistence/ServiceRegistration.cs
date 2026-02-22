@@ -7,10 +7,7 @@ public static class ServiceRegistration
 {
     public static IServiceCollection AddContractPersistence(this IServiceCollection services)
     {
-        services.ConfigureMarten(opts =>
-        {
-            opts.ConfigureContractSchema();
-        });
+        services.AddSingleton<IConfigureMarten, ContractMartenConfig>();
         return services;
     }
 }

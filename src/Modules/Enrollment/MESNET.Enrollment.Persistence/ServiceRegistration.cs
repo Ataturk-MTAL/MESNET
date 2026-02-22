@@ -7,10 +7,7 @@ public static class ServiceRegistration
 {
     public static IServiceCollection AddEnrollmentPersistence(this IServiceCollection services)
     {
-        services.ConfigureMarten(opts =>
-        {
-            opts.ConfigureEnrollmentSchema();
-        });
+        services.AddSingleton<IConfigureMarten, EnrollmentMartenConfig>();
         return services;
     }
 }
