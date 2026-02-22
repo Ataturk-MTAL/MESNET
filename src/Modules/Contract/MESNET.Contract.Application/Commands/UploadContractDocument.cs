@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Http;
 namespace MESNET.Contract.Application.Commands;
 
 /// <summary>
-/// Islak imzalı sözleşme belgesi yükle.
+/// Sözleşmeye evrak yükle. DocumentType: SignedContract | TerminationLetter | Other
 /// </summary>
-public sealed record UploadSignedContractDocument(
+public sealed record UploadContractDocument(
     Guid ContractId,
     IFormFile DocumentFile,
+    string DocumentType,
+    string? Description,
     string UploadedBy);

@@ -27,8 +27,11 @@ public static class ContractEndpoints
         group.MapPost("/{contractId:guid}/complete", PostComplete).RequireAuthorization(Permissions.Internship.Manage);
         group.MapGet("/{contractId:guid}", Get).RequireAuthorization(Permissions.Internship.Contract);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Internship.Contract);
-        group.MapPost("/{contractId:guid}/upload-signed", PostUploadSigned).RequireAuthorization(Permissions.Document.Upload);
-        group.MapPost("/{contractId:guid}/upload-termination", PostUploadTermination).RequireAuthorization(Permissions.Document.Upload);
+
+        // Evrak yükleme — tek genel endpoint, DocumentType form alanıyla nitelik belirtilir
+        group.MapPost("/{contractId:guid}/documents", PostUploadDocument)
+            .RequireAuthorization(Permissions.Document.Upload)
+            .DisableAntiforgery();
     }
 
     private static async Task<IResult> Post(
@@ -141,80 +144,50 @@ public static class ContractEndpoints
     }
 
     // ────────────────────────────────────────────────────────────────────────────────
-    // POST /api/contracts/{contractId}/upload-signed — Islak imzalı sözleşme yükle
+    // POST /api/contracts/{contractId}/documents — Sözleşmeye evrak yükle
+    // Form fields: DocumentFile (IFormFile), DocumentType (string), Description (string?), UploadedBy (string)
     // ────────────────────────────────────────────────────────────────────────────────
-    private static async Task<IResult> PostUploadSigned(
+    private static async Task<IResult> PostUploadDocument(
         Guid contractId, HttpRequest request, IMessageBus bus)
     {
         if (!request.HasFormContentType)
-        {
             return Results.BadRequest(ResponseBuilder.Fail()
                 .AddMessage("Multipart form-data bekleniyor.")
                 .Build());
-        }
 
         var form = await request.ReadFormAsync();
 
         var uploadedBy = form["UploadedBy"].ToString();
         if (string.IsNullOrWhiteSpace(uploadedBy))
-        {
             return Results.BadRequest(ResponseBuilder.Fail()
                 .AddMessage("UploadedBy geçersiz veya eksik.")
                 .Build());
-        }
+
+        var documentType = form["DocumentType"].ToString();
+        if (string.IsNullOrWhiteSpace(documentType))
+            return Results.BadRequest(ResponseBuilder.Fail()
+                .AddMessage("DocumentType geçersiz veya eksik. Geçerli değerler: SignedContract, TerminationLetter, Other")
+                .Build());
 
         var documentFile = form.Files.GetFile("DocumentFile");
         if (documentFile is null)
-        {
             return Results.BadRequest(ResponseBuilder.Fail()
                 .AddMessage("DocumentFile eksik.")
                 .Build());
-        }
 
-        var command = new UploadSignedContractDocument(contractId, documentFile, uploadedBy);
+        var description = form["Description"].ToString();
+
+        var command = new UploadContractDocument(
+            contractId,
+            documentFile,
+            documentType,
+            string.IsNullOrWhiteSpace(description) ? null : description,
+            uploadedBy);
+
         await bus.InvokeAsync(command);
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddMessage("Islak imzalı sözleşme yüklendi.")
-            .Build());
-    }
-
-    // ────────────────────────────────────────────────────────────────────────────────
-    // POST /api/contracts/{contractId}/upload-termination — Islak imzalı fesih belgesi yükle
-    // ────────────────────────────────────────────────────────────────────────────────
-    private static async Task<IResult> PostUploadTermination(
-        Guid contractId, HttpRequest request, IMessageBus bus)
-    {
-        if (!request.HasFormContentType)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage("Multipart form-data bekleniyor.")
-                .Build());
-        }
-
-        var form = await request.ReadFormAsync();
-
-        var uploadedBy = form["UploadedBy"].ToString();
-        if (string.IsNullOrWhiteSpace(uploadedBy))
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage("UploadedBy geçersiz veya eksik.")
-                .Build());
-        }
-
-        var documentFile = form.Files.GetFile("DocumentFile");
-        if (documentFile is null)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail()
-                .AddMessage("DocumentFile eksik.")
-                .Build());
-        }
-
-        var command = new UploadTerminationDocument(contractId, documentFile, uploadedBy);
-        await bus.InvokeAsync(command);
-
-        return Results.Ok(ResponseBuilder.Success()
-            .AddMessage("Islak imzalı fesih belgesi yüklendi.")
+            .AddMessage("Evrak yüklendi.")
             .Build());
     }
 }

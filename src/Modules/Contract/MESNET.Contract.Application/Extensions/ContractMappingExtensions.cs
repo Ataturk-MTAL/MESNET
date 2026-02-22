@@ -22,10 +22,20 @@ public static class ContractMappingExtensions
         contract.TerminationReason,
         contract.TerminationReasonType?.Name,
         contract.TerminationReasonType?.Slug,
+        contract.Documents.Select(d => d.ToDto()).ToList(),
         contract.CreatedAt);
 
     public static SignatureStatusDto ToDto(this SignatureStatus status) => new(
         status.IsSigned,
         status.SignedBy,
         status.SignedAt);
+
+    public static ContractDocumentDto ToDto(this ContractDocument doc) => new(
+        doc.DocumentId,
+        doc.DocumentType,
+        doc.DocumentTypeSlug,
+        doc.Description,
+        doc.ObjectPath,
+        doc.UploadedBy,
+        doc.UploadedAt);
 }

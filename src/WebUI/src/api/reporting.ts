@@ -1,23 +1,85 @@
 import api from 'boot/axios'
 
-export interface ReportRequestDto {
-  type: string
-  institutionId: string
-  filters?: Record<string, string>
+export interface GeneratedDocumentSummaryDto {
+  id: string
+  formType: string
+  formTypeSlug: string
+  status: string
+  statusSlug: string
+  studentId: string | null
+  businessId: string | null
+  institutionId: string | null
+  teacherId: string | null
+  generatedByName: string
+  generatedAt: string
+  printedAt: string | null
+  printedByName: string | null
+  signedAndReturnedAt: string | null
+  returnedByName: string | null
+  archivedAt: string | null
+  archivedByName: string | null
+  academicYear: string | null
+  description: string | null
+}
+
+export interface PdfDownloadResult {
+  url?: string
 }
 
 export const reportingApi = {
-  generateReport: (data: ReportRequestDto) =>
-    api.post('/reporting/generate', data, { responseType: 'blob' }),
+  listDocuments: (params?: {
+    status?: string
+    formType?: string
+    teacherId?: string
+    institutionId?: string
+  }) => api.get<GeneratedDocumentSummaryDto[]>('/reports/documents', { params }),
 
-  getInternshipReport: (institutionId: string, params?: { year?: number; branchCode?: string }) =>
-    api.get('/reporting/internship', { params: { institutionId, ...params }, responseType: 'blob' }),
+  getDocument: (documentId: string) =>
+    api.get<GeneratedDocumentSummaryDto>(`/reports/documents/${documentId}`),
 
-  getAttendanceReport: (institutionId: string, params?: { studentId?: string; month?: string }) =>
-    api.get('/reporting/attendance', { params: { institutionId, ...params }, responseType: 'blob' }),
+  getDocumentsByStudent: (studentId: string) =>
+    api.get<GeneratedDocumentSummaryDto[]>(`/reports/documents/by-student/${studentId}`),
 
-  getPaymentReport: (institutionId: string, params?: { month?: string }) =>
-    api.get('/reporting/payment', { params: { institutionId, ...params }, responseType: 'blob' }),
+  getDocumentPdfUrl: (documentId: string) =>
+    api.get<PdfDownloadResult>(`/reports/documents/${documentId}/pdf`),
+
+  getDocumentPdfBlob: (documentId: string) =>
+    api.get(`/reports/documents/${documentId}/pdf`, { responseType: 'blob' }),
+
+  markAsPrinted: (documentId: string) =>
+    api.post(`/reports/documents/${documentId}/print`),
+
+  markAsSignedAndReturned: (documentId: string) =>
+    api.post(`/reports/documents/${documentId}/sign-and-return`),
+
+  markAsArchived: (documentId: string) =>
+    api.post(`/reports/documents/${documentId}/archive`),
+
+  deleteDocument: (documentId: string) =>
+    api.delete(`/reports/documents/${documentId}`),
+}
+
+export const MEB_FORM_LABELS: Record<string, string> = {
+  InternshipContract: 'Staj Sözleşmesi',
+  MonthlyActivityReport: 'Aylık Eğitim Faaliyeti',
+  GuidanceVisit: 'Rehberlik Ziyareti',
+  AttendanceSheet: 'Devamsızlık Çizelgesi',
+  SkillExam: 'Beceri Sınavı Not Fişi',
+  BusinessEvaluation: 'İşletme Değerlendirme',
+}
+
+export const DOCUMENT_STATUS_LABELS: Record<string, string> = {
+  Generated: 'Oluşturuldu',
+  Printed: 'Yazdırıldı',
+  SignedAndReturned: 'İmzalanıp Teslim Edildi',
+  Archived: 'Arşivlendi',
+}
+
+export const DOCUMENT_STATUS_COLORS: Record<string, string> = {
+  Generated: 'blue',
+  Printed: 'orange',
+  SignedAndReturned: 'green',
+  Archived: 'grey',
 }
 
 /** Blob'u tarayıcıda indirme yardımcı fonksiyonu */

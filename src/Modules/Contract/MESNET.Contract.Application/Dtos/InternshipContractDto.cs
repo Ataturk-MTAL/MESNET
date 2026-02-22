@@ -16,6 +16,16 @@ public sealed record InternshipContractDto(
     string? TerminationReason,
     string? TerminationReasonType,
     string? TerminationReasonTypeSlug,
+    IReadOnlyList<ContractDocumentDto> Documents,
     DateTime CreatedAt);
 
 public sealed record SignatureStatusDto(bool IsSigned, string? SignedBy, DateTime? SignedAt);
+
+public sealed record ContractDocumentDto(
+    Guid DocumentId,
+    string DocumentType,
+    string DocumentTypeSlug,
+    string? Description,
+    string ObjectPath,
+    string UploadedBy,
+    DateTime UploadedAt);

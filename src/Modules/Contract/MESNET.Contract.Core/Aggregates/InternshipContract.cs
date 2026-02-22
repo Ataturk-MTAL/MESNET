@@ -19,15 +19,14 @@ public sealed record InternshipContract(
     SignatureStatus ParentSignature,
     string? TerminationReason,
     TerminationReason? TerminationReasonType,
-    string? SignedDocumentUrl,
-    string? TerminationDocumentUrl,
+    IReadOnlyList<ContractDocument> Documents,
     DateTime CreatedAt)
 {
     public static InternshipContract Create(ContractCreated e) => new(
         e.ContractId, e.StudentId, e.BusinessId, e.InstitutionId, e.TeacherId,
         ContractStatus.Draft, e.StartDate, null,
         SignatureStatus.Unsigned, SignatureStatus.Unsigned, SignatureStatus.Unsigned, SignatureStatus.Unsigned,
-        null, null, null, null, e.CreatedAt);
+        null, null, [], e.CreatedAt);
 
     public InternshipContract Apply(ContractSubmittedForSignature _)
         => this with { Status = ContractStatus.AwaitingSignature };
@@ -65,11 +64,30 @@ public sealed record InternshipContract(
     public InternshipContract Apply(ContractCompleted e)
         => this with { Status = ContractStatus.Completed, EndDate = e.EndDate };
 
+    public InternshipContract Apply(ContractDocumentUploaded e)
+    {
+        var doc = new ContractDocument(
+            e.DocumentId, e.DocumentType, e.DocumentTypeSlug,
+            e.Description, e.ObjectPath, e.UploadedBy, e.UploadedAt);
+        return this with { Documents = [.. Documents, doc] };
+    }
+
+    // Eski event'ler için geriye dönük uyumluluk (event store'da kayıtlı olabilir)
     public InternshipContract Apply(SignedContractDocumentUploaded e)
-        => this with { SignedDocumentUrl = e.ObjectPath };
+    {
+        var doc = new ContractDocument(
+            Guid.NewGuid(), "SignedContract", "Islak İmzalı Sözleşme",
+            null, e.ObjectPath, e.UploadedBy, e.UploadedAt);
+        return this with { Documents = [.. Documents, doc] };
+    }
 
     public InternshipContract Apply(TerminationDocumentUploaded e)
-        => this with { TerminationDocumentUrl = e.ObjectPath };
+    {
+        var doc = new ContractDocument(
+            Guid.NewGuid(), "TerminationLetter", "Fesih Belgesi",
+            null, e.ObjectPath, e.UploadedBy, e.UploadedAt);
+        return this with { Documents = [.. Documents, doc] };
+    }
 
     public bool AllSignaturesComplete
         => InstitutionSignature.IsSigned && BusinessSignature.IsSigned
