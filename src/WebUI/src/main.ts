@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { Quasar, Notify, Loading, Dialog } from 'quasar'
+import quasarTR from 'quasar/lang/tr'
 import '@quasar/extras/material-icons/material-icons.css'
 import 'quasar/src/css/index.sass'
 
@@ -16,6 +17,7 @@ const app = createApp(App)
 app.use(pinia)
 app.use(router)
 app.use(Quasar, {
+  lang: quasarTR,
   plugins: { Notify, Loading, Dialog },
   config: {
     notify: { position: 'top-right' },

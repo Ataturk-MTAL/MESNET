@@ -513,3 +513,121 @@ MESNET.{Module}.Persistence/
 MESNET.{Module}.Shared/
   └── Events/            # Public domain events (diğer modüllerin consume edeceği)
 ```
+
+---
+
+## Dönemsellik (Academic Period) Mimarisi
+
+### Temel Kavram
+
+MESNET'te tüm staj süreçleri **eğitim-öğretim dönemi** bazlı çalışır. Dönem, bir eğitim-öğretim yılını kapsar (örn. 2025-2026). Her sene başında yeni dönem oluşturulur ve yeni öğrenci listeleri bu dönem altında kayıt edilir.
+
+**Dönem = süreç tahtası.** Dönem açık olduğu sürece her türlü işlem (kayıt, yerleştirme, sözleşme, devamsızlık, maaş vb.) yapılabilir. Dönem kapatıldığında geçmiş dönem verileri salt okunur hale gelir.
+
+### AcademicPeriod Entity
+
+**Sahip modül:** Institution (kurumun takvim sorumluluğu)
+
+```csharp
+public sealed class AcademicPeriod
+{
+    public Guid Id { get; init; }
+    public Guid InstitutionId { get; init; }
+    public string Name { get; init; }           // "2025-2026"
+    public int StartYear { get; init; }          // 2025
+    public int EndYear { get; init; }            // 2026
+    public DateOnly StartDate { get; init; }     // 2025-09-15
+    public DateOnly EndDate { get; init; }       // 2026-06-15
+    public AcademicPeriodStatus Status { get; set; } // Active / Closed
+}
+```
+
+**Kurallar:**
+
+- Bir kurumda aynı anda **yalnızca bir** aktif dönem olabilir
+- Yeni dönem açıldığında önceki dönem otomatik **kapatılır**
+- Kapatılmış döneme yazma işlemi yapılamaz (backend gate)
+
+### Dönem Kapsamındaki Modüller
+
+| Modül | Dönem İlişkisi | Açıklama |
+|-------|---------------|----------|
+| **Institution** | Dönem sahibi | `AcademicPeriod` entity'sini barındırır, `AcademicPeriodCreated` / `AcademicPeriodClosed` event'lerini publish eder |
+| **Enrollment** | `AcademicPeriodId` alanı | Öğrenci kayıtları ve yerleştirmeler dönem bazlı. Her dönem yeni öğrenci listesi oluşturulur |
+| **Contract** | `AcademicPeriodId` alanı | Sözleşmeler dönem bazlı. Geçmiş dönem sözleşmesi düzenlenemez |
+| **Attendance** | `AcademicPeriodId` alanı | Devamsızlık kayıtları dönem bazlı |
+| **Payment** | `AcademicPeriodId` alanı | Maaş/dekont süreçleri dönem bazlı |
+| **Coordination** | `AcademicPeriodId` alanı | Ziyaret, sınav, rapor dönem bazlı (mevcut `AcademicYear` + `AcademicSemester` alanları korunur, ek olarak `AcademicPeriodId` eklenir) |
+| **Internship** | `AcademicPeriodId` alanı | Saga state dönem bazlı |
+| **Reporting** | Dönem filtreli sorgular | Denormalize view'larda `AcademicPeriodId` alanı — rapor üretiminde dönem filtresi zorunlu |
+| **Business** | ❌ Dönemsellik yok | İşletmeler dönemden bağımsızdır. Ancak işletmenin bir dönemde öğrenci alıp almadığı Enrollment üzerinden izlenir |
+
+### İşletme ve Dönem İlişkisi
+
+İşletmeler dönemden bağımsızdır — bir işletme birden fazla dönemde aktif olabilir veya bir dönemde hiç öğrenci almayabilir. Dönemsel "snapshot" bilgisi doğal olarak oluşur:
+
+- **Enrollment:** Hangi dönemde hangi öğrenci hangi işletmeye yerleştirildi → `InternshipPlacement.AcademicPeriodId`
+- **Contract:** Hangi dönemde hangi işletmeyle sözleşme yapıldı → `InternshipContract.AcademicPeriodId`
+- **Business kapanma/pasif olma:** Business modülündeki durum geçişleri (event sourced) zaten tarihli — geçmiş döneme ait kaydı sorgulamak mümkün
+
+Bu sayede "2024-2025 döneminde aktif olan işletmeler" gibi sorgular Enrollment/Contract verileri üzerinden yapılabilir; Business modülüne dönem alanı eklemeye gerek yoktur.
+
+### Geçmiş Dönem Yazma Koruması (Backend Gate)
+
+Tüm yazma endpoint'leri (command handler'lar) dönem durumunu kontrol eder:
+
+```text
+Yazma isteği geldi → AcademicPeriodId kontrol et
+  → Dönem Active ise → işlemi yap
+  → Dönem Closed ise → DomainException("Bu dönem kapatılmıştır, yazma işlemi yapılamaz")
+```
+
+**Uygulama yöntemi:**
+
+- Her modülün command handler'ı dönem durumunu kendi `AcademicPeriodView` projection'ından okur
+- `AcademicPeriodView`: Institution modülünün `AcademicPeriodCreated` / `AcademicPeriodClosed` event'lerini dinleyen cross-module read model (her modülün kendi schema'sında)
+- Bu pattern mevcut modüler monolit kurallarıyla uyumludur: event dinle → kendi projection'ını güncelle → kendi handler'ında oku
+
+### Frontend — Global Dönem Seçici
+
+**Pinia store:** `useAcademicPeriodStore`
+
+- `activePeriod` — Seçili aktif dönem bilgisi
+- `periods` — Kurumun tüm dönemleri (aktif + kapalı)
+- Uygulama açılışında otomatik yüklenir
+
+**Sol menü (MainLayout):** Drawer üst kısmında dönem seçici (q-select)
+
+- Aktif dönem varsayılan seçili gelir
+- Kapalı dönemler seçilebilir (salt okunur modda gezinme için)
+- Kapalı dönem seçildiğinde tüm yazma butonları devre dışı kalır
+
+**API istekleri:** Tüm liste/sorgu endpoint'lerine `academicPeriodId` query parametresi eklenir
+
+- Frontend her istekte global store'daki aktif dönem ID'sini gönderir
+- Backend dönem filtresi olmayan sorguya izin vermez (zorunlu parametre)
+
+### Event Flow
+
+```text
+Institution → AcademicPeriodCreated event
+  → Enrollment dinler → kendi AcademicPeriodView projection'ını oluşturur
+  → Contract dinler → kendi AcademicPeriodView projection'ını oluşturur
+  → Attendance dinler → kendi AcademicPeriodView projection'ını oluşturur
+  → Payment dinler → kendi AcademicPeriodView projection'ını oluşturur
+  → Coordination dinler → kendi AcademicPeriodView projection'ını oluşturur
+  → Reporting dinler → denormalize view'lara dönem bilgisi eklenir
+
+Institution → AcademicPeriodClosed event
+  → Tüm modüller dinler → AcademicPeriodView.Status = Closed
+  → Bu dönemle ilgili yazma işlemleri artık reddedilir
+```
+
+### Yeni Dönem Başlangıç Süreci
+
+1. Kurum yöneticisi yeni dönem oluşturur (`POST /api/institutions/{id}/academic-periods`)
+2. Önceki dönem otomatik kapatılır → `AcademicPeriodClosed` event
+3. Yeni dönem aktif olur → `AcademicPeriodCreated` event
+4. Enrollment modülünde yeni dönem için boş öğrenci listesi hazır
+5. Önceki dönemden devam eden öğrenciler varsa → transfer/taşıma işlemi (opsiyonel)
+6. Yeni yerleştirmeler, sözleşmeler yeni dönem altında oluşturulur
