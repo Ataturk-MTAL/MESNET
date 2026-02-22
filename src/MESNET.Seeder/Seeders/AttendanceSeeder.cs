@@ -115,7 +115,7 @@ public static class AttendanceSeeder
                 {
                     attendanceId = id,
                     newAbsenceType = "Excused",
-                    correctionReason = "Aile izni belgesi sunuldu",
+                    reason = "Aile izni belgesi sunuldu",
                     correctedBy = "Ayşe Çelik"
                 });
                 Console.WriteLine("  ✓ Devamsızlık 5: Mazeretsiz → Mazeretli (düzeltildi)");

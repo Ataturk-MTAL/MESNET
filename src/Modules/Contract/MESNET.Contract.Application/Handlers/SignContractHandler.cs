@@ -33,6 +33,10 @@ public static class SignContractHandler
                 ? throw new DomainException("CONTRACT_ALREADY_SIGNED", "Öğrenci zaten imzalamış.")
                 : (object)new ContractSignedByStudent(contract.Id, command.SignedBy, DateTime.UtcNow),
 
+            nameof(SignerParty.Parent) => contract.ParentSignature.IsSigned
+                ? throw new DomainException("CONTRACT_ALREADY_SIGNED", "Veli zaten imzalamış.")
+                : (object)new ContractSignedByParent(contract.Id, command.SignedBy, DateTime.UtcNow),
+
             _ => throw new DomainException("CONTRACT_UNKNOWN_SIGNER", $"Bilinmeyen imzalayan taraf: {command.Party}.")
         };
     }

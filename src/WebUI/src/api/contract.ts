@@ -45,7 +45,7 @@ export interface CreateContractRequest {
 }
 
 export interface SignContractRequest {
-  party: 'Institution' | 'Business' | 'Student'
+  party: 'Institution' | 'Business' | 'Student' | 'Parent'
   signedBy: string
 }
 

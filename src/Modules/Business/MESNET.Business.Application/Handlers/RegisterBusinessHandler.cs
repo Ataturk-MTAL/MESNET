@@ -37,7 +37,8 @@ public static class RegisterBusinessHandler
         session.Store(business);
         await session.SaveChangesAsync();
 
-        await bus.PublishAsync(new BusinessRegistered(business.Id, business.Name, business.Location, business.Source));
+        await bus.PublishAsync(new BusinessRegistered(business.Id, business.Name, business.Location, business.Source, business.Capacity.TotalSlots));
+        await bus.PublishAsync(new BusinessCapacityChanged(business.Id, business.Capacity.TotalSlots, business.Capacity.OccupiedSlots));
 
         return business.ToDto();
     }

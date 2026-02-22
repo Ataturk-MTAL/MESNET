@@ -16,10 +16,15 @@ public static class ServiceRegistration
     /// </summary>
     public static IServiceCollection AddAttendanceApplication(this IServiceCollection services)
     {
-        // Marten projections
+        // Marten projections + snapshot schema
         services.ConfigureMarten(opts =>
         {
             opts.Projections.Snapshot<AttendanceRecord>(SnapshotLifecycle.Inline);
+            opts.Schema.For<AttendanceRecord>().DatabaseSchemaName("attendance");
+            opts.Schema.For<AttendanceRecord>().Index(x => x.StudentId);
+            opts.Schema.For<AttendanceRecord>().Index(x => x.BusinessId);
+            opts.Schema.For<AttendanceRecord>().Index(x => x.InstitutionId);
+            opts.Schema.For<AttendanceRecord>().Index(x => x.Date);
             opts.Projections.Add<AttendanceViewProjection>(ProjectionLifecycle.Async);
         });
 

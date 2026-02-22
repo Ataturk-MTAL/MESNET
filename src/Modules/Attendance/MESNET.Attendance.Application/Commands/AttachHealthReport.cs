@@ -1,3 +1,5 @@
+using Marten.Schema;
+
 namespace MESNET.Attendance.Application.Commands;
 
-public sealed record AttachHealthReport(Guid AttendanceId, string ReportUrl);
+public sealed record AttachHealthReport([property: Identity] Guid AttendanceId, string ReportUrl);

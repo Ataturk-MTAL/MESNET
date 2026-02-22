@@ -12,6 +12,7 @@ public static class BusinessRegisteredConsumer
         {
             Id = @event.BusinessId,
             BusinessName = @event.Name,
+            TotalSlots = @event.TotalSlots,
             Location = @event.Location,
             LastUpdated = DateTime.UtcNow
         };

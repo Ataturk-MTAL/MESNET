@@ -8,13 +8,6 @@ public class AttendanceMartenConfig : IConfigureMarten
 {
     public void Configure(IServiceProvider services, StoreOptions options)
     {
-        // Domain entities schema
-        options.Schema.For<AttendanceRecord>().DatabaseSchemaName("attendance");
-        options.Schema.For<AttendanceRecord>().Index(x => x.StudentId);
-        options.Schema.For<AttendanceRecord>().Index(x => x.BusinessId);
-        options.Schema.For<AttendanceRecord>().Index(x => x.InstitutionId);
-        options.Schema.For<AttendanceRecord>().Index(x => x.Date);
-
         options.Schema.For<WorkCalendar>().DatabaseSchemaName("attendance");
         options.Schema.For<WorkCalendar>().Index(x => x.InstitutionId);
 

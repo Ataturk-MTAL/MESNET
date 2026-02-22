@@ -86,5 +86,8 @@ public static class BusinessSeeder
             ctx.Set("Business4", d4.Value.GetProperty("id").GetGuid());
             Console.WriteLine($"  ✓ \"Öz-Er Muhasebe\" kaydedildi (Active)");
         }
+
+        // Enrollment modülünün BusinessRegistered event'ini işlemesi için bekle
+        await Task.Delay(TimeSpan.FromSeconds(3));
     }
 }

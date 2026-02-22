@@ -7,4 +7,5 @@ public sealed record BusinessRegistered(
     Guid BusinessId,
     string Name,
     Location? Location,
-    RegistrationSource Source);
+    RegistrationSource Source,
+    int TotalSlots = 0);
