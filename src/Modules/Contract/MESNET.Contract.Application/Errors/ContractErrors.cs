@@ -12,4 +12,7 @@ public static class ContractErrors
 
     public static Error OperationFailed(string operation, string message) =>
         new($"CONTRACT_{operation.ToUpperInvariant()}_FAILED", message);
+
+    public static Error ActiveContractExists(Guid studentId) =>
+        new("CONTRACT_ALREADY_ACTIVE", $"Öğrencinin zaten devam eden bir sözleşmesi var. Öğrenci: {studentId}");
 }
