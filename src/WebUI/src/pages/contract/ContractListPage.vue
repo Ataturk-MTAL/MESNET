@@ -143,9 +143,23 @@
               </q-card-section>
             </q-card>
 
-            <!-- Fesih bilgisi -->
+            <!-- Fesih talebi bekliyor banner -->
             <q-banner
-              v-if="selected.terminationReason"
+              v-if="selected.status === 'TerminationRequested'"
+              class="q-mb-md text-white bg-deep-orange-9 rounded-borders"
+              dense
+            >
+              <template #avatar><q-icon name="pending_actions" /></template>
+              <div class="text-caption text-weight-bold">FESİH TALEBİ BEKLEMEDE</div>
+              <div class="text-caption q-mt-xs">
+                <span v-if="selected.terminationReasonTypeSlug">{{ selected.terminationReasonTypeSlug }}</span>
+                <span v-if="selected.terminationReason"> — {{ selected.terminationReason }}</span>
+              </div>
+            </q-banner>
+
+            <!-- Feshedildi bilgisi -->
+            <q-banner
+              v-if="selected.terminationReason && selected.status === 'Terminated'"
               class="q-mb-md text-white bg-deep-orange-7 rounded-borders"
               dense
             >
@@ -225,6 +239,41 @@
                   unelevated
                   :loading="saving"
                   @click="doComplete"
+                />
+              </PermissionGuard>
+
+              <!-- Fesih talebi onay/red — Müdür / Müdür Yardımcısı -->
+              <PermissionGuard :permission="Permissions.Internship.Approve">
+                <template v-if="selected.status === 'TerminationRequested'">
+                  <q-btn
+                    color="negative"
+                    icon="gavel"
+                    label="Feshi Onayla"
+                    unelevated
+                    :loading="saving"
+                    @click="terminateDialog = true"
+                  />
+                  <q-btn
+                    color="teal"
+                    icon="thumb_down"
+                    label="Talebi Reddet"
+                    unelevated
+                    :loading="saving"
+                    @click="() => { rejectTerminateForm.rejectedBy = authStore.user?.fullName ?? ''; rejectTerminateDialog = true }"
+                  />
+                </template>
+              </PermissionGuard>
+
+              <!-- İşletme fesih talebi — CompanyManager -->
+              <PermissionGuard :permission="Permissions.Company.Student">
+                <q-btn
+                  v-if="selected.status === 'Active' || selected.status === 'Suspended'"
+                  color="deep-orange"
+                  icon="report"
+                  label="Fesih Talebi Oluştur"
+                  outline
+                  :loading="saving"
+                  @click="() => { requestTerminateForm.reason = ''; requestTerminateForm.reasonType = 'BusinessRequest'; requestTerminateForm.requestedBy = authStore.user?.fullName ?? ''; requestTerminateDialog = true }"
                 />
               </PermissionGuard>
 
@@ -475,6 +524,121 @@
       </q-card>
     </q-dialog>
 
+    <!-- ── İşletme Fesih Talebi Dialog ── -->
+    <q-dialog
+      v-model="requestTerminateDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-deep-orange text-white">
+          <q-icon name="report" class="q-mr-sm" />
+          <q-toolbar-title>Fesih Talebi Oluştur</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-banner class="bg-orange-1 text-orange-10 rounded-borders" dense>
+            <template #avatar><q-icon name="info" /></template>
+            Talebiniz kurum yönetimine iletilecek. Onay/red kararı size bildirilir.
+          </q-banner>
+
+          <q-select
+            v-model="requestTerminateForm.reasonType"
+            :options="terminationReasonOptions"
+            label="Fesih Sebebi *"
+            filled
+            emit-value
+            map-options
+          >
+            <template #prepend><q-icon name="category" /></template>
+          </q-select>
+
+          <q-input
+            v-model="requestTerminateForm.reason"
+            label="Açıklama *"
+            filled
+            type="textarea"
+            :rows="3"
+            autogrow
+          >
+            <template #prepend><q-icon name="notes" /></template>
+          </q-input>
+
+          <q-input v-model="requestTerminateForm.requestedBy" label="Talep Eden *" filled>
+            <template #prepend><q-icon name="person" /></template>
+          </q-input>
+        </q-card-section>
+
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn
+            unelevated
+            color="deep-orange"
+            label="Talebi Gönder"
+            :loading="saving"
+            :disable="!requestTerminateForm.reasonType || !requestTerminateForm.reason || !requestTerminateForm.requestedBy"
+            @click="doRequestTermination"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- ── Fesih Talebini Reddet Dialog ── -->
+    <q-dialog
+      v-model="rejectTerminateDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card :style="$q.screen.gt.xs ? 'width: 440px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-teal text-white">
+          <q-icon name="thumb_down" class="q-mr-sm" />
+          <q-toolbar-title>Fesih Talebini Reddet</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-banner class="bg-teal-1 text-teal-10 rounded-borders" dense>
+            <template #avatar><q-icon name="info" /></template>
+            Red edildiğinde sözleşme aktif duruma geri dönecektir.
+          </q-banner>
+
+          <q-input
+            v-model="rejectTerminateForm.rejectionNote"
+            label="Red Gerekçesi (opsiyonel)"
+            filled
+            type="textarea"
+            :rows="3"
+            autogrow
+          >
+            <template #prepend><q-icon name="notes" /></template>
+          </q-input>
+
+          <q-input v-model="rejectTerminateForm.rejectedBy" label="Reddeden *" filled>
+            <template #prepend><q-icon name="person" /></template>
+          </q-input>
+        </q-card-section>
+
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn
+            unelevated
+            color="teal"
+            label="Talebi Reddet"
+            :loading="saving"
+            :disable="!rejectTerminateForm.rejectedBy"
+            @click="doRejectTermination"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- ── Evrak Yükle Dialog ── -->
     <q-dialog
       v-model="uploadDialog"
@@ -651,6 +815,7 @@ const statusOptions = [
   { label: 'İmza Bekliyor', value: 'AwaitingSignature' },
   { label: 'Aktif', value: 'Active' },
   { label: 'Askıda', value: 'Suspended' },
+  { label: 'Fesih Talep Edildi', value: 'TerminationRequested' },
   { label: 'Feshedildi', value: 'Terminated' },
   { label: 'Tamamlandı', value: 'Completed' },
 ]
@@ -680,6 +845,19 @@ const signForm = reactive<{ party: 'Institution' | 'Business' | 'Student'; signe
 const terminateForm = reactive({
   reasonType: '',
   reason: '',
+})
+
+const requestTerminateDialog = ref(false)
+const requestTerminateForm = reactive({
+  reasonType: '',
+  reason: '',
+  requestedBy: '',
+})
+
+const rejectTerminateDialog = ref(false)
+const rejectTerminateForm = reactive({
+  rejectedBy: '',
+  rejectionNote: '',
 })
 
 const signatureList = computed(() =>
@@ -855,6 +1033,43 @@ async function doTerminate() {
     await refreshSelected()
   } catch {
     notify.error('Fesih sırasında bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function doRequestTermination() {
+  if (!selected.value) return
+  saving.value = true
+  try {
+    await contractApi.requestTermination(selected.value.id, {
+      reason: requestTerminateForm.reason,
+      reasonType: requestTerminateForm.reasonType,
+      requestedBy: requestTerminateForm.requestedBy,
+    })
+    notify.success('Fesih talebi oluşturuldu. Kurum onayı bekleniyor.')
+    requestTerminateDialog.value = false
+    await refreshSelected()
+  } catch {
+    notify.error('Fesih talebi oluşturulurken bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function doRejectTermination() {
+  if (!selected.value) return
+  saving.value = true
+  try {
+    await contractApi.rejectTermination(selected.value.id, {
+      rejectedBy: rejectTerminateForm.rejectedBy,
+      rejectionNote: rejectTerminateForm.rejectionNote || undefined,
+    })
+    notify.success('Fesih talebi reddedildi. Sözleşme aktif duruma döndü.')
+    rejectTerminateDialog.value = false
+    await refreshSelected()
+  } catch {
+    notify.error('İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }

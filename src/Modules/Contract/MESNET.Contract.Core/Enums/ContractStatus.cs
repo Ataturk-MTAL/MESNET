@@ -4,12 +4,13 @@ namespace MESNET.Contract.Core.Enums;
 
 public sealed class ContractStatus : SmartEnum<ContractStatus>
 {
-    public static readonly ContractStatus Draft = new(nameof(Draft), 1, "Taslak");
-    public static readonly ContractStatus AwaitingSignature = new(nameof(AwaitingSignature), 2, "İmza Bekliyor");
-    public static readonly ContractStatus Active = new(nameof(Active), 3, "Aktif");
-    public static readonly ContractStatus Suspended = new(nameof(Suspended), 4, "Askıda");
-    public static readonly ContractStatus Terminated = new(nameof(Terminated), 5, "Feshedilmiş");
-    public static readonly ContractStatus Completed = new(nameof(Completed), 6, "Tamamlanmış");
+    public static readonly ContractStatus Draft                = new(nameof(Draft),                1, "Taslak");
+    public static readonly ContractStatus AwaitingSignature    = new(nameof(AwaitingSignature),    2, "İmza Bekliyor");
+    public static readonly ContractStatus Active               = new(nameof(Active),               3, "Aktif");
+    public static readonly ContractStatus Suspended            = new(nameof(Suspended),            4, "Askıda");
+    public static readonly ContractStatus TerminationRequested = new(nameof(TerminationRequested), 5, "Fesih Talep Edildi");
+    public static readonly ContractStatus Terminated           = new(nameof(Terminated),           6, "Feshedilmiş");
+    public static readonly ContractStatus Completed            = new(nameof(Completed),            7, "Tamamlanmış");
 
     public string Slug { get; }
 
@@ -19,16 +20,16 @@ public sealed class ContractStatus : SmartEnum<ContractStatus>
     }
 
     public bool IsFinal => this == Terminated || this == Completed;
-    public bool IsActive => this == Active;
 
     private static readonly Dictionary<ContractStatus, HashSet<ContractStatus>> Transitions = new()
     {
-        [Draft] = [AwaitingSignature],
-        [AwaitingSignature] = [Active],
-        [Active] = [Suspended, Terminated, Completed],
-        [Suspended] = [Active, Terminated],
-        [Terminated] = [],
-        [Completed] = []
+        [Draft]                = [AwaitingSignature],
+        [AwaitingSignature]    = [Active],
+        [Active]               = [Suspended, Terminated, Completed, TerminationRequested],
+        [Suspended]            = [Active, Terminated, TerminationRequested],
+        [TerminationRequested] = [Terminated, Active],  // Active = talep reddedildi
+        [Terminated]           = [],
+        [Completed]            = []
     };
 
     public bool CanTransitionTo(ContractStatus target)

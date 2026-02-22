@@ -58,6 +58,17 @@ export interface TerminateContractRequest {
   reasonType: string
 }
 
+export interface RequestTerminationRequest {
+  reason: string
+  reasonType: string
+  requestedBy: string
+}
+
+export interface RejectTerminationRequest {
+  rejectedBy: string
+  rejectionNote?: string
+}
+
 export interface UploadContractDocumentRequest {
   documentType: 'SignedContract' | 'TerminationLetter' | 'Other'
   description?: string
@@ -110,6 +121,12 @@ export const contractApi = {
 
   complete: (contractId: string) =>
     api.post(`/contracts/${contractId}/complete`),
+
+  requestTermination: (contractId: string, data: RequestTerminationRequest) =>
+    api.post(`/contracts/${contractId}/request-termination`, data),
+
+  rejectTermination: (contractId: string, data: RejectTerminationRequest) =>
+    api.post(`/contracts/${contractId}/reject-termination`, data),
 
   uploadDocument: (contractId: string, req: UploadContractDocumentRequest) => {
     const formData = new FormData()

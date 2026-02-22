@@ -64,6 +64,22 @@ public sealed record InternshipContract(
     public InternshipContract Apply(ContractCompleted e)
         => this with { Status = ContractStatus.Completed, EndDate = e.EndDate };
 
+    public InternshipContract Apply(ContractTerminationRequested e)
+        => this with
+        {
+            Status = ContractStatus.TerminationRequested,
+            TerminationReason = e.Reason,
+            TerminationReasonType = Enums.TerminationReason.TryFromName(e.ReasonType, true, out var reason) ? reason : null
+        };
+
+    public InternshipContract Apply(ContractTerminationRejected _)
+        => this with
+        {
+            Status = ContractStatus.Active,
+            TerminationReason = null,
+            TerminationReasonType = null
+        };
+
     public InternshipContract Apply(ContractDocumentUploaded e)
     {
         var doc = new ContractDocument(

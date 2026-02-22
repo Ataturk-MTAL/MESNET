@@ -25,6 +25,12 @@ public static class ContractEndpoints
         group.MapPost("/{contractId:guid}/resume", PostResume).RequireAuthorization(Permissions.Internship.Manage);
         group.MapPost("/{contractId:guid}/terminate", PostTerminate).RequireAuthorization(Permissions.Internship.Manage);
         group.MapPost("/{contractId:guid}/complete", PostComplete).RequireAuthorization(Permissions.Internship.Manage);
+
+        // İşletme fesih talebi akışı
+        group.MapPost("/{contractId:guid}/request-termination", PostRequestTermination)
+            .RequireAuthorization(Permissions.Company.Student);
+        group.MapPost("/{contractId:guid}/reject-termination", PostRejectTermination)
+            .RequireAuthorization(Permissions.Internship.Approve);
         group.MapGet("/{contractId:guid}", Get).RequireAuthorization(Permissions.Internship.Contract);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Internship.Contract);
 
@@ -188,6 +194,32 @@ public static class ContractEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Evrak yüklendi.")
+            .Build());
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────────
+    // POST /api/contracts/{contractId}/request-termination — İşletme fesih talebi
+    // ────────────────────────────────────────────────────────────────────────────────
+    private static async Task<IResult> PostRequestTermination(
+        Guid contractId, RequestTermination command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command with { InternshipContractId = contractId });
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Fesih talebi oluşturuldu. Kurum onayı bekleniyor.")
+            .Build());
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────────
+    // POST /api/contracts/{contractId}/reject-termination — Fesih talebini reddet
+    // ────────────────────────────────────────────────────────────────────────────────
+    private static async Task<IResult> PostRejectTermination(
+        Guid contractId, RejectTermination command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command with { InternshipContractId = contractId });
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Fesih talebi reddedildi. Sözleşme aktif duruma döndü.")
             .Build());
     }
 }
