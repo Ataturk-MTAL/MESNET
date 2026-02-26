@@ -554,13 +554,15 @@
           <q-toolbar-title>Yeni Akademik Dönem</q-toolbar-title>
           <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-banner dense rounded class="bg-orange-1 text-orange-9 text-caption q-mb-sm">
+        <q-card-section class="q-pt-md q-pb-none">
+          <q-banner dense rounded class="bg-orange-1 text-orange-9 text-caption">
             <template #avatar>
               <q-icon name="warning" color="orange-7" size="xs" />
             </template>
             Yeni dönem oluşturulduğunda mevcut aktif dönem otomatik kapatılır.
           </q-banner>
+        </q-card-section>
+        <q-card-section class="q-gutter-md">
           <q-input v-model="periodForm.name" label="Dönem Adı *" filled hint="Örn: 2025-2026">
             <template #prepend>
               <q-icon name="label" />

@@ -4,7 +4,26 @@
       <div class="col">
         <div class="text-h5 text-weight-bold">İşletmeler</div>
       </div>
-      <div class="col-auto q-gutter-sm">
+      <div class="col-auto q-gutter-sm row items-center">
+        <q-btn-toggle
+          v-model="viewMode"
+          toggle-color="primary"
+          flat
+          dense
+          :options="[
+            { value: 'table', slot: 'table' },
+            { value: 'map', slot: 'map' },
+          ]"
+        >
+          <template #table>
+            <q-icon name="view_list" />
+            <q-tooltip>Tablo Görünümü</q-tooltip>
+          </template>
+          <template #map>
+            <q-icon name="map" />
+            <q-tooltip>Harita Görünümü</q-tooltip>
+          </template>
+        </q-btn-toggle>
         <PermissionGuard :permission="Permissions.Company.Manage">
           <q-btn color="primary" icon="add_business" label="İşletme Ekle" @click="addDialog = true" />
         </PermissionGuard>
@@ -27,7 +46,8 @@
       />
     </div>
 
-    <AppTable :rows="businesses" :columns="columns" :loading="loading">
+    <!-- Tablo Görünümü -->
+    <AppTable v-if="viewMode === 'table'" :rows="businesses" :columns="columns" :loading="loading">
       <template #body-cell-statusSlug="{ row }">
         <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
       </template>
@@ -60,11 +80,63 @@
       </template>
     </AppTable>
 
+    <!-- Harita Görünümü -->
+    <div v-else class="business-map-container">
+      <q-inner-loading :showing="loading" />
+      <l-map
+        ref="businessMapRef"
+        :zoom="mapZoom"
+        :center="mapCenter"
+        :use-global-leaflet="false"
+        style="height: 100%; width: 100%; border-radius: 8px"
+      >
+        <l-tile-layer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
+          layer-type="base"
+          name="OpenStreetMap"
+        />
+        <l-marker
+          v-for="biz in businessesWithLocation"
+          :key="biz.id"
+          :lat-lng="getLatLng(biz)"
+          @click="openDetail(biz)"
+        >
+          <l-popup>
+            <div style="min-width: 200px">
+              <div class="text-weight-bold">{{ biz.name }}</div>
+              <div class="text-caption text-grey-8">{{ biz.address }}</div>
+              <div class="text-caption q-mt-xs">
+                <StatusBadge :slug="biz.statusSlug" />
+              </div>
+              <div class="text-caption q-mt-xs">
+                Kapasite: {{ biz.capacity.occupiedSlots }} / {{ biz.capacity.totalSlots }}
+              </div>
+              <q-btn
+                flat dense size="sm" color="primary" icon="open_in_new" label="Detay"
+                class="q-mt-xs"
+                @click="openDetail(biz)"
+              />
+            </div>
+          </l-popup>
+        </l-marker>
+      </l-map>
+      <div v-if="businessesWithoutLocation.length > 0" class="text-caption text-grey q-mt-sm">
+        {{ businessesWithoutLocation.length }} işletmenin konum bilgisi bulunmuyor.
+      </div>
+    </div>
+
     <!-- Detay Drawer -->
     <q-drawer v-model="detailOpen" side="right" bordered :width="480" overlay>
       <template v-if="selected">
         <q-toolbar>
           <q-toolbar-title class="text-subtitle1 text-weight-bold">{{ selected.name }}</q-toolbar-title>
+          <StatusBadge :slug="selected.statusSlug" class="q-mr-sm" />
+          <PermissionGuard :permission="Permissions.Company.Manage">
+            <q-btn flat round dense icon="edit" @click="openEditDialog">
+              <q-tooltip>Düzenle</q-tooltip>
+            </q-btn>
+          </PermissionGuard>
           <q-btn flat round dense icon="close" @click="detailOpen = false" />
         </q-toolbar>
         <q-separator />
@@ -167,6 +239,29 @@
                 class="q-mt-sm"
                 @click="docUploadDialog = true"
               />
+            </PermissionGuard>
+
+            <!-- Durum İşlemleri -->
+            <q-separator spaced />
+            <div class="text-subtitle2 text-weight-medium">İşlemler</div>
+            <PermissionGuard :permission="Permissions.Company.Manage">
+              <div class="q-gutter-sm">
+                <!-- PendingApproval → Onayla / Reddet -->
+                <template v-if="selected.status === 'PendingApproval'">
+                  <q-btn color="positive" icon="check_circle" label="Onayla" :loading="saving" @click="approveFromDrawer" class="full-width" />
+                  <q-btn color="negative" icon="cancel" label="Reddet" :loading="saving" @click="openReject(selected)" class="full-width" />
+                </template>
+                <!-- Active → Pasife Al / Kapat -->
+                <template v-if="selected.status === 'Active'">
+                  <q-btn color="warning" text-color="white" icon="pause_circle" label="Pasife Al" :loading="saving" @click="deactivateBusiness" class="full-width" />
+                  <q-btn outline color="negative" icon="block" label="Kapat" :loading="saving" @click="closeBusiness" class="full-width" />
+                </template>
+                <!-- Inactive → Aktifleştir / Kapat -->
+                <template v-if="selected.status === 'Inactive'">
+                  <q-btn color="positive" icon="play_circle" label="Aktifleştir" :loading="saving" @click="activateBusiness" class="full-width" />
+                  <q-btn outline color="negative" icon="block" label="Kapat" :loading="saving" @click="closeBusiness" class="full-width" />
+                </template>
+              </div>
             </PermissionGuard>
           </div>
         </q-scroll-area>
@@ -296,6 +391,57 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <!-- İşletme Düzenle Dialog -->
+    <q-dialog v-model="editDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 600px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-primary text-white">
+          <q-icon name="edit" class="q-mr-sm" />
+          <q-toolbar-title>İşletme Düzenle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-input v-model="editForm.name" label="İşletme Adı *" filled>
+            <template #prepend>
+              <q-icon name="business" />
+            </template>
+          </q-input>
+          <q-input v-model="editForm.address" label="Adres *" filled>
+            <template #prepend>
+              <q-icon name="location_on" />
+            </template>
+          </q-input>
+          <q-input v-model="editForm.phoneNumber" label="Telefon" filled>
+            <template #prepend>
+              <q-icon name="phone" />
+            </template>
+          </q-input>
+          <q-input v-model="editForm.email" label="E-posta" filled type="email">
+            <template #prepend>
+              <q-icon name="email" />
+            </template>
+          </q-input>
+          <q-input v-model="editForm.website" label="Web Sitesi" filled>
+            <template #prepend>
+              <q-icon name="language" />
+            </template>
+          </q-input>
+          <q-input v-model.number="editForm.personnelCount" label="Personel Sayısı" filled type="number">
+            <template #prepend>
+              <q-icon name="groups" />
+            </template>
+          </q-input>
+          <div class="text-subtitle2 q-mt-md q-mb-xs">
+            <q-icon name="map" class="q-mr-xs" />Konum
+          </div>
+          <MapPicker v-model="editForm.location" height="250px" />
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="saveEdit" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -310,9 +456,28 @@ import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import MapPicker from 'components/MapPicker.vue'
+import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
+import 'leaflet/dist/leaflet.css'
 
 const $q = useQuasar()
 const notify = useNotify()
+
+const viewMode = ref<'table' | 'map'>('table')
+const mapZoom = ref(7)
+const mapCenter = ref<[number, number]>([39.0, 35.0])
+const businessMapRef = ref<InstanceType<typeof LMap> | null>(null)
+
+const businessesWithLocation = computed(() =>
+  businesses.value.filter((b) => b.location !== null),
+)
+
+const businessesWithoutLocation = computed(() =>
+  businesses.value.filter((b) => b.location === null),
+)
+
+function getLatLng(biz: BusinessDto): [number, number] {
+  return [biz.location!.latitude, biz.location!.longitude]
+}
 
 const loading = ref(false)
 const saving = ref(false)
@@ -322,6 +487,7 @@ const detailOpen = ref(false)
 const addDialog = ref(false)
 const rejectDialog = ref(false)
 const docUploadDialog = ref(false)
+const editDialog = ref(false)
 const statusFilter = ref<string | null>(null)
 const rejectReason = ref('')
 const capacitySlots = ref(0)
@@ -348,6 +514,16 @@ const addForm = reactive({
   address: '',
   phoneNumber: '',
   email: '',
+  personnelCount: 0,
+  location: null as { latitude: number; longitude: number } | null,
+})
+
+const editForm = reactive({
+  name: '',
+  address: '',
+  phoneNumber: '',
+  email: '',
+  website: '',
   personnelCount: 0,
   location: null as { latitude: number; longitude: number } | null,
 })
@@ -549,5 +725,126 @@ async function deleteDoc(documentId: string) {
   }
 }
 
+// ── İşletme Düzenle ──
+function openEditDialog() {
+  if (!selected.value) return
+  editForm.name = selected.value.name
+  editForm.address = selected.value.address
+  editForm.phoneNumber = selected.value.phoneNumber ?? ''
+  editForm.email = selected.value.email ?? ''
+  editForm.website = selected.value.website ?? ''
+  editForm.personnelCount = selected.value.personnelCount
+  editForm.location = selected.value.location ? { ...selected.value.location } : null
+  editDialog.value = true
+}
+
+async function saveEdit() {
+  if (!selected.value) return
+  saving.value = true
+  try {
+    await businessApi.update(selected.value.id, {
+      name: editForm.name || undefined,
+      address: editForm.address || undefined,
+      phoneNumber: editForm.phoneNumber || undefined,
+      email: editForm.email || undefined,
+      website: editForm.website || undefined,
+      personnelCount: editForm.personnelCount || undefined,
+      location: editForm.location ?? undefined,
+    })
+    notify.success('İşletme bilgileri güncellendi.')
+    editDialog.value = false
+    await load()
+    const updated = businesses.value.find((b) => b.id === selected.value?.id)
+    if (updated) selected.value = updated
+  } catch {
+    notify.error('İşletme güncellenirken bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
+}
+
+// ── Durum Aksiyonları ──
+async function approveFromDrawer() {
+  if (!selected.value) return
+  await approve(selected.value)
+  const updated = businesses.value.find((b) => b.id === selected.value?.id)
+  if (updated) selected.value = updated
+}
+
+function deactivateBusiness() {
+  if (!selected.value) return
+  const id = selected.value.id
+  $q.dialog({
+    title: 'Pasife Al',
+    message: 'İşletmeyi pasife almak için gerekçe giriniz:',
+    prompt: { model: '', type: 'textarea' },
+    cancel: { flat: true, label: 'İptal' },
+    ok: { color: 'warning', label: 'Pasife Al' },
+    persistent: true,
+  }).onOk(async (reason: string) => {
+    saving.value = true
+    try {
+      await businessApi.deactivate(id, reason)
+      notify.success('İşletme pasife alındı.')
+      await load()
+      const updated = businesses.value.find((b) => b.id === id)
+      if (updated) selected.value = updated
+    } catch {
+      notify.error('İşletme pasife alınırken bir hata oluştu.')
+    } finally {
+      saving.value = false
+    }
+  })
+}
+
+async function activateBusiness() {
+  if (!selected.value) return
+  saving.value = true
+  try {
+    await businessApi.activate(selected.value.id)
+    notify.success('İşletme aktifleştirildi.')
+    await load()
+    const updated = businesses.value.find((b) => b.id === selected.value?.id)
+    if (updated) selected.value = updated
+  } catch {
+    notify.error('İşletme aktifleştirilirken bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
+}
+
+function closeBusiness() {
+  if (!selected.value) return
+  const id = selected.value.id
+  $q.dialog({
+    title: 'İşletmeyi Kapat',
+    message: 'Bu işletmeyi kapatmak istediğinize emin misiniz? Bu işlem geri alınamaz.',
+    cancel: { flat: true, label: 'İptal' },
+    ok: { color: 'negative', label: 'Kapat' },
+    persistent: true,
+  }).onOk(async () => {
+    saving.value = true
+    try {
+      await businessApi.close(id)
+      notify.success('İşletme kapatıldı.')
+      await load()
+      const updated = businesses.value.find((b) => b.id === id)
+      if (updated) selected.value = updated
+    } catch {
+      notify.error('İşletme kapatılırken bir hata oluştu.')
+    } finally {
+      saving.value = false
+    }
+  })
+}
+
 onMounted(load)
 </script>
+
+<style scoped>
+.business-map-container {
+  position: relative;
+  height: calc(100vh - 220px);
+  min-height: 400px;
+}
+</style>

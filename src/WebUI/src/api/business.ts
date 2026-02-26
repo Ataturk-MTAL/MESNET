@@ -99,6 +99,9 @@ export const businessApi = {
   activate: (businessId: string) =>
     api.post(`/businesses/${businessId}/activate`),
 
+  close: (businessId: string) =>
+    api.post(`/businesses/${businessId}/close`),
+
   updateCapacity: (businessId: string, data: UpdateCapacityRequest) =>
     api.put(`/businesses/${businessId}/capacity`, data),
 
