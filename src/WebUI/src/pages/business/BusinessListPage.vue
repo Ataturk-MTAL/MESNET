@@ -77,6 +77,9 @@
                 <q-item-label>{{ selected.address }}</q-item-label>
               </q-item-section>
             </q-item>
+            <div v-if="selected.location" class="q-px-md q-mt-sm">
+              <MapPicker :model-value="selected.location" readonly height="200px" />
+            </div>
             <q-item dense>
               <q-item-section avatar><q-icon name="phone" /></q-item-section>
               <q-item-section>
@@ -132,14 +135,26 @@
                   <StatusBadge :slug="doc.statusSlug" />
                 </q-item-section>
                 <q-item-section side>
-                  <PermissionGuard :permission="Permissions.Document.Approve">
-                    <q-btn
-                      v-if="doc.status === 'Uploaded'"
-                      flat dense round icon="check"
-                      color="positive"
-                      @click="approveDoc(doc.id)"
-                    />
-                  </PermissionGuard>
+                  <div class="row no-wrap">
+                    <q-btn flat dense round icon="visibility" color="primary" @click="previewDoc(doc.id)">
+                      <q-tooltip>Görüntüle</q-tooltip>
+                    </q-btn>
+                    <PermissionGuard :permission="Permissions.Document.Approve">
+                      <q-btn
+                        v-if="doc.status === 'Uploaded'"
+                        flat dense round icon="check"
+                        color="positive"
+                        @click="approveDoc(doc.id)"
+                      >
+                        <q-tooltip>Onayla</q-tooltip>
+                      </q-btn>
+                    </PermissionGuard>
+                    <PermissionGuard :permission="Permissions.Company.Document">
+                      <q-btn flat dense round icon="delete" color="negative" @click="confirmDeleteDoc(doc.id, doc.fileName)">
+                        <q-tooltip>Sil</q-tooltip>
+                      </q-btn>
+                    </PermissionGuard>
+                  </div>
                 </q-item-section>
               </q-item>
             </q-list>
@@ -160,7 +175,7 @@
 
     <!-- İşletme Ekle Dialog -->
     <q-dialog v-model="addDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+      <q-card :style="$q.screen.gt.xs ? 'width: 600px; max-width: 95vw' : ''">
         <q-toolbar class="bg-primary text-white">
           <q-icon name="add_business" class="q-mr-sm" />
           <q-toolbar-title>Yeni İşletme Ekle</q-toolbar-title>
@@ -192,6 +207,10 @@
               <q-icon name="groups" />
             </template>
           </q-input>
+          <div class="text-subtitle2 q-mt-md q-mb-xs">
+            <q-icon name="map" class="q-mr-xs" />Konum
+          </div>
+          <MapPicker v-model="addForm.location" height="250px" />
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md">
@@ -233,16 +252,47 @@
           <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
-          <q-file v-model="docFile" label="Dosya Seç" filled accept=".pdf,.jpg,.jpeg,.png">
+          <q-select
+            v-model="docForm.type"
+            :options="docTypeOptions"
+            label="Belge Tipi *"
+            filled
+            emit-value
+            map-options
+          >
+            <template #prepend>
+              <q-icon name="description" />
+            </template>
+          </q-select>
+          <q-file
+            v-model="docForm.file"
+            label="Dosya Seç *"
+            filled
+            accept=".pdf,.jpg,.jpeg,.png"
+          >
             <template #prepend>
               <q-icon name="attach_file" />
             </template>
           </q-file>
+          <!-- Ön izleme -->
+          <div v-if="docForm.file" class="q-mt-sm">
+            <div class="text-caption text-grey q-mb-xs">Ön İzleme</div>
+            <iframe
+              v-if="docForm.file.type === 'application/pdf'"
+              :src="filePreviewUrl ?? ''"
+              style="width: 100%; height: 300px; border: 1px solid #ddd; border-radius: 4px"
+            />
+            <img
+              v-else
+              :src="filePreviewUrl ?? ''"
+              style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 4px"
+            />
+          </div>
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md">
           <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="secondary" label="Yükle" :loading="saving" @click="uploadDocument" />
+          <q-btn unelevated color="secondary" label="Yükle" :loading="saving" :disable="!docForm.file || !docForm.type" @click="uploadDocument" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -250,7 +300,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { businessApi, type BusinessDto } from 'src/api/business'
@@ -259,6 +309,7 @@ import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
+import MapPicker from 'components/MapPicker.vue'
 
 const $q = useQuasar()
 const notify = useNotify()
@@ -274,7 +325,15 @@ const docUploadDialog = ref(false)
 const statusFilter = ref<string | null>(null)
 const rejectReason = ref('')
 const capacitySlots = ref(0)
-const docFile = ref<File | null>(null)
+const docForm = reactive({
+  type: '',
+  file: null as File | null,
+})
+
+const docTypeOptions = [
+  { label: 'Ustalık Belgesi', value: 'MasteryCertificate' },
+  { label: 'Usta Öğreticilik Belgesi', value: 'MasterInstructorCertificate' },
+]
 
 const statusOptions = [
   { label: 'Onay Bekliyor', value: 'PendingApproval' },
@@ -290,6 +349,7 @@ const addForm = reactive({
   phoneNumber: '',
   email: '',
   personnelCount: 0,
+  location: null as { latitude: number; longitude: number } | null,
 })
 
 const columns: QTableProps['columns'] = [
@@ -361,6 +421,7 @@ async function registerBusiness() {
       phoneNumber: addForm.phoneNumber || undefined,
       email: addForm.email || undefined,
       personnelCount: addForm.personnelCount || undefined,
+      location: addForm.location ?? undefined,
     })
     notify.success('İşletme başarıyla eklendi.')
     addDialog.value = false
@@ -369,6 +430,7 @@ async function registerBusiness() {
     addForm.phoneNumber = ''
     addForm.email = ''
     addForm.personnelCount = 0
+    addForm.location = null
     await load()
   } catch {
     notify.error('İşletme eklenirken bir hata oluştu.')
@@ -407,19 +469,81 @@ async function approveDoc(documentId: string) {
   }
 }
 
+// Dosya ön izleme URL'i
+const _previewBlobUrl = ref<string | null>(null)
+
+const filePreviewUrl = computed(() => {
+  if (!docForm.file) return null
+  // Eski blob URL varsa temizle
+  if (_previewBlobUrl.value) {
+    URL.revokeObjectURL(_previewBlobUrl.value)
+  }
+  const url = URL.createObjectURL(docForm.file)
+  _previewBlobUrl.value = url
+  return url
+})
+
+// Dialog kapanınca veya dosya null olunca blob URL'i temizle
+watch(() => docForm.file, (newFile) => {
+  if (!newFile && _previewBlobUrl.value) {
+    URL.revokeObjectURL(_previewBlobUrl.value)
+    _previewBlobUrl.value = null
+  }
+})
+
 async function uploadDocument() {
-  if (!selected.value || !docFile.value) return
-  const formData = new FormData()
-  formData.append('file', docFile.value)
+  if (!selected.value || !docForm.type || !docForm.file) return
   saving.value = true
   try {
-    await businessApi.uploadDocument(selected.value.id, formData)
+    await businessApi.uploadDocument(selected.value.id, docForm.file, docForm.type)
     notify.success('Belge yüklendi.')
     docUploadDialog.value = false
-    docFile.value = null
+    docForm.type = ''
+    docForm.file = null
     await load()
+    // Drawer'daki detayı güncelle
+    const updated = businesses.value.find((b) => b.id === selected.value?.id)
+    if (updated) selected.value = updated
   } catch {
     notify.error('Belge yüklenirken bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function previewDoc(documentId: string) {
+  if (!selected.value) return
+  try {
+    const res = await businessApi.getDocumentUrl(selected.value.id, documentId)
+    window.open(res.data.url, '_blank')
+  } catch {
+    notify.error('Belge bağlantısı oluşturulamadı.')
+  }
+}
+
+function confirmDeleteDoc(documentId: string, fileName: string) {
+  $q.dialog({
+    title: 'Belge Sil',
+    message: `"${fileName}" belgesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
+    cancel: { flat: true, label: 'İptal' },
+    ok: { color: 'negative', label: 'Sil' },
+    persistent: true,
+  }).onOk(async () => {
+    await deleteDoc(documentId)
+  })
+}
+
+async function deleteDoc(documentId: string) {
+  if (!selected.value) return
+  saving.value = true
+  try {
+    await businessApi.deleteDocument(selected.value.id, documentId)
+    notify.success('Belge silindi.')
+    await load()
+    const updated = businesses.value.find((b) => b.id === selected.value?.id)
+    if (updated) selected.value = updated
+  } catch {
+    notify.error('Belge silinirken bir hata oluştu.')
   } finally {
     saving.value = false
   }

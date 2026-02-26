@@ -10,7 +10,7 @@ MESNET (Mesleki Eğitim Stajları Nitelikli, Eşgüdümlü Takip Sistemi) — me
 - **Veritabanı:** PostgreSQL (JSONB document storage + event store)
 - **ORM / Document DB:** Marten (https://martendb.io/)
 - **Messaging / CQRS / Mediator:** Wolverine (https://wolverinefx.net/)
-- **Frontend:** Vue 3 + TypeScript + Pinia
+- **Frontend:** Vue 3 + TypeScript + Pinia (paket yöneticisi: **pnpm**)
 - **Kimlik Doğrulama:** Keycloak (OAuth2 / OpenID Connect)
 - **Mimari:** Modüler Monolit + CQRS + Event Sourcing
 

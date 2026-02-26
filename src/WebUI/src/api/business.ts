@@ -102,10 +102,18 @@ export const businessApi = {
   updateCapacity: (businessId: string, data: UpdateCapacityRequest) =>
     api.put(`/businesses/${businessId}/capacity`, data),
 
-  uploadDocument: (businessId: string, formData: FormData) =>
-    api.post(`/businesses/${businessId}/documents`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  uploadDocument: (businessId: string, file: File, type: string) => {
+    const formData = new FormData()
+    formData.append('documentFile', file)
+    formData.append('type', type)
+    return api.post(`/businesses/${businessId}/documents`, formData)
+  },
+
+  getDocumentUrl: (businessId: string, documentId: string) =>
+    api.get<{ url: string }>(`/businesses/${businessId}/documents/${documentId}/url`),
+
+  deleteDocument: (businessId: string, documentId: string) =>
+    api.delete(`/businesses/${businessId}/documents/${documentId}`),
 
   approveDocument: (businessId: string, documentId: string) =>
     api.post(`/businesses/${businessId}/documents/${documentId}/approve`),

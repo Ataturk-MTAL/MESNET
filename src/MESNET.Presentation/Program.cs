@@ -248,25 +248,44 @@ try
         {
             app.Logger.LogWarning("MinIO meb-forms bucket oluşturulamadı: {Error}", mebFormsBucketResult.Error.Description);
         }
+
+        // Initialize business-documents bucket
+        var businessDocsBucketResult = await fileStorage.EnsureBucketExistsAsync("business-documents");
+        if (businessDocsBucketResult.IsFailure)
+        {
+            app.Logger.LogWarning("MinIO business-documents bucket oluşturulamadı: {Error}", businessDocsBucketResult.Error.Description);
+        }
     }
 
     app.UseSerilogRequestLogging();
 
-    // ──── Domain Exception → 422 ProblemDetails ────
+    // ──── Domain Exception / Validation Exception → 422 ApiResponse ────
     app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
     {
         var ex = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
         if (ex is MESNET.Common.Shared.DomainException domainEx)
         {
             ctx.Response.StatusCode = 422;
-            ctx.Response.ContentType = "application/problem+json";
-            await ctx.Response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails
-            {
-                Status = 422,
-                Title = "İş kuralı ihlali",
-                Detail = domainEx.Error.Description,
-                Extensions = { ["code"] = domainEx.Error.Code }
-            });
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(
+                MESNET.Common.Shared.ResponseBuilder.Fail(422)
+                    .AddMessage(domainEx.Error.Description)
+                    .AddErrors(new { code = domainEx.Error.Code })
+                    .Build());
+        }
+        else if (ex is FluentValidation.ValidationException validationEx)
+        {
+            var errors = validationEx.Errors
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+
+            ctx.Response.StatusCode = 422;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(
+                MESNET.Common.Shared.ResponseBuilder.Fail(422)
+                    .AddMessage("Doğrulama hatası")
+                    .AddErrors(errors)
+                    .Build());
         }
     }));
 

@@ -9,12 +9,17 @@ const api = axios.create({
 })
 
 // Her istekte güncel access token'ı Authorization header'a ekle
+// FormData gönderiminde Content-Type header'ını sil (Axios boundary ile otomatik set eder)
 api.interceptors.request.use(async (config) => {
   const authStore = useAuthStore()
   const token = authStore.accessToken
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
   }
 
   return config

@@ -7,7 +7,6 @@ using MESNET.Common.Infrastructure.Storage;
 using MESNET.Common.Shared;
 using MESNET.Payment.Application.Errors;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace MESNET.Business.Application.Handlers;
 
@@ -21,7 +20,6 @@ public static class UploadInstructorDocumentHandler
         UploadInstructorDocument command,
         IDocumentSession session,
         IFileStorageService fileStorage,
-        IOptions<MinioStorageOptions> minioOptions,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
@@ -58,10 +56,11 @@ public static class UploadInstructorDocumentHandler
             throw new DomainException(FileUploadError.InvalidFileContent());
         }
 
-        // 4. Object path: businesses/{businessId}/instructor-cert_{timestamp}.pdf
+        // 4. Object path — aylık klasörleme: businesses/{id}/{yyyy}/{MM}/instructor-cert_{ts}.pdf
         var documentId = Guid.NewGuid();
-        var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-        var objectPath = $"businesses/{command.BusinessId:N}/instructor-cert_{timestamp}.pdf";
+        var now = DateTime.UtcNow;
+        var timestamp = now.ToString("yyyyMMddHHmmss");
+        var objectPath = $"businesses/{command.BusinessId:N}/{now:yyyy}/{now:MM}/instructor-cert_{timestamp}.pdf";
 
         // 5. Metadata
         var metadata = new Dictionary<string, string>
@@ -81,7 +80,7 @@ public static class UploadInstructorDocumentHandler
         // 6. MinIO upload
         stream.Position = 0;
         var uploadResult = await fileStorage.UploadFileAsync(
-            minioOptions.Value.DefaultBucket,
+            UploadDocumentHandler.BusinessBucketName,
             objectPath,
             stream,
             AllowedContentType,

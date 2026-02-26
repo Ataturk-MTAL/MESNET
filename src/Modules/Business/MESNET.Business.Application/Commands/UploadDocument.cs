@@ -1,10 +1,10 @@
 using MESNET.Business.Core.Enums;
+using Microsoft.AspNetCore.Http;
 
 namespace MESNET.Business.Application.Commands;
 
 public sealed record UploadDocument(
     Guid BusinessId,
     DocumentType Type,
-    string FileName,
-    string? StoragePath,
+    IFormFile DocumentFile,
     DateTime? ExpiresAt);
