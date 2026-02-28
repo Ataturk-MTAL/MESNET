@@ -190,6 +190,8 @@
             map-options
             option-label="label"
             option-value="value"
+            :error="!!addErrors.keycloakUserId"
+            :error-message="addErrors.keycloakUserId"
             @filter="userOpts.filter"
             @update:model-value="onUserSelect"
           >
@@ -210,7 +212,10 @@
               </q-item>
             </template>
           </q-select>
-          <q-input v-model="addForm.fullName" label="Ad Soyad *" filled readonly>
+          <q-input
+            v-model="addForm.fullName" label="Ad Soyad *" filled readonly
+            :error="!!addErrors.fullName" :error-message="addErrors.fullName"
+          >
             <template #prepend>
               <q-icon name="badge" />
             </template>
@@ -226,6 +231,8 @@
             map-options
             option-label="label"
             option-value="value"
+            :error="!!addErrors.branchCode"
+            :error-message="addErrors.branchCode"
             @filter="branchOpts.filter"
             @update:model-value="onAddBranchChange"
           >
@@ -255,31 +262,46 @@
           </q-select>
           <div class="row q-col-gutter-sm">
             <div class="col-6">
-              <q-input v-model.number="addForm.classYear" label="Sınıf (9-12)" filled type="number" min="9" max="12">
+              <q-input
+                v-model.number="addForm.classYear" label="Sınıf (9-12)" filled type="number" min="9" max="12"
+                :error="!!addErrors.classYear" :error-message="addErrors.classYear"
+              >
                 <template #prepend>
                   <q-icon name="class" />
                 </template>
               </q-input>
             </div>
             <div class="col-6">
-              <q-input v-model="addForm.section" label="Şube" filled>
+              <q-input
+                v-model="addForm.section" label="Şube" filled
+                :error="!!addErrors.section" :error-message="addErrors.section"
+              >
                 <template #prepend>
                   <q-icon name="sort_by_alpha" />
                 </template>
               </q-input>
             </div>
           </div>
-          <q-input v-model="addForm.studentNumber" label="Öğrenci No" filled>
+          <q-input
+            v-model="addForm.studentNumber" label="Öğrenci No" filled
+            :error="!!addErrors.studentNumber" :error-message="addErrors.studentNumber"
+          >
             <template #prepend>
               <q-icon name="pin" />
             </template>
           </q-input>
-          <q-input v-model="addForm.tcKimlikNo" label="T.C. Kimlik No" filled maxlength="11">
+          <q-input
+            v-model="addForm.tcKimlikNo" label="T.C. Kimlik No" filled maxlength="11"
+            :error="!!addErrors.tcKimlikNo" :error-message="addErrors.tcKimlikNo"
+          >
             <template #prepend>
               <q-icon name="fingerprint" />
             </template>
           </q-input>
-          <q-input v-model="addForm.phoneNumber" label="Telefon" filled>
+          <q-input
+            v-model="addForm.phoneNumber" label="Telefon" filled
+            :error="!!addErrors.phoneNumber" :error-message="addErrors.phoneNumber"
+          >
             <template #prepend>
               <q-icon name="phone" />
             </template>
@@ -291,7 +313,10 @@
               <q-icon name="person" />
             </template>
           </q-input>
-          <q-input v-model="addForm.guardianPhone" label="Veli Telefon" filled>
+          <q-input
+            v-model="addForm.guardianPhone" label="Veli Telefon" filled
+            :error="!!addErrors.guardianPhone" :error-message="addErrors.guardianPhone"
+          >
             <template #prepend>
               <q-icon name="phone" />
             </template>
@@ -327,6 +352,8 @@
             map-options
             option-label="label"
             option-value="value"
+            :error="!!placementErrors.businessId"
+            :error-message="placementErrors.businessId"
             @filter="businessOpts.filter"
           >
             <template #prepend>
@@ -408,6 +435,8 @@
             map-options
             option-label="label"
             option-value="value"
+            :error="!!transferErrors.newBusinessId"
+            :error-message="transferErrors.newBusinessId"
             @filter="transferBusinessOpts.filter"
           >
             <template #prepend>
@@ -450,7 +479,10 @@
           <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input v-model="editForm.fullName" label="Ad Soyad *" filled>
+          <q-input
+            v-model="editForm.fullName" label="Ad Soyad *" filled
+            :error="!!editErrors.fullName" :error-message="editErrors.fullName"
+          >
             <template #prepend>
               <q-icon name="badge" />
             </template>
@@ -466,6 +498,8 @@
             map-options
             option-label="label"
             option-value="value"
+            :error="!!editErrors.branchCode"
+            :error-message="editErrors.branchCode"
             @filter="branchOpts.filter"
             @update:model-value="onEditBranchChange"
           >
@@ -495,31 +529,46 @@
           </q-select>
           <div class="row q-col-gutter-sm">
             <div class="col-6">
-              <q-input v-model.number="editForm.classYear" label="Sınıf (9-12)" filled type="number" min="9" max="12">
+              <q-input
+                v-model.number="editForm.classYear" label="Sınıf (9-12)" filled type="number" min="9" max="12"
+                :error="!!editErrors.classYear" :error-message="editErrors.classYear"
+              >
                 <template #prepend>
                   <q-icon name="class" />
                 </template>
               </q-input>
             </div>
             <div class="col-6">
-              <q-input v-model="editForm.section" label="Şube" filled>
+              <q-input
+                v-model="editForm.section" label="Şube" filled
+                :error="!!editErrors.section" :error-message="editErrors.section"
+              >
                 <template #prepend>
                   <q-icon name="sort_by_alpha" />
                 </template>
               </q-input>
             </div>
           </div>
-          <q-input v-model="editForm.studentNumber" label="Öğrenci No" filled>
+          <q-input
+            v-model="editForm.studentNumber" label="Öğrenci No" filled
+            :error="!!editErrors.studentNumber" :error-message="editErrors.studentNumber"
+          >
             <template #prepend>
               <q-icon name="pin" />
             </template>
           </q-input>
-          <q-input v-model="editForm.tcKimlikNo" label="T.C. Kimlik No" filled maxlength="11">
+          <q-input
+            v-model="editForm.tcKimlikNo" label="T.C. Kimlik No" filled maxlength="11"
+            :error="!!editErrors.tcKimlikNo" :error-message="editErrors.tcKimlikNo"
+          >
             <template #prepend>
               <q-icon name="fingerprint" />
             </template>
           </q-input>
-          <q-input v-model="editForm.phoneNumber" label="Telefon" filled>
+          <q-input
+            v-model="editForm.phoneNumber" label="Telefon" filled
+            :error="!!editErrors.phoneNumber" :error-message="editErrors.phoneNumber"
+          >
             <template #prepend>
               <q-icon name="phone" />
             </template>
@@ -531,7 +580,10 @@
               <q-icon name="person" />
             </template>
           </q-input>
-          <q-input v-model="editForm.guardianPhone" label="Veli Telefon" filled>
+          <q-input
+            v-model="editForm.guardianPhone" label="Veli Telefon" filled
+            :error="!!editErrors.guardianPhone" :error-message="editErrors.guardianPhone"
+          >
             <template #prepend>
               <q-icon name="phone" />
             </template>
@@ -548,13 +600,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, watch, computed } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { enrollmentApi, type StudentProfileDto } from 'src/api/enrollment'
 import { useNotify } from 'src/composables/useNotify'
 import { useKeycloakUserOptions, useBusinessOptions, useTeacherOptions, useBranchOptions, type SelectOption } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { registerStudentSchema, editStudentSchema, placementSchema, transferSchema } from 'src/schemas/student'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
@@ -584,8 +637,47 @@ const statusFilter = ref<string | null>(null)
 // activePlacementId: transfer için mevcut yerleştirme ID'si
 const activePlacementId = ref<string | null>(null)
 
-const addSpecOptions = computed(() => branchOpts.getSpecializations(addForm.branchCode))
-const editSpecOptions = computed(() => branchOpts.getSpecializations(editForm.branchCode))
+// ── Zod validasyon helper ──
+function zodValidate<T>(schema: { safeParse: (data: unknown) => { success: boolean; error?: { issues: { path: (string | number)[]; message: string }[] }; data?: T } }, data: unknown, errors: Record<string, string>): data is T {
+  // clear previous errors
+  for (const key of Object.keys(errors)) errors[key] = ''
+  const result = schema.safeParse(data)
+  if (result.success) return true
+  for (const issue of result.error!.issues) {
+    const field = issue.path[0]
+    if (field && typeof field === 'string' && !errors[field]) {
+      errors[field] = issue.message
+    }
+  }
+  return false
+}
+
+// ── reactive form objects ──
+const addForm = reactive({
+  keycloakUserId: '', fullName: '', branchCode: '', specializationCode: '',
+  classYear: 11, section: '', studentNumber: '', phoneNumber: '',
+  tcKimlikNo: '', guardianName: '', guardianPhone: '',
+})
+const addErrors = reactive<Record<string, string>>({})
+
+const editForm = reactive({
+  fullName: '', branchCode: '', specializationCode: '',
+  classYear: 11, section: '', studentNumber: '', phoneNumber: '',
+  tcKimlikNo: '', guardianName: '', guardianPhone: '',
+})
+const editErrors = reactive<Record<string, string>>({})
+
+const placementForm = reactive({ businessId: '', teacherId: '' })
+const placementErrors = reactive<Record<string, string>>({})
+
+const transferForm = reactive({ newBusinessId: '', reason: '' })
+const transferErrors = reactive<Record<string, string>>({})
+
+// branchName editForm'da validasyon dışı (UI helper)
+const editBranchName = ref('')
+
+const addSpecOptions = computed(() => branchOpts.getSpecializations(addForm.branchCode ?? ''))
+const editSpecOptions = computed(() => branchOpts.getSpecializations(editForm.branchCode ?? ''))
 
 const statusOptions = [
   { label: 'Kayıtlı', value: 'Registered' },
@@ -594,44 +686,6 @@ const statusOptions = [
   { label: 'Aktif Staj', value: 'ActiveInternship' },
   { label: 'Tamamladı', value: 'Completed' },
 ]
-
-const addForm = reactive({
-  keycloakUserId: '',
-  fullName: '',
-  branchCode: '',
-  specializationCode: '',
-  classYear: 11,
-  section: '',
-  studentNumber: '',
-  phoneNumber: '',
-  tcKimlikNo: '',
-  guardianName: '',
-  guardianPhone: '',
-})
-
-const placementForm = reactive({
-  businessId: '',
-  teacherId: '',
-})
-
-const editForm = reactive({
-  fullName: '',
-  branchCode: '',
-  branchName: '',
-  specializationCode: '',
-  classYear: 11,
-  section: '',
-  studentNumber: '',
-  phoneNumber: '',
-  tcKimlikNo: '',
-  guardianName: '',
-  guardianPhone: '',
-})
-
-const transferForm = reactive({
-  newBusinessId: '',
-  reason: '',
-})
 
 const columns: QTableProps['columns'] = [
   { name: 'fullName', label: 'Ad Soyad', field: 'fullName', align: 'left', sortable: true },
@@ -671,7 +725,7 @@ function closeDetail() {
 }
 
 function onEditBranchChange(code: string | null) {
-  editForm.branchName = code ? branchOpts.getFieldName(code) : ''
+  editBranchName.value = code ? branchOpts.getFieldName(code) : ''
   editForm.specializationCode = ''
 }
 
@@ -681,28 +735,33 @@ function onAddBranchChange() {
 
 function openEditDialog(row: StudentProfileDto) {
   selected.value = row
-  editForm.fullName = row.fullName
-  editForm.branchCode = row.branchCode
-  editForm.branchName = row.branchName
-  editForm.specializationCode = row.specializationCode ?? ''
-  editForm.classYear = row.classYear
-  editForm.section = row.section ?? ''
-  editForm.studentNumber = row.studentNumber ?? ''
-  editForm.phoneNumber = row.phoneNumber ?? ''
-  editForm.tcKimlikNo = row.tcKimlikNo ?? ''
-  editForm.guardianName = row.guardianName ?? ''
-  editForm.guardianPhone = row.guardianPhone ?? ''
+  editBranchName.value = row.branchName
+  Object.assign(editForm, {
+    fullName: row.fullName,
+    branchCode: row.branchCode,
+    specializationCode: row.specializationCode ?? '',
+    classYear: row.classYear,
+    section: row.section ?? '',
+    studentNumber: row.studentNumber ?? '',
+    phoneNumber: row.phoneNumber ?? '',
+    tcKimlikNo: row.tcKimlikNo ?? '',
+    guardianName: row.guardianName ?? '',
+    guardianPhone: row.guardianPhone ?? '',
+  })
+  // clear previous errors
+  for (const key of Object.keys(editErrors)) editErrors[key] = ''
   editDialog.value = true
 }
 
 async function saveEdit() {
   if (!selected.value) return
+  if (!zodValidate(editStudentSchema, editForm, editErrors)) return
   saving.value = true
   try {
     await enrollmentApi.updateStudent(selected.value.id, {
       fullName: editForm.fullName || undefined,
       branchCode: editForm.branchCode || undefined,
-      branchName: editForm.branchName || undefined,
+      branchName: editBranchName.value || undefined,
       specializationCode: editForm.specializationCode || undefined,
       specializationName: editSpecOptions.value.find((o) => o.value === editForm.specializationCode)?.label || undefined,
       classYear: editForm.classYear || undefined,
@@ -735,17 +794,12 @@ function onUserSelect(val: string | null) {
 }
 
 function openAddDialog() {
-  addForm.keycloakUserId = ''
-  addForm.fullName = ''
-  addForm.branchCode = ''
-  addForm.specializationCode = ''
-  addForm.classYear = 11
-  addForm.section = ''
-  addForm.studentNumber = ''
-  addForm.phoneNumber = ''
-  addForm.tcKimlikNo = ''
-  addForm.guardianName = ''
-  addForm.guardianPhone = ''
+  Object.assign(addForm, {
+    keycloakUserId: '', fullName: '', branchCode: '', specializationCode: '',
+    classYear: 11, section: '', studentNumber: '', phoneNumber: '',
+    tcKimlikNo: '', guardianName: '', guardianPhone: '',
+  })
+  for (const key of Object.keys(addErrors)) addErrors[key] = ''
   userOpts.reset()
   userOpts.load()
   branchOpts.reset()
@@ -755,8 +809,8 @@ function openAddDialog() {
 
 function openPlacement(row: StudentProfileDto) {
   selected.value = row
-  placementForm.businessId = ''
-  placementForm.teacherId = ''
+  Object.assign(placementForm, { businessId: '', teacherId: '' })
+  for (const key of Object.keys(placementErrors)) placementErrors[key] = ''
   businessOpts.reset()
   businessOpts.load()
   teacherOpts.reset()
@@ -766,8 +820,8 @@ function openPlacement(row: StudentProfileDto) {
 
 async function openTransfer(row: StudentProfileDto) {
   selected.value = row
-  transferForm.newBusinessId = ''
-  transferForm.reason = ''
+  Object.assign(transferForm, { newBusinessId: '', reason: '' })
+  for (const key of Object.keys(transferErrors)) transferErrors[key] = ''
   transferBusinessOpts.reset()
   transferBusinessOpts.load()
   // Mevcut aktif yerleştirmeyi bul
@@ -781,6 +835,7 @@ async function openTransfer(row: StudentProfileDto) {
 }
 
 async function registerStudent() {
+  if (!zodValidate(registerStudentSchema, addForm, addErrors)) return
   saving.value = true
   try {
     const selectedSpec = addSpecOptions.value.find((o) => o.value === addForm.specializationCode)
@@ -812,6 +867,7 @@ async function registerStudent() {
 
 async function placementStudent() {
   if (!selected.value) return
+  if (!zodValidate(placementSchema, placementForm, placementErrors)) return
   saving.value = true
   try {
     await enrollmentApi.createPlacement({
@@ -834,11 +890,12 @@ async function doTransfer() {
     notify.error('Aktif yerleştirme bulunamadı.')
     return
   }
+  if (!zodValidate(transferSchema, transferForm, transferErrors)) return
   saving.value = true
   try {
     await enrollmentApi.transferStudent(activePlacementId.value, {
       newBusinessId: transferForm.newBusinessId,
-      reason: transferForm.reason,
+      reason: transferForm.reason ?? '',
     })
     notify.success('Öğrenci transfer edildi.')
     transferDialog.value = false

@@ -333,12 +333,18 @@
           <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input v-model="addForm.name" label="İşletme Adı *" filled>
+          <q-input
+            v-model="addForm.name" label="İşletme Adı *" filled
+            :error="!!addErrors.name" :error-message="addErrors.name"
+          >
             <template #prepend>
               <q-icon name="business" />
             </template>
           </q-input>
-          <q-input v-model="addForm.address" label="Adres *" filled>
+          <q-input
+            v-model="addForm.address" label="Adres *" filled
+            :error="!!addErrors.address" :error-message="addErrors.address"
+          >
             <template #prepend>
               <q-icon name="location_on" />
             </template>
@@ -348,7 +354,10 @@
               <q-icon name="phone" />
             </template>
           </q-input>
-          <q-input v-model="addForm.email" label="E-posta" filled type="email">
+          <q-input
+            v-model="addForm.email" label="E-posta" filled type="email"
+            :error="!!addErrors.email" :error-message="addErrors.email"
+          >
             <template #prepend>
               <q-icon name="email" />
             </template>
@@ -375,7 +384,7 @@
           <div class="text-subtitle2 q-mt-md q-mb-xs">
             <q-icon name="map" class="q-mr-xs" />Konum
           </div>
-          <MapPicker v-model="addForm.location" height="250px" />
+          <MapPicker :model-value="addLocation" @update:model-value="v => addForm.location = v" height="250px" />
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md">
@@ -394,7 +403,10 @@
           <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input v-model="rejectReason" label="Gerekçe" filled type="textarea" rows="3">
+          <q-input
+            v-model="rejectForm.reason" label="Gerekçe *" filled type="textarea" rows="3"
+            :error="!!rejectErrors.reason" :error-message="rejectErrors.reason"
+          >
             <template #prepend>
               <q-icon name="notes" />
             </template>
@@ -470,12 +482,18 @@
           <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input v-model="editForm.name" label="İşletme Adı *" filled>
+          <q-input
+            v-model="editForm.name" label="İşletme Adı *" filled
+            :error="!!editErrors.name" :error-message="editErrors.name"
+          >
             <template #prepend>
               <q-icon name="business" />
             </template>
           </q-input>
-          <q-input v-model="editForm.address" label="Adres *" filled>
+          <q-input
+            v-model="editForm.address" label="Adres *" filled
+            :error="!!editErrors.address" :error-message="editErrors.address"
+          >
             <template #prepend>
               <q-icon name="location_on" />
             </template>
@@ -485,7 +503,10 @@
               <q-icon name="phone" />
             </template>
           </q-input>
-          <q-input v-model="editForm.email" label="E-posta" filled type="email">
+          <q-input
+            v-model="editForm.email" label="E-posta" filled type="email"
+            :error="!!editErrors.email" :error-message="editErrors.email"
+          >
             <template #prepend>
               <q-icon name="email" />
             </template>
@@ -517,7 +538,7 @@
           <div class="text-subtitle2 q-mt-md q-mb-xs">
             <q-icon name="map" class="q-mr-xs" />Konum
           </div>
-          <MapPicker v-model="editForm.location" height="250px" />
+          <MapPicker :model-value="editLocation" @update:model-value="v => editForm.location = v" height="250px" />
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md">
@@ -535,6 +556,7 @@ import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { businessApi, type BusinessDto, type SectorDto } from 'src/api/business'
 import { useNotify } from 'src/composables/useNotify'
+import { registerBusinessSchema, editBusinessSchema, rejectBusinessSchema } from 'src/schemas/business'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
@@ -573,12 +595,45 @@ const editDialog = ref(false)
 const statusFilter = ref<string | null>(null)
 const sectorFilter = ref<string | null>(null)
 const allSectors = ref<SectorDto[]>([])
-const rejectReason = ref('')
 const capacitySlots = ref(0)
 const docForm = reactive({
   type: '',
   file: null as File | null,
 })
+
+// ── Zod validasyon helper ──
+function zodValidate<T>(schema: { safeParse: (data: unknown) => { success: boolean; error?: { issues: { path: (string | number)[]; message: string }[] }; data?: T } }, data: unknown, errors: Record<string, string>): data is T {
+  for (const key of Object.keys(errors)) errors[key] = ''
+  const result = schema.safeParse(data)
+  if (result.success) return true
+  for (const issue of result.error!.issues) {
+    const field = issue.path[0]
+    if (field && typeof field === 'string' && !errors[field]) {
+      errors[field] = issue.message
+    }
+  }
+  return false
+}
+
+// ── reactive form objects ──
+const addForm = reactive({
+  name: '', address: '', phoneNumber: '', email: '',
+  personnelCount: 0, location: null as { latitude: number; longitude: number } | null, sectors: [] as string[],
+})
+const addErrors = reactive<Record<string, string>>({})
+
+const editForm = reactive({
+  name: '', address: '', phoneNumber: '', email: '', website: '',
+  personnelCount: 0, location: null as { latitude: number; longitude: number } | null, sectors: [] as string[],
+})
+const editErrors = reactive<Record<string, string>>({})
+
+const rejectForm = reactive({ reason: '' })
+const rejectErrors = reactive<Record<string, string>>({})
+
+// location bridge for MapPicker (reactive → GeoLocation | null)
+const addLocation = computed(() => addForm.location)
+const editLocation = computed(() => editForm.location)
 
 const docTypeOptions = [
   { label: 'Ustalık Belgesi', value: 'MasteryCertificate' },
@@ -592,27 +647,6 @@ const statusOptions = [
   { label: 'Pasif', value: 'Inactive' },
   { label: 'Kapatılmış', value: 'Closed' },
 ]
-
-const addForm = reactive({
-  name: '',
-  address: '',
-  phoneNumber: '',
-  email: '',
-  personnelCount: 0,
-  location: null as { latitude: number; longitude: number } | null,
-  sectors: [] as string[],
-})
-
-const editForm = reactive({
-  name: '',
-  address: '',
-  phoneNumber: '',
-  email: '',
-  website: '',
-  personnelCount: 0,
-  location: null as { latitude: number; longitude: number } | null,
-  sectors: [] as string[],
-})
 
 const sectorOptions = computed(() =>
   allSectors.value.map((s) => ({ label: s.slug, value: s.name })),
@@ -672,15 +706,17 @@ async function approve(row: BusinessDto) {
 
 function openReject(row: BusinessDto) {
   selected.value = row
-  rejectReason.value = ''
+  rejectForm.reason = ''
+  for (const key of Object.keys(rejectErrors)) rejectErrors[key] = ''
   rejectDialog.value = true
 }
 
 async function rejectBusiness() {
   if (!selected.value) return
+  if (!zodValidate(rejectBusinessSchema, rejectForm, rejectErrors)) return
   saving.value = true
   try {
-    await businessApi.reject(selected.value.id, rejectReason.value)
+    await businessApi.reject(selected.value.id, rejectForm.reason)
     notify.success('İşletme reddedildi.')
     rejectDialog.value = false
     await load()
@@ -692,6 +728,7 @@ async function rejectBusiness() {
 }
 
 async function registerBusiness() {
+  if (!zodValidate(registerBusinessSchema, addForm, addErrors)) return
   saving.value = true
   try {
     await businessApi.register({
@@ -705,13 +742,11 @@ async function registerBusiness() {
     })
     notify.success('İşletme başarıyla eklendi.')
     addDialog.value = false
-    addForm.name = ''
-    addForm.address = ''
-    addForm.phoneNumber = ''
-    addForm.email = ''
-    addForm.personnelCount = 0
-    addForm.location = null
-    addForm.sectors = []
+    Object.assign(addForm, {
+      name: '', address: '', phoneNumber: '', email: '',
+      personnelCount: 0, location: null, sectors: [],
+    })
+    for (const key of Object.keys(addErrors)) addErrors[key] = ''
     await load()
   } catch {
     notify.error('İşletme eklenirken bir hata oluştu.')
@@ -833,19 +868,23 @@ async function deleteDoc(documentId: string) {
 // ── İşletme Düzenle ──
 function openEditDialog() {
   if (!selected.value) return
-  editForm.name = selected.value.name
-  editForm.address = selected.value.address
-  editForm.phoneNumber = selected.value.phoneNumber ?? ''
-  editForm.email = selected.value.email ?? ''
-  editForm.website = selected.value.website ?? ''
-  editForm.personnelCount = selected.value.personnelCount
-  editForm.location = selected.value.location ? { ...selected.value.location } : null
-  editForm.sectors = selected.value.sectors.map((s) => s.name)
+  Object.assign(editForm, {
+    name: selected.value.name,
+    address: selected.value.address,
+    phoneNumber: selected.value.phoneNumber ?? '',
+    email: selected.value.email ?? '',
+    website: selected.value.website ?? '',
+    personnelCount: selected.value.personnelCount,
+    location: selected.value.location ? { ...selected.value.location } : null,
+    sectors: selected.value.sectors.map((s: SectorDto) => s.name),
+  })
+  for (const key of Object.keys(editErrors)) editErrors[key] = ''
   editDialog.value = true
 }
 
 async function saveEdit() {
   if (!selected.value) return
+  if (!zodValidate(editBusinessSchema, editForm, editErrors)) return
   saving.value = true
   try {
     await businessApi.update(selected.value.id, {

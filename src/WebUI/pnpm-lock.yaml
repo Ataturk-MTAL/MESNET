@@ -44,6 +44,9 @@ importers:
       vue-router:
         specifier: ^4.5.0
         version: 4.6.4(vue@3.5.28(typescript@5.9.3))
+      zod:
+        specifier: '3'
+        version: 3.25.76
     devDependencies:
       '@quasar/vite-plugin':
         specifier: ^1.8.1
@@ -886,6 +889,9 @@ packages:
       typescript:
         optional: true
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
   zrender@6.0.0:
     resolution: {integrity: sha512-41dFXEEXuJpNecuUQq6JlbybmnHaqqpGlbH1yxnA5V9MMP4SbohSVZsJIwz+zdjQXSSlR1Vc34EgH1zxyTDvhg==}
 
@@ -1567,6 +1573,8 @@ snapshots:
       '@vue/shared': 3.5.28
     optionalDependencies:
       typescript: 5.9.3
+
+  zod@3.25.76: {}
 
   zrender@6.0.0:
     dependencies:

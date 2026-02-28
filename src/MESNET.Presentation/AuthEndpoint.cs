@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Marten;
 using MESNET.Common.Shared;
 
 namespace MESNET.Presentation;
@@ -16,7 +17,7 @@ public static class AuthEndpoint
         return app;
     }
 
-    private static IResult GetCurrentUser(ClaimsPrincipal user)
+    private static async Task<IResult> GetCurrentUser(ClaimsPrincipal user, IQuerySession session)
     {
         var sub = user.FindFirst("sub")?.Value
             ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -36,6 +37,17 @@ public static class AuthEndpoint
 
         var institutionId = user.FindFirst("institution_id")?.Value;
         var businessId = user.FindFirst("business_id")?.Value;
+
+        // Token'da institution_id yoksa DB'den staff eşleştirmesi yap
+        if (string.IsNullOrEmpty(institutionId))
+        {
+            var institution = await session
+                .Query<Institution.Core.Entities.Institution>()
+                .FirstOrDefaultAsync(i => i.Staff.Any(s => s.KeycloakId == sub));
+
+            if (institution is not null)
+                institutionId = institution.Id.ToString();
+        }
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(new
