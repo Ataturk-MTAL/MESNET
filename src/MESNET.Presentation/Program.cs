@@ -21,6 +21,7 @@ using Wolverine;
 using Wolverine.Http;
 using Wolverine.Marten;
 using Keycloak.AuthServices.Sdk;
+using MESNET.Common.Infrastructure.Email;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Security.Api;
 using Microsoft.AspNetCore.RateLimiting;
@@ -97,6 +98,9 @@ try
     builder.Services.AddInternshipModule();
     builder.Services.AddReportingModule();
     builder.Services.AddSecurityModule();
+
+    // Email Template (MJML)
+    builder.Services.AddEmailTemplateService();
 
     // ────────────────────────────────────────────────────────────────────────────────
     // Authentication + Authorization

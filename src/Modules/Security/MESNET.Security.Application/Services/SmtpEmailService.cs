@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Mail;
+using System.Net.Mime;
+using MESNET.Common.Infrastructure.Email;
 using MESNET.Common.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -10,11 +12,16 @@ public sealed class SmtpEmailService : IEmailService
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<SmtpEmailService> _logger;
+    private readonly IEmailTemplateService _templateService;
 
-    public SmtpEmailService(IConfiguration configuration, ILogger<SmtpEmailService> logger)
+    public SmtpEmailService(
+        IConfiguration configuration,
+        ILogger<SmtpEmailService> logger,
+        IEmailTemplateService templateService)
     {
         _configuration = configuration;
         _logger = logger;
+        _templateService = templateService;
     }
 
     public async Task<Result> SendInvitationEmailAsync(
@@ -41,22 +48,33 @@ public sealed class SmtpEmailService : IEmailService
                 client.EnableSsl = true;
             }
 
-            var message = new MailMessage
+            var htmlBody = _templateService.RenderInvitation(fullName, targetRole, registrationLink);
+
+            using var message = new MailMessage
             {
                 From = new MailAddress(fromEmail, fromName),
                 Subject = "MESNET — Sisteme Kayıt Davetiyesi",
-                IsBodyHtml = true,
-                Body = $"""
-                    <h2>Merhaba {fullName},</h2>
-                    <p>MESNET sistemine <strong>{targetRole}</strong> olarak davet edildiniz.</p>
-                    <p>Kaydınızı tamamlamak için aşağıdaki bağlantıya tıklayın:</p>
-                    <p><a href="{registrationLink}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:white;text-decoration:none;border-radius:6px;">Kayıt Ol</a></p>
-                    <p>Bu bağlantı 7 gün geçerlidir.</p>
-                    <hr/>
-                    <p style="color:#666;font-size:12px;">Bu e-posta MESNET sistemi tarafından otomatik gönderilmiştir.</p>
-                    """
             };
             message.To.Add(new MailAddress(toEmail, fullName));
+
+            // Logo'yu CID attachment olarak ekle
+            var logoBytes = _templateService.GetLogoBytes();
+            if (logoBytes.Length > 0)
+            {
+                var htmlView = AlternateView.CreateAlternateViewFromString(htmlBody, null, MediaTypeNames.Text.Html);
+                var logoResource = new LinkedResource(new MemoryStream(logoBytes), MediaTypeNames.Image.Png)
+                {
+                    ContentId = "mesnet-logo",
+                    TransferEncoding = TransferEncoding.Base64
+                };
+                htmlView.LinkedResources.Add(logoResource);
+                message.AlternateViews.Add(htmlView);
+            }
+            else
+            {
+                message.IsBodyHtml = true;
+                message.Body = htmlBody;
+            }
 
             await client.SendMailAsync(message, ct);
 

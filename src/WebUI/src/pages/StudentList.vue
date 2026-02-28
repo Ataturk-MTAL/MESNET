@@ -213,11 +213,18 @@
             </template>
           </q-select>
           <q-input
-            v-model="addForm.fullName" label="Ad Soyad *" filled readonly
+            v-model="addForm.fullName" label="Ad Soyad *" filled
             :error="!!addErrors.fullName" :error-message="addErrors.fullName"
           >
             <template #prepend>
               <q-icon name="badge" />
+            </template>
+          </q-input>
+          <q-input
+            v-model="addForm.email" label="Kullanıcı Adı (E-posta)" filled readonly
+          >
+            <template #prepend>
+              <q-icon name="email" />
             </template>
           </q-input>
           <q-select
@@ -487,6 +494,13 @@
               <q-icon name="badge" />
             </template>
           </q-input>
+          <q-input
+            v-model="editForm.email" label="Kullanıcı Adı (E-posta)" filled readonly
+          >
+            <template #prepend>
+              <q-icon name="email" />
+            </template>
+          </q-input>
           <q-select
             v-model="editForm.branchCode"
             :options="branchOpts.options.value"
@@ -654,14 +668,14 @@ function zodValidate<T>(schema: { safeParse: (data: unknown) => { success: boole
 
 // ── reactive form objects ──
 const addForm = reactive({
-  keycloakUserId: '', fullName: '', branchCode: '', specializationCode: '',
+  keycloakUserId: '', fullName: '', email: '', branchCode: '', specializationCode: '',
   classYear: 11, section: '', studentNumber: '', phoneNumber: '',
   tcKimlikNo: '', guardianName: '', guardianPhone: '',
 })
 const addErrors = reactive<Record<string, string>>({})
 
 const editForm = reactive({
-  fullName: '', branchCode: '', specializationCode: '',
+  fullName: '', email: '', branchCode: '', specializationCode: '',
   classYear: 11, section: '', studentNumber: '', phoneNumber: '',
   tcKimlikNo: '', guardianName: '', guardianPhone: '',
 })
@@ -733,11 +747,22 @@ function onAddBranchChange() {
   addForm.specializationCode = ''
 }
 
-function openEditDialog(row: StudentProfileDto) {
+async function openEditDialog(row: StudentProfileDto) {
   selected.value = row
   editBranchName.value = row.branchName
+  // Keycloak'tan email bilgisini çek
+  let email = ''
+  if (row.keycloakUserId) {
+    await userOpts.load()
+    const found = userOpts.allOptions.value.find((o: SelectOption) => o.value === row.keycloakUserId)
+    if (found?.caption) {
+      const emailMatch = found.caption.match(/^(.+?)\s*\(/)
+      email = emailMatch ? emailMatch[1] : found.caption
+    }
+  }
   Object.assign(editForm, {
     fullName: row.fullName,
+    email,
     branchCode: row.branchCode,
     specializationCode: row.specializationCode ?? '',
     classYear: row.classYear,
@@ -788,14 +813,19 @@ function onUserSelect(val: string | null) {
   if (val) {
     const found = userOpts.allOptions.value.find((o: SelectOption) => o.value === val)
     addForm.fullName = found?.label ?? ''
+    // caption format: "email (username)" — email kısmını çıkar
+    const caption = found?.caption ?? ''
+    const emailMatch = caption.match(/^(.+?)\s*\(/)
+    addForm.email = emailMatch ? emailMatch[1] : caption
   } else {
     addForm.fullName = ''
+    addForm.email = ''
   }
 }
 
 function openAddDialog() {
   Object.assign(addForm, {
-    keycloakUserId: '', fullName: '', branchCode: '', specializationCode: '',
+    keycloakUserId: '', fullName: '', email: '', branchCode: '', specializationCode: '',
     classYear: 11, section: '', studentNumber: '', phoneNumber: '',
     tcKimlikNo: '', guardianName: '', guardianPhone: '',
   })
