@@ -17,7 +17,6 @@ public static class ServiceRegistration
             var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<KeycloakAdminService>>();
             return new KeycloakAdminService(userClient, httpClient, configuration, logger);
         });
-        services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddScoped<IUserPermissionProvider, UserPermissionProvider>();
 
         return services;

@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Common.Infrastructure.Email;
 using MESNET.Common.Shared;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Errors;

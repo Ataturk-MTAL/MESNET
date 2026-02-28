@@ -29,6 +29,11 @@ var keycloak = builder.AddKeycloak("keycloak", port: 8080, adminPassword: keyclo
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent);
 
+// Mailpit (Dev email sunucusu — SMTP:1025, Web UI:8025)
+var mailpit = builder.AddMailPit("mailpit")
+    .WithDataVolume("mailpit-data")
+    .WithLifetime(ContainerLifetime.Persistent);
+
 // MinIO (S3-compatible object storage)
 var minio = builder.AddContainer("minio", "minio/minio", "latest")
     .WithHttpEndpoint(port: 9000, targetPort: 9000, name: "api")
@@ -48,9 +53,12 @@ var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WithEnvironment("MinioStorage__Endpoint", minio.GetEndpoint("api"))
     .WithEnvironment("MinioStorage__AccessKey", minioUser)
     .WithEnvironment("MinioStorage__SecretKey", minioPassword)
+    .WithEnvironment("SmtpSettings__Host", mailpit.Resource.Host)
+    .WithEnvironment("SmtpSettings__Port", mailpit.Resource.Port)
     .WaitFor(postgres)
     .WaitFor(rabbitmq)
-    .WaitFor(minio);
+    .WaitFor(minio)
+    .WaitFor(mailpit);
 
 // Seeder — sadece dev modunda çalışır, API + Keycloak hazır olduktan sonra
 if (!builder.ExecutionContext.IsPublishMode)

@@ -99,8 +99,8 @@ try
     builder.Services.AddReportingModule();
     builder.Services.AddSecurityModule();
 
-    // Email Template (MJML)
-    builder.Services.AddEmailTemplateService();
+    // Email (MJML template + MailKit SMTP)
+    builder.Services.AddEmailServices();
 
     // ────────────────────────────────────────────────────────────────────────────────
     // Authentication + Authorization

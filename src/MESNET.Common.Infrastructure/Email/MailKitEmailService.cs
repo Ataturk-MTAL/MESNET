@@ -1,22 +1,21 @@
-using System.Net;
-using System.Net.Mail;
-using System.Net.Mime;
-using MESNET.Common.Infrastructure.Email;
 using MESNET.Common.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MimeKit;
+using MailKit.Net.Smtp;
+using MailKit.Security;
 
-namespace MESNET.Security.Application.Services;
+namespace MESNET.Common.Infrastructure.Email;
 
-public sealed class SmtpEmailService : IEmailService
+public sealed class MailKitEmailService : IEmailService
 {
     private readonly IConfiguration _configuration;
-    private readonly ILogger<SmtpEmailService> _logger;
+    private readonly ILogger<MailKitEmailService> _logger;
     private readonly IEmailTemplateService _templateService;
 
-    public SmtpEmailService(
+    public MailKitEmailService(
         IConfiguration configuration,
-        ILogger<SmtpEmailService> logger,
+        ILogger<MailKitEmailService> logger,
         IEmailTemplateService templateService)
     {
         _configuration = configuration;
@@ -40,43 +39,41 @@ public sealed class SmtpEmailService : IEmailService
             var fromEmail = _configuration["SmtpSettings:FromEmail"] ?? "noreply@mesnet.local";
             var fromName = _configuration["SmtpSettings:FromName"] ?? "MESNET Sistemi";
 
-            using var client = new SmtpClient(smtpHost, smtpPort);
-
-            if (!string.IsNullOrEmpty(smtpUser))
-            {
-                client.Credentials = new NetworkCredential(smtpUser, smtpPass);
-                client.EnableSsl = true;
-            }
-
             var htmlBody = _templateService.RenderInvitation(fullName, targetRole, registrationLink);
 
-            using var message = new MailMessage
-            {
-                From = new MailAddress(fromEmail, fromName),
-                Subject = "MESNET — Sisteme Kayıt Davetiyesi",
-            };
-            message.To.Add(new MailAddress(toEmail, fullName));
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(fromName, fromEmail));
+            message.To.Add(new MailboxAddress(fullName, toEmail));
+            message.Subject = "MESNET — Sisteme Kayıt Davetiyesi";
 
-            // Logo'yu CID attachment olarak ekle
+            var builder = new BodyBuilder();
+
+            // Logo'yu CID ile gömülü kaynak olarak ekle
             var logoBytes = _templateService.GetLogoBytes();
             if (logoBytes.Length > 0)
             {
-                var htmlView = AlternateView.CreateAlternateViewFromString(htmlBody, null, MediaTypeNames.Text.Html);
-                var logoResource = new LinkedResource(new MemoryStream(logoBytes), MediaTypeNames.Image.Png)
-                {
-                    ContentId = "mesnet-logo",
-                    TransferEncoding = TransferEncoding.Base64
-                };
-                htmlView.LinkedResources.Add(logoResource);
-                message.AlternateViews.Add(htmlView);
-            }
-            else
-            {
-                message.IsBodyHtml = true;
-                message.Body = htmlBody;
+                var logoAttachment = builder.LinkedResources.Add("logo.png", logoBytes, new ContentType("image", "png"));
+                logoAttachment.ContentId = "mesnet-logo";
+                logoAttachment.ContentDisposition = new ContentDisposition(ContentDisposition.Inline);
             }
 
-            await client.SendMailAsync(message, ct);
+            builder.HtmlBody = htmlBody;
+            message.Body = builder.ToMessageBody();
+
+            using var client = new SmtpClient();
+
+            // Dev ortamda SSL yok (Mailpit), prod'da TLS var
+            var useSsl = !string.IsNullOrEmpty(smtpUser);
+            await client.ConnectAsync(
+                smtpHost, smtpPort,
+                useSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None,
+                ct);
+
+            if (!string.IsNullOrEmpty(smtpUser))
+                await client.AuthenticateAsync(smtpUser, smtpPass, ct);
+
+            await client.SendAsync(message, ct);
+            await client.DisconnectAsync(true, ct);
 
             _logger.LogInformation("Davet e-postası gönderildi: {Email} ({Role})", toEmail, targetRole);
             return Result.Success();

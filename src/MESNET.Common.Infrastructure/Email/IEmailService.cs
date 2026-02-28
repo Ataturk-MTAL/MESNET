@@ -1,6 +1,6 @@
 using MESNET.Common.Shared;
 
-namespace MESNET.Security.Application.Services;
+namespace MESNET.Common.Infrastructure.Email;
 
 public interface IEmailService
 {

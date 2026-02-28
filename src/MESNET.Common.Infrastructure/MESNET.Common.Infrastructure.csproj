@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Keycloak.AuthServices.Authorization" />
+    <PackageReference Include="MailKit" />
     <PackageReference Include="Marten" />
     <PackageReference Include="Minio" />
     <PackageReference Include="Mjml.Net" />
