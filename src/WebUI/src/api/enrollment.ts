@@ -32,9 +32,12 @@ export interface TeacherProfileDto {
 export interface InternshipPlacementDto {
   id: string
   studentId: string
+  studentName: string
   businessId: string
+  businessName: string
   institutionId: string
   teacherId: string | null
+  teacherName: string | null
   status: string
   statusSlug: string
   source: string

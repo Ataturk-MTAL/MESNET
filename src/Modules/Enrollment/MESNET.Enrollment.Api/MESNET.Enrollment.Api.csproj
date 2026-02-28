@@ -6,6 +6,7 @@
     <PackageReference Include="WolverineFx.Http" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../MESNET.Common.Infrastructure/MESNET.Common.Infrastructure.csproj" />
     <ProjectReference Include="../MESNET.Enrollment.Application/MESNET.Enrollment.Application.csproj" />
     <ProjectReference Include="../MESNET.Enrollment.Persistence/MESNET.Enrollment.Persistence.csproj" />
   </ItemGroup>

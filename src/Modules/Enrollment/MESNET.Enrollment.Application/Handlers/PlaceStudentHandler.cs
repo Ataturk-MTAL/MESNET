@@ -51,7 +51,15 @@ public static class PlaceStudentHandler
         session.Store(placement);
         session.Store(student);
 
-        return (placement.ToDto(), new StudentPlaced(
+        // TeacherId varsa isim yükle
+        string? teacherName = null;
+        if (command.TeacherId.HasValue)
+        {
+            var teacher = await session.LoadAsync<TeacherProfile>(command.TeacherId.Value);
+            teacherName = teacher?.FullName;
+        }
+
+        return (placement.ToDto(student.FullName, business.BusinessName, teacherName), new StudentPlaced(
             placement.Id,
             placement.StudentId,
             placement.BusinessId,

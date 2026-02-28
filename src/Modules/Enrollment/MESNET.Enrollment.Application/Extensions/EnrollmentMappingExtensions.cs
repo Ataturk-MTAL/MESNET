@@ -32,12 +32,19 @@ public static class EnrollmentMappingExtensions
         entity.InstitutionId,
         entity.RegisteredAt);
 
-    public static InternshipPlacementDto ToDto(this InternshipPlacement entity) => new(
+    public static InternshipPlacementDto ToDto(
+        this InternshipPlacement entity,
+        string studentName = "",
+        string businessName = "",
+        string? teacherName = null) => new(
         entity.Id,
         entity.StudentId,
+        studentName,
         entity.BusinessId,
+        businessName,
         entity.InstitutionId,
         entity.TeacherId,
+        teacherName,
         entity.Status.Name,
         entity.Status.Slug,
         entity.Source.Name,

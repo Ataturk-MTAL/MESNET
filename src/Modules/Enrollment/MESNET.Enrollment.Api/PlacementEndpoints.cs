@@ -1,3 +1,4 @@
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Commands;
@@ -54,10 +55,12 @@ public static class PlacementEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? businessId, Guid? studentId, Guid? academicPeriodId, string? status, IMessageBus bus)
+        Guid? businessId, Guid? studentId, Guid? academicPeriodId, string? status,
+        ICurrentUserService currentUser, IMessageBus bus)
     {
+        var institutionId = currentUser.GetCurrentUser()?.InstitutionId;
         var dtos = await bus.InvokeAsync<IReadOnlyList<InternshipPlacementDto>>(
-            new ListPlacements(businessId, studentId, academicPeriodId, status));
+            new ListPlacements(businessId, studentId, academicPeriodId, status, institutionId));
         return Results.Ok(ResponseBuilder.Success().AddData(dtos).Build());
     }
 }

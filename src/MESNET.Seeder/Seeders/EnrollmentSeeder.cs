@@ -10,7 +10,7 @@ public static class EnrollmentSeeder
 
         await SeedTeachers(api, ctx, institutionId);
         await SeedStudents(api, ctx, institutionId, academicPeriodId);
-        await SeedPlacements(api, ctx, institutionId);
+        await SeedPlacements(api, ctx, institutionId, academicPeriodId);
     }
 
     private static async Task SeedTeachers(MesnetApiClient api, SeedContext ctx, Guid institutionId)
@@ -119,7 +119,7 @@ public static class EnrollmentSeeder
         }
     }
 
-    private static async Task SeedPlacements(MesnetApiClient api, SeedContext ctx, Guid institutionId)
+    private static async Task SeedPlacements(MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId)
     {
         Console.WriteLine();
         Console.WriteLine("── Yerleştirmeler ─────────────────");
@@ -157,7 +157,8 @@ public static class EnrollmentSeeder
             {
                 ["studentId"] = studentId,
                 ["businessId"] = ctx.Get(p.BusinessKey),
-                ["institutionId"] = institutionId
+                ["institutionId"] = institutionId,
+                ["academicPeriodId"] = academicPeriodId
             };
             if (p.TeacherKey is not null && ctx.Has(p.TeacherKey))
                 body["teacherId"] = ctx.Get(p.TeacherKey);

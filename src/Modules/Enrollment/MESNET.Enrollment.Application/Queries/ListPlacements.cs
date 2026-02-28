@@ -4,4 +4,5 @@ public sealed record ListPlacements(
     Guid? BusinessId,
     Guid? StudentId,
     Guid? AcademicPeriodId,
-    string? Status);
+    string? Status,
+    Guid? InstitutionId = null);
