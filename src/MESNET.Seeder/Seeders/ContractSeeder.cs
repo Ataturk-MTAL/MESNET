@@ -7,8 +7,9 @@ public static class ContractSeeder
         Console.WriteLine();
         Console.WriteLine("── Sözleşmeler ────────────────────");
 
-        if (!ctx.Has("Institution")) return;
+        if (!ctx.Has("Institution") || !ctx.Has("AcademicPeriod")) return;
         var institutionId = ctx.Get("Institution");
+        var academicPeriodId = ctx.Get("AcademicPeriod");
 
         // Mevcut sözleşmeleri yükle — studentId'ye göre eşleştir
         var existing = await api.GetAsync($"/api/contracts?institutionId={institutionId}");
@@ -24,14 +25,14 @@ public static class ContractSeeder
         }
 
         var now = DateTime.UtcNow;
-        await SeedContract1(api, ctx, institutionId, now, existingByStudent);
-        await SeedContract2(api, ctx, institutionId, now, existingByStudent);
-        await SeedContract3(api, ctx, institutionId, now, existingByStudent);
-        await SeedContract4(api, ctx, institutionId, now, existingByStudent);
+        await SeedContract1(api, ctx, institutionId, academicPeriodId, now, existingByStudent);
+        await SeedContract2(api, ctx, institutionId, academicPeriodId, now, existingByStudent);
+        await SeedContract3(api, ctx, institutionId, academicPeriodId, now, existingByStudent);
+        await SeedContract4(api, ctx, institutionId, academicPeriodId, now, existingByStudent);
     }
 
     private static async Task SeedContract1(
-        MesnetApiClient api, SeedContext ctx, Guid institutionId, DateTime now,
+        MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId, DateTime now,
         Dictionary<Guid, Guid> existingByStudent)
     {
         if (!ctx.Has("Student1") || !ctx.Has("Business1")) return;
@@ -49,9 +50,9 @@ public static class ContractSeeder
             studentId,
             businessId = ctx.Get("Business1"),
             institutionId,
+            academicPeriodId,
             teacherId = ctx.Has("Teacher1") ? ctx.Get("Teacher1") : (Guid?)null,
-            startDate = now.AddMonths(-2),
-            endDate = now.AddMonths(4)
+            startDate = now.AddMonths(-2)
         });
         if (data is null) return;
 
@@ -68,7 +69,7 @@ public static class ContractSeeder
     }
 
     private static async Task SeedContract2(
-        MesnetApiClient api, SeedContext ctx, Guid institutionId, DateTime now,
+        MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId, DateTime now,
         Dictionary<Guid, Guid> existingByStudent)
     {
         if (!ctx.Has("Student2") || !ctx.Has("Business2")) return;
@@ -86,9 +87,9 @@ public static class ContractSeeder
             studentId,
             businessId = ctx.Get("Business2"),
             institutionId,
+            academicPeriodId,
             teacherId = ctx.Has("Teacher2") ? ctx.Get("Teacher2") : (Guid?)null,
-            startDate = now.AddMonths(-1),
-            endDate = now.AddMonths(5)
+            startDate = now.AddMonths(-1)
         });
         if (data is null) return;
 
@@ -101,7 +102,7 @@ public static class ContractSeeder
     }
 
     private static async Task SeedContract3(
-        MesnetApiClient api, SeedContext ctx, Guid institutionId, DateTime now,
+        MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId, DateTime now,
         Dictionary<Guid, Guid> existingByStudent)
     {
         if (!ctx.Has("Student4") || !ctx.Has("Business2")) return;
@@ -119,9 +120,9 @@ public static class ContractSeeder
             studentId,
             businessId = ctx.Get("Business2"),
             institutionId,
+            academicPeriodId,
             teacherId = ctx.Has("Teacher2") ? ctx.Get("Teacher2") : (Guid?)null,
-            startDate = now.AddDays(-5),
-            endDate = now.AddMonths(6)
+            startDate = now.AddDays(-5)
         });
         if (data is null) return;
 
@@ -130,7 +131,7 @@ public static class ContractSeeder
     }
 
     private static async Task SeedContract4(
-        MesnetApiClient api, SeedContext ctx, Guid institutionId, DateTime now,
+        MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId, DateTime now,
         Dictionary<Guid, Guid> existingByStudent)
     {
         if (!ctx.Has("Student3") || !ctx.Has("Business1")) return;
@@ -148,9 +149,9 @@ public static class ContractSeeder
             studentId,
             businessId = ctx.Get("Business1"),
             institutionId,
+            academicPeriodId,
             teacherId = ctx.Has("Teacher1") ? ctx.Get("Teacher1") : (Guid?)null,
-            startDate = new DateTime(2024, 10, 1, 0, 0, 0, DateTimeKind.Utc),
-            endDate = new DateTime(2025, 6, 15, 0, 0, 0, DateTimeKind.Utc)
+            startDate = new DateTime(2024, 10, 1, 0, 0, 0, DateTimeKind.Utc)
         });
         if (data is null) return;
 

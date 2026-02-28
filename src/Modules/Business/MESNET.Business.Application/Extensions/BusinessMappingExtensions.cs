@@ -1,4 +1,5 @@
 using MESNET.Business.Application.Dtos;
+using MESNET.Business.Core.Enums;
 
 namespace MESNET.Business.Application.Extensions;
 
@@ -20,9 +21,15 @@ public static class BusinessMappingExtensions
         entity.Capacity.ToDto(),
         entity.Representatives.Select(r => r.ToDto()).ToList(),
         entity.Documents.Select(d => d.ToDto()).ToList(),
+        entity.Sectors.Select(s => s.ToSectorDto()).ToList(),
         entity.CreatedAt,
         entity.ApprovedAt,
         entity.ClosedAt);
+
+    public static SectorDto ToSectorDto(this string sectorName) =>
+        BusinessSector.TryFromName(sectorName, true, out var sector)
+            ? new SectorDto(sector.Name, sector.Slug)
+            : new SectorDto(sectorName, sectorName);
 
     public static BusinessCapacityDto ToDto(this Core.ValueObjects.BusinessCapacity vo) => new(
         vo.TotalSlots,

@@ -16,10 +16,13 @@ public class StudentProfile
     public string? FatherName { get; set; }
     public string? MotherName { get; set; }
     public string? StudentNumber { get; set; }
+    public string? PhoneNumber { get; set; }
     public Guid InstitutionId { get; set; }
     public Guid AcademicPeriodId { get; set; }
     public required string BranchCode { get; set; }
     public required string BranchName { get; set; }
+    public string? SpecializationCode { get; set; }
+    public string? SpecializationName { get; set; }
     public int ClassYear { get; set; }
     public string? Section { get; set; }
 

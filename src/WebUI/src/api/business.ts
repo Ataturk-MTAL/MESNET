@@ -29,6 +29,11 @@ export interface BusinessDocumentDto {
   rejectionReason: string | null
 }
 
+export interface SectorDto {
+  name: string
+  slug: string
+}
+
 export interface BusinessDto {
   id: string
   name: string
@@ -45,6 +50,7 @@ export interface BusinessDto {
   capacity: BusinessCapacityDto
   representatives: BusinessRepresentativeDto[]
   documents: BusinessDocumentDto[]
+  sectors: SectorDto[]
   createdAt: string
   approvedAt: string | null
   closedAt: string | null
@@ -58,6 +64,7 @@ export interface RegisterBusinessRequest {
   website?: string
   personnelCount?: number
   location?: GeoLocation
+  sectors?: string[]
 }
 
 export interface UpdateBusinessRequest {
@@ -68,6 +75,7 @@ export interface UpdateBusinessRequest {
   website?: string
   personnelCount?: number
   location?: GeoLocation
+  sectors?: string[]
 }
 
 export interface UpdateCapacityRequest {
@@ -75,8 +83,12 @@ export interface UpdateCapacityRequest {
 }
 
 export const businessApi = {
-  list: (status?: string) =>
-    api.get<BusinessDto[]>('/businesses', { params: status ? { status } : undefined }),
+  list: (status?: string, sector?: string) =>
+    api.get<BusinessDto[]>('/businesses', {
+      params: { ...(status ? { status } : {}), ...(sector ? { sector } : {}) },
+    }),
+
+  sectors: () => api.get<SectorDto[]>('/businesses/sectors'),
 
   get: (businessId: string) =>
     api.get<BusinessDto>(`/businesses/${businessId}`),

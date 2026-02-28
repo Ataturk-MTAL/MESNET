@@ -34,6 +34,9 @@ public static class AuthEndpoint
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        var institutionId = user.FindFirst("institution_id")?.Value;
+        var businessId = user.FindFirst("business_id")?.Value;
+
         return Results.Ok(ResponseBuilder.Success()
             .AddData(new
             {
@@ -45,6 +48,8 @@ public static class AuthEndpoint
                     ?? user.FindFirst(ClaimTypes.GivenName)?.Value,
                 lastName = user.FindFirst("family_name")?.Value
                     ?? user.FindFirst(ClaimTypes.Surname)?.Value,
+                institutionId,
+                businessId,
                 roles,
                 permissions
             })

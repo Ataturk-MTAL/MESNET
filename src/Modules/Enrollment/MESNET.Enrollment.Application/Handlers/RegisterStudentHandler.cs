@@ -6,6 +6,7 @@ using MESNET.Enrollment.Application.Errors;
 using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.ReadModels;
+using MESNET.Enrollment.Core.ValueObjects;
 using MESNET.Enrollment.Shared.Events;
 
 namespace MESNET.Enrollment.Application.Handlers;
@@ -27,9 +28,24 @@ public static class RegisterStudentHandler
             FullName = command.FullName,
             BranchCode = command.BranchCode,
             BranchName = command.BranchName,
+            SpecializationCode = command.SpecializationCode,
+            SpecializationName = command.SpecializationName,
             ClassYear = command.ClassYear,
-            Section = command.Section
+            Section = command.Section,
+            StudentNumber = command.StudentNumber,
+            PhoneNumber = command.PhoneNumber,
+            TcKimlikNo = command.TcKimlikNo
         };
+
+        if (command.GuardianName is not null || command.GuardianPhone is not null)
+        {
+            student.Guardian = new GuardianInfo(
+                command.GuardianName ?? "",
+                "",
+                command.GuardianPhone ?? "",
+                "",
+                "");
+        }
 
         session.Store(student);
 

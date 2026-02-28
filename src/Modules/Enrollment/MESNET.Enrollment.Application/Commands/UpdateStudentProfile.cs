@@ -6,4 +6,11 @@ public sealed record UpdateStudentProfile(
     string? BranchCode,
     string? BranchName,
     int? ClassYear,
-    string? Section);
+    string? Section,
+    string? SpecializationCode = null,
+    string? SpecializationName = null,
+    string? StudentNumber = null,
+    string? PhoneNumber = null,
+    string? TcKimlikNo = null,
+    string? GuardianName = null,
+    string? GuardianPhone = null);

@@ -11,4 +11,5 @@ public sealed record RegisterBusiness(
     string? Website,
     int PersonnelCount,
     Location? Location,
-    int TotalSlots);
+    int TotalSlots,
+    List<string>? Sectors);

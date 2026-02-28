@@ -7,32 +7,43 @@ public static class InstitutionSeeder
         Console.WriteLine();
         Console.WriteLine("── Kurum ──────────────────────────");
 
-        // Mevcut kurumu kontrol et
+        var institutionId = await EnsureInstitutionAsync(api);
+        if (institutionId is null) return;
+
+        ctx.Set("Institution", institutionId.Value);
+
+        // Keycloak kullanıcılarının institution_id claim'ini güncelle
+        await SyncKeycloakAsync(keycloak, institutionId.Value);
+
+        // Alanlar + dallar
+        await EnsureBranchesAsync(api, institutionId.Value);
+
+        // Staff — Keycloak'tan gerçek kullanıcı ID'lerini al
+        await EnsureStaffAsync(api, keycloak, institutionId.Value);
+
+        // Ders programı
+        await api.PutAsync($"/api/institutions/{institutionId.Value}/schedule-config", new
+        {
+            institutionId = institutionId.Value,
+            dailyPeriodCount = 8,
+            updatedBy = "Sistem"
+        });
+        Console.WriteLine("  ✓ Ders programı (8 ders) ayarlandı");
+
+        // Akademik dönem
+        await EnsureAcademicPeriodAsync(api, ctx, institutionId.Value);
+    }
+
+    private static async Task<Guid?> EnsureInstitutionAsync(MesnetApiClient api)
+    {
         var existing = await api.GetAsync("/api/institutions");
         if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array && arr.GetArrayLength() > 0)
         {
-            var inst = arr[0];
-            var existingId = inst.GetProperty("id").GetGuid();
-            ctx.Set("Institution", existingId);
-            Console.WriteLine($"  → Kurum mevcut (id: {existingId.ToString()[..8]}...), yüklendi");
-
-            // Keycloak'ı senkronize et
-            try
-            {
-                await keycloak.UpdateAllUsersInstitutionIdAsync(existingId);
-                Console.WriteLine("  ✓ Keycloak institution_id senkronize edildi");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"  ⚠ Keycloak senkronizasyon başarısız: {ex.Message}");
-            }
-
-            // Aktif dönem yoksa oluştur
-            await EnsureAcademicPeriodAsync(api, existingId);
-            return;
+            var id = arr[0].GetProperty("id").GetGuid();
+            Console.WriteLine($"  → Kurum mevcut (id: {id.ToString()[..8]}...)");
+            return id;
         }
 
-        // Kurum oluştur
         var data = await api.PostAsync("/api/institutions", new
         {
             tenantId = Guid.Parse("10000000-0000-0000-0000-000000000001"),
@@ -45,71 +56,118 @@ public static class InstitutionSeeder
             location = new { latitude = 39.9334, longitude = 32.8597 }
         });
 
-        if (data is null) return;
+        if (data is null) return null;
         var institutionId = data.Value.GetProperty("id").GetGuid();
-        ctx.Set("Institution", institutionId);
         Console.WriteLine($"  ✓ Kurum oluşturuldu (id: {institutionId.ToString()[..8]}...)");
+        return institutionId;
+    }
 
+    private static async Task SyncKeycloakAsync(KeycloakAdminService keycloak, Guid institutionId)
+    {
         try
         {
             await keycloak.UpdateAllUsersInstitutionIdAsync(institutionId);
-            Console.WriteLine("  ✓ Keycloak kullanıcıları institution_id ile güncellendi");
+            Console.WriteLine("  ✓ Keycloak institution_id senkronize edildi");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"  ⚠ Keycloak güncelleme başarısız: {ex.Message}");
+            Console.WriteLine($"  ⚠ Keycloak senkronizasyon başarısız: {ex.Message}");
         }
-
-        // Alanları aktifleştir
-        await api.PostAsync($"/api/institutions/{institutionId}/branches", new { fieldCode = "BT" });
-        Console.WriteLine("  ✓ Alan \"BT\" aktifleştirildi");
-
-        await api.PostAsync($"/api/institutions/{institutionId}/branches", new { fieldCode = "MUF" });
-        Console.WriteLine("  ✓ Alan \"MUF\" aktifleştirildi");
-
-        // Personel ekle
-        var staffMembers = new[]
-        {
-            new { keycloakId = "52000000-0000-0000-0000-000000000001", fullName = "Ahmet Yılmaz", role = "Principal", branchCode = (string?)null },
-            new { keycloakId = "52000000-0000-0000-0000-000000000002", fullName = "Zeynep Arslan", role = "VicePrincipal", branchCode = (string?)null },
-            new { keycloakId = "52000000-0000-0000-0000-000000000003", fullName = "Fatih Demir", role = "Coordinator", branchCode = (string?)"BT" },
-            new { keycloakId = "52000000-0000-0000-0000-000000000004", fullName = "Seda Kara", role = "Coordinator", branchCode = (string?)"MUF" },
-            new { keycloakId = "52000000-0000-0000-0000-000000000005", fullName = "Emre Çetin", role = "Staff", branchCode = (string?)null }
-        };
-
-        foreach (var s in staffMembers)
-        {
-            await api.PostAsync($"/api/institutions/{institutionId}/staff", s);
-            Console.WriteLine($"  ✓ Personel \"{s.fullName}\" ({s.role}) eklendi");
-        }
-
-        // Ders programı
-        await api.PutAsync($"/api/institutions/{institutionId}/schedule-config", new
-        {
-            institutionId,
-            dailyPeriodCount = 8,
-            updatedBy = "Sistem"
-        });
-        Console.WriteLine("  ✓ Ders programı (8 ders) ayarlandı");
-
-        // Akademik dönem
-        await EnsureAcademicPeriodAsync(api, institutionId);
     }
 
-    private static async Task EnsureAcademicPeriodAsync(MesnetApiClient api, Guid institutionId)
+    private static async Task EnsureBranchesAsync(MesnetApiClient api, Guid institutionId)
+    {
+        // Branch aktifleştirme idempotent değil (zaten varsa 422 döner, sorun yok)
+        // Specialization güncelleme idempotent (PUT — üzerine yazar)
+        var branches = new[]
+        {
+            (Code: "BT", Specs: new[] { "BT-AG", "BT-YAZ" }, Label: "BT (Ağ İşletmenliği, Yazılım Geliştirme)"),
+            (Code: "MUF", Specs: new[] { "MUF-MUH", "MUF-DIS" }, Label: "MUF (Muhasebe, Dış Ticaret)"),
+        };
+
+        foreach (var (code, specs, label) in branches)
+        {
+            await api.PostAsync($"/api/institutions/{institutionId}/branches", new { fieldCode = code });
+            await api.PutAsync($"/api/institutions/{institutionId}/branches/{code}/specializations",
+                new { activeSpecializations = specs });
+            Console.WriteLine($"  ✓ Alan \"{label}\" aktif");
+        }
+    }
+
+    private static async Task EnsureStaffAsync(MesnetApiClient api, KeycloakAdminService keycloak, Guid institutionId)
+    {
+        // Mevcut staff'ı kontrol et
+        var inst = await api.GetAsync($"/api/institutions/{institutionId}");
+        var existingStaffIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (inst is { } instEl)
+        {
+            try
+            {
+                var staffArr = instEl.GetProperty("staff");
+                foreach (var s in staffArr.EnumerateArray())
+                    existingStaffIds.Add(s.GetProperty("keycloakId").GetString() ?? "");
+            }
+            catch { /* staff property yoksa boş set */ }
+        }
+
+        // username → (role, branchCode) eşleştirmesi
+        var staffMapping = new Dictionary<string, (string Role, string? BranchCode)>
+        {
+            ["admin"] = ("Principal", null),
+            ["teacher1"] = ("Coordinator", "BT"),
+        };
+
+        try
+        {
+            var kcUsers = await keycloak.GetRealmUsersAsync();
+
+            foreach (var (username, (role, branchCode)) in staffMapping)
+            {
+                var kcUser = kcUsers.Find(u => u.Username == username);
+                if (kcUser is null)
+                {
+                    Console.WriteLine($"  ⚠ Keycloak kullanıcısı \"{username}\" bulunamadı, atlanıyor");
+                    continue;
+                }
+
+                if (existingStaffIds.Contains(kcUser.Id))
+                {
+                    Console.WriteLine($"  → Personel \"{kcUser.FullName}\" zaten atanmış");
+                    continue;
+                }
+
+                await api.PostAsync($"/api/institutions/{institutionId}/staff", new
+                {
+                    keycloakId = kcUser.Id,
+                    fullName = kcUser.FullName,
+                    role,
+                    branchCode
+                });
+                Console.WriteLine($"  ✓ Personel \"{kcUser.FullName}\" ({role}) eklendi [kc: {username}]");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  ⚠ Keycloak staff ataması başarısız: {ex.Message}");
+        }
+    }
+
+    private static async Task EnsureAcademicPeriodAsync(MesnetApiClient api, SeedContext ctx, Guid institutionId)
     {
         try
         {
             var periods = await api.GetAsync($"/api/institutions/{institutionId}/academic-periods");
             if (periods is { } pArr && pArr.ValueKind == System.Text.Json.JsonValueKind.Array && pArr.GetArrayLength() > 0)
             {
-                Console.WriteLine("  → Akademik dönem mevcut, atlanıyor");
+                var periodId = pArr[0].GetProperty("id").GetGuid();
+                ctx.Set("AcademicPeriod", periodId);
+                Console.WriteLine($"  → Akademik dönem mevcut (id: {periodId.ToString()[..8]}...)");
                 return;
             }
         }
         catch { /* endpoint henüz yoksa veya hata varsa oluşturmayı dene */ }
 
-        await api.PostAsync($"/api/institutions/{institutionId}/academic-periods", new
+        var data = await api.PostAsync($"/api/institutions/{institutionId}/academic-periods", new
         {
             name = "2025-2026",
             startYear = 2025,
@@ -117,6 +175,11 @@ public static class InstitutionSeeder
             startDate = "2025-09-08",
             endDate = "2026-06-19"
         });
+        if (data is not null)
+        {
+            var periodId = data.Value.GetProperty("id").GetGuid();
+            ctx.Set("AcademicPeriod", periodId);
+        }
         Console.WriteLine("  ✓ Akademik dönem \"2025-2026\" oluşturuldu");
     }
 }

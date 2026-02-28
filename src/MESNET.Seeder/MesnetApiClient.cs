@@ -64,6 +64,27 @@ public sealed class MesnetApiClient
         return envelope?.Data;
     }
 
+    public async Task<JsonElement?> PatchAsync(string url, object? body = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Patch, url);
+        if (body is not null)
+            request.Content = JsonContent.Create(body, options: JsonOptions);
+
+        await AddAuthAsync(request);
+        var response = await _http.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"  ✗ PATCH {url} → {(int)response.StatusCode} {response.StatusCode}");
+            Console.WriteLine($"    {errorBody[..Math.Min(errorBody.Length, 300)]}");
+            return null;
+        }
+
+        var envelope = await response.Content.ReadFromJsonAsync<ApiEnvelope>(JsonOptions);
+        return envelope?.Data;
+    }
+
     public async Task<JsonElement?> GetAsync(string url)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, url);

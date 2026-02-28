@@ -27,6 +27,7 @@ public static class SelfRegisterBusinessHandler
             Location = command.Location,
             Source = RegistrationSource.SelfRegistered,
             Status = BusinessStatus.PendingApproval,
+            Sectors = command.Sectors ?? [],
             Capacity = new BusinessCapacity
             {
                 TotalSlots = command.TotalSlots
@@ -46,7 +47,7 @@ public static class SelfRegisterBusinessHandler
         session.Store(business);
         await session.SaveChangesAsync();
 
-        await bus.PublishAsync(new BusinessRegistered(business.Id, business.Name, business.Location, business.Source, business.Capacity.TotalSlots));
+        await bus.PublishAsync(new BusinessRegistered(business.Id, business.Name, business.Location, business.Source, business.Capacity.TotalSlots, business.Sectors));
         await bus.PublishAsync(new BusinessCapacityChanged(business.Id, business.Capacity.TotalSlots, business.Capacity.OccupiedSlots));
         await bus.PublishAsync(new BusinessApprovalRequested(business.Id, business.Name));
 

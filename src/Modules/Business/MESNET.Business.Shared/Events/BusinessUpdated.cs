@@ -5,4 +5,5 @@ namespace MESNET.Business.Shared.Events;
 public sealed record BusinessUpdated(
     Guid BusinessId,
     string Name,
-    Location? Location);
+    Location? Location,
+    List<string>? Sectors = null);

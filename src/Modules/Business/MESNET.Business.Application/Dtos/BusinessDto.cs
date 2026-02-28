@@ -18,9 +18,12 @@ public sealed record BusinessDto(
     BusinessCapacityDto Capacity,
     List<BusinessRepresentativeDto> Representatives,
     List<BusinessDocumentDto> Documents,
+    List<SectorDto> Sectors,
     DateTime CreatedAt,
     DateTime? ApprovedAt,
     DateTime? ClosedAt);
+
+public sealed record SectorDto(string Name, string Slug);
 
 public sealed record BusinessCapacityDto(
     int TotalSlots,

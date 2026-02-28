@@ -29,4 +29,7 @@ public static class BusinessErrors
 
     public static Error DocumentHasNoFile(Guid documentId) =>
         new("Business.DocumentHasNoFile", $"Belgenin dosyası bulunamadı: {documentId}");
+
+    public static Error InvalidSector(string sectorName) =>
+        new("Business.InvalidSector", $"Geçersiz sektör: {sectorName}");
 }

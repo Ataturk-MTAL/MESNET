@@ -23,6 +23,14 @@ public static class BusinessSeeder
             }
         }
 
+        var businessSectors = new Dictionary<string, string[]>
+        {
+            ["Business1"] = ["InformationTechnology"],
+            ["Business2"] = ["ElectricalAndElectronics", "Machinery"],
+            ["Business3"] = ["InformationTechnology"],
+            ["Business4"] = ["Finance", "BusinessAndManagement"],
+        };
+
         await SeedBusiness(api, ctx, existingByName, "Business1", "Bilge Yazılım A.Ş.", () => api.PostAsync("/api/businesses", new
         {
             tenantId,
@@ -33,7 +41,8 @@ public static class BusinessSeeder
             website = "https://bilgeyazilim.com",
             personnelCount = 25,
             location = new { latitude = 39.9208, longitude = 32.8541 },
-            totalSlots = 5
+            totalSlots = 5,
+            sectors = new[] { "InformationTechnology" }
         }));
 
         await SeedBusiness(api, ctx, existingByName, "Business2", "Anadolu Otomasyon Ltd. Şti.", () => api.PostAsync("/api/businesses", new
@@ -45,7 +54,8 @@ public static class BusinessSeeder
             email = "info@anadoluotomasyon.com",
             personnelCount = 45,
             location = new { latitude = 39.9725, longitude = 32.7398 },
-            totalSlots = 8
+            totalSlots = 8,
+            sectors = new[] { "ElectricalAndElectronics", "Machinery" }
         }));
 
         await SeedBusiness(api, ctx, existingByName, "Business3", "Yeni Nesil Teknoloji", () => api.PostAsync("/api/businesses/self-register", new
@@ -61,7 +71,8 @@ public static class BusinessSeeder
             email = "info@yeninesitek.com",
             personnelCount = 8,
             location = new { latitude = 39.9255, longitude = 32.8658 },
-            totalSlots = 3
+            totalSlots = 3,
+            sectors = new[] { "InformationTechnology" }
         }));
 
         await SeedBusiness(api, ctx, existingByName, "Business4", "Öz-Er Muhasebe ve Danışmanlık", () => api.PostAsync("/api/businesses", new
@@ -73,8 +84,20 @@ public static class BusinessSeeder
             email = "info@ozermuhasebe.com",
             personnelCount = 12,
             location = new { latitude = 39.9100, longitude = 32.8600 },
-            totalSlots = 4
+            totalSlots = 4,
+            sectors = new[] { "Finance", "BusinessAndManagement" }
         }));
+
+        // Mevcut işletmelere sektör bilgisi yoksa PATCH ile ekle
+        foreach (var (ctxKey, sectors) in businessSectors)
+        {
+            if (!ctx.Has(ctxKey)) continue;
+            var bizId = ctx.Get(ctxKey);
+            if (!existingByName.ContainsValue(bizId)) continue; // yeni oluşturulan, zaten sektörlü
+
+            await api.PatchAsync($"/api/businesses/{bizId}", new { sectors });
+            Console.WriteLine($"  ↻ \"{ctxKey}\" sektörler güncellendi");
+        }
 
         // Herhangi bir yeni işletme oluşturulmuşsa, Enrollment modülünün event'i işlemesi için bekle
         var newlyCreated = new[] { "Business1", "Business2", "Business3", "Business4" }

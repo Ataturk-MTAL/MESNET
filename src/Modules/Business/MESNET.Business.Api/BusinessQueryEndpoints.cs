@@ -1,6 +1,7 @@
 using MESNET.Business.Application.Commands;
 using MESNET.Business.Application.Dtos;
 using MESNET.Business.Application.Queries;
+using MESNET.Business.Core.Enums;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
@@ -16,15 +17,25 @@ public static class BusinessQueryEndpoints
     {
         var group = app.MapGroup("/api/businesses").WithTags("BusinessQuery").RequireAuthorization();
         group.MapGet("/", GetByStatus).RequireAuthorization(Permissions.Company.View);
+        group.MapGet("/sectors", GetSectors).RequireAuthorization(Permissions.Company.View);
         group.MapGet("/nearby", GetNearby).RequireAuthorization(Permissions.Company.View);
         group.MapPut("/{businessId:guid}/capacity", PutCapacity).RequireAuthorization(Permissions.Company.Manage);
         return app;
     }
 
-    private static async Task<IResult> GetByStatus(string? status, IMessageBus bus)
+    private static async Task<IResult> GetByStatus(string? status, string? sector, IMessageBus bus)
     {
-        var businesses = await bus.InvokeAsync<IReadOnlyList<BusinessDto>>(new GetBusinessesByStatus(status));
+        var businesses = await bus.InvokeAsync<IReadOnlyList<BusinessDto>>(new GetBusinessesByStatus(status, sector));
         return Results.Ok(ResponseBuilder.Success().AddData(businesses).Build());
+    }
+
+    private static IResult GetSectors()
+    {
+        var sectors = BusinessSector.List
+            .OrderBy(s => s.Value)
+            .Select(s => new SectorDto(s.Name, s.Slug))
+            .ToList();
+        return Results.Ok(ResponseBuilder.Success().AddData(sectors).Build());
     }
 
     private static async Task<IResult> GetNearby(double lat, double lng, double radius, IMessageBus bus)

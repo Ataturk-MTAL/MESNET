@@ -4,11 +4,12 @@ public static class EnrollmentSeeder
 {
     public static async Task SeedAsync(MesnetApiClient api, SeedContext ctx)
     {
-        if (!ctx.Has("Institution")) return;
+        if (!ctx.Has("Institution") || !ctx.Has("AcademicPeriod")) return;
         var institutionId = ctx.Get("Institution");
+        var academicPeriodId = ctx.Get("AcademicPeriod");
 
         await SeedTeachers(api, ctx, institutionId);
-        await SeedStudents(api, ctx, institutionId);
+        await SeedStudents(api, ctx, institutionId, academicPeriodId);
         await SeedPlacements(api, ctx, institutionId);
     }
 
@@ -60,7 +61,7 @@ public static class EnrollmentSeeder
         }
     }
 
-    private static async Task SeedStudents(MesnetApiClient api, SeedContext ctx, Guid institutionId)
+    private static async Task SeedStudents(MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId)
     {
         Console.WriteLine();
         Console.WriteLine("── Öğrenciler ─────────────────────");
@@ -102,6 +103,7 @@ public static class EnrollmentSeeder
             var data = await api.PostAsync("/api/students", new
             {
                 institutionId,
+                academicPeriodId,
                 keycloakUserId = Guid.Parse(s.KcId),
                 fullName = s.Name,
                 branchCode = s.BranchCode,

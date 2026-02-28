@@ -21,9 +21,10 @@ public static class UpdateBusinessInfoHandler
         if (command.Website is not null) business.Website = command.Website;
         if (command.PersonnelCount is not null) business.PersonnelCount = command.PersonnelCount.Value;
         if (command.Location is not null) business.Location = command.Location;
+        if (command.Sectors is not null) business.Sectors = command.Sectors;
 
         session.Store(business);
 
-        return new BusinessUpdated(business.Id, business.Name, business.Location);
+        return new BusinessUpdated(business.Id, business.Name, business.Location, business.Sectors);
     }
 }

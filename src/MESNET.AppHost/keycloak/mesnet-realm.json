@@ -291,10 +291,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["InstitutionManager"],
-      "attributes": {
-        "institution_id": ["00000000-0000-0000-0000-000000000001"]
-      }
+      "realmRoles": ["InstitutionManager"]
     },
     {
       "username": "teacher1",
@@ -310,10 +307,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["Teacher"],
-      "attributes": {
-        "institution_id": ["00000000-0000-0000-0000-000000000001"]
-      }
+      "realmRoles": ["Teacher"]
     },
     {
       "username": "student1",
@@ -329,10 +323,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["Student"],
-      "attributes": {
-        "institution_id": ["00000000-0000-0000-0000-000000000001"]
-      }
+      "realmRoles": ["Student"]
     }
   ],
   "scopeMappings": [

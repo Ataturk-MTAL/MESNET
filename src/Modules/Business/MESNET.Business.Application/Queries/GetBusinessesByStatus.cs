@@ -1,3 +1,3 @@
 namespace MESNET.Business.Application.Queries;
 
-public sealed record GetBusinessesByStatus(string? Status);
+public sealed record GetBusinessesByStatus(string? Status, string? Sector = null);

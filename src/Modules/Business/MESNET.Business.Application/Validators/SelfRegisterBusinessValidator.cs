@@ -1,5 +1,6 @@
 using FluentValidation;
 using MESNET.Business.Application.Commands;
+using MESNET.Business.Core.Enums;
 
 namespace MESNET.Business.Application.Validators;
 
@@ -17,5 +18,16 @@ public class SelfRegisterBusinessValidator : AbstractValidator<SelfRegisterBusin
         RuleFor(x => x.Address).NotEmpty().WithMessage("Adres belirtilmelidir.");
         RuleFor(x => x.PersonnelCount).GreaterThan(0).WithMessage("Personel sayısı sıfırdan büyük olmalıdır.");
         RuleFor(x => x.TotalSlots).GreaterThan(0).WithMessage("Toplam kontenjan sıfırdan büyük olmalıdır.");
+
+        When(x => x.Sectors is not null, () =>
+        {
+            RuleFor(x => x.Sectors)
+                .Must(s => s!.Count == s.Distinct().Count())
+                .WithMessage("Aynı sektör birden fazla kez seçilemez.");
+
+            RuleForEach(x => x.Sectors)
+                .Must(s => BusinessSector.TryFromName(s, true, out _))
+                .WithMessage(s => $"Geçersiz sektör: {s}");
+        });
     }
 }

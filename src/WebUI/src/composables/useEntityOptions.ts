@@ -1,7 +1,10 @@
 import { ref } from 'vue'
+import { watchThrottled } from '@vueuse/core'
 import { enrollmentApi } from 'src/api/enrollment'
 import { businessApi } from 'src/api/business'
 import { securityApi } from 'src/api/security'
+import { institutionApi, type FieldOfStudyDto, type InstitutionBranchDto } from 'src/api/institution'
+import { useAuthStore } from 'stores/auth'
 
 export interface SelectOption {
   label: string
@@ -186,4 +189,92 @@ export function useKeycloakUserOptions() {
   }
 
   return { options, allOptions, loading, load, filter, reset }
+}
+
+// ── Alan (Branch) + Dal (Specialization) Seçimi ──
+export interface SpecOption {
+  label: string
+  value: string
+}
+
+export function useBranchOptions() {
+  const options = ref<SelectOption[]>([])
+  const allOptions = ref<SelectOption[]>([])
+  const loading = ref(false)
+  const searchQuery = ref('')
+  let loaded = false
+
+  // Field catalog — specialization isim çözümlemesi için
+  let _fields: FieldOfStudyDto[] = []
+  let _branches: InstitutionBranchDto[] = []
+
+  async function load() {
+    if (loaded) return
+    const authStore = useAuthStore()
+    const instId = authStore.user?.institutionId
+    if (!instId) {
+      console.warn('[useBranchOptions] institutionId bulunamadı.')
+      return
+    }
+    loading.value = true
+    try {
+      const [instRes, catalogRes] = await Promise.all([
+        institutionApi.get(instId),
+        institutionApi.getFieldCatalog(),
+      ])
+      _branches = instRes.data.branches?.filter((b) => b.isActive) ?? []
+      _fields = catalogRes.data ?? []
+      allOptions.value = _branches.map((b) => ({
+        label: `${b.fieldCode} — ${b.fieldName}`,
+        value: b.fieldCode,
+      }))
+      options.value = allOptions.value
+      loaded = true
+    } catch (err) {
+      console.error('[useBranchOptions] Alan seçenekleri yüklenirken hata:', err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Throttled arama — her tuşa basmada değil, 300ms aralıklarla filtrele
+  watchThrottled(searchQuery, (needle) => {
+    const q = needle.toLocaleLowerCase('tr')
+    options.value = q
+      ? allOptions.value.filter((o) => o.label.toLocaleLowerCase('tr').includes(q))
+      : allOptions.value
+  }, { throttle: 300 })
+
+  function filter(val: string, update: (fn: () => void) => void) {
+    searchQuery.value = val
+    update(() => {})
+  }
+
+  /** Seçili branch code'a göre dal (specialization) seçenekleri döndürür */
+  function getSpecializations(branchCode: string): SpecOption[] {
+    const branch = _branches.find((b) => b.fieldCode === branchCode)
+    if (!branch || !branch.activeSpecializations.length) return []
+    const field = _fields.find((f) => f.code === branchCode)
+    if (!field) return []
+    return branch.activeSpecializations.map((specCode) => {
+      const spec = field.specializations.find((s) => s.code === specCode)
+      return { label: spec?.name ?? specCode, value: specCode }
+    })
+  }
+
+  /** Branch code'dan fieldName döndürür */
+  function getFieldName(branchCode: string): string {
+    return _branches.find((b) => b.fieldCode === branchCode)?.fieldName ?? ''
+  }
+
+  function reset() {
+    loaded = false
+    searchQuery.value = ''
+    options.value = []
+    allOptions.value = []
+    _fields = []
+    _branches = []
+  }
+
+  return { options, allOptions, loading, searchQuery, load, filter, getSpecializations, getFieldName, reset }
 }

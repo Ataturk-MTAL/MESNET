@@ -49,6 +49,21 @@ public sealed class KeycloakAdminService
     }
 
     /// <summary>
+    /// mesnet realm'daki tüm kullanıcıları döndürür.
+    /// </summary>
+    public async Task<List<KeycloakUser>> GetRealmUsersAsync()
+    {
+        var token = await GetAdminTokenAsync();
+        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var url = $"{_keycloakBaseUrl}/admin/realms/mesnet/users?max=100";
+        var response = await _http.GetAsync(url);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<List<KeycloakUser>>(JsonOpts) ?? [];
+    }
+
+    /// <summary>
     /// mesnet realm'daki tüm kullanıcıların institution_id attribute'unu günceller.
     /// </summary>
     public async Task UpdateAllUsersInstitutionIdAsync(Guid institutionId)
@@ -77,7 +92,7 @@ public sealed class KeycloakAdminService
         }
     }
 
-    private sealed class KeycloakUser
+    public sealed class KeycloakUser
     {
         [JsonPropertyName("id")]
         public string Id { get; init; } = "";
@@ -85,8 +100,16 @@ public sealed class KeycloakAdminService
         [JsonPropertyName("username")]
         public string Username { get; init; } = "";
 
+        [JsonPropertyName("firstName")]
+        public string FirstName { get; init; } = "";
+
+        [JsonPropertyName("lastName")]
+        public string LastName { get; init; } = "";
+
         [JsonPropertyName("attributes")]
         public Dictionary<string, List<string>>? Attributes { get; init; }
+
+        public string FullName => $"{FirstName} {LastName}".Trim();
     }
 
     private sealed record TokenResponse

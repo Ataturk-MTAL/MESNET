@@ -15,7 +15,7 @@
     <div class="row q-gutter-sm q-mb-md">
       <q-select
         v-model="branchFilter"
-        :options="branchOptions"
+        :options="branchOpts.allOptions.value"
         label="Alan"
         filled
         dense
@@ -46,6 +46,11 @@
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
           <q-btn flat round dense icon="visibility" @click="openDetail(row)" />
+          <PermissionGuard :permission="Permissions.Student.Manage">
+            <q-btn flat round dense icon="edit" color="grey-7" @click="openEditDialog(row)">
+              <q-tooltip>Düzenle</q-tooltip>
+            </q-btn>
+          </PermissionGuard>
           <PermissionGuard :permission="Permissions.Internship.Approve">
             <q-btn
               v-if="row.status === 'Applied'"
@@ -68,46 +73,101 @@
       </template>
     </AppTable>
 
-    <!-- Detay Drawer -->
-    <q-drawer v-model="detailOpen" side="right" bordered :width="400" overlay>
-      <template v-if="selected">
+    <!-- Detay Panel — sağdan overlay -->
+    <transition name="slide-right">
+      <div v-if="detailOpen && selected" class="detail-backdrop" @click.self="closeDetail" />
+    </transition>
+    <transition name="slide-right">
+      <div v-if="detailOpen && selected" class="detail-panel">
         <q-toolbar>
           <q-toolbar-title class="text-subtitle1 text-weight-bold">{{ selected.fullName }}</q-toolbar-title>
-          <q-btn flat round dense icon="close" @click="detailOpen = false" />
+          <PermissionGuard :permission="Permissions.Student.Manage">
+            <q-btn flat round dense icon="edit" @click="openEditDialog(selected)">
+              <q-tooltip>Düzenle</q-tooltip>
+            </q-btn>
+          </PermissionGuard>
+          <q-btn flat round dense icon="close" @click="closeDetail" />
         </q-toolbar>
         <q-separator />
-        <div class="q-pa-md q-gutter-sm">
-          <q-item dense>
-            <q-item-section avatar><q-icon name="school" /></q-item-section>
-            <q-item-section>
-              <q-item-label caption>Alan</q-item-label>
-              <q-item-label>{{ selected.branchName }} ({{ selected.branchCode }})</q-item-label>
-            </q-item-section>
-          </q-item>
-          <q-item dense>
-            <q-item-section avatar><q-icon name="class" /></q-item-section>
-            <q-item-section>
-              <q-item-label caption>Sınıf / Şube</q-item-label>
-              <q-item-label>{{ selected.classYear }}. Sınıf{{ selected.section ? ` / ${selected.section}` : '' }}</q-item-label>
-            </q-item-section>
-          </q-item>
-          <q-item dense>
-            <q-item-section avatar><q-icon name="badge" /></q-item-section>
-            <q-item-section>
-              <q-item-label caption>Durum</q-item-label>
-              <q-item-label><StatusBadge :slug="selected.statusSlug" /></q-item-label>
-            </q-item-section>
-          </q-item>
-          <q-item dense>
-            <q-item-section avatar><q-icon name="event" /></q-item-section>
-            <q-item-section>
-              <q-item-label caption>Kayıt Tarihi</q-item-label>
-              <q-item-label>{{ formatDate(selected.registeredAt) }}</q-item-label>
-            </q-item-section>
-          </q-item>
+        <div class="detail-panel-scroll">
+          <div class="q-pa-md q-gutter-sm">
+            <q-item dense>
+              <q-item-section avatar><q-icon name="school" /></q-item-section>
+              <q-item-section>
+                <q-item-label caption>Alan</q-item-label>
+                <q-item-label>{{ selected.branchCode }} — {{ selected.branchName }}</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item v-if="selected.specializationName" dense>
+              <q-item-section avatar><q-icon name="account_tree" /></q-item-section>
+              <q-item-section>
+                <q-item-label caption>Dal</q-item-label>
+                <q-item-label>{{ selected.specializationName }}</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item dense>
+              <q-item-section avatar><q-icon name="class" /></q-item-section>
+              <q-item-section>
+                <q-item-label caption>Sınıf / Şube</q-item-label>
+                <q-item-label>{{ selected.classYear }}. Sınıf{{ selected.section ? ` / ${selected.section}` : '' }}</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item v-if="selected.studentNumber" dense>
+              <q-item-section avatar><q-icon name="pin" /></q-item-section>
+              <q-item-section>
+                <q-item-label caption>Öğrenci No</q-item-label>
+                <q-item-label>{{ selected.studentNumber }}</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item v-if="selected.tcKimlikNo" dense>
+              <q-item-section avatar><q-icon name="fingerprint" /></q-item-section>
+              <q-item-section>
+                <q-item-label caption>T.C. Kimlik No</q-item-label>
+                <q-item-label>{{ selected.tcKimlikNo }}</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item dense>
+              <q-item-section avatar><q-icon name="badge" /></q-item-section>
+              <q-item-section>
+                <q-item-label caption>Durum</q-item-label>
+                <q-item-label><StatusBadge :slug="selected.statusSlug" /></q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item dense>
+              <q-item-section avatar><q-icon name="event" /></q-item-section>
+              <q-item-section>
+                <q-item-label caption>Kayıt Tarihi</q-item-label>
+                <q-item-label>{{ formatDate(selected.registeredAt) }}</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-separator v-if="selected.phoneNumber || selected.guardianName || selected.guardianPhone" spaced />
+            <div v-if="selected.phoneNumber || selected.guardianName || selected.guardianPhone" class="text-subtitle2 text-grey-7 q-px-md">İletişim</div>
+            <q-item v-if="selected.phoneNumber" dense>
+              <q-item-section avatar><q-icon name="phone" /></q-item-section>
+              <q-item-section>
+                <q-item-label caption>Telefon</q-item-label>
+                <q-item-label>{{ selected.phoneNumber }}</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item v-if="selected.guardianName" dense>
+              <q-item-section avatar><q-icon name="person" /></q-item-section>
+              <q-item-section>
+                <q-item-label caption>Veli</q-item-label>
+                <q-item-label>{{ selected.guardianName }}</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item v-if="selected.guardianPhone" dense>
+              <q-item-section avatar><q-icon name="phone" /></q-item-section>
+              <q-item-section>
+                <q-item-label caption>Veli Telefon</q-item-label>
+                <q-item-label>{{ selected.guardianPhone }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </div>
         </div>
-      </template>
-    </q-drawer>
+      </div>
+    </transition>
 
     <!-- Yeni Öğrenci Dialog -->
     <q-dialog v-model="addDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
@@ -155,19 +215,85 @@
               <q-icon name="badge" />
             </template>
           </q-input>
-          <q-input v-model="addForm.branchCode" label="Alan Kodu *" filled>
+          <q-select
+            v-model="addForm.branchCode"
+            :options="branchOpts.options.value"
+            label="Alan *"
+            filled
+            use-input
+            input-debounce="0"
+            emit-value
+            map-options
+            option-label="label"
+            option-value="value"
+            @filter="branchOpts.filter"
+            @update:model-value="onAddBranchChange"
+          >
             <template #prepend>
               <q-icon name="category" />
             </template>
-          </q-input>
-          <q-input v-model.number="addForm.classYear" label="Sınıf (9-12)" filled type="number" min="9" max="12">
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+          <q-select
+            v-if="addSpecOptions.length > 0"
+            v-model="addForm.specializationCode"
+            :options="addSpecOptions"
+            label="Dal"
+            filled
+            emit-value
+            map-options
+            option-label="label"
+            option-value="value"
+          >
             <template #prepend>
-              <q-icon name="class" />
+              <q-icon name="account_tree" />
+            </template>
+          </q-select>
+          <div class="row q-col-gutter-sm">
+            <div class="col-6">
+              <q-input v-model.number="addForm.classYear" label="Sınıf (9-12)" filled type="number" min="9" max="12">
+                <template #prepend>
+                  <q-icon name="class" />
+                </template>
+              </q-input>
+            </div>
+            <div class="col-6">
+              <q-input v-model="addForm.section" label="Şube" filled>
+                <template #prepend>
+                  <q-icon name="sort_by_alpha" />
+                </template>
+              </q-input>
+            </div>
+          </div>
+          <q-input v-model="addForm.studentNumber" label="Öğrenci No" filled>
+            <template #prepend>
+              <q-icon name="pin" />
             </template>
           </q-input>
-          <q-input v-model="addForm.section" label="Şube (A, B, C...)" filled>
+          <q-input v-model="addForm.tcKimlikNo" label="T.C. Kimlik No" filled maxlength="11">
             <template #prepend>
-              <q-icon name="sort_by_alpha" />
+              <q-icon name="fingerprint" />
+            </template>
+          </q-input>
+          <q-input v-model="addForm.phoneNumber" label="Telefon" filled>
+            <template #prepend>
+              <q-icon name="phone" />
+            </template>
+          </q-input>
+          <q-separator />
+          <div class="text-subtitle2 text-grey-7">Veli Bilgileri</div>
+          <q-input v-model="addForm.guardianName" label="Veli Adı" filled>
+            <template #prepend>
+              <q-icon name="person" />
+            </template>
+          </q-input>
+          <q-input v-model="addForm.guardianPhone" label="Veli Telefon" filled>
+            <template #prepend>
+              <q-icon name="phone" />
             </template>
           </q-input>
         </q-card-section>
@@ -314,16 +440,120 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Öğrenci Düzenle Dialog -->
+    <q-dialog v-model="editDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-primary text-white">
+          <q-icon name="edit" class="q-mr-sm" />
+          <q-toolbar-title>Öğrenci Düzenle</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <q-input v-model="editForm.fullName" label="Ad Soyad *" filled>
+            <template #prepend>
+              <q-icon name="badge" />
+            </template>
+          </q-input>
+          <q-select
+            v-model="editForm.branchCode"
+            :options="branchOpts.options.value"
+            label="Alan *"
+            filled
+            use-input
+            input-debounce="0"
+            emit-value
+            map-options
+            option-label="label"
+            option-value="value"
+            @filter="branchOpts.filter"
+            @update:model-value="onEditBranchChange"
+          >
+            <template #prepend>
+              <q-icon name="category" />
+            </template>
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+          <q-select
+            v-if="editSpecOptions.length > 0"
+            v-model="editForm.specializationCode"
+            :options="editSpecOptions"
+            label="Dal"
+            filled
+            emit-value
+            map-options
+            option-label="label"
+            option-value="value"
+          >
+            <template #prepend>
+              <q-icon name="account_tree" />
+            </template>
+          </q-select>
+          <div class="row q-col-gutter-sm">
+            <div class="col-6">
+              <q-input v-model.number="editForm.classYear" label="Sınıf (9-12)" filled type="number" min="9" max="12">
+                <template #prepend>
+                  <q-icon name="class" />
+                </template>
+              </q-input>
+            </div>
+            <div class="col-6">
+              <q-input v-model="editForm.section" label="Şube" filled>
+                <template #prepend>
+                  <q-icon name="sort_by_alpha" />
+                </template>
+              </q-input>
+            </div>
+          </div>
+          <q-input v-model="editForm.studentNumber" label="Öğrenci No" filled>
+            <template #prepend>
+              <q-icon name="pin" />
+            </template>
+          </q-input>
+          <q-input v-model="editForm.tcKimlikNo" label="T.C. Kimlik No" filled maxlength="11">
+            <template #prepend>
+              <q-icon name="fingerprint" />
+            </template>
+          </q-input>
+          <q-input v-model="editForm.phoneNumber" label="Telefon" filled>
+            <template #prepend>
+              <q-icon name="phone" />
+            </template>
+          </q-input>
+          <q-separator />
+          <div class="text-subtitle2 text-grey-7">Veli Bilgileri</div>
+          <q-input v-model="editForm.guardianName" label="Veli Adı" filled>
+            <template #prepend>
+              <q-icon name="person" />
+            </template>
+          </q-input>
+          <q-input v-model="editForm.guardianPhone" label="Veli Telefon" filled>
+            <template #prepend>
+              <q-icon name="phone" />
+            </template>
+          </q-input>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="saveEdit" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, watch } from 'vue'
+import { ref, onMounted, reactive, watch, computed } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { enrollmentApi, type StudentProfileDto } from 'src/api/enrollment'
 import { useNotify } from 'src/composables/useNotify'
-import { useKeycloakUserOptions, useBusinessOptions, useTeacherOptions } from 'src/composables/useEntityOptions'
+import { useKeycloakUserOptions, useBusinessOptions, useTeacherOptions, useBranchOptions, type SelectOption } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
@@ -338,6 +568,7 @@ const userOpts = useKeycloakUserOptions()
 const businessOpts = useBusinessOptions()
 const teacherOpts = useTeacherOptions()
 const transferBusinessOpts = useBusinessOptions()
+const branchOpts = useBranchOptions()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -345,6 +576,7 @@ const students = ref<StudentProfileDto[]>([])
 const selected = ref<StudentProfileDto | null>(null)
 const detailOpen = ref(false)
 const addDialog = ref(false)
+const editDialog = ref(false)
 const placementDialog = ref(false)
 const transferDialog = ref(false)
 const branchFilter = ref<string | null>(null)
@@ -352,11 +584,8 @@ const statusFilter = ref<string | null>(null)
 // activePlacementId: transfer için mevcut yerleştirme ID'si
 const activePlacementId = ref<string | null>(null)
 
-const branchOptions = [
-  { label: 'Bilişim Teknolojileri', value: 'BT' },
-  { label: 'Elektrik-Elektronik', value: 'EE' },
-  { label: 'Makine', value: 'MK' },
-]
+const addSpecOptions = computed(() => branchOpts.getSpecializations(addForm.branchCode))
+const editSpecOptions = computed(() => branchOpts.getSpecializations(editForm.branchCode))
 
 const statusOptions = [
   { label: 'Kayıtlı', value: 'Registered' },
@@ -370,13 +599,33 @@ const addForm = reactive({
   keycloakUserId: '',
   fullName: '',
   branchCode: '',
+  specializationCode: '',
   classYear: 11,
   section: '',
+  studentNumber: '',
+  phoneNumber: '',
+  tcKimlikNo: '',
+  guardianName: '',
+  guardianPhone: '',
 })
 
 const placementForm = reactive({
   businessId: '',
   teacherId: '',
+})
+
+const editForm = reactive({
+  fullName: '',
+  branchCode: '',
+  branchName: '',
+  specializationCode: '',
+  classYear: 11,
+  section: '',
+  studentNumber: '',
+  phoneNumber: '',
+  tcKimlikNo: '',
+  guardianName: '',
+  guardianPhone: '',
 })
 
 const transferForm = reactive({
@@ -417,10 +666,69 @@ function openDetail(row: StudentProfileDto) {
   detailOpen.value = true
 }
 
+function closeDetail() {
+  detailOpen.value = false
+}
+
+function onEditBranchChange(code: string | null) {
+  editForm.branchName = code ? branchOpts.getFieldName(code) : ''
+  editForm.specializationCode = ''
+}
+
+function onAddBranchChange() {
+  addForm.specializationCode = ''
+}
+
+function openEditDialog(row: StudentProfileDto) {
+  selected.value = row
+  editForm.fullName = row.fullName
+  editForm.branchCode = row.branchCode
+  editForm.branchName = row.branchName
+  editForm.specializationCode = row.specializationCode ?? ''
+  editForm.classYear = row.classYear
+  editForm.section = row.section ?? ''
+  editForm.studentNumber = row.studentNumber ?? ''
+  editForm.phoneNumber = row.phoneNumber ?? ''
+  editForm.tcKimlikNo = row.tcKimlikNo ?? ''
+  editForm.guardianName = row.guardianName ?? ''
+  editForm.guardianPhone = row.guardianPhone ?? ''
+  editDialog.value = true
+}
+
+async function saveEdit() {
+  if (!selected.value) return
+  saving.value = true
+  try {
+    await enrollmentApi.updateStudent(selected.value.id, {
+      fullName: editForm.fullName || undefined,
+      branchCode: editForm.branchCode || undefined,
+      branchName: editForm.branchName || undefined,
+      specializationCode: editForm.specializationCode || undefined,
+      specializationName: editSpecOptions.value.find((o) => o.value === editForm.specializationCode)?.label || undefined,
+      classYear: editForm.classYear || undefined,
+      section: editForm.section || undefined,
+      studentNumber: editForm.studentNumber || undefined,
+      phoneNumber: editForm.phoneNumber || undefined,
+      tcKimlikNo: editForm.tcKimlikNo || undefined,
+      guardianName: editForm.guardianName || undefined,
+      guardianPhone: editForm.guardianPhone || undefined,
+    })
+    notify.success('Öğrenci bilgileri güncellendi.')
+    editDialog.value = false
+    await load()
+    const updated = students.value.find((s) => s.id === selected.value?.id)
+    if (updated) selected.value = updated
+  } catch {
+    notify.error('Öğrenci güncellenirken bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
+}
+
 function onUserSelect(val: string | null) {
   if (val) {
-    const found = userOpts.allOptions.value.find((o) => o.value === val)
-    if (found) addForm.fullName = found.label
+    const found = userOpts.allOptions.value.find((o: SelectOption) => o.value === val)
+    addForm.fullName = found?.label ?? ''
   } else {
     addForm.fullName = ''
   }
@@ -430,10 +738,18 @@ function openAddDialog() {
   addForm.keycloakUserId = ''
   addForm.fullName = ''
   addForm.branchCode = ''
+  addForm.specializationCode = ''
   addForm.classYear = 11
   addForm.section = ''
+  addForm.studentNumber = ''
+  addForm.phoneNumber = ''
+  addForm.tcKimlikNo = ''
+  addForm.guardianName = ''
+  addForm.guardianPhone = ''
   userOpts.reset()
   userOpts.load()
+  branchOpts.reset()
+  branchOpts.load()
   addDialog.value = true
 }
 
@@ -467,12 +783,22 @@ async function openTransfer(row: StudentProfileDto) {
 async function registerStudent() {
   saving.value = true
   try {
+    const selectedSpec = addSpecOptions.value.find((o) => o.value === addForm.specializationCode)
     await enrollmentApi.registerStudent({
       keycloakUserId: addForm.keycloakUserId,
       fullName: addForm.fullName,
       branchCode: addForm.branchCode,
+      branchName: branchOpts.getFieldName(addForm.branchCode) || undefined,
+      academicPeriodId: periodStore.selectedPeriodId ?? undefined,
+      specializationCode: addForm.specializationCode || undefined,
+      specializationName: selectedSpec?.label || undefined,
       classYear: addForm.classYear,
       section: addForm.section || undefined,
+      studentNumber: addForm.studentNumber || undefined,
+      phoneNumber: addForm.phoneNumber || undefined,
+      tcKimlikNo: addForm.tcKimlikNo || undefined,
+      guardianName: addForm.guardianName || undefined,
+      guardianPhone: addForm.guardianPhone || undefined,
     })
     notify.success('Öğrenci başarıyla kaydedildi.')
     addDialog.value = false
@@ -525,5 +851,46 @@ async function doTransfer() {
 }
 
 watch(() => periodStore.selectedPeriodId, () => load())
-onMounted(load)
+onMounted(() => {
+  load()
+  branchOpts.load()
+})
 </script>
+
+<style scoped>
+.detail-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 2000;
+}
+
+.detail-panel {
+  position: fixed;
+  top: 50px;
+  right: 0;
+  bottom: 0;
+  width: 400px;
+  max-width: 100vw;
+  background: white;
+  z-index: 2001;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-right-enter-from,
+.slide-right-leave-to {
+  opacity: 0;
+}
+</style>

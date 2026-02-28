@@ -84,7 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
     isInitialized.value = true
   }
 
-  // Backend'den güncel permission listesini yükle
+  // Backend'den güncel permission listesini ve kullanıcı bilgilerini yükle
   // PermissionClaimsTransformation roller → permission dönüşümünü yapar
   async function loadPermissions(): Promise<void> {
     if (!_accessToken.value) return
@@ -93,6 +93,11 @@ export const useAuthStore = defineStore('auth', () => {
       // axios interceptor ResponseBuilder.data'yı otomatik unwrap eder
       const { data } = await api.get('/auth/me')
       permissions.value = data?.permissions ?? []
+
+      // Backend'den gelen institutionId token claim'inden daha güvenilir
+      if (data?.institutionId && user.value) {
+        user.value = { ...user.value, institutionId: data.institutionId }
+      }
     } catch (err) {
       console.error('Permission yüklenirken hata:', err)
     }

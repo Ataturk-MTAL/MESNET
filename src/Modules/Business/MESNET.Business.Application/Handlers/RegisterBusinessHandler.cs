@@ -27,6 +27,7 @@ public static class RegisterBusinessHandler
             Location = command.Location,
             Source = RegistrationSource.InstitutionRegistered,
             Status = BusinessStatus.Active,
+            Sectors = command.Sectors ?? [],
             Capacity = new BusinessCapacity
             {
                 TotalSlots = command.TotalSlots
@@ -37,7 +38,7 @@ public static class RegisterBusinessHandler
         session.Store(business);
         await session.SaveChangesAsync();
 
-        await bus.PublishAsync(new BusinessRegistered(business.Id, business.Name, business.Location, business.Source, business.Capacity.TotalSlots));
+        await bus.PublishAsync(new BusinessRegistered(business.Id, business.Name, business.Location, business.Source, business.Capacity.TotalSlots, business.Sectors));
         await bus.PublishAsync(new BusinessCapacityChanged(business.Id, business.Capacity.TotalSlots, business.Capacity.OccupiedSlots));
 
         return business.ToDto();

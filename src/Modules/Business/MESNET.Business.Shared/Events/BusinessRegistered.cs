@@ -8,4 +8,5 @@ public sealed record BusinessRegistered(
     string Name,
     Location? Location,
     RegistrationSource Source,
-    int TotalSlots = 0);
+    int TotalSlots = 0,
+    List<string>? Sectors = null);

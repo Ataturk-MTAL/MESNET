@@ -15,4 +15,5 @@ public sealed record SelfRegisterBusiness(
     string? Website,
     int PersonnelCount,
     Location? Location,
-    int TotalSlots);
+    int TotalSlots,
+    List<string>? Sectors);

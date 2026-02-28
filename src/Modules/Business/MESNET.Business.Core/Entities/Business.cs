@@ -29,6 +29,7 @@ public class Business
     public string? TaxNumber { get; set; }
     public string? SgkNumber { get; set; }
     public string? ActivityField { get; set; }
+    public List<string> Sectors { get; set; } = [];
     public MasterInstructorInfo? MasterInstructor { get; set; }
     public List<BusinessDocument> Documents { get; set; } = [];
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

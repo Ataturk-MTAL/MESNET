@@ -44,10 +44,35 @@
         style="min-width: 180px"
         @update:model-value="load"
       />
+      <q-select
+        v-model="sectorFilter"
+        :options="sectorOptions"
+        label="Sektör"
+        filled
+        dense
+        emit-value
+        map-options
+        clearable
+        style="min-width: 240px"
+        @update:model-value="load"
+      />
     </div>
 
     <!-- Tablo Görünümü -->
     <AppTable v-if="viewMode === 'table'" :rows="businesses" :columns="columns" :loading="loading">
+      <template #body-cell-sectors="{ row }">
+        <q-td>
+          <q-badge
+            v-for="sec in row.sectors"
+            :key="sec.name"
+            color="blue-grey-3"
+            text-color="dark"
+            class="q-mr-xs q-mb-xs"
+            :label="sec.slug"
+          />
+          <span v-if="row.sectors.length === 0" class="text-grey text-caption">—</span>
+        </q-td>
+      </template>
       <template #body-cell-statusSlug="{ row }">
         <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
       </template>
@@ -109,6 +134,17 @@
               <div class="text-caption q-mt-xs">
                 <StatusBadge :slug="biz.statusSlug" />
               </div>
+              <div v-if="biz.sectors.length > 0" class="q-mt-xs">
+                <q-badge
+                  v-for="sec in biz.sectors"
+                  :key="sec.name"
+                  color="blue-grey-3"
+                  text-color="dark"
+                  class="q-mr-xs q-mb-xs"
+                  :label="sec.slug"
+                  style="font-size: 10px"
+                />
+              </div>
               <div class="text-caption q-mt-xs">
                 Kapasite: {{ biz.capacity.occupiedSlots }} / {{ biz.capacity.totalSlots }}
               </div>
@@ -126,9 +162,12 @@
       </div>
     </div>
 
-    <!-- Detay Drawer -->
-    <q-drawer v-model="detailOpen" side="right" bordered :width="480" overlay>
-      <template v-if="selected">
+    <!-- Detay Panel — sağdan overlay -->
+    <transition name="slide-right">
+      <div v-if="selected" class="detail-backdrop" @click.self="closeDetail" />
+    </transition>
+    <transition name="slide-right">
+      <div v-if="selected" class="detail-panel">
         <q-toolbar>
           <q-toolbar-title class="text-subtitle1 text-weight-bold">{{ selected.name }}</q-toolbar-title>
           <StatusBadge :slug="selected.statusSlug" class="q-mr-sm" />
@@ -137,10 +176,10 @@
               <q-tooltip>Düzenle</q-tooltip>
             </q-btn>
           </PermissionGuard>
-          <q-btn flat round dense icon="close" @click="detailOpen = false" />
+          <q-btn flat round dense icon="close" @click="closeDetail" />
         </q-toolbar>
         <q-separator />
-        <q-scroll-area class="fit">
+        <div class="detail-panel-scroll">
           <div class="q-pa-md q-gutter-sm">
             <q-item dense>
               <q-item-section avatar><q-icon name="location_on" /></q-item-section>
@@ -171,6 +210,23 @@
               <q-item-section>
                 <q-item-label caption>Personel Sayısı</q-item-label>
                 <q-item-label>{{ selected.personnelCount }}</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item dense>
+              <q-item-section avatar><q-icon name="category" /></q-item-section>
+              <q-item-section>
+                <q-item-label caption>Sektörler</q-item-label>
+                <q-item-label>
+                  <q-badge
+                    v-for="sec in selected.sectors"
+                    :key="sec.name"
+                    color="blue-grey-3"
+                    text-color="dark"
+                    class="q-mr-xs q-mb-xs"
+                    :label="sec.slug"
+                  />
+                  <span v-if="selected.sectors.length === 0" class="text-grey">Belirtilmemiş</span>
+                </q-item-label>
               </q-item-section>
             </q-item>
 
@@ -264,9 +320,9 @@
               </div>
             </PermissionGuard>
           </div>
-        </q-scroll-area>
-      </template>
-    </q-drawer>
+        </div>
+      </div>
+    </transition>
 
     <!-- İşletme Ekle Dialog -->
     <q-dialog v-model="addDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
@@ -302,6 +358,20 @@
               <q-icon name="groups" />
             </template>
           </q-input>
+          <q-select
+            v-model="addForm.sectors"
+            :options="sectorOptions"
+            label="Sektörler"
+            filled
+            multiple
+            emit-value
+            map-options
+            use-chips
+          >
+            <template #prepend>
+              <q-icon name="category" />
+            </template>
+          </q-select>
           <div class="text-subtitle2 q-mt-md q-mb-xs">
             <q-icon name="map" class="q-mr-xs" />Konum
           </div>
@@ -430,6 +500,20 @@
               <q-icon name="groups" />
             </template>
           </q-input>
+          <q-select
+            v-model="editForm.sectors"
+            :options="sectorOptions"
+            label="Sektörler"
+            filled
+            multiple
+            emit-value
+            map-options
+            use-chips
+          >
+            <template #prepend>
+              <q-icon name="category" />
+            </template>
+          </q-select>
           <div class="text-subtitle2 q-mt-md q-mb-xs">
             <q-icon name="map" class="q-mr-xs" />Konum
           </div>
@@ -449,7 +533,7 @@
 import { ref, computed, onMounted, reactive, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
-import { businessApi, type BusinessDto } from 'src/api/business'
+import { businessApi, type BusinessDto, type SectorDto } from 'src/api/business'
 import { useNotify } from 'src/composables/useNotify'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
@@ -461,7 +545,6 @@ import 'leaflet/dist/leaflet.css'
 
 const $q = useQuasar()
 const notify = useNotify()
-
 const viewMode = ref<'table' | 'map'>('table')
 const mapZoom = ref(7)
 const mapCenter = ref<[number, number]>([39.0, 35.0])
@@ -483,12 +566,13 @@ const loading = ref(false)
 const saving = ref(false)
 const businesses = ref<BusinessDto[]>([])
 const selected = ref<BusinessDto | null>(null)
-const detailOpen = ref(false)
 const addDialog = ref(false)
 const rejectDialog = ref(false)
 const docUploadDialog = ref(false)
 const editDialog = ref(false)
 const statusFilter = ref<string | null>(null)
+const sectorFilter = ref<string | null>(null)
+const allSectors = ref<SectorDto[]>([])
 const rejectReason = ref('')
 const capacitySlots = ref(0)
 const docForm = reactive({
@@ -516,6 +600,7 @@ const addForm = reactive({
   email: '',
   personnelCount: 0,
   location: null as { latitude: number; longitude: number } | null,
+  sectors: [] as string[],
 })
 
 const editForm = reactive({
@@ -526,20 +611,35 @@ const editForm = reactive({
   website: '',
   personnelCount: 0,
   location: null as { latitude: number; longitude: number } | null,
+  sectors: [] as string[],
 })
+
+const sectorOptions = computed(() =>
+  allSectors.value.map((s) => ({ label: s.slug, value: s.name })),
+)
 
 const columns: QTableProps['columns'] = [
   { name: 'name', label: 'İşletme Adı', field: 'name', align: 'left', sortable: true },
+  { name: 'sectors', label: 'Sektörler', field: 'sectors', align: 'left' },
   { name: 'address', label: 'Adres', field: 'address', align: 'left' },
   { name: 'statusSlug', label: 'Durum', field: 'statusSlug', align: 'left' },
   { name: 'capacity', label: 'Kapasite', field: 'capacity', align: 'left' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ]
 
+async function loadSectors() {
+  try {
+    const res = await businessApi.sectors()
+    allSectors.value = res.data
+  } catch {
+    /* sektör listesi yüklenemezse sessizce devam et */
+  }
+}
+
 async function load() {
   loading.value = true
   try {
-    const res = await businessApi.list(statusFilter.value ?? undefined)
+    const res = await businessApi.list(statusFilter.value ?? undefined, sectorFilter.value ?? undefined)
     businesses.value = res.data
   } catch {
     notify.error('İşletmeler yüklenirken bir hata oluştu.')
@@ -551,7 +651,10 @@ async function load() {
 function openDetail(row: BusinessDto) {
   selected.value = row
   capacitySlots.value = row.capacity.totalSlots
-  detailOpen.value = true
+}
+
+function closeDetail() {
+  selected.value = null
 }
 
 async function approve(row: BusinessDto) {
@@ -598,6 +701,7 @@ async function registerBusiness() {
       email: addForm.email || undefined,
       personnelCount: addForm.personnelCount || undefined,
       location: addForm.location ?? undefined,
+      sectors: addForm.sectors.length > 0 ? addForm.sectors : undefined,
     })
     notify.success('İşletme başarıyla eklendi.')
     addDialog.value = false
@@ -607,6 +711,7 @@ async function registerBusiness() {
     addForm.email = ''
     addForm.personnelCount = 0
     addForm.location = null
+    addForm.sectors = []
     await load()
   } catch {
     notify.error('İşletme eklenirken bir hata oluştu.')
@@ -735,6 +840,7 @@ function openEditDialog() {
   editForm.website = selected.value.website ?? ''
   editForm.personnelCount = selected.value.personnelCount
   editForm.location = selected.value.location ? { ...selected.value.location } : null
+  editForm.sectors = selected.value.sectors.map((s) => s.name)
   editDialog.value = true
 }
 
@@ -750,6 +856,7 @@ async function saveEdit() {
       website: editForm.website || undefined,
       personnelCount: editForm.personnelCount || undefined,
       location: editForm.location ?? undefined,
+      sectors: editForm.sectors,
     })
     notify.success('İşletme bilgileri güncellendi.')
     editDialog.value = false
@@ -838,7 +945,11 @@ function closeBusiness() {
   })
 }
 
-onMounted(load)
+onMounted(async () => {
+  await loadSectors()
+  await load()
+})
+
 </script>
 
 <style scoped>
@@ -846,5 +957,48 @@ onMounted(load)
   position: relative;
   height: calc(100vh - 220px);
   min-height: 400px;
+}
+
+/* Detay paneli — sağdan overlay */
+.detail-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 2000;
+}
+
+.detail-panel {
+  position: fixed;
+  top: 50px; /* header yüksekliği */
+  right: 0;
+  bottom: 0;
+  width: 480px;
+  max-width: 100vw;
+  background: white;
+  z-index: 2001;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Slide-right transition */
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-right-enter-from,
+.slide-right-leave-to {
+  opacity: 0;
+}
+
+.slide-right-enter-from .detail-panel,
+.slide-right-leave-to .detail-panel {
+  transform: translateX(100%);
 }
 </style>

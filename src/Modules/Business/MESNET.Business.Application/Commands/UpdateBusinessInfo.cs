@@ -10,4 +10,5 @@ public sealed record UpdateBusinessInfo(
     string? Email,
     string? Website,
     int? PersonnelCount,
-    Location? Location);
+    Location? Location,
+    List<string>? Sectors);
