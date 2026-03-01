@@ -70,6 +70,15 @@
         <q-td class="text-right">
           <PermissionGuard :permission="Permissions.Attendance.Approve">
             <q-btn
+              v-if="row.status === 'Pending'"
+              flat round dense icon="thumb_up"
+              color="primary"
+              title="Onayla"
+              @click="approve(row)"
+            />
+          </PermissionGuard>
+          <PermissionGuard :permission="Permissions.Attendance.Approve">
+            <q-btn
               v-if="row.status === 'Recorded'"
               flat round dense icon="check"
               color="positive"
@@ -253,6 +262,7 @@ const studentIdFilter = ref('')
 const statusFilter = ref<string | null>(null)
 
 const statusOptions = [
+  { label: 'Onay Bekliyor', value: 'Pending' },
   { label: 'Kaydedildi', value: 'Recorded' },
   { label: 'Doğrulandı', value: 'Verified' },
   { label: 'Düzeltildi', value: 'Corrected' },
@@ -316,6 +326,7 @@ async function createRecord() {
       studentId: addForm.studentId,
       businessId: addForm.businessId,
       institutionId: authStore.user?.institutionId ?? '',
+      academicPeriodId: periodStore.selectedPeriodId ?? '',
       date: new Date(addForm.date).toISOString(),
       absenceType: addForm.absenceType,
       reason: addForm.reason || undefined,
@@ -325,6 +336,19 @@ async function createRecord() {
     await load()
   } catch {
     notify.error('Kayıt sırasında bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function approve(row: AttendanceRecordDto) {
+  saving.value = true
+  try {
+    await attendanceApi.approve(row.id)
+    notify.success('Devamsızlık onaylandı.')
+    await load()
+  } catch {
+    notify.error('Onaylama sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }

@@ -14,6 +14,8 @@ export interface AttendanceRecordDto {
   healthReportUrl: string | null
   markedBy: string
   markedAt: string
+  approvedBy: string | null
+  approvedAt: string | null
   verifiedBy: string | null
   verifiedAt: string | null
 }
@@ -33,6 +35,7 @@ export interface CreateAttendanceRequest {
   studentId: string
   businessId: string
   institutionId: string
+  academicPeriodId: string
   date: string
   absenceType: string
   reason?: string
@@ -58,6 +61,9 @@ export const attendanceApi = {
 
   create: (data: CreateAttendanceRequest) =>
     api.post<{ attendanceId: string }>('/attendance', data),
+
+  approve: (attendanceId: string) =>
+    api.post(`/attendance/${attendanceId}/approve`),
 
   verify: (attendanceId: string) =>
     api.post(`/attendance/${attendanceId}/verify`),

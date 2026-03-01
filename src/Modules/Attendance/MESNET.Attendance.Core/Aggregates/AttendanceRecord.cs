@@ -16,6 +16,8 @@ public sealed record AttendanceRecord(
     string? HealthReportUrl,
     string MarkedBy,
     DateTime MarkedAt,
+    string? ApprovedBy,
+    DateTime? ApprovedAt,
     string? VerifiedBy,
     DateTime? VerifiedAt)
 {
@@ -28,12 +30,22 @@ public sealed record AttendanceRecord(
         e.Date,
         AbsenceType.TryFromName(e.AbsenceType, true, out var type) ? type : AbsenceType.Unexcused,
         null,
-        AttendanceStatus.Recorded,
+        AttendanceStatus.TryFromName(e.InitialStatus, true, out var status)
+            ? status : AttendanceStatus.Recorded,
         null,
-        string.Empty,
+        e.MarkedBy ?? string.Empty,
         DateTime.UtcNow,
         null,
+        null,
+        null,
         null);
+
+    public AttendanceRecord Apply(AttendanceApproved e) => this with
+    {
+        Status = AttendanceStatus.Recorded,
+        ApprovedBy = e.ApprovedBy,
+        ApprovedAt = e.ApprovedAt
+    };
 
     public AttendanceRecord Apply(AttendanceVerified e) => this with
     {

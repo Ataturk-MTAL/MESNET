@@ -7,4 +7,6 @@ public sealed record AttendanceMarked(
     Guid InstitutionId,
     Guid AcademicPeriodId,
     DateTime Date,
-    string AbsenceType);
+    string AbsenceType,
+    string MarkedBy,
+    string InitialStatus);

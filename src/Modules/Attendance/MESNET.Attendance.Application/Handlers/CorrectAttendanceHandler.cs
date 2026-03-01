@@ -2,6 +2,7 @@ using MESNET.Attendance.Application.Commands;
 using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Enums;
 using MESNET.Attendance.Shared.Events;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using Wolverine.Marten;
 
@@ -11,7 +12,7 @@ public static class CorrectAttendanceHandler
 {
     [AggregateHandler]
     public static AttendanceCorrected Handle(
-        CorrectAttendance command, AttendanceRecord record)
+        CorrectAttendance command, AttendanceRecord record, ICurrentUserService currentUser)
     {
         if (!record.Status.CanTransitionTo(AttendanceStatus.Corrected))
             throw new DomainException("ATTENDANCE_INVALID_STATUS",
@@ -22,7 +23,7 @@ public static class CorrectAttendanceHandler
                 $"Geçersiz devamsızlık türü: {command.NewAbsenceType}.");
 
         return new AttendanceCorrected(
-            record.Id, record.StudentId, command.CorrectedBy,
+            record.Id, record.StudentId, currentUser.GetFullName(),
             command.NewAbsenceType, command.Reason, DateTime.UtcNow);
     }
 }

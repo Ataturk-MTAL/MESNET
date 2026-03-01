@@ -6,4 +6,5 @@ public sealed record StudentPlaced(
     Guid BusinessId,
     Guid InstitutionId,
     Guid AcademicPeriodId,
+    Guid? TeacherId,
     DateTime PlacedAt);

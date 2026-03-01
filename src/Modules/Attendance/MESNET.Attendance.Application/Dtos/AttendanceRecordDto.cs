@@ -14,5 +14,7 @@ public sealed record AttendanceRecordDto(
     string? HealthReportUrl,
     string MarkedBy,
     DateTime MarkedAt,
+    string? ApprovedBy,
+    DateTime? ApprovedAt,
     string? VerifiedBy,
     DateTime? VerifiedAt);

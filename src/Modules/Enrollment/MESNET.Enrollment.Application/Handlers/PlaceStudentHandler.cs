@@ -65,6 +65,7 @@ public static class PlaceStudentHandler
             placement.BusinessId,
             placement.InstitutionId,
             placement.AcademicPeriodId,
+            placement.TeacherId,
             placement.PlacedAt));
     }
 }

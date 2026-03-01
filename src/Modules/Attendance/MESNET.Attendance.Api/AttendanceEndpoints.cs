@@ -20,6 +20,7 @@ public static class AttendanceEndpoints
         var group = app.MapGroup("/api/attendance").RequireAuthorization();
 
         group.MapPost("/", Post).RequireAuthorization(Permissions.Attendance.Manage);
+        group.MapPost("/{attendanceId:guid}/approve", PostApprove).RequireAuthorization(Permissions.Attendance.Approve);
         group.MapPost("/{attendanceId:guid}/verify", PostVerify).RequireAuthorization(Permissions.Attendance.Approve);
         group.MapPost("/{attendanceId:guid}/correct", PostCorrect).RequireAuthorization(Permissions.Attendance.Manage);
         group.MapPost("/{attendanceId:guid}/health-report", PostHealthReport).RequireAuthorization(Permissions.Attendance.Manage);
@@ -40,10 +41,20 @@ public static class AttendanceEndpoints
                 .Build());
     }
 
-    private static async Task<IResult> PostVerify(
-        Guid attendanceId, VerifyAttendance command, IMessageBus bus)
+    private static async Task<IResult> PostApprove(
+        Guid attendanceId, IMessageBus bus)
     {
-        await bus.InvokeAsync(command with { AttendanceId = attendanceId });
+        await bus.InvokeAsync(new ApproveAttendance(attendanceId));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Devamsızlık kaydı onaylandı.")
+            .Build());
+    }
+
+    private static async Task<IResult> PostVerify(
+        Guid attendanceId, IMessageBus bus)
+    {
+        await bus.InvokeAsync(new VerifyAttendance(attendanceId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Devamsızlık kaydı doğrulandı.")

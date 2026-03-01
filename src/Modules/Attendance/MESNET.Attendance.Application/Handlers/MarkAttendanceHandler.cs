@@ -6,13 +6,16 @@ using MESNET.Attendance.Core.Entities;
 using MESNET.Attendance.Core.Enums;
 using MESNET.Attendance.Core.ReadModels;
 using MESNET.Attendance.Shared.Events;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 
 namespace MESNET.Attendance.Application.Handlers;
 
 public static class MarkAttendanceHandler
 {
-    public static async Task<(Guid, AttendanceMarked)> Handle(MarkAttendance command, IDocumentSession session)
+    public static async Task<(Guid, AttendanceMarked, NotifyAttendancePendingApproval?)> Handle(
+        MarkAttendance command, IDocumentSession session, ICurrentUserService currentUser)
     {
         var period = await session.LoadAsync<AcademicPeriodView>(command.AcademicPeriodId);
         if (period is null) throw new DomainException(AttendanceErrors.AcademicPeriodNotFound(command.AcademicPeriodId));
@@ -29,12 +32,36 @@ public static class MarkAttendanceHandler
             throw new DomainException("ATTENDANCE_INVALID_ABSENCE_TYPE",
                 $"Geçersiz devamsızlık türü: {command.AbsenceType}.");
 
+        var markedBy = currentUser.GetFullName();
+        var isBusinessUser = currentUser.IsInRole(MesnetRoles.CompanyManager);
+        var initialStatus = isBusinessUser
+            ? AttendanceStatus.Pending.Name
+            : AttendanceStatus.Recorded.Name;
+
         var id = Guid.NewGuid();
         var @event = new AttendanceMarked(
             id, command.StudentId, command.BusinessId,
-            command.InstitutionId, command.AcademicPeriodId, command.Date, command.AbsenceType);
+            command.InstitutionId, command.AcademicPeriodId,
+            command.Date, command.AbsenceType, markedBy, initialStatus);
 
         session.Events.StartStream<AttendanceRecord>(id, @event);
-        return (id, @event);
+
+        NotifyAttendancePendingApproval? notification = null;
+        if (isBusinessUser)
+        {
+            var placement = session.Query<InternshipPlacementView>()
+                .FirstOrDefault(p => p.StudentId == command.StudentId
+                    && p.BusinessId == command.BusinessId);
+
+            if (placement?.TeacherId is not null)
+            {
+                notification = new NotifyAttendancePendingApproval(
+                    id, command.StudentId, command.BusinessId,
+                    command.InstitutionId, placement.TeacherId.Value,
+                    markedBy, command.Date, command.AbsenceType);
+            }
+        }
+
+        return (id, @event, notification);
     }
 }

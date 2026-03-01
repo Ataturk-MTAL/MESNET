@@ -4,6 +4,7 @@ namespace MESNET.Attendance.Core.Enums;
 
 public sealed class AttendanceStatus : SmartEnum<AttendanceStatus>
 {
+    public static readonly AttendanceStatus Pending = new(nameof(Pending), 0, "Onay Bekliyor");
     public static readonly AttendanceStatus Recorded = new(nameof(Recorded), 1, "Kaydedildi");
     public static readonly AttendanceStatus Verified = new(nameof(Verified), 2, "Doğrulandı");
     public static readonly AttendanceStatus Corrected = new(nameof(Corrected), 3, "Düzeltildi");
@@ -17,6 +18,7 @@ public sealed class AttendanceStatus : SmartEnum<AttendanceStatus>
 
     private static readonly Dictionary<AttendanceStatus, HashSet<AttendanceStatus>> Transitions = new()
     {
+        [Pending] = [Recorded],
         [Recorded] = [Verified, Corrected],
         [Verified] = [Corrected],
         [Corrected] = [Verified]

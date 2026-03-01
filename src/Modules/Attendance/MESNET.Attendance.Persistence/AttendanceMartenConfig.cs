@@ -19,5 +19,9 @@ public class AttendanceMartenConfig : IConfigureMarten
 
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("attendance");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
+
+        options.Schema.For<InternshipPlacementView>().DatabaseSchemaName("attendance");
+        options.Schema.For<InternshipPlacementView>().Index(x => x.StudentId);
+        options.Schema.For<InternshipPlacementView>().Index(x => x.BusinessId);
     }
 }

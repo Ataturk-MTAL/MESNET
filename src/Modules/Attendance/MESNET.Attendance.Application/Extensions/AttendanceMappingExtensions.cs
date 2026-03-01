@@ -21,6 +21,8 @@ public static class AttendanceMappingExtensions
         record.HealthReportUrl,
         record.MarkedBy,
         record.MarkedAt,
+        record.ApprovedBy,
+        record.ApprovedAt,
         record.VerifiedBy,
         record.VerifiedAt);
 

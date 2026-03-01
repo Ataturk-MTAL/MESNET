@@ -7,5 +7,4 @@ public sealed record MarkAttendance(
     Guid AcademicPeriodId,
     DateTime Date,
     string AbsenceType,
-    string? Reason,
-    string MarkedBy);
+    string? Reason);
