@@ -1,0 +1,492 @@
+---
+title: Reporting Modülü
+---
+
+# Reporting Modülü
+
+PDF rapor üretimi (QuestPDF), denormalize veri, tüm modül event'lerini dinler.
+
+## Class Diagram
+
+```plantuml
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Reporting.Api" {
+    class ReportingEndpoints {
+        +[WolverineGet] GetAttendanceReport(query)
+        +[WolverineGet] GetPaymentReport(query)
+        +[WolverineGet] GetInternshipStatusReport(query)
+        +[WolverineGet] GetInstitutionStatistics(query)
+        +[WolverinePost] GeneratePdfReport(command)
+        +[WolverinePost] GenerateTerminationReport(command)
+        +[WolverinePost] GenerateBulkExport(command)
+        +[WolverinePost] GenerateCoordinatorDailyForm(command)
+        +[WolverinePost] GenerateCoordinatorMonthlyForm(command)
+        +[WolverinePost] GenerateAttendanceSheet(command)
+    }
+}
+
+package "MESNET.Reporting.Application" {
+    class GeneratePdfReportHandler {
+        +static ReportGenerated Handle(GeneratePdfReport command, IDocumentSession session)
+    }
+
+    class GenerateBulkExportHandler {
+        +static BulkExportGenerated Handle(GenerateBulkExport command, IDocumentSession session)
+    }
+
+    class GenerateTerminationReportHandler {
+        +static TerminationReportGenerated Handle(GenerateTerminationReport command, IDocumentSession session)
+    }
+
+    class GenerateCoordinatorDailyFormHandler {
+        +static ReportGenerated Handle(GenerateCoordinatorDailyForm command, IDocumentSession session)
+    }
+
+    class GenerateCoordinatorMonthlyFormHandler {
+        +static ReportGenerated Handle(GenerateCoordinatorMonthlyForm command, IDocumentSession session)
+    }
+
+    class GenerateAttendanceSheetHandler {
+        +static ReportGenerated Handle(GenerateAttendanceSheet command, IDocumentSession session)
+    }
+
+    note "Query handler'lar Marten\nIQuerySession ile doğrudan\ndenormalize document okur.\n\nGenerateTerminationReportHandler:\nQuestPDF ile fesih formu PDF üretir.\n\nGünlük Form: Ziyaret yoklaması,\nöğrenci bazlı devam/gözlem.\nAylık Form: Devam özeti, maaş,\nsözleşme durumu.\nDevamsızlık Çizelgesi: Gün bazlı\ndurum matrisi (V/Y/M/S/T)." as QueryNote
+}
+
+package "MESNET.Reporting.Application\n«Event Consumers»" {
+    class AttendanceEventConsumer {
+        +Handle(AttendanceMarked event, IDocumentSession session)
+        +Handle(AttendanceVerified event, IDocumentSession session)
+        +Handle(HealthReportAttached event, IDocumentSession session)
+    }
+
+    class PaymentEventConsumer {
+        +Handle(ReceiptUploaded event, IDocumentSession session)
+        +Handle(ReceiptApprovedByTeacher event, IDocumentSession session)
+        +Handle(SalaryConfirmedByStudent event, IDocumentSession session)
+    }
+
+    class EnrollmentEventConsumer {
+        +Handle(StudentRegistered event, IDocumentSession session)
+        +Handle(StudentPlaced event, IDocumentSession session)
+    }
+
+    class ContractEventConsumer {
+        +Handle(ContractActivated event, IDocumentSession session)
+        +Handle(ContractTerminated event, IDocumentSession session)
+        +Handle(ContractCompleted event, IDocumentSession session)
+    }
+
+    class InstitutionEventConsumer {
+        +Handle(InstitutionUpdated event, IDocumentSession session)
+        +Handle(StaffAuthorized event, IDocumentSession session)
+    }
+
+    class TerminationEventConsumer {
+        +Handle(InternshipTerminationRequested event, IDocumentSession session)
+        +Handle(InternshipTerminationApprovalChainStarted event, IDocumentSession session)
+        +Handle(TerminationApprovalOverridden event, IDocumentSession session)
+        +Handle(TerminationFormRequested event, IDocumentSession session)
+        +Handle(ContractTerminated event, IDocumentSession session)
+    }
+
+    class CoordinationEventConsumer {
+        +Handle(VisitCompleted event, IDocumentSession session)
+        +Handle(TeacherAssignedToBusiness event, IDocumentSession session)
+        +Handle(DepartmentDistributionApprovedByPrincipal event, IDocumentSession session)
+    }
+}
+
+package "MESNET.Reporting.Core\n«Denormalized Read Models»" {
+    class StudentReportView <<Document>> {
+        +Guid Id
+        +Guid StudentId
+        +string FullName
+        +Guid InstitutionId
+        +string InstitutionName
+        +Guid? BusinessId
+        +string? BusinessName
+        +string ContractStatus
+        +int TotalAbsenceDays
+        +int ApprovedPaymentCount
+        +DateTime LastUpdated
+    }
+
+    class BusinessReportView <<Document>> {
+        +Guid Id
+        +Guid BusinessId
+        +string BusinessName
+        +int ActiveInternCount
+        +int TotalCapacity
+        +int CompletedInternCount
+        +DateTime LastUpdated
+    }
+
+    class AttendanceReportView <<Document>> {
+        +Guid Id
+        +Guid StudentId
+        +string StudentName
+        +Guid InstitutionId
+        +List<AbsenceRecord> Absences
+        +int TotalAbsenceDays
+        +bool LimitExceeded
+        +DateTime LastUpdated
+    }
+
+    class PaymentReportView <<Document>> {
+        +Guid Id
+        +Guid StudentId
+        +string StudentName
+        +Guid InstitutionId
+        +List<PaymentRecord> Payments
+        +decimal TotalPaid
+        +int PendingCount
+        +DateTime LastUpdated
+    }
+
+    class InstitutionReportView <<Document>> {
+        +Guid Id
+        +Guid InstitutionId
+        +string InstitutionName
+        +int ActiveStudentCount
+        +int ActiveBusinessCount
+        +int TotalInternships
+        +decimal AverageAbsenceRate
+        +DateTime LastUpdated
+    }
+
+    class AbsenceRecord <<Value Object>> {
+        +DateTime Date
+        +string Reason
+        +bool IsVerified
+    }
+
+    class PaymentRecord <<Value Object>> {
+        +string Month
+        +decimal Amount
+        +string Status
+        +DateTime? ApprovedAt
+    }
+
+    class TerminationReportView <<Document>> {
+        +Guid Id
+        +Guid InternshipId
+        +Guid StudentId
+        +string StudentName
+        +string StudentClass
+        +Guid BusinessId
+        +string BusinessName
+        +Guid InstitutionId
+        +string InstitutionName
+        +string TerminationReason
+        +string TerminationReasonDetail
+        +bool ParentApproved
+        +bool TeacherApproved
+        +bool DeputyApproved
+        +bool DirectorApproved
+        +bool BusinessRepApproved
+        +bool IsOverridden
+        +string? OverriddenBy
+        +DateTime? FormGeneratedAt
+        +string? SignedFormUrl
+        +DateTime LastUpdated
+    }
+
+    class CoordinatorDailyFormView <<Document>> {
+        +Guid Id
+        +Guid TeacherId
+        +string TeacherName
+        +Guid BusinessId
+        +string BusinessName
+        +DateTime Date
+        +int StudentCount
+        +List<StudentDailyRecord> Students
+        +string? Notes
+        +DateTime LastUpdated
+    }
+
+    class StudentDailyRecord <<Value Object>> {
+        +Guid StudentId
+        +string StudentName
+        +bool IsPresent
+        +string? AbsenceType
+        +string? Notes
+    }
+
+    class CoordinatorMonthlyFormView <<Document>> {
+        +Guid Id
+        +Guid TeacherId
+        +string TeacherName
+        +Guid BusinessId
+        +string BusinessName
+        +string Month
+        +int TotalVisitDays
+        +int TotalStudents
+        +List<StudentMonthlyRecord> Students
+        +decimal TotalSalaryPaid
+        +DateTime LastUpdated
+    }
+
+    class StudentMonthlyRecord <<Value Object>> {
+        +Guid StudentId
+        +string StudentName
+        +int PresentDays
+        +int AbsentDays
+        +decimal SalaryAmount
+        +string ContractStatus
+    }
+
+    class AttendanceSheetView <<Document>> {
+        +Guid Id
+        +Guid InstitutionId
+        +Guid BusinessId
+        +string BusinessName
+        +string Month
+        +List<AttendanceSheetRow> Rows
+        +DateTime LastUpdated
+    }
+
+    class AttendanceSheetRow <<Value Object>> {
+        +Guid StudentId
+        +string StudentName
+        +List<DayStatus> Days
+    }
+
+    class DayStatus <<Value Object>> {
+        +int DayNumber
+        +string Status
+    }
+
+    note "DayStatus.Status kodları:\nV=var, Y=yok, M=mazeretli,\nS=sağlık raporu, T=tatil" as DayStatusNote
+    DayStatus .. DayStatusNote
+}
+
+package "MESNET.Reporting.Shared" {
+    class ReportGenerated {
+        +Guid ReportId
+        +ReportType Type
+        +string FileName
+    }
+
+    class BulkExportGenerated {
+        +Guid ExportId
+        +ExportFormat Format
+        +string FileName
+    }
+
+    class TerminationReportGenerated {
+        +Guid ReportId
+        +Guid InternshipId
+        +Guid StudentId
+        +string FileName
+    }
+
+    enum ReportType <<Enum>> {
+        #DEVAMSIZLIK
+        #MAAS
+        #STAJ_DURUMU
+        #KURUM_ISTATISTIK
+        'CAPRAZ_KURUM → Phase 2 (Tenant modülü ile)
+        #FESIH_FORMU
+        #GUNLUK_FORM
+        #AYLIK_FORM
+        #DEVAMSIZLIK_CIZELGESI
+    }
+
+    enum ExportFormat <<Enum>> {
+        #PDF
+        #EXCEL
+    }
+}
+
+package "MESNET.Reporting.Persistence" {
+    class ReportingMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: reporting\nMarten Document Storage\nDenormalize read model'lar\nJSONB olarak saklanır." as PersistenceNote
+    ReportingMartenConfig .. PersistenceNote
+}
+
+' Read Model Relationships
+AttendanceReportView --> AbsenceRecord : has many
+PaymentReportView --> PaymentRecord : has many
+CoordinatorDailyFormView --> StudentDailyRecord : has many
+CoordinatorMonthlyFormView --> StudentMonthlyRecord : has many
+AttendanceSheetView --> AttendanceSheetRow : has many
+AttendanceSheetRow --> DayStatus : has many
+ReportGenerated --> ReportType : enum
+BulkExportGenerated --> ExportFormat : enum
+
+' API -> Handler
+ReportingEndpoints --> GeneratePdfReportHandler : Wolverine InvokeAsync
+ReportingEndpoints --> GenerateTerminationReportHandler : Wolverine InvokeAsync
+ReportingEndpoints --> GenerateBulkExportHandler : Wolverine InvokeAsync
+ReportingEndpoints --> GenerateCoordinatorDailyFormHandler : Wolverine InvokeAsync
+ReportingEndpoints --> GenerateCoordinatorMonthlyFormHandler : Wolverine InvokeAsync
+ReportingEndpoints --> GenerateAttendanceSheetHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading)
+GeneratePdfReportHandler --> ReportGenerated : returns (cascading)
+GenerateTerminationReportHandler --> TerminationReportGenerated : returns (cascading)
+GenerateBulkExportHandler --> BulkExportGenerated : returns (cascading)
+GenerateCoordinatorDailyFormHandler --> ReportGenerated : returns (cascading)
+GenerateCoordinatorMonthlyFormHandler --> ReportGenerated : returns (cascading)
+GenerateAttendanceSheetHandler --> ReportGenerated : returns (cascading)
+
+' Event Consumers -> Read Models (update)
+AttendanceEventConsumer ..> AttendanceReportView : updates
+AttendanceEventConsumer ..> StudentReportView : updates
+AttendanceEventConsumer ..> AttendanceSheetView : updates
+PaymentEventConsumer ..> PaymentReportView : updates
+PaymentEventConsumer ..> StudentReportView : updates
+EnrollmentEventConsumer ..> StudentReportView : updates
+EnrollmentEventConsumer ..> BusinessReportView : updates
+ContractEventConsumer ..> StudentReportView : updates
+ContractEventConsumer ..> BusinessReportView : updates
+InstitutionEventConsumer ..> InstitutionReportView : updates
+TerminationEventConsumer ..> TerminationReportView : updates
+CoordinationEventConsumer ..> CoordinatorDailyFormView : updates
+CoordinationEventConsumer ..> CoordinatorMonthlyFormView : updates
+CoordinationEventConsumer ..> AttendanceSheetView : updates
+
+@enduml
+```
+
+## Use Cases
+
+```plantuml
+@startuml ReportingUseCasesDiagram
+title Reporting Modülü Use Cases
+left to right direction
+
+:Kurum Yönetimi: as InstAdmin
+:Teacher: as Teacher
+
+package Reporting {
+    usecase "RAR: Devamsızlık Raporu" as RAR
+    usecase "RPR: Maaş/Dekont Raporu" as RPR
+    usecase "RSR: Staj Durum Raporu" as RSR
+    usecase "RIR: Kurum İstatistikleri" as RIR
+    usecase "RBE: Toplu Liste Çıktısı\n(Excel/PDF)" as RBE
+    usecase "RTR: Fesih Formu\n(Islak İmzalı PDF)" as RTR
+    usecase "RDF: Koordinatör Günlük Form" as RDF
+    usecase "RMF: Koordinatör Aylık Form" as RMF
+    usecase "RAS: Devamsızlık Çizelgesi" as RAS
+}
+
+note "Phase 2: RCR (Çapraz Kurum Raporu)\nTenant modülü aktifleştirildiğinde\neklenecektir." as Phase2Note
+
+Teacher --> RAR
+Teacher --> RPR
+Teacher --> RSR
+
+InstAdmin --> RAR
+InstAdmin --> RPR
+InstAdmin --> RSR
+InstAdmin --> RIR
+InstAdmin --> RBE
+
+InstAdmin --> RTR
+
+Teacher --> RDF
+Teacher --> RMF
+Teacher --> RAS
+
+InstAdmin --> RMF
+InstAdmin --> RAS
+
+json Notes {
+    "RAR": "Öğrenci/sınıf bazlı devamsızlık\nlisteleri, QuestPDF ile PDF çıktı.",
+    "RPR": "Maaş/dekont onay durumu raporları,\nödeme takip listeleri.",
+    "RSR": "Aktif stajlar, sözleşme durumları,\nöğrenci bazlı staj özeti.",
+    "RIR": "Kurum bazlı istatistikler:\nöğrenci sayısı, devamsızlık oranı vb.",
+    "RBE": "Dönemsel toplu listeler,\nExcel ve PDF formatında dışa aktarım.",
+    "RTR": "Fesih onay zinciri tamamlandığında\nveya müdür yardımcısı override ettiğinde\nQuestPDF ile ıslak imzalı fesih\nformu PDF üretir. Yazdırılıp\nimzalanır, taranarak sisteme yüklenir.",
+    "RDF": "Koordinatör öğretmen işletme ziyareti\nsırasında günlük yoklama ve gözlem\nformu üretir. QuestPDF ile PDF.",
+    "RMF": "Aylık öğrenci devam durumu, maaş\nbilgisi ve sözleşme durumu özet\nformu. QuestPDF ile PDF.",
+    "RAS": "Ay boyunca günlük bazda öğrenci\ndevam/devamsızlık tablosu.\nDurum kodları: V/Y/M/S/T.\nQuestPDF ile PDF."
+}
+
+@enduml
+```
+
+## Sequence Diagrams
+
+### Devamsızlık Raporu Üretimi (GenerateAttendanceReport)
+
+```plantuml
+@startuml RARSequenceDiagram
+autonumber
+
+actor "Kurum Yönetimi" as InstAdmin
+participant "Web UI" as UI
+participant "MESNET.Reporting.Api\nReportingEndpoints" as API
+participant "MESNET.Reporting.Application\nGeneratePdfReportHandler" as Handler #LightBlue
+participant "Marten\nIQuerySession" as QuerySession #LightGreen
+participant "QuestPDF\nDocument Engine" as QuestPDF #Pink
+participant "Marten\nIDocumentSession" as DocSession #LightGreen
+database "reporting schema" as DB
+
+' Denormalize veri akışı (arka plan)
+note over DB
+  Diğer modül event'leri (AttendanceMarked,
+  AttendanceVerified vb.) sürekli dinlenir
+  ve AttendanceReportView güncellenir.
+end note
+
+' Rapor sayfasını açma
+InstAdmin -> UI: Raporlar sayfasını aç
+UI -> API: GET /api/reporting/attendance?institutionId=...&month=...
+API -> Handler: Handle(GetAttendanceReportQuery)
+Handler -> QuerySession: query.Query<AttendanceReportView>()\n.Where(x => x.InstitutionId == id)
+QuerySession -> DB: SELECT (JSONB)
+DB --> QuerySession: AttendanceReportView[] documents
+QuerySession --> Handler: Denormalize rapor verisi
+Handler --> API: AttendanceReportDTO
+API --> UI: Rapor verisi (JSON)
+UI --> InstAdmin: Devamsızlık tablosu gösterilir
+
+' PDF üretimi
+InstAdmin -> UI: "PDF İndir" butonuna tıkla
+UI -> API: POST /api/reporting/generate-pdf
+API -> Handler: Handle(GeneratePdfReport command)
+Handler -> QuerySession: query.Query<AttendanceReportView>()
+QuerySession -> DB: SELECT (JSONB)
+DB --> QuerySession: AttendanceReportView[] documents
+QuerySession --> Handler: Rapor verisi
+
+Handler -> QuestPDF: Document.Create(container => ...)\n.GeneratePdf(stream)
+QuestPDF --> Handler: byte[] pdfContent
+
+Handler -> DocSession: session.Store(reportRecord)
+DocSession -> DB: INSERT (JSONB)
+DB --> DocSession: Success
+
+' Cascading message
+Handler --> API: ReportGenerated (cascading)
+API --> UI: PDF dosya (binary response)
+UI --> InstAdmin: PDF indirilir
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+
+  QuestPDF kullanımı:
+  - Denormalize veriden doğrudan üretim
+  - Başka modülün DB'sine erişim YOK
+  - Tüm veri reporting schema'sında
+end note
+
+note right of QuestPDF
+  QuestPDF Document yapısı:
+  - Page header: Kurum bilgileri, tarih
+  - Table: Öğrenci listesi, devamsızlık
+  - Footer: Sayfa numarası, imza alanı
+end note
+
+@enduml
+```

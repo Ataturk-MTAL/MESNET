@@ -73,6 +73,24 @@ if (!builder.ExecutionContext.IsPublishMode)
         .WaitFor(keycloak);
 }
 
+// Mimari Dokümanlar (Docusaurus + Kroki — sadece dev modunda)
+if (!builder.ExecutionContext.IsPublishMode)
+{
+    // Kroki — diyagram rendering servisi (PlantUML, C4, Mermaid vb.)
+    var kroki = builder.AddContainer("kroki", "yuzutech/kroki", "latest")
+        .WithHttpEndpoint(port: 9222, targetPort: 8000, name: "kroki")
+        .WithEnvironment("KROKI_SAFE_MODE", "safe")
+        .WithEnvironment("KROKI_PLANTUML_ALLOW_INCLUDE", "true")
+        .WithEnvironment("KROKI_COMMAND_TIMEOUT", "60s")
+        .WithLifetime(ContainerLifetime.Persistent);
+
+    // Docusaurus docs site
+    builder.AddNpmApp("docs", "../../src/Docs", scriptName: "start")
+        .WithHttpEndpoint(port: 8100, env: "PORT")
+        .WithEnvironment("KROKI_SERVER", kroki.GetEndpoint("kroki"))
+        .WaitFor(kroki);
+}
+
 // Frontend
 if (builder.ExecutionContext.IsPublishMode)
 {

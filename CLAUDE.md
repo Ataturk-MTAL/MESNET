@@ -6,6 +6,7 @@ MESNET (Mesleki Eğitim Stajları Nitelikli, Eşgüdümlü Takip Sistemi) — me
 
 ## Teknoloji Yığını
 
+- **Container Runtime:** Podman (Docker değil)
 - **Runtime:** .NET 10.0
 - **Veritabanı:** PostgreSQL (JSONB document storage + event store)
 - **ORM / Document DB:** Marten (https://martendb.io/)

@@ -1,0 +1,245 @@
+---
+title: Tenant Modülü (Phase 2)
+---
+
+# Tenant Modülü (Phase 2)
+
+:::warning[Phase 2]
+Tenant modülü Phase 2 kapsamındadır. Phase 1'de tek kurum odaklı çalışılmaktadır.
+:::
+
+Çoklu kurum yönetimi, sistem yapılandırma.
+
+## Class Diagram
+
+```plantuml
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Tenant.Api" {
+    class TenantEndpoints {
+        +[WolverineGet] GetTenant(tenantId)
+        +[WolverinePost] CreateTenant(command)
+        +[WolverinePut] UpdateTenant(command)
+        +[WolverinePost] RegisterInstitution(command)
+        +[WolverinePost] AssignInstitutionAdmin(command)
+        +[WolverinePut] UpdateSystemParameter(command)
+    }
+}
+
+package "MESNET.Tenant.Application" {
+    class CreateTenantHandler {
+        +static TenantCreated Handle(CreateTenant command, IDocumentSession session)
+    }
+
+    class UpdateTenantHandler {
+        +static TenantUpdated Handle(UpdateTenant command, IDocumentSession session)
+    }
+
+    class RegisterInstitutionHandler {
+        +static InstitutionRegistered Handle(RegisterInstitution command, IDocumentSession session)
+    }
+
+    class AssignInstitutionAdminHandler {
+        +static InstitutionAdminAssigned Handle(AssignInstitutionAdmin command, IDocumentSession session)
+    }
+
+    class UpdateSystemParameterHandler {
+        +static SystemParameterUpdated Handle(UpdateSystemParameter command, IDocumentSession session)
+    }
+}
+
+package "MESNET.Tenant.Core" {
+    class Tenant <<AggregateRoot>> {
+        +Guid Id
+        +string Name
+        +string Code
+        +TenantStatus Status
+        +DateTime CreatedAt
+        +List<InstitutionRef> Institutions
+        +List<SystemParameter> Parameters
+    }
+
+    class InstitutionRef {
+        +Guid InstitutionId
+        +string FullName
+        +int InstitutionCode
+        +bool IsActive
+        +DateTime RegisteredAt
+    }
+
+    class SystemParameter <<Value Object>> {
+        +string Key
+        +string Value
+        +DateTime UpdatedAt
+        +string UpdatedBy
+    }
+
+    enum TenantStatus <<Enum>> {
+        #AKTIF
+        #PASIF
+    }
+}
+
+package "MESNET.Tenant.Shared" {
+    class TenantCreated {
+        +Guid TenantId
+        +string Name
+    }
+
+    class TenantUpdated {
+        +Guid TenantId
+        +string Name
+    }
+
+    class InstitutionRegistered {
+        +Guid TenantId
+        +Guid InstitutionId
+        +string FullName
+        +int InstitutionCode
+    }
+
+    class InstitutionAdminAssigned {
+        +Guid TenantId
+        +Guid InstitutionId
+        +string KeycloakUserId
+    }
+
+    class SystemParameterUpdated {
+        +Guid TenantId
+        +string Key
+        +string Value
+    }
+}
+
+package "MESNET.Tenant.Persistence" {
+    class TenantMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: tenant\nMarten Document Storage\nJSONB serialization" as PersistenceNote
+    TenantMartenConfig .. PersistenceNote
+}
+
+' Domain Relationships
+Tenant --> InstitutionRef : has many
+Tenant --> SystemParameter : has many
+Tenant --> TenantStatus : enum
+
+' API -> Handler
+TenantEndpoints --> CreateTenantHandler : Wolverine InvokeAsync
+TenantEndpoints --> UpdateTenantHandler : Wolverine InvokeAsync
+TenantEndpoints --> RegisterInstitutionHandler : Wolverine InvokeAsync
+TenantEndpoints --> AssignInstitutionAdminHandler : Wolverine InvokeAsync
+TenantEndpoints --> UpdateSystemParameterHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading)
+CreateTenantHandler --> TenantCreated : returns (cascading)
+UpdateTenantHandler --> TenantUpdated : returns (cascading)
+RegisterInstitutionHandler --> InstitutionRegistered : returns (cascading)
+AssignInstitutionAdminHandler --> InstitutionAdminAssigned : returns (cascading)
+UpdateSystemParameterHandler --> SystemParameterUpdated : returns (cascading)
+
+@enduml
+```
+
+## Use Cases
+
+```plantuml
+@startuml TenantUseCasesDiagram
+title Tenant Modülü Use Cases
+left to right direction
+
+:Tenant Yöneticisi: as TenantAdmin
+
+package Tenant {
+    usecase "TCR: Kurum Yönetimi" as TCR
+    usecase "TUA: Kurum Müdürü Hesap Yönetimi" as TUA
+    usecase "TSP: Sistem Parametreleri" as TSP
+    usecase "TSR: Sistem İstatistikleri" as TSR
+    usecase "TCX: Çapraz Kurum Raporları" as TCX
+}
+
+TenantAdmin --> TCR
+TenantAdmin --> TUA
+TenantAdmin --> TSP
+TenantAdmin --> TSR
+TenantAdmin --> TCX
+
+json Notes {
+    "TCR": "Kurum ekleme, düzenleme ve\npasif/aktif duruma alma.",
+    "TUA": "Kurum müdürü hesapları oluşturma,\nKeycloak ile entegre yetkilendirme.",
+    "TSP": "Asgari ücret, dönem tarihleri gibi\nsistem geneli parametreler.",
+    "TSR": "Tüm kurumların staj, devamsızlık,\nödeme istatistikleri.",
+    "TCX": "Birden fazla kurumu kapsayan\nkarşılaştırmalı raporlar."
+}
+
+@enduml
+```
+
+## Sequence Diagrams
+
+### Kurum Kayıt (RegisterInstitution)
+
+```plantuml
+@startuml TRISequenceDiagram
+autonumber
+
+actor "Tenant Yöneticisi" as TenantAdmin
+participant "Web UI" as UI
+participant "MESNET.Tenant.Api\nTenantEndpoints" as API
+participant "MESNET.Tenant.Application\nRegisterInstitutionHandler" as Handler #LightBlue
+participant "Marten\nIDocumentSession" as Marten #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nInstitution.Application" as InstitutionHandler #LightBlue
+database "tenant schema" as DB
+
+' Mevcut kurumları listeleme
+TenantAdmin -> UI: Kurum yönetimi sayfasını aç
+UI -> API: GET /api/tenant/{id}
+API -> Handler: Handle(GetTenantQuery)
+Handler -> Marten: session.LoadAsync<Tenant>(id)
+Marten -> DB: SELECT (JSONB)
+DB --> Marten: Tenant document
+Marten --> Handler: Tenant entity
+Handler --> API: TenantDTO
+API --> UI: Tenant bilgileri ve kurum listesi
+UI --> TenantAdmin: Kayıtlı kurumlar gösterilir
+
+' Yeni kurum kaydı
+TenantAdmin -> UI: Yeni kurum bilgilerini gir
+UI -> API: POST /api/tenant/{id}/institutions
+API -> Handler: Handle(RegisterInstitution command)
+Handler -> Marten: tenant.Institutions.Add(newRef)\nsession.Store(tenant)
+Marten -> DB: UPDATE (JSONB)
+DB --> Marten: Success
+
+' Cascading message
+Handler --> API: InstitutionRegistered (cascading)
+API --> UI: Success
+UI --> TenantAdmin: "Kurum başarıyla kaydedildi" mesajı
+
+' Asenkron event dağıtımı
+Handler -> MessageBroker: PublishAsync<InstitutionRegistered>
+MessageBroker ->> InstitutionHandler: Handle(InstitutionRegistered)
+
+note right of InstitutionHandler
+  Institution modülü bu event'i dinler ve
+  kendi schema'sında Institution aggregate
+  oluşturur (CreateInstitution saga step).
+end note
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+  - Durable Local Queues
+
+  Document Storage:
+  - Tenant aggregate JSONB olarak saklanır
+  - InstitutionRef listesi embedded
+  - SystemParameter listesi embedded
+end note
+
+@enduml
+```

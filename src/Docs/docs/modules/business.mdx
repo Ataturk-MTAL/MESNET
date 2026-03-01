@@ -1,0 +1,487 @@
+---
+title: Business Modülü
+---
+
+# Business Modülü
+
+İşletme kaydı, onay, belge yönetimi, konum ve sektör yönetimi.
+
+## Class Diagram
+
+```plantuml
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Business.Api" {
+    class BusinessEndpoints {
+        +[WolverineGet] GetBusinessInfo(businessId)
+        +[WolverinePost] RegisterBusiness(command)
+        +[WolverinePost] SelfRegisterBusiness(command)
+        +[WolverinePut] UpdateBusinessInfo(command)
+        +[WolverinePost] ApproveBusiness(command)
+        +[WolverinePost] RejectBusiness(command)
+        +[WolverinePost] DeactivateBusiness(command)
+        +[WolverinePost] ActivateBusiness(command)
+        +[WolverinePost] CloseBusiness(command)
+        +[WolverinePost] UploadDocument(command)
+        +[WolverinePost] UpdateCapacity(command)
+        +[WolverinePost] RequestTermination(command)
+    }
+}
+
+package "MESNET.Business.Application" {
+    class RegisterBusinessHandler {
+        +static BusinessRegistered Handle(RegisterBusiness command, IDocumentSession session)
+    }
+
+    class SelfRegisterBusinessHandler {
+        +static BusinessApprovalRequested Handle(SelfRegisterBusiness command, IDocumentSession session)
+    }
+
+    class ApproveBusinessHandler {
+        +static BusinessApproved Handle(ApproveBusiness command, IDocumentSession session)
+    }
+
+    class RejectBusinessHandler {
+        +static BusinessRejected Handle(RejectBusiness command, IDocumentSession session)
+    }
+
+    class UpdateBusinessInfoHandler {
+        +static BusinessUpdated Handle(UpdateBusinessInfo command, IDocumentSession session)
+    }
+
+    class DeactivateBusinessHandler {
+        +static BusinessDeactivated Handle(DeactivateBusiness command, IDocumentSession session)
+    }
+
+    class ActivateBusinessHandler {
+        +static BusinessRegistered Handle(ActivateBusiness command, IDocumentSession session)
+    }
+
+    class CloseBusinessHandler {
+        +static BusinessClosed Handle(CloseBusiness command, IDocumentSession session)
+    }
+
+    class UploadDocumentHandler {
+        +static BusinessDocumentUploaded Handle(UploadDocument command, IDocumentSession session)
+    }
+
+    class ApproveDocumentHandler {
+        +static BusinessDocumentApproved Handle(ApproveDocument command, IDocumentSession session)
+    }
+
+    class UpdateCapacityHandler {
+        +static BusinessCapacityChanged Handle(UpdateCapacity command, IDocumentSession session)
+    }
+
+    class RequestTerminationHandler {
+        +static BusinessTerminationRequested Handle(RequestTermination command, IDocumentSession session)
+    }
+
+    note "SelfRegisterBusiness: İşletme kendi kaydını\naçar → ONAY_BEKLIYOR durumunda oluşturulur.\nKurum onaylamadan sisteme üye olamaz.\n\nRegisterBusiness: Kurum kaydeder → direkt AKTİF." as RegNote
+    SelfRegisterBusinessHandler .. RegNote
+}
+
+package "MESNET.Business.Core" {
+    class Business <<AggregateRoot>> {
+        +Guid Id
+        +string Name
+        +string Address
+        +string PhoneNumber
+        +string Email
+        +string Website
+        +BusinessStatus Status
+        +RegistrationSource Source
+        +int PersonnelCount
+        +Location Location
+        +BusinessCapacity Capacity
+        +List<BusinessRepresentative> Representatives
+        +List<BusinessDocument> Documents
+        +DateTime CreatedAt
+        +DateTime? ApprovedAt
+        +DateTime? ClosedAt
+    }
+
+    class BusinessRepresentative {
+        +Guid Id
+        +Guid BusinessId
+        +string FirstName
+        +string LastName
+        +string PhoneNumber
+        +string Email
+        +string KeycloakId
+    }
+
+    class BusinessDocument {
+        +Guid Id
+        +Guid BusinessId
+        +DocumentType Type
+        +string FileName
+        +string FilePath
+        +DateTime UploadedAt
+        +DateTime? ApprovedAt
+        +DateTime? ExpiresAt
+        +DocumentStatus Status
+    }
+
+    class Location <<Value Object>> {
+        +double Latitude
+        +double Longitude
+    }
+
+    class BusinessCapacity <<Value Object>> {
+        +int TotalSlots
+        +int OccupiedSlots
+        +int AvailableSlots
+    }
+
+    enum BusinessStatus <<Enum>> {
+        #ONAY_BEKLIYOR
+        #AKTIF
+        #REDDEDILDI
+        #PASIF
+        #KAPATILMIS
+    }
+
+    enum RegistrationSource <<Enum>> {
+        #KURUM_KAYDI
+        #ISLETME_KENDI_KAYDI
+    }
+
+    enum DocumentType <<Enum>> {
+        #USTALIK_BELGESI
+        #USTA_OGRETICILIK_BELGESI
+    }
+
+    enum DocumentStatus <<Enum>> {
+        #YUKLENDI
+        #ONAYLANDI
+        #REDDEDILDI
+        #SURESI_DOLDU
+    }
+}
+
+package "MESNET.Business.Shared" {
+    class BusinessRegistered {
+        +Guid BusinessId
+        +string Name
+        +Location Location
+        +RegistrationSource Source
+    }
+
+    class BusinessApprovalRequested {
+        +Guid BusinessId
+        +string Name
+        +Guid InstitutionId
+    }
+
+    class BusinessApproved {
+        +Guid BusinessId
+        +string ApprovedBy
+        +DateTime ApprovedAt
+    }
+
+    class BusinessRejected {
+        +Guid BusinessId
+        +string RejectedBy
+        +string Reason
+    }
+
+    class BusinessUpdated {
+        +Guid BusinessId
+        +string Name
+        +Location Location
+    }
+
+    class BusinessDeactivated {
+        +Guid BusinessId
+        +string Reason
+        +DateTime DeactivatedAt
+    }
+
+    class BusinessClosed {
+        +Guid BusinessId
+        +string Reason
+        +DateTime ClosedAt
+    }
+
+    class BusinessDocumentUploaded {
+        +Guid BusinessId
+        +Guid DocumentId
+        +DocumentType Type
+        +DateTime UploadedAt
+    }
+
+    class BusinessDocumentApproved {
+        +Guid BusinessId
+        +Guid DocumentId
+        +DocumentType Type
+        +DateTime ApprovedAt
+    }
+
+    class BusinessCapacityChanged {
+        +Guid BusinessId
+        +int TotalSlots
+        +int OccupiedSlots
+        +int AvailableSlots
+    }
+
+    class BusinessTerminationRequested {
+        +Guid BusinessId
+        +Guid StudentId
+        +string Reason
+        +DateTime RequestedAt
+    }
+}
+
+package "MESNET.Business.Persistence" {
+    class BusinessMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: business\nHybrid Storage:\n- İşletme bilgileri → Document (Marten JSONB)\n- Durum geçişleri → Event Sourcing\n  (geçmiş veriler kaybolmaz)\n\nDurum geçişleri:\nONAY_BEKLIYOR → AKTİF / REDDEDİLDİ\nAKTİF ↔ PASİF\nAKTİF / PASİF → KAPATILMIŞ" as PersistenceNote
+    BusinessMartenConfig .. PersistenceNote
+}
+
+' Domain Relationships
+Business --> BusinessRepresentative : has many
+Business --> BusinessDocument : has many
+Business --> Location : has one
+Business --> BusinessCapacity : has one
+Business --> BusinessStatus : enum
+Business --> RegistrationSource : enum
+BusinessDocument --> DocumentType : enum
+BusinessDocument --> DocumentStatus : enum
+
+' API -> Handler
+BusinessEndpoints --> RegisterBusinessHandler : Wolverine InvokeAsync
+BusinessEndpoints --> SelfRegisterBusinessHandler : Wolverine InvokeAsync
+BusinessEndpoints --> ApproveBusinessHandler : Wolverine InvokeAsync
+BusinessEndpoints --> RejectBusinessHandler : Wolverine InvokeAsync
+BusinessEndpoints --> UpdateBusinessInfoHandler : Wolverine InvokeAsync
+BusinessEndpoints --> DeactivateBusinessHandler : Wolverine InvokeAsync
+BusinessEndpoints --> CloseBusinessHandler : Wolverine InvokeAsync
+BusinessEndpoints --> UploadDocumentHandler : Wolverine InvokeAsync
+BusinessEndpoints --> UpdateCapacityHandler : Wolverine InvokeAsync
+BusinessEndpoints --> RequestTerminationHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading messages)
+RegisterBusinessHandler --> BusinessRegistered : returns (cascading)
+SelfRegisterBusinessHandler --> BusinessApprovalRequested : returns (cascading)
+ApproveBusinessHandler --> BusinessApproved : returns (cascading)
+RejectBusinessHandler --> BusinessRejected : returns (cascading)
+UpdateBusinessInfoHandler --> BusinessUpdated : returns (cascading)
+DeactivateBusinessHandler --> BusinessDeactivated : returns (cascading)
+CloseBusinessHandler --> BusinessClosed : returns (cascading)
+UploadDocumentHandler --> BusinessDocumentUploaded : returns (cascading)
+ApproveDocumentHandler --> BusinessDocumentApproved : returns (cascading)
+UpdateCapacityHandler --> BusinessCapacityChanged : returns (cascading)
+RequestTerminationHandler --> BusinessTerminationRequested : returns (cascading)
+
+@enduml
+```
+
+## Use Cases
+
+```plantuml
+@startuml BusinessUseCasesDiagram
+title Business Modülü Use Cases
+left to right direction
+
+:Business Representative: as BusRep
+:Kurum Yönetimi: as InstAdmin
+
+package Business {
+    usecase "BRG: İşletme Kaydı" as BRG
+    usecase "BRA: İşletme Onay Süreci" as BRA
+    usecase "EBI: İşletme Bilgisi Düzenleme" as EBI
+    usecase "BSD: İşletme Durum Yönetimi" as BSD
+    usecase "BDM: Belge Yönetimi" as BDM
+    usecase "BDA: Belge Onaylama" as BDA
+    usecase "BLM: Konum Yönetimi" as BLM
+    usecase "BCM: Kontenjan Yönetimi" as BCM
+    usecase "BNS: Yakın İşletme Arama" as BNS
+    usecase "BTR: İşletme Fesih Talebi" as BTR
+}
+
+BusRep --> BRG
+BusRep --> EBI
+BusRep --> BDM
+BusRep --> BLM
+BusRep --> BCM
+BusRep --> BTR
+
+InstAdmin --> BRG
+InstAdmin --> BRA
+InstAdmin --> BSD
+InstAdmin --> BDA
+InstAdmin --> BNS
+InstAdmin --> BCM
+
+json Notes {
+    "BRG": "İşletme yetkilisi veya kurum yönetimi,\nişletmeyi sisteme kaydeder. İşletme kendi\nkaydını açarsa kurum onayı zorunludur.",
+    "BRA": "Kurum yönetimi, işletmenin kendi açtığı\nkaydı onaylar veya reddeder.",
+    "EBI": "İşletme yetkilisi, işletme bilgilerini düzenler.",
+    "BSD": "Kurum yönetimi, işletmeyi aktif/pasif\nyapar veya kalıcı kapatır.",
+    "BDM": "İşletme yetkilisi, ustalık/usta öğreticilik\nbelgelerini yükler ve günceller.",
+    "BDA": "Kurum yönetimi, yüklenen belgeleri\nonaylar veya reddeder.",
+    "BLM": "İşletme yetkilisi, harita üzerinden veya\nadres ile konum kaydeder.",
+    "BCM": "İşletme yetkilisi veya kurum, stajyer\nkontenjan bilgisini günceller.",
+    "BNS": "Kurum yönetimi, lokasyona göre yakın\nişletmeleri arar ve filtreler.",
+    "BTR": "İşletme yetkilisi, gerekçeli staj fesih\ntalebi oluşturur. Internship saga'ya iletilir."
+}
+
+@enduml
+```
+
+## Sequence Diagrams
+
+### İşletme Kendi Kaydını Açma (SelfRegisterBusiness)
+
+```plantuml
+@startuml BRASequenceDiagram
+autonumber
+
+actor "İşletme Yetkilisi" as BusRep
+actor "Kurum Yönetimi" as InstAdmin
+participant "Web UI" as UI
+participant "MESNET.Business.Api\nBusinessEndpoints" as API
+participant "MESNET.Business.Application\nHandlers" as Handler #LightBlue
+participant "Marten\nIDocumentSession" as Marten #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+database "business schema" as DB
+
+== 1. İşletme Kendi Kaydını Açma ==
+
+BusRep -> UI: İşletme kayıt formunu doldur
+UI -> API: POST /api/business/self-register
+API -> Handler: Handle(SelfRegisterBusiness command)
+Handler -> Marten: session.Store(business)\n(status = ONAY_BEKLIYOR)
+Marten -> DB: INSERT (JSONB)
+DB --> Marten: Success
+
+Handler --> API: BusinessApprovalRequested (cascading)
+API --> UI: Success
+UI --> BusRep: "Kaydınız alındı.\nKurum onayı bekleniyor."
+
+Handler -> MessageBroker: PublishAsync<BusinessApprovalRequested>
+
+note right of Handler
+  İşletme kendi kaydını açtığında:
+  - Status = ONAY_BEKLIYOR
+  - Sisteme üye olamaz (login yapamaz)
+  - Kurum onaylamadan aktif olmaz
+end note
+
+== 2. Kurum Bilgilendirilir ==
+
+MessageBroker ->> InstAdmin: Bildirim: "Yeni işletme kaydı onay bekliyor"
+
+== 3a. Kurum Onaylarsa ==
+
+InstAdmin -> UI: İşletme kaydını incele ve onayla
+UI -> API: POST /api/business/{id}/approve
+API -> Handler: Handle(ApproveBusiness command)
+Handler -> Marten: business.Status = AKTİF\nsession.Store(business)
+Marten -> DB: UPDATE (JSONB)
+DB --> Marten: Success
+
+Handler --> API: BusinessApproved (cascading)
+API --> UI: Success
+UI --> InstAdmin: "İşletme kaydı onaylandı"
+
+Handler -> MessageBroker: PublishAsync<BusinessApproved>
+
+note right of Handler
+  Onay sonrası:
+  - Status = AKTİF
+  - İşletme sisteme giriş yapabilir
+  - Stajyer kabul edebilir
+  - Tüm durum geçişleri event sourcing
+    ile kayıt altında
+end note
+
+== 3b. Kurum Reddederse ==
+
+InstAdmin -> UI: İşletme kaydını incele ve reddet
+UI -> API: POST /api/business/{id}/reject
+API -> Handler: Handle(RejectBusiness command)
+Handler -> Marten: business.Status = REDDEDİLDİ\nsession.Store(business)
+Marten -> DB: UPDATE (JSONB)
+DB --> Marten: Success
+
+Handler --> API: BusinessRejected (cascading)
+API --> UI: Success
+UI --> InstAdmin: "İşletme kaydı reddedildi"
+
+Handler -> MessageBroker: PublishAsync<BusinessRejected>
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+  - Durable Local Queues
+
+  Hybrid Storage:
+  - İşletme bilgileri → Document (JSONB)
+  - Durum geçişleri → Event Sourcing
+  - Geçmiş veriler kaybolmaz
+end note
+
+@enduml
+```
+
+### İşletme Bilgisi Düzenleme (EditBusinessInfo)
+
+```plantuml
+@startuml EBISequenceDiagram
+autonumber
+
+actor "İşletme Yetkilisi" as BusRep
+participant "Web UI" as UI
+participant "MESNET.Business.Api\nBusinessEndpoints" as API
+participant "MESNET.Business.Application\nUpdateBusinessInfoHandler" as Handler #LightBlue
+participant "Marten\nIDocumentSession" as Marten #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nInstitution.Application" as InstHandler #LightBlue
+database "business schema" as DB
+
+' Mevcut bilgileri getirme (Query)
+BusRep -> UI: İş yeri bilgilerini düzenleme sayfası açılır
+UI -> API: GET /api/business/{businessId}
+API -> Handler: Handle(GetBusinessInfoQuery)
+Handler -> Marten: session.LoadAsync<Business>(id)
+Marten -> DB: SELECT (JSONB)
+DB --> Marten: Business document
+Marten --> Handler: Business entity
+Handler --> API: BusinessInfoDTO
+API --> UI: BusinessInfoDTO
+UI --> BusRep: Mevcut bilgiler gösterilir
+
+' Bilgileri güncelleme (Command)
+BusRep -> UI: Güncellenmiş bilgileri gönder
+UI -> API: PUT /api/business/{businessId}
+API -> Handler: Handle(UpdateBusinessInfo command)
+Handler -> Marten: session.Store(updatedBusiness)
+Marten -> DB: UPDATE (JSONB)
+DB --> Marten: Success
+
+' Cascading message — handler return değeri otomatik publish edilir
+Handler --> API: BusinessUpdated (cascading)
+API --> UI: Success
+UI --> BusRep: "Bilgiler güncellendi" mesajı
+
+' Asenkron event dağıtımı
+Handler -> MessageBroker: PublishAsync<BusinessUpdated>
+MessageBroker ->> InstHandler: Handle(BusinessUpdated)
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - Logging
+  - AutoApplyTransactions (Marten)
+  - Durable Local Queues
+end note
+
+@enduml
+```

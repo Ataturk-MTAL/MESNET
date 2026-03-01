@@ -1,0 +1,296 @@
+---
+title: Enrollment Modülü
+---
+
+# Enrollment Modülü
+
+Öğrenci ve öğretmen kaydı, işletmeye yerleştirme, başvuru süreçleri.
+
+## Class Diagram
+
+```plantuml
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Enrollment.Api" {
+    class EnrollmentEndpoints {
+        +[WolverinePost] RegisterStudent(command)
+        +[WolverinePost] RegisterTeacher(command)
+        +[WolverinePost] ApplyForInternship(command)
+        +[WolverinePost] RequestStudent(command)
+        +[WolverinePost] PlaceStudent(command)
+        +[WolverinePost] TransferStudent(command)
+        +[WolverineGet] GetStudentProfile(studentId)
+        +[WolverineGet] ListPlacements(query)
+    }
+}
+
+package "MESNET.Enrollment.Application" {
+    class RegisterStudentHandler {
+        +static StudentRegistered Handle(RegisterStudent command, IDocumentSession session)
+    }
+
+    class RegisterTeacherHandler {
+        +static TeacherRegistered Handle(RegisterTeacher command, IDocumentSession session)
+    }
+
+    class ApplyForInternshipHandler {
+        +static InternshipApplied Handle(ApplyForInternship command, IDocumentSession session)
+    }
+
+    class RequestStudentHandler {
+        +static InternshipApplied Handle(RequestStudent command, IDocumentSession session)
+    }
+
+    class PlaceStudentHandler {
+        +static StudentPlaced Handle(PlaceStudent command, IDocumentSession session)
+    }
+
+    class TransferStudentHandler {
+        +static StudentTransferred Handle(TransferStudent command, IDocumentSession session)
+    }
+}
+
+package "MESNET.Enrollment.Core" {
+    class StudentProfile <<AggregateRoot>> {
+        +Guid Id
+        +Guid KeycloakUserId
+        +string FullName
+        +Guid InstitutionId
+        +string BranchCode
+        +string BranchName
+        +int ClassYear
+        +StudentStatus Status
+        +DateTime RegisteredAt
+    }
+
+    class TeacherProfile <<Document>> {
+        +Guid Id
+        +Guid KeycloakUserId
+        +string FullName
+        +Guid InstitutionId
+        +DateTime RegisteredAt
+    }
+
+    class InternshipPlacement <<AggregateRoot>> {
+        +Guid Id
+        +Guid StudentId
+        +Guid BusinessId
+        +Guid InstitutionId
+        +Guid TeacherId
+        +PlacementStatus Status
+        +DateTime PlacedAt
+        +DateTime? TransferredAt
+        +string? TransferReason
+    }
+
+    class BusinessProfile <<Projection>> {
+        +Guid Id
+        +Guid BusinessId
+        +string BusinessName
+        +string BranchCode
+        +int AvailableCapacity
+        +Location Location
+        +DateTime LastUpdated
+    }
+
+    class Location <<Value Object>> {
+        +double Latitude
+        +double Longitude
+    }
+
+    enum StudentStatus <<Enum>> {
+        #KAYITLI
+        #BASVURDU
+        #YERLESTI
+        #AKTIF_STAJ
+        #TAMAMLADI
+    }
+
+    enum PlacementStatus <<Enum>> {
+        #ESLESTI
+        #AKTIF
+        #TRANSFER_EDILDI
+        #TAMAMLANDI
+    }
+
+    note "BusinessProfile, Business modülü\nevent'lerinden oluşturulan\nMarten Async Projection.\nBaşka modül DB'sine erişim YOK." as ProjectionNote
+    BusinessProfile .. ProjectionNote
+}
+
+package "MESNET.Enrollment.Shared" {
+    class StudentRegistered {
+        +Guid StudentId
+        +string FullName
+        +Guid InstitutionId
+        +string BranchCode
+    }
+
+    class TeacherRegistered {
+        +Guid TeacherId
+        +string FullName
+        +Guid InstitutionId
+    }
+
+    class InternshipApplied {
+        +Guid StudentId
+        +Guid? BusinessId
+        +string BranchCode
+        +string Source
+    }
+
+    class StudentPlaced {
+        +Guid PlacementId
+        +Guid StudentId
+        +Guid BusinessId
+        +Guid InstitutionId
+        +DateTime PlacedAt
+    }
+
+    class StudentTransferred {
+        +Guid PlacementId
+        +Guid StudentId
+        +Guid OldBusinessId
+        +Guid NewBusinessId
+        +string Reason
+    }
+}
+
+package "MESNET.Enrollment.Persistence" {
+    class EnrollmentMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: enrollment\nHybrid Storage:\n- StudentProfile → Document\n- TeacherProfile → Document\n- InternshipPlacement → Event Sourcing\n- BusinessProfile → Async Projection" as PersistenceNote
+    EnrollmentMartenConfig .. PersistenceNote
+}
+
+' Domain Relationships
+StudentProfile --> StudentStatus : enum
+InternshipPlacement --> PlacementStatus : enum
+BusinessProfile --> Location : has one
+
+' API -> Handler
+EnrollmentEndpoints --> RegisterStudentHandler : Wolverine InvokeAsync
+EnrollmentEndpoints --> RegisterTeacherHandler : Wolverine InvokeAsync
+EnrollmentEndpoints --> ApplyForInternshipHandler : Wolverine InvokeAsync
+EnrollmentEndpoints --> RequestStudentHandler : Wolverine InvokeAsync
+EnrollmentEndpoints --> PlaceStudentHandler : Wolverine InvokeAsync
+EnrollmentEndpoints --> TransferStudentHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading)
+RegisterStudentHandler --> StudentRegistered : returns (cascading)
+RegisterTeacherHandler --> TeacherRegistered : returns (cascading)
+ApplyForInternshipHandler --> InternshipApplied : returns (cascading)
+RequestStudentHandler --> InternshipApplied : returns (cascading)
+PlaceStudentHandler --> StudentPlaced : returns (cascading)
+TransferStudentHandler --> StudentTransferred : returns (cascading)
+
+@enduml
+```
+
+## Use Cases
+
+```plantuml
+@startuml EnrollmentUseCasesDiagram
+title Enrollment Modülü Use Cases
+left to right direction
+
+:Business Representative: as BusRep
+:Kurum Yönetimi: as InstAdmin
+:Student: as Student
+
+package Enrollment {
+    usecase "ESR: Öğrenci Kaydı" as ESR
+    usecase "ETR: Öğretmen Kaydı" as ETR
+    usecase "EIA: Staj Başvurusu" as EIA
+    usecase "EBR: İşletme Öğrenci Talebi" as EBR
+    usecase "EMC: Öğrenci-İşletme Eşleştirme" as EMC
+    usecase "EPL: Yeni İşletmeye Yerleştirme" as EPL
+    usecase "ELB: Lokasyon Bazlı Eşleştirme" as ELB
+}
+
+InstAdmin --> ESR
+InstAdmin --> ETR
+InstAdmin --> EMC
+InstAdmin --> EPL
+InstAdmin --> ELB
+
+Student --> EIA
+
+BusRep --> EBR
+
+json Notes {
+    "ESR": "Kurum yönetimi, öğrencinin staj\nprofilini sisteme kaydeder.",
+    "ETR": "Kurum yönetimi, koordinatör öğretmeni\nsisteme kaydeder.",
+    "EIA": "Öğrenci, staj başvurusu oluşturur.\nAlan/dal ve tercihler belirtilir.",
+    "EBR": "İşletme yetkilisi, alan/dal bazlı\nstajyer öğrenci talep eder.",
+    "EMC": "Kurum yönetimi, öğrenci ve işletmeyi\neşleştirir. Kontenjan kontrolü yapılır.",
+    "EPL": "Fesih sonrası veya yeni başlayan\nöğrenci uygun işletmeye yerleştirilir.",
+    "ELB": "Lokasyon bazlı filtreleme ile\nen uygun işletme bulunur."
+}
+
+@enduml
+```
+
+## Sequence Diagrams
+
+### Stajyer Öğrenci Talebi (RequestInternStudent)
+
+```plantuml
+@startuml RISSequenceDiagram
+autonumber
+
+actor "İşletme Yetkilisi" as BusRep
+participant "Web UI" as UI
+participant "MESNET.Enrollment.Api\nEnrollmentEndpoints" as API
+participant "MESNET.Enrollment.Application\nRequestStudentHandler" as Handler #LightBlue
+participant "Marten\nIDocumentSession" as Marten #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nInternship.Application" as InternshipHandler #LightBlue
+database "enrollment schema" as DB
+
+' Form getirme
+BusRep -> UI: Stajyer talep formunu aç
+UI -> API: GET /api/enrollment/request-form?businessId={businessId}
+API -> Handler: Handle(GetRequestFormQuery)
+Handler -> Marten: session.LoadAsync<BusinessProfile>(businessId)
+Marten -> DB: SELECT (JSONB)
+DB --> Marten: BusinessProfile document
+Marten --> Handler: BusinessProfile
+Handler --> API: RequestFormDTO
+API --> UI: Form bilgileri
+UI --> BusRep: Stajyer talep formu
+
+' Talep oluşturma
+BusRep -> UI: Stajyer talebini gönder
+UI -> API: POST /api/enrollment/requests
+API -> Handler: Handle(RequestStudent command)
+
+Handler -> Marten: session.Store(studentRequest)
+Marten -> DB: INSERT (JSONB)
+DB --> Marten: Success
+
+' Cascading message
+Handler --> API: InternshipApplied (cascading)
+API --> UI: Success
+UI --> BusRep: "Stajyer talebi oluşturuldu" mesajı
+
+' Asenkron event dağıtımı
+Handler -> MessageBroker: PublishAsync<InternshipApplied>
+MessageBroker ->> InternshipHandler: Handle(InternshipApplied)
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+  - Durable Local Queues
+
+  Enrollment modülü:
+  - BusinessProfile, Business modülünün
+    event'lerinden oluşturulan projection
+  - Doğrudan Business DB'sine sorgu ATMAZ
+end note
+
+@enduml
+```

@@ -45,6 +45,14 @@ src/WebUI/dist/
 src/WebUI/.env.local
 src/WebUI/.env.*.local
 
+## Docs (Docusaurus)
+src/Docs/node_modules/
+src/Docs/build/
+src/Docs/.docusaurus/
+
+## PlantUML generated SVG output
+src/Arch/out/
+
 # Production secrets
 .env
 *.env.local

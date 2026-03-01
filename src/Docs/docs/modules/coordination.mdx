@@ -1,0 +1,568 @@
+---
+title: Coordination Modülü
+---
+
+# Coordination Modülü
+
+Öğretmen ziyaret programı, departman dağılımı, rapor ve evrak takibi.
+
+## Class Diagram
+
+```plantuml
+@startuml ClassDiagram
+left to right direction
+
+package "MESNET.Coordination.Api" {
+    class CoordinationEndpoints {
+        +[WolverinePost] AssignTeacherToBusiness(command)
+        +[WolverinePost] CreateVisitSchedule(command)
+        +[WolverineGet] GetVisitSchedule(teacherId)
+        +[WolverinePost] CompleteVisit(command)
+        +[WolverinePost] GenerateReport(command)
+        +[WolverinePost] DeliverDocument(command)
+        +[WolverinePost] UploadTeacherSchedule(command)
+        +[WolverinePost] CreateDepartmentDistribution(command)
+        +[WolverinePost] ApproveDepartmentDistribution(command)
+        +[WolverinePost] RejectDepartmentDistribution(command)
+        +[WolverineGet] CalculateWorkload(teacherId)
+        +[WolverineGet] GetTeacherSchedule(teacherId)
+    }
+}
+
+package "MESNET.Coordination.Application" {
+    class AssignTeacherHandler {
+        +static TeacherAssignedToBusiness Handle(AssignTeacherToBusiness command, IDocumentSession session)
+    }
+
+    class CreateVisitScheduleHandler {
+        +static VisitScheduleCreated Handle(CreateVisitSchedule command, IDocumentSession session)
+    }
+
+    class CompleteVisitHandler {
+        +static VisitCompleted Handle(CompleteVisit command, IDocumentSession session)
+    }
+
+    class GenerateReportHandler {
+        +static ReportGenerated Handle(GenerateReport command, IDocumentSession session)
+    }
+
+    class DeliverDocumentHandler {
+        +static DocumentDelivered Handle(DeliverDocument command, IDocumentSession session)
+    }
+
+    class UploadTeacherScheduleHandler {
+        +static TeacherScheduleUpdated Handle(UploadTeacherSchedule command, IDocumentSession session)
+    }
+
+    class CreateDepartmentDistributionHandler {
+        +static DepartmentDistributionCreated Handle(CreateDepartmentDistribution command, IDocumentSession session)
+    }
+
+    class ApproveDepartmentDistributionHandler {
+        +static DepartmentDistributionApprovedByPrincipal Handle(ApproveDepartmentDistribution command, IDocumentSession session)
+    }
+
+    class RejectDepartmentDistributionHandler {
+        +static DepartmentDistributionRejected Handle(RejectDepartmentDistribution command, IDocumentSession session)
+    }
+
+    class CalculateWorkloadHandler {
+        +static TeacherWorkloadCalculated Handle(CalculateWorkload query, IDocumentSession session)
+    }
+
+    note "CalculateWorkloadHandler:\nDers programı, atanan işletmeler,\nmesafe ve WorkloadConfig'e göre\nek ders sınırı kontrolü yapar.\n\nFormül:\nKullanılabilir = Azami - ŞeflikIndirimi\nKullanılan = Σ(AtananSaatler)\nKalan = Kullanılabilir - Kullanılan" as WorkloadNote
+    CalculateWorkloadHandler .. WorkloadNote
+}
+
+package "MESNET.Coordination.Application\n«Event Consumers»" {
+    class HandleStudentTransferredHandler {
+        +Handle(StudentTransferred event, IDocumentSession session)
+    }
+
+    class HandleContractTerminatedHandler {
+        +Handle(ContractTerminated event, IDocumentSession session)
+    }
+
+    note "Cross-module event consumer'lar.\nÖğrenci transfer veya fesih\ndurumunda öğretmen-işletme\natamasını günceller." as ConsumerNote
+    HandleStudentTransferredHandler .. ConsumerNote
+}
+
+package "MESNET.Coordination.Core" {
+    class VisitSchedule <<AggregateRoot>> {
+        +Guid Id
+        +Guid TeacherId
+        +Guid InstitutionId
+        +List<ScheduleSlot> Slots
+        +DateTime WeekStartDate
+        +ScheduleStatus Status
+    }
+
+    class ScheduleSlot <<Value Object>> {
+        +DayOfWeek Day
+        +TimeSpan StartTime
+        +TimeSpan EndTime
+        +Guid BusinessId
+        +string BusinessName
+        +Location BusinessLocation
+    }
+
+    class VisitReport <<AggregateRoot>> {
+        +Guid Id
+        +Guid VisitScheduleId
+        +Guid TeacherId
+        +Guid BusinessId
+        +DateTime VisitDate
+        +string Notes
+        +ReportStatus Status
+        +string QrCode
+    }
+
+    class TeacherAssignment {
+        +Guid Id
+        +Guid TeacherId
+        +Guid BusinessId
+        +DateTime AssignedAt
+    }
+
+    class DocumentDelivery {
+        +Guid Id
+        +Guid VisitReportId
+        +DeliveryMethod Method
+        +DateTime DeliveredAt
+        +string QrCode
+    }
+
+    class Location <<Value Object>> {
+        +double Latitude
+        +double Longitude
+    }
+
+    class TeacherSchedule <<Document>> {
+        +Guid Id
+        +Guid TeacherId
+        +Guid InstitutionId
+        +string Semester
+        +List<ScheduleEntry> Entries
+        +int TotalWeeklyHours
+        +int AvailableHours
+        +DateTime UploadedAt
+    }
+
+    class ScheduleEntry <<Value Object>> {
+        +DayOfWeek Day
+        +int Period
+        +string? SubjectName
+        +bool IsAvailableForVisit
+    }
+
+    class DepartmentDistribution <<AggregateRoot>> {
+        +Guid Id
+        +Guid InstitutionId
+        +Guid DepartmentHeadId
+        +string BranchCode
+        +string Semester
+        +List<TeacherBusinessAssignment> Assignments
+        +DistributionStatus Status
+        +string? CommitteeDecisionNotes
+        +string? PrincipalApprovalNote
+        +DateTime CreatedAt
+        +DateTime? ApprovedAt
+    }
+
+    class TeacherBusinessAssignment <<Value Object>> {
+        +Guid TeacherId
+        +string TeacherName
+        +Guid BusinessId
+        +string BusinessName
+        +double DistanceKm
+        +int AssignedHours
+        +int StudentCount
+    }
+
+    class WorkloadConfig <<Document>> {
+        +Guid Id
+        +Guid InstitutionId
+        +int MaxExtraLessonHoursPerWeek
+        +int DepartmentHeadReductionHours
+        +double MaxDistanceKm
+        +int LessonDurationMinutes
+        +string Semester
+        +DateTime UpdatedAt
+    }
+
+    enum ScheduleStatus <<Enum>> {
+        #TASLAK
+        #AKTIF
+        #TAMAMLANDI
+    }
+
+    enum ReportStatus <<Enum>> {
+        #OLUSTURULDU
+        #YAZDIRILDI
+        #TESLIM_EDILDI
+    }
+
+    enum DeliveryMethod <<Enum>> {
+        #KAREKOD
+        #MANUEL
+    }
+
+    enum DistributionStatus <<Enum>> {
+        #TASLAK
+        #ZUMRE_KARARI_ALINDI
+        #MUDUR_ONAY_BEKLIYOR
+        #ONAYLANDI
+        #REDDEDILDI
+    }
+
+    note "ScheduleEntry.Period: 1-8 arası\nders saati numarası.\nSubjectName null ise boş saat\n(ziyaret için uygun).\n\nDepartmentDistribution:\nAlan şefi dağıtım yapar →\nZümre karar tutanağı eklenir →\nMüdür onaylar/reddeder.\nEvent sourcing ile audit trail." as CoreNote
+    DepartmentDistribution .. CoreNote
+}
+
+package "MESNET.Coordination.Shared" {
+    class TeacherAssignedToBusiness {
+        +Guid TeacherId
+        +Guid BusinessId
+        +DateTime AssignedAt
+    }
+
+    class VisitScheduleCreated {
+        +Guid ScheduleId
+        +Guid TeacherId
+        +DateTime WeekStartDate
+    }
+
+    class VisitCompleted {
+        +Guid VisitReportId
+        +Guid TeacherId
+        +Guid BusinessId
+        +DateTime VisitDate
+    }
+
+    class ReportGenerated {
+        +Guid VisitReportId
+        +string QrCode
+    }
+
+    class DocumentDelivered {
+        +Guid DocumentDeliveryId
+        +Guid VisitReportId
+        +DeliveryMethod Method
+    }
+
+    class DepartmentDistributionCreated {
+        +Guid DistributionId
+        +Guid InstitutionId
+        +string BranchCode
+        +int AssignmentCount
+    }
+
+    class DepartmentDistributionApprovedByPrincipal {
+        +Guid DistributionId
+        +string ApprovedBy
+        +DateTime ApprovedAt
+    }
+
+    class DepartmentDistributionRejected {
+        +Guid DistributionId
+        +string RejectedBy
+        +string Reason
+    }
+
+    class TeacherScheduleUpdated {
+        +Guid TeacherId
+        +Guid InstitutionId
+        +int AvailableHours
+    }
+
+    class TeacherWorkloadCalculated {
+        +Guid TeacherId
+        +int TotalHours
+        +int AvailableHours
+        +int UsedHours
+    }
+}
+
+package "MESNET.Coordination.Persistence" {
+    class CoordinationMartenConfig <<IConfigureMarten>> {
+        +void Configure(StoreOptions options)
+    }
+
+    note "Schema: coordination\nVisitSchedule → Document Storage\nVisitReport → Event Sourcing\nTeacherSchedule → Document Storage\nDepartmentDistribution → Event Sourcing\n  (onay zinciri audit trail)\nWorkloadConfig → Document Storage\n\nLessonDuration: 60 dk\n(MEB Yönetmeliği Madde 9/3)" as PersistenceNote
+    CoordinationMartenConfig .. PersistenceNote
+}
+
+' Domain Relationships
+VisitSchedule --> ScheduleSlot : has many
+VisitSchedule --> ScheduleStatus : enum
+ScheduleSlot --> Location : has one
+VisitReport --> ReportStatus : enum
+DocumentDelivery --> DeliveryMethod : enum
+DocumentDelivery --> VisitReport : belongs to
+TeacherSchedule --> ScheduleEntry : has many
+DepartmentDistribution --> TeacherBusinessAssignment : has many
+DepartmentDistribution --> DistributionStatus : enum
+
+' API -> Handler (existing)
+CoordinationEndpoints --> AssignTeacherHandler : Wolverine InvokeAsync
+CoordinationEndpoints --> CreateVisitScheduleHandler : Wolverine InvokeAsync
+CoordinationEndpoints --> CompleteVisitHandler : Wolverine InvokeAsync
+CoordinationEndpoints --> GenerateReportHandler : Wolverine InvokeAsync
+CoordinationEndpoints --> DeliverDocumentHandler : Wolverine InvokeAsync
+
+' API -> Handler (new)
+CoordinationEndpoints --> UploadTeacherScheduleHandler : Wolverine InvokeAsync
+CoordinationEndpoints --> CreateDepartmentDistributionHandler : Wolverine InvokeAsync
+CoordinationEndpoints --> ApproveDepartmentDistributionHandler : Wolverine InvokeAsync
+CoordinationEndpoints --> RejectDepartmentDistributionHandler : Wolverine InvokeAsync
+CoordinationEndpoints --> CalculateWorkloadHandler : Wolverine InvokeAsync
+
+' Handler -> Events (cascading, existing)
+AssignTeacherHandler --> TeacherAssignedToBusiness : returns (cascading)
+CreateVisitScheduleHandler --> VisitScheduleCreated : returns (cascading)
+CompleteVisitHandler --> VisitCompleted : returns (cascading)
+GenerateReportHandler --> ReportGenerated : returns (cascading)
+DeliverDocumentHandler --> DocumentDelivered : returns (cascading)
+
+' Handler -> Events (cascading, new)
+UploadTeacherScheduleHandler --> TeacherScheduleUpdated : returns (cascading)
+CreateDepartmentDistributionHandler --> DepartmentDistributionCreated : returns (cascading)
+ApproveDepartmentDistributionHandler --> DepartmentDistributionApprovedByPrincipal : returns (cascading)
+RejectDepartmentDistributionHandler --> DepartmentDistributionRejected : returns (cascading)
+CalculateWorkloadHandler --> TeacherWorkloadCalculated : returns (cascading)
+
+' Cross-module event consumers
+HandleStudentTransferredHandler ..> TeacherAssignment : updates
+HandleContractTerminatedHandler ..> TeacherAssignment : updates
+
+@enduml
+```
+
+## Use Cases
+
+```plantuml
+@startuml CoordinationUseCasesDiagram
+title Coordination Modülü Use Cases
+left to right direction
+
+:Teacher: as Teacher
+:Kurum Yönetimi: as InstAdmin
+:Alan Şefi: as DeptHead
+
+package Coordination {
+    usecase "CTA: Öğretmen-İşletme Atama" as CTA
+    usecase "CVS: Ziyaret Programı Oluşturma" as CVS
+    usecase "CLR: Lokasyon Bazlı Rota Optimizasyonu" as CLR
+    usecase "CQR: Karekodlu Rapor Oluşturma" as CQR
+    usecase "CVR: Ziyaret Raporu Doldurma" as CVR
+    usecase "CDT: Evrak Teslim Takibi" as CDT
+    usecase "CCI: Koordinatör-Öğrenci İletişimi" as CCI
+    usecase "CTS: Öğretmen Ders Programı\nYönetimi" as CTS
+    usecase "CDD: Alan Bazlı İşletme\nDağıtımı" as CDD
+    usecase "CWC: İş Yükü Hesaplama" as CWC
+    usecase "CDA: Dağıtım Onay Süreci" as CDA
+}
+
+InstAdmin --> CTA
+InstAdmin --> CVS
+InstAdmin --> CLR
+InstAdmin --> CTS
+InstAdmin --> CDA
+
+Teacher --> CVS
+Teacher --> CQR
+Teacher --> CVR
+Teacher --> CDT
+Teacher --> CCI
+
+DeptHead --> CDD
+DeptHead --> CWC
+
+json Notes {
+    "CTA": "Kurum yönetimi, koordinatör öğretmeni\nişletmelere atar.",
+    "CVS": "Haftalık ziyaret programı oluşturulur.\nDers programı formatında gösterilir.",
+    "CLR": "İşletme konumlarına göre ziyaret\nrotası optimize edilir.",
+    "CQR": "Koordinatör öğretmen, karekodlu\nziyaret raporunu yazdırır.",
+    "CVR": "Koordinatör öğretmen, ziyaret sonrası\nraporu sisteme girer.",
+    "CDT": "Evrak teslim durumu karekod veya\nmanuel olarak takip edilir.",
+    "CCI": "Koordinatör öğretmen, sorumlu olduğu\nöğrencilerle iletişim kurar.",
+    "CTS": "Kurum yönetimi öğretmenlerin ders\nprogramlarını yükler/günceller.\nBoş saatler tespit edilir.",
+    "CDD": "Alan şefi, öğretmenlerin boş\nsaatlerine göre işletme dağıtımı\nyapar. Mesafe ve ek ders sınırı\nkontrol edilir.",
+    "CWC": "Alan şefi, öğretmenlerin toplam\nek ders yükünü hesaplar.\nŞeflik indirimi ve mesafe kontrolü.",
+    "CDA": "Zümre karar tutanağı oluşturulur,\nmüdür onayına sunulur.\nOnay/red sonucu atamalar güncellenir."
+}
+
+@enduml
+```
+
+## Sequence Diagrams
+
+### Ziyaret Tamamla (CompleteVisit)
+
+```plantuml
+@startuml CVRSequenceDiagram
+autonumber
+
+actor "Koordinatör Öğretmen" as Teacher
+participant "Web UI" as UI
+participant "MESNET.Coordination.Api\nCoordinationEndpoints" as API
+participant "MESNET.Coordination.Application\nCompleteVisitHandler" as Handler #LightBlue
+participant "Marten\nIEventStore" as EventStore #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nInternship.Application" as InternshipHandler #LightBlue
+participant "Wolverine Handler\nReporting.Application" as ReportingHandler #LightBlue
+database "coordination schema" as DB
+
+' Ziyaret programını görüntüleme
+Teacher -> UI: Haftalık ziyaret programını aç
+UI -> API: GET /api/coordination/schedule/{teacherId}
+API -> Handler: Handle(GetVisitScheduleQuery)
+Handler -> EventStore: session.LoadAsync<VisitSchedule>(id)
+EventStore -> DB: SELECT (JSONB)
+DB --> EventStore: VisitSchedule document
+EventStore --> Handler: VisitSchedule
+Handler --> API: VisitScheduleDTO
+API --> UI: Ziyaret programı
+UI --> Teacher: Günün ziyaret programı gösterilir
+
+' Ziyaret raporu doldurma
+Teacher -> UI: Ziyaret raporunu doldur
+UI -> API: POST /api/coordination/visits
+API -> Handler: Handle(CompleteVisit command)
+Handler -> EventStore: session.Events.Append(streamId, VisitCompleted)
+EventStore -> DB: INSERT event
+DB --> EventStore: Success
+
+' Cascading message
+Handler --> API: VisitCompleted (cascading)
+API --> UI: Success
+UI --> Teacher: "Ziyaret raporu kaydedildi" mesajı
+
+' Asenkron event dağıtımı
+Handler -> MessageBroker: PublishAsync<VisitCompleted>
+MessageBroker ->> InternshipHandler: Handle(VisitCompleted)
+MessageBroker ->> ReportingHandler: Handle(VisitCompleted)
+
+note right of Handler
+  Wolverine Middleware Pipeline:
+  - FluentValidation
+  - AutoApplyTransactions (Marten)
+
+  Hybrid Storage:
+  - VisitSchedule → Document (Marten JSONB)
+  - VisitReport → Event Sourcing
+end note
+
+@enduml
+```
+
+### Departman Dağıtım (DepartmentDistribution)
+
+```plantuml
+@startuml CDDSequenceDiagram
+autonumber
+
+actor "Alan Şefi" as DeptHead
+actor "Müdür" as Principal
+participant "Web UI" as UI
+participant "MESNET.Coordination.Api\nCoordinationEndpoints" as API
+participant "MESNET.Coordination.Application\nCreateDepartmentDistributionHandler" as CreateHandler #LightBlue
+participant "MESNET.Coordination.Application\nCalculateWorkloadHandler" as WorkloadHandler #LightBlue
+participant "MESNET.Coordination.Application\nApproveDepartmentDistributionHandler" as ApproveHandler #LightBlue
+participant "Marten\nIDocumentSession" as DocSession #LightGreen
+participant "Marten\nIEventStore" as EventStore #LightGreen
+participant "RabbitMQ\n(Wolverine Transport)" as MessageBroker #Orange
+participant "Wolverine Handler\nReporting.Application" as ReportingHandler #LightBlue
+database "coordination schema" as DB
+
+' 1. Alan şefi öğretmen ders programlarını ve boş saatleri görüntüler
+DeptHead -> UI: Dağıtım ekranını aç
+UI -> API: GET /api/coordination/schedule/{teacherId}
+API -> DocSession: session.LoadAsync<TeacherSchedule>(teacherId)
+DocSession -> DB: SELECT (JSONB)
+DB --> DocSession: TeacherSchedule documents
+DocSession --> API: Öğretmen ders programları
+API --> UI: Öğretmenlerin boş saatleri listelenir
+UI --> DeptHead: Boş saat tablosu gösterilir
+
+' 2. İş yükü hesaplama
+DeptHead -> UI: Öğretmen seçip iş yükü hesapla
+UI -> API: GET /api/coordination/workload/{teacherId}
+API -> WorkloadHandler: Handle(CalculateWorkload query)
+WorkloadHandler -> DocSession: TeacherSchedule + WorkloadConfig yükle
+DocSession -> DB: SELECT (JSONB)
+DB --> DocSession: Schedule + Config
+WorkloadHandler -> WorkloadHandler: Formül hesapla:\nKullanılabilir = Azami - ŞeflikIndirimi\nKullanılan = Σ(AtananSaatler)\nKalan = Kullanılabilir - Kullanılan
+WorkloadHandler --> API: TeacherWorkloadCalculated
+API --> UI: İş yükü sonuçları
+UI --> DeptHead: Kullanılabilir/kullanılan/kalan saat gösterilir
+
+' 3. Alan şefi atamaları yapar
+DeptHead -> UI: İşletmeleri öğretmenlere dağıt
+note right of UI
+  Her atama için:
+  - Mesafe kontrolü (MaxDistanceKm)
+  - Ek ders sınırı kontrolü
+  - Boş saat uyumu kontrolü
+end note
+UI -> UI: Client-side validasyon\n(mesafe, saat sınırı)
+
+' 4. Zümre karar tutanağı eklenir
+DeptHead -> UI: Zümre karar tutanağı notunu ekle
+UI -> UI: CommitteeDecisionNotes alanı doldurulur
+
+' 5. Dağıtım oluşturulur
+DeptHead -> UI: Dağıtımı kaydet
+UI -> API: POST /api/coordination/distributions
+API -> CreateHandler: Handle(CreateDepartmentDistribution command)
+CreateHandler -> CreateHandler: Validasyon:\n- Tüm atamalar ek ders sınırı içinde mi?\n- Mesafe limiti aşılıyor mu?\n- Boş saat uyumu var mı?
+CreateHandler -> EventStore: session.Events.StartStream(DepartmentDistributionCreated)
+EventStore -> DB: INSERT event
+DB --> EventStore: Success
+CreateHandler --> API: DepartmentDistributionCreated (cascading)
+API --> UI: Success
+UI --> DeptHead: "Dağıtım kaydedildi, müdür onayı bekleniyor"
+
+' 6. Müdüre onay gönderilir
+CreateHandler -> MessageBroker: PublishAsync<DepartmentDistributionCreated>
+
+' 7. Müdür onay/red
+Principal -> UI: Dağıtım onay ekranını aç
+UI -> API: Dağıtım detaylarını getir
+API --> UI: DepartmentDistribution + Assignments
+UI --> Principal: Dağıtım detayları gösterilir
+
+alt Müdür onaylarsa
+    Principal -> UI: Onayla
+    UI -> API: POST /api/coordination/distributions/approve
+    API -> ApproveHandler: Handle(ApproveDepartmentDistribution command)
+    ApproveHandler -> EventStore: session.Events.Append(streamId, DepartmentDistributionApprovedByPrincipal)
+    EventStore -> DB: INSERT event
+    DB --> EventStore: Success
+    ApproveHandler --> API: DepartmentDistributionApprovedByPrincipal (cascading)
+    API --> UI: Success
+    UI --> Principal: "Dağıtım onaylandı"
+
+    ' Asenkron event dağıtımı
+    ApproveHandler -> MessageBroker: PublishAsync<DepartmentDistributionApprovedByPrincipal>
+    MessageBroker ->> ReportingHandler: Handle(DepartmentDistributionApprovedByPrincipal)
+else Müdür reddederse
+    Principal -> UI: Reddet (gerekçe gir)
+    UI -> API: POST /api/coordination/distributions/reject
+    API -> EventStore: DepartmentDistributionRejected event
+    EventStore -> DB: INSERT event
+    API --> UI: Success
+    UI --> Principal: "Dağıtım reddedildi"
+end
+
+note right of EventStore
+  DepartmentDistribution Event Sourcing:
+  - Tüm dağıtım kararları audit trail
+  - Zümre karar tutanağı saklanır
+  - Müdür onay/red gerekçesi saklanır
+  - Status geçişleri: TASLAK → ZÜMRE_KARARI_ALINDI
+    → MÜDÜR_ONAY_BEKLİYOR → ONAYLANDI/REDDEDİLDİ
+end note
+
+@enduml
+```
