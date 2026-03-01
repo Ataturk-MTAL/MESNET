@@ -175,6 +175,36 @@ Sistem, devamsızlık girişi yapılmak istenen tarihi `WorkCalendar` ile kontro
   - Saat **22:00'yi** geçemez
 - Yoğunlaştırılmış eğitimde haftalık azami çalışma saatini geçmemek şartıyla **haftada 6 gün** planlanabilir (veli/öğrenci isteği gerekli)
 
+### 5.5 Devamsızlık Girişi Yetkilendirme Kuralları
+
+#### Öğrenci-İşletme Bağlantısı
+
+Devamsızlık kaydı oluşturulurken öğrenci ve işletme bağımsız olarak seçilemez.
+Her devamsızlık kaydı, aktif `InternshipPlacement`'taki öğrenci-işletme eşleşmesine dayanır.
+Öğrenci seçildiğinde işletme bilgisi otomatik olarak doldurulur.
+
+#### Rol Bazlı Görünürlük
+
+| Rol | Görebildiği Öğrenciler | Açıklama |
+|-----|----------------------|----------|
+| Kurum Müdürü (InstitutionManager) | Kendi kurumundaki TÜM öğrenciler | InstitutionId eşleşmesi |
+| Kurum Personeli (InstitutionStaff) | Kendi kurumundaki TÜM öğrenciler | InstitutionId eşleşmesi |
+| Koordinatör Öğretmen (Teacher) | SADECE koordine ettiği öğrenciler | InternshipPlacement.TeacherId eşleşmesi |
+| İşletme Yöneticisi (CompanyManager) | SADECE kendi işletmesindeki öğrenciler | InternshipPlacement.BusinessId eşleşmesi |
+
+#### Onay Akışı
+
+- **İşletme yöneticisi** devamsızlık girdiğinde → `Pending` (Onay Bekliyor) durumunda oluşur → Koordinatör öğretmene SSE bildirim gönderilir → onaylarsa `Recorded`
+- **Koordinatör öğretmen** devamsızlık girdiğinde → doğrudan `Recorded` (onay gerekmez)
+- **Kurum müdürü/personeli** devamsızlık girdiğinde → doğrudan `Recorded`
+
+#### Backend Doğrulama Zinciri
+
+1. Akademik dönem aktif mi? (`AcademicPeriodView`)
+2. Öğrenci-işletme eşleşmesi mevcut mu? (`InternshipPlacementView`)
+3. Tarih kısıtlı bir gün mü? (`WorkCalendar`)
+4. Devamsızlık türü geçerli mi? (`AbsenceType` SmartEnum)
+
 ---
 
 ## 6. Maaş Hesaplama Kuralları

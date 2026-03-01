@@ -14,7 +14,8 @@ public static class StudentPlacedConsumer
             StudentId = @event.StudentId,
             BusinessId = @event.BusinessId,
             InstitutionId = @event.InstitutionId,
-            TeacherId = @event.TeacherId
+            TeacherId = @event.TeacherId,
+            AcademicPeriodId = @event.AcademicPeriodId
         });
     }
 }

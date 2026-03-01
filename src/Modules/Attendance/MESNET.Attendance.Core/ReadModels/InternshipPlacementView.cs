@@ -11,4 +11,5 @@ public class InternshipPlacementView
     public Guid BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
     public Guid? TeacherId { get; set; }
+    public Guid AcademicPeriodId { get; set; }
 }

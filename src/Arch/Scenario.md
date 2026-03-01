@@ -52,9 +52,11 @@
 - **Adımlar:**
   1. 'Devamsızlık' bölümüne gidin.
   2. 'Devamsızlık Kaydı Oluştur' butonuna tıklayın.
-  3. Öğrenciyi seçin ve devamsızlık detaylarını doldurun.
-  4. 'Gönder' butonuna tıklayın.
-- **Sonuç:** Devamsızlık kaydı oluşturulur ve sistemde saklanır.
+  3. Kendi bünyesindeki öğrenciyi seçin (sadece işletmeye yerleştirilmiş öğrenciler listelenir).
+  4. İşletme bilgisi otomatik doldurulur.
+  5. Tarih, devamsızlık türü ve detayları doldurun.
+  6. 'Gönder' butonuna tıklayın.
+- **Sonuç:** Devamsızlık kaydı `Onay Bekliyor` (Pending) durumunda oluşturulur. Koordinatör öğretmene SSE bildirim gönderilir. Koordinatör onayladığında kayıt `Kaydedildi` (Recorded) durumuna geçer.
 
 ### 5. İşletme Bilgilerini Güncelleme
 
@@ -615,16 +617,20 @@
 - **Adımlar:**
   1. 'Devamsızlık' bölümüne gidin
   2. Devamsızlık girişi:
-     - Öğrenci seçin
+     - Koordine ettiği öğrenciyi seçin (sadece kendi sorumluluğundaki öğrenciler listelenir)
+     - İşletme bilgisi otomatik doldurulur
      - Tarih seçin
      - Devamsızlık türünü belirtin
      - Açıklama ekleyin
      - 'Kaydet' butonuna tıklayın
-  3. Devamsızlık raporlama:
+  3. İşletme tarafından girilen devamsızlıkları onaylama:
+     - `Onay Bekliyor` durumundaki kayıtları inceleyin
+     - Onayla butonuna tıklayın → kayıt `Kaydedildi` durumuna geçer
+  4. Devamsızlık raporlama:
      - Kaydedilen devamsızlıkları listeleyin
      - Gerekirse düzenleme yapın
      - Rapor oluşturun
-- **Sonuç:** Öğrenci devamsızlığı kaydedilir.
+- **Sonuç:** Öğrenci devamsızlığı doğrudan `Kaydedildi` (Recorded) durumunda oluşturulur (onay gerekmez).
 
 ### 4. Maaş ve Dekont İşlemleri
 

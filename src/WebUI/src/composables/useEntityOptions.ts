@@ -104,6 +104,70 @@ export function useStudentOptions() {
   return { options, allOptions, loading, load, filter, reset }
 }
 
+// ── Yerleştirme Bazlı Öğrenci Seçimi (Devamsızlık Dialogu) ──
+export interface PlacementOption {
+  label: string
+  value: string
+  businessId: string
+  businessName: string
+  caption?: string
+}
+
+export function usePlacementOptions() {
+  const options = ref<PlacementOption[]>([])
+  const allOptions = ref<PlacementOption[]>([])
+  const loading = ref(false)
+  let loaded = false
+
+  async function load(params?: { academicPeriodId?: string; status?: string }) {
+    if (loaded) return
+    loading.value = true
+    try {
+      const res = await enrollmentApi.listPlacements({
+        ...params,
+        status: params?.status ?? 'Matched',
+      })
+      allOptions.value = (res.data ?? []).map((p) => ({
+        label: p.studentName,
+        value: p.studentId,
+        businessId: p.businessId,
+        businessName: p.businessName,
+        caption: p.businessName,
+      }))
+      options.value = allOptions.value
+      loaded = true
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function filter(val: string, update: (fn: () => void) => void) {
+    update(() => {
+      const needle = val.toLowerCase()
+      options.value = needle
+        ? allOptions.value.filter(
+            (o) =>
+              o.label.toLowerCase().includes(needle) ||
+              (o.caption?.toLowerCase().includes(needle) ?? false),
+          )
+        : allOptions.value
+    })
+  }
+
+  function getBusinessForStudent(studentId: string): { businessId: string; businessName: string } | null {
+    const opt = allOptions.value.find((o) => o.value === studentId)
+    return opt ? { businessId: opt.businessId, businessName: opt.businessName } : null
+  }
+
+  function reset() {
+    loaded = false
+    options.value = []
+    allOptions.value = []
+  }
+
+  return { options, allOptions, loading, load, filter, getBusinessForStudent, reset }
+}
+
 // ── Öğretmen Seçimi ──
 export function useTeacherOptions() {
   const options = ref<SelectOption[]>([])

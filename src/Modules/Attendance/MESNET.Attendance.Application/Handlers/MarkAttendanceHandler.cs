@@ -21,6 +21,15 @@ public static class MarkAttendanceHandler
         if (period is null) throw new DomainException(AttendanceErrors.AcademicPeriodNotFound(command.AcademicPeriodId));
         if (!period.IsActive) throw new DomainException(AttendanceErrors.AcademicPeriodClosed(command.AcademicPeriodId));
 
+        // Öğrenci-işletme eşleşmesi doğrulaması
+        var placement = session.Query<InternshipPlacementView>()
+            .FirstOrDefault(p => p.StudentId == command.StudentId
+                && p.BusinessId == command.BusinessId);
+
+        if (placement is null)
+            throw new DomainException("ATTENDANCE_INVALID_PLACEMENT",
+                "Bu öğrenci-işletme eşleşmesi bulunamadı. Devamsızlık girişi yapılamaz.");
+
         var calendar = session.Query<WorkCalendar>()
             .FirstOrDefault(c => c.InstitutionId == command.InstitutionId && c.Year == command.Date.Year);
 
@@ -47,19 +56,12 @@ public static class MarkAttendanceHandler
         session.Events.StartStream<AttendanceRecord>(id, @event);
 
         NotifyAttendancePendingApproval? notification = null;
-        if (isBusinessUser)
+        if (isBusinessUser && placement.TeacherId is not null)
         {
-            var placement = session.Query<InternshipPlacementView>()
-                .FirstOrDefault(p => p.StudentId == command.StudentId
-                    && p.BusinessId == command.BusinessId);
-
-            if (placement?.TeacherId is not null)
-            {
-                notification = new NotifyAttendancePendingApproval(
-                    id, command.StudentId, command.BusinessId,
-                    command.InstitutionId, placement.TeacherId.Value,
-                    markedBy, command.Date, command.AbsenceType);
-            }
+            notification = new NotifyAttendancePendingApproval(
+                id, command.StudentId, command.BusinessId,
+                command.InstitutionId, placement.TeacherId.Value,
+                markedBy, command.Date, command.AbsenceType);
         }
 
         return (id, @event, notification);

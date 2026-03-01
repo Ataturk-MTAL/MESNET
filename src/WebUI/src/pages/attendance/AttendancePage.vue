@@ -107,8 +107,8 @@
         <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
             v-model="addForm.studentId"
-            :options="studentOpts.options.value"
-            :loading="studentOpts.loading.value"
+            :options="placementOpts.options.value"
+            :loading="placementOpts.loading.value"
             label="Öğrenci *"
             filled
             use-input
@@ -117,7 +117,7 @@
             map-options
             option-label="label"
             option-value="value"
-            @filter="studentOpts.filter"
+            @filter="placementOpts.filter"
           >
             <template #prepend>
               <q-icon name="person" />
@@ -136,37 +136,17 @@
               </q-item>
             </template>
           </q-select>
-          <q-select
-            v-model="addForm.businessId"
-            :options="businessOpts.options.value"
-            :loading="businessOpts.loading.value"
-            label="İşletme *"
+          <q-input
+            :model-value="addForm.businessName"
+            label="İşletme"
             filled
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            @filter="businessOpts.filter"
+            readonly
+            :hint="addForm.businessId ? '' : 'Öğrenci seçildiğinde otomatik doldurulacaktır'"
           >
             <template #prepend>
               <q-icon name="business" />
             </template>
-            <template #option="{ itemProps, opt }">
-              <q-item v-bind="itemProps">
-                <q-item-section>
-                  <q-item-label>{{ opt.label }}</q-item-label>
-                  <q-item-label caption v-if="opt.caption">{{ opt.caption }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-              </q-item>
-            </template>
-          </q-select>
+          </q-input>
           <q-input v-model="addForm.date" label="Tarih" filled type="date">
             <template #prepend>
               <q-icon name="calendar_today" />
@@ -237,7 +217,7 @@ import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { attendanceApi, type AttendanceRecordDto, ABSENCE_TYPES } from 'src/api/attendance'
 import { useNotify } from 'src/composables/useNotify'
-import { useStudentOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
+import { useStudentOptions, usePlacementOptions } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
@@ -249,8 +229,7 @@ const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
-const studentOpts = useStudentOptions()
-const businessOpts = useBusinessOptions()
+const placementOpts = usePlacementOptions()
 const filterStudentOpts = useStudentOptions()
 const loading = ref(false)
 const saving = ref(false)
@@ -271,7 +250,7 @@ const statusOptions = [
 const absenceTypeOptions = ABSENCE_TYPES.map((t) => ({ label: t.label, value: t.value }))
 
 const addForm = reactive({
-  studentId: '', businessId: '',
+  studentId: '', businessId: '', businessName: '',
   date: '', absenceType: 'Unexcused', reason: '',
 })
 
@@ -309,13 +288,12 @@ async function load() {
 function openAddDialog() {
   addForm.studentId = ''
   addForm.businessId = ''
+  addForm.businessName = ''
   addForm.date = ''
   addForm.absenceType = 'Unexcused'
   addForm.reason = ''
-  studentOpts.reset()
-  studentOpts.load()
-  businessOpts.reset()
-  businessOpts.load()
+  placementOpts.reset()
+  placementOpts.load({ academicPeriodId: periodStore.selectedPeriodId ?? undefined })
   addDialog.value = true
 }
 
@@ -391,6 +369,17 @@ async function correctRecord() {
     saving.value = false
   }
 }
+
+watch(() => addForm.studentId, (newId) => {
+  if (newId) {
+    const biz = placementOpts.getBusinessForStudent(newId)
+    addForm.businessId = biz?.businessId ?? ''
+    addForm.businessName = biz?.businessName ?? ''
+  } else {
+    addForm.businessId = ''
+    addForm.businessName = ''
+  }
+})
 
 watch(() => periodStore.selectedPeriodId, () => load())
 

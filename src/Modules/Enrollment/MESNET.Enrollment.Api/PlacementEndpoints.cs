@@ -58,9 +58,27 @@ public static class PlacementEndpoints
         Guid? businessId, Guid? studentId, Guid? academicPeriodId, string? status,
         ICurrentUserService currentUser, IMessageBus bus)
     {
-        var institutionId = currentUser.GetCurrentUser()?.InstitutionId;
+        var user = currentUser.GetCurrentUser();
+        var institutionId = user?.InstitutionId;
+        Guid? teacherId = null;
+        var effectiveBusinessId = businessId;
+
+        // Teacher: sadece koordine ettiği öğrencilerin yerleştirmelerini görsün
+        if (currentUser.IsInRole(MesnetRoles.Teacher)
+            && !currentUser.IsInRole(MesnetRoles.InstitutionManager)
+            && !currentUser.IsInRole(MesnetRoles.InstitutionStaff))
+        {
+            teacherId = await bus.InvokeAsync<Guid?>(new ResolveTeacherId(user!.UserId));
+        }
+
+        // CompanyManager: sadece kendi işletmesindeki yerleştirmeleri görsün
+        if (currentUser.IsInRole(MesnetRoles.CompanyManager) && user?.BusinessId.HasValue == true)
+        {
+            effectiveBusinessId = user.BusinessId;
+        }
+
         var dtos = await bus.InvokeAsync<IReadOnlyList<InternshipPlacementDto>>(
-            new ListPlacements(businessId, studentId, academicPeriodId, status, institutionId));
+            new ListPlacements(effectiveBusinessId, studentId, academicPeriodId, status, institutionId, teacherId));
         return Results.Ok(ResponseBuilder.Success().AddData(dtos).Build());
     }
 }
