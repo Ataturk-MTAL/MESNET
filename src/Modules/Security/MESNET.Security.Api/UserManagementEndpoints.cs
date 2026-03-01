@@ -1,4 +1,5 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Handlers;
@@ -40,13 +41,15 @@ public static class UserManagementEndpoints
 
     private static async Task<IResult> GetUsers(
         Guid? institutionId, Guid? businessId, string? role, bool? isEnabled,
-        IMessageBus bus)
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
+        IMessageBus bus = default!)
     {
-        var query = new GetUserAccounts(institutionId, businessId, role, isEnabled);
-        var users = await bus.InvokeAsync<IReadOnlyList<UserAccountDto>>(query);
+        var result = await bus.InvokeAsync<PagedResult<UserAccountDto>>(
+            new GetUserAccounts(institutionId, businessId, role, isEnabled)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(users)
+            .AddData(result)
             .Build());
     }
 

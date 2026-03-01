@@ -27,7 +27,7 @@
         option-label="label"
         option-value="value"
         clearable
-        style="min-width: 280px"
+        style="min-width: 250px"
         @filter="filterStudentOpts.filter"
         @update:model-value="load"
       >
@@ -50,21 +50,61 @@
         :options="statusOptions"
         label="Durum"
         filled dense emit-value map-options clearable
-        style="min-width: 160px"
+        style="min-width: 150px"
         @update:model-value="load"
+      />
+      <q-select
+        v-model="monthFilter"
+        :options="monthOptions"
+        label="Ay"
+        filled dense emit-value map-options clearable
+        style="min-width: 130px"
+        @update:model-value="load"
+      />
+      <q-select
+        v-model="yearFilter"
+        :options="yearOptions"
+        label="Yıl"
+        filled dense emit-value map-options clearable
+        style="min-width: 100px"
+        @update:model-value="load"
+      />
+      <q-select
+        v-model="branchFilter"
+        :options="branchOpts.options.value"
+        :loading="branchOpts.loading.value"
+        label="Alan"
+        filled dense emit-value map-options clearable
+        use-input
+        input-debounce="0"
+        option-label="label"
+        option-value="value"
+        style="min-width: 200px"
+        @filter="branchOpts.filter"
       />
       <q-btn color="primary" icon="search" label="Ara" @click="load" />
     </div>
 
-    <AppTable :rows="records" :columns="columns" :loading="loading">
+    <AppTable :rows="filteredRecords" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
+      <template #body-cell-student="{ row }">
+        <q-td>
+          <div class="text-weight-medium">{{ studentMap[row.studentId]?.fullName ?? '—' }}</div>
+          <div v-if="studentMap[row.studentId]?.info" class="text-caption text-grey-6">
+            {{ studentMap[row.studentId].info }}
+          </div>
+        </q-td>
+      </template>
+      <template #body-cell-business="{ row }">
+        <q-td>{{ businessMap[row.businessId] ?? '—' }}</q-td>
+      </template>
+      <template #body-cell-date="{ row }">
+        <q-td>{{ formatDate(row.date) }}</q-td>
+      </template>
       <template #body-cell-absenceTypeSlug="{ row }">
         <q-td><StatusBadge :slug="row.absenceTypeSlug" /></q-td>
       </template>
       <template #body-cell-statusSlug="{ row }">
         <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
-      </template>
-      <template #body-cell-date="{ row }">
-        <q-td>{{ formatDate(row.date) }}</q-td>
       </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
@@ -147,7 +187,11 @@
               <q-icon name="business" />
             </template>
           </q-input>
-          <q-input v-model="addForm.date" label="Tarih" filled type="date">
+          <q-input
+            v-model="addForm.date" label="Tarih" filled type="date"
+            :min="weekBounds.min" :max="weekBounds.max"
+            hint="Sadece geçerli hafta içi tarih seçilebilir"
+          >
             <template #prepend>
               <q-icon name="calendar_today" />
             </template>
@@ -212,12 +256,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, watch } from 'vue'
+import { ref, computed, onMounted, reactive, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { attendanceApi, type AttendanceRecordDto, ABSENCE_TYPES } from 'src/api/attendance'
 import { useNotify } from 'src/composables/useNotify'
-import { useStudentOptions, usePlacementOptions } from 'src/composables/useEntityOptions'
+import { useServerPagination } from 'src/composables/useServerPagination'
+import { useStudentOptions, useBusinessOptions, usePlacementOptions, useBranchOptions } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
@@ -231,14 +276,60 @@ const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
 const placementOpts = usePlacementOptions()
 const filterStudentOpts = useStudentOptions()
-const loading = ref(false)
+const businessOpts = useBusinessOptions()
+const branchOpts = useBranchOptions()
 const saving = ref(false)
-const records = ref<AttendanceRecordDto[]>([])
 const selected = ref<AttendanceRecordDto | null>(null)
 const addDialog = ref(false)
 const correctDialog = ref(false)
 const studentIdFilter = ref('')
 const statusFilter = ref<string | null>(null)
+const monthFilter = ref<number | null>(null)
+const yearFilter = ref<number | null>(null)
+const branchFilter = ref<string | null>(null)
+
+const filters = computed(() => ({
+  academicPeriodId: periodStore.selectedPeriodId ?? undefined,
+  studentId: studentIdFilter.value || undefined,
+  status: statusFilter.value ?? undefined,
+  year: yearFilter.value ?? undefined,
+  month: monthFilter.value ?? undefined,
+}))
+
+const { rows: records, loading, pagination, onRequest, load } = useServerPagination<AttendanceRecordDto>({
+  fetchFn: (params) => attendanceApi.list(params),
+  filters,
+  defaultSortBy: 'date',
+  defaultDescending: true,
+})
+
+// ID → metadata lookup map'leri (tablo satırlarında isim göstermek için)
+const studentMap = computed<Record<string, { fullName: string; info: string; branchCode: string }>>(() => {
+  const map: Record<string, { fullName: string; info: string; branchCode: string }> = {}
+  for (const opt of filterStudentOpts.allOptions.value) {
+    // caption format: "BranchCode · ClassYear/Section"
+    const branchCode = opt.caption?.split(' · ')[0] ?? ''
+    map[opt.value] = { fullName: opt.label, info: opt.caption ?? '', branchCode }
+  }
+  return map
+})
+
+const businessMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const opt of businessOpts.allOptions.value) {
+    map[opt.value] = opt.label
+  }
+  return map
+})
+
+// Alan filtresi: frontend-side filtering
+const filteredRecords = computed(() => {
+  if (!branchFilter.value) return records.value
+  return records.value.filter(r => {
+    const student = studentMap.value[r.studentId]
+    return student?.branchCode === branchFilter.value
+  })
+})
 
 const statusOptions = [
   { label: 'Onay Bekliyor', value: 'Pending' },
@@ -247,7 +338,36 @@ const statusOptions = [
   { label: 'Düzeltildi', value: 'Corrected' },
 ]
 
+const monthOptions = [
+  { label: 'Ocak', value: 1 }, { label: 'Şubat', value: 2 },
+  { label: 'Mart', value: 3 }, { label: 'Nisan', value: 4 },
+  { label: 'Mayıs', value: 5 }, { label: 'Haziran', value: 6 },
+  { label: 'Temmuz', value: 7 }, { label: 'Ağustos', value: 8 },
+  { label: 'Eylül', value: 9 }, { label: 'Ekim', value: 10 },
+  { label: 'Kasım', value: 11 }, { label: 'Aralık', value: 12 },
+]
+
+const currentYear = new Date().getFullYear()
+const yearOptions = [
+  { label: String(currentYear - 1), value: currentYear - 1 },
+  { label: String(currentYear), value: currentYear },
+  { label: String(currentYear + 1), value: currentYear + 1 },
+]
+
 const absenceTypeOptions = ABSENCE_TYPES.map((t) => ({ label: t.label, value: t.value }))
+
+// Geçerli hafta sınırları — MEB e-Okul kuralı: sadece bu hafta giriş yapılabilir
+const weekBounds = computed(() => {
+  const today = new Date()
+  const day = today.getDay() // 0=Pazar, 1=Pazartesi ...
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  const monday = new Date(today)
+  monday.setDate(today.getDate() + diffToMonday)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  const fmt = (d: Date) => d.toISOString().slice(0, 10)
+  return { min: fmt(monday), max: fmt(sunday) }
+})
 
 const addForm = reactive({
   studentId: '', businessId: '', businessName: '',
@@ -258,10 +378,10 @@ const correctForm = reactive({ absenceType: 'Unexcused', reason: '' })
 
 const columns: QTableProps['columns'] = [
   { name: 'date', label: 'Tarih', field: 'date', align: 'left', sortable: true },
-  { name: 'studentId', label: 'Öğrenci ID', field: (row) => (row as AttendanceRecordDto).studentId.slice(0,8) + '…', align: 'left' },
+  { name: 'student', label: 'Öğrenci', field: 'studentId', align: 'left' },
+  { name: 'business', label: 'İşletme', field: 'businessId', align: 'left' },
   { name: 'absenceTypeSlug', label: 'Tür', field: 'absenceTypeSlug', align: 'left' },
   { name: 'statusSlug', label: 'Durum', field: 'statusSlug', align: 'left' },
-  { name: 'markedBy', label: 'Kaydeden', field: 'markedBy', align: 'left' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ]
 
@@ -269,21 +389,6 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-async function load() {
-  loading.value = true
-  try {
-    const res = await attendanceApi.list({
-      academicPeriodId: periodStore.selectedPeriodId ?? undefined,
-      studentId: studentIdFilter.value || undefined,
-      status: statusFilter.value ?? undefined,
-    })
-    records.value = res.data
-  } catch {
-    notify.error('Devamsızlık kayıtları yüklenirken bir hata oluştu.')
-  } finally {
-    loading.value = false
-  }
-}
 
 function openAddDialog() {
   addForm.studentId = ''
@@ -312,8 +417,8 @@ async function createRecord() {
     notify.success('Devamsızlık kaydedildi.')
     addDialog.value = false
     await load()
-  } catch {
-    notify.error('Kayıt sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Kayıt sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -325,8 +430,8 @@ async function approve(row: AttendanceRecordDto) {
     await attendanceApi.approve(row.id)
     notify.success('Devamsızlık onaylandı.')
     await load()
-  } catch {
-    notify.error('Onaylama sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Onaylama sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -338,8 +443,8 @@ async function verify(row: AttendanceRecordDto) {
     await attendanceApi.verify(row.id)
     notify.success('Devamsızlık doğrulandı.')
     await load()
-  } catch {
-    notify.error('Doğrulama sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Doğrulama sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -363,8 +468,8 @@ async function correctRecord() {
     notify.success('Devamsızlık düzeltildi.')
     correctDialog.value = false
     await load()
-  } catch {
-    notify.error('Düzeltme sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Düzeltme sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -384,7 +489,9 @@ watch(() => addForm.studentId, (newId) => {
 watch(() => periodStore.selectedPeriodId, () => load())
 
 onMounted(() => {
-  load()
   filterStudentOpts.load()
+  businessOpts.load()
+  branchOpts.load()
+  load()
 })
 </script>

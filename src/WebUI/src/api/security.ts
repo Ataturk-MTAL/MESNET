@@ -1,4 +1,5 @@
 import api from 'boot/axios'
+import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 
 export interface UserAccountDto {
   id: string
@@ -59,8 +60,8 @@ export interface ChangePermissionsRequest {
 }
 
 export const securityApi = {
-  listUsers: (params?: { institutionId?: string; businessId?: string; role?: string; isEnabled?: boolean }) =>
-    api.get<UserAccountDto[]>('/security/users', { params }),
+  listUsers: (params?: { institutionId?: string; businessId?: string; role?: string; isEnabled?: boolean } & PaginationParams) =>
+    api.get<PagedResponse<UserAccountDto>>('/security/users', { params }),
 
   getUser: (userAccountId: string) =>
     api.get<UserAccountDto>(`/security/users/${userAccountId}`),
@@ -80,8 +81,8 @@ export const securityApi = {
   deleteUser: (userAccountId: string) =>
     api.delete(`/security/users/${userAccountId}`),
 
-  listInvitations: (params?: { institutionId?: string; status?: string; targetRole?: string }) =>
-    api.get<InvitationDto[]>('/security/invitations', { params }),
+  listInvitations: (params?: { institutionId?: string; status?: string; targetRole?: string } & PaginationParams) =>
+    api.get<PagedResponse<InvitationDto>>('/security/invitations', { params }),
 
   createInvitation: (data: CreateInvitationRequest) =>
     api.post<{ invitationId: string }>('/security/invitations', data),

@@ -14,6 +14,8 @@
     <ProjectReference Include="../../Enrollment/MESNET.Enrollment.Shared/MESNET.Enrollment.Shared.csproj" />
     <ProjectReference Include="../../Contract/MESNET.Contract.Shared/MESNET.Contract.Shared.csproj" />
     <ProjectReference Include="../../Attendance/MESNET.Attendance.Shared/MESNET.Attendance.Shared.csproj" />
+    <ProjectReference Include="../../../MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
+    <ProjectReference Include="../../../MESNET.Common.Infrastructure/MESNET.Common.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

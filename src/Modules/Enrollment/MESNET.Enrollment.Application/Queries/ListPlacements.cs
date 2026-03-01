@@ -1,3 +1,5 @@
+using MESNET.Common.Shared.Pagination;
+
 namespace MESNET.Enrollment.Application.Queries;
 
 public sealed record ListPlacements(
@@ -6,4 +8,4 @@ public sealed record ListPlacements(
     Guid? AcademicPeriodId,
     string? Status,
     Guid? InstitutionId = null,
-    Guid? TeacherId = null);
+    Guid? TeacherId = null) : PagedQuery;

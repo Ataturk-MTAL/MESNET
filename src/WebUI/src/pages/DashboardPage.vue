@@ -370,9 +370,9 @@ function buildContractChart() {
 // Data loaders
 async function loadStudents() {
   try {
-    const res = await enrollmentApi.listStudents()
-    const data = res.data ?? []
-    stats.students = data.length
+    const res = await enrollmentApi.listStudents({ pageSize: 100 })
+    const data = res.data?.items ?? []
+    stats.students = res.data?.totalCount ?? 0
     allStudents.value = data
     buildStudentChart()
   } catch { /* sessiz */ }
@@ -381,17 +381,17 @@ async function loadStudents() {
 
 async function loadBusinesses() {
   try {
-    const res = await businessApi.list('Approved')
-    stats.businesses = (res.data ?? []).length
+    const res = await businessApi.list({ status: 'Approved', pageSize: 1 })
+    stats.businesses = res.data?.totalCount ?? 0
   } catch { /* sessiz */ }
   stats.businessesLoading = false
 }
 
 async function loadContracts() {
   try {
-    const res = await contractApi.list()
-    const data = res.data ?? []
-    stats.activeContracts = data.filter((c) => c.status === 'Active').length
+    const res = await contractApi.list({ pageSize: 100 })
+    const data = res.data?.items ?? []
+    stats.activeContracts = data.filter((c: { status: string }) => c.status === 'Active').length
     allContracts.value = data
     buildContractChart()
   } catch { /* sessiz */ }
@@ -404,32 +404,32 @@ async function loadPendingActions() {
 
   if (authStore.hasPermission(Permissions.Internship.Contract)) {
     tasks.push(
-      contractApi.list({ status: 'AwaitingSignature' })
-        .then((res) => { total += (res.data ?? []).length })
+      contractApi.list({ status: 'AwaitingSignature', pageSize: 1 })
+        .then((res) => { total += res.data?.totalCount ?? 0 })
         .catch(() => {}),
     )
   }
 
   if (authStore.hasPermission(Permissions.Attendance.View)) {
     tasks.push(
-      attendanceApi.list({ status: 'Recorded' })
-        .then((res) => { total += (res.data ?? []).length })
+      attendanceApi.list({ status: 'Recorded', pageSize: 1 })
+        .then((res) => { total += res.data?.totalCount ?? 0 })
         .catch(() => {}),
     )
   }
 
   if (authStore.hasPermission(Permissions.Company.View)) {
     tasks.push(
-      businessApi.list('PendingApproval')
-        .then((res) => { total += (res.data ?? []).length })
+      businessApi.list({ status: 'PendingApproval', pageSize: 1 })
+        .then((res) => { total += res.data?.totalCount ?? 0 })
         .catch(() => {}),
     )
   }
 
   if (authStore.hasPermission(Permissions.UserManagement.View)) {
     tasks.push(
-      securityApi.listInvitations({ status: 'Pending' })
-        .then((res) => { total += (res.data ?? []).length })
+      securityApi.listInvitations({ status: 'Pending', pageSize: 1 })
+        .then((res) => { total += res.data?.totalCount ?? 0 })
         .catch(() => {}),
     )
   }

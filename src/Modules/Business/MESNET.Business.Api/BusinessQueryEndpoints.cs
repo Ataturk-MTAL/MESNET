@@ -3,6 +3,7 @@ using MESNET.Business.Application.Dtos;
 using MESNET.Business.Application.Queries;
 using MESNET.Business.Core.Enums;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -23,10 +24,18 @@ public static class BusinessQueryEndpoints
         return app;
     }
 
-    private static async Task<IResult> GetByStatus(string? status, string? sector, IMessageBus bus)
+    private static async Task<IResult> GetByStatus(
+        string? status, string? sector,
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
+        IMessageBus bus = default!)
     {
-        var businesses = await bus.InvokeAsync<IReadOnlyList<BusinessDto>>(new GetBusinessesByStatus(status, sector));
-        return Results.Ok(ResponseBuilder.Success().AddData(businesses).Build());
+        var result = await bus.InvokeAsync<PagedResult<BusinessDto>>(
+            new GetBusinessesByStatus(status, sector)
+            {
+                Page = page, PageSize = pageSize,
+                SortBy = sortBy, Descending = descending, Search = search,
+            });
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
 
     private static IResult GetSectors()

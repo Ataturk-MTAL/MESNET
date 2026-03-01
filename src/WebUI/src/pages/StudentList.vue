@@ -39,7 +39,7 @@
       />
     </div>
 
-    <AppTable :rows="students" :columns="columns" :loading="loading">
+    <AppTable :rows="students" :columns="columns" :loading="loading" :pagination="pagination" show-search :search="search" @request="onRequest" @search="onSearch">
       <template #body-cell-statusSlug="{ row }">
         <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
       </template>
@@ -619,6 +619,7 @@ import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { enrollmentApi, type StudentProfileDto } from 'src/api/enrollment'
 import { useNotify } from 'src/composables/useNotify'
+import { useServerPagination } from 'src/composables/useServerPagination'
 import { useKeycloakUserOptions, useBusinessOptions, useTeacherOptions, useBranchOptions, type SelectOption } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { registerStudentSchema, editStudentSchema, placementSchema, transferSchema } from 'src/schemas/student'
@@ -637,9 +638,21 @@ const teacherOpts = useTeacherOptions()
 const transferBusinessOpts = useBusinessOptions()
 const branchOpts = useBranchOptions()
 
-const loading = ref(false)
 const saving = ref(false)
-const students = ref<StudentProfileDto[]>([])
+
+// ── Server-side pagination ──
+const filters = computed(() => ({
+  academicPeriodId: periodStore.selectedPeriodId ?? undefined,
+  branchCode: branchFilter.value ?? undefined,
+  status: statusFilter.value ?? undefined,
+}))
+
+const { rows: students, loading, pagination, search, onRequest, onSearch, load } =
+  useServerPagination<StudentProfileDto>({
+    fetchFn: (params) => enrollmentApi.listStudents(params),
+    filters,
+    defaultSortBy: 'fullName',
+  })
 const selected = ref<StudentProfileDto | null>(null)
 const detailOpen = ref(false)
 const addDialog = ref(false)
@@ -713,21 +726,6 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-async function load() {
-  loading.value = true
-  try {
-    const res = await enrollmentApi.listStudents({
-      academicPeriodId: periodStore.selectedPeriodId ?? undefined,
-      branchCode: branchFilter.value ?? undefined,
-      status: statusFilter.value ?? undefined,
-    })
-    students.value = res.data
-  } catch {
-    notify.error('Öğrenciler yüklenirken bir hata oluştu.')
-  } finally {
-    loading.value = false
-  }
-}
 
 function openDetail(row: StudentProfileDto) {
   selected.value = row
@@ -802,8 +800,8 @@ async function saveEdit() {
     await load()
     const updated = students.value.find((s) => s.id === selected.value?.id)
     if (updated) selected.value = updated
-  } catch {
-    notify.error('Öğrenci güncellenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Öğrenci güncellenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -857,7 +855,7 @@ async function openTransfer(row: StudentProfileDto) {
   // Mevcut aktif yerleştirmeyi bul
   try {
     const res = await enrollmentApi.listPlacements({ studentId: row.id, status: 'Active' })
-    activePlacementId.value = res.data[0]?.id ?? null
+    activePlacementId.value = res.data?.items?.[0]?.id ?? null
   } catch {
     activePlacementId.value = null
   }
@@ -888,8 +886,8 @@ async function registerStudent() {
     notify.success('Öğrenci başarıyla kaydedildi.')
     addDialog.value = false
     await load()
-  } catch {
-    notify.error('Öğrenci eklenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Öğrenci eklenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -908,8 +906,8 @@ async function placementStudent() {
     notify.success('Öğrenci yerleştirildi.')
     placementDialog.value = false
     await load()
-  } catch {
-    notify.error('Yerleştirme sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Yerleştirme sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -930,8 +928,8 @@ async function doTransfer() {
     notify.success('Öğrenci transfer edildi.')
     transferDialog.value = false
     await load()
-  } catch {
-    notify.error('Transfer sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Transfer sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }

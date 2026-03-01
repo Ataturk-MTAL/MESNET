@@ -24,8 +24,8 @@ export const useAcademicPeriodStore = defineStore('academicPeriod', () => {
     if (!institutionId) return
 
     try {
-      const { data } = await institutionApi.listAcademicPeriods(institutionId)
-      periods.value = data ?? []
+      const { data } = await institutionApi.listAcademicPeriods(institutionId, { pageSize: 100 })
+      periods.value = data?.items ?? []
 
       // İlk yükleme: aktif dönemi seç
       if (!selectedPeriodId.value && activePeriod.value) {

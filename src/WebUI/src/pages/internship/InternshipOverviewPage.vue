@@ -58,11 +58,10 @@
             label="Durum"
             filled dense emit-value map-options clearable
             style="min-width: 180px"
-            @update:model-value="load"
           />
         </div>
 
-        <AppTable :rows="placements" :columns="columns" :loading="loading">
+        <AppTable :rows="placements" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
           <template #body-cell-statusSlug="{ row }">
             <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
           </template>
@@ -163,20 +162,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { QTableProps } from 'quasar'
 import { enrollmentApi, type InternshipPlacementDto } from 'src/api/enrollment'
-import { useNotify } from 'src/composables/useNotify'
+import { useServerPagination } from 'src/composables/useServerPagination'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 
-const notify = useNotify()
 const periodStore = useAcademicPeriodStore()
-const loading = ref(false)
-const placements = ref<InternshipPlacementDto[]>([])
 const selected = ref<InternshipPlacementDto | null>(null)
 const statusFilter = ref<string | null>(null)
+
+const filters = computed(() => ({
+  ...(statusFilter.value ? { status: statusFilter.value } : {}),
+  ...(periodStore.selectedPeriodId ? { academicPeriodId: periodStore.selectedPeriodId } : {}),
+}))
+
+const { rows: placements, loading, pagination, onRequest, load } =
+  useServerPagination<InternshipPlacementDto>({
+    fetchFn: (params) => enrollmentApi.listPlacements(params),
+    filters,
+    defaultSortBy: 'placedAt',
+    defaultDescending: true,
+  })
 
 const statusOptions = [
   { label: 'Eşleştirildi', value: 'Matched' },
@@ -215,22 +224,6 @@ function closeDetail() {
   selected.value = null
 }
 
-async function load() {
-  loading.value = true
-  try {
-    const res = await enrollmentApi.listPlacements({
-      status: statusFilter.value ?? undefined,
-      academicPeriodId: periodStore.selectedPeriodId ?? undefined,
-    })
-    placements.value = res.data
-  } catch {
-    notify.error('Yerleştirmeler yüklenirken bir hata oluştu.')
-  } finally {
-    loading.value = false
-  }
-}
-
-watch(() => periodStore.selectedPeriodId, () => load())
 onMounted(load)
 </script>
 

@@ -1,4 +1,5 @@
 import api from 'boot/axios'
+import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 
 export interface SignatureStatusDto {
   isSigned: boolean
@@ -93,8 +94,8 @@ export const TERMINATION_REASONS = [
 ] as const
 
 export const contractApi = {
-  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; academicPeriodId?: string; status?: string }) =>
-    api.get<InternshipContractDto[]>('/contracts', { params }),
+  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; academicPeriodId?: string; status?: string } & PaginationParams) =>
+    api.get<PagedResponse<InternshipContractDto>>('/contracts', { params }),
 
   get: (contractId: string) =>
     api.get<InternshipContractDto>(`/contracts/${contractId}`),

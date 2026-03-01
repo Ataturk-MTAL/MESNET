@@ -26,7 +26,7 @@
       />
     </div>
 
-    <AppTable :rows="contracts" :columns="columns" :loading="loading">
+    <AppTable :rows="contracts" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
       <template #body-cell-student="{ row }">
         <q-td>
           <div class="text-weight-medium">{{ studentMap[row.studentId]?.fullName ?? '—' }}</div>
@@ -784,6 +784,7 @@ import { useQuasar } from 'quasar'
 import type { QTableProps } from 'quasar'
 import { contractApi, type InternshipContractDto, TERMINATION_REASONS, DOCUMENT_TYPES } from 'src/api/contract'
 import { useNotify } from 'src/composables/useNotify'
+import { useServerPagination } from 'src/composables/useServerPagination'
 import { useStudentOptions, useBusinessOptions, useTeacherOptions } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
@@ -819,9 +820,7 @@ const businessMap = computed<Record<string, string>>(() => {
   return map
 })
 
-const loading = ref(false)
 const saving = ref(false)
-const contracts = ref<InternshipContractDto[]>([])
 const selected = ref<InternshipContractDto | null>(null)
 const detailOpen = ref(false)
 const createDialog = ref(false)
@@ -832,6 +831,19 @@ const uploadDialog = ref(false)
 const documentsDialog = ref(false)
 const statusFilter = ref<string | null>(null)
 const suspendReason = ref('')
+
+// ── Server-side pagination ──
+const filters = computed(() => ({
+  academicPeriodId: periodStore.selectedPeriodId ?? undefined,
+  status: statusFilter.value ?? undefined,
+}))
+
+const { rows: contracts, loading, pagination, onRequest, load } = useServerPagination<InternshipContractDto>({
+  fetchFn: (params) => contractApi.list(params),
+  filters,
+  defaultSortBy: 'createdAt',
+  defaultDescending: true,
+})
 
 // Evrak yükleme formu
 const uploadTarget = ref<InternshipContractDto | null>(null)
@@ -921,21 +933,6 @@ function formatDate(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-async function load() {
-  loading.value = true
-  try {
-    const res = await contractApi.list({
-      academicPeriodId: periodStore.selectedPeriodId ?? undefined,
-      status: statusFilter.value ?? undefined,
-    })
-    contracts.value = Array.isArray(res.data) ? res.data : (res.data as any)?.data ?? []
-  } catch {
-    notify.error('Sözleşmeler yüklenirken bir hata oluştu.')
-  } finally {
-    loading.value = false
-  }
-}
-
 function openCreateDialog() {
   createForm.studentId = ''
   createForm.businessId = ''
@@ -982,8 +979,8 @@ async function createContract() {
     notify.success('Sözleşme oluşturuldu.')
     createDialog.value = false
     await load()
-  } catch {
-    notify.error('Sözleşme oluşturulurken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Sözleşme oluşturulurken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -996,8 +993,8 @@ async function doSubmit() {
     await contractApi.submit(selected.value.id)
     notify.success('Sözleşme imzaya gönderildi.')
     await refreshSelected()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1011,8 +1008,8 @@ async function doSign() {
     notify.success('Sözleşme imzalandı.')
     signDialog.value = false
     await refreshSelected()
-  } catch {
-    notify.error('İmzalama sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İmzalama sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1025,8 +1022,8 @@ async function doActivate() {
     await contractApi.activate(selected.value.id)
     notify.success('Sözleşme aktifleştirildi.')
     await refreshSelected()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1040,8 +1037,8 @@ async function doSuspend() {
     notify.success('Sözleşme askıya alındı.')
     suspendDialog.value = false
     await refreshSelected()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1054,8 +1051,8 @@ async function doResume() {
     await contractApi.resume(selected.value.id)
     notify.success('Sözleşme devam ettirildi.')
     await refreshSelected()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1072,8 +1069,8 @@ async function doTerminate() {
     notify.success('Sözleşme feshedildi.')
     terminateDialog.value = false
     await refreshSelected()
-  } catch {
-    notify.error('Fesih sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Fesih sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1091,8 +1088,8 @@ async function doRequestTermination() {
     notify.success('Fesih talebi oluşturuldu. Kurum onayı bekleniyor.')
     requestTerminateDialog.value = false
     await refreshSelected()
-  } catch {
-    notify.error('Fesih talebi oluşturulurken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Fesih talebi oluşturulurken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1109,8 +1106,8 @@ async function doRejectTermination() {
     notify.success('Fesih talebi reddedildi. Sözleşme aktif duruma döndü.')
     rejectTerminateDialog.value = false
     await refreshSelected()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1123,8 +1120,8 @@ async function doComplete() {
     await contractApi.complete(selected.value.id)
     notify.success('Sözleşme tamamlandı.')
     await refreshSelected()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1147,8 +1144,8 @@ async function doUploadDocument() {
     if (selected.value?.id === uploadTarget.value.id) {
       await refreshSelected()
     }
-  } catch {
-    notify.error('Evrak yüklenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Evrak yüklenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }

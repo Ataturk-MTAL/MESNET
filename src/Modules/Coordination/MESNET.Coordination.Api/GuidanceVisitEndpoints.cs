@@ -1,7 +1,8 @@
-using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Application.Commands;
+using MESNET.Coordination.Application.Queries;
 using MESNET.Coordination.Core.Entities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -71,13 +72,9 @@ public static class GuidanceVisitEndpoints
     }
 
     private static async Task<IResult> Get(
-        Guid visitId, IQuerySession session)
+        Guid visitId, IMessageBus bus)
     {
-        var visit = await session.LoadAsync<GuidanceVisit>(visitId);
-        if (visit is null)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage($"Rehberlik ziyareti bulunamadı: {visitId}")
-                .Build());
+        var visit = await bus.InvokeAsync<GuidanceVisit>(new GetGuidanceVisit(visitId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(visit)
@@ -86,24 +83,15 @@ public static class GuidanceVisitEndpoints
 
     private static async Task<IResult> GetAll(
         Guid? teacherId, Guid? businessId, Guid? academicPeriodId, DateTime? fromDate, DateTime? toDate,
-        IQuerySession session)
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
+        IMessageBus bus = default!)
     {
-        IQueryable<GuidanceVisit> queryable = session.Query<GuidanceVisit>();
+        var result = await bus.InvokeAsync<PagedResult<GuidanceVisit>>(
+            new ListGuidanceVisits(teacherId, businessId, academicPeriodId, fromDate, toDate)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
 
-        if (teacherId.HasValue)
-            queryable = queryable.Where(v => v.TeacherId == teacherId.Value);
-        if (businessId.HasValue)
-            queryable = queryable.Where(v => v.BusinessId == businessId.Value);
-        if (academicPeriodId.HasValue)
-            queryable = queryable.Where(v => v.AcademicPeriodId == academicPeriodId.Value);
-        if (fromDate.HasValue)
-            queryable = queryable.Where(v => v.VisitDate >= fromDate.Value);
-        if (toDate.HasValue)
-            queryable = queryable.Where(v => v.VisitDate <= toDate.Value);
-
-        var visits = await queryable.ToListAsync();
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(visits)
+            .AddData(result)
             .Build());
     }
 }

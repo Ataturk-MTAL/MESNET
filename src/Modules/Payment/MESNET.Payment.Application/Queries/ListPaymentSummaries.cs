@@ -1,3 +1,5 @@
+using MESNET.Common.Shared.Pagination;
+
 namespace MESNET.Payment.Application.Queries;
 
 public sealed record ListPaymentSummaries(
@@ -5,4 +7,4 @@ public sealed record ListPaymentSummaries(
     Guid? BusinessId,
     Guid? InstitutionId,
     string? Phase,
-    string? Month);
+    string? Month) : PagedQuery;

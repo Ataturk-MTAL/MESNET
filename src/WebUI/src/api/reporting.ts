@@ -1,4 +1,5 @@
 import api from 'boot/axios'
+import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 
 export interface GeneratedDocumentSummaryDto {
   id: string
@@ -32,7 +33,7 @@ export const reportingApi = {
     formType?: string
     teacherId?: string
     institutionId?: string
-  }) => api.get<GeneratedDocumentSummaryDto[]>('/reports/documents', { params }),
+  } & PaginationParams) => api.get<PagedResponse<GeneratedDocumentSummaryDto>>('/reports/documents', { params }),
 
   getDocument: (documentId: string) =>
     api.get<GeneratedDocumentSummaryDto>(`/reports/documents/${documentId}`),

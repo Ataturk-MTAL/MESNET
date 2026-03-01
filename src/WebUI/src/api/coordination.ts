@@ -1,4 +1,5 @@
 import api from 'boot/axios'
+import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 
 export interface GuidanceVisitDto {
   id: string
@@ -83,8 +84,8 @@ export const EVALUATION_RESULTS = [
 ] as const
 
 export const coordinationApi = {
-  listVisits: (params?: { teacherId?: string; businessId?: string; academicPeriodId?: string; fromDate?: string; toDate?: string }) =>
-    api.get<GuidanceVisitDto[]>('/coordination/guidance-visits', { params }),
+  listVisits: (params?: { teacherId?: string; businessId?: string; academicPeriodId?: string; fromDate?: string; toDate?: string } & PaginationParams) =>
+    api.get<PagedResponse<GuidanceVisitDto>>('/coordination/guidance-visits', { params }),
 
   getVisit: (visitId: string) =>
     api.get<GuidanceVisitDto>(`/coordination/guidance-visits/${visitId}`),
@@ -101,17 +102,17 @@ export const coordinationApi = {
   approveVisit: (visitId: string) =>
     api.post(`/coordination/guidance-visits/${visitId}/approve`),
 
-  listEvaluations: (params?: { businessId?: string; institutionId?: string }) =>
-    api.get<BusinessEvaluationDto[]>('/coordination/business-evaluations', { params }),
+  listEvaluations: (params?: { businessId?: string; institutionId?: string } & PaginationParams) =>
+    api.get<PagedResponse<BusinessEvaluationDto>>('/coordination/business-evaluations', { params }),
 
   createEvaluation: (data: CreateEvaluationRequest) =>
     api.post<{ evaluationId: string }>('/coordination/business-evaluations', data),
 
-  listSkillExams: (params?: { studentId?: string; businessId?: string; academicPeriodId?: string; academicYear?: number }) =>
-    api.get<SkillExamDto[]>('/coordination/skill-exams', { params }),
+  listSkillExams: (params?: { studentId?: string; businessId?: string; academicPeriodId?: string; academicYear?: number } & PaginationParams) =>
+    api.get<PagedResponse<SkillExamDto>>('/coordination/skill-exams', { params }),
 
-  listActivityReports: (params?: { studentId?: string; businessId?: string; academicPeriodId?: string; year?: number; month?: number }) =>
-    api.get<MonthlyActivityReportDto[]>('/coordination/activity-reports', { params }),
+  listActivityReports: (params?: { studentId?: string; businessId?: string; academicPeriodId?: string; year?: number; month?: number } & PaginationParams) =>
+    api.get<PagedResponse<MonthlyActivityReportDto>>('/coordination/activity-reports', { params }),
 
   submitActivityReport: (reportId: string) =>
     api.post(`/coordination/activity-reports/${reportId}/submit`),

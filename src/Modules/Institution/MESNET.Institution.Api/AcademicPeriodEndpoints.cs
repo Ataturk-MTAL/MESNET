@@ -1,4 +1,5 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Institution.Application.Commands;
 using MESNET.Institution.Application.Dtos;
@@ -25,12 +26,16 @@ public static class AcademicPeriodEndpoints
         return app;
     }
 
-    private static async Task<IResult> GetAll(Guid institutionId, IMessageBus bus)
+    private static async Task<IResult> GetAll(
+        Guid institutionId,
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
+        IMessageBus bus = default!)
     {
-        var periods = await bus.InvokeAsync<IReadOnlyList<AcademicPeriodDto>>(
-            new ListAcademicPeriods(institutionId));
+        var result = await bus.InvokeAsync<PagedResult<AcademicPeriodDto>>(
+            new ListAcademicPeriods(institutionId)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(periods)
+            .AddData(result)
             .Build());
     }
 

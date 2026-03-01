@@ -1,4 +1,5 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Handlers;
@@ -38,13 +39,15 @@ public static class InvitationEndpoints
 
     private static async Task<IResult> GetInvitations(
         Guid? institutionId, string? status, string? targetRole,
-        IMessageBus bus)
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
+        IMessageBus bus = default!)
     {
-        var query = new GetInvitations(institutionId, status, targetRole);
-        var invitations = await bus.InvokeAsync<IReadOnlyList<InvitationDto>>(query);
+        var result = await bus.InvokeAsync<PagedResult<InvitationDto>>(
+            new GetInvitations(institutionId, status, targetRole)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(invitations)
+            .AddData(result)
             .Build());
     }
 

@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Marten;
+using MESNET.Common.Infrastructure.Pagination;
 using MESNET.Common.Infrastructure.Storage;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Reporting.Application.Commands;
 using MESNET.Reporting.Application.Errors;
 using MESNET.Reporting.Application.Templates;
@@ -50,15 +52,15 @@ public static class DocumentQueryHandler
     }
 
     // ─── Filtreli liste ───
-    public static async Task<IReadOnlyList<GeneratedDocumentSummary>> Handle(GetPendingDocuments query, IQuerySession session)
+    public static async Task<PagedResult<GeneratedDocumentSummary>> Handle(GetPendingDocuments query, IQuerySession session)
     {
         IQueryable<GeneratedDocument> queryable = session.Query<GeneratedDocument>();
 
         if (!string.IsNullOrEmpty(query.Status) && PhysicalDocumentStatus.TryFromName(query.Status, out var status))
-            queryable = queryable.Where(d => d.Status == status);
+            queryable = queryable.Where(d => d.Status.Name == status.Name);
 
         if (!string.IsNullOrEmpty(query.FormType) && MebFormType.TryFromName(query.FormType, out var formType))
-            queryable = queryable.Where(d => d.FormType == formType);
+            queryable = queryable.Where(d => d.FormType.Name == formType.Name);
 
         if (query.TeacherId.HasValue)
             queryable = queryable.Where(d => d.TeacherId == query.TeacherId.Value);
@@ -66,11 +68,9 @@ public static class DocumentQueryHandler
         if (query.InstitutionId.HasValue)
             queryable = queryable.Where(d => d.InstitutionId == query.InstitutionId.Value);
 
-        var docs = await queryable
-            .OrderByDescending(d => d.GeneratedAt)
-            .ToListAsync();
+        queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: d => d.GeneratedAt);
 
-        return docs.Select(MapToSummary).ToList();
+        return await queryable.ToPagedResultAsync(query, MapToSummary);
     }
 
     // ─── Öğrenciye göre dokümanlar ───

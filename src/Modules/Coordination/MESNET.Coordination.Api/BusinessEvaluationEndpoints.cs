@@ -1,7 +1,8 @@
-using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Application.Commands;
+using MESNET.Coordination.Application.Queries;
 using MESNET.Coordination.Core.Entities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -49,13 +50,9 @@ public static class BusinessEvaluationEndpoints
     }
 
     private static async Task<IResult> Get(
-        Guid evaluationId, IQuerySession session)
+        Guid evaluationId, IMessageBus bus)
     {
-        var evaluation = await session.LoadAsync<BusinessEvaluation>(evaluationId);
-        if (evaluation is null)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage($"İşletme değerlendirmesi bulunamadı: {evaluationId}")
-                .Build());
+        var evaluation = await bus.InvokeAsync<BusinessEvaluation>(new GetBusinessEvaluation(evaluationId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(evaluation)
@@ -64,18 +61,15 @@ public static class BusinessEvaluationEndpoints
 
     private static async Task<IResult> GetAll(
         Guid? businessId, Guid? institutionId,
-        IQuerySession session)
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false,
+        IMessageBus bus = default!)
     {
-        IQueryable<BusinessEvaluation> queryable = session.Query<BusinessEvaluation>();
+        var result = await bus.InvokeAsync<PagedResult<BusinessEvaluation>>(
+            new ListBusinessEvaluations(businessId, institutionId)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending });
 
-        if (businessId.HasValue)
-            queryable = queryable.Where(e => e.BusinessId == businessId.Value);
-        if (institutionId.HasValue)
-            queryable = queryable.Where(e => e.InstitutionId == institutionId.Value);
-
-        var evaluations = await queryable.ToListAsync();
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(evaluations)
+            .AddData(result)
             .Build());
     }
 }

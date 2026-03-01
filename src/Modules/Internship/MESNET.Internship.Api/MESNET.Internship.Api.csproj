@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="../MESNET.Internship.Application/MESNET.Internship.Application.csproj" />
     <ProjectReference Include="../MESNET.Internship.Persistence/MESNET.Internship.Persistence.csproj" />
+    <ProjectReference Include="../../../MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
   </ItemGroup>
 
 </Project>

@@ -32,7 +32,7 @@
             </PermissionGuard>
           </div>
         </div>
-        <AppTable :rows="visits" :columns="visitColumns" :loading="loadingVisits">
+        <AppTable :rows="visits" :columns="visitColumns" :loading="loadingVisits" :pagination="visitsPagination" @request="onVisitsRequest">
           <template #body-cell-statusSlug="{ row }">
             <q-td>
               <q-badge
@@ -77,7 +77,7 @@
             </PermissionGuard>
           </div>
         </div>
-        <AppTable :rows="evaluations" :columns="evalColumns" :loading="loadingEvals">
+        <AppTable :rows="evaluations" :columns="evalColumns" :loading="loadingEvals" :pagination="evalsPagination" @request="onEvalsRequest">
           <template #body-cell-result="{ row }">
             <q-td>
               <q-badge
@@ -95,7 +95,7 @@
       <!-- BECERİ SINAVLARI -->
       <q-tab-panel name="exams">
         <div class="text-subtitle1 text-weight-medium q-mb-md">Beceri Sınavları</div>
-        <AppTable :rows="exams" :columns="examColumns" :loading="loadingExams">
+        <AppTable :rows="exams" :columns="examColumns" :loading="loadingExams" :pagination="examsPagination" @request="onExamsRequest">
           <template #body-cell-result="{ row }">
             <q-td>
               <q-badge
@@ -113,7 +113,7 @@
       <!-- FAALİYET RAPORLARI -->
       <q-tab-panel name="reports">
         <div class="text-subtitle1 text-weight-medium q-mb-md">Aylık Faaliyet Raporları</div>
-        <AppTable :rows="activityReports" :columns="reportColumns" :loading="loadingReports">
+        <AppTable :rows="activityReports" :columns="reportColumns" :loading="loadingReports" :pagination="reportsPagination" @request="onReportsRequest">
           <template #body-cell-status="{ row }">
             <q-td>
               <q-badge
@@ -303,7 +303,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, watch } from 'vue'
+import { ref, computed, reactive, watch, onMounted } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import {
@@ -315,6 +315,7 @@ import {
   EVALUATION_RESULTS,
 } from 'src/api/coordination'
 import { useNotify } from 'src/composables/useNotify'
+import { useServerPagination } from 'src/composables/useServerPagination'
 import { useTeacherOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
 import { Permissions } from 'utils/permissions'
 import { useAuthStore } from 'stores/auth'
@@ -333,18 +334,48 @@ const evalBusinessOpts = useBusinessOptions()
 const tab = ref('visits')
 const saving = ref(false)
 
-const visits = ref<GuidanceVisitDto[]>([])
-const evaluations = ref<BusinessEvaluationDto[]>([])
-const exams = ref<SkillExamDto[]>([])
-const activityReports = ref<MonthlyActivityReportDto[]>([])
-
-const loadingVisits = ref(false)
-const loadingEvals = ref(false)
-const loadingExams = ref(false)
-const loadingReports = ref(false)
-
 const visitDialog = ref(false)
 const evalDialog = ref(false)
+
+// --- Server-side pagination instances ---
+
+const visitFilters = computed(() => ({
+  academicPeriodId: periodStore.selectedPeriodId ?? undefined,
+}))
+const { rows: visits, loading: loadingVisits, pagination: visitsPagination, onRequest: onVisitsRequest, load: loadVisits } = useServerPagination<GuidanceVisitDto>({
+  fetchFn: (params) => coordinationApi.listVisits(params),
+  filters: visitFilters,
+  defaultSortBy: 'visitDate',
+  defaultDescending: true,
+})
+
+const evalFilters = computed(() => ({}))
+const { rows: evaluations, loading: loadingEvals, pagination: evalsPagination, onRequest: onEvalsRequest, load: loadEvaluations } = useServerPagination<BusinessEvaluationDto>({
+  fetchFn: (params) => coordinationApi.listEvaluations(params),
+  filters: evalFilters,
+  defaultSortBy: 'evaluationDate',
+  defaultDescending: true,
+})
+
+const examFilters = computed(() => ({
+  academicPeriodId: periodStore.selectedPeriodId ?? undefined,
+}))
+const { rows: exams, loading: loadingExams, pagination: examsPagination, onRequest: onExamsRequest, load: loadExams } = useServerPagination<SkillExamDto>({
+  fetchFn: (params) => coordinationApi.listSkillExams(params),
+  filters: examFilters,
+  defaultSortBy: 'examDate',
+  defaultDescending: true,
+})
+
+const reportFilters = computed(() => ({
+  academicPeriodId: periodStore.selectedPeriodId ?? undefined,
+}))
+const { rows: activityReports, loading: loadingReports, pagination: reportsPagination, onRequest: onReportsRequest, load: loadReports } = useServerPagination<MonthlyActivityReportDto>({
+  fetchFn: (params) => coordinationApi.listActivityReports(params),
+  filters: reportFilters,
+  defaultSortBy: 'month',
+  defaultDescending: true,
+})
 
 const evalResultOptions = EVALUATION_RESULTS.map((r) => ({ label: r.label, value: r.value }))
 
@@ -391,53 +422,6 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-async function loadVisits() {
-  loadingVisits.value = true
-  try {
-    const res = await coordinationApi.listVisits({ academicPeriodId: periodStore.selectedPeriodId ?? undefined })
-    visits.value = res.data
-  } catch {
-    notify.error('Ziyaretler yüklenirken bir hata oluştu.')
-  } finally {
-    loadingVisits.value = false
-  }
-}
-
-async function loadEvaluations() {
-  loadingEvals.value = true
-  try {
-    const res = await coordinationApi.listEvaluations()
-    evaluations.value = res.data
-  } catch {
-    notify.error('Değerlendirmeler yüklenirken bir hata oluştu.')
-  } finally {
-    loadingEvals.value = false
-  }
-}
-
-async function loadExams() {
-  loadingExams.value = true
-  try {
-    const res = await coordinationApi.listSkillExams({ academicPeriodId: periodStore.selectedPeriodId ?? undefined })
-    exams.value = res.data
-  } catch {
-    notify.error('Sınavlar yüklenirken bir hata oluştu.')
-  } finally {
-    loadingExams.value = false
-  }
-}
-
-async function loadReports() {
-  loadingReports.value = true
-  try {
-    const res = await coordinationApi.listActivityReports({ academicPeriodId: periodStore.selectedPeriodId ?? undefined })
-    activityReports.value = res.data
-  } catch {
-    notify.error('Raporlar yüklenirken bir hata oluştu.')
-  } finally {
-    loadingReports.value = false
-  }
-}
 
 function openVisitDialog() {
   visitForm.teacherId = ''
@@ -474,8 +458,8 @@ async function createVisit() {
     notify.success('Ziyaret eklendi.')
     visitDialog.value = false
     await loadVisits()
-  } catch {
-    notify.error('Ziyaret eklenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Ziyaret eklenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -494,8 +478,8 @@ async function createEvaluation() {
     notify.success('Değerlendirme eklendi.')
     evalDialog.value = false
     await loadEvaluations()
-  } catch {
-    notify.error('Değerlendirme eklenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Değerlendirme eklenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -507,8 +491,8 @@ async function submitVisit(row: GuidanceVisitDto) {
     await coordinationApi.submitVisit(row.id)
     notify.success('Ziyaret gönderildi.')
     await loadVisits()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -520,8 +504,8 @@ async function approveVisit(row: GuidanceVisitDto) {
     await coordinationApi.approveVisit(row.id)
     notify.success('Ziyaret onaylandı.')
     await loadVisits()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -533,8 +517,8 @@ async function submitReport(row: MonthlyActivityReportDto) {
     await coordinationApi.submitActivityReport(row.id)
     notify.success('Rapor gönderildi.')
     await loadReports()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -546,8 +530,8 @@ async function approveReport(row: MonthlyActivityReportDto) {
     await coordinationApi.approveActivityReport(row.id)
     notify.success('Rapor onaylandı.')
     await loadReports()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }

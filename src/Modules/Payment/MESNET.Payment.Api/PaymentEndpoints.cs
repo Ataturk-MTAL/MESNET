@@ -1,4 +1,5 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Payment.Application.Commands;
 using MESNET.Payment.Application.Dtos;
@@ -34,16 +35,15 @@ public static class PaymentEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        IMessageBus bus,
-        Guid? studentId = null,
-        Guid? businessId = null,
-        Guid? institutionId = null,
-        string? phase = null,
-        string? month = null)
+        Guid? studentId = null, Guid? businessId = null, Guid? institutionId = null,
+        string? phase = null, string? month = null,
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
+        IMessageBus bus = default!)
     {
-        var dtos = await bus.InvokeAsync<IReadOnlyList<PaymentSummaryDto>>(
-            new ListPaymentSummaries(studentId, businessId, institutionId, phase, month));
-        return Results.Ok(ResponseBuilder.Success().AddData(dtos).Build());
+        var result = await bus.InvokeAsync<PagedResult<PaymentSummaryDto>>(
+            new ListPaymentSummaries(studentId, businessId, institutionId, phase, month)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
 
     // ────────────────────────────────────────────────────────────────────────────────

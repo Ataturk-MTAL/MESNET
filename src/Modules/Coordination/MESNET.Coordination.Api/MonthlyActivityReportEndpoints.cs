@@ -1,7 +1,8 @@
-using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Application.Commands;
+using MESNET.Coordination.Application.Queries;
 using MESNET.Coordination.Core.Entities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -71,13 +72,9 @@ public static class MonthlyActivityReportEndpoints
     }
 
     private static async Task<IResult> Get(
-        Guid reportId, IQuerySession session)
+        Guid reportId, IMessageBus bus)
     {
-        var report = await session.LoadAsync<MonthlyActivityReport>(reportId);
-        if (report is null)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage($"Aylık faaliyet raporu bulunamadı: {reportId}")
-                .Build());
+        var report = await bus.InvokeAsync<MonthlyActivityReport>(new GetActivityReport(reportId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(report)
@@ -86,24 +83,15 @@ public static class MonthlyActivityReportEndpoints
 
     private static async Task<IResult> GetAll(
         Guid? studentId, Guid? businessId, Guid? academicPeriodId, int? year, int? month,
-        IQuerySession session)
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false,
+        IMessageBus bus = default!)
     {
-        IQueryable<MonthlyActivityReport> queryable = session.Query<MonthlyActivityReport>();
+        var result = await bus.InvokeAsync<PagedResult<MonthlyActivityReport>>(
+            new ListActivityReports(studentId, businessId, academicPeriodId, year, month)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending });
 
-        if (studentId.HasValue)
-            queryable = queryable.Where(r => r.StudentId == studentId.Value);
-        if (businessId.HasValue)
-            queryable = queryable.Where(r => r.BusinessId == businessId.Value);
-        if (academicPeriodId.HasValue)
-            queryable = queryable.Where(r => r.AcademicPeriodId == academicPeriodId.Value);
-        if (year.HasValue)
-            queryable = queryable.Where(r => r.Year == year.Value);
-        if (month.HasValue)
-            queryable = queryable.Where(r => r.Month == month.Value);
-
-        var reports = await queryable.ToListAsync();
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(reports)
+            .AddData(result)
             .Build());
     }
 }

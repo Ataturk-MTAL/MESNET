@@ -1,4 +1,5 @@
 import api from 'boot/axios'
+import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 
 export interface AttendanceRecordDto {
   id: string
@@ -53,8 +54,8 @@ export const ABSENCE_TYPES = [
 ] as const
 
 export const attendanceApi = {
-  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; academicPeriodId?: string; status?: string }) =>
-    api.get<AttendanceRecordDto[]>('/attendance', { params }),
+  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; academicPeriodId?: string; status?: string; year?: number; month?: number } & PaginationParams) =>
+    api.get<PagedResponse<AttendanceRecordDto>>('/attendance', { params }),
 
   get: (attendanceId: string) =>
     api.get<AttendanceRecordDto>(`/attendance/${attendanceId}`),

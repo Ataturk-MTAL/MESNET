@@ -1,10 +1,8 @@
-using Marten;
 using MESNET.Attendance.Application.Commands;
-using MESNET.Attendance.Application.Errors;
-using MESNET.Attendance.Application.Extensions;
-using MESNET.Attendance.Core.Aggregates;
-using MESNET.Attendance.Core.Enums;
+using MESNET.Attendance.Application.Dtos;
+using MESNET.Attendance.Application.Queries;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -82,45 +80,27 @@ public static class AttendanceEndpoints
     }
 
     private static async Task<IResult> Get(
-        Guid attendanceId, IQuerySession session)
+        Guid attendanceId, IMessageBus bus)
     {
-        var record = await session.Events.AggregateStreamAsync<AttendanceRecord>(attendanceId);
-        if (record is null)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(AttendanceErrors.NotFound(attendanceId).Description)
-                .AddErrors(AttendanceErrors.NotFound(attendanceId))
-                .Build());
+        var dto = await bus.InvokeAsync<AttendanceRecordDto>(new GetAttendanceRecord(attendanceId));
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(record.ToDto())
+            .AddData(dto)
             .Build());
     }
 
     private static async Task<IResult> GetAll(
         Guid? studentId, Guid? businessId, Guid? institutionId, Guid? academicPeriodId, string? status,
-        IQuerySession session)
+        int? year, int? month,
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false,
+        IMessageBus bus = default!)
     {
-        IQueryable<AttendanceRecord> queryable = session.Query<AttendanceRecord>();
+        var result = await bus.InvokeAsync<PagedResult<AttendanceRecordDto>>(
+            new ListAttendanceRecords(studentId, businessId, institutionId, academicPeriodId, status, year, month)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending });
 
-        if (studentId.HasValue)
-            queryable = queryable.Where(r => r.StudentId == studentId.Value);
-
-        if (businessId.HasValue)
-            queryable = queryable.Where(r => r.BusinessId == businessId.Value);
-
-        if (institutionId.HasValue)
-            queryable = queryable.Where(r => r.InstitutionId == institutionId.Value);
-
-        if (academicPeriodId.HasValue)
-            queryable = queryable.Where(r => r.AcademicPeriodId == academicPeriodId.Value);
-
-        if (!string.IsNullOrWhiteSpace(status) &&
-            AttendanceStatus.TryFromName(status, true, out var attendanceStatus))
-            queryable = queryable.Where(r => r.Status.Name == attendanceStatus.Name);
-
-        var records = await queryable.ToListAsync();
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(records.Select(r => r.ToDto()).ToList())
+            .AddData(result)
             .Build());
     }
 }

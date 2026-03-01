@@ -11,13 +11,12 @@
         label="Aşama"
         filled dense emit-value map-options clearable
         style="min-width: 200px"
-        @update:model-value="load"
       />
       <q-input v-model="monthFilter" label="Ay (YYYY-MM)" filled dense clearable style="min-width: 140px" />
       <q-btn color="primary" icon="search" label="Ara" @click="load" />
     </div>
 
-    <AppTable :rows="payments" :columns="columns" :loading="loading">
+    <AppTable :rows="payments" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
       <template #body-cell-phaseSlug="{ row }">
         <q-td><StatusBadge :slug="row.phaseSlug" /></q-td>
       </template>
@@ -211,11 +210,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { paymentApi, type PaymentSummaryDto, PAYMENT_PHASES } from 'src/api/payment'
 import { useNotify } from 'src/composables/useNotify'
+import { useServerPagination } from 'src/composables/useServerPagination'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
@@ -223,9 +223,7 @@ import PermissionGuard from 'components/PermissionGuard.vue'
 
 const $q = useQuasar()
 const notify = useNotify()
-const loading = ref(false)
 const saving = ref(false)
-const payments = ref<PaymentSummaryDto[]>([])
 const selected = ref<PaymentSummaryDto | null>(null)
 const detailOpen = ref(false)
 const uploadReceiptDialog = ref(false)
@@ -239,6 +237,19 @@ const rejectReason = ref('')
 
 const phaseOptions = PAYMENT_PHASES.map((p) => ({ label: p.label, value: p.value }))
 
+const filters = computed(() => ({
+  studentId: studentIdFilter.value || undefined,
+  phase: phaseFilter.value ?? undefined,
+  month: monthFilter.value || undefined,
+}))
+
+const { rows: payments, loading, pagination, onRequest, load } = useServerPagination<PaymentSummaryDto>({
+  fetchFn: (params) => paymentApi.list(params),
+  filters,
+  defaultSortBy: 'month',
+  defaultDescending: true,
+})
+
 const columns: QTableProps['columns'] = [
   { name: 'month', label: 'Ay', field: 'month', align: 'left', sortable: true },
   { name: 'amounts', label: 'Net / Brüt', field: 'netAmount', align: 'left' },
@@ -248,22 +259,6 @@ const columns: QTableProps['columns'] = [
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })
-}
-
-async function load() {
-  loading.value = true
-  try {
-    const res = await paymentApi.list({
-      studentId: studentIdFilter.value || undefined,
-      phase: phaseFilter.value ?? undefined,
-      month: monthFilter.value || undefined,
-    })
-    payments.value = res.data
-  } catch {
-    notify.error('Ödemeler yüklenirken bir hata oluştu.')
-  } finally {
-    loading.value = false
-  }
 }
 
 function openDetail(row: PaymentSummaryDto) {
@@ -278,8 +273,8 @@ async function doConfirm() {
     await paymentApi.confirm(selected.value.id)
     notify.success('Ödeme onaylandı.')
     await refreshSelected()
-  } catch {
-    notify.error('Onaylama sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Onaylama sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -292,8 +287,8 @@ async function doApproveTeacher() {
     await paymentApi.approveTeacher(selected.value.id)
     notify.success('Öğretmen onayı verildi.')
     await refreshSelected()
-  } catch {
-    notify.error('Onaylama sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Onaylama sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -306,8 +301,8 @@ async function doApproveDeputy() {
     await paymentApi.approveDeputy(selected.value.id)
     notify.success('Müdür Yardımcısı onayı verildi.')
     await refreshSelected()
-  } catch {
-    notify.error('Onaylama sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Onaylama sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -326,8 +321,8 @@ async function doUploadReceipt() {
     uploadReceiptDialog.value = false
     uploadFile.value = null
     await refreshSelected()
-  } catch {
-    notify.error('Dekont yüklenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Dekont yüklenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -341,8 +336,8 @@ async function doReject() {
     notify.success('Reddedildi.')
     rejectDialog.value = false
     await refreshSelected()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }

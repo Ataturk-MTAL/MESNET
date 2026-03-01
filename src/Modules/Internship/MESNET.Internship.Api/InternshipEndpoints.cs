@@ -1,11 +1,9 @@
-using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Internship.Application.Commands;
-using MESNET.Internship.Application.Errors;
-using MESNET.Internship.Application.Extensions;
-using MESNET.Internship.Core.Entities;
-using MESNET.Internship.Core.Enums;
+using MESNET.Internship.Application.Dtos;
+using MESNET.Internship.Application.Queries;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -31,42 +29,26 @@ public static class InternshipEndpoints
     }
 
     private static async Task<IResult> Get(
-        Guid internshipId, IQuerySession session)
+        Guid internshipId, IMessageBus bus)
     {
-        var summary = await session.LoadAsync<InternshipSummary>(internshipId);
-        if (summary is null)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(InternshipErrors.NotFound(internshipId).Description)
-                .AddErrors(InternshipErrors.NotFound(internshipId))
-                .Build());
+        var dto = await bus.InvokeAsync<InternshipSummaryDto>(new GetInternship(internshipId));
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(summary.ToDto())
+            .AddData(dto)
             .Build());
     }
 
     private static async Task<IResult> GetAll(
         Guid? studentId, Guid? businessId, Guid? institutionId, string? phase,
-        IQuerySession session)
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false,
+        IMessageBus bus = default!)
     {
-        IQueryable<InternshipSummary> queryable = session.Query<InternshipSummary>();
+        var result = await bus.InvokeAsync<PagedResult<InternshipSummaryDto>>(
+            new ListInternships(studentId, businessId, institutionId, phase)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending });
 
-        if (studentId.HasValue)
-            queryable = queryable.Where(s => s.StudentId == studentId.Value);
-
-        if (businessId.HasValue)
-            queryable = queryable.Where(s => s.BusinessId == businessId.Value);
-
-        if (institutionId.HasValue)
-            queryable = queryable.Where(s => s.InstitutionId == institutionId.Value);
-
-        if (!string.IsNullOrWhiteSpace(phase) &&
-            InternshipPhase.TryFromName(phase, true, out var internshipPhase))
-            queryable = queryable.Where(s => s.Phase == internshipPhase);
-
-        var summaries = await queryable.ToListAsync();
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(summaries.Select(s => s.ToDto()).ToList())
+            .AddData(result)
             .Build());
     }
 

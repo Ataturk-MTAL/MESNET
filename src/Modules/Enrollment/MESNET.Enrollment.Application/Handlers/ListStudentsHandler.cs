@@ -1,4 +1,6 @@
 using Marten;
+using MESNET.Common.Infrastructure.Pagination;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Enrollment.Application.Dtos;
 using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Application.Queries;
@@ -9,7 +11,7 @@ namespace MESNET.Enrollment.Application.Handlers;
 
 public static class ListStudentsHandler
 {
-    public static async Task<IReadOnlyList<StudentProfileDto>> Handle(ListStudents query, IQuerySession session)
+    public static async Task<PagedResult<StudentProfileDto>> Handle(ListStudents query, IQuerySession session)
     {
         IQueryable<StudentProfile> queryable = session.Query<StudentProfile>();
 
@@ -25,13 +27,13 @@ public static class ListStudentsHandler
         if (!string.IsNullOrWhiteSpace(query.Section))
             queryable = queryable.Where(s => s.Section == query.Section);
 
-        var students = await queryable.ToListAsync();
-
-        // SmartEnum LINQ kısıtı: in-memory filtrele
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             StudentStatus.TryFromName(query.Status, true, out var status))
-            students = students.Where(s => s.Status.Name == status.Name).ToList();
+            queryable = queryable.Where(s => s.Status.Name == status.Name);
 
-        return students.Select(s => s.ToDto()).ToList();
+        queryable = queryable.ApplySearch(query.Search, s => s.FullName, s => s.TcKimlikNo);
+        queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: s => s.FullName);
+
+        return await queryable.ToPagedResultAsync(query, s => s.ToDto());
     }
 }

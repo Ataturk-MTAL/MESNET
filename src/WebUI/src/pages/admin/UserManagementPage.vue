@@ -22,7 +22,7 @@
           </div>
         </div>
 
-        <AppTable :rows="users" :columns="userColumns" :loading="loadingUsers">
+        <AppTable :rows="users" :columns="userColumns" :loading="usersLoading" :pagination="usersPagination" show-search :search="usersSearch" @request="onUsersRequest" @search="onUsersSearch">
           <template #body-cell-isEnabled="{ row }">
             <q-td>
               <q-badge :color="row.isEnabled ? 'positive' : 'grey'" :label="row.isEnabled ? 'Aktif' : 'Pasif'" />
@@ -64,7 +64,7 @@
       <!-- DAVETLER -->
       <q-tab-panel name="invitations">
         <div class="text-subtitle1 text-weight-medium q-mb-md">Bekleyen Davetler</div>
-        <AppTable :rows="invitations" :columns="invitationColumns" :loading="loadingInvitations">
+        <AppTable :rows="invitations" :columns="invitationColumns" :loading="invsLoading" :pagination="invsPagination" show-search :search="invsSearch" @request="onInvsRequest" @search="onInvsSearch">
           <template #body-cell-status="{ row }">
             <q-td>
               <q-badge
@@ -170,11 +170,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, computed, reactive } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { securityApi, type UserAccountDto, type InvitationDto } from 'src/api/security'
 import { useNotify } from 'src/composables/useNotify'
+import { useServerPagination } from 'src/composables/useServerPagination'
 import { Permissions } from 'utils/permissions'
 import { useAuthStore } from 'stores/auth'
 import AppTable from 'components/AppTable.vue'
@@ -187,14 +188,29 @@ const authStore = useAuthStore()
 const tab = ref('users')
 const saving = ref(false)
 
-const users = ref<UserAccountDto[]>([])
-const invitations = ref<InvitationDto[]>([])
 const selectedUser = ref<UserAccountDto | null>(null)
-const loadingUsers = ref(false)
-const loadingInvitations = ref(false)
 const inviteDialog = ref(false)
 const rolesDialog = ref(false)
 const selectedRoles = ref<string[]>([])
+
+// ── Server-side pagination: Users ──
+const userFilters = computed(() => ({}))
+const { rows: users, loading: usersLoading, pagination: usersPagination, search: usersSearch, onRequest: onUsersRequest, onSearch: onUsersSearch, load: loadUsers } =
+  useServerPagination<UserAccountDto>({
+    fetchFn: (params) => securityApi.listUsers(params),
+    filters: userFilters,
+    defaultSortBy: 'fullName',
+  })
+
+// ── Server-side pagination: Invitations ──
+const invFilters = computed(() => ({}))
+const { rows: invitations, loading: invsLoading, pagination: invsPagination, search: invsSearch, onRequest: onInvsRequest, onSearch: onInvsSearch, load: loadInvitations } =
+  useServerPagination<InvitationDto>({
+    fetchFn: (params) => securityApi.listInvitations(params),
+    filters: invFilters,
+    defaultSortBy: 'createdAt',
+    defaultDescending: true,
+  })
 
 const roleOptions = [
   { label: 'Kurum Müdürü', value: 'institution_manager' },
@@ -226,30 +242,6 @@ const invitationColumns: QTableProps['columns'] = [
   { name: 'invActions', label: '', field: 'id', align: 'right' },
 ]
 
-async function loadUsers() {
-  loadingUsers.value = true
-  try {
-    const res = await securityApi.listUsers()
-    users.value = res.data
-  } catch {
-    notify.error('Kullanıcılar yüklenirken bir hata oluştu.')
-  } finally {
-    loadingUsers.value = false
-  }
-}
-
-async function loadInvitations() {
-  loadingInvitations.value = true
-  try {
-    const res = await securityApi.listInvitations()
-    invitations.value = res.data
-  } catch {
-    notify.error('Davetler yüklenirken bir hata oluştu.')
-  } finally {
-    loadingInvitations.value = false
-  }
-}
-
 function openEditUser(row: UserAccountDto) {
   selectedUser.value = row
 }
@@ -266,8 +258,8 @@ async function toggleStatus(row: UserAccountDto) {
     await securityApi.toggleStatus(row.id)
     notify.success(`Kullanıcı ${row.isEnabled ? 'pasife alındı' : 'aktifleştirildi'}.`)
     await loadUsers()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -281,8 +273,8 @@ async function saveRoles() {
     notify.success('Roller güncellendi.')
     rolesDialog.value = false
     await loadUsers()
-  } catch {
-    notify.error('Roller güncellenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Roller güncellenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -304,8 +296,8 @@ async function sendInvitation() {
     inviteForm.lastName = ''
     inviteForm.targetRole = ''
     await loadInvitations()
-  } catch {
-    notify.error('Davet gönderilirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Davet gönderilirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -317,8 +309,8 @@ async function approveInvitation(row: InvitationDto) {
     await securityApi.approveInvitation(row.id)
     notify.success('Davet onaylandı.')
     await loadInvitations()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -330,8 +322,8 @@ async function rejectInvitation(row: InvitationDto) {
     await securityApi.rejectInvitation(row.id)
     notify.success('Davet reddedildi.')
     await loadInvitations()
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -342,15 +334,14 @@ async function resendInvitation(row: InvitationDto) {
   try {
     await securityApi.resendInvitation(row.id)
     notify.success('Davet tekrar gönderildi.')
-  } catch {
-    notify.error('İşlem sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
 }
 
-onMounted(() => {
-  loadUsers()
-  loadInvitations()
-})
+// Initial load
+loadUsers()
+loadInvitations()
 </script>

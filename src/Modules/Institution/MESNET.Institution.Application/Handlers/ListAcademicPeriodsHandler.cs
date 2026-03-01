@@ -1,4 +1,6 @@
 using Marten;
+using MESNET.Common.Infrastructure.Pagination;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Institution.Application.Dtos;
 using MESNET.Institution.Application.Extensions;
 using MESNET.Institution.Application.Queries;
@@ -8,13 +10,14 @@ namespace MESNET.Institution.Application.Handlers;
 
 public static class ListAcademicPeriodsHandler
 {
-    public static async Task<IReadOnlyList<AcademicPeriodDto>> Handle(
+    public static async Task<PagedResult<AcademicPeriodDto>> Handle(
         ListAcademicPeriods query, IQuerySession session)
     {
-        var periods = await session.Query<AcademicPeriod>()
-            .Where(p => p.InstitutionId == query.InstitutionId)
-            .ToListAsync();
+        IQueryable<AcademicPeriod> queryable = session.Query<AcademicPeriod>()
+            .Where(p => p.InstitutionId == query.InstitutionId);
 
-        return periods.Select(p => p.ToDto()).ToList();
+        queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: p => p.StartDate);
+
+        return await queryable.ToPagedResultAsync(query, p => p.ToDto());
     }
 }

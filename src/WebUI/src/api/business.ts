@@ -1,5 +1,6 @@
 import api from 'boot/axios'
 import type { GeoLocation } from './institution'
+import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 
 export interface BusinessCapacityDto {
   totalSlots: number
@@ -83,10 +84,8 @@ export interface UpdateCapacityRequest {
 }
 
 export const businessApi = {
-  list: (status?: string, sector?: string) =>
-    api.get<BusinessDto[]>('/businesses', {
-      params: { ...(status ? { status } : {}), ...(sector ? { sector } : {}) },
-    }),
+  list: (params?: { status?: string; sector?: string } & PaginationParams) =>
+    api.get<PagedResponse<BusinessDto>>('/businesses', { params }),
 
   sectors: () => api.get<SectorDto[]>('/businesses/sectors'),
 

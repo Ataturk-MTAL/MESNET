@@ -7,6 +7,7 @@
     <ProjectReference Include="../MESNET.Coordination.Core/MESNET.Coordination.Core.csproj" />
     <ProjectReference Include="../MESNET.Coordination.Shared/MESNET.Coordination.Shared.csproj" />
     <ProjectReference Include="../../../MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
+    <ProjectReference Include="../../../MESNET.Common.Infrastructure/MESNET.Common.Infrastructure.csproj" />
     <ProjectReference Include="../../Institution/MESNET.Institution.Core/MESNET.Institution.Core.csproj" />
     <ProjectReference Include="../../Institution/MESNET.Institution.Shared/MESNET.Institution.Shared.csproj" />
   </ItemGroup>

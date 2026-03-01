@@ -1,5 +1,6 @@
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Application.Dtos;
@@ -56,7 +57,8 @@ public static class PlacementEndpoints
 
     private static async Task<IResult> GetAll(
         Guid? businessId, Guid? studentId, Guid? academicPeriodId, string? status,
-        ICurrentUserService currentUser, IMessageBus bus)
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
+        ICurrentUserService currentUser = default!, IMessageBus bus = default!)
     {
         var user = currentUser.GetCurrentUser();
         var institutionId = user?.InstitutionId;
@@ -77,8 +79,9 @@ public static class PlacementEndpoints
             effectiveBusinessId = user.BusinessId;
         }
 
-        var dtos = await bus.InvokeAsync<IReadOnlyList<InternshipPlacementDto>>(
-            new ListPlacements(effectiveBusinessId, studentId, academicPeriodId, status, institutionId, teacherId));
-        return Results.Ok(ResponseBuilder.Success().AddData(dtos).Build());
+        var result = await bus.InvokeAsync<PagedResult<InternshipPlacementDto>>(
+            new ListPlacements(effectiveBusinessId, studentId, academicPeriodId, status, institutionId, teacherId)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
 }

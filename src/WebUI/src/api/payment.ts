@@ -1,4 +1,5 @@
 import api from 'boot/axios'
+import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 
 export interface PaymentSummaryDto {
   id: string
@@ -35,8 +36,8 @@ export const PAYMENT_PHASES = [
 ] as const
 
 export const paymentApi = {
-  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; phase?: string; month?: string }) =>
-    api.get<PaymentSummaryDto[]>('/payments', { params }),
+  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; phase?: string; month?: string } & PaginationParams) =>
+    api.get<PagedResponse<PaymentSummaryDto>>('/payments', { params }),
 
   get: (paymentId: string) =>
     api.get<PaymentSummaryDto>(`/payments/${paymentId}`),

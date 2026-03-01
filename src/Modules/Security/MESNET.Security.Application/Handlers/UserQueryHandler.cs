@@ -1,5 +1,7 @@
 using Marten;
+using MESNET.Common.Infrastructure.Pagination;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Errors;
 using MESNET.Security.Core.Entities;
@@ -15,7 +17,7 @@ public sealed record UserAccountDto(
 
 public static class GetUserAccountsHandler
 {
-    public static async Task<IReadOnlyList<UserAccountDto>> Handle(
+    public static async Task<PagedResult<UserAccountDto>> Handle(
         GetUserAccounts query, IQuerySession session)
     {
         IQueryable<UserAccount> queryable = session.Query<UserAccount>();
@@ -32,14 +34,15 @@ public static class GetUserAccountsHandler
         if (!string.IsNullOrEmpty(query.Role))
             queryable = queryable.Where(u => u.Roles.Contains(query.Role));
 
-        var accounts = await queryable.ToListAsync();
+        queryable = queryable.ApplySearch(query.Search, u => u.FullName, u => u.Email);
+        queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: u => u.FullName);
 
-        return accounts.Select(a => new UserAccountDto(
+        return await queryable.ToPagedResultAsync(query, a => new UserAccountDto(
             a.Id, a.KeycloakUserId, a.Username, a.Email,
             a.FirstName, a.LastName, a.FullName,
             a.IsEnabled, a.InstitutionId, a.BusinessId,
             a.Roles, a.DirectPermissions,
-            a.CreatedAt, a.UpdatedAt)).ToList();
+            a.CreatedAt, a.UpdatedAt));
     }
 }
 

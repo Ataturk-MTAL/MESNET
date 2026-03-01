@@ -1,4 +1,5 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Reporting.Application.Commands;
 using MESNET.Reporting.Application.Handlers;
@@ -56,13 +57,15 @@ public static class DocumentLifecycleEndpoints
     // --- Filtreli dokuman listesi ---
     private static async Task<IResult> GetDocuments(
         string? status, string? formType, Guid? teacherId, Guid? institutionId,
-        IMessageBus bus)
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
+        IMessageBus bus = default!)
     {
-        var query = new GetPendingDocuments(status, formType, teacherId, institutionId);
-        var documents = await bus.InvokeAsync<IReadOnlyList<GeneratedDocumentSummary>>(query);
+        var result = await bus.InvokeAsync<PagedResult<GeneratedDocumentSummary>>(
+            new GetPendingDocuments(status, formType, teacherId, institutionId)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(documents)
+            .AddData(result)
             .Build());
     }
 

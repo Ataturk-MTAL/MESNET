@@ -788,11 +788,11 @@ async function load() {
     const [instRes, schedRes, periodsRes] = await Promise.all([
       institutionApi.get(institutionId.value),
       institutionApi.getScheduleConfig(institutionId.value),
-      institutionApi.listAcademicPeriods(institutionId.value),
+      institutionApi.listAcademicPeriods(institutionId.value, { pageSize: 100 }),
     ])
     institution.value = instRes.data
     scheduleConfig.value = schedRes.data
-    periods.value = periodsRes.data ?? []
+    periods.value = periodsRes.data?.items ?? []
     editForm.fullName = instRes.data.fullName
     editForm.address = instRes.data.address ?? ''
     editForm.phoneNumber = instRes.data.phoneNumber ?? ''
@@ -815,8 +815,8 @@ async function loadFieldCatalog(educationType?: string) {
       .filter((f) => !activeCodes.has(f.code))
       .map((f) => ({ label: f.name, value: f.code, caption: `${f.code} — ${f.typeSlug}` }))
     availableFields.value = allFieldOptions.value
-  } catch {
-    notify.error('Alan kataloğu yüklenirken hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Alan kataloğu yüklenirken hata oluştu.')
   } finally {
     loadingCatalog.value = false
   }
@@ -836,8 +836,8 @@ async function saveInstitution() {
     notify.success('Kurum bilgileri güncellendi.')
     editDialog.value = false
     await load()
-  } catch {
-    notify.error('Güncelleme sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Güncelleme sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -875,8 +875,8 @@ async function addStaff() {
     notify.success('Personel başarıyla yetkilendirildi.')
     staffDialog.value = false
     await load()
-  } catch {
-    notify.error('Personel eklenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Personel eklenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -914,8 +914,8 @@ async function activateBranch() {
     notify.success('Alan aktifleştirildi.')
     branchDialog.value = false
     await load()
-  } catch {
-    notify.error('Alan aktifleştirilirken hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Alan aktifleştirilirken hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -934,8 +934,8 @@ function confirmDeactivateBranch(branch: InstitutionBranchDto) {
       await institutionApi.deactivateBranch(institutionId.value, branch.fieldCode)
       notify.success('Alan pasife alındı.')
       await load()
-    } catch {
-      notify.error('İşlem sırasında hata oluştu.')
+    } catch (e) {
+      notify.apiError(e, 'İşlem sırasında hata oluştu.')
     } finally {
       saving.value = false
     }
@@ -964,8 +964,8 @@ async function saveSpecializations() {
     notify.success('Uzmanlık alanları güncellendi.')
     specDialog.value = false
     await load()
-  } catch {
-    notify.error('Güncelleme sırasında hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Güncelleme sırasında hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -988,8 +988,8 @@ async function saveScheduleConfig() {
     scheduleDialog.value = false
     const res = await institutionApi.getScheduleConfig(institutionId.value)
     scheduleConfig.value = res.data
-  } catch {
-    notify.error('Ayarlar kaydedilirken hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Ayarlar kaydedilirken hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1020,8 +1020,8 @@ async function createPeriod() {
     periodDialog.value = false
     await load()
     await periodStore.loadPeriods()
-  } catch {
-    notify.error('Dönem oluşturulurken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Dönem oluşturulurken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1041,8 +1041,8 @@ function confirmClosePeriod(period: AcademicPeriodDto) {
       notify.success('Dönem kapatıldı.')
       await load()
       await periodStore.loadPeriods()
-    } catch {
-      notify.error('Dönem kapatılırken bir hata oluştu.')
+    } catch (e) {
+      notify.apiError(e, 'Dönem kapatılırken bir hata oluştu.')
     } finally {
       saving.value = false
     }

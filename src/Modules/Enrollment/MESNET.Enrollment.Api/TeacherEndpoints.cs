@@ -1,4 +1,5 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Application.Dtos;
@@ -43,9 +44,14 @@ public static class TeacherEndpoints
         return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
     }
 
-    private static async Task<IResult> GetAll(Guid? institutionId, Guid? academicPeriodId, IMessageBus bus)
+    private static async Task<IResult> GetAll(
+        Guid? institutionId, Guid? academicPeriodId,
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
+        IMessageBus bus = default!)
     {
-        var dtos = await bus.InvokeAsync<IReadOnlyList<TeacherProfileDto>>(new ListTeachers(institutionId, academicPeriodId));
-        return Results.Ok(ResponseBuilder.Success().AddData(dtos).Build());
+        var result = await bus.InvokeAsync<PagedResult<TeacherProfileDto>>(
+            new ListTeachers(institutionId, academicPeriodId)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
 }

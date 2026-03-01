@@ -1,4 +1,5 @@
 import api from 'boot/axios'
+import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 
 export interface StudentProfileDto {
   id: string
@@ -91,8 +92,8 @@ export interface TransferRequest {
 }
 
 export const enrollmentApi = {
-  listStudents: (params?: { institutionId?: string; academicPeriodId?: string; branchCode?: string; section?: string; status?: string }) =>
-    api.get<StudentProfileDto[]>('/students', { params }),
+  listStudents: (params?: { institutionId?: string; academicPeriodId?: string; branchCode?: string; section?: string; status?: string } & PaginationParams) =>
+    api.get<PagedResponse<StudentProfileDto>>('/students', { params }),
 
   getStudent: (studentId: string) =>
     api.get<StudentProfileDto>(`/students/${studentId}`),
@@ -103,8 +104,8 @@ export const enrollmentApi = {
   updateStudent: (studentId: string, data: UpdateStudentRequest) =>
     api.patch(`/students/${studentId}`, data),
 
-  listPlacements: (params?: { businessId?: string; studentId?: string; academicPeriodId?: string; status?: string }) =>
-    api.get<InternshipPlacementDto[]>('/placements', { params }),
+  listPlacements: (params?: { businessId?: string; studentId?: string; academicPeriodId?: string; status?: string } & PaginationParams) =>
+    api.get<PagedResponse<InternshipPlacementDto>>('/placements', { params }),
 
   getPlacement: (placementId: string) =>
     api.get<InternshipPlacementDto>(`/placements/${placementId}`),
@@ -115,6 +116,6 @@ export const enrollmentApi = {
   transferStudent: (placementId: string, data: TransferRequest) =>
     api.post(`/placements/${placementId}/transfer`, data),
 
-  listTeachers: (params?: { institutionId?: string; academicPeriodId?: string }) =>
-    api.get<TeacherProfileDto[]>('/teachers', { params }),
+  listTeachers: (params?: { institutionId?: string; academicPeriodId?: string } & PaginationParams) =>
+    api.get<PagedResponse<TeacherProfileDto>>('/teachers', { params }),
 }

@@ -1,7 +1,8 @@
-using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Application.Commands;
+using MESNET.Coordination.Application.Queries;
 using MESNET.Coordination.Core.Entities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -49,13 +50,9 @@ public static class SkillExamEndpoints
     }
 
     private static async Task<IResult> Get(
-        Guid examId, IQuerySession session)
+        Guid examId, IMessageBus bus)
     {
-        var exam = await session.LoadAsync<SkillExam>(examId);
-        if (exam is null)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage($"Beceri sınavı bulunamadı: {examId}")
-                .Build());
+        var exam = await bus.InvokeAsync<SkillExam>(new GetSkillExam(examId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(exam)
@@ -64,22 +61,15 @@ public static class SkillExamEndpoints
 
     private static async Task<IResult> GetAll(
         Guid? studentId, Guid? businessId, Guid? academicPeriodId, int? academicYear, string? semester,
-        IQuerySession session)
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false,
+        IMessageBus bus = default!)
     {
-        IQueryable<SkillExam> queryable = session.Query<SkillExam>();
+        var result = await bus.InvokeAsync<PagedResult<SkillExam>>(
+            new ListSkillExams(studentId, businessId, academicPeriodId, academicYear, semester)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending });
 
-        if (studentId.HasValue)
-            queryable = queryable.Where(e => e.StudentId == studentId.Value);
-        if (businessId.HasValue)
-            queryable = queryable.Where(e => e.BusinessId == businessId.Value);
-        if (academicPeriodId.HasValue)
-            queryable = queryable.Where(e => e.AcademicPeriodId == academicPeriodId.Value);
-        if (academicYear.HasValue)
-            queryable = queryable.Where(e => e.AcademicYear == academicYear.Value);
-
-        var exams = await queryable.ToListAsync();
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(exams)
+            .AddData(result)
             .Build());
     }
 }

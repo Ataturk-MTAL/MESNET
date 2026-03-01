@@ -1,6 +1,8 @@
 using Marten;
 using MESNET.Common.Infrastructure.Email;
+using MESNET.Common.Infrastructure.Pagination;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Errors;
 using MESNET.Security.Application.Services;
@@ -170,7 +172,7 @@ public static class CompleteInvitationHandler
 
 public static class GetInvitationsHandler
 {
-    public static async Task<IReadOnlyList<InvitationDto>> Handle(
+    public static async Task<PagedResult<InvitationDto>> Handle(
         GetInvitations query, IQuerySession session)
     {
         IQueryable<UserInvitation> queryable = session.Query<UserInvitation>();
@@ -184,15 +186,14 @@ public static class GetInvitationsHandler
         if (!string.IsNullOrEmpty(query.Status) && Enum.TryParse<InvitationStatus>(query.Status, true, out var status))
             queryable = queryable.Where(i => i.Status == status);
 
-        var invitations = await queryable
-            .OrderByDescending(i => i.CreatedAt)
-            .ToListAsync();
+        queryable = queryable.ApplySearch(query.Search, i => i.Email, i => i.FullName);
+        queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: i => i.CreatedAt);
 
-        return invitations.Select(i => new InvitationDto(
+        return await queryable.ToPagedResultAsync(query, i => new InvitationDto(
             i.Id, i.Email, i.FirstName, i.LastName, i.FullName,
             i.TargetRole, i.Status.ToString(), i.InstitutionId, i.BusinessId,
             i.CreatedAt, i.CreatedByName, i.ApprovedAt, i.ApprovedByName,
-            i.ExpiresAt, i.Metadata)).ToList();
+            i.ExpiresAt, i.Metadata));
     }
 }
 

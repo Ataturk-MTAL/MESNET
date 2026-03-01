@@ -1,4 +1,6 @@
 using Marten;
+using MESNET.Common.Infrastructure.Pagination;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Enrollment.Application.Dtos;
 using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Application.Queries;
@@ -10,7 +12,7 @@ namespace MESNET.Enrollment.Application.Handlers;
 
 public static class ListPlacementsHandler
 {
-    public static async Task<IReadOnlyList<InternshipPlacementDto>> Handle(ListPlacements query, IQuerySession session)
+    public static async Task<PagedResult<InternshipPlacementDto>> Handle(ListPlacements query, IQuerySession session)
     {
         IQueryable<InternshipPlacement> queryable = session.Query<InternshipPlacement>();
 
@@ -29,17 +31,24 @@ public static class ListPlacementsHandler
         if (query.TeacherId.HasValue)
             queryable = queryable.Where(p => p.TeacherId == query.TeacherId.Value);
 
-        var placements = await queryable.ToListAsync();
-
-        // SmartEnum LINQ kısıtı: in-memory filtrele
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             PlacementStatus.TryFromName(query.Status, true, out var status))
-            placements = placements.Where(p => p.Status.Name == status.Name).ToList();
+            queryable = queryable.Where(p => p.Status.Name == status.Name);
+
+        queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: p => p.PlacedAt);
+
+        // Sayfalama — önce count, sonra skip/take
+        var totalCount = await queryable.CountAsync();
+        var placements = await queryable
+            .Skip(query.Skip)
+            .Take(query.SafePageSize)
+            .ToListAsync();
 
         if (placements.Count == 0)
-            return Array.Empty<InternshipPlacementDto>();
+            return PagedResult<InternshipPlacementDto>.Create(
+                [], totalCount, query.SafePage, query.SafePageSize);
 
-        // Batch isim yükleme
+        // Batch isim yükleme — sadece mevcut sayfa
         var studentIds = placements.Select(p => p.StudentId).Distinct().ToList();
         var businessIds = placements.Select(p => p.BusinessId).Distinct().ToList();
         var teacherIds = placements.Where(p => p.TeacherId.HasValue).Select(p => p.TeacherId!.Value).Distinct().ToList();
@@ -54,10 +63,13 @@ public static class ListPlacementsHandler
         var businessNames = businesses.ToDictionary(b => b.Id, b => b.BusinessName);
         var teacherNames = teachers.ToDictionary(t => t.Id, t => t.FullName);
 
-        return placements.Select(p => p.ToDto(
+        var items = placements.Select(p => p.ToDto(
             studentNames.GetValueOrDefault(p.StudentId, ""),
             businessNames.GetValueOrDefault(p.BusinessId, ""),
             p.TeacherId.HasValue ? teacherNames.GetValueOrDefault(p.TeacherId.Value) : null
         )).ToList();
+
+        return PagedResult<InternshipPlacementDto>.Create(
+            items, totalCount, query.SafePage, query.SafePageSize);
     }
 }

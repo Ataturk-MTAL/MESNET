@@ -1,4 +1,5 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Application.Dtos;
@@ -140,12 +141,14 @@ public static class ContractEndpoints
 
     private static async Task<IResult> GetAll(
         Guid? studentId, Guid? businessId, Guid? institutionId, Guid? academicPeriodId, string? status,
-        IMessageBus bus)
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
+        IMessageBus bus = default!)
     {
-        var query = new ListContracts(studentId, businessId, institutionId, academicPeriodId, status);
-        var contracts = await bus.InvokeAsync<IReadOnlyList<InternshipContractDto>>(query);
+        var result = await bus.InvokeAsync<PagedResult<InternshipContractDto>>(
+            new ListContracts(studentId, businessId, institutionId, academicPeriodId, status)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(contracts)
+            .AddData(result)
             .Build());
     }
 

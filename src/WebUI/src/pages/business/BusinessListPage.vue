@@ -42,7 +42,6 @@
         map-options
         clearable
         style="min-width: 180px"
-        @update:model-value="load"
       />
       <q-select
         v-model="sectorFilter"
@@ -54,12 +53,21 @@
         map-options
         clearable
         style="min-width: 240px"
-        @update:model-value="load"
       />
     </div>
 
     <!-- Tablo Görünümü -->
-    <AppTable v-if="viewMode === 'table'" :rows="businesses" :columns="columns" :loading="loading">
+    <AppTable
+      v-if="viewMode === 'table'"
+      :rows="businesses"
+      :columns="columns"
+      :loading="loading"
+      :pagination="pagination"
+      show-search
+      :search="search"
+      @request="onRequest"
+      @search="onSearch"
+    >
       <template #body-cell-sectors="{ row }">
         <q-td>
           <q-badge
@@ -556,6 +564,7 @@ import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { businessApi, type BusinessDto, type SectorDto } from 'src/api/business'
 import { useNotify } from 'src/composables/useNotify'
+import { useServerPagination } from 'src/composables/useServerPagination'
 import { registerBusinessSchema, editBusinessSchema, rejectBusinessSchema } from 'src/schemas/business'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
@@ -584,9 +593,7 @@ function getLatLng(biz: BusinessDto): [number, number] {
   return [biz.location!.latitude, biz.location!.longitude]
 }
 
-const loading = ref(false)
 const saving = ref(false)
-const businesses = ref<BusinessDto[]>([])
 const selected = ref<BusinessDto | null>(null)
 const addDialog = ref(false)
 const rejectDialog = ref(false)
@@ -596,6 +603,19 @@ const statusFilter = ref<string | null>(null)
 const sectorFilter = ref<string | null>(null)
 const allSectors = ref<SectorDto[]>([])
 const capacitySlots = ref(0)
+
+// ── Server-side pagination ──
+const filters = computed(() => ({
+  ...(statusFilter.value ? { status: statusFilter.value } : {}),
+  ...(sectorFilter.value ? { sector: sectorFilter.value } : {}),
+}))
+
+const { rows: businesses, loading, pagination, search, onRequest, onSearch, load } =
+  useServerPagination<BusinessDto>({
+    fetchFn: (params) => businessApi.list(params),
+    filters,
+    defaultSortBy: 'name',
+  })
 const docForm = reactive({
   type: '',
   file: null as File | null,
@@ -670,17 +690,6 @@ async function loadSectors() {
   }
 }
 
-async function load() {
-  loading.value = true
-  try {
-    const res = await businessApi.list(statusFilter.value ?? undefined, sectorFilter.value ?? undefined)
-    businesses.value = res.data
-  } catch {
-    notify.error('İşletmeler yüklenirken bir hata oluştu.')
-  } finally {
-    loading.value = false
-  }
-}
 
 function openDetail(row: BusinessDto) {
   selected.value = row
@@ -697,8 +706,8 @@ async function approve(row: BusinessDto) {
     await businessApi.approve(row.id)
     notify.success('İşletme onaylandı.')
     await load()
-  } catch {
-    notify.error('Onaylama sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Onaylama sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -720,8 +729,8 @@ async function rejectBusiness() {
     notify.success('İşletme reddedildi.')
     rejectDialog.value = false
     await load()
-  } catch {
-    notify.error('Reddetme sırasında bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Reddetme sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -748,8 +757,8 @@ async function registerBusiness() {
     })
     for (const key of Object.keys(addErrors)) addErrors[key] = ''
     await load()
-  } catch {
-    notify.error('İşletme eklenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşletme eklenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -764,8 +773,8 @@ async function updateCapacity() {
     await load()
     const updated = businesses.value.find((b) => b.id === selected.value?.id)
     if (updated) selected.value = updated
-  } catch {
-    notify.error('Kapasite güncellenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Kapasite güncellenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -778,8 +787,8 @@ async function approveDoc(documentId: string) {
     await businessApi.approveDocument(selected.value.id, documentId)
     notify.success('Belge onaylandı.')
     await load()
-  } catch {
-    notify.error('Belge onaylanırken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Belge onaylanırken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -820,8 +829,8 @@ async function uploadDocument() {
     // Drawer'daki detayı güncelle
     const updated = businesses.value.find((b) => b.id === selected.value?.id)
     if (updated) selected.value = updated
-  } catch {
-    notify.error('Belge yüklenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Belge yüklenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -832,8 +841,8 @@ async function previewDoc(documentId: string) {
   try {
     const res = await businessApi.getDocumentUrl(selected.value.id, documentId)
     window.open(res.data.url, '_blank')
-  } catch {
-    notify.error('Belge bağlantısı oluşturulamadı.')
+  } catch (e) {
+    notify.apiError(e, 'Belge bağlantısı oluşturulamadı.')
   }
 }
 
@@ -858,8 +867,8 @@ async function deleteDoc(documentId: string) {
     await load()
     const updated = businesses.value.find((b) => b.id === selected.value?.id)
     if (updated) selected.value = updated
-  } catch {
-    notify.error('Belge silinirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Belge silinirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -902,8 +911,8 @@ async function saveEdit() {
     await load()
     const updated = businesses.value.find((b) => b.id === selected.value?.id)
     if (updated) selected.value = updated
-  } catch {
-    notify.error('İşletme güncellenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşletme güncellenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -935,8 +944,8 @@ function deactivateBusiness() {
       await load()
       const updated = businesses.value.find((b) => b.id === id)
       if (updated) selected.value = updated
-    } catch {
-      notify.error('İşletme pasife alınırken bir hata oluştu.')
+    } catch (e) {
+      notify.apiError(e, 'İşletme pasife alınırken bir hata oluştu.')
     } finally {
       saving.value = false
     }
@@ -952,8 +961,8 @@ async function activateBusiness() {
     await load()
     const updated = businesses.value.find((b) => b.id === selected.value?.id)
     if (updated) selected.value = updated
-  } catch {
-    notify.error('İşletme aktifleştirilirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'İşletme aktifleştirilirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -976,8 +985,8 @@ function closeBusiness() {
       await load()
       const updated = businesses.value.find((b) => b.id === id)
       if (updated) selected.value = updated
-    } catch {
-      notify.error('İşletme kapatılırken bir hata oluştu.')
+    } catch (e) {
+      notify.apiError(e, 'İşletme kapatılırken bir hata oluştu.')
     } finally {
       saving.value = false
     }

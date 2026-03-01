@@ -11,8 +11,8 @@ MESNET (Mesleki Eğitim Stajları Nitelikli, Eşgüdümlü Takip Sistemi) — me
 - **Veritabanı:** PostgreSQL (JSONB document storage + event store)
 - **ORM / Document DB:** Marten (https://martendb.io/)
 - **Messaging / CQRS / Mediator:** Wolverine (https://wolverinefx.net/)
-- **Frontend:** Vue 3 + TypeScript + Pinia (paket yöneticisi: **pnpm**)
-- **Kimlik Doğrulama:** Keycloak (OAuth2 / OpenID Connect)
+- **Frontend:** Quasar Framework (Vue 3 + TypeScript + Pinia) — SPA, paket yöneticisi: **pnpm**
+- **Kimlik Doğrulama:** Keycloak (OAuth2 / OIDC, **PKCE** flow — public client, client secret yok)
 - **Mimari:** Modüler Monolit + CQRS + Event Sourcing
 
 ## Temel Kütüphaneler ve Kullanımları
@@ -293,6 +293,45 @@ private static async Task<IResult> Get(Guid id, IMessageBus bus)
 - Document-based entity'ler için Marten `IDocumentSession` (yazma) ve `IQuerySession` (okuma) kullan — SADECE handler içinde
 - Handler'dan hata bildirimi: `throw new DomainException(error)` — HTTP 422 olarak döner
 
+### Sayfalama (Pagination) Kuralları
+
+- Tüm listeleme query endpoint'leri server-side pagination destekler
+- Query record'lar `PagedQuery` base record'undan inherit eder (`Page`, `PageSize`, `SortBy`, `Descending`, `Search`)
+- Query handler'lar `PagedResult<TDto>` döndürür — `IReadOnlyList<TDto>` DEĞİL
+- Pagination/sorting/search → `QueryableExtensions` helper'ları ile (`ApplySort`, `ApplySearch`, `ToPagedResultAsync`)
+- SmartEnum filtreleri **her zaman** `.Name` property'si ile LINQ'te yapılır — in-memory filtreleme YASAKTIR
+- Tüm query endpoint'leri handler üzerinden çalışır — endpoint'te `IQuerySession` inject etmek YASAKTIR
+- Frontend: `useServerPagination` composable + Quasar q-table `@request` event entegrasyonu
+
+**Sayfalı query handler örneği:**
+
+```csharp
+public static async Task<PagedResult<BusinessDto>> Handle(
+    GetBusinessesByStatus query, IQuerySession session)
+{
+    IQueryable<Business> q = session.Query<Business>();
+    // filtreler...
+    q = q.ApplySearch(query.Search, b => b.Name, b => b.Address);
+    q = q.ApplySort(query.SortBy, query.Descending, defaultSort: b => b.Name);
+    return await q.ToPagedResultAsync(query, b => b.ToDto());
+}
+```
+
+**Sayfalı endpoint örneği:**
+
+```csharp
+private static async Task<IResult> GetAll(
+    string? status, int page = 1, int pageSize = 20,
+    string? sortBy = null, bool descending = false, string? search = null,
+    IMessageBus bus = default!)
+{
+    var result = await bus.InvokeAsync<PagedResult<BusinessDto>>(
+        new GetBusinessesByStatus(status)
+        { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
+    return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
+}
+```
+
 ### Event Sourcing vs Document Storage
 
 - **Event sourcing kullan:** Staj sözleşmeleri, fesih süreçleri, devamsızlık kayıtları, dekont onay süreçleri gibi durum geçişleri olan entity'ler
@@ -328,7 +367,7 @@ builder.Host.UseWolverine(opts =>
 - Lokasyon bazlı işletme yönetimi
 - Staj yaşam döngüsü orkestrasyonu (Internship saga)
 - Raporlama ve PDF üretimi (Reporting + QuestPDF)
-- Detaylar: `src/Arch/ProjectScope.md`
+- Detaylar: `src/Docs/docs/architecture/project-scope.md`
 
 ### Phase 2 (Beklemede) — Blockchain/NFT
 - Blockchain, NFT sertifika, smart contract, Web3 cüzdan
@@ -336,13 +375,15 @@ builder.Host.UseWolverine(opts =>
 
 ## Dosya Yapısı Referansları
 
-- Mimari dokümanlar: `src/Arch/`
-- Modül tasarımı: `src/Arch/ModuleDesign.md`
-- Proje kapsamı: `src/Arch/ProjectScope.md`
-- Senaryolar: `src/Arch/Scenario.md`
-- Aktörler: `src/Arch/Actors.md`
-- İzinler: `src/Arch/ActorPermissions.md`
-- C4 diyagramları: `src/Arch/Modules/C4/`
+- Mimari dokümanlar: `src/Docs/docs/architecture/`
+- Modül tasarımı: `src/Docs/docs/architecture/module-design.md`
+- Proje kapsamı: `src/Docs/docs/architecture/project-scope.md`
+- İş kuralları: `src/Docs/docs/architecture/business-rules.md`
+- Senaryolar: `src/Docs/docs/scenarios.md`
+- Aktörler: `src/Docs/docs/actors/actors.md`
+- İzinler: `src/Docs/docs/actors/permissions.md`
+- C4 diyagramları: `src/Docs/static/diagrams/c4/`
+- PlantUML diyagramları: `src/Docs/static/diagrams/modules/`
 - Modüller: `src/Modules/`
 - Frontend: `src/WebUI/`
 - Ana API: `src/MESNET.Presentation/`

@@ -1,4 +1,6 @@
 using Marten;
+using MESNET.Common.Infrastructure.Pagination;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Enrollment.Application.Dtos;
 using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Application.Queries;
@@ -8,16 +10,16 @@ namespace MESNET.Enrollment.Application.Handlers;
 
 public static class ListTeachersHandler
 {
-    public static async Task<IReadOnlyList<TeacherProfileDto>> Handle(ListTeachers query, IQuerySession session)
+    public static async Task<PagedResult<TeacherProfileDto>> Handle(ListTeachers query, IQuerySession session)
     {
         IQueryable<TeacherProfile> queryable = session.Query<TeacherProfile>();
 
         if (query.InstitutionId.HasValue)
             queryable = queryable.Where(t => t.InstitutionId == query.InstitutionId.Value);
 
-        // TeacherProfile dönem bağımsız — filtre uygulanmaz
+        queryable = queryable.ApplySearch(query.Search, t => t.FullName);
+        queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: t => t.FullName);
 
-        var teachers = await queryable.ToListAsync();
-        return teachers.Select(t => t.ToDto()).ToList();
+        return await queryable.ToPagedResultAsync(query, t => t.ToDto());
     }
 }

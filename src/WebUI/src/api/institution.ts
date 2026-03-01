@@ -1,4 +1,5 @@
 import api from 'boot/axios'
+import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 
 export interface GeoLocation {
   latitude: number
@@ -143,8 +144,8 @@ export const institutionApi = {
   updateSpecializations: (institutionId: string, fieldCode: string, data: UpdateSpecializationsRequest) =>
     api.put(`/institutions/${institutionId}/branches/${fieldCode}/specializations`, data),
 
-  listAcademicPeriods: (institutionId: string) =>
-    api.get<AcademicPeriodDto[]>(`/institutions/${institutionId}/academic-periods`),
+  listAcademicPeriods: (institutionId: string, params?: PaginationParams) =>
+    api.get<PagedResponse<AcademicPeriodDto>>(`/institutions/${institutionId}/academic-periods`, { params }),
 
   getActiveAcademicPeriod: (institutionId: string) =>
     api.get<AcademicPeriodDto>(`/institutions/${institutionId}/academic-periods/active`),

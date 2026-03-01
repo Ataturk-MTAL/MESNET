@@ -8,7 +8,7 @@
         flat
         round
         :loading="loading"
-        @click="loadDocuments"
+        @click="load"
       />
     </div>
 
@@ -16,9 +16,9 @@
     <q-card flat bordered class="q-mb-md">
       <q-card-section>
         <div class="row q-col-gutter-sm items-end">
-          <div class="col-12 col-sm-4">
+          <div class="col-12 col-sm-6">
             <q-select
-              v-model="filters.formType"
+              v-model="filterState.formType"
               :options="formTypeOptions"
               label="Form Tipi"
               filled
@@ -28,9 +28,9 @@
               map-options
             />
           </div>
-          <div class="col-12 col-sm-4">
+          <div class="col-12 col-sm-6">
             <q-select
-              v-model="filters.status"
+              v-model="filterState.status"
               :options="statusOptions"
               label="Durum"
               filled
@@ -38,16 +38,6 @@
               clearable
               emit-value
               map-options
-            />
-          </div>
-          <div class="col-12 col-sm-4">
-            <q-btn
-              color="primary"
-              label="Filtrele"
-              icon="filter_alt"
-              unelevated
-              class="full-width"
-              @click="loadDocuments"
             />
           </div>
         </div>
@@ -63,9 +53,11 @@
         :loading="loading"
         flat
         bordered
-        :rows-per-page-options="[15, 30, 50]"
+        :rows-per-page-options="[10, 20, 50]"
+        :pagination="pagination"
         no-data-label="Henüz doküman bulunmuyor"
         loading-label="Yükleniyor..."
+        @request="onRequest"
       >
         <template #body-cell-formType="{ row }">
           <q-td>
@@ -133,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import {
   reportingApi,
   downloadBlob,
@@ -143,19 +135,32 @@ import {
   type GeneratedDocumentSummaryDto,
 } from 'src/api/reporting'
 import { useNotify } from 'src/composables/useNotify'
+import { useServerPagination } from 'src/composables/useServerPagination'
 import { useAuthStore } from 'stores/auth'
 
 const notify = useNotify()
 const authStore = useAuthStore()
 
-const loading = ref(false)
 const downloading = ref<string | null>(null)
-const documents = ref<GeneratedDocumentSummaryDto[]>([])
 
-const filters = reactive({
+const filterState = reactive({
   formType: null as string | null,
   status: null as string | null,
 })
+
+const filters = computed(() => ({
+  ...(filterState.formType ? { formType: filterState.formType } : {}),
+  ...(filterState.status ? { status: filterState.status } : {}),
+  ...(authStore.user?.institutionId ? { institutionId: authStore.user.institutionId } : {}),
+}))
+
+const { rows: documents, loading, pagination, onRequest, load } =
+  useServerPagination<GeneratedDocumentSummaryDto>({
+    fetchFn: (params) => reportingApi.listDocuments(params),
+    filters,
+    defaultSortBy: 'generatedAt',
+    defaultDescending: true,
+  })
 
 const formTypeOptions = Object.entries(MEB_FORM_LABELS).map(([value, label]) => ({ value, label }))
 const statusOptions = Object.entries(DOCUMENT_STATUS_LABELS).map(([value, label]) => ({ value, label }))
@@ -168,24 +173,6 @@ const columns = [
   { name: 'generatedAt', label: 'Tarih', field: 'generatedAt', align: 'left' as const },
   { name: 'actions', label: 'İşlemler', field: 'id', align: 'center' as const },
 ]
-
-async function loadDocuments() {
-  loading.value = true
-  try {
-    const institutionId = authStore.user?.institutionId
-    const params = {
-      formType: filters.formType ?? undefined,
-      status: filters.status ?? undefined,
-      institutionId: institutionId ?? undefined,
-    }
-    const res = await reportingApi.listDocuments(params)
-    documents.value = Array.isArray(res.data) ? res.data : (res.data as any)?.data ?? []
-  } catch {
-    notify.error('Dokümanlar yüklenirken bir hata oluştu.')
-  } finally {
-    loading.value = false
-  }
-}
 
 async function downloadPdf(doc: GeneratedDocumentSummaryDto) {
   downloading.value = doc.id
@@ -200,8 +187,8 @@ async function downloadPdf(doc: GeneratedDocumentSummaryDto) {
       const label = formTypeLabel(doc.formType).replace(/\s+/g, '-').toLowerCase()
       downloadBlob(blobRes.data as Blob, `${label}-${doc.id.slice(0, 8)}.pdf`)
     }
-  } catch {
-    notify.error('PDF indirirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'PDF indirirken bir hata oluştu.')
   } finally {
     downloading.value = null
   }
@@ -211,9 +198,9 @@ async function markPrinted(id: string) {
   try {
     await reportingApi.markAsPrinted(id)
     notify.success('Yazdırıldı olarak işaretlendi.')
-    await loadDocuments()
-  } catch {
-    notify.error('İşlem başarısız.')
+    await load()
+  } catch (e) {
+    notify.apiError(e, 'İşlem başarısız.')
   }
 }
 
@@ -221,9 +208,9 @@ async function markSignedReturned(id: string) {
   try {
     await reportingApi.markAsSignedAndReturned(id)
     notify.success('İmzalanıp teslim edildi olarak işaretlendi.')
-    await loadDocuments()
-  } catch {
-    notify.error('İşlem başarısız.')
+    await load()
+  } catch (e) {
+    notify.apiError(e, 'İşlem başarısız.')
   }
 }
 
@@ -231,9 +218,9 @@ async function archiveDoc(id: string) {
   try {
     await reportingApi.markAsArchived(id)
     notify.success('Doküman arşivlendi.')
-    await loadDocuments()
-  } catch {
-    notify.error('İşlem başarısız.')
+    await load()
+  } catch (e) {
+    notify.apiError(e, 'İşlem başarısız.')
   }
 }
 
@@ -259,5 +246,5 @@ function formatDate(dateStr: string): string {
   })
 }
 
-onMounted(loadDocuments)
+onMounted(load)
 </script>

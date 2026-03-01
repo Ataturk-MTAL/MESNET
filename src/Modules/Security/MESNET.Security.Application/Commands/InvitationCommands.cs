@@ -1,3 +1,5 @@
+using MESNET.Common.Shared.Pagination;
+
 namespace MESNET.Security.Application.Commands;
 
 public sealed record CreateInvitation(
@@ -19,6 +21,6 @@ public sealed record CompleteInvitation(Guid InvitationId, string Username, stri
 public sealed record GetInvitations(
     Guid? InstitutionId = null,
     string? Status = null,
-    string? TargetRole = null);
+    string? TargetRole = null) : PagedQuery;
 
 public sealed record ResendInvitation(Guid InvitationId, string RequestedByName);

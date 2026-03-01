@@ -5,6 +5,7 @@
     <PackageReference Include="FluentValidation" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../MESNET.Common.Infrastructure/MESNET.Common.Infrastructure.csproj" />
     <ProjectReference Include="../MESNET.Institution.Core/MESNET.Institution.Core.csproj" />
     <ProjectReference Include="../MESNET.Institution.Shared/MESNET.Institution.Shared.csproj" />
     <ProjectReference Include="../../Security/MESNET.Security.Shared/MESNET.Security.Shared.csproj" />

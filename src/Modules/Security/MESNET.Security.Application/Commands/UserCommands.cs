@@ -1,3 +1,5 @@
+using MESNET.Common.Shared.Pagination;
+
 namespace MESNET.Security.Application.Commands;
 
 public sealed record CreateUser(
@@ -25,6 +27,6 @@ public sealed record GetUserAccounts(
     Guid? InstitutionId = null,
     Guid? BusinessId = null,
     string? Role = null,
-    bool? IsEnabled = null);
+    bool? IsEnabled = null) : PagedQuery;
 
 public sealed record GetUserAccount(Guid UserAccountId);

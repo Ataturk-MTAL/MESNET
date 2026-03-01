@@ -1,4 +1,6 @@
 using Marten;
+using MESNET.Common.Infrastructure.Pagination;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Contract.Application.Dtos;
 using MESNET.Contract.Application.Extensions;
 using MESNET.Contract.Application.Queries;
@@ -9,7 +11,7 @@ namespace MESNET.Contract.Application.Handlers;
 
 public static class ListContractsHandler
 {
-    public static async Task<IReadOnlyList<InternshipContractDto>> Handle(
+    public static async Task<PagedResult<InternshipContractDto>> Handle(
         ListContracts query, IQuerySession session)
     {
         IQueryable<InternshipContract> queryable = session.Query<InternshipContract>();
@@ -26,12 +28,12 @@ public static class ListContractsHandler
         if (query.AcademicPeriodId.HasValue)
             queryable = queryable.Where(c => c.AcademicPeriodId == query.AcademicPeriodId.Value);
 
-        var contracts = await queryable.ToListAsync();
-
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             ContractStatus.TryFromName(query.Status, true, out var status))
-            contracts = contracts.Where(c => c.Status.Name == status.Name).ToList();
+            queryable = queryable.Where(c => c.Status.Name == status.Name);
 
-        return contracts.Select(c => c.ToDto()).ToList();
+        queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: c => c.CreatedAt);
+
+        return await queryable.ToPagedResultAsync(query, c => c.ToDto());
     }
 }

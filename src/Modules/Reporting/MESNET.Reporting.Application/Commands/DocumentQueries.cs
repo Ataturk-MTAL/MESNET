@@ -1,3 +1,5 @@
+using MESNET.Common.Shared.Pagination;
+
 namespace MESNET.Reporting.Application.Commands;
 
 /// <summary>
@@ -17,7 +19,7 @@ public sealed record GetPendingDocuments(
     string? Status,
     string? FormType,
     Guid? TeacherId,
-    Guid? InstitutionId);
+    Guid? InstitutionId) : PagedQuery;
 
 /// <summary>
 /// Öğrenciye ait dokümanları getir

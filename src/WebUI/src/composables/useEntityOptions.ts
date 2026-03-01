@@ -23,8 +23,8 @@ export function useBusinessOptions() {
     if (loaded) return
     loading.value = true
     try {
-      const res = await businessApi.list('Approved')
-      allOptions.value = (res.data ?? []).map((b) => ({
+      const res = await businessApi.list({ status: 'Approved', pageSize: 100 })
+      allOptions.value = (res.data?.items ?? []).map((b: { name: string; id: string; address: string }) => ({
         label: b.name,
         value: b.id,
         caption: b.address,
@@ -69,8 +69,8 @@ export function useStudentOptions() {
     if (loaded) return
     loading.value = true
     try {
-      const res = await enrollmentApi.listStudents(params)
-      allOptions.value = (res.data ?? []).map((s) => ({
+      const res = await enrollmentApi.listStudents({ ...params, pageSize: 100 })
+      allOptions.value = (res.data?.items ?? []).map((s) => ({
         label: s.fullName,
         value: s.id,
         caption: `${s.branchCode} · ${s.classYear}/${s.section ?? '—'}`,
@@ -126,8 +126,9 @@ export function usePlacementOptions() {
       const res = await enrollmentApi.listPlacements({
         ...params,
         status: params?.status ?? 'Matched',
+        pageSize: 100,
       })
-      allOptions.value = (res.data ?? []).map((p) => ({
+      allOptions.value = (res.data?.items ?? []).map((p) => ({
         label: p.studentName,
         value: p.studentId,
         businessId: p.businessId,
@@ -179,8 +180,8 @@ export function useTeacherOptions() {
     if (loaded) return
     loading.value = true
     try {
-      const res = await enrollmentApi.listTeachers(params)
-      allOptions.value = (res.data ?? []).map((t) => ({
+      const res = await enrollmentApi.listTeachers({ ...params, pageSize: 100 })
+      allOptions.value = (res.data?.items ?? []).map((t) => ({
         label: t.fullName,
         value: t.id,
       }))
@@ -220,8 +221,8 @@ export function useKeycloakUserOptions() {
     if (loaded) return
     loading.value = true
     try {
-      const res = await securityApi.listUsers(params)
-      allOptions.value = (res.data ?? []).map((u) => ({
+      const res = await securityApi.listUsers({ ...params, pageSize: 100 })
+      allOptions.value = (res.data?.items ?? []).map((u) => ({
         label: u.fullName,
         value: u.keycloakUserId,
         caption: `${u.email} (${u.username})`,
