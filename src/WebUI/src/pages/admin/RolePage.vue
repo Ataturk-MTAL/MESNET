@@ -46,8 +46,8 @@ async function load() {
   try {
     const res = await securityApi.listRoles()
     roles.value = res.data ?? []
-  } catch {
-    notify.error('Roller yüklenirken bir hata oluştu.')
+  } catch (e) {
+    notify.apiError(e, 'Roller yüklenirken bir hata oluştu.')
   } finally {
     loading.value = false
   }

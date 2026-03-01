@@ -40,7 +40,7 @@ Domain/capability bazlı yaklaşımda her modül **bir iş yeteneğine** sahipti
 - Kontenjan yönetimi
 - İşletme fesih talebi (gerekçeli, Contract/Internship'e iletilir)
 
-**İş Kuralları:** Detaylar `src/Arch/BusinessRules.md` dosyasında
+**İş Kuralları:** Detaylar `./business-rules.md` dosyasında
 
 **Storage tipi:** Hybrid — İşletme bilgileri document, durum geçişleri event sourcing
 
@@ -133,7 +133,7 @@ Domain/capability bazlı yaklaşımda her modül **bir iş yeteneğine** sahipti
 - Devamsızlık limiti kontrolü
 - İş takvimi yönetimi (resmi tatiller + okul izin günleri)
 
-**İş Kuralları:** Devamsızlık gün kısıtlamaları ve limit kuralları `src/Arch/BusinessRules.md` dosyasında
+**İş Kuralları:** Devamsızlık gün kısıtlamaları ve limit kuralları `./business-rules.md` dosyasında
 
 **Storage tipi:** Event Sourcing (kimin ne zaman kayıt girdiği, onayladığı önemli)
 
@@ -165,7 +165,7 @@ Domain/capability bazlı yaklaşımda her modül **bir iş yeteneğine** sahipti
 - Öğrenci tarafından maaş onayı
 - Ödeme listesi oluşturma
 
-**İş Kuralları:** Maaş hesaplama formülleri ve devlet katkısı kuralları `src/Arch/BusinessRules.md` dosyasında
+**İş Kuralları:** Maaş hesaplama formülleri ve devlet katkısı kuralları `./business-rules.md` dosyasında
 
 **Storage tipi:** Event Sourcing (onay zinciri, audit trail kritik)
 
@@ -206,7 +206,7 @@ Domain/capability bazlı yaklaşımda her modül **bir iş yeteneğine** sahipti
 - İş yükü hesaplama (ek ders sınırları, mesafe kontrolü)
 - Dağıtım onay süreci (TASLAK → ZÜMRE_KARARI_ALINDI → MÜDÜR_ONAY_BEKLİYOR → ONAYLANDI / REDDEDİLDİ)
 
-**İş Kuralları:** Ek ders ve görevlendirme kuralları `src/Arch/BusinessRules.md` Bölüm 11'de
+**İş Kuralları:** Ek ders ve görevlendirme kuralları `./business-rules.md` Bölüm 11'de
 
 **Storage tipi:** Hybrid — VisitSchedule, TeacherSchedule, WorkloadConfig document; VisitReport, DepartmentDistribution event sourced
 

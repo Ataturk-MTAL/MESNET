@@ -1,4 +1,17 @@
 import { Notify } from 'quasar'
+import type { AxiosError } from 'axios'
+
+/**
+ * Backend ApiResponse hata yapısından kullanıcıya gösterilecek mesajı çıkarır.
+ * DomainException (422) → response.data.message (iş kuralı açıklaması)
+ * Diğer hatalar → fallback mesajı
+ */
+export function extractApiError(err: unknown, fallback: string): string {
+  const axiosErr = err as AxiosError<{ message?: string; code?: number }>
+  const msg = axiosErr?.response?.data?.message
+  if (msg && typeof msg === 'string') return msg
+  return fallback
+}
 
 export function useNotify() {
   function success(message: string) {
@@ -19,6 +32,11 @@ export function useNotify() {
     })
   }
 
+  /** Backend API hatasından mesaj çıkarır ve bildirim gösterir. */
+  function apiError(err: unknown, fallback: string) {
+    error(extractApiError(err, fallback))
+  }
+
   function warning(message: string) {
     Notify.create({
       type: 'warning',
@@ -37,5 +55,5 @@ export function useNotify() {
     })
   }
 
-  return { success, error, warning, info }
+  return { success, error, apiError, warning, info }
 }

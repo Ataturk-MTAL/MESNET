@@ -263,11 +263,20 @@ try
 
     app.UseSerilogRequestLogging();
 
-    // ──── Domain Exception / Validation Exception → 422 ApiResponse ────
+    // ──── Global Exception Handler → DomainException/ValidationException → 422, diğer → 500 ────
     app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
     {
-        var ex = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
-        if (ex is MESNET.Common.Shared.DomainException domainEx)
+        var feature = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        var ex = feature?.Error;
+
+        // InnerException kontrolü — Wolverine bazen exception'ı wrap edebilir
+        var domainEx = ex as MESNET.Common.Shared.DomainException
+            ?? ex?.InnerException as MESNET.Common.Shared.DomainException;
+
+        var validationEx = ex as FluentValidation.ValidationException
+            ?? ex?.InnerException as FluentValidation.ValidationException;
+
+        if (domainEx is not null)
         {
             ctx.Response.StatusCode = 422;
             ctx.Response.ContentType = "application/json";
@@ -277,7 +286,7 @@ try
                     .AddErrors(new { code = domainEx.Error.Code })
                     .Build());
         }
-        else if (ex is FluentValidation.ValidationException validationEx)
+        else if (validationEx is not null)
         {
             var errors = validationEx.Errors
                 .GroupBy(e => e.PropertyName)
@@ -289,6 +298,17 @@ try
                 MESNET.Common.Shared.ResponseBuilder.Fail(422)
                     .AddMessage("Doğrulama hatası")
                     .AddErrors(errors)
+                    .Build());
+        }
+        else
+        {
+            // Beklenmeyen hatalar — 500 ama yine de yapısal ApiResponse dön
+            app.Logger.LogError(ex, "İşlenmeyen hata: {Path}", ctx.Request.Path);
+            ctx.Response.StatusCode = 500;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(
+                MESNET.Common.Shared.ResponseBuilder.Fail(500)
+                    .AddMessage("Beklenmeyen bir sunucu hatası oluştu.")
                     .Build());
         }
     }));

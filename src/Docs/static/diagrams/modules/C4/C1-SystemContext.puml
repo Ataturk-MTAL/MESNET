@@ -1,0 +1,33 @@
+@startuml SystemContext
+caption C1 System Context — MESNET (Phase 1 - Çekirdek Staj Süreçleri)
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+!include $ICONURL/common.puml
+!include $ICONURL/devicons2/oauth.puml
+
+LAYOUT_WITH_LEGEND()
+
+'Person(tenant_admin, "Tenant Yöneticisi", "Phase 2 — Çoklu kurum yönetimi")
+Person(inst_admin, "Kurum Yönetimi", "Sözleşme, kayıt, devamsızlık/maaş\nyönetimi, belge onayı, parametreler")
+Person(teacher, "Koordinatör Öğretmen", "Ziyaret programı, rapor oluşturma,\ndekont onayı, öğrenci takibi")
+Person(business_rep, "İşletme Yetkilisi", "İşletme bilgileri, belge yükleme,\ndevamsızlık bildirimi, dekont")
+Person(student, "Stajyer Öğrenci", "Staj başvurusu, devamsızlık\ngörüntüleme, maaş onayı")
+
+System(mesnet, "MESNET", "Mesleki Eğitim Stajları Nitelikli,\nEşgüdümlü Takip Sistemi\n\n9 domain modülü ile modüler monolit\n(Tenant modülü Phase 2)")
+System_Ext(keycloak, "Keycloak\nOpenId Server", "Kullanıcı doğrulama ve\nyetkilendirme işlemleri", $sprite=oauth)
+
+Rel(inst_admin, mesnet, "Sözleşme, kayıt, devamsızlık\nve maaş süreçlerini yönetir")
+Rel(teacher, mesnet, "Ziyaret, rapor ve\ndekont onayı yapar")
+Rel(business_rep, mesnet, "İşletme, belge ve\ndevamsızlık işlemlerini yapar")
+Rel(student, mesnet, "Başvuru, görüntüleme\nve onay işlemleri yapar")
+
+Rel(mesnet, keycloak, "Tüm doğrulama ve yetkilendirme\niçin kullanılır")
+
+Rel(inst_admin, keycloak, "Kimlik doğrular")
+Rel(teacher, keycloak, "Kimlik doğrular")
+Rel(business_rep, keycloak, "Kimlik doğrular")
+Rel(student, keycloak, "Kimlik doğrular")
+
+@enduml

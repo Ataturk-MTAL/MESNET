@@ -206,8 +206,30 @@ Her devamsızlık kaydı, aktif `InternshipPlacement`'taki öğrenci-işletme e�
 
 1. Akademik dönem aktif mi? (`AcademicPeriodView`)
 2. Öğrenci-işletme eşleşmesi mevcut mu? (`InternshipPlacementView`)
-3. Tarih kısıtlı bir gün mü? (`WorkCalendar`)
-4. Devamsızlık türü geçerli mi? (`AbsenceType` SmartEnum)
+3. Tarih geçerli hafta içinde mi? (5.6 kuralı)
+4. Tarih kısıtlı bir gün mü? (`WorkCalendar`)
+5. Devamsızlık türü geçerli mi? (`AbsenceType` SmartEnum)
+
+### 5.6 Devamsızlık Girişi Zaman Kısıtı
+
+**MEB e-Okul Uyumu:** MEB, e-Okul sistemine devamsızlık girişi için **1 hafta** süre tanımaktadır. MESNET aynı kuralı uygular.
+
+- Devamsızlık girişi **sadece geçerli hafta** (Pazartesi 00:00 – Pazar 23:59 UTC) için yapılabilir
+- Geriye dönük (geçmiş hafta) veya ileriye dönük (gelecek hafta) devamsızlık girişi **engellenir**
+- Backend'de `MarkAttendanceHandler` tarih kontrolü yapar: geçerli hafta dışındaki tarihler `DomainException` ile reddedilir
+- Onay işlemi (`ApproveAttendance`) için de aynı hafta kısıtı geçerlidir
+
+**Hata kodu:** `ATTENDANCE_OUTSIDE_CURRENT_WEEK`
+
+### 5.7 Otomatik Onay ve Uyarı Mekanizması
+
+İşletme tarafından girilen ancak koordinatör öğretmen tarafından **7 gün içinde onaylanmamış** devamsızlık kayıtları (`Pending` durumunda) için:
+
+1. **7. günün başlangıcında** (UTC 00:00) kayıt otomatik olarak `Recorded` durumuna geçirilir
+2. İlgili **müdür yardımcısına** bildirim gönderilir: "X öğrencisinin Y tarihli devamsızlığı otomatik onaylandı — koordinatör öğretmen tarafından zamanında onaylanmadı"
+3. Geç bildirim durumu kayıt altına alınır
+
+**Teknik:** Wolverine durable scheduled messaging ile günlük çalışan `AutoApproveExpiredAttendance` komutu
 
 ---
 

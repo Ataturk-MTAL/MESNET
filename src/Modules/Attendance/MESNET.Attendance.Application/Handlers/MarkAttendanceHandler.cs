@@ -30,6 +30,16 @@ public static class MarkAttendanceHandler
             throw new DomainException("ATTENDANCE_INVALID_PLACEMENT",
                 "Bu öğrenci-işletme eşleşmesi bulunamadı. Devamsızlık girişi yapılamaz.");
 
+        // Geçerli hafta kısıtı — MEB e-Okul uyumu: sadece bu hafta için giriş yapılabilir
+        var today = DateTime.UtcNow.Date;
+        var daysSinceMonday = ((int)today.DayOfWeek + 6) % 7; // Pazartesi = 0
+        var weekStart = today.AddDays(-daysSinceMonday);
+        var weekEnd = weekStart.AddDays(6); // Pazar
+
+        if (command.Date.Date < weekStart || command.Date.Date > weekEnd)
+            throw new DomainException("ATTENDANCE_OUTSIDE_CURRENT_WEEK",
+                "Devamsızlık girişi sadece geçerli hafta için yapılabilir. Geriye veya ileriye dönük giriş yapılamaz.");
+
         var calendar = session.Query<WorkCalendar>()
             .FirstOrDefault(c => c.InstitutionId == command.InstitutionId && c.Year == command.Date.Year);
 

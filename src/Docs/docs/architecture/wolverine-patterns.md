@@ -579,7 +579,7 @@ wolverine.wolverine_outgoing_messages
 ### Kaynak
 - [Marten Event Sourcing](https://martendb.io/events/)
 - [Wolverine + Marten Integration](https://wolverinefx.net/guide/durability/marten/event-sourcing.html)
-- `src/Arch/ModuleDesign.md`
+- [Modül Tasarımı](./module-design.md)
 
 ---
 
