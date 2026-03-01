@@ -14,7 +14,7 @@ public static class GetAttendanceRecordHandler
         GetAttendanceRecord query, IQuerySession session)
     {
         var record = await session.Events.AggregateStreamAsync<AttendanceRecord>(query.AttendanceId);
-        if (record is null)
+        if (record is null || record.IsDeleted)
             throw new DomainException(AttendanceErrors.NotFound(query.AttendanceId));
 
         return record.ToDto();

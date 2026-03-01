@@ -72,6 +72,9 @@ export const attendanceApi = {
   correct: (attendanceId: string, data: CorrectAttendanceRequest) =>
     api.post(`/attendance/${attendanceId}/correct`, data),
 
+  remove: (attendanceId: string) =>
+    api.delete(`/attendance/${attendanceId}`),
+
   uploadHealthReport: (attendanceId: string, file: File) => {
     const formData = new FormData()
     formData.append('file', file)

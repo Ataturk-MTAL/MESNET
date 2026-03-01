@@ -132,6 +132,15 @@
               @click="openCorrect(row)"
             />
           </PermissionGuard>
+          <PermissionGuard :permission="Permissions.Attendance.Delete">
+            <q-btn
+              v-if="isWithinDeleteWindow(row.date)"
+              flat round dense icon="delete"
+              color="negative"
+              title="Sil"
+              @click="confirmDelete(row)"
+            />
+          </PermissionGuard>
         </q-td>
       </template>
     </AppTable>
@@ -387,6 +396,34 @@ const columns: QTableProps['columns'] = [
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function isWithinDeleteWindow(dateStr: string) {
+  const recordDate = new Date(dateStr)
+  const now = new Date()
+  const diffDays = Math.floor((now.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24))
+  return diffDays <= 7
+}
+
+function confirmDelete(row: AttendanceRecordDto) {
+  $q.dialog({
+    title: 'Devamsızlık Kaydını Sil',
+    message: `${formatDate(row.date)} tarihli devamsızlık kaydını silmek istediğinize emin misiniz?`,
+    cancel: { label: 'İptal', flat: true },
+    ok: { label: 'Sil', color: 'negative' },
+    persistent: true,
+  }).onOk(async () => {
+    saving.value = true
+    try {
+      await attendanceApi.remove(row.id)
+      notify.success('Devamsızlık kaydı silindi.')
+      await load()
+    } catch (e) {
+      notify.apiError(e, 'Silme sırasında bir hata oluştu.')
+    } finally {
+      saving.value = false
+    }
+  })
 }
 
 

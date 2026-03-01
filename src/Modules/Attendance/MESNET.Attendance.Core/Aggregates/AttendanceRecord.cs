@@ -19,7 +19,8 @@ public sealed record AttendanceRecord(
     string? ApprovedBy,
     DateTime? ApprovedAt,
     string? VerifiedBy,
-    DateTime? VerifiedAt)
+    DateTime? VerifiedAt,
+    bool IsDeleted = false)
 {
     public static AttendanceRecord Create(AttendanceMarked e) => new(
         e.AttendanceId,
@@ -65,5 +66,10 @@ public sealed record AttendanceRecord(
     {
         HealthReportUrl = e.ReportUrl,
         Type = AbsenceType.HealthReport
+    };
+
+    public AttendanceRecord Apply(AttendanceDeleted _) => this with
+    {
+        IsDeleted = true
     };
 }

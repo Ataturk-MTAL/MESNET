@@ -639,6 +639,14 @@ const transferBusinessOpts = useBusinessOptions()
 const branchOpts = useBranchOptions()
 
 const saving = ref(false)
+const selected = ref<StudentProfileDto | null>(null)
+const detailOpen = ref(false)
+const addDialog = ref(false)
+const editDialog = ref(false)
+const placementDialog = ref(false)
+const transferDialog = ref(false)
+const branchFilter = ref<string | null>(null)
+const statusFilter = ref<string | null>(null)
 
 // ── Server-side pagination ──
 const filters = computed(() => ({
@@ -653,14 +661,6 @@ const { rows: students, loading, pagination, search, onRequest, onSearch, load }
     filters,
     defaultSortBy: 'fullName',
   })
-const selected = ref<StudentProfileDto | null>(null)
-const detailOpen = ref(false)
-const addDialog = ref(false)
-const editDialog = ref(false)
-const placementDialog = ref(false)
-const transferDialog = ref(false)
-const branchFilter = ref<string | null>(null)
-const statusFilter = ref<string | null>(null)
 // activePlacementId: transfer için mevcut yerleştirme ID'si
 const activePlacementId = ref<string | null>(null)
 

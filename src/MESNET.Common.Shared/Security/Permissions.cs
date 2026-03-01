@@ -162,6 +162,9 @@ public static class Permissions
 
         /// <summary>Devamsızlık kaydını doğrulama ve onaylama.</summary>
         public const string Approve = "attendance:approve";
+
+        /// <summary>Devamsızlık kaydını silme (son 7 gün, müdür/müdür yardımcısı).</summary>
+        public const string Delete = "attendance:delete";
     }
 
     /// <summary>

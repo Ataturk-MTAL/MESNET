@@ -51,8 +51,7 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
         ...filterValues,
         page: p.page,
         pageSize: p.rowsPerPage,
-        ...(p.sortBy ? { sortBy: p.sortBy } : {}),
-        ...(p.descending ? { descending: true } : {}),
+        ...(p.sortBy ? { sortBy: p.sortBy, descending: p.descending ?? false } : {}),
         ...(search.value.trim() ? { search: search.value.trim() } : {}),
       }
       const { data } = await fetchFn(params)
@@ -62,6 +61,8 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
         page: data.page,
         rowsPerPage: data.pageSize,
         rowsNumber: data.totalCount,
+        sortBy: p.sortBy,
+        descending: p.descending,
       }
     } finally {
       loading.value = false

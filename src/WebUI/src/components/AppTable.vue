@@ -27,9 +27,11 @@
       :loading="loading"
       :rows-per-page-options="[10, 20, 50]"
       :no-data-label="noDataLabel"
-      :pagination="localPagination"
+      :pagination="tableLocalPagination"
       flat
       bordered
+      binary-state-sort
+      @update:pagination="onTablePaginationUpdate"
       @request="onTableRequest"
     >
       <template v-for="(_, name) in $slots" #[name]="slotProps">
@@ -53,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 
 type QTablePagination = NonNullable<QTableProps['pagination']>
@@ -87,16 +89,31 @@ const emit = defineEmits<{
 const isServerSide = computed(() => props.pagination !== undefined)
 
 /**
- * Server-side modda: parent'tan gelen pagination (rowsNumber sayesinde q-table server moduna geçer).
- * Client-side modda: boş obje — q-table kendi internal pagination'ını kullanır.
+ * q-table'a verilen local ref — q-table bunu okuyup yazabilir.
+ * Parent'tan gelen prop değiştiğinde senkronize edilir.
  */
-const localPagination = computed({
-  get: () => (isServerSide.value ? props.pagination! : {} as QTablePagination),
-  set: () => { /* parent yönetir, set ignore edilir */ },
-})
+const tableLocalPagination = ref<QTablePagination>({})
+
+watch(
+  () => props.pagination,
+  (val) => {
+    if (val) {
+      tableLocalPagination.value = { ...val }
+    }
+  },
+  { immediate: true, deep: true },
+)
 
 function onSearchInput(val: string | number | null) {
   emit('search', String(val ?? ''))
+}
+
+/**
+ * q-table internal pagination değiştiğinde (sort tıklaması vb.)
+ * local ref'i güncelle — böylece q-table header okları doğru gösterilir.
+ */
+function onTablePaginationUpdate(newPag: QTablePagination) {
+  tableLocalPagination.value = { ...tableLocalPagination.value, ...newPag }
 }
 
 function onTableRequest(reqProps: { pagination: QTablePagination }) {

@@ -14,7 +14,8 @@ public static class ListAttendanceRecordsHandler
     public static async Task<PagedResult<AttendanceRecordDto>> Handle(
         ListAttendanceRecords query, IQuerySession session)
     {
-        IQueryable<AttendanceRecord> queryable = session.Query<AttendanceRecord>();
+        IQueryable<AttendanceRecord> queryable = session.Query<AttendanceRecord>()
+            .Where(r => !r.IsDeleted);
 
         if (query.StudentId.HasValue)
             queryable = queryable.Where(r => r.StudentId == query.StudentId.Value);

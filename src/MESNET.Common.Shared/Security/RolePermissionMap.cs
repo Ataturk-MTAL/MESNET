@@ -3,7 +3,7 @@ namespace MESNET.Common.Shared.Security;
 /// <summary>
 /// Rol → Permission eşleştirmesi.
 /// Wildcard desteği: "student:*" → student: ile başlayan tüm izinleri kapsar.
-/// Kaynak: src/Arch/ActorPermissions.md
+/// Kaynak: src/Docs/docs/actors/permissions.md
 /// </summary>
 public static class RolePermissionMap
 {
@@ -90,6 +90,7 @@ public static class RolePermissionMap
             Permissions.Coordinator.Schedule,
             Permissions.Attendance.View,
             Permissions.Attendance.Report,
+            Permissions.Attendance.Delete,
             Permissions.Document.View,
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage

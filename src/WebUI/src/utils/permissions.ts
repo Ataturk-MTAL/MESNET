@@ -68,6 +68,7 @@ export const Permissions = {
     Report: 'attendance:report',
     Upload: 'attendance:upload',
     Approve: 'attendance:approve',
+    Delete: 'attendance:delete',
   },
 
   Salary: {

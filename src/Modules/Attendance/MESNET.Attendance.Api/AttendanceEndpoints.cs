@@ -22,6 +22,7 @@ public static class AttendanceEndpoints
         group.MapPost("/{attendanceId:guid}/verify", PostVerify).RequireAuthorization(Permissions.Attendance.Approve);
         group.MapPost("/{attendanceId:guid}/correct", PostCorrect).RequireAuthorization(Permissions.Attendance.Manage);
         group.MapPost("/{attendanceId:guid}/health-report", PostHealthReport).RequireAuthorization(Permissions.Attendance.Manage);
+        group.MapDelete("/{attendanceId:guid}", Delete).RequireAuthorization(Permissions.Attendance.Delete);
         group.MapGet("/{attendanceId:guid}", Get).RequireAuthorization(Permissions.Attendance.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Attendance.View);
     }
@@ -76,6 +77,16 @@ public static class AttendanceEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Sağlık raporu ilişkilendirildi.")
+            .Build());
+    }
+
+    private static async Task<IResult> Delete(
+        Guid attendanceId, IMessageBus bus)
+    {
+        await bus.InvokeAsync(new DeleteAttendance(attendanceId));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Devamsızlık kaydı silindi.")
             .Build());
     }
 
