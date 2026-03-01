@@ -169,6 +169,22 @@
           </q-item>
 
           <q-item
+            v-if="authStore.hasPermission(Permissions.Coordinator.Schedule)"
+            clickable v-ripple :to="{ name: 'TeacherSchedule' }"
+          >
+            <q-item-section avatar><q-icon name="calendar_month" /></q-item-section>
+            <q-item-section>Ders Programi</q-item-section>
+          </q-item>
+
+          <q-item
+            v-if="authStore.hasPermission(Permissions.DepartmentHead.Distribution)"
+            clickable v-ripple :to="{ name: 'BusinessAssignment' }"
+          >
+            <q-item-section avatar><q-icon name="assignment_ind" /></q-item-section>
+            <q-item-section>Isletme Dagitimi</q-item-section>
+          </q-item>
+
+          <q-item
             v-if="authStore.hasPermission(Permissions.Document.View)"
             clickable v-ripple :to="{ name: 'Documents' }"
           >

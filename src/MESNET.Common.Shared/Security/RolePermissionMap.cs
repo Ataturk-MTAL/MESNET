@@ -26,6 +26,7 @@ public static class RolePermissionMap
         [MesnetRoles.InstitutionStaff] =
         [
             "user:*",
+            "department:*",                        // işletme dağıtımı yönetimi
             Permissions.Institution.View,
             Permissions.Student.View,
             Permissions.Student.Manage,

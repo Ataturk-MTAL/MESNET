@@ -45,6 +45,16 @@ var minio = builder.AddContainer("minio", "minio/minio", "latest")
     .WithHttpHealthCheck("/minio/health/live", endpointName: "api")
     .WithLifetime(ContainerLifetime.Persistent);
 
+// OSRM — Open Source Routing Machine (rota bazlı mesafe hesaplama)
+// İlk çalıştırmada Türkiye haritasını indirip hazırlar (~5-15 dk), sonraki çalıştırmalarda anında başlar
+var osrm = builder.AddContainer("osrm", "osrm/osrm-backend", "latest")
+    .WithHttpEndpoint(port: 5002, targetPort: 5000, name: "osrm")
+    .WithVolume("osrm-data", "/data")
+    .WithBindMount("./osrm/init-osrm.sh", "/init-osrm.sh")
+    .WithEntrypoint("/bin/bash")
+    .WithArgs("/init-osrm.sh")
+    .WithLifetime(ContainerLifetime.Persistent);
+
 var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WithExternalHttpEndpoints()
     .WithReference(postgres)
@@ -55,6 +65,7 @@ var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WithEnvironment("MinioStorage__SecretKey", minioPassword)
     .WithEnvironment("SmtpSettings__Host", mailpit.Resource.Host)
     .WithEnvironment("SmtpSettings__Port", mailpit.Resource.Port)
+    .WithEnvironment("Osrm__BaseUrl", osrm.GetEndpoint("osrm"))
     .WaitFor(postgres)
     .WaitFor(rabbitmq)
     .WaitFor(minio)

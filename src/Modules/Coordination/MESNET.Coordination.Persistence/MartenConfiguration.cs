@@ -8,6 +8,18 @@ public static class MartenConfiguration
 {
     public static void ConfigureCoordinationSchema(this StoreOptions options)
     {
+        // CoordinationConfig (kurum başına tek document)
+        options.Schema.For<CoordinationConfig>().DatabaseSchemaName("coordination");
+        options.Schema.For<CoordinationConfig>().Index(x => x.InstitutionId);
+
+        // BusinessCoordinationView (işletme-öğretmen atama read model)
+        options.Schema.For<BusinessCoordinationView>().DatabaseSchemaName("coordination");
+        options.Schema.For<BusinessCoordinationView>().Index(x => x.InstitutionId);
+        options.Schema.For<BusinessCoordinationView>().Index(x => x.BranchCode);
+        options.Schema.For<BusinessCoordinationView>().Index(x => x.AssignedTeacherId);
+        options.Schema.For<BusinessCoordinationView>()
+            .Index(x => new { x.InstitutionId, x.BranchCode }, x => x.IsUnique = false);
+
         // Schema name
         options.Schema.For<TeacherSchedule>().DatabaseSchemaName("coordination");
 

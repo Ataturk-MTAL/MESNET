@@ -108,6 +108,22 @@ const router = createRouter({
           meta: { permissions: ['coordinator:visit:manage', 'coordinator:schedule:manage'] },
         },
 
+        // Ders Programı
+        {
+          path: 'coordination/schedule',
+          name: 'TeacherSchedule',
+          component: () => import('pages/coordination/TeacherSchedulePage.vue'),
+          meta: { permissions: ['coordinator:schedule:manage'] },
+        },
+
+        // İşletme Dağıtımı
+        {
+          path: 'coordination/assignments',
+          name: 'BusinessAssignment',
+          component: () => import('pages/coordination/BusinessAssignmentPage.vue'),
+          meta: { permissions: ['department:distribution:manage'] },
+        },
+
         // Belgeler
         {
           path: 'documents',

@@ -94,7 +94,7 @@ try
     builder.Services.AddContractModule();
     builder.Services.AddAttendanceModule();
     builder.Services.AddPaymentModule();
-    builder.Services.AddCoordinationModule();
+    builder.Services.AddCoordinationModule(builder.Configuration);
     builder.Services.AddInternshipModule();
     builder.Services.AddReportingModule();
     builder.Services.AddSecurityModule();

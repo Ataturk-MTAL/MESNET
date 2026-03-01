@@ -88,4 +88,21 @@ public static class CoordinationErrors
 
     public static Error AcademicPeriodClosed(Guid id) =>
         new("Coordination.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, işlem yapılamaz: {id}");
+
+    // Coordination Assignment
+    public static Error BusinessNotFound(Guid businessId) =>
+        new("Coordination.BusinessNotFound",
+            $"İşletme koordinasyon kaydı bulunamadı: {businessId}");
+
+    public static Error AssignedHoursExceedMax(int assigned, int max) =>
+        new("Coordination.AssignedHoursExceedMax",
+            $"Takdir edilen saat ({assigned}) verilebilir saati ({max}) aşamaz.");
+
+    public static Error TotalAssignedHoursExceedAvailable(int totalAssigned, int totalAvailable) =>
+        new("Coordination.TotalAssignedHoursExceedAvailable",
+            $"Toplam dağıtılan saat ({totalAssigned}) toplam verilebilir saati ({totalAvailable}) aşamaz.");
+
+    public static Error InvalidDistance(double distance) =>
+        new("Coordination.InvalidDistance",
+            $"Geçersiz mesafe değeri: {distance}. Mesafe 0'dan büyük olmalıdır.");
 }

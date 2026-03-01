@@ -83,6 +83,145 @@ export const EVALUATION_RESULTS = [
   { label: 'Şartlı Uygun', value: 'Conditional' },
 ] as const
 
+// ── Teacher Schedule DTOs ──
+
+export interface TeacherScheduleDto {
+  id: string
+  teacherId: string
+  institutionId: string
+  academicPeriodId: string
+  academicYear: number
+  semester: string
+  weeklySchedule: DailyScheduleDto[]
+  createdAt: string
+  updatedAt: string | null
+  createdBy: string
+}
+
+export interface DailyScheduleDto {
+  day: string // "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday"
+  periods: PeriodSlotDto[]
+}
+
+export interface PeriodSlotDto {
+  periodNumber: number
+  status: string // "Occupied" | "Free"
+  courseName: string | null
+  assignedBusinessId: string | null
+}
+
+export interface FreeSlotDto {
+  day: string
+  periodNumber: number
+  assignedBusinessId: string | null
+}
+
+export interface UpsertScheduleRequest {
+  institutionId: string
+  academicPeriodId: string
+  academicYear: number
+  semester: string
+  weeklySchedule: DailyScheduleInput[]
+  updatedBy: string
+}
+
+export interface DailyScheduleInput {
+  day: string
+  periods: PeriodSlotInput[]
+}
+
+export interface PeriodSlotInput {
+  periodNumber: number
+  status: string // "Occupied" | "Free"
+  courseName?: string
+}
+
+// ── Coordination Config DTOs ──
+
+export interface DistanceHourRule {
+  maxDistanceKm: number
+  hours: number
+}
+
+export interface CoordinationConfigDto {
+  id: string
+  institutionId: string
+  distanceHourRules: DistanceHourRule[]
+  isMetropolitan: boolean
+  maxWeeklyExtraHours: number
+  updatedAt: string
+  updatedBy: string
+}
+
+export interface UpsertCoordinationConfigRequest {
+  distanceHourRules?: DistanceHourRule[]
+  isMetropolitan?: boolean
+  maxWeeklyExtraHours?: number
+  updatedBy: string
+}
+
+// ── Business Assignment DTOs ──
+
+export interface BusinessAssignmentDto {
+  businessId: string
+  businessName: string
+  address: string | null
+  district: string | null
+  distanceToSchoolKm: number | null
+  isManualDistance: boolean
+  maxCoordinationHours: number
+  assignedHours: number
+  assignedTeacherId: string | null
+  assignedTeacherName: string | null
+  assignedDay: string | null
+  activeStudentCount: number
+  branchCode: string
+  branchName: string
+}
+
+export interface CoordinationSummaryDto {
+  totalAvailableHours: number
+  totalAssignedHours: number
+  remainingHours: number
+  assignedBusinessCount: number
+  unassignedBusinessCount: number
+  teacherWorkloads: TeacherWorkloadSummaryDto[]
+}
+
+export interface TeacherWorkloadSummaryDto {
+  teacherId: string
+  teacherName: string
+  assignedHours: number
+  businessCount: number
+}
+
+export interface TeacherWorkloadDto {
+  teacherId: string
+  totalAssignedHours: number
+  businessCount: number
+  businesses: TeacherBusinessAssignmentDto[]
+}
+
+export interface TeacherBusinessAssignmentDto {
+  businessId: string
+  businessName: string
+  assignedHours: number
+  assignedDay: string | null
+}
+
+export interface AssignBusinessRequest {
+  businessId: string
+  teacherId: string
+  teacherName: string
+  assignedHours: number
+  assignedDay: string
+  assignedBy: string
+}
+
+export interface SetManualDistanceRequest {
+  distanceKm: number
+}
+
 export const coordinationApi = {
   listVisits: (params?: { teacherId?: string; businessId?: string; academicPeriodId?: string; fromDate?: string; toDate?: string } & PaginationParams) =>
     api.get<PagedResponse<GuidanceVisitDto>>('/coordination/guidance-visits', { params }),
@@ -119,4 +258,57 @@ export const coordinationApi = {
 
   approveActivityReport: (reportId: string) =>
     api.post(`/coordination/activity-reports/${reportId}/approve`),
+
+  // ── Teacher Schedule ──
+
+  getTeacherSchedule: (teacherId: string, year: number, semester: string) =>
+    api.get<TeacherScheduleDto>(`/coordination/teachers/${teacherId}/schedule`, {
+      params: { year, semester },
+    }),
+
+  upsertTeacherSchedule: (teacherId: string, data: UpsertScheduleRequest) =>
+    api.post<{ scheduleId: string }>(`/coordination/teachers/${teacherId}/schedule`, data),
+
+  getTeacherFreeSlots: (teacherId: string, year: number, semester: string, day?: string) =>
+    api.get<{ freeSlots: FreeSlotDto[] }>(`/coordination/teachers/${teacherId}/free-slots`, {
+      params: { year, semester, day },
+    }),
+
+  assignBusinessToSlot: (teacherId: string, data: {
+    academicYear: number
+    semester: string
+    day: string
+    periodNumber: number
+    businessId: string
+    assignedBy: string
+  }) =>
+    api.post(`/coordination/teachers/${teacherId}/assign-business`, data),
+
+  // ── Coordination Config ──
+
+  getConfig: () =>
+    api.get<CoordinationConfigDto>('/coordination/teachers/config'),
+
+  upsertConfig: (data: UpsertCoordinationConfigRequest) =>
+    api.post('/coordination/teachers/config', data),
+
+  // ── Business Assignment ──
+
+  listAssignments: (params?: { branchCode?: string; teacherId?: string; assignedOnly?: boolean }) =>
+    api.get<BusinessAssignmentDto[]>('/coordination/teachers/assignments', { params }),
+
+  assignBusiness: (data: AssignBusinessRequest) =>
+    api.post('/coordination/teachers/assignments', data),
+
+  setManualDistance: (businessId: string, data: SetManualDistanceRequest) =>
+    api.post(`/coordination/teachers/assignments/${businessId}/distance`, data),
+
+  getCoordinationSummary: (params?: { branchCode?: string }) =>
+    api.get<CoordinationSummaryDto>('/coordination/teachers/summary', { params }),
+
+  getTeacherWorkload: (teacherId: string) =>
+    api.get<TeacherWorkloadDto>(`/coordination/teachers/${teacherId}/workload`),
+
+  recalculateDistances: () =>
+    api.post('/coordination/teachers/recalculate-distances'),
 }

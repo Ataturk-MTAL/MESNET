@@ -1,0 +1,50 @@
+using Marten;
+using MESNET.Coordination.Application.Commands;
+using MESNET.Coordination.Core.Entities;
+
+namespace MESNET.Coordination.Application.Handlers;
+
+public static class UpsertCoordinationConfigHandler
+{
+    public static async Task Handle(
+        UpsertCoordinationConfig command,
+        IDocumentSession session,
+        CancellationToken cancellationToken)
+    {
+        var existing = await session.Query<CoordinationConfig>()
+            .FirstOrDefaultAsync(c => c.InstitutionId == command.InstitutionId, cancellationToken);
+
+        if (existing is not null)
+        {
+            if (command.DistanceHourRules is not null)
+                existing.DistanceHourRules = command.DistanceHourRules;
+            if (command.IsMetropolitan.HasValue)
+                existing.IsMetropolitan = command.IsMetropolitan.Value;
+            if (command.MaxWeeklyExtraHours.HasValue)
+                existing.MaxWeeklyExtraHours = command.MaxWeeklyExtraHours.Value;
+
+            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedBy = command.UpdatedBy;
+            session.Store(existing);
+        }
+        else
+        {
+            var config = new CoordinationConfig
+            {
+                Id = command.InstitutionId, // tek document per kurum
+                InstitutionId = command.InstitutionId,
+                UpdatedAt = DateTime.UtcNow,
+                UpdatedBy = command.UpdatedBy,
+            };
+
+            if (command.DistanceHourRules is not null)
+                config.DistanceHourRules = command.DistanceHourRules;
+            if (command.IsMetropolitan.HasValue)
+                config.IsMetropolitan = command.IsMetropolitan.Value;
+            if (command.MaxWeeklyExtraHours.HasValue)
+                config.MaxWeeklyExtraHours = command.MaxWeeklyExtraHours.Value;
+
+            session.Store(config);
+        }
+    }
+}
