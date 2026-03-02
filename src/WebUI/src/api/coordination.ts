@@ -96,6 +96,7 @@ export interface TeacherScheduleDto {
   createdAt: string
   updatedAt: string | null
   createdBy: string
+  version: number
 }
 
 export interface DailyScheduleDto {
@@ -136,6 +137,36 @@ export interface PeriodSlotInput {
   courseName?: string
 }
 
+// ── Schedule History DTOs ──
+
+export interface ScheduleStreamSummaryDto {
+  scheduleId: string
+  academicYear: number
+  semester: string
+  versionCount: number
+  createdAt: string
+  lastUpdatedAt: string | null
+  createdBy: string
+  lastUpdatedBy: string | null
+}
+
+export interface ScheduleVersionDto {
+  version: number
+  eventType: string
+  timestamp: string
+  updatedBy: string
+  weeklySchedule: DailyScheduleDto[]
+}
+
+export interface ScheduleHistoryDto {
+  scheduleId: string
+  teacherId: string
+  academicYear: number
+  semester: string
+  currentVersion: number
+  versions: ScheduleVersionDto[]
+}
+
 // ── Coordination Config DTOs ──
 
 export interface DistanceHourRule {
@@ -174,6 +205,7 @@ export interface BusinessAssignmentDto {
   assignedTeacherId: string | null
   assignedTeacherName: string | null
   assignedDay: string | null
+  assignedPeriodNumber: number | null
   activeStudentCount: number
   branchCode: string
   branchName: string
@@ -215,7 +247,46 @@ export interface AssignBusinessRequest {
   teacherName: string
   assignedHours: number
   assignedDay: string
+  periodNumber?: number
   assignedBy: string
+}
+
+// ── Teacher Overview DTOs ──
+
+export interface TeacherOverviewDto {
+  teacherId: string
+  totalAssignedHours: number
+  businessCount: number
+  scheduleExists: boolean
+  freeSlotsByDay: Record<string, number>   // gün → boş slot sayısı
+  totalSlotsByDay: Record<string, number>  // gün → toplam serbest slot
+  businesses: TeacherBusinessAssignmentDto[]
+}
+
+export interface TeacherSummaryRowDto {
+  teacherId: string
+  teacherName: string
+  businessCount: number
+  assignedHours: number
+  scheduleExists: boolean
+  freeSlotsByDay: Record<string, number>
+}
+
+// ── Business Cluster DTO ──
+
+export interface BusinessClusterDto {
+  businessId: string
+  businessName: string
+  latitude: number
+  longitude: number
+  district: string | null
+  branchCode: string
+  branchName: string
+  clusterId: number | null   // null = gürültü (outlier)
+  assignedTeacherName: string | null
+  isAssigned: boolean
+  activeStudentCount: number
+  distanceToSchoolKm: number | null
 }
 
 export interface SetManualDistanceRequest {
@@ -274,6 +345,19 @@ export const coordinationApi = {
       params: { year, semester, day },
     }),
 
+  getCurrentSchedule: (teacherId: string, academicPeriodId: string, semester: string) =>
+    api.get<TeacherScheduleDto>(`/coordination/teachers/${teacherId}/schedule/current`, {
+      params: { academicPeriodId, semester },
+    }),
+
+  getScheduleStreams: (teacherId: string) =>
+    api.get<ScheduleStreamSummaryDto[]>(`/coordination/teachers/${teacherId}/schedule/streams`),
+
+  getScheduleHistory: (teacherId: string, scheduleId?: string) =>
+    api.get<ScheduleHistoryDto>(`/coordination/teachers/${teacherId}/schedule/history`, {
+      params: scheduleId ? { scheduleId } : undefined,
+    }),
+
   assignBusinessToSlot: (teacherId: string, data: {
     academicYear: number
     semester: string
@@ -294,7 +378,7 @@ export const coordinationApi = {
 
   // ── Business Assignment ──
 
-  listAssignments: (params?: { branchCode?: string; teacherId?: string; assignedOnly?: boolean }) =>
+  listAssignments: (params?: { branchCode?: string; teacherId?: string; assignedOnly?: boolean; academicPeriodId?: string }) =>
     api.get<BusinessAssignmentDto[]>('/coordination/teachers/assignments', { params }),
 
   assignBusiness: (data: AssignBusinessRequest) =>
@@ -303,12 +387,34 @@ export const coordinationApi = {
   setManualDistance: (businessId: string, data: SetManualDistanceRequest) =>
     api.post(`/coordination/teachers/assignments/${businessId}/distance`, data),
 
-  getCoordinationSummary: (params?: { branchCode?: string }) =>
+  getCoordinationSummary: (params?: { branchCode?: string; academicPeriodId?: string }) =>
     api.get<CoordinationSummaryDto>('/coordination/teachers/summary', { params }),
 
   getTeacherWorkload: (teacherId: string) =>
     api.get<TeacherWorkloadDto>(`/coordination/teachers/${teacherId}/workload`),
 
+  unassignBusiness: (businessId: string) =>
+    api.delete(`/coordination/teachers/assignments/${businessId}`),
+
   recalculateDistances: () =>
     api.post('/coordination/teachers/recalculate-distances'),
+
+  // ── Teacher Overview ──
+
+  getTeacherOverview: (teacherId: string, academicPeriodId: string, semester: string) =>
+    api.get<TeacherOverviewDto>(`/coordination/teachers/${teacherId}/overview`, {
+      params: { academicPeriodId, semester },
+    }),
+
+  getAllTeachersOverview: (academicPeriodId: string, semester: string, branchCode?: string) =>
+    api.get<TeacherSummaryRowDto[]>('/coordination/teachers/overview-all', {
+      params: { academicPeriodId, semester, branchCode },
+    }),
+
+  // ── Business Clusters ──
+
+  getBusinessClusters: (academicPeriodId: string, epsMeters = 500, minPoints = 3) =>
+    api.get<BusinessClusterDto[]>('/coordination/teachers/business-clusters', {
+      params: { academicPeriodId, epsMeters, minPoints },
+    }),
 }

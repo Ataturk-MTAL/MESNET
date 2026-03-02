@@ -47,13 +47,13 @@ public static class InstitutionSeeder
         var data = await api.PostAsync("/api/institutions", new
         {
             tenantId = Guid.Parse("10000000-0000-0000-0000-000000000001"),
-            institutionCode = 123456,
-            fullName = "Ankara Mesleki ve Teknik Anadolu Lisesi",
-            address = "Yenimahalle, Ankara",
-            phoneNumber = "0312 555 0001",
-            email = "ankara.mtal@meb.gov.tr",
-            webUrl = "https://ankaramtal.meb.k12.tr",
-            location = new { latitude = 39.9334, longitude = 32.8597 }
+            institutionCode = 967523,
+            fullName = "Atatürk Mesleki ve Teknik Anadolu Lisesi",
+            address = "Toroslar, Mersin",
+            phoneNumber = "0324 555 0001",
+            email = "mersinataturk.mtal@meb.gov.tr",
+            webUrl = "https://mersinataturkmtal.meb.k12.tr",
+            location = new { latitude = 36.7956, longitude = 34.6119 }
         });
 
         if (data is null) return null;

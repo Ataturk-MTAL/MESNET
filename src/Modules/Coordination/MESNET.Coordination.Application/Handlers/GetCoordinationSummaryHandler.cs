@@ -18,6 +18,9 @@ public static class GetCoordinationSummaryHandler
         if (!string.IsNullOrWhiteSpace(query.BranchCode))
             queryable = queryable.Where(v => v.BranchCode == query.BranchCode);
 
+        if (query.AcademicPeriodId.HasValue)
+            queryable = queryable.Where(v => v.AcademicPeriodId == query.AcademicPeriodId.Value);
+
         var views = await queryable.ToListAsync(cancellationToken);
 
         var totalAvailable = views.Sum(v => v.MaxCoordinationHours);

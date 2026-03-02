@@ -235,6 +235,7 @@ try
 
     var app = builder.Build();
 
+
     // MinIO bucket initialization (startup)
     using (var scope = app.Services.CreateScope())
     {

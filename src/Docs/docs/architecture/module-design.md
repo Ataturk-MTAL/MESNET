@@ -20,6 +20,57 @@ Aktör bazlı modülleme (Student modülü, Teacher modülü gibi) şu sorunlara
 
 Domain/capability bazlı yaklaşımda her modül **bir iş yeteneğine** sahiptir ve tüm aktörler ilgili yetenekle etkileşime geçer.
 
+## Mimari Temeller: CQRS + Event Sourcing
+
+MESNET, **CQRS (Command Query Responsibility Segregation)** ve **Event Sourcing** mimarisini baz alan bir **modüler monolit** uygulamadır. Bu mimari seçimlerinin temel nedenleri:
+
+### CQRS — Komut/Sorgu Ayrımı
+
+Tüm işlemler **yazma (command)** ve **okuma (query)** olarak kesin biçimde ayrılır:
+
+- **Command handler'lar** — Durum değiştiren işlemler. Event yayınlar, hata durumunda `DomainException` fırlatır. `IDocumentSession` (yazma oturumu) kullanır.
+- **Query handler'lar** — Salt okuma işlemleri. Hiçbir side effect oluşturmaz. `IQuerySession` (okuma oturumu) kullanır.
+- **Endpoint'ler** — İnce HTTP adaptör katmanıdır; iş mantığı içermez, tüm işlemi Wolverine handler'a devreder (`bus.InvokeAsync`).
+
+Bu ayrım sayesinde okuma ve yazma bağımsız olarak ölçeklenebilir, test edilebilir ve optimize edilebilir.
+
+### Event Sourcing — Olay Kaynağı
+
+Durum geçişleri kritik olan entity'ler (sözleşmeler, devamsızlık, maaş, dağıtım onayları) **event sourcing** ile yönetilir:
+
+- Entity'nin güncel durumu, geçmiş event'lerin sırasıyla yeniden oluşturulur (replay).
+- Her durum değişikliği bir event olarak saklanır → tam audit trail.
+- **Marten Event Store** üzerinden PostgreSQL'de `mt_streams` ve `mt_events` tablolarında tutulur.
+- **Snapshot (Inline Projection)** ile güncel durum otomatik olarak materialized view'da tutulur → her okumada replay gerekmez.
+- **Decider pattern** (`[AggregateHandler]`) ile event sourcing aggregate'leri yönetilir.
+
+### Document Storage — Belge Saklama
+
+CRUD ağırlıklı entity'ler (işletme bilgileri, kurum bilgileri, öğrenci profilleri) **Marten document storage** ile yönetilir:
+
+- .NET nesneleri PostgreSQL'e JSONB olarak serialize edilir.
+- LINQ ile sorgulama desteklenir.
+- Geleneksel RDBMS + ORM yaklaşımına kıyasla daha az boilerplate, daha hızlı geliştirme.
+
+### Hybrid Yaklaşım
+
+Çoğu modül her iki pattern'ı birlikte kullanır. Örneğin Business modülünde:
+
+- İşletme bilgileri → document storage (CRUD)
+- İşletme durum geçişleri → event sourcing (audit trail)
+
+Hangi entity'nin hangi pattern'ı kullandığı, her modülün "Storage tipi" bölümünde belirtilmiştir.
+
+### Teknoloji Yığını Özeti
+
+| Katman | Teknoloji | Açıklama |
+| ------ | --------- | -------- |
+| CQRS / Message Bus | **Wolverine** | Command/query dispatching, cascading messages, saga, durable local queues |
+| Document DB + Event Store | **Marten** | PostgreSQL üzerinde JSONB document storage + event sourcing |
+| HTTP API | **ASP.NET Minimal API** | Endpoint'ler `MapGet`/`MapPost` ile tanımlanır, Wolverine'e devreder |
+| Kimlik Doğrulama | **Keycloak** | OAuth2/OIDC, PKCE flow |
+| Frontend | **Quasar (Vue 3 + TypeScript)** | SPA, Pinia state management |
+
 ## Modül Yapısı
 
 ### 1. Business (İşletme Yönetimi)
@@ -481,21 +532,48 @@ Tüm modüller → event publish eder
   → Rapor talebi geldiğinde → QuestPDF ile hazır veriden PDF üretilir
 ```
 
-## PostgreSQL Schema Dağılımı
+## PostgreSQL Schema Dağılımı ve Şema İzolasyonu
 
-| Modül | Schema | Storage |
-|-------|--------|---------|
-| Business | `business` | Document + Event |
-| Enrollment | `enrollment` | Document + Event |
-| Contract | `contract` | Event Sourcing |
-| Attendance | `attendance` | Event Sourcing |
-| Payment | `payment` | Event Sourcing |
-| Coordination | `coordination` | Document + Event |
-| Institution | `institution` | Document |
-| Tenant *(Phase 2)* | `tenant` | Document |
-| Internship | `internship` | Saga state + Projection |
-| Reporting | `reporting` | Document (denormalize) |
-| Wolverine (paylaşımlı) | `wolverine` | Messaging infra |
+### Şema İzolasyonu İlkesi
+
+Modüler monolitin temel taşıyıcı ilkesi **şema bazlı izolasyondur**. Her modül kendi PostgreSQL schema'sına sahiptir ve yalnızca kendi schema'sındaki tablolara erişebilir. Bu izolasyon, modüllerin bağımsızlığını garanti eder ve ileride microservice'e geçişi kolaylaştırır.
+
+**İzolasyon kuralları:**
+
+1. **Her modül kendi schema'sına sahiptir** — `ConfigureMarten` ile `DatabaseSchemaName` belirtilir.
+2. **Bir modül başka modülün schema'sına ASLA doğrudan sorgu atamaz** — ne okuma ne yazma.
+3. **Cross-module veri ihtiyacı event ile çözülür** — Kaynak modül event publish eder, hedef modül kendi schema'sında denormalize read model (projection) oluşturur.
+4. **Event stream'ler paylaşımlı `shared` schema'dadır** — Marten event store tüm modüllerin event'lerini tek yerde tutar (`mt_streams`, `mt_events`).
+5. **Wolverine messaging altyapısı `wolverine` schema'sındadır** — Durable outbox, dead letter queue vb.
+6. **Frontend enrichment alternatifi** — Basit isim çözümleme (ID → name) gibi durumlarda backend projection yerine frontend lookup map'ler de kullanılabilir.
+
+**Schema konfigürasyon örneği (her modülün Persistence katmanında):**
+
+```csharp
+// Coordination modülü örneği
+services.ConfigureMarten(opts =>
+{
+    opts.Schema.For<TeacherSchedule>().DatabaseSchemaName("coordination");
+    opts.Schema.For<VisitSchedule>().DatabaseSchemaName("coordination");
+});
+```
+
+### Schema Tablosu
+
+| Modül | Schema | Storage | Açıklama |
+| ----- | ------ | ------- | -------- |
+| Business | `business` | Document + Event | İşletme bilgileri, durum geçişleri |
+| Enrollment | `enrollment` | Document + Event | Öğrenci/öğretmen profilleri, yerleştirme |
+| Contract | `contract` | Event Sourcing | Sözleşme yaşam döngüsü |
+| Attendance | `attendance` | Event Sourcing | Devamsızlık kaydı ve takibi |
+| Payment | `payment` | Event Sourcing | Maaş/dekont onay zinciri |
+| Coordination | `coordination` | Document + Event | Ders programı, ziyaret, dağıtım |
+| Institution | `institution` | Document | Kurum bilgileri, alan/dal, dönem |
+| Tenant *(Phase 2)* | `tenant` | Document | Çoklu kurum yönetimi |
+| Internship | `internship` | Saga state + Projection | Staj orkestrasyonu |
+| Reporting | `reporting` | Document (denormalize) | PDF rapor üretimi |
+| Marten Event Store | `shared` | Event streams + events | Tüm modüllerin event sourcing verileri |
+| Wolverine | `wolverine` | Messaging infra | Durable outbox, inbox, dead letter |
 
 ## Katman Yapısı (Her Modül)
 
@@ -512,7 +590,7 @@ MESNET.{Module}.Application/
   └── EventHandlers/     # Başka modüllerden gelen event handler'lar
 
 MESNET.{Module}.Api/
-  └── Endpoints/         # Wolverine HTTP endpoint'ler ([WolverinePost], [WolverineGet])
+  └── Endpoints/         # ASP.NET Minimal API endpoint'ler (MapGet, MapPost → bus.InvokeAsync)
 
 MESNET.{Module}.Persistence/
   ├── MartenConfig.cs    # IConfigureMarten — schema, projection, index tanımları

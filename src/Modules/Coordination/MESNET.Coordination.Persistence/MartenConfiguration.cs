@@ -1,4 +1,6 @@
 using Marten;
+using Marten.Events.Projections;
+using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.ReadModels;
 
@@ -8,6 +10,21 @@ public static class MartenConfiguration
 {
     public static void ConfigureCoordinationSchema(this StoreOptions options)
     {
+        // ── Event Sourcing: TeacherSchedule ──
+        // Inline snapshot — her event sonrası aggregate otomatik güncellenir
+        options.Projections.Snapshot<TeacherSchedule>(SnapshotLifecycle.Inline);
+
+        // Schema + indexes (snapshot document'ı için)
+        options.Schema.For<TeacherSchedule>().DatabaseSchemaName("coordination");
+        options.Schema.For<TeacherSchedule>().Index(x => x.TeacherId);
+        options.Schema.For<TeacherSchedule>().Index(x => x.InstitutionId);
+        options.Schema.For<TeacherSchedule>().Index(x => x.AcademicYear);
+        options.Schema.For<TeacherSchedule>().Index(x => x.AcademicPeriodId);
+        options.Schema.For<TeacherSchedule>()
+            .Index(x => new { x.TeacherId, x.AcademicYear }, x => x.IsUnique = false);
+
+        // ── Document Storage ──
+
         // CoordinationConfig (kurum başına tek document)
         options.Schema.For<CoordinationConfig>().DatabaseSchemaName("coordination");
         options.Schema.For<CoordinationConfig>().Index(x => x.InstitutionId);
@@ -17,21 +34,9 @@ public static class MartenConfiguration
         options.Schema.For<BusinessCoordinationView>().Index(x => x.InstitutionId);
         options.Schema.For<BusinessCoordinationView>().Index(x => x.BranchCode);
         options.Schema.For<BusinessCoordinationView>().Index(x => x.AssignedTeacherId);
+        options.Schema.For<BusinessCoordinationView>().Index(x => x.AcademicPeriodId);
         options.Schema.For<BusinessCoordinationView>()
             .Index(x => new { x.InstitutionId, x.BranchCode }, x => x.IsUnique = false);
-
-        // Schema name
-        options.Schema.For<TeacherSchedule>().DatabaseSchemaName("coordination");
-
-        // Indexes for performance
-        options.Schema.For<TeacherSchedule>().Index(x => x.TeacherId);
-        options.Schema.For<TeacherSchedule>().Index(x => x.InstitutionId);
-        options.Schema.For<TeacherSchedule>().Index(x => x.AcademicYear);
-        options.Schema.For<TeacherSchedule>().Index(x => x.AcademicPeriodId);
-
-        // Composite index for common query pattern
-        options.Schema.For<TeacherSchedule>()
-            .Index(x => new { x.TeacherId, x.AcademicYear }, x => x.IsUnique = false);
 
         // MonthlyActivityReport
         options.Schema.For<MonthlyActivityReport>().DatabaseSchemaName("coordination");

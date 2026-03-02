@@ -20,19 +20,27 @@ public static class CoordinationEndpoints
         var group = app.MapGroup("/api/coordination/teachers")
             .WithTags("Coordination").RequireAuthorization();
 
+        // Literal suffix route'ları önce kaydet (route çakışmasını önler)
+        group.MapGet("/{teacherId:guid}/schedule/current", GetCurrentSchedule).RequireAuthorization(Permissions.Coordinator.Schedule);
+        group.MapGet("/{teacherId:guid}/schedule/streams", GetScheduleStreams).RequireAuthorization(Permissions.Coordinator.Schedule);
+        group.MapGet("/{teacherId:guid}/schedule/history", GetScheduleHistoryEndpoint).RequireAuthorization(Permissions.Coordinator.Schedule);
         group.MapPost("/{teacherId:guid}/schedule", PostTeacherSchedule).RequireAuthorization(Permissions.Coordinator.Schedule);
         group.MapGet("/{teacherId:guid}/schedule", GetTeacherSchedule).RequireAuthorization(Permissions.Coordinator.Schedule);
         group.MapGet("/{teacherId:guid}/free-slots", GetTeacherFreeSlots).RequireAuthorization(Permissions.Coordinator.Schedule);
         group.MapPost("/{teacherId:guid}/assign-business", PostAssignBusiness).RequireAuthorization(Permissions.Coordinator.Schedule);
         group.MapGet("/{teacherId:guid}/workload", GetTeacherWorkload).RequireAuthorization(Permissions.DepartmentHead.Workload);
+        group.MapGet("/{teacherId:guid}/overview", GetTeacherOverview).RequireAuthorization(Permissions.DepartmentHead.Workload);
 
         // Coordination config + assignment endpoints
         group.MapGet("/config", GetConfig).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/config", PostConfig).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapGet("/assignments", ListAssignments).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/assignments", PostAssignment).RequireAuthorization(Permissions.DepartmentHead.Distribution);
+        group.MapDelete("/assignments/{businessId:guid}", DeleteAssignment).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/assignments/{businessId:guid}/distance", PostManualDistance).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapGet("/summary", GetSummary).RequireAuthorization(Permissions.DepartmentHead.Workload);
+        group.MapGet("/overview-all", GetAllTeachersOverview).RequireAuthorization(Permissions.DepartmentHead.Workload);
+        group.MapGet("/business-clusters", GetBusinessClusters).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/recalculate-distances", PostRecalculateDistances).RequireAuthorization(Permissions.DepartmentHead.Distribution);
 
         return app;
@@ -43,42 +51,83 @@ public static class CoordinationEndpoints
         UpsertTeacherSchedule command,
         IMessageBus bus)
     {
-        var @event = await bus.InvokeAsync<TeacherScheduleUpserted>(
+        var scheduleId = await bus.InvokeAsync<Guid>(
             command with { TeacherId = teacherId });
 
-        var message = @event.IsNew
-            ? "Öğretmen ders programı oluşturuldu."
-            : "Öğretmen ders programı güncellendi.";
-
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { scheduleId = @event.ScheduleId })
-            .AddMessage(message)
+            .AddData(new { scheduleId })
+            .AddMessage("Ders programı kaydedildi.")
             .Build());
     }
 
-    private static IResult GetTeacherSchedule(
+    private static async Task<IResult> GetTeacherSchedule(
         Guid teacherId,
         int year,
         string semester,
-        IQuerySession session)
+        IMessageBus bus)
     {
-        var query = new GetTeacherSchedule(teacherId, year, semester);
-        var schedule = GetTeacherScheduleHandler.Handle(query, session);
+        var schedule = await bus.InvokeAsync<TeacherScheduleDto>(
+            new GetTeacherSchedule(teacherId, year, semester));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(schedule)
             .Build());
     }
 
-    private static IResult GetTeacherFreeSlots(
+    private static async Task<IResult> GetCurrentSchedule(
+        Guid teacherId,
+        Guid academicPeriodId,
+        string semester,
+        IMessageBus bus)
+    {
+        var schedule = await bus.InvokeAsync<TeacherScheduleDto?>(
+            new GetCurrentSchedule(teacherId, academicPeriodId, semester));
+
+        if (schedule is null)
+            return Results.NotFound(ResponseBuilder.Fail(404).AddMessage("Kayıtlı ders programı bulunamadı.").Build());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(schedule)
+            .Build());
+    }
+
+    private static async Task<IResult> GetScheduleStreams(
+        Guid teacherId,
+        IMessageBus bus)
+    {
+        var streams = await bus.InvokeAsync<List<ScheduleStreamSummaryDto>>(
+            new GetScheduleStreams(teacherId));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(streams)
+            .Build());
+    }
+
+    private static async Task<IResult> GetScheduleHistoryEndpoint(
+        Guid teacherId,
+        Guid? scheduleId,
+        IMessageBus bus)
+    {
+        var history = await bus.InvokeAsync<ScheduleHistoryDto?>(
+            new GetScheduleHistory(teacherId, scheduleId));
+
+        if (history is null)
+            return Results.NotFound(ResponseBuilder.Fail(404).AddMessage("Program geçmişi bulunamadı.").Build());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(history)
+            .Build());
+    }
+
+    private static async Task<IResult> GetTeacherFreeSlots(
         Guid teacherId,
         int year,
         string semester,
         string? day,
-        IQuerySession session)
+        IMessageBus bus)
     {
-        var query = new GetTeacherFreeSlots(teacherId, year, semester, day);
-        var freeSlots = GetTeacherFreeSlotsHandler.Handle(query, session);
+        var freeSlots = await bus.InvokeAsync<List<FreeSlotDto>>(
+            new GetTeacherFreeSlots(teacherId, year, semester, day));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(new { freeSlots })
@@ -130,12 +179,13 @@ public static class CoordinationEndpoints
         string? branchCode,
         Guid? teacherId,
         bool? assignedOnly,
+        Guid? academicPeriodId,
         IMessageBus bus,
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
         var query = new ListBusinessesForAssignment(
-            instId, branchCode, teacherId, assignedOnly);
+            instId, branchCode, teacherId, assignedOnly, academicPeriodId);
 
         var result = await bus.InvokeAsync<List<BusinessAssignmentDto>>(query);
 
@@ -154,6 +204,20 @@ public static class CoordinationEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme öğretmene atandı.")
+            .Build());
+    }
+
+    private static async Task<IResult> DeleteAssignment(
+        Guid businessId,
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var userName = http.User.FindFirst("name")?.Value ?? "system";
+        await bus.InvokeAsync(new UnassignBusinessFromTeacher(businessId, instId, userName));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("İşletme ataması kaldırıldı.")
             .Build());
     }
 
@@ -177,11 +241,12 @@ public static class CoordinationEndpoints
 
     private static async Task<IResult> GetSummary(
         string? branchCode,
+        Guid? academicPeriodId,
         IMessageBus bus,
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
-        var query = new GetCoordinationSummary(instId, branchCode);
+        var query = new GetCoordinationSummary(instId, branchCode, academicPeriodId);
         var result = await bus.InvokeAsync<CoordinationSummaryDto>(query);
 
         return Results.Ok(ResponseBuilder.Success()
@@ -212,6 +277,54 @@ public static class CoordinationEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Mesafeler yeniden hesaplandı.")
+            .Build());
+    }
+
+    private static async Task<IResult> GetTeacherOverview(
+        Guid teacherId,
+        Guid academicPeriodId,
+        string semester,
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var query = new GetTeacherOverview(teacherId, instId, academicPeriodId, semester);
+        var result = await bus.InvokeAsync<TeacherOverviewDto>(query);
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .Build());
+    }
+
+    private static async Task<IResult> GetAllTeachersOverview(
+        Guid academicPeriodId,
+        string semester,
+        string? branchCode,
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var query = new GetAllTeachersOverview(instId, academicPeriodId, semester, branchCode);
+        var result = await bus.InvokeAsync<List<TeacherSummaryRowDto>>(query);
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .Build());
+    }
+
+    private static async Task<IResult> GetBusinessClusters(
+        Guid academicPeriodId,
+        double epsMeters,
+        int minPoints,
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var query = new GetBusinessClusters(instId, academicPeriodId, epsMeters, minPoints);
+        var result = await bus.InvokeAsync<List<BusinessClusterDto>>(query);
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
             .Build());
     }
 

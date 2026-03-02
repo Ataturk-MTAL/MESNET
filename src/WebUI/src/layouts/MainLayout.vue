@@ -75,6 +75,24 @@
               </q-select>
             </q-item-section>
           </q-item>
+
+          <!-- Yarıyıl Seçici -->
+          <q-item class="q-mb-xs">
+            <q-item-section>
+              <q-select
+                v-model="periodStore.selectedSemester"
+                :options="semesterOpts"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+                dense
+                outlined
+                label="Yarıyıl"
+              />
+            </q-item-section>
+          </q-item>
+
           <q-separator v-if="periodStore.isLoaded && periodStore.periods.length > 0" spaced />
 
           <!-- Kapalı dönem uyarısı -->
@@ -173,7 +191,7 @@
             clickable v-ripple :to="{ name: 'TeacherSchedule' }"
           >
             <q-item-section avatar><q-icon name="calendar_month" /></q-item-section>
-            <q-item-section>Ders Programi</q-item-section>
+            <q-item-section>Ders Programı</q-item-section>
           </q-item>
 
           <q-item
@@ -181,7 +199,7 @@
             clickable v-ripple :to="{ name: 'BusinessAssignment' }"
           >
             <q-item-section avatar><q-icon name="assignment_ind" /></q-item-section>
-            <q-item-section>Isletme Dagitimi</q-item-section>
+            <q-item-section>İşletme Dağıtımı</q-item-section>
           </q-item>
 
           <q-item
@@ -232,7 +250,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from 'stores/auth'
 import { useNotificationStore } from 'stores/notifications'
-import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import { logout } from 'boot/auth'
 
@@ -242,6 +260,8 @@ const periodStore = useAcademicPeriodStore()
 const drawerOpen = ref(false)
 
 const unreadCount = computed(() => notificationStore.notifications.length)
+
+const semesterOpts = [...semesterOptions]
 
 const periodOptions = computed(() =>
   periodStore.periods.map((p) => ({

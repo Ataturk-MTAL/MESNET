@@ -188,8 +188,40 @@ Document.Create(container =>
 - Her modül kendi bounded context'idir ve microservice'e geçişe hazır olmalıdır
 - Modüller arası iletişim SADECE asenkron mesajlaşma (Wolverine events) ile yapılır
 - Modüller arası doğrudan referans YASAKTIR (Shared projeler hariç)
-- Her modülün kendi PostgreSQL schema'sı vardır
+- Her modülün kendi PostgreSQL schema'sı vardır — **şema izolasyonu** modüler monolit mimarisinin temel taşıdır
 - Wolverine message storage paylaşımlıdır: `opts.Durability.MessageStorageSchemaName = "wolverine"`
+- Marten event stream'leri varsayılan schema'da (`shared`) tutulur — inline snapshot document'ları modül schema'sında
+
+#### Şema İzolasyonu (Schema Isolation)
+
+Her modül kendi PostgreSQL schema'sına sahiptir. Bu izolasyon, modüllerin bağımsız deploy edilebilirliğini ve microservice'e geçiş yolunu garanti eder.
+
+**Schema yapısı:**
+
+- `shared` — Marten varsayılan schema (event stream'ler: `mt_streams`, `mt_events`)
+- `wolverine` — Wolverine durable messaging tabloları (paylaşımlı)
+- `institution` — Institution modülü document'ları
+- `business` — Business modülü document'ları
+- `enrollment` — Enrollment modülü document'ları
+- `coordination` — Coordination modülü document'ları + event sourcing snapshot'ları
+- `contract`, `attendance`, `payment`, `reporting` — diğer modüller
+
+**Konfigürasyon kuralları:**
+
+```csharp
+// Her modülün MartenConfiguration'ında:
+options.Schema.For<MyDocument>().DatabaseSchemaName("mymodule");
+
+// Event sourcing aggregate inline snapshot'ları da modül schema'sında:
+options.Projections.Snapshot<MyAggregate>(SnapshotLifecycle.Inline);
+options.Schema.For<MyAggregate>().DatabaseSchemaName("mymodule");
+```
+
+**KESİN KURALLAR:**
+
+- Bir modül ASLA başka modülün schema'sındaki tablolara doğrudan SQL sorgusu atamaz
+- Cross-module veri okuma yöntemleri: (1) Event-based read model (consumer), (2) Frontend enrichment (lookup map)
+- `AutoCreate.All` ile schema'lar development'ta otomatik oluşturulur
 
 #### KESİN YASAK: Modüller Arası Doğrudan Veri Yazma
 
@@ -332,6 +364,43 @@ private static async Task<IResult> GetAll(
 }
 ```
 
+### Geçmiş Dönem Kuralı (Salt Okunur Mod)
+
+Akademik dönem "Kapalı" (Closed) durumdaysa, o döneme ait tüm veriler **salt okunur** olmalıdır. Hiçbir yazma/düzenleme/silme işlemi yapılamaz:
+
+- Ders programı düzenlenemez ve kaydedilemez
+- Koordinasyon ataması yapılamaz
+- Sözleşme oluşturulamaz/değiştirilemez
+- Devamsızlık kaydı girilemez
+- Maaş/dekont işlemi yapılamaz
+
+**Frontend:** `periodStore.isReadOnly` computed değeri kullanılır — `true` ise tüm yazma butonları/formları `disable` edilir.
+
+**Backend:** Command handler'lar `AcademicPeriod.Status == Closed` kontrolü yaparak `DomainException(CoordinationErrors.AcademicPeriodClosed(id))` fırlatır.
+
+### Marten SmartEnum LINQ Kuralları
+
+SmartEnum property'leri Marten LINQ sorgularında **doğrudan kullanılamaz** — iki ayrı sorun vardır:
+
+1. **Doğrudan karşılaştırma yasak:** `s.Semester == semester` → `BadLinqExpressionException`
+2. **Nested path tuzağı:** `s.Semester.Name` → Marten bunu `data->'semester'->>'Name'` olarak çevirir. Ancak SmartEnum JSON'da string olarak serialize edilir (`"Spring"`), obje değil. Bu yüzden nested path **her zaman NULL döner** ve sorgu sonuç bulamaz.
+
+**Çözüm:** Aggregate/entity'ye duplicate primitive alanlar ekle ve LINQ'te bunları kullan:
+
+```csharp
+public sealed record MyAggregate(
+    AcademicSemester Semester,  // SmartEnum — serialize/deserialize için
+    string SemesterName,         // Düz string — LINQ sorguları için
+    int SemesterNumber           // Düz int — sayısal karşılaştırma için
+);
+
+// LINQ'te:
+session.Query<MyAggregate>().Where(s => s.SemesterNumber == semester.Number); // ✅
+session.Query<MyAggregate>().Where(s => s.SemesterName == semester.Name);     // ✅
+session.Query<MyAggregate>().Where(s => s.Semester.Name == semester.Name);    // ❌ NULL döner
+session.Query<MyAggregate>().Where(s => s.Semester == semester);              // ❌ Exception
+```
+
 ### Event Sourcing vs Document Storage
 
 - **Event sourcing kullan:** Staj sözleşmeleri, fesih süreçleri, devamsızlık kayıtları, dekont onay süreçleri gibi durum geçişleri olan entity'ler
@@ -357,6 +426,16 @@ builder.Host.UseWolverine(opts =>
     opts.Policies.UseDurableLocalQueues();
 });
 ```
+
+## Kullanıcı Arayüzü Dili
+
+- Frontend kullanıcı arayüzü **Türkçe** olmalıdır — tüm label, buton, mesaj ve placeholder'lar Türkçe yazılır
+- Türkçe karakterler (ç, ş, ğ, ü, ö, ı, İ) doğru kullanılmalıdır — ASCII yaklaşık karakter KULLANILMAZ
+  - ✅ "Öğretmen", "Dönem", "Boş", "Salı", "Çarşamba", "Perşembe", "İptal", "Düzenle", "Sonuç bulunamadı"
+  - ❌ "Ogretmen", "Donem", "Bos", "Sali", "Carsamba", "Persembe", "Iptal", "Duzenle", "Sonuc bulunamadi"
+- Backend enum/value isimleri İngilizce kalır (`Fall`, `Spring`, `Monday`, `Occupied`, `Free`) — frontend'de Türkçe karşılıkları gösterilir
+- SmartEnum pattern'ında `Name` = İngilizce (serialize), `Slug` = Türkçe (UI display)
+- MEB terminolojisi kullanılır: "1. Dönem" / "2. Dönem" (Güz/Bahar değil)
 
 ## Kapsam
 

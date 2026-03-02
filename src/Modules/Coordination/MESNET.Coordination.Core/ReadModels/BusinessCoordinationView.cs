@@ -32,6 +32,9 @@ public sealed class BusinessCoordinationView
     /// <summary>Atanan gün (Monday, Tuesday, vb.)</summary>
     public string? AssignedDay { get; set; }
 
+    /// <summary>Atanan ders saati numarası (1-based)</summary>
+    public int? AssignedPeriodNumber { get; set; }
+
     /// <summary>Bu işletmede aktif stajyer sayısı</summary>
     public int ActiveStudentCount { get; set; }
 

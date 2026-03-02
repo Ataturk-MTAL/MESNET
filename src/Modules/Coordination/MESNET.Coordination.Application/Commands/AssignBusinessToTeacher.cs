@@ -6,5 +6,6 @@ public sealed record AssignBusinessToTeacher(
     string TeacherName,
     int AssignedHours,
     string AssignedDay,
+    int? PeriodNumber,
     Guid InstitutionId,
     string AssignedBy);

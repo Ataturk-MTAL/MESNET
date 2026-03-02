@@ -23,38 +23,24 @@
             :class="cellClass(day.value, period)"
             @click="onCellClick(day.value, period)"
           >
-            <template v-if="isOccupied(day.value, period)">
-              <div v-if="!editing" class="text-caption text-grey-8">
-                {{ getCourseName(day.value, period) || 'Dolu' }}
-              </div>
-              <div v-else class="row no-wrap items-center q-gutter-xs">
-                <q-icon name="book" size="xs" color="grey-6" />
-                <q-input
-                  :model-value="getCourseName(day.value, period) ?? ''"
-                  dense
-                  borderless
-                  placeholder="Ders adı"
-                  class="col text-caption"
-                  input-class="text-caption"
-                  @update:model-value="(v: string | number | null) => updateCourseName(day.value, period, String(v ?? ''))"
-                />
-              </div>
-            </template>
-            <template v-else>
-              <div class="text-caption text-green-8">Bos</div>
-            </template>
+            <div v-if="isOccupied(day.value, period)" class="text-caption text-grey-8">
+              Dolu
+            </div>
+            <div v-else class="text-caption text-green-8">
+              Boş
+            </div>
           </td>
         </tr>
       </tbody>
     </table>
 
-    <!-- Ozet -->
+    <!-- Özet -->
     <div class="row q-mt-md q-gutter-md">
       <q-chip icon="event_busy" color="grey-3" text-color="grey-8" dense>
         Dolu: {{ occupiedCount }}
       </q-chip>
       <q-chip icon="event_available" color="green-1" text-color="green-8" dense>
-        Bos: {{ freeCount }}
+        Boş: {{ freeCount }}
       </q-chip>
       <q-chip icon="calendar_today" color="blue-1" text-color="blue-8" dense>
         Toplam: {{ totalSlots }}
@@ -79,9 +65,9 @@ const emit = defineEmits<{
 
 const days = [
   { label: 'Pazartesi', value: 'Monday' },
-  { label: 'Sali', value: 'Tuesday' },
-  { label: 'Carsamba', value: 'Wednesday' },
-  { label: 'Persembe', value: 'Thursday' },
+  { label: 'Salı', value: 'Tuesday' },
+  { label: 'Çarşamba', value: 'Wednesday' },
+  { label: 'Perşembe', value: 'Thursday' },
   { label: 'Cuma', value: 'Friday' },
 ]
 
@@ -93,11 +79,6 @@ function findSlot(dayValue: string, periodNumber: number): PeriodSlotInput | und
 function isOccupied(dayValue: string, periodNumber: number): boolean {
   const slot = findSlot(dayValue, periodNumber)
   return slot?.status === 'Occupied'
-}
-
-function getCourseName(dayValue: string, periodNumber: number): string | null {
-  const slot = findSlot(dayValue, periodNumber)
-  return slot?.courseName ?? null
 }
 
 function cellClass(dayValue: string, periodNumber: number): string {
@@ -115,26 +96,11 @@ function onCellClick(dayValue: string, periodNumber: number) {
       ...day,
       periods: day.periods.map((p) => {
         if (p.periodNumber !== periodNumber) return p
-        // Toggle: Occupied -> Free, Free -> Occupied
         return {
           ...p,
           status: p.status === 'Occupied' ? 'Free' : 'Occupied',
-          courseName: p.status === 'Occupied' ? undefined : p.courseName,
+          courseName: undefined,
         }
-      }),
-    }
-  })
-  emit('update:schedule', newSchedule)
-}
-
-function updateCourseName(dayValue: string, periodNumber: number, name: string) {
-  const newSchedule = props.schedule.map((day) => {
-    if (day.day !== dayValue) return day
-    return {
-      ...day,
-      periods: day.periods.map((p) => {
-        if (p.periodNumber !== periodNumber) return p
-        return { ...p, courseName: name || undefined }
       }),
     }
   })

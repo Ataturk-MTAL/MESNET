@@ -5,5 +5,6 @@ public sealed record ListBusinessesForAssignment(
     string? BranchCode = null,
     Guid? TeacherId = null,
     bool? AssignedOnly = null,
+    Guid? AcademicPeriodId = null,
     int Page = 1,
     int PageSize = 100);

@@ -26,6 +26,9 @@ public static class ListBusinessesForAssignmentHandler
         else if (query.AssignedOnly == false)
             queryable = queryable.Where(v => v.AssignedTeacherId == null);
 
+        if (query.AcademicPeriodId.HasValue)
+            queryable = queryable.Where(v => v.AcademicPeriodId == query.AcademicPeriodId.Value);
+
         var views = await queryable.ToListAsync(cancellationToken);
 
         return views.Select(v => new BusinessAssignmentDto(
@@ -40,6 +43,7 @@ public static class ListBusinessesForAssignmentHandler
             v.AssignedTeacherId,
             v.AssignedTeacherName,
             v.AssignedDay,
+            v.AssignedPeriodNumber,
             v.ActiveStudentCount,
             v.BranchCode,
             v.BranchName

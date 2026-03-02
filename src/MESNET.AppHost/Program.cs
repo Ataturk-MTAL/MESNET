@@ -14,13 +14,15 @@ var minioPassword = builder.AddParameter("minio-password", secret: true);
 // Altyapı servisleri — Persistent: AppHost kapansa bile container'lar ayakta kalır
 // Dev'de her restart'ta yeniden oluşturulmazlar, veri ve state korunur
 var postgres = builder.AddPostgres("postgres", password: postgresPassword)
+    .WithImage("kartoza/postgis", "18-3.6")
+    .WithBindMount("./postgres", "/docker-entrypoint-initdb.d")
     .WithPgAdmin(pgAdmin => pgAdmin.WithLifetime(ContainerLifetime.Persistent))
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent)
     .AddDatabase("mesnet");
 
 var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitmqUser, password: rabbitmqPassword)
-    .WithManagementPlugin()
+    .WithImage("rabbitmq", "4-management-alpine")
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent);
 
@@ -46,13 +48,12 @@ var minio = builder.AddContainer("minio", "minio/minio", "latest")
     .WithLifetime(ContainerLifetime.Persistent);
 
 // OSRM — Open Source Routing Machine (rota bazlı mesafe hesaplama)
-// İlk çalıştırmada Türkiye haritasını indirip hazırlar (~5-15 dk), sonraki çalıştırmalarda anında başlar
-var osrm = builder.AddContainer("osrm", "osrm/osrm-backend", "latest")
+// Veriler Mac'te osmium + osrm-extract + osrm-contract ile hazırlandı (osrm/data/)
+// Sadece Mersin bölgesi — container anında başlar, ~300 MB RAM
+var osrm = builder.AddContainer("osrm", "ghcr.io/project-osrm/osrm-backend", "latest")
     .WithHttpEndpoint(port: 5002, targetPort: 5000, name: "osrm")
-    .WithVolume("osrm-data", "/data")
-    .WithBindMount("./osrm/init-osrm.sh", "/init-osrm.sh")
-    .WithEntrypoint("/bin/bash")
-    .WithArgs("/init-osrm.sh")
+    .WithBindMount("./osrm/data", "/data")
+    .WithArgs("osrm-routed", "--algorithm", "CH", "/data/mersin.osrm")
     .WithLifetime(ContainerLifetime.Persistent);
 
 var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")

@@ -29,7 +29,7 @@ public static class CoordinationErrors
 
     public static Error InvalidSemester(string semester) =>
         new("Coordination.InvalidSemester",
-            $"Geçersiz dönem: {semester}. Geçerli değerler: Fall, Spring");
+            $"Geçersiz dönem: {semester}. Geçerli değerler: Fall, Spring, Summer");
 
     public static Error InvalidDay(string day) =>
         new("Coordination.InvalidDay",
@@ -105,4 +105,8 @@ public static class CoordinationErrors
     public static Error InvalidDistance(double distance) =>
         new("Coordination.InvalidDistance",
             $"Geçersiz mesafe değeri: {distance}. Mesafe 0'dan büyük olmalıdır.");
+
+    public static Error BusinessNotAssigned(Guid businessId) =>
+        new("Coordination.BusinessNotAssigned",
+            $"İşletme herhangi bir öğretmene atanmamış: {businessId}");
 }

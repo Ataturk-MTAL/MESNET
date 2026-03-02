@@ -1,38 +1,30 @@
 using Marten;
-using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Dtos;
-using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Application.Queries;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.Enums;
 
 namespace MESNET.Coordination.Application.Handlers;
 
-public static class GetTeacherScheduleHandler
+public static class GetCurrentScheduleHandler
 {
-    public static TeacherScheduleDto Handle(
-        GetTeacherSchedule query,
+    public static TeacherScheduleDto? Handle(
+        GetCurrentSchedule query,
         IQuerySession session)
     {
-        // Semester validation
         if (!AcademicSemester.TryFromName(query.Semester, true, out var semester))
-        {
-            throw new DomainException(CoordinationErrors.InvalidSemester(query.Semester));
-        }
+            return null;
 
-        // Schedule'ı bul (snapshot'tan)
+        // Seçili dönem + yarıyıl için schedule'ı getir
         var schedule = session.Query<TeacherSchedule>()
-            .FirstOrDefault(s =>
+            .Where(s =>
                 s.TeacherId == query.TeacherId &&
-                s.AcademicYear == query.AcademicYear &&
-                s.SemesterNumber == semester.Number);
+                s.AcademicPeriodId == query.AcademicPeriodId &&
+                s.SemesterNumber == semester.Number)
+            .FirstOrDefault();
 
-        if (schedule is null)
-        {
-            throw new DomainException(CoordinationErrors.ScheduleNotFound(query.TeacherId, query.AcademicYear, query.Semester));
-        }
+        if (schedule is null) return null;
 
-        // Entity → DTO mapping (DayOfWeek enum → string)
         return new TeacherScheduleDto(
             schedule.Id,
             schedule.TeacherId,

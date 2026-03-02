@@ -23,6 +23,13 @@ const sidebars: SidebarsConfig = {
     'scenarios',
     {
       type: 'category',
+      label: 'Altyapı',
+      items: [
+        'infrastructure/gis-osrm',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Modüller',
       items: [
         'modules/c4-diagrams',

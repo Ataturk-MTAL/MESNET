@@ -2,7 +2,7 @@ using Marten;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
-using MESNET.Coordination.Core.Entities;
+using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.Enums;
 
 namespace MESNET.Coordination.Application.Handlers;
@@ -26,12 +26,12 @@ public static class AssignBusinessToFreeSlotHandler
             throw new DomainException(CoordinationErrors.InvalidDay(command.Day));
         }
 
-        // 3. TeacherSchedule'ı bul
+        // 3. TeacherSchedule'ı bul (snapshot'tan)
         var schedule = session.Query<TeacherSchedule>()
             .FirstOrDefault(s =>
                 s.TeacherId == command.TeacherId &&
                 s.AcademicYear == command.AcademicYear &&
-                s.Semester == semester);
+                s.SemesterNumber == semester.Number);
 
         if (schedule is null)
         {
@@ -46,24 +46,41 @@ public static class AssignBusinessToFreeSlotHandler
         }
 
         // 5. İlgili period'u bul
-        var period = dailySchedule.Periods.FirstOrDefault(p => p.PeriodNumber == command.PeriodNumber);
-        if (period is null)
+        var periodSlot = dailySchedule.Periods.FirstOrDefault(p => p.PeriodNumber == command.PeriodNumber);
+        if (periodSlot is null)
         {
             throw new DomainException(CoordinationErrors.SlotNotFound(command.Day, command.PeriodNumber));
         }
 
         // 6. Period'un boş olup olmadığını kontrol et
-        if (period.Status != SlotStatus.Free)
+        if (periodSlot.Status != SlotStatus.Free)
         {
             throw new DomainException(CoordinationErrors.SlotNotFree(command.Day, command.PeriodNumber));
         }
 
-        // 7. İşletmeyi ata
-        period.AssignedBusinessId = command.BusinessId;
-        schedule.UpdatedAt = DateTime.UtcNow;
+        // 7. Mevcut schedule'ın tüm slotlarını kopyala + bu slot'a businessId ata
+        var updatedWeekly = schedule.WeeklySchedule.Select(d => new DailyScheduleData(
+            d.Day.ToString(),
+            d.Periods.Select(p => new PeriodSlotData(
+                p.PeriodNumber,
+                p.Status.Name,
+                p.CourseName
+            )).ToList()
+        )).ToList();
 
-        session.Store(schedule);
-        await session.SaveChangesAsync(cancellationToken);
+        // AssignedBusinessId'yi schedule event'e dahil etmek yerine,
+        // snapshot'taki mutable alanı güncelliyoruz.
+        // Event sourcing açısından bu atama schedule state'inin parçasıdır.
+        periodSlot.AssignedBusinessId = command.BusinessId;
+
+        // Schedule updated event append
+        var updateEvent = new ScheduleUpdated(
+            schedule.Id,
+            updatedWeekly,
+            command.AssignedBy,
+            DateTime.UtcNow);
+
+        session.Events.Append(schedule.Id, updateEvent);
 
         return new BusinessAssignedToTeacher(
             schedule.Id,
