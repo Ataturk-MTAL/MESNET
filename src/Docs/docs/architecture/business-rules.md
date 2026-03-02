@@ -582,12 +582,58 @@ KalanSaat = KullanılabilirEkDersSaati - KullanılanSaat
 - `BusinessCoordinationView` — İşletme-öğretmen atama read model (denormalize, mesafe, saat, alan bilgisi)
 - `TeacherSchedule` — Öğretmen haftalık ders programı (5 gün × N ders saati, Occupied/Free)
 
-#### Öğretmen Ders Programı Akışı
+#### Öğretmen Ders Programı Oluşturma Süreci
 
-1. Kurum `ScheduleConfiguration`'da günlük ders sayısını ayarlar (ör: 8)
-2. Alan şefi/koordinatör öğretmen ders programını girer (her saat: Dolu/Boş + ders adı)
-3. Sistem boş saatleri otomatik belirler → işletme atama havuzu oluşur
-4. İşletme ataması yapılırken öğretmenin o günde boş saati olmalı
+Öğretmen ders programı, koordinatörlük işletme dağıtımının **ön koşuludur**. Öğretmenin boş saatleri bilinmeden işletme ataması yapılamaz.
+
+**Ön koşul — Kurum Ders Saati Ayarı:**
+
+- Kurum yöneticisi `ScheduleConfiguration`'da günlük ders sayısını belirler (ör: 8, 9 veya 10)
+- Bu ayar yapılmadan ders programı ekranı kullanılamaz (uyarı gösterilir)
+- Her kurum kendi günlük ders saatini ayarlar — okullar arası farklılık olabilir
+
+**Ders Programı Girişi:**
+
+1. Alan şefi veya koordinatör öğretmen "Ders Programı" ekranından öğretmen seçer
+2. Dönem (Güz/Bahar) ve akademik yıl seçilir
+3. 5×N ızgara açılır (5 gün × N ders saati — N kurumun `dailyPeriodCount` ayarı)
+4. Her hücre için durum belirlenir:
+   - **Dolu (Occupied):** Öğretmenin dersi var → ders adı girilir (ör: "Matematik", "Fizik")
+   - **Boş (Free):** Öğretmenin dersi yok → işletme atanabilir
+5. Kaydet → `UpsertTeacherSchedule` komutu ile `TeacherSchedule` document'ı oluşturulur/güncellenir
+
+**Boş Saat Kuralları:**
+
+- Boş saatler otomatik olarak belirlenir — dolu olmayan her saat "boş" sayılır
+- Günlük 9 saate göre program girilmişse, 8 ders saatlik bir okula göre işletme verilemez — bu kontrolün temeli ders programıdır
+- Boş saat = işletme ziyareti için kullanılabilir saat
+- Bir öğretmenin boş saati yoksa o güne işletme atanamaz
+
+**Veri Modeli (`TeacherSchedule`):**
+
+- `Id` — Document ID
+- `TeacherId` — Öğretmen
+- `InstitutionId` — Kurum
+- `AcademicPeriodId` — Dönem
+- `AcademicYear` + `Semester` — Yıl ve dönem
+- `WeeklySchedule` — 5 günlük program dizisi
+  - Her gün: `Day` (Monday-Friday) + `Periods` dizisi
+  - Her period: `PeriodNumber` (1..N), `Status` (Occupied/Free), `CourseName` (nullable), `AssignedBusinessId` (nullable)
+
+**API Endpoint'leri:**
+
+- `POST /api/coordination/teachers/{teacherId}/schedule` — Program oluştur/güncelle
+- `GET /api/coordination/teachers/{teacherId}/schedule?year=2025&semester=Fall` — Program getir
+- `GET /api/coordination/teachers/{teacherId}/free-slots?year=2025&semester=Fall` — Boş saatleri listele
+
+**Yetki:** `coordinator:schedule:manage` — Alan şefi, müdür, müdür yardımcısı ve koordinatör öğretmen erişebilir
+
+**İşletme Dağıtımı ile İlişkisi:**
+
+- Ders programı girildikten sonra boş saatler `GetTeacherFreeSlots` ile sorgulanır
+- İşletme dağıtımı ekranında öğretmen seçildiğinde, o öğretmenin boş günleri kontrol edilir
+- Boş saati olmayan güne işletme atanamaz (backend validation)
+- İşletme atandığında ilgili period'un `AssignedBusinessId`'si güncellenir
 
 ### 11.5 Koordinatör Öğretmen Formları
 
