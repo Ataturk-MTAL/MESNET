@@ -452,7 +452,103 @@ Aşağıdaki durumlarda il/ilçe hıfzıssıhha kurulu kararı ve mahalli mülki
 - Toplam haftalık ek ders saati **azami sınırı** aşılamaz
 - Alan şefliği görev saatleri toplam ders yükünden **düşülür** (şeflik indirimi)
 
-### 11.4 İş Yükü Hesaplama
+### 11.4 Koordinatörlük Saati Formülü (Mesafeye Göre)
+
+**Kaynak:** MEB mevzuatı — Mesleki Eğitim Yönetmeliği
+
+Her işletmeye verilebilecek **maksimum koordinatörlük saati** okula olan rota mesafesine göre belirlenir:
+
+|Okula Uzaklık|Verilebilecek Maks. Saat|
+|---|---|
+|≤ 1 km|2 saat|
+|≤ 3 km|4 saat|
+|≤ 5 km|6 saat|
+|> 5 km|8 saat|
+
+**Mesafe hesaplama:** OSRM (Open Source Routing Machine) ile **rota bazlı gerçek yol mesafesi** hesaplanır. Kuş uçuşu (Haversine) değildir. OSRM erişilemezse Haversine fallback olarak kullanılır.
+
+**Lokasyonu olmayan işletmeler:** Manuel mesafe girişi yapılabilir. Manuel girilen mesafe otomatik hesaplama tarafından ezilmez (`IsManualDistance = true`).
+
+### 11.5 Toplam Koordinatörlük Ders Yükü Hesabı
+
+**Hesaplama alan bazlıdır.** Tüm koordinatörlük ders yükü hesabı **alan** (`FieldOfStudy.Code`: EET, BYT, MKT vb.) bazında yapılır. Dallar (ELOHAB, ELKTES, ENDBAK vb.) ayrı hesaplanmaz — aynı alandaki tüm dallar birlikte değerlendirilir.
+
+**Formül:**
+
+```text
+ToplamVerilebilirSaat = Σ(her işletmenin mesafeye göre verilebilecek saati)
+ToplamTakdirEdilenSaat = Σ(her işletmeye takdir edilen saat)
+
+KESİN KISIT: ToplamTakdirEdilenSaat ≤ ToplamVerilebilirSaat
+```
+
+**Bu kısıt mevzuat gereği aşılamaz.** Sistem, toplam dağıtılan saat toplam verilebilir saati aştığında:
+
+- Kırmızı uyarı gösterir
+- Kaydet butonunu devre dışı bırakır
+- Backend'de de doğrulama yapar (`AssignBusinessToTeacherHandler`)
+
+**Öğretmen bazında:**
+
+- Her işletmeye 0 ile VerilebilirSaat arasında "takdir edilen" saat atanır
+- Toplam dağıtılan saat (tüm öğretmenler) ToplamVerilebilirSaat'i aşamaz
+- Öğretmenin ders programında boş saati olmayan günlere ziyaret atanamaz
+
+### 11.6 Örgün ve MESEM Programı Farkı
+
+**Örgün program:** Normal mesleki lise — grup oluşturma kurallarına göre ders yükü hesaplanır.
+
+**MESEM programı (Mesleki Eğitim Merkezi):** Çırak/kalfa eğitimi — grup kuralları farklıdır.
+
+**Kritik kural:** Bir alanda hem örgün hem MESEM programı varsa, MESEM koordinatörlük saati örgünün azami ek ders hesabına **eklenir**.
+
+### 11.7 Grup Oluşturma Kuralları (Norm Kadro Yönetmeliği Madde 22/1-ç)
+
+#### Örgün Program
+
+|Sınıf|Öğrenci Aralığı|Grup Sayısı|
+|---|---|---|
+|9. sınıf|10-21|1|
+|9. sınıf|21-31|2|
+|9. sınıf|31+|3|
+|10-12. sınıf|8-17|1|
+|10-12. sınıf|17-25|2|
+|10-12. sınıf|25-33|3|
+|10-12. sınıf|33+|4|
+
+- Bir şubede **maksimum 4 grup** (kaynaştırma öğrenci istisnası ile 5)
+
+#### MESEM Programı (Madde 22/2)
+
+- Şubeler gruplara **bölünmez**
+- Öğrenci sayısı grup oluşturma sayısının altındaysa işletmelerde meslek eğitimi dersi dışındaki alan/dal dersleri ders yükü hesabına dahil **edilmez**
+- İşletmelerde meslek eğitimi ders yükü için çırak sayısına göre grup:
+
+|Çırak Sayısı|Grup|
+|---|---|
+|10-41|1|
+|41-81|2|
+|81-121|3|
+|121-161|4|
+|161-201|5|
+|201-241|6|
+|241-281|7|
+|281-321|8|
+|321-361|9|
+|361-401|10|
+|401-441|11|
+|441+|12|
+
+### 11.8 Yetki Modeli
+
+|Rol|Yetki|Açıklama|
+|---|---|---|
+|Alan Şefi (DepartmentHead)|`department:*`|Tüm dağıtım işlemleri|
+|Müdür (InstitutionManager)|`department:*` + `coordinator:*`|Tam yetki|
+|Müdür Yardımcısı (InstitutionStaff)|`department:*`|Dağıtımı görme/yönetme|
+|Koordinatör Öğretmen (Teacher)|`coordinator:schedule:manage`|Kendi ders programı + ziyaret|
+
+### 11.9 İş Yükü Hesaplama (Eski)
 
 **Formül:**
 
@@ -465,9 +561,33 @@ KalanSaat = KullanılabilirEkDersSaati - KullanılanSaat
 **Kısıtlamalar:**
 
 - `KullanılanSaat ≤ KullanılabilirEkDersSaati` (aşım durumunda sistem uyarı verir)
-- İşletmeye uzaklık `AzamiMesafe` değerini aşamaz
 - Öğretmenin ders programında boş saati olmayan günlere ziyaret atanamaz
 - Öğrenci sayısı ve işletme kapasitesi dikkate alınır
+
+### 11.10 Teknik Altyapı
+
+#### OSRM Entegrasyonu (Rota Bazlı Mesafe)
+
+- **OSRM** (Open Source Routing Machine) Podman container olarak çalışır
+- **Harita verisi:** Geofabrik Türkiye haritası (OpenStreetMap) — ilk çalıştırmada otomatik indirilir
+- **Algoritma:** MLD (Multi-Level Dijkstra) — hızlı rota hesaplama
+- **API:** `/route/v1/driving` (tekli), `/table/v1/driving` (batch — tek istekte N mesafe)
+- **Fallback:** OSRM erişilemezse Haversine (kuş uçuşu) kullanılır
+- **Backend servisi:** `IOsrmDistanceService` / `OsrmDistanceService` (HttpClient, DI registered)
+- **Config:** `appsettings.json` → `Osrm:BaseUrl`
+
+#### Koordinasyon Modülü Veri Modeli
+
+- `CoordinationConfig` — Kurum başına tek document (mesafe-saat kuralları, azami haftalık saat)
+- `BusinessCoordinationView` — İşletme-öğretmen atama read model (denormalize, mesafe, saat, alan bilgisi)
+- `TeacherSchedule` — Öğretmen haftalık ders programı (5 gün × N ders saati, Occupied/Free)
+
+#### Öğretmen Ders Programı Akışı
+
+1. Kurum `ScheduleConfiguration`'da günlük ders sayısını ayarlar (ör: 8)
+2. Alan şefi/koordinatör öğretmen ders programını girer (her saat: Dolu/Boş + ders adı)
+3. Sistem boş saatleri otomatik belirler → işletme atama havuzu oluşur
+4. İşletme ataması yapılırken öğretmenin o günde boş saati olmalı
 
 ### 11.5 Koordinatör Öğretmen Formları
 

@@ -191,24 +191,28 @@ Domain/capability bazlı yaklaşımda her modül **bir iş yeteneğine** sahipti
 
 **Document'lar:**
 
-- `TeacherSchedule` — Öğretmen haftalık ders programı (boş saatler)
-- `WorkloadConfig` — Ek ders sınırları, mesafe kuralları, parametre
+- `TeacherSchedule` — Öğretmen haftalık ders programı (5 gün × N ders saati, Occupied/Free)
+- `CoordinationConfig` — Kurum başına koordinatörlük ayarları (mesafe-saat kuralları, azami haftalık saat)
+- `BusinessCoordinationView` — İşletme-öğretmen atama read model (denormalize: mesafe, saat, alan bilgisi)
 
 **Sorumluluklar:**
-- Öğretmen-işletme atama
+
+- Öğretmen-işletme atama (alan bazlı, mesafe-saat formülü)
 - Haftalık ziyaret programı oluşturma (ders programı formatı)
-- Lokasyon bazlı rota optimizasyonu
+- Rota bazlı mesafe hesaplama (OSRM — gerçek yol mesafesi, Haversine fallback)
 - Karekodlu rapor oluşturma ve yazdırma
 - Evrak teslim takibi (karekod veya manuel)
 - Koordinatör-öğrenci iletişimi
-- Öğretmen ders programı yönetimi (boş saat tespiti)
+- Öğretmen ders programı yönetimi (boş saat tespiti → işletme atama havuzu)
 - Alan bazlı işletme dağıtımı (zümre karar tutanağı + müdür onayı)
-- İş yükü hesaplama (ek ders sınırları, mesafe kontrolü)
+- İş yükü hesaplama (mesafe-saat formülü, toplam takdir edilen ≤ toplam verilebilir kısıtı)
 - Dağıtım onay süreci (TASLAK → ZÜMRE_KARARI_ALINDI → MÜDÜR_ONAY_BEKLİYOR → ONAYLANDI / REDDEDİLDİ)
 
 **İş Kuralları:** Ek ders ve görevlendirme kuralları `./business-rules.md` Bölüm 11'de
 
-**Storage tipi:** Hybrid — VisitSchedule, TeacherSchedule, WorkloadConfig document; VisitReport, DepartmentDistribution event sourced
+**Harici Servis:** OSRM (Open Source Routing Machine) — Podman container, Türkiye OpenStreetMap verisi, rota bazlı mesafe hesaplama
+
+**Storage tipi:** Hybrid — VisitSchedule, TeacherSchedule, CoordinationConfig, BusinessCoordinationView document; VisitReport, DepartmentDistribution event sourced
 
 **Publish ettiği eventler:**
 - `TeacherAssignedToBusiness`
