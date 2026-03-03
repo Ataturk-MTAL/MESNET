@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace MESNET.Common.Infrastructure.Security;
 
@@ -12,6 +13,7 @@ namespace MESNET.Common.Infrastructure.Security;
 /// Keycloak paketinin rol dönüşümüne EK olarak çalışır.
 /// Her istekte Marten'dan güncel UserAccount okur → roller + DirectPermissions → permission claim'lerine dönüştürür.
 /// JWT stale claims problemini çözer: kullanıcı deaktive edilmişse permission eklenmez.
+/// Ayrıca token'da institution_id yoksa DB'den staff eşleşmesiyle claim olarak ekler.
 /// </summary>
 public sealed class PermissionClaimsTransformation : IClaimsTransformation
 {
@@ -20,6 +22,20 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     private readonly ILogger<PermissionClaimsTransformation> _logger;
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Institution staff tablosundan keycloakId ile kurum ID'si bulan raw SQL.
+    /// Modül entity referansı kullanmaz — schema izolasyonuna uyar.
+    /// </summary>
+    private const string InstitutionLookupSql = """
+        SELECT data->>'id' AS institution_id
+        FROM institution.mt_doc_institution
+        WHERE EXISTS (
+            SELECT 1 FROM jsonb_array_elements(data->'staff') AS s
+            WHERE s->>'keycloakId' = @keycloakId
+        )
+        LIMIT 1
+        """;
 
     public PermissionClaimsTransformation(
         IServiceProvider serviceProvider,
@@ -42,6 +58,10 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
             ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(sub))
             return principal;
+
+        // ── Institution claim enrichment ──
+        // Token'da institution_id yoksa DB'den staff eşleşmesiyle bul ve claim olarak ekle
+        await EnrichInstitutionClaimAsync(principal, sub);
 
         var cacheKey = $"user-permissions:{sub}";
 
@@ -134,6 +154,66 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     public static void InvalidateCache(IMemoryCache cache, string keycloakUserId)
     {
         cache.Remove($"user-permissions:{keycloakUserId}");
+        cache.Remove($"user-institution:{keycloakUserId}");
+    }
+
+    /// <summary>
+    /// Token'da institution_id claim'i yoksa DB'den staff eşleşmesiyle bulup claim olarak ekler.
+    /// Raw SQL kullanır — Institution modülüne proje referansı gerekmez.
+    /// </summary>
+    private async Task EnrichInstitutionClaimAsync(ClaimsPrincipal principal, string keycloakUserId)
+    {
+        if (principal.HasClaim(c => c.Type == "institution_id"))
+            return;
+
+        var cacheKey = $"user-institution:{keycloakUserId}";
+
+        if (!_cache.TryGetValue(cacheKey, out string? institutionId))
+        {
+            institutionId = await LookupInstitutionIdAsync(keycloakUserId);
+            _cache.Set(cacheKey, institutionId ?? string.Empty, CacheDuration);
+        }
+
+        if (!string.IsNullOrEmpty(institutionId))
+        {
+            (principal.Identity as ClaimsIdentity)?.AddClaim(new Claim("institution_id", institutionId));
+        }
+    }
+
+    private async Task<string?> LookupInstitutionIdAsync(string keycloakUserId)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var store = scope.ServiceProvider.GetService<Marten.IDocumentStore>();
+            if (store is null)
+                return null;
+
+            var conn = store.Storage.Database.CreateConnection();
+            await conn.OpenAsync();
+            await using (conn)
+            {
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = InstitutionLookupSql;
+                cmd.Parameters.Add(new NpgsqlParameter("keycloakId", keycloakUserId));
+
+                var result = await cmd.ExecuteScalarAsync();
+                if (result is string id && !string.IsNullOrEmpty(id))
+                {
+                    _logger.LogDebug(
+                        "Institution claim eklendi (DB fallback): {KeycloakUserId} → {InstitutionId}",
+                        keycloakUserId, id);
+                    return id;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Institution claim lookup hatası: {KeycloakUserId}", keycloakUserId);
+        }
+
+        return null;
     }
 
     /// <summary>
