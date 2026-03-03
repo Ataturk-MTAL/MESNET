@@ -18,6 +18,12 @@ public static class DeactivateBusinessHandler
         if (!business.Status.CanTransitionTo(BusinessStatus.Inactive))
             throw new DomainException(BusinessErrors.InvalidTransition(business.Status.Slug, BusinessStatus.Inactive.Slug));
 
+        if (business.Capacity.OccupiedSlots > 0)
+            throw new DomainException(BusinessErrors.HasActiveStudents(command.BusinessId));
+
+        if (business.HasAssignedTeacher)
+            throw new DomainException(BusinessErrors.HasAssignedTeacher(command.BusinessId));
+
         business.Status = BusinessStatus.Inactive;
 
         session.Store(business);

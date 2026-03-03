@@ -35,4 +35,5 @@ public class Business
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ApprovedAt { get; set; }
     public DateTime? ClosedAt { get; set; }
+    public bool HasAssignedTeacher { get; set; }
 }

@@ -32,4 +32,10 @@ public static class BusinessErrors
 
     public static Error InvalidSector(string sectorName) =>
         new("Business.InvalidSector", $"Geçersiz sektör: {sectorName}");
+
+    public static Error HasActiveStudents(Guid id) =>
+        new("Business.HasActiveStudents", $"İşletmede aktif stajyerler var. Önce fesih yapılmalıdır: {id}");
+
+    public static Error HasAssignedTeacher(Guid id) =>
+        new("Business.HasAssignedTeacher", $"İşletmeye atanmış öğretmen var. Önce atama kaldırılmalıdır: {id}");
 }

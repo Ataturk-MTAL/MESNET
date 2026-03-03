@@ -4,7 +4,8 @@
 
     <!-- Filtreler -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
-      <div class="col-12 col-sm-3">
+      <!-- Alan seçimi: yöneticiler seçebilir; alan şefi kendi alanını chip olarak görür -->
+      <div v-if="!authStore.isDepartmentHead" class="col-12 col-sm-3">
         <q-select
           v-model="branchFilter"
           :options="branchOpts.options.value"
@@ -31,6 +32,17 @@
           </template>
         </q-select>
       </div>
+      <div v-else class="col-12 col-sm-3">
+        <q-field label="Alan" filled stack-label>
+          <template #control>
+            <div class="self-center full-width no-outline">
+              <q-icon name="school" color="blue-7" class="q-mr-sm" />
+              {{ branchLabel }}
+            </div>
+          </template>
+        </q-field>
+      </div>
+
       <div class="col-12 col-sm-3">
         <q-select
           v-model="selectedTeacherId"
@@ -59,14 +71,6 @@
         </q-select>
       </div>
       <div class="col-12 col-sm-auto q-gutter-sm">
-        <q-btn
-          flat
-          color="secondary"
-          icon="calculate"
-          label="Mesafe Hesapla"
-          :loading="recalculating"
-          @click="recalculateDistances"
-        />
         <q-btn
           color="primary"
           icon="save"
@@ -121,11 +125,12 @@
     <div v-if="branchFilter">
       <q-tabs
         v-model="activeTab"
-        dense
         align="left"
         class="text-primary q-mb-md"
         active-color="primary"
         indicator-color="primary"
+        outside-arrows
+        mobile-arrows
       >
         <q-tab name="assignment" icon="drag_indicator" label="İşletme Dağıtımı" />
         <q-tab name="teachers" icon="people" label="Öğretmen Özeti" />
@@ -459,9 +464,56 @@
 
         <!-- ── Tab 3: Harita ── -->
         <q-tab-panel name="map" class="q-pa-none">
+          <!-- Harita araç çubuğu -->
+          <div class="row items-center q-gutter-sm q-mb-md">
+            <q-input
+              v-model.number="clusterEps"
+              type="number"
+              label="Yarıçap (m)"
+              filled
+              dense
+              style="width: 130px"
+              :min="100"
+              :max="10000"
+              :step="100"
+            />
+            <q-input
+              v-model.number="clusterMinPoints"
+              type="number"
+              label="Min. Nokta"
+              filled
+              dense
+              style="width: 110px"
+              :min="2"
+              :max="20"
+            />
+            <q-btn
+              color="primary"
+              icon="refresh"
+              label="Kümele"
+              :loading="clusterLoading"
+              @click="loadClusters"
+            />
+            <q-separator vertical inset class="q-mx-sm" />
+            <q-btn
+              color="teal"
+              icon="route"
+              label="Mesafe Hesapla"
+              :loading="recalculating"
+              :disable="periodStore.isReadOnly"
+              @click="recalculateDistances"
+            />
+          </div>
+
           <div v-if="clusterLoading" class="text-center q-pa-xl">
             <q-spinner color="primary" size="3em" />
             <div class="text-caption text-grey-6 q-mt-sm">İşletme kümeleri yükleniyor...</div>
+          </div>
+
+          <div v-else-if="clusterError" class="text-center q-pa-xl text-grey-6">
+            <q-icon name="warning" size="3em" color="orange-6" class="q-mb-sm" />
+            <div>Kümeleme verisi yüklenemedi.</div>
+            <div class="text-caption q-mt-sm">PostGIS eklentisi henüz etkin olmayabilir. Sistem yöneticisi ile iletişime geçin.</div>
           </div>
 
           <div v-else-if="clusterData.length === 0" class="text-center q-pa-xl text-grey-6">
@@ -520,6 +572,7 @@ import {
   type CoordinationSummaryDto,
   type DailyScheduleDto,
   type TeacherSummaryRowDto,
+  type TeacherWorkloadSummaryDto,
   type BusinessClusterDto,
 } from 'src/api/coordination'
 import { institutionApi } from 'src/api/institution'
@@ -572,6 +625,9 @@ const teacherOverviewLoading = ref(false)
 // ── Cluster Map State ──
 const clusterData = ref<BusinessClusterDto[]>([])
 const clusterLoading = ref(false)
+const clusterError = ref(false)
+const clusterEps = ref(1000) // yarıçap metre
+const clusterMinPoints = ref(3)
 
 // ── Pending Changes ──
 interface PendingChange {
@@ -590,20 +646,7 @@ const teacherFilterNeedle = ref('')
 
 const filteredTeacherOpts = computed(() => {
   const needle = teacherFilterNeedle.value.toLowerCase()
-
-  // Alan seçiliyse: o alana atanmış öğretmenleri önce göster
-  let opts: { label: string; value: string }[] = teacherOpts.allOptions.value
-  if (branchFilter.value && assignments.value.length > 0) {
-    const assignedIds = new Set(
-      assignments.value
-        .filter((a) => a.assignedTeacherId)
-        .map((a) => a.assignedTeacherId!),
-    )
-    const inBranch = opts.filter((o) => assignedIds.has(o.value))
-    const others = opts.filter((o) => !assignedIds.has(o.value))
-    opts = [...inBranch, ...others]
-  }
-
+  const opts = teacherOpts.allOptions.value
   if (!needle) return opts
   return opts.filter((o) => o.label.toLowerCase().includes(needle))
 })
@@ -719,12 +762,20 @@ const isOverLimit = computed(
 )
 
 const totalTeacherBusinessCount = computed(() =>
-  summary.value.teacherWorkloads.reduce((sum, tw) => sum + tw.businessCount, 0),
+  summary.value.teacherWorkloads.reduce((sum: number, tw: TeacherWorkloadSummaryDto) => sum + tw.businessCount, 0),
 )
 
 const selectedTeacherName = computed(() => {
   if (!selectedTeacherId.value) return ''
   return teacherOpts.allOptions.value.find((o) => o.value === selectedTeacherId.value)?.label ?? ''
+})
+
+const branchLabel = computed(() => {
+  if (!branchFilter.value) return ''
+  return (
+    branchOpts.allOptions?.value.find((o: { value: string; label: string }) => o.value === branchFilter.value)?.label ??
+    branchFilter.value
+  )
 })
 
 const dayLabels: Record<string, string> = {
@@ -931,7 +982,9 @@ function onBranchChange() {
   selectedTeacherId.value = null
   rawSchedule.value = []
   pendingChanges.value = []
-  loadData()
+  const instId = authStore.user?.institutionId ?? undefined
+  void teacherOpts.reload({ institutionId: instId, branchCode: branchFilter.value ?? undefined })
+  void loadData()
 }
 
 function onTeacherChange(teacherId: string | null) {
@@ -1063,14 +1116,17 @@ async function loadTeacherOverview() {
 }
 
 async function loadClusters() {
-  if (!periodStore.selectedPeriodId) return
-
   clusterLoading.value = true
+  clusterError.value = false
   try {
-    const { data } = await coordinationApi.getBusinessClusters(periodStore.selectedPeriodId)
+    const { data } = await coordinationApi.getBusinessClusters(
+      clusterEps.value,
+      clusterMinPoints.value,
+    )
     clusterData.value = data
-  } catch (e) {
-    notify.apiError(e, 'İşletme kümeleri yüklenirken hata oluştu.')
+  } catch {
+    clusterError.value = true
+    clusterData.value = []
   } finally {
     clusterLoading.value = false
   }
@@ -1142,7 +1198,7 @@ watch(activeTab, (tab) => {
   if (tab === 'teachers' && teacherOverviewRows.value.length === 0) {
     void loadTeacherOverview()
   }
-  if (tab === 'map' && clusterData.value.length === 0) {
+  if (tab === 'map' && clusterData.value.length === 0 && !clusterError.value) {
     void loadClusters()
   }
 })
@@ -1163,11 +1219,25 @@ watch(
 
 // ── Init ──
 onMounted(async () => {
-  await Promise.all([
-    teacherOpts.load(),
-    branchOpts.load(),
-    loadScheduleConfig(),
-  ])
+  const instId = authStore.user?.institutionId ?? undefined
+
+  // DepartmentHead → kendi branşını otomatik seç, sadece o branşın öğretmenlerini yükle
+  if (authStore.isDepartmentHead && authStore.user?.branchCode) {
+    branchFilter.value = authStore.user.branchCode
+    await Promise.all([
+      teacherOpts.reload({ institutionId: instId, branchCode: authStore.user.branchCode }),
+      branchOpts.load(),
+      loadScheduleConfig(),
+    ])
+    await loadData()
+  } else {
+    // Yöneticiler → tüm öğretmenleri yükle, alan seçimini bekle
+    await Promise.all([
+      teacherOpts.load({ institutionId: instId }),
+      branchOpts.load(),
+      loadScheduleConfig(),
+    ])
+  }
 })
 </script>
 

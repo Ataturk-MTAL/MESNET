@@ -5,7 +5,9 @@ namespace MESNET.Business.Shared.Events;
 
 public sealed record BusinessRegistered(
     Guid BusinessId,
+    Guid TenantId,
     string Name,
+    string? Address,
     Location? Location,
     RegistrationSource Source,
     int TotalSlots = 0,

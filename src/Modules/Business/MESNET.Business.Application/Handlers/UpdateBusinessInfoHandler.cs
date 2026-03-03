@@ -25,6 +25,6 @@ public static class UpdateBusinessInfoHandler
 
         session.Store(business);
 
-        return new BusinessUpdated(business.Id, business.Name, business.Location, business.Sectors);
+        return new BusinessUpdated(business.Id, business.Name, business.Address, business.Location, business.Sectors);
     }
 }

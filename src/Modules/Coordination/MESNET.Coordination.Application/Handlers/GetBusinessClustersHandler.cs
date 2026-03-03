@@ -32,7 +32,6 @@ public static class GetBusinessClustersHandler
             ) OVER ()                                                  AS cluster_id
         FROM coordination.mt_doc_businesscoordinationview
         WHERE (data->>'InstitutionId')::uuid = @institutionId
-          AND (data->>'AcademicPeriodId')::uuid = @academicPeriodId
           AND data->'Location' IS NOT NULL
           AND data->'Location'->>'Latitude' IS NOT NULL
           AND data->'Location'->>'Longitude' IS NOT NULL
@@ -53,7 +52,6 @@ public static class GetBusinessClustersHandler
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = ClusterSql;
             cmd.Parameters.AddWithValue("institutionId", query.InstitutionId);
-            cmd.Parameters.AddWithValue("academicPeriodId", query.AcademicPeriodId);
             cmd.Parameters.AddWithValue("eps", query.EpsMeters);
             cmd.Parameters.AddWithValue("minPoints", query.MinPoints);
 

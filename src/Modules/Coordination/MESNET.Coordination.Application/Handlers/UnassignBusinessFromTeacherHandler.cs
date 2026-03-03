@@ -4,12 +4,13 @@ using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.ReadModels;
+using MESNET.Coordination.Shared.Events;
 
 namespace MESNET.Coordination.Application.Handlers;
 
 public static class UnassignBusinessFromTeacherHandler
 {
-    public static async Task Handle(
+    public static async Task<BusinessUnassignedFromTeacher> Handle(
         UnassignBusinessFromTeacher command,
         IDocumentSession session,
         CancellationToken cancellationToken)
@@ -37,6 +38,8 @@ public static class UnassignBusinessFromTeacherHandler
         view.AssignedPeriodNumber = null;
 
         session.Store(view);
+
+        return new BusinessUnassignedFromTeacher(command.BusinessId);
     }
 
     private static void ClearScheduleSlot(

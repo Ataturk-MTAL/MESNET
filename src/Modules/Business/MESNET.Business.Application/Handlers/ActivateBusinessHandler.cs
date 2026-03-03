@@ -22,6 +22,6 @@ public static class ActivateBusinessHandler
 
         session.Store(business);
 
-        return new BusinessActivated(business.Id);
+        return new BusinessActivated(business.Id, business.TenantId, business.Name, business.Address, business.Location);
     }
 }

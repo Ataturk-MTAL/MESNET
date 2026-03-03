@@ -413,8 +413,8 @@ export const coordinationApi = {
 
   // ── Business Clusters ──
 
-  getBusinessClusters: (academicPeriodId: string, epsMeters = 500, minPoints = 3) =>
+  getBusinessClusters: (epsMeters = 1000, minPoints = 3) =>
     api.get<BusinessClusterDto[]>('/coordination/teachers/business-clusters', {
-      params: { academicPeriodId, epsMeters, minPoints },
+      params: { epsMeters, minPoints },
     }),
 }

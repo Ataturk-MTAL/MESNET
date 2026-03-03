@@ -5,12 +5,13 @@ using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.Enums;
 using MESNET.Coordination.Core.ReadModels;
+using MESNET.Coordination.Shared.Events;
 
 namespace MESNET.Coordination.Application.Handlers;
 
 public static class AssignBusinessToTeacherHandler
 {
-    public static async Task Handle(
+    public static async Task<Coordination.Shared.Events.BusinessAssignedToTeacher> Handle(
         AssignBusinessToTeacher command,
         IDocumentSession session,
         CancellationToken cancellationToken)
@@ -67,6 +68,15 @@ public static class AssignBusinessToTeacherHandler
                 command.AssignedDay, command.PeriodNumber.Value,
                 command.BusinessId, command.AssignedBy, cancellationToken);
         }
+
+        return new Coordination.Shared.Events.BusinessAssignedToTeacher(
+            Guid.Empty, // ScheduleId — AssignBusinessToTeacher command'ında yok
+            command.TeacherId,
+            command.BusinessId,
+            command.AssignedDay,
+            command.PeriodNumber ?? 0,
+            0, // AcademicYear — bu handler'da yok
+            string.Empty); // Semester
     }
 
     private static async Task ClearOldSlot(

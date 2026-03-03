@@ -18,6 +18,12 @@ public static class CloseBusinessHandler
         if (!business.Status.CanTransitionTo(BusinessStatus.Closed))
             throw new DomainException(BusinessErrors.InvalidTransition(business.Status.Slug, BusinessStatus.Closed.Slug));
 
+        if (business.Capacity.OccupiedSlots > 0)
+            throw new DomainException(BusinessErrors.HasActiveStudents(command.BusinessId));
+
+        if (business.HasAssignedTeacher)
+            throw new DomainException(BusinessErrors.HasAssignedTeacher(command.BusinessId));
+
         business.Status = BusinessStatus.Closed;
         business.ClosedAt = DateTime.UtcNow;
 
