@@ -6,7 +6,21 @@ namespace MESNET.Coordination.Application.Handlers;
 
 public static class GetBusinessClustersHandler
 {
+    /// <summary>
+    /// DBSCAN kümeleme sorgusu.
+    /// ST_ClusterDBSCAN geometry(SRID 4326) ile derece biriminde çalışır.
+    /// eps parametresi metre → derece dönüşümü SQL içinde yapılır:
+    ///   eps_degrees = eps_meters / (111320 * cos(radians(avg_lat)))
+    /// avg_lat: tüm işletmelerin ortalama enlemi (CTE ile hesaplanır).
+    /// </summary>
     private const string ClusterSql = """
+        WITH avg_lat AS (
+            SELECT AVG((data->'location'->>'latitude')::float8) AS lat
+            FROM coordination.mt_doc_businesscoordinationview
+            WHERE (data->>'institutionId')::uuid = @institutionId
+              AND data->'location' IS NOT NULL
+              AND data->'location'->>'latitude' IS NOT NULL
+        )
         SELECT
             (data->>'id')::uuid                                        AS business_id,
             data->>'name'                                              AS business_name,
@@ -26,8 +40,8 @@ public static class GetBusinessClustersHandler
                         (data->'location'->>'longitude')::float8,
                         (data->'location'->>'latitude')::float8
                     ), 4326
-                )::geography::geometry,
-                eps := @eps,
+                ),
+                eps := (@eps / (111320.0 * cos(radians((SELECT lat FROM avg_lat))))),
                 minpoints := @minPoints
             ) OVER ()                                                  AS cluster_id
         FROM coordination.mt_doc_businesscoordinationview

@@ -209,23 +209,31 @@ SELECT PostGIS_Version();
 `GetBusinessClustersHandler` işletmeleri coğrafi kümelere ayırır:
 
 ```sql
+WITH avg_lat AS (
+    SELECT AVG((data->'location'->>'latitude')::float8) AS lat
+    FROM coordination.mt_doc_businesscoordinationview
+    WHERE (data->>'institutionId')::uuid = @institutionId
+)
 SELECT
-    (data->>'Id')::uuid AS business_id,
-    (data->'Location'->>'Latitude')::float8 AS latitude,
-    (data->'Location'->>'Longitude')::float8 AS longitude,
+    (data->>'id')::uuid AS business_id,
+    (data->'location'->>'latitude')::float8 AS latitude,
+    (data->'location'->>'longitude')::float8 AS longitude,
     ST_ClusterDBSCAN(
         ST_SetSRID(
             ST_MakePoint(
-                (data->'Location'->>'Longitude')::float8,
-                (data->'Location'->>'Latitude')::float8
+                (data->'location'->>'longitude')::float8,
+                (data->'location'->>'latitude')::float8
             ), 4326
-        )::geography::geometry,
-        eps := @eps,          -- metre cinsinden yarıçap (varsayılan: 1000m)
-        minpoints := @minPoints  -- minimum nokta sayısı (varsayılan: 3)
+        ),
+        -- metre → derece dönüşümü (ortalama enlem kullanarak)
+        eps := (@eps / (111320.0 * cos(radians((SELECT lat FROM avg_lat))))),
+        minpoints := @minPoints
     ) OVER () AS cluster_id
 FROM coordination.mt_doc_businesscoordinationview
-WHERE (data->>'InstitutionId')::uuid = @institutionId
+WHERE (data->>'institutionId')::uuid = @institutionId
 ```
+
+**Birim dönüşümü notu:** `ST_ClusterDBSCAN` geometry(SRID 4326) üzerinde derece biriminde çalışır. Frontend'den gelen metre değeri `eps / (111320 × cos(radians(avg_lat)))` formülüyle dereceye çevrilir.
 
 `cluster_id = NULL` → outlier (hiçbir kümeye dahil olmayan işletme)
 
