@@ -25,6 +25,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Altyapı',
       items: [
+        'infrastructure/keycloak',
         'infrastructure/gis-osrm',
       ],
     },

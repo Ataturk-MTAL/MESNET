@@ -35,18 +35,22 @@ public static class AuthEndpoint
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // institution_id artık InstitutionClaimsTransformation tarafından claim olarak eklenir
+        // (token'da yoksa DB fallback — 5dk cache)
         var institutionId = user.FindFirst("institution_id")?.Value;
         var businessId = user.FindFirst("business_id")?.Value;
+        string? branchCode = null;
 
-        // Token'da institution_id yoksa DB'den staff eşleştirmesi yap
-        if (string.IsNullOrEmpty(institutionId))
+        // DepartmentHead → kendi branş kodu (alan şefi kendi alanını görür)
+        if (roles.Contains("DepartmentHead", StringComparer.OrdinalIgnoreCase))
         {
             var institution = await session
                 .Query<Institution.Core.Entities.Institution>()
                 .FirstOrDefaultAsync(i => i.Staff.Any(s => s.KeycloakId == sub));
 
-            if (institution is not null)
-                institutionId = institution.Id.ToString();
+            var staffMember = institution?.Staff.FirstOrDefault(s => s.KeycloakId == sub);
+            if (staffMember?.BranchCode is not null)
+                branchCode = staffMember.BranchCode;
         }
 
         return Results.Ok(ResponseBuilder.Success()
@@ -62,6 +66,7 @@ public static class AuthEndpoint
                     ?? user.FindFirst(ClaimTypes.Surname)?.Value,
                 institutionId,
                 businessId,
+                branchCode,
                 roles,
                 permissions
             })

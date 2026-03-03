@@ -45,12 +45,12 @@ public static class TeacherEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? institutionId, Guid? academicPeriodId,
+        Guid? institutionId, Guid? academicPeriodId, string? branchCode,
         int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
         IMessageBus bus = default!)
     {
         var result = await bus.InvokeAsync<PagedResult<TeacherProfileDto>>(
-            new ListTeachers(institutionId, academicPeriodId)
+            new ListTeachers(institutionId, academicPeriodId, branchCode)
             { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
         return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }

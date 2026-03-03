@@ -8,33 +8,33 @@ public static class GetBusinessClustersHandler
 {
     private const string ClusterSql = """
         SELECT
-            (data->>'Id')::uuid                                        AS business_id,
-            data->>'Name'                                              AS business_name,
-            (data->'Location'->>'Latitude')::float8                   AS latitude,
-            (data->'Location'->>'Longitude')::float8                  AS longitude,
-            data->>'District'                                          AS district,
-            data->>'BranchCode'                                        AS branch_code,
-            data->>'BranchName'                                        AS branch_name,
-            data->>'AssignedTeacherName'                               AS assigned_teacher_name,
-            CASE WHEN data->>'AssignedTeacherId' IS NOT NULL
+            (data->>'id')::uuid                                        AS business_id,
+            data->>'name'                                              AS business_name,
+            (data->'location'->>'latitude')::float8                   AS latitude,
+            (data->'location'->>'longitude')::float8                  AS longitude,
+            data->>'district'                                          AS district,
+            data->>'branchCode'                                        AS branch_code,
+            data->>'branchName'                                        AS branch_name,
+            data->>'assignedTeacherName'                               AS assigned_teacher_name,
+            CASE WHEN data->>'assignedTeacherId' IS NOT NULL
                  THEN true ELSE false END                              AS is_assigned,
-            COALESCE((data->>'ActiveStudentCount')::int, 0)            AS active_student_count,
-            (data->>'DistanceToSchoolKm')::float8                     AS distance_km,
+            COALESCE((data->>'activeStudentCount')::int, 0)            AS active_student_count,
+            (data->>'distanceToSchoolKm')::float8                     AS distance_km,
             ST_ClusterDBSCAN(
                 ST_SetSRID(
                     ST_MakePoint(
-                        (data->'Location'->>'Longitude')::float8,
-                        (data->'Location'->>'Latitude')::float8
+                        (data->'location'->>'longitude')::float8,
+                        (data->'location'->>'latitude')::float8
                     ), 4326
                 )::geography::geometry,
                 eps := @eps,
                 minpoints := @minPoints
             ) OVER ()                                                  AS cluster_id
         FROM coordination.mt_doc_businesscoordinationview
-        WHERE (data->>'InstitutionId')::uuid = @institutionId
-          AND data->'Location' IS NOT NULL
-          AND data->'Location'->>'Latitude' IS NOT NULL
-          AND data->'Location'->>'Longitude' IS NOT NULL
+        WHERE (data->>'institutionId')::uuid = @institutionId
+          AND data->'location' IS NOT NULL
+          AND data->'location'->>'latitude' IS NOT NULL
+          AND data->'location'->>'longitude' IS NOT NULL
         ORDER BY cluster_id NULLS LAST, business_name
         """;
 
@@ -59,6 +59,9 @@ public static class GetBusinessClustersHandler
 
             while (await reader.ReadAsync(cancellationToken))
             {
+                var branchCodeOrd = reader.GetOrdinal("branch_code");
+                var branchNameOrd = reader.GetOrdinal("branch_name");
+
                 result.Add(new BusinessClusterDto(
                     BusinessId: reader.GetGuid(reader.GetOrdinal("business_id")),
                     BusinessName: reader.GetString(reader.GetOrdinal("business_name")),
@@ -67,8 +70,12 @@ public static class GetBusinessClustersHandler
                     District: reader.IsDBNull(reader.GetOrdinal("district"))
                         ? null
                         : reader.GetString(reader.GetOrdinal("district")),
-                    BranchCode: reader.GetString(reader.GetOrdinal("branch_code")),
-                    BranchName: reader.GetString(reader.GetOrdinal("branch_name")),
+                    BranchCode: reader.IsDBNull(branchCodeOrd)
+                        ? string.Empty
+                        : reader.GetString(branchCodeOrd),
+                    BranchName: reader.IsDBNull(branchNameOrd)
+                        ? string.Empty
+                        : reader.GetString(branchNameOrd),
                     ClusterId: reader.IsDBNull(reader.GetOrdinal("cluster_id"))
                         ? null
                         : reader.GetInt32(reader.GetOrdinal("cluster_id")),

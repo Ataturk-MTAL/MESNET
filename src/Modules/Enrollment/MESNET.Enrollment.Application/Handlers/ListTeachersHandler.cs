@@ -17,6 +17,9 @@ public static class ListTeachersHandler
         if (query.InstitutionId.HasValue)
             queryable = queryable.Where(t => t.InstitutionId == query.InstitutionId.Value);
 
+        if (!string.IsNullOrEmpty(query.BranchCode))
+            queryable = queryable.Where(t => t.BranchCode == query.BranchCode);
+
         queryable = queryable.ApplySearch(query.Search, t => t.FullName);
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: t => t.FullName);
 

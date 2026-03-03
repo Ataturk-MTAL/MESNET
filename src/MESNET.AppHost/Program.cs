@@ -28,6 +28,7 @@ var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitmqUser, password:
 
 var keycloak = builder.AddKeycloak("keycloak", port: 8080, adminPassword: keycloakPassword)
     .WithRealmImport("./keycloak")
+    .WithBindMount("./keycloak/themes/mesnet", "/opt/keycloak/themes/mesnet")
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent);
 

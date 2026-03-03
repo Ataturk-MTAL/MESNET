@@ -186,11 +186,16 @@ DBSCAN kümeleme için PostgreSQL'de PostGIS extension gereklidir.
 ### PostGIS Kurulumu
 
 `kartoza/postgis:18-3.6` imajı PostGIS içerir.
-`./postgres/init-postgis.sql` dosyası `docker-entrypoint-initdb.d/` üzerinden ilk başlatmada çalışır:
 
-```sql title="src/MESNET.AppHost/postgres/init-postgis.sql"
-CREATE EXTENSION IF NOT EXISTS postgis;
+Extension, API startup'ında `Program.cs`'te idempotent olarak garanti altına alınır:
+
+```csharp title="src/MESNET.Presentation/Program.cs"
+// Her startup'ta çalışır — persistent container'da init script tekrar çalışmaz
+cmd.CommandText = "CREATE EXTENSION IF NOT EXISTS postgis";
+await cmd.ExecuteNonQueryAsync();
 ```
+
+Ek olarak `./postgres/init-postgis.sql` dosyası `docker-entrypoint-initdb.d/` üzerinden ilk başlatmada çalışır (yedek).
 
 ### Sürüm Doğrulama
 
@@ -215,12 +220,11 @@ SELECT
                 (data->'Location'->>'Latitude')::float8
             ), 4326
         )::geography::geometry,
-        eps := @eps,          -- metre cinsinden yarıçap (varsayılan: 500m)
+        eps := @eps,          -- metre cinsinden yarıçap (varsayılan: 1000m)
         minpoints := @minPoints  -- minimum nokta sayısı (varsayılan: 3)
     ) OVER () AS cluster_id
 FROM coordination.mt_doc_businesscoordinationview
 WHERE (data->>'InstitutionId')::uuid = @institutionId
-  AND (data->>'AcademicPeriodId')::uuid = @academicPeriodId
 ```
 
 `cluster_id = NULL` → outlier (hiçbir kümeye dahil olmayan işletme)

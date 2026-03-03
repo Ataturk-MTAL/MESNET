@@ -17,6 +17,7 @@ using MESNET.Payment.Api;
 using MESNET.Reporting.Api;
 using Scalar.AspNetCore;
 using Serilog;
+using Serilog.Exceptions;
 using Wolverine;
 using Wolverine.Http;
 using Wolverine.Marten;
@@ -47,6 +48,7 @@ try
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
+        .Enrich.WithExceptionDetails()
         .Enrich.WithEnvironmentName()
         .Enrich.WithThreadId()
         .Enrich.WithProperty("Application", "MESNET")
@@ -304,7 +306,16 @@ try
         else
         {
             // Beklenmeyen hatalar — 500 ama yine de yapısal ApiResponse dön
-            app.Logger.LogError(ex, "İşlenmeyen hata: {Path}", ctx.Request.Path);
+            // Structured property'ler Aspire dashboard'da filtrelenebilir
+            var innerEx = ex?.InnerException;
+            app.Logger.LogError(ex,
+                "İşlenmeyen hata: {Path} | {ExceptionType} | {ExceptionMessage} | InnerException: {InnerExceptionType} — {InnerExceptionMessage}",
+                ctx.Request.Path,
+                ex?.GetType().FullName,
+                ex?.Message,
+                innerEx?.GetType().FullName,
+                innerEx?.Message);
+
             ctx.Response.StatusCode = 500;
             ctx.Response.ContentType = "application/json";
             await ctx.Response.WriteAsJsonAsync(
@@ -417,6 +428,22 @@ try
 
     // SSE Notification Endpoint (Minimal API)
     app.MapSseNotificationEndpoint();
+
+    // PostGIS extension — DBSCAN kümeleme (ST_ClusterDBSCAN) için zorunlu
+    // Persistent container'da init-postgis.sql yalnızca ilk oluşturmada çalışır,
+    // her startup'ta idempotent olarak garanti altına alıyoruz
+    await using (var scope = app.Services.CreateAsyncScope())
+    {
+        var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
+        var conn = store.Storage.Database.CreateConnection();
+        await conn.OpenAsync();
+        await using (conn)
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "CREATE EXTENSION IF NOT EXISTS postgis";
+            await cmd.ExecuteNonQueryAsync();
+        }
+    }
 
     app.Run();
 }

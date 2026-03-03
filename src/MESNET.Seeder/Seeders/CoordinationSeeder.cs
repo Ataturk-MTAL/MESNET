@@ -18,13 +18,15 @@ public static class CoordinationSeeder
 
     private static async Task SeedGuidanceVisits(MesnetApiClient api, SeedContext ctx, Guid institutionId)
     {
-        // Mevcut ziyaretleri yükle — teacherId+businessId çiftiyle eşleştir
-        var existing = await api.GetAsync("/api/coordination/guidance-visits");
+        // Mevcut ziyaretleri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
+        var existing = await api.GetAsync("/api/coordination/guidance-visits?pageSize=100");
         var existingKeys = new HashSet<string>(); // "teacherId|businessId"
         var existingList = new List<(string Key, Guid Id)>();
-        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array)
+        if (existing is { } pagedResult
+            && pagedResult.TryGetProperty("items", out var itemsEl)
+            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
         {
-            foreach (var item in arr.EnumerateArray())
+            foreach (var item in itemsEl.EnumerateArray())
             {
                 var tid = item.GetProperty("teacherId").GetGuid();
                 var bid = item.GetProperty("businessId").GetGuid();
@@ -121,11 +123,14 @@ public static class CoordinationSeeder
     {
         if (!ctx.Has("Business1") || !ctx.Has("Teacher1")) return;
 
-        // Mevcut değerlendirmeleri kontrol et — businessId'ye göre
-        var existing = await api.GetAsync($"/api/coordination/business-evaluations?businessId={ctx.Get("Business1")}");
-        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array && arr.GetArrayLength() > 0)
+        // Mevcut değerlendirmeleri kontrol et — GetAsync → envelope.Data = PagedResult { items: [...] }
+        var existing = await api.GetAsync($"/api/coordination/business-evaluations?businessId={ctx.Get("Business1")}&pageSize=10");
+        if (existing is { } pagedResult1
+            && pagedResult1.TryGetProperty("items", out var itemsEl1)
+            && itemsEl1.ValueKind == System.Text.Json.JsonValueKind.Array
+            && itemsEl1.GetArrayLength() > 0)
         {
-            ctx.Set("Evaluation1", arr[0].GetProperty("id").GetGuid());
+            ctx.Set("Evaluation1", itemsEl1[0].GetProperty("id").GetGuid());
             Console.WriteLine("  → İşletme değerlendirme mevcut, yüklendi");
             return;
         }
@@ -156,11 +161,14 @@ public static class CoordinationSeeder
     {
         if (!ctx.Has("Student1") || !ctx.Has("Business1")) return;
 
-        // Mevcut sınavları kontrol et — studentId+yıl+dönem'e göre
-        var existing = await api.GetAsync($"/api/coordination/skill-exams?studentId={ctx.Get("Student1")}&academicYear=2025&semester=Spring");
-        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array && arr.GetArrayLength() > 0)
+        // Mevcut sınavları kontrol et — GetAsync → envelope.Data = PagedResult { items: [...] }
+        var existing = await api.GetAsync($"/api/coordination/skill-exams?studentId={ctx.Get("Student1")}&academicYear=2025&semester=Spring&pageSize=10");
+        if (existing is { } pagedResult2
+            && pagedResult2.TryGetProperty("items", out var itemsEl2)
+            && itemsEl2.ValueKind == System.Text.Json.JsonValueKind.Array
+            && itemsEl2.GetArrayLength() > 0)
         {
-            ctx.Set("Exam1", arr[0].GetProperty("id").GetGuid());
+            ctx.Set("Exam1", itemsEl2[0].GetProperty("id").GetGuid());
             Console.WriteLine("  → Beceri sınavı mevcut, yüklendi");
             return;
         }
@@ -198,11 +206,14 @@ public static class CoordinationSeeder
     {
         if (!ctx.Has("Student1") || !ctx.Has("Business1") || !ctx.Has("Teacher1")) return;
 
-        // Mevcut raporları kontrol et — studentId+yıl+ay'a göre
-        var existing = await api.GetAsync($"/api/coordination/activity-reports?studentId={ctx.Get("Student1")}&year=2025&month=12");
-        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array && arr.GetArrayLength() > 0)
+        // Mevcut raporları kontrol et — GetAsync → envelope.Data = PagedResult { items: [...] }
+        var existing = await api.GetAsync($"/api/coordination/activity-reports?studentId={ctx.Get("Student1")}&year=2025&month=12&pageSize=10");
+        if (existing is { } pagedResult3
+            && pagedResult3.TryGetProperty("items", out var itemsEl3)
+            && itemsEl3.ValueKind == System.Text.Json.JsonValueKind.Array
+            && itemsEl3.GetArrayLength() > 0)
         {
-            ctx.Set("Report1", arr[0].GetProperty("id").GetGuid());
+            ctx.Set("Report1", itemsEl3[0].GetProperty("id").GetGuid());
             Console.WriteLine("  → Aylık faaliyet raporu mevcut, yüklendi");
             return;
         }

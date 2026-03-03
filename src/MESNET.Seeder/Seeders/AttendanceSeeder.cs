@@ -11,12 +11,14 @@ public static class AttendanceSeeder
         var institutionId = ctx.Get("Institution");
         var now = DateTime.UtcNow;
 
-        // Mevcut devamsızlık kayıtlarını yükle — studentId+date çiftiyle eşleştir
-        var existing = await api.GetAsync($"/api/attendance?institutionId={institutionId}");
+        // Mevcut devamsızlık kayıtlarını yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
+        var existing = await api.GetAsync($"/api/attendance?institutionId={institutionId}&pageSize=100");
         var existingKeys = new Dictionary<string, Guid>(); // "studentId|date" → attendanceId
-        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array)
+        if (existing is { } pagedResult
+            && pagedResult.TryGetProperty("items", out var itemsEl)
+            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
         {
-            foreach (var item in arr.EnumerateArray())
+            foreach (var item in itemsEl.EnumerateArray())
             {
                 var sid = item.GetProperty("studentId").GetGuid();
                 var dateStr = item.GetProperty("date").GetString() ?? "";

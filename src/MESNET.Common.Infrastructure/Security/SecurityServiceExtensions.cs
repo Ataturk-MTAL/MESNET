@@ -65,6 +65,9 @@ public static class SecurityServiceExtensions
         // Custom claims transformation — Marten'dan güncel permission'lar
         services.AddTransient<IClaimsTransformation, PermissionClaimsTransformation>();
 
+        // Institution claim enrichment — token'da institution_id yoksa DB'den ekler
+        services.AddTransient<IClaimsTransformation, InstitutionClaimsTransformation>();
+
         // IMemoryCache — PermissionClaimsTransformation cache'i için
         services.AddMemoryCache();
 

@@ -11,12 +11,14 @@ public static class ContractSeeder
         var institutionId = ctx.Get("Institution");
         var academicPeriodId = ctx.Get("AcademicPeriod");
 
-        // Mevcut sözleşmeleri yükle — studentId'ye göre eşleştir
-        var existing = await api.GetAsync($"/api/contracts?institutionId={institutionId}");
+        // Mevcut sözleşmeleri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
+        var existing = await api.GetAsync($"/api/contracts?institutionId={institutionId}&pageSize=100");
         var existingByStudent = new Dictionary<Guid, Guid>(); // studentId → contractId
-        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array)
+        if (existing is { } pagedResult
+            && pagedResult.TryGetProperty("items", out var itemsEl)
+            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
         {
-            foreach (var item in arr.EnumerateArray())
+            foreach (var item in itemsEl.EnumerateArray())
             {
                 var studentId = item.GetProperty("studentId").GetGuid();
                 var contractId = item.GetProperty("id").GetGuid();

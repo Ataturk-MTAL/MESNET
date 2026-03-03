@@ -372,13 +372,16 @@ async function loadCurrentSchedule() {
 }
 
 async function loadHistory() {
-  if (!selectedTeacherId.value) return
+  if (!selectedTeacherId.value || !currentScheduleId.value) {
+    scheduleHistory.value = null
+    return
+  }
 
   historyLoading.value = true
   try {
     const { data } = await coordinationApi.getScheduleHistory(
       selectedTeacherId.value,
-      currentScheduleId.value ?? undefined,
+      currentScheduleId.value,
     )
     scheduleHistory.value = data
   } catch {

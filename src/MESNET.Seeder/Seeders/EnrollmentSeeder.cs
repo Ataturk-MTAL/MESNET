@@ -18,12 +18,14 @@ public static class EnrollmentSeeder
         Console.WriteLine();
         Console.WriteLine("── Öğretmenler ────────────────────");
 
-        // Mevcut öğretmenleri yükle — tam ada göre eşleştir
-        var existing = await api.GetAsync($"/api/teachers?institutionId={institutionId}");
+        // Mevcut öğretmenleri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
+        var existing = await api.GetAsync($"/api/teachers?institutionId={institutionId}&pageSize=100");
         var existingByName = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array)
+        if (existing is { } pagedResult
+            && pagedResult.TryGetProperty("items", out var itemsEl)
+            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
         {
-            foreach (var item in arr.EnumerateArray())
+            foreach (var item in itemsEl.EnumerateArray())
             {
                 var name = item.GetProperty("fullName").GetString() ?? "";
                 var id = item.GetProperty("id").GetGuid();
@@ -33,12 +35,12 @@ public static class EnrollmentSeeder
 
         var teachers = new[]
         {
-            ("Teacher1", "51000000-0000-0000-0000-000000000001", "Ayşe Çelik"),
-            ("Teacher2", "51000000-0000-0000-0000-000000000002", "Mustafa Yılmaz"),
-            ("Teacher3", "51000000-0000-0000-0000-000000000003", "Hasan Kara")
+            ("Teacher1", "51000000-0000-0000-0000-000000000001", "Ayşe Çelik",    "MUF"),
+            ("Teacher2", "51000000-0000-0000-0000-000000000002", "Mustafa Yılmaz", "BT"),
+            ("Teacher3", "51000000-0000-0000-0000-000000000003", "Hasan Kara",     "BT")
         };
 
-        foreach (var (key, kcId, name) in teachers)
+        foreach (var (key, kcId, name, branchCode) in teachers)
         {
             if (existingByName.TryGetValue(name, out var existingId))
             {
@@ -51,12 +53,13 @@ public static class EnrollmentSeeder
             {
                 institutionId,
                 keycloakUserId = Guid.Parse(kcId),
-                fullName = name
+                fullName = name,
+                branchCode
             });
             if (data is not null)
             {
                 ctx.Set(key, data.Value.GetProperty("id").GetGuid());
-                Console.WriteLine($"  ✓ Öğretmen \"{name}\" oluşturuldu");
+                Console.WriteLine($"  ✓ Öğretmen \"{name}\" ({branchCode}) oluşturuldu");
             }
         }
     }
@@ -66,12 +69,14 @@ public static class EnrollmentSeeder
         Console.WriteLine();
         Console.WriteLine("── Öğrenciler ─────────────────────");
 
-        // Mevcut öğrencileri yükle — tam ada göre eşleştir
-        var existing = await api.GetAsync($"/api/students?institutionId={institutionId}");
+        // Mevcut öğrencileri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
+        var existing = await api.GetAsync($"/api/students?institutionId={institutionId}&pageSize=100");
         var existingByName = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array)
+        if (existing is { } pagedResult
+            && pagedResult.TryGetProperty("items", out var itemsEl)
+            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
         {
-            foreach (var item in arr.EnumerateArray())
+            foreach (var item in itemsEl.EnumerateArray())
             {
                 var name = item.GetProperty("fullName").GetString() ?? "";
                 var id = item.GetProperty("id").GetGuid();
@@ -124,12 +129,14 @@ public static class EnrollmentSeeder
         Console.WriteLine();
         Console.WriteLine("── Yerleştirmeler ─────────────────");
 
-        // Mevcut yerleştirmeleri yükle — studentId'ye göre eşleştir
-        var existing = await api.GetAsync("/api/placements");
+        // Mevcut yerleştirmeleri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
+        var existing = await api.GetAsync("/api/placements?pageSize=100");
         var placedStudents = new HashSet<Guid>();
-        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array)
+        if (existing is { } pagedResult
+            && pagedResult.TryGetProperty("items", out var itemsEl)
+            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
         {
-            foreach (var item in arr.EnumerateArray())
+            foreach (var item in itemsEl.EnumerateArray())
                 placedStudents.Add(item.GetProperty("studentId").GetGuid());
         }
 

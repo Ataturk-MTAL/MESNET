@@ -28,6 +28,7 @@ export interface TeacherProfileDto {
   fullName: string
   institutionId: string
   registeredAt: string
+  branchCode?: string | null
 }
 
 export interface InternshipPlacementDto {
@@ -116,6 +117,6 @@ export const enrollmentApi = {
   transferStudent: (placementId: string, data: TransferRequest) =>
     api.post(`/placements/${placementId}/transfer`, data),
 
-  listTeachers: (params?: { institutionId?: string; academicPeriodId?: string } & PaginationParams) =>
+  listTeachers: (params?: { institutionId?: string; academicPeriodId?: string; branchCode?: string } & PaginationParams) =>
     api.get<PagedResponse<TeacherProfileDto>>('/teachers', { params }),
 }

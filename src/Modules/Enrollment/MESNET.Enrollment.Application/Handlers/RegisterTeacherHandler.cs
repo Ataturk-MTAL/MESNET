@@ -16,7 +16,8 @@ public static class RegisterTeacherHandler
             Id = Guid.NewGuid(),
             InstitutionId = command.InstitutionId,
             KeycloakUserId = command.KeycloakUserId,
-            FullName = command.FullName
+            FullName = command.FullName,
+            BranchCode = command.BranchCode
         };
 
         session.Store(teacher);

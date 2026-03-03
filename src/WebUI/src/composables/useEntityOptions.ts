@@ -169,21 +169,31 @@ export function usePlacementOptions() {
   return { options, allOptions, loading, load, filter, getBusinessForStudent, reset }
 }
 
+export interface TeacherOption extends SelectOption {
+  branchCode?: string | null
+}
+
 // ── Öğretmen Seçimi ──
 export function useTeacherOptions() {
-  const options = ref<SelectOption[]>([])
-  const allOptions = ref<SelectOption[]>([])
+  const options = ref<TeacherOption[]>([])
+  const allOptions = ref<TeacherOption[]>([])
   const loading = ref(false)
   let loaded = false
 
   async function load(params?: { institutionId?: string; academicPeriodId?: string }) {
     if (loaded) return
+    await reload(params)
+  }
+
+  /** Branş değişince veya force yenileme gerektiğinde çağır — her zaman API isteği atar */
+  async function reload(params?: { institutionId?: string; academicPeriodId?: string; branchCode?: string }) {
     loading.value = true
     try {
       const res = await enrollmentApi.listTeachers({ ...params, pageSize: 100 })
       allOptions.value = (res.data?.items ?? []).map((t) => ({
         label: t.fullName,
         value: t.id,
+        branchCode: t.branchCode ?? null,
       }))
       options.value = allOptions.value
       loaded = true
@@ -207,7 +217,7 @@ export function useTeacherOptions() {
     allOptions.value = []
   }
 
-  return { options, allOptions, loading, load, filter, reset }
+  return { options, allOptions, loading, load, reload, filter, reset }
 }
 
 // ── Keycloak Kullanıcı Seçimi ──

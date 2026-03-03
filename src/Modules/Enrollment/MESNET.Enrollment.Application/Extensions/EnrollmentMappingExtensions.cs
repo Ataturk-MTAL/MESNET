@@ -30,7 +30,8 @@ public static class EnrollmentMappingExtensions
         entity.KeycloakUserId,
         entity.FullName,
         entity.InstitutionId,
-        entity.RegisteredAt);
+        entity.RegisteredAt,
+        entity.BranchCode);
 
     public static InternshipPlacementDto ToDto(
         this InternshipPlacement entity,

@@ -5,4 +5,5 @@ public sealed record TeacherProfileDto(
     Guid KeycloakUserId,
     string FullName,
     Guid InstitutionId,
-    DateTime RegisteredAt);
+    DateTime RegisteredAt,
+    string? BranchCode = null);

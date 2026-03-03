@@ -23,6 +23,7 @@ export interface AuthUser {
   fullName: string
   roles: string[]
   institutionId: string | null
+  branchCode: string | null
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -35,6 +36,16 @@ export const useAuthStore = defineStore('auth', () => {
   // Getters
   const isAuthenticated = computed(() => !!_accessToken.value && !!user.value)
   const accessToken = computed(() => _accessToken.value)
+
+  /** Müdür veya Müdür Yardımcısı — alan seçicisini görebilir */
+  const isManager = computed(() =>
+    user.value?.roles.some((r) => r === 'InstitutionManager' || r === 'InstitutionStaff') ?? false,
+  )
+
+  /** Alan Şefi veya yetkili koordinatör öğretmen — alan seçicisi göstermez, otomatik atanır */
+  const isDepartmentHead = computed(() =>
+    user.value?.roles.includes('DepartmentHead') ?? false,
+  )
 
   function hasPermission(permission: string): boolean {
     return permissions.value.some(
@@ -78,6 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
         parsed.preferred_username,
       roles: realmRoles,
       institutionId: parsed.institution_id ?? null,
+      branchCode: null,
     }
 
     // Permission'lar henüz yüklenmedi — loadPermissions() ile backend'den alınacak
@@ -94,9 +106,13 @@ export const useAuthStore = defineStore('auth', () => {
       const { data } = await api.get('/auth/me')
       permissions.value = data?.permissions ?? []
 
-      // Backend'den gelen institutionId token claim'inden daha güvenilir
-      if (data?.institutionId && user.value) {
-        user.value = { ...user.value, institutionId: data.institutionId }
+      // Backend'den gelen bilgiler token claim'inden daha güvenilir
+      if (user.value) {
+        user.value = {
+          ...user.value,
+          ...(data?.institutionId ? { institutionId: data.institutionId } : {}),
+          branchCode: data?.branchCode ?? null,
+        }
       }
     } catch (err) {
       console.error('Permission yüklenirken hata:', err)
@@ -121,6 +137,8 @@ export const useAuthStore = defineStore('auth', () => {
     isInitialized,
     isAuthenticated,
     accessToken,
+    isManager,
+    isDepartmentHead,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
