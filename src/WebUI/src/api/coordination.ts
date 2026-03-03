@@ -193,6 +193,11 @@ export interface UpsertCoordinationConfigRequest {
 
 // ── Business Assignment DTOs ──
 
+export interface AssignedSlotInfo {
+  day: string
+  periodNumber: number
+}
+
 export interface BusinessAssignmentDto {
   businessId: string
   businessName: string
@@ -209,6 +214,7 @@ export interface BusinessAssignmentDto {
   activeStudentCount: number
   branchCode: string
   branchName: string
+  assignedSlots: AssignedSlotInfo[]
 }
 
 export interface CoordinationSummaryDto {
@@ -395,6 +401,14 @@ export const coordinationApi = {
 
   unassignBusiness: (businessId: string) =>
     api.delete(`/coordination/teachers/assignments/${businessId}`),
+
+  updateAssignedHours: (businessId: string, data: { assignedHours: number }) =>
+    api.patch(`/coordination/teachers/assignments/${businessId}/hours`, data),
+
+  unassignBusinessSlot: (businessId: string, day: string, periodNumber: number) =>
+    api.delete(`/coordination/teachers/assignments/${businessId}/slot`, {
+      params: { day, periodNumber },
+    }),
 
   recalculateDistances: () =>
     api.post('/coordination/teachers/recalculate-distances'),

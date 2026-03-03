@@ -75,7 +75,10 @@ public sealed record BusinessAssignmentDto(
     int? AssignedPeriodNumber,
     int ActiveStudentCount,
     string BranchCode,
-    string BranchName);
+    string BranchName,
+    List<AssignedSlotInfoDto> AssignedSlots);
+
+public sealed record AssignedSlotInfoDto(string Day, int PeriodNumber);
 
 public sealed record CoordinationSummaryDto(
     int TotalAvailableHours,

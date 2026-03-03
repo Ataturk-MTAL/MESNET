@@ -35,6 +35,9 @@ public sealed class BusinessCoordinationView
     /// <summary>Atanan ders saati numarası (1-based)</summary>
     public int? AssignedPeriodNumber { get; set; }
 
+    /// <summary>Çoklu slot atamaları (gün + ders saati)</summary>
+    public List<AssignedSlotInfo> AssignedSlots { get; set; } = [];
+
     /// <summary>Bu işletmede aktif stajyer sayısı</summary>
     public int ActiveStudentCount { get; set; }
 
@@ -47,3 +50,9 @@ public sealed class BusinessCoordinationView
     public Guid InstitutionId { get; init; }
     public Guid AcademicPeriodId { get; set; }
 }
+
+/// <summary>
+/// İşletmenin atandığı tek bir slot (gün + ders saati).
+/// BusinessCoordinationView.AssignedSlots koleksiyonunda tutulur.
+/// </summary>
+public sealed record AssignedSlotInfo(string Day, int PeriodNumber);

@@ -37,6 +37,8 @@ public static class CoordinationEndpoints
         group.MapGet("/assignments", ListAssignments).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/assignments", PostAssignment).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapDelete("/assignments/{businessId:guid}", DeleteAssignment).RequireAuthorization(Permissions.DepartmentHead.Distribution);
+        group.MapPatch("/assignments/{businessId:guid}/hours", PatchAssignedHours).RequireAuthorization(Permissions.DepartmentHead.Distribution);
+        group.MapDelete("/assignments/{businessId:guid}/slot", DeleteAssignmentSlot).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/assignments/{businessId:guid}/distance", PostManualDistance).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapGet("/summary", GetSummary).RequireAuthorization(Permissions.DepartmentHead.Workload);
         group.MapGet("/overview-all", GetAllTeachersOverview).RequireAuthorization(Permissions.DepartmentHead.Workload);
@@ -324,6 +326,42 @@ public static class CoordinationEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result)
+            .Build());
+    }
+
+    private static async Task<IResult> PatchAssignedHours(
+        Guid businessId,
+        UpdateBusinessAssignedHours command,
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var userName = http.User.FindFirst("name")?.Value ?? "system";
+        await bus.InvokeAsync(command with
+        {
+            BusinessId = businessId,
+            InstitutionId = instId,
+            UpdatedBy = userName
+        });
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Takdir edilen saat güncellendi.")
+            .Build());
+    }
+
+    private static async Task<IResult> DeleteAssignmentSlot(
+        Guid businessId,
+        string day,
+        int periodNumber,
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var userName = http.User.FindFirst("name")?.Value ?? "system";
+        await bus.InvokeAsync(new UnassignBusinessSlot(businessId, day, periodNumber, instId, userName));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("İşletme slot ataması kaldırıldı.")
             .Build());
     }
 

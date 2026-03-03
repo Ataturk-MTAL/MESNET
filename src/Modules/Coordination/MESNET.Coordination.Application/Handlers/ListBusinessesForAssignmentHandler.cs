@@ -46,7 +46,8 @@ public static class ListBusinessesForAssignmentHandler
             v.AssignedPeriodNumber,
             v.ActiveStudentCount,
             v.BranchCode,
-            v.BranchName
+            v.BranchName,
+            v.AssignedSlots.Select(s => new AssignedSlotInfoDto(s.Day, s.PeriodNumber)).ToList()
         )).ToList();
     }
 }

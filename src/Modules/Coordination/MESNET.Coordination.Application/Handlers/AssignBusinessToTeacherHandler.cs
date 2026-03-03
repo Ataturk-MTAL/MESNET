@@ -22,46 +22,60 @@ public static class AssignBusinessToTeacherHandler
         if (view is null)
             throw new DomainException(CoordinationErrors.BusinessNotFound(command.BusinessId));
 
-        // Kısıt 1: TakdirEdilenSaat ≤ VerilebilirSaat (işletme bazında)
-        if (command.AssignedHours > view.MaxCoordinationHours)
+        // Hedef saat: takdir edilen saat > 0 ise onu kullan, yoksa verilebilir saat
+        var targetHours = view.AssignedHours > 0 ? view.AssignedHours : view.MaxCoordinationHours;
+
+        // Mevcut slot sayısı kontrolü — tüm saatler atanmışsa hata
+        if (view.AssignedSlots.Count >= targetHours)
         {
             throw new DomainException(
-                CoordinationErrors.AssignedHoursExceedMax(command.AssignedHours, view.MaxCoordinationHours));
+                CoordinationErrors.AllSlotsAssigned(view.AssignedSlots.Count, targetHours));
         }
 
-        // Kısıt 2: Toplam dağıtılan saat ≤ ToplamVerilebilirSaat (alan bazında)
-        var allViews = await session.Query<BusinessCoordinationView>()
-            .Where(v => v.InstitutionId == command.InstitutionId && v.BranchCode == view.BranchCode)
-            .ToListAsync(cancellationToken);
+        // Duplicate slot kontrolü
+        if (command.AssignedDay is not null && command.PeriodNumber.HasValue)
+        {
+            var duplicate = view.AssignedSlots.Any(s =>
+                s.Day == command.AssignedDay && s.PeriodNumber == command.PeriodNumber.Value);
+            if (duplicate)
+            {
+                throw new DomainException(
+                    CoordinationErrors.SlotAlreadyAssigned(command.AssignedDay, command.PeriodNumber.Value));
+            }
+        }
 
-        var totalAvailable = allViews.Sum(v => v.MaxCoordinationHours);
-        var totalAssigned = allViews
-            .Where(v => v.Id != command.BusinessId)
-            .Sum(v => v.AssignedHours) + command.AssignedHours;
+        // İlk slot → öğretmen bilgisi set et
+        if (view.AssignedSlots.Count == 0)
+        {
+            view.AssignedTeacherId = command.TeacherId;
+            view.AssignedTeacherName = command.TeacherName;
+        }
 
-        if (totalAssigned > totalAvailable)
+        // Farklı öğretmene atanmışsa hata
+        if (view.AssignedTeacherId.HasValue && view.AssignedTeacherId != command.TeacherId)
         {
             throw new DomainException(
-                CoordinationErrors.TotalAssignedHoursExceedAvailable(totalAssigned, totalAvailable));
+                CoordinationErrors.BusinessAlreadyAssignedToAnotherTeacher(command.BusinessId));
         }
 
-        // Eski atama varsa ve period bilgisi varsa → eski slot'u temizle
-        if (view.AssignedTeacherId.HasValue && view.AssignedPeriodNumber.HasValue && view.AssignedDay != null)
+        // Slot'u ekle
+        if (command.AssignedDay is not null && command.PeriodNumber.HasValue)
         {
-            await ClearOldSlot(session, view, cancellationToken);
+            view.AssignedSlots.Add(new AssignedSlotInfo(command.AssignedDay, command.PeriodNumber.Value));
         }
 
-        // Atama yap
-        view.AssignedTeacherId = command.TeacherId;
-        view.AssignedTeacherName = command.TeacherName;
-        view.AssignedHours = command.AssignedHours;
-        view.AssignedDay = command.AssignedDay;
-        view.AssignedPeriodNumber = command.PeriodNumber;
+        // Geriye uyumluluk: ilk slot bilgisini eski alanlara da yaz
+        if (view.AssignedSlots.Count > 0)
+        {
+            var firstSlot = view.AssignedSlots[0];
+            view.AssignedDay = firstSlot.Day;
+            view.AssignedPeriodNumber = firstSlot.PeriodNumber;
+        }
 
         session.Store(view);
 
         // Period bilgisi verilmişse → TeacherSchedule slot'una da businessId ata
-        if (command.PeriodNumber.HasValue)
+        if (command.PeriodNumber.HasValue && command.AssignedDay is not null)
         {
             await AssignToScheduleSlot(
                 session, command.TeacherId, view.AcademicPeriodId,
@@ -70,47 +84,13 @@ public static class AssignBusinessToTeacherHandler
         }
 
         return new Coordination.Shared.Events.BusinessAssignedToTeacher(
-            Guid.Empty, // ScheduleId — AssignBusinessToTeacher command'ında yok
+            Guid.Empty,
             command.TeacherId,
             command.BusinessId,
-            command.AssignedDay,
+            command.AssignedDay ?? string.Empty,
             command.PeriodNumber ?? 0,
-            0, // AcademicYear — bu handler'da yok
-            string.Empty); // Semester
-    }
-
-    private static async Task ClearOldSlot(
-        IDocumentSession session,
-        BusinessCoordinationView view,
-        CancellationToken cancellationToken)
-    {
-        var schedule = session.Query<TeacherSchedule>()
-            .FirstOrDefault(s =>
-                s.TeacherId == view.AssignedTeacherId!.Value &&
-                s.AcademicPeriodId == view.AcademicPeriodId);
-
-        if (schedule is null) return;
-
-        if (!Enum.TryParse<DayOfWeek>(view.AssignedDay, true, out var oldDay)) return;
-
-        var dailySchedule = schedule.WeeklySchedule.FirstOrDefault(d => d.Day == oldDay);
-        var slot = dailySchedule?.Periods.FirstOrDefault(p => p.PeriodNumber == view.AssignedPeriodNumber!.Value);
-
-        if (slot is not null && slot.AssignedBusinessId == view.Id)
-        {
-            slot.AssignedBusinessId = null;
-
-            var updateEvent = new ScheduleUpdated(
-                schedule.Id,
-                schedule.WeeklySchedule.Select(d => new DailyScheduleData(
-                    d.Day.ToString(),
-                    d.Periods.Select(p => new PeriodSlotData(p.PeriodNumber, p.Status.Name, p.CourseName)).ToList()
-                )).ToList(),
-                "system",
-                DateTime.UtcNow);
-
-            session.Events.Append(schedule.Id, updateEvent);
-        }
+            0,
+            string.Empty);
     }
 
     private static async Task AssignToScheduleSlot(

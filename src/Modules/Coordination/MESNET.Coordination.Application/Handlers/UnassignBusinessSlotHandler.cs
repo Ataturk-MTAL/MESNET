@@ -8,10 +8,10 @@ using MESNET.Coordination.Shared.Events;
 
 namespace MESNET.Coordination.Application.Handlers;
 
-public static class UnassignBusinessFromTeacherHandler
+public static class UnassignBusinessSlotHandler
 {
-    public static async Task<BusinessUnassignedFromTeacher> Handle(
-        UnassignBusinessFromTeacher command,
+    public static async Task Handle(
+        UnassignBusinessSlot command,
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
@@ -24,28 +24,38 @@ public static class UnassignBusinessFromTeacherHandler
         if (!view.AssignedTeacherId.HasValue)
             throw new DomainException(CoordinationErrors.BusinessNotAssigned(command.BusinessId));
 
-        // Tüm slot'ları temizle (multi-slot)
-        foreach (var assignedSlot in view.AssignedSlots)
+        // Slot'u bul ve kaldır
+        var slotToRemove = view.AssignedSlots
+            .FirstOrDefault(s => s.Day == command.Day && s.PeriodNumber == command.PeriodNumber);
+
+        if (slotToRemove is null)
         {
-            ClearScheduleSlot(session, view, assignedSlot.Day, assignedSlot.PeriodNumber);
+            throw new DomainException(
+                CoordinationErrors.SlotNotAssigned(command.BusinessId, command.Day, command.PeriodNumber));
         }
 
-        // Eski tek slot alanları (geriye uyumluluk fallback — AssignedSlots boş ama eski alanlar dolu)
-        if (view.AssignedSlots.Count == 0 && view.AssignedPeriodNumber.HasValue && view.AssignedDay != null)
-        {
-            ClearScheduleSlot(session, view, view.AssignedDay, view.AssignedPeriodNumber.Value);
-        }
+        view.AssignedSlots.Remove(slotToRemove);
 
-        // View alanlarını temizle
-        view.AssignedTeacherId = null;
-        view.AssignedTeacherName = null;
-        view.AssignedSlots.Clear();
-        view.AssignedDay = null;
-        view.AssignedPeriodNumber = null;
+        // TeacherSchedule slot'unu temizle
+        ClearScheduleSlot(session, view, command.Day, command.PeriodNumber);
+
+        // Son slot silindiyse → öğretmen atamasını da temizle
+        if (view.AssignedSlots.Count == 0)
+        {
+            view.AssignedTeacherId = null;
+            view.AssignedTeacherName = null;
+            view.AssignedDay = null;
+            view.AssignedPeriodNumber = null;
+        }
+        else
+        {
+            // Geriye uyumluluk: ilk slot bilgisini eski alanlara yaz
+            var firstSlot = view.AssignedSlots[0];
+            view.AssignedDay = firstSlot.Day;
+            view.AssignedPeriodNumber = firstSlot.PeriodNumber;
+        }
 
         session.Store(view);
-
-        return new BusinessUnassignedFromTeacher(command.BusinessId);
     }
 
     private static void ClearScheduleSlot(
@@ -54,6 +64,8 @@ public static class UnassignBusinessFromTeacherHandler
         string slotDay,
         int slotPeriodNumber)
     {
+        if (!view.AssignedTeacherId.HasValue) return;
+
         var schedule = session.Query<TeacherSchedule>()
             .FirstOrDefault(s =>
                 s.TeacherId == view.AssignedTeacherId!.Value &&

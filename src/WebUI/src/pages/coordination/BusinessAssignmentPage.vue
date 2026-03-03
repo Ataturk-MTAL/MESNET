@@ -63,6 +63,26 @@
           <template #prepend>
             <q-icon name="person" />
           </template>
+          <template #option="scope">
+            <q-item v-bind="scope.itemProps">
+              <q-item-section>
+                <q-item-label>{{ scope.opt.label }}</q-item-label>
+                <q-item-label
+                  v-if="!authStore.isDepartmentHead && branchFilter && scope.opt.branchCode !== branchFilter"
+                  caption
+                  class="text-orange-8"
+                >
+                  Farklı alan: {{ scope.opt.branchCode }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section
+                v-if="!authStore.isDepartmentHead && branchFilter && scope.opt.branchCode !== branchFilter"
+                side
+              >
+                <q-badge color="orange" label="Farklı alan" />
+              </q-item-section>
+            </q-item>
+          </template>
           <template #no-option>
             <q-item>
               <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
@@ -199,7 +219,11 @@
                         </div>
                       </div>
                       <div class="row q-mt-xs q-gutter-xs">
-                        <q-badge color="green-7" :label="`${biz.maxCoordinationHours} saat`" dense />
+                        <q-badge
+                          :color="slotProgress(biz).current > 0 ? 'orange-7' : 'green-7'"
+                          :label="`${slotProgress(biz).current}/${slotProgress(biz).target} saat`"
+                          dense
+                        />
                         <q-badge color="blue-7" :label="`${biz.activeStudentCount} öğrenci`" dense />
                       </div>
                     </div>
@@ -249,6 +273,88 @@
                   </q-card>
                 </div>
               </div>
+
+              <!-- Takdir Edilen Saat Paneli -->
+              <q-expansion-item
+                v-model="showHoursPanel"
+                icon="schedule"
+                label="Takdir Edilen Saat Ayarları"
+                header-class="text-weight-medium"
+                class="q-mb-md"
+                bordered
+                expand-separator
+                @show="initEditedHours"
+              >
+                <q-card>
+                  <q-card-section>
+                    <!-- Uyarı Banner'ları -->
+                    <q-banner v-if="hoursOverLimit" rounded class="bg-red-1 text-red-9 q-mb-sm">
+                      <template #avatar><q-icon name="error" color="red-7" /></template>
+                      Toplam takdir edilen saat ({{ hoursTotalAssigned }}) toplam verilebilir saati ({{ hoursTotalAvailable }}) aşıyor!
+                    </q-banner>
+                    <q-banner v-else-if="hoursNearLimit" rounded class="bg-orange-1 text-orange-9 q-mb-sm">
+                      <template #avatar><q-icon name="warning" color="orange-7" /></template>
+                      Toplam takdir edilen saat verilebilir saate yaklaşıyor: {{ hoursTotalAssigned }} / {{ hoursTotalAvailable }}
+                    </q-banner>
+
+                    <q-markup-table flat bordered dense separator="cell" class="q-mb-sm">
+                      <thead>
+                        <tr class="bg-grey-2">
+                          <th class="text-left">İşletme</th>
+                          <th class="text-center" style="width: 80px">Mesafe</th>
+                          <th class="text-center" style="width: 100px">Verilebilir</th>
+                          <th class="text-center" style="width: 120px">Takdir Edilen</th>
+                          <th class="text-center" style="width: 80px">Öğrenci</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="biz in assignments" :key="biz.businessId">
+                          <td class="text-left">{{ biz.businessName }}</td>
+                          <td class="text-center text-caption">
+                            {{ biz.distanceToSchoolKm != null ? `${biz.distanceToSchoolKm.toFixed(1)} km` : '—' }}
+                          </td>
+                          <td class="text-center text-weight-medium text-green-8">{{ biz.maxCoordinationHours }}</td>
+                          <td class="text-center">
+                            <q-input
+                              v-model.number="editedHours[biz.businessId]"
+                              type="number"
+                              dense
+                              outlined
+                              :min="1"
+                              :max="biz.maxCoordinationHours"
+                              style="max-width: 80px; margin: 0 auto"
+                              :disable="periodStore.isReadOnly"
+                              :rules="[v => (v > 0 && v <= biz.maxCoordinationHours) || `1-${biz.maxCoordinationHours}`]"
+                            />
+                          </td>
+                          <td class="text-center text-caption">{{ biz.activeStudentCount }}</td>
+                        </tr>
+                      </tbody>
+                    </q-markup-table>
+
+                    <!-- Toplam satırı -->
+                    <div class="row q-gutter-md items-center q-mt-sm">
+                      <div class="text-caption">
+                        Toplam Verilebilir: <strong class="text-green-8">{{ hoursTotalAvailable }}</strong>
+                        &nbsp;|&nbsp; Toplam Takdir: <strong :class="hoursOverLimit ? 'text-red-8' : 'text-blue-8'">{{ hoursTotalAssigned }}</strong>
+                        &nbsp;|&nbsp; Kalan: <strong class="text-orange-8">{{ hoursRemaining }}</strong>
+                      </div>
+                      <q-space />
+                      <q-btn
+                        color="primary"
+                        icon="save"
+                        label="Saatleri Kaydet"
+                        :loading="hoursSaving"
+                        :disable="changedHoursCount === 0 || periodStore.isReadOnly"
+                        dense
+                        @click="saveHours"
+                      >
+                        <q-badge v-if="changedHoursCount > 0" color="red" floating>{{ changedHoursCount }}</q-badge>
+                      </q-btn>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </q-expansion-item>
 
               <!-- Öğretmen Ders Programı Grid -->
               <q-card v-if="selectedTeacherId && periodCount > 0" flat bordered class="q-mb-md">
@@ -629,6 +735,71 @@ const clusterError = ref(false)
 const clusterEps = ref(1000) // yarıçap metre
 const clusterMinPoints = ref(3)
 
+// ── Takdir Edilen Saat Düzenleme ──
+const showHoursPanel = ref(false)
+const hoursSaving = ref(false)
+const editedHours = ref<Record<string, number>>({}) // businessId → editedAssignedHours
+
+function initEditedHours() {
+  const map: Record<string, number> = {}
+  for (const a of assignments.value) {
+    map[a.businessId] = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
+  }
+  editedHours.value = map
+}
+
+const hoursTotalAvailable = computed(() =>
+  assignments.value.reduce((sum, a) => sum + a.maxCoordinationHours, 0),
+)
+const hoursTotalAssigned = computed(() =>
+  Object.values(editedHours.value).reduce((sum, h) => sum + h, 0),
+)
+const hoursRemaining = computed(() => hoursTotalAvailable.value - hoursTotalAssigned.value)
+const hoursOverLimit = computed(() => hoursTotalAssigned.value > hoursTotalAvailable.value)
+const hoursNearLimit = computed(() =>
+  !hoursOverLimit.value && hoursTotalAssigned.value > hoursTotalAvailable.value * 0.9,
+)
+
+const changedHoursCount = computed(() => {
+  let count = 0
+  for (const a of assignments.value) {
+    const current = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
+    if (editedHours.value[a.businessId] !== current) count++
+  }
+  return count
+})
+
+async function saveHours() {
+  hoursSaving.value = true
+  let successCount = 0
+  const errors: string[] = []
+
+  for (const a of assignments.value) {
+    const current = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
+    const edited = editedHours.value[a.businessId]
+    if (edited === undefined || edited === current) continue
+
+    try {
+      await coordinationApi.updateAssignedHours(a.businessId, { assignedHours: edited })
+      successCount++
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Bilinmeyen hata'
+      errors.push(`${a.businessName}: ${msg}`)
+    }
+  }
+
+  hoursSaving.value = false
+
+  if (successCount > 0) {
+    notify.success(`${successCount} işletmenin takdir edilen saati güncellendi.`)
+    await loadData()
+    initEditedHours()
+  }
+  if (errors.length > 0) {
+    notify.warning(`Hatalar: ${errors.join(', ')}`)
+  }
+}
+
 // ── Pending Changes ──
 interface PendingChange {
   type: 'assign' | 'unassign'
@@ -636,7 +807,6 @@ interface PendingChange {
   businessName: string
   day: string
   periodNumber: number
-  assignedHours: number
 }
 
 const pendingChanges = ref<PendingChange[]>([])
@@ -646,9 +816,19 @@ const teacherFilterNeedle = ref('')
 
 const filteredTeacherOpts = computed(() => {
   const needle = teacherFilterNeedle.value.toLowerCase()
-  const opts = teacherOpts.allOptions.value
-  if (!needle) return opts
-  return opts.filter((o) => o.label.toLowerCase().includes(needle))
+  let opts = [...teacherOpts.allOptions.value]
+  if (needle) {
+    opts = opts.filter((o) => o.label.toLowerCase().includes(needle))
+  }
+  // Cross-branch sıralama: kendi alan öğretmenleri üstte
+  if (branchFilter.value && !authStore.isDepartmentHead) {
+    opts.sort((a, b) => {
+      const aOwn = (a as { branchCode?: string }).branchCode === branchFilter.value ? 0 : 1
+      const bOwn = (b as { branchCode?: string }).branchCode === branchFilter.value ? 0 : 1
+      return aOwn !== bOwn ? aOwn - bOwn : a.label.localeCompare(b.label, 'tr')
+    })
+  }
+  return opts
 })
 
 function onTeacherFilter(val: string, update: (fn: () => void) => void) {
@@ -666,26 +846,26 @@ const businessNameMap = computed(() => {
   return map
 })
 
-// ── Computed: Atanmamış İşletmeler ──
+// ── Computed: Atanmamış / Kısmi Atanmış İşletmeler ──
 const unassignedBusinesses = computed(() => {
-  // Base: backend'den gelen atanmamış işletmeler
-  const base = assignments.value.filter((a) => !a.assignedTeacherId)
+  const result: BusinessAssignmentDto[] = []
 
-  // Pending assign'ları çıkar, pending unassign'ları ekle
-  const pendingAssignIds = new Set(
-    pendingChanges.value.filter((c) => c.type === 'assign').map((c) => c.businessId),
-  )
-  const pendingUnassignIds = new Set(
-    pendingChanges.value.filter((c) => c.type === 'unassign').map((c) => c.businessId),
-  )
+  for (const biz of assignments.value) {
+    const targetHours = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
+    const backendSlots = biz.assignedSlots?.length ?? 0
 
-  const result = base.filter((a) => !pendingAssignIds.has(a.businessId))
+    // Pending değişiklikleri hesapla
+    const pendingAssigns = pendingChanges.value.filter(
+      (c) => c.businessId === biz.businessId && c.type === 'assign',
+    ).length
+    const pendingUnassigns = pendingChanges.value.filter(
+      (c) => c.businessId === biz.businessId && c.type === 'unassign',
+    ).length
+    const effectiveSlots = backendSlots + pendingAssigns - pendingUnassigns
 
-  // Pending unassign'lar → atanmamışlar arasına döner
-  for (const id of pendingUnassignIds) {
-    if (!result.find((r) => r.businessId === id)) {
-      const original = assignments.value.find((a) => a.businessId === id)
-      if (original) result.push(original)
+    // Hedef saate ulaşmamış → sol panelde göster (sürüklenebilir)
+    if (effectiveSlots < targetHours) {
+      result.push(biz)
     }
   }
 
@@ -726,7 +906,6 @@ const assignedToTeacher = computed(() => {
           assignedTeacherId: selectedTeacherId.value,
           assignedDay: pc.day,
           assignedPeriodNumber: pc.periodNumber,
-          assignedHours: pc.assignedHours,
         })
       }
     }
@@ -895,6 +1074,20 @@ const clusterCounts = computed(() => {
   return sorted
 })
 
+// ── Slot Progress Helper ──
+
+function slotProgress(biz: BusinessAssignmentDto): { current: number; target: number } {
+  const target = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
+  const backendSlots = biz.assignedSlots?.length ?? 0
+  const pendingAssigns = pendingChanges.value.filter(
+    (c) => c.businessId === biz.businessId && c.type === 'assign',
+  ).length
+  const pendingUnassigns = pendingChanges.value.filter(
+    (c) => c.businessId === biz.businessId && c.type === 'unassign',
+  ).length
+  return { current: backendSlots + pendingAssigns - pendingUnassigns, target }
+}
+
 // ── DnD Event Handlers ──
 
 function onBusinessDragStart(event: DragEvent, biz: BusinessAssignmentDto) {
@@ -922,10 +1115,23 @@ function onBusinessDropped(payload: { businessId: string; day: string; periodNum
   )
   if (existing) return
 
-  // Önceki pending assign'ı varsa kaldır
-  pendingChanges.value = pendingChanges.value.filter(
-    (c) => !(c.businessId === payload.businessId && c.type === 'assign'),
-  )
+  // Hedef saat: takdir edilen saat > 0 ise onu kullan, yoksa verilebilir saat
+  const targetHours = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
+
+  // Mevcut atanmış slot sayısı (backend + pending)
+  const backendSlots = biz.assignedSlots?.length ?? 0
+  const pendingAssigns = pendingChanges.value.filter(
+    (c) => c.businessId === biz.businessId && c.type === 'assign',
+  ).length
+  const pendingUnassigns = pendingChanges.value.filter(
+    (c) => c.businessId === biz.businessId && c.type === 'unassign',
+  ).length
+  const currentSlots = backendSlots + pendingAssigns - pendingUnassigns
+
+  if (currentSlots >= targetHours) {
+    notify.warning(`${biz.businessName}: Tüm saatler atanmış (${currentSlots}/${targetHours}).`)
+    return
+  }
 
   pendingChanges.value.push({
     type: 'assign',
@@ -933,7 +1139,6 @@ function onBusinessDropped(payload: { businessId: string; day: string; periodNum
     businessName: biz.businessName,
     day: payload.day,
     periodNumber: payload.periodNumber,
-    assignedHours: biz.maxCoordinationHours,
   })
 }
 
@@ -962,18 +1167,27 @@ function onBusinessRemoved(payload: { businessId: string; day: string; periodNum
     businessName: biz.businessName,
     day: payload.day,
     periodNumber: payload.periodNumber,
-    assignedHours: 0,
   })
 }
 
 function removeAssignment(biz: BusinessAssignmentDto) {
-  if (!biz.assignedDay) return
-
-  onBusinessRemoved({
-    businessId: biz.businessId,
-    day: biz.assignedDay,
-    periodNumber: biz.assignedPeriodNumber ?? 0,
-  })
+  // Multi-slot: tüm slot'ları kaldır
+  if (biz.assignedSlots?.length > 0) {
+    for (const slot of biz.assignedSlots) {
+      onBusinessRemoved({
+        businessId: biz.businessId,
+        day: slot.day,
+        periodNumber: slot.periodNumber,
+      })
+    }
+  } else if (biz.assignedDay) {
+    // Geriye uyumluluk: eski tek slot
+    onBusinessRemoved({
+      businessId: biz.businessId,
+      day: biz.assignedDay,
+      periodNumber: biz.assignedPeriodNumber ?? 0,
+    })
+  }
 }
 
 // ── Teacher Change ──
@@ -983,7 +1197,12 @@ function onBranchChange() {
   rawSchedule.value = []
   pendingChanges.value = []
   const instId = authStore.user?.institutionId ?? undefined
-  void teacherOpts.reload({ institutionId: instId, branchCode: branchFilter.value ?? undefined })
+  // DepartmentHead: sadece kendi alanı; Yöneticiler: tüm öğretmenler (cross-branch)
+  if (authStore.isDepartmentHead) {
+    void teacherOpts.reload({ institutionId: instId, branchCode: branchFilter.value ?? undefined })
+  } else {
+    void teacherOpts.reload({ institutionId: instId })
+  }
   void loadData()
 }
 
@@ -1058,6 +1277,7 @@ async function loadData() {
     ])
     assignments.value = assignRes.data ?? []
     summary.value = summaryRes.data ?? summary.value
+    initEditedHours()
   } catch (e) {
     notify.apiError(e, 'İşletme listesi yüklenirken hata oluştu.')
   } finally {
@@ -1145,17 +1365,21 @@ async function saveAll() {
   for (const change of [...pendingChanges.value]) {
     try {
       if (change.type === 'assign') {
+        const biz = assignments.value.find((a) => a.businessId === change.businessId)
+        const hours = biz?.assignedHours || biz?.maxCoordinationHours || 0
         await coordinationApi.assignBusiness({
           businessId: change.businessId,
           teacherId: selectedTeacherId.value,
           teacherName: selectedTeacherName.value,
-          assignedHours: change.assignedHours,
+          assignedHours: hours,
           assignedDay: change.day,
           periodNumber: change.periodNumber,
           assignedBy: authStore.user?.fullName ?? '',
         })
       } else {
-        await coordinationApi.unassignBusiness(change.businessId)
+        await coordinationApi.unassignBusinessSlot(
+          change.businessId, change.day, change.periodNumber,
+        )
       }
       successCount++
     } catch (e: unknown) {

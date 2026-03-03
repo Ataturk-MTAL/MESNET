@@ -109,4 +109,24 @@ public static class CoordinationErrors
     public static Error BusinessNotAssigned(Guid businessId) =>
         new("Coordination.BusinessNotAssigned",
             $"İşletme herhangi bir öğretmene atanmamış: {businessId}");
+
+    public static Error AllSlotsAssigned(int currentSlots, int targetHours) =>
+        new("Coordination.AllSlotsAssigned",
+            $"Tüm saatler atanmış ({currentSlots}/{targetHours}). Yeni slot eklenemez.");
+
+    public static Error SlotAlreadyAssigned(string day, int periodNumber) =>
+        new("Coordination.SlotAlreadyAssigned",
+            $"Bu slot zaten atanmış: {day} günü {periodNumber}. ders saati.");
+
+    public static Error BusinessAlreadyAssignedToAnotherTeacher(Guid businessId) =>
+        new("Coordination.BusinessAlreadyAssignedToAnotherTeacher",
+            $"İşletme başka bir öğretmene atanmış. Önce mevcut atamayı kaldırın: {businessId}");
+
+    public static Error SlotNotAssigned(Guid businessId, string day, int periodNumber) =>
+        new("Coordination.SlotNotAssigned",
+            $"İşletmede bu slot atanmamış: {businessId}, {day} günü {periodNumber}. ders saati.");
+
+    public static Error InvalidAssignedHours(int assignedHours) =>
+        new("Coordination.InvalidAssignedHours",
+            $"Takdir edilen saat 0'dan büyük olmalıdır: {assignedHours}");
 }
