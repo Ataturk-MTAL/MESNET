@@ -35,7 +35,7 @@ logs/
 ## Secrets (local overrides)
 appsettings.*.local.json
 
-## Aspire
+## Aspire (gerçek şifreler içerir — sample dosyasından kopyalanır)
 .aspire/
 src/MESNET.AppHost/appsettings.json
 
