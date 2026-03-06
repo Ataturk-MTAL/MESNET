@@ -473,25 +473,45 @@ Her işletmeye verilebilecek **maksimum koordinatörlük saati** okula olan rota
 
 **Hesaplama alan bazlıdır.** Tüm koordinatörlük ders yükü hesabı **alan** (`FieldOfStudy.Code`: EET, BYT, MKT vb.) bazında yapılır. Dallar (ELOHAB, ELKTES, ENDBAK vb.) ayrı hesaplanmaz — aynı alandaki tüm dallar birlikte değerlendirilir.
 
-**Formül:**
+**Yasal dayanak:** Norm Kadro Yönetmeliği Madde 19 (atölye şefi), Madde 20 (alan şefi), Madde 22 (grup hesaplama).
+
+**Formül (Ders Yükü Havuzu):**
 
 ```text
-ToplamVerilebilirSaat = Σ(her işletmenin mesafeye göre verilebilecek saati)
-ToplamTakdirEdilenSaat = Σ(her işletmeye takdir edilen saat)
+Adım 1: Şeflik Saatleri
+  ŞeflikToplamı = (AlanŞefiSayısı × 10) + (AtölyeŞefiSayısı × 6)
 
-KESİN KISIT: ToplamTakdirEdilenSaat ≤ ToplamVerilebilirSaat
+Adım 2: Her sınıf seviyesi için (10, 11, 12):
+  GrupSayısı = Madde 22 tablosundan otomatik hesaplama (öğrenci sayısına göre)
+  AltToplam = HaftalıkDersSaati × GrupSayısı
+
+Adım 3: Toplam Ders Yükü Havuzu
+  TotalWorkloadPool = Σ(AltToplam) + ŞeflikToplamı
+
+KESİN KISIT 1: Σ(TakdirEdilenSaat) ≤ TotalWorkloadPool (havuz kısıtı)
+KESİN KISIT 2: Σ(TakdirEdilenSaat) ≤ Σ(MesafeBazlıMaksSaat) (mesafe kısıtı)
 ```
 
-**Bu kısıt mevzuat gereği aşılamaz.** Sistem, toplam dağıtılan saat toplam verilebilir saati aştığında:
+**Örnek hesaplama (BT alanı):**
 
-- Kırmızı uyarı gösterir
-- Kaydet butonunu devre dışı bırakır
-- Backend'de de doğrulama yapar (`AssignBusinessToTeacherHandler`)
+```text
+Şeflik: 1 alan şefi × 10 + 2 atölye şefi × 6 = 22 saat
+10. sınıf: 24 öğrenci → 2 grup × 8 ders = 16 saat
+11. sınıf: 18 öğrenci → 2 grup × 8 ders = 16 saat
+12. sınıf: 32 öğrenci → 3 grup × 8 ders = 24 saat
+Toplam havuz: 22 + 16 + 16 + 24 = 78 saat
+```
+
+**Çift kısıt:** İşletmelere toplamda 78 saatten fazla takdir edilen saat verilemez VE mesafe bazlı toplam verilebilir saat de aşılamaz. En kısıtlayıcı olan geçerlidir.
+
+**Backend doğrulama:** `UpdateBusinessAssignedHoursHandler` her iki kısıtı kontrol eder. Aşım durumunda `WorkloadPoolExceeded` hatası fırlatılır.
+
+**Frontend:** "Takdir Edilen Saat" tab'ında iki kart: (1) Alan Yapılandırması — şeflik + sınıf bazlı ders yükü → havuz hesaplama, (2) İşletme Saatleri — işletme bazlı takdir edilen saat tablosu.
 
 **Öğretmen bazında:**
 
 - Her işletmeye 0 ile VerilebilirSaat arasında "takdir edilen" saat atanır
-- Toplam dağıtılan saat (tüm öğretmenler) ToplamVerilebilirSaat'i aşamaz
+- Toplam dağıtılan saat havuzu aşamaz
 - Öğretmenin ders programında boş saati olmayan günlere ziyaret atanamaz
 
 ### 11.6 Örgün ve MESEM Programı Farkı
@@ -548,19 +568,24 @@ KESİN KISIT: ToplamTakdirEdilenSaat ≤ ToplamVerilebilirSaat
 |Müdür Yardımcısı (InstitutionStaff)|`department:*`|Dağıtımı görme/yönetme|
 |Koordinatör Öğretmen (Teacher)|`coordinator:schedule:manage`|Kendi ders programı + ziyaret|
 
-### 11.9 İş Yükü Hesaplama (Eski)
+### 11.9 İş Yükü Hesaplama
 
-**Formül:**
+**Formül (Azami Ek Ders):**
 
 ```text
 KullanılabilirEkDersSaati = AzamiEkDersSaati - ŞeflikIndirimSaati
+  - Meslek lisesi: büyükşehir 20h, diğer 16h
+  - MESEM: büyükşehir 24h, diğer 18h
 KullanılanSaat = Σ(AtananİşletmeZiyaretSaatleri)
 KalanSaat = KullanılabilirEkDersSaati - KullanılanSaat
 ```
 
+**Şeflik indirimi:** Alan şefi 10 saat, atölye şefi 6 saat toplam ders yükünden düşülür.
+
 **Kısıtlamalar:**
 
 - `KullanılanSaat ≤ KullanılabilirEkDersSaati` (aşım durumunda sistem uyarı verir)
+- Alan bazlı toplam: `Σ(TakdirEdilen) ≤ TotalWorkloadPool` (bkz. 11.5)
 - Öğretmenin ders programında boş saati olmayan günlere ziyaret atanamaz
 - Öğrenci sayısı ve işletme kapasitesi dikkate alınır
 

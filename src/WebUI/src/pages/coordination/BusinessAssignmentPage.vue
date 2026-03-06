@@ -152,6 +152,7 @@
         outside-arrows
         mobile-arrows
       >
+        <q-tab name="hours" icon="schedule" label="Takdir Edilen Saat" />
         <q-tab name="assignment" icon="drag_indicator" label="İşletme Dağıtımı" />
         <q-tab name="teachers" icon="people" label="Öğretmen Özeti" />
         <q-tab name="map" icon="map" label="Harita" />
@@ -160,7 +161,241 @@
       <q-separator class="q-mb-md" />
 
       <q-tab-panels v-model="activeTab" animated>
-        <!-- ── Tab 1: İşletme Dağıtımı ── -->
+        <!-- ── Tab: Takdir Edilen Saat ── -->
+        <q-tab-panel name="hours" class="q-pa-none">
+          <!-- Kart 1: Alan Yapılandırması -->
+          <q-card flat bordered class="q-mb-md">
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-medium q-mb-sm">
+                Alan Ders Yükü Yapılandırması
+              </div>
+              <div class="text-caption text-grey-7 q-mb-md">
+                Norm Kadro Yönetmeliği Madde 22'ye göre grup sayısı ve şeflik saatleri ile toplam ders yükü havuzu hesaplanır.
+              </div>
+
+              <q-inner-loading :showing="workloadLoading" />
+
+              <div class="row q-col-gutter-md q-mb-md">
+                <div class="col-12 col-sm-3">
+                  <q-select
+                    v-model="wlEducationType"
+                    :options="EDUCATION_TYPES"
+                    label="Eğitim Tipi"
+                    filled
+                    dense
+                    emit-value
+                    map-options
+                    :disable="periodStore.isReadOnly"
+                  />
+                </div>
+              </div>
+
+              <!-- Şeflik -->
+              <div class="text-body2 text-weight-medium q-mb-sm">Şeflik</div>
+              <div class="row q-col-gutter-md q-mb-md">
+                <div class="col-6 col-sm-3">
+                  <q-input
+                    v-model.number="wlDeptHeadCount"
+                    type="number"
+                    label="Alan Şefi Sayısı"
+                    filled
+                    dense
+                    :min="0"
+                    :max="1"
+                    :disable="periodStore.isReadOnly"
+                  />
+                </div>
+                <div class="col-6 col-sm-3">
+                  <q-input
+                    v-model.number="wlDeptHeadHours"
+                    type="number"
+                    label="Alan Şefi Saati"
+                    filled
+                    dense
+                    :min="0"
+                    :disable="periodStore.isReadOnly"
+                  />
+                </div>
+                <div class="col-6 col-sm-3">
+                  <q-input
+                    v-model.number="wlWorkshopHeadCount"
+                    type="number"
+                    label="Atölye Şefi Sayısı"
+                    filled
+                    dense
+                    :min="0"
+                    :disable="periodStore.isReadOnly"
+                  />
+                </div>
+                <div class="col-6 col-sm-3">
+                  <q-input
+                    v-model.number="wlWorkshopHeadHours"
+                    type="number"
+                    label="Atölye Şefi Saati"
+                    filled
+                    dense
+                    :min="0"
+                    :disable="periodStore.isReadOnly"
+                  />
+                </div>
+              </div>
+              <div class="text-body2 q-mb-md">
+                Şeflik Toplamı: <strong class="text-purple-8">{{ wlSupervisorTotal }}</strong> saat
+                <span class="text-caption text-grey-7">
+                  ({{ wlDeptHeadCount }} × {{ wlDeptHeadHours }} + {{ wlWorkshopHeadCount }} × {{ wlWorkshopHeadHours }})
+                </span>
+              </div>
+
+              <!-- Sınıf Bazlı Ders Yükü -->
+              <div class="text-body2 text-weight-medium q-mb-sm">Sınıf Bazlı Ders Yükü</div>
+              <q-markup-table flat bordered separator="cell" class="q-mb-md">
+                <thead>
+                  <tr class="bg-grey-2">
+                    <th class="text-center" style="width: 80px">Sınıf</th>
+                    <th class="text-center" style="width: 130px">Öğrenci Sayısı</th>
+                    <th class="text-center" style="width: 130px">Haftalık Ders</th>
+                    <th class="text-center" style="width: 80px">Grup</th>
+                    <th class="text-center" style="width: 100px">Alt Toplam</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(cl, idx) in wlClassLevels" :key="cl.classYear">
+                    <td class="text-center text-weight-medium">{{ cl.classYear }}. Sınıf</td>
+                    <td class="text-center">
+                      <q-input
+                        v-model.number="wlClassLevels[idx].studentCount"
+                        type="number"
+                        dense
+                        outlined
+                        :min="0"
+                        style="max-width: 100px; margin: 0 auto"
+                        :disable="periodStore.isReadOnly"
+                      />
+                    </td>
+                    <td class="text-center">
+                      <q-input
+                        v-model.number="wlClassLevels[idx].weeklyLessonHours"
+                        type="number"
+                        dense
+                        outlined
+                        :min="0"
+                        style="max-width: 100px; margin: 0 auto"
+                        :disable="periodStore.isReadOnly"
+                      />
+                    </td>
+                    <td class="text-center text-weight-medium text-blue-8">
+                      {{ estimateGroupCount(wlEducationType, cl.classYear, cl.studentCount) }}
+                    </td>
+                    <td class="text-center text-weight-medium">
+                      {{ cl.weeklyLessonHours * estimateGroupCount(wlEducationType, cl.classYear, cl.studentCount) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </q-markup-table>
+
+              <!-- Toplamlar + Kaydet -->
+              <div class="row items-center">
+                <div class="text-body2">
+                  Ders Yükü: <strong class="text-blue-8">{{ wlTeachingTotal }}</strong>
+                  &nbsp;+&nbsp; Şeflik: <strong class="text-purple-8">{{ wlSupervisorTotal }}</strong>
+                  &nbsp;=&nbsp; <strong class="text-teal-8 text-h6">HAVUZ: {{ wlPoolTotal }} saat</strong>
+                </div>
+                <q-space />
+                <q-btn
+                  color="teal"
+                  icon="save"
+                  label="Yapılandırmayı Kaydet"
+                  :loading="workloadSaving"
+                  :disable="periodStore.isReadOnly"
+                  @click="saveWorkloadConfig"
+                />
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <!-- Kart 2: İşletme Saatleri -->
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-medium q-mb-md">
+                İşletme Takdir Edilen Saatler
+              </div>
+
+              <!-- Uyarı Banner'ları -->
+              <q-banner v-if="hoursPoolOverLimit" rounded class="bg-red-1 text-red-9 q-mb-md">
+                <template #avatar><q-icon name="error" color="red-7" /></template>
+                Toplam takdir edilen saat ({{ hoursTotalAssigned }}) ders yükü havuzunu ({{ workloadConfig?.totalWorkloadPool ?? '—' }}) aşıyor!
+              </q-banner>
+              <q-banner v-if="hoursOverLimit" rounded class="bg-red-1 text-red-9 q-mb-md">
+                <template #avatar><q-icon name="error" color="red-7" /></template>
+                Toplam takdir edilen saat ({{ hoursTotalAssigned }}) toplam verilebilir saati ({{ hoursTotalAvailable }}) aşıyor!
+              </q-banner>
+              <q-banner v-else-if="hoursNearLimit" rounded class="bg-orange-1 text-orange-9 q-mb-md">
+                <template #avatar><q-icon name="warning" color="orange-7" /></template>
+                Toplam takdir edilen saat verilebilir saate yaklaşıyor: {{ hoursTotalAssigned }} / {{ hoursTotalAvailable }}
+              </q-banner>
+
+              <q-markup-table flat bordered separator="cell" class="q-mb-md">
+                <thead>
+                  <tr class="bg-grey-2">
+                    <th class="text-left">İşletme</th>
+                    <th class="text-center" style="width: 100px">Mesafe</th>
+                    <th class="text-center" style="width: 100px">Öğrenci</th>
+                    <th class="text-center" style="width: 120px">Verilebilir Maks.</th>
+                    <th class="text-center" style="width: 140px">Takdir Edilen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="biz in assignments" :key="biz.businessId">
+                    <td class="text-left">{{ biz.businessName }}</td>
+                    <td class="text-center text-caption">
+                      {{ biz.distanceToSchoolKm != null ? `${biz.distanceToSchoolKm.toFixed(1)} km` : '—' }}
+                    </td>
+                    <td class="text-center">{{ biz.activeStudentCount }}</td>
+                    <td class="text-center text-weight-medium text-green-8">{{ biz.maxCoordinationHours }}</td>
+                    <td class="text-center">
+                      <q-input
+                        v-model.number="editedHours[biz.businessId]"
+                        type="number"
+                        dense
+                        outlined
+                        :min="1"
+                        :max="biz.maxCoordinationHours"
+                        style="max-width: 90px; margin: 0 auto"
+                        :disable="periodStore.isReadOnly"
+                        :rules="[v => (v > 0 && v <= biz.maxCoordinationHours) || `1-${biz.maxCoordinationHours}`]"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </q-markup-table>
+
+              <!-- Özet + Kaydet -->
+              <div class="row items-center q-mt-md">
+                <div class="text-body2">
+                  Σ Maks: <strong class="text-green-8">{{ hoursTotalAvailable }}</strong>
+                  &nbsp;|&nbsp; Σ Takdir: <strong :class="hoursOverLimit ? 'text-red-8' : 'text-blue-8'">{{ hoursTotalAssigned }}</strong>
+                  <template v-if="workloadConfig">
+                    &nbsp;|&nbsp; Havuz: <strong class="text-teal-8">{{ workloadConfig.totalWorkloadPool }}</strong>
+                  </template>
+                  &nbsp;|&nbsp; Kalan: <strong class="text-orange-8">{{ hoursRemaining }}</strong>
+                </div>
+                <q-space />
+                <q-btn
+                  color="primary"
+                  icon="save"
+                  label="Saatleri Kaydet"
+                  :loading="hoursSaving"
+                  :disable="changedHoursCount === 0 || periodStore.isReadOnly"
+                  @click="saveHours"
+                >
+                  <q-badge v-if="changedHoursCount > 0" color="red" floating>{{ changedHoursCount }}</q-badge>
+                </q-btn>
+              </div>
+            </q-card-section>
+          </q-card>
+        </q-tab-panel>
+
+        <!-- ── Tab: İşletme Dağıtımı ── -->
         <q-tab-panel name="assignment" class="q-pa-none">
           <!-- Ana İçerik: 2 Sütun Layout -->
           <div class="row q-col-gutter-md">
@@ -273,88 +508,6 @@
                   </q-card>
                 </div>
               </div>
-
-              <!-- Takdir Edilen Saat Paneli -->
-              <q-expansion-item
-                v-model="showHoursPanel"
-                icon="schedule"
-                label="Takdir Edilen Saat Ayarları"
-                header-class="text-weight-medium"
-                class="q-mb-md"
-                bordered
-                expand-separator
-                @show="initEditedHours"
-              >
-                <q-card>
-                  <q-card-section>
-                    <!-- Uyarı Banner'ları -->
-                    <q-banner v-if="hoursOverLimit" rounded class="bg-red-1 text-red-9 q-mb-sm">
-                      <template #avatar><q-icon name="error" color="red-7" /></template>
-                      Toplam takdir edilen saat ({{ hoursTotalAssigned }}) toplam verilebilir saati ({{ hoursTotalAvailable }}) aşıyor!
-                    </q-banner>
-                    <q-banner v-else-if="hoursNearLimit" rounded class="bg-orange-1 text-orange-9 q-mb-sm">
-                      <template #avatar><q-icon name="warning" color="orange-7" /></template>
-                      Toplam takdir edilen saat verilebilir saate yaklaşıyor: {{ hoursTotalAssigned }} / {{ hoursTotalAvailable }}
-                    </q-banner>
-
-                    <q-markup-table flat bordered dense separator="cell" class="q-mb-sm">
-                      <thead>
-                        <tr class="bg-grey-2">
-                          <th class="text-left">İşletme</th>
-                          <th class="text-center" style="width: 80px">Mesafe</th>
-                          <th class="text-center" style="width: 100px">Verilebilir</th>
-                          <th class="text-center" style="width: 120px">Takdir Edilen</th>
-                          <th class="text-center" style="width: 80px">Öğrenci</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="biz in assignments" :key="biz.businessId">
-                          <td class="text-left">{{ biz.businessName }}</td>
-                          <td class="text-center text-caption">
-                            {{ biz.distanceToSchoolKm != null ? `${biz.distanceToSchoolKm.toFixed(1)} km` : '—' }}
-                          </td>
-                          <td class="text-center text-weight-medium text-green-8">{{ biz.maxCoordinationHours }}</td>
-                          <td class="text-center">
-                            <q-input
-                              v-model.number="editedHours[biz.businessId]"
-                              type="number"
-                              dense
-                              outlined
-                              :min="1"
-                              :max="biz.maxCoordinationHours"
-                              style="max-width: 80px; margin: 0 auto"
-                              :disable="periodStore.isReadOnly"
-                              :rules="[v => (v > 0 && v <= biz.maxCoordinationHours) || `1-${biz.maxCoordinationHours}`]"
-                            />
-                          </td>
-                          <td class="text-center text-caption">{{ biz.activeStudentCount }}</td>
-                        </tr>
-                      </tbody>
-                    </q-markup-table>
-
-                    <!-- Toplam satırı -->
-                    <div class="row q-gutter-md items-center q-mt-sm">
-                      <div class="text-caption">
-                        Toplam Verilebilir: <strong class="text-green-8">{{ hoursTotalAvailable }}</strong>
-                        &nbsp;|&nbsp; Toplam Takdir: <strong :class="hoursOverLimit ? 'text-red-8' : 'text-blue-8'">{{ hoursTotalAssigned }}</strong>
-                        &nbsp;|&nbsp; Kalan: <strong class="text-orange-8">{{ hoursRemaining }}</strong>
-                      </div>
-                      <q-space />
-                      <q-btn
-                        color="primary"
-                        icon="save"
-                        label="Saatleri Kaydet"
-                        :loading="hoursSaving"
-                        :disable="changedHoursCount === 0 || periodStore.isReadOnly"
-                        dense
-                        @click="saveHours"
-                      >
-                        <q-badge v-if="changedHoursCount > 0" color="red" floating>{{ changedHoursCount }}</q-badge>
-                      </q-btn>
-                    </div>
-                  </q-card-section>
-                </q-card>
-              </q-expansion-item>
 
               <!-- Öğretmen Ders Programı Grid -->
               <q-card v-if="selectedTeacherId && periodCount > 0" flat bordered class="q-mb-md">
@@ -680,6 +833,7 @@ import {
   type TeacherSummaryRowDto,
   type TeacherWorkloadSummaryDto,
   type BusinessClusterDto,
+  type BranchWorkloadConfigDto,
 } from 'src/api/coordination'
 import { institutionApi } from 'src/api/institution'
 import { useTeacherOptions, useBranchOptions } from 'src/composables/useEntityOptions'
@@ -736,7 +890,6 @@ const clusterEps = ref(1000) // yarıçap metre
 const clusterMinPoints = ref(3)
 
 // ── Takdir Edilen Saat Düzenleme ──
-const showHoursPanel = ref(false)
 const hoursSaving = ref(false)
 const editedHours = ref<Record<string, number>>({}) // businessId → editedAssignedHours
 
@@ -799,6 +952,137 @@ async function saveHours() {
     notify.warning(`Hatalar: ${errors.join(', ')}`)
   }
 }
+
+// ── Branch Workload Config ──
+const workloadConfig = ref<BranchWorkloadConfigDto | null>(null)
+const workloadLoading = ref(false)
+const workloadSaving = ref(false)
+
+// Editable form state
+const wlEducationType = ref('Formal')
+const wlDeptHeadCount = ref(1)
+const wlWorkshopHeadCount = ref(0)
+const wlDeptHeadHours = ref(10)
+const wlWorkshopHeadHours = ref(6)
+const wlClassLevels = ref<{ classYear: number; weeklyLessonHours: number; studentCount: number }[]>([
+  { classYear: 10, weeklyLessonHours: 8, studentCount: 0 },
+  { classYear: 11, weeklyLessonHours: 8, studentCount: 0 },
+  { classYear: 12, weeklyLessonHours: 8, studentCount: 0 },
+])
+
+const EDUCATION_TYPES = [
+  { label: 'Örgün', value: 'Formal' },
+  { label: 'MESEM', value: 'Mesem' },
+]
+
+async function loadWorkloadConfig() {
+  if (!branchFilter.value || !periodStore.selectedPeriodId) return
+  workloadLoading.value = true
+  try {
+    const res = await coordinationApi.getBranchWorkloadConfig(
+      branchFilter.value,
+      periodStore.selectedPeriodId,
+    )
+    const data = res.data
+    if (data && data.id) {
+      workloadConfig.value = data
+      wlEducationType.value = data.educationType
+      wlDeptHeadCount.value = data.departmentHeadCount
+      wlWorkshopHeadCount.value = data.workshopHeadCount
+      wlDeptHeadHours.value = data.departmentHeadHours
+      wlWorkshopHeadHours.value = data.workshopHeadHours
+      wlClassLevels.value = data.classLevels.map(cl => ({
+        classYear: cl.classYear,
+        weeklyLessonHours: cl.weeklyLessonHours,
+        studentCount: cl.studentCount,
+      }))
+    } else {
+      workloadConfig.value = null
+    }
+  } catch {
+    workloadConfig.value = null
+  } finally {
+    workloadLoading.value = false
+  }
+}
+
+async function saveWorkloadConfig() {
+  if (!branchFilter.value || !periodStore.selectedPeriodId) return
+  workloadSaving.value = true
+  try {
+    await coordinationApi.upsertBranchWorkloadConfig(branchFilter.value, {
+      academicPeriodId: periodStore.selectedPeriodId,
+      educationType: wlEducationType.value,
+      departmentHeadCount: wlDeptHeadCount.value,
+      workshopHeadCount: wlWorkshopHeadCount.value,
+      departmentHeadHours: wlDeptHeadHours.value,
+      workshopHeadHours: wlWorkshopHeadHours.value,
+      classLevels: wlClassLevels.value,
+    })
+    notify.success('Alan ders yükü yapılandırması kaydedildi.')
+    await loadWorkloadConfig()
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Bilinmeyen hata'
+    notify.error(`Kaydetme hatası: ${msg}`)
+  } finally {
+    workloadSaving.value = false
+  }
+}
+
+// Computed values for local preview (before save)
+const wlSupervisorTotal = computed(() =>
+  (wlDeptHeadCount.value * wlDeptHeadHours.value) + (wlWorkshopHeadCount.value * wlWorkshopHeadHours.value),
+)
+
+const wlTeachingTotal = computed(() =>
+  wlClassLevels.value.reduce((sum, cl) => {
+    const groups = estimateGroupCount(wlEducationType.value, cl.classYear, cl.studentCount)
+    return sum + cl.weeklyLessonHours * groups
+  }, 0),
+)
+
+const wlPoolTotal = computed(() => wlSupervisorTotal.value + wlTeachingTotal.value)
+
+// Frontend grup hesaplama (Madde 22 mirror)
+function estimateGroupCount(educationType: string, classYear: number, studentCount: number): number {
+  if (studentCount <= 0) return 0
+  if (educationType === 'Mesem') {
+    if (studentCount < 10) return 0
+    if (studentCount < 41) return 1
+    if (studentCount < 81) return 2
+    if (studentCount < 121) return 3
+    if (studentCount < 161) return 4
+    if (studentCount < 201) return 5
+    if (studentCount < 241) return 6
+    if (studentCount < 281) return 7
+    if (studentCount < 321) return 8
+    if (studentCount < 361) return 9
+    if (studentCount < 401) return 10
+    if (studentCount < 441) return 11
+    return 12
+  }
+  // Formal
+  if (classYear === 9) {
+    if (studentCount < 10) return 0
+    if (studentCount < 21) return 1
+    if (studentCount < 31) return 2
+    return 3
+  }
+  if (classYear >= 10 && classYear <= 12) {
+    if (studentCount < 8) return 0
+    if (studentCount < 17) return 1
+    if (studentCount < 25) return 2
+    if (studentCount < 33) return 3
+    return 4
+  }
+  return 0
+}
+
+// Havuz kısıtı: hoursTotalAssigned vs wlPoolTotal
+const hoursPoolOverLimit = computed(() => {
+  if (!workloadConfig.value) return false
+  return hoursTotalAssigned.value > workloadConfig.value.totalWorkloadPool
+})
 
 // ── Pending Changes ──
 interface PendingChange {
@@ -1204,6 +1488,7 @@ function onBranchChange() {
     void teacherOpts.reload({ institutionId: instId })
   }
   void loadData()
+  if (activeTab.value === 'hours') void loadWorkloadConfig()
 }
 
 function onTeacherChange(teacherId: string | null) {
@@ -1419,6 +1704,10 @@ async function recalculateDistances() {
 
 // ── Tab değişimi → lazy load ──
 watch(activeTab, (tab) => {
+  if (tab === 'hours') {
+    initEditedHours()
+    void loadWorkloadConfig()
+  }
   if (tab === 'teachers' && teacherOverviewRows.value.length === 0) {
     void loadTeacherOverview()
   }

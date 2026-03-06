@@ -24,6 +24,7 @@ public static class FieldCatalogEndpoints
         branches.MapPost("/", PostBranch).RequireAuthorization(Permissions.Institution.Manage);
         branches.MapDelete("/{fieldCode}", DeleteBranch).RequireAuthorization(Permissions.Institution.Manage);
         branches.MapPut("/{fieldCode}/specializations", PutSpecializations).RequireAuthorization(Permissions.Institution.Manage);
+        branches.MapPut("/{fieldCode}/supervisors", PutSupervisors).RequireAuthorization(Permissions.Institution.Manage);
 
         return app;
     }
@@ -53,6 +54,16 @@ public static class FieldCatalogEndpoints
         await bus.InvokeAsync(new DeactivateBranch(institutionId, fieldCode));
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Alan pasife alındı.")
+            .Build());
+    }
+
+    private static async Task<IResult> PutSupervisors(
+        Guid institutionId, string fieldCode,
+        UpdateBranchSupervisorConfig command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command with { InstitutionId = institutionId, FieldCode = fieldCode });
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Şeflik yapılandırması güncellendi.")
             .Build());
     }
 

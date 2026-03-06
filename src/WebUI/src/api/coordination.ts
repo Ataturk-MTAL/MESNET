@@ -299,6 +299,44 @@ export interface SetManualDistanceRequest {
   distanceKm: number
 }
 
+// ── Branch Workload Config DTOs ──
+
+export interface ClassLevelConfig {
+  classYear: number
+  weeklyLessonHours: number
+  studentCount: number
+  groupCount: number
+  subTotal: number
+}
+
+export interface BranchWorkloadConfigDto {
+  id: string
+  institutionId: string
+  academicPeriodId: string
+  branchCode: string
+  educationType: string
+  departmentHeadCount: number
+  workshopHeadCount: number
+  departmentHeadHours: number
+  workshopHeadHours: number
+  classLevels: ClassLevelConfig[]
+  totalSupervisorHours: number
+  totalTeachingHours: number
+  totalWorkloadPool: number
+  updatedAt: string
+  updatedBy: string
+}
+
+export interface UpsertBranchWorkloadConfigRequest {
+  academicPeriodId: string
+  educationType: string
+  departmentHeadCount: number
+  workshopHeadCount: number
+  departmentHeadHours: number
+  workshopHeadHours: number
+  classLevels: { classYear: number; weeklyLessonHours: number; studentCount: number }[]
+}
+
 export const coordinationApi = {
   listVisits: (params?: { teacherId?: string; businessId?: string; academicPeriodId?: string; fromDate?: string; toDate?: string } & PaginationParams) =>
     api.get<PagedResponse<GuidanceVisitDto>>('/coordination/guidance-visits', { params }),
@@ -431,4 +469,14 @@ export const coordinationApi = {
     api.get<BusinessClusterDto[]>('/coordination/teachers/business-clusters', {
       params: { epsMeters, minPoints },
     }),
+
+  // ── Branch Workload Config ──
+
+  getBranchWorkloadConfig: (branchCode: string, academicPeriodId: string) =>
+    api.get<BranchWorkloadConfigDto | null>(`/coordination/teachers/branch-workload/${branchCode}`, {
+      params: { academicPeriodId },
+    }),
+
+  upsertBranchWorkloadConfig: (branchCode: string, data: UpsertBranchWorkloadConfigRequest) =>
+    api.put(`/coordination/teachers/branch-workload/${branchCode}`, data),
 }

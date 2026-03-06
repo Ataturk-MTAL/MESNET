@@ -45,6 +45,10 @@ public static class CoordinationEndpoints
         group.MapGet("/business-clusters", GetBusinessClusters).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/recalculate-distances", PostRecalculateDistances).RequireAuthorization(Permissions.DepartmentHead.Distribution);
 
+        // Branch workload config
+        group.MapGet("/branch-workload/{branchCode}", GetBranchWorkload).RequireAuthorization(Permissions.DepartmentHead.Distribution);
+        group.MapPut("/branch-workload/{branchCode}", PutBranchWorkload).RequireAuthorization(Permissions.DepartmentHead.Distribution);
+
         return app;
     }
 
@@ -362,6 +366,43 @@ public static class CoordinationEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme slot ataması kaldırıldı.")
+            .Build());
+    }
+
+    // ── Branch Workload Config ──
+
+    private static async Task<IResult> GetBranchWorkload(
+        string branchCode,
+        Guid academicPeriodId,
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var result = await bus.InvokeAsync<BranchWorkloadConfig?>(
+            new GetBranchWorkloadConfig(instId, academicPeriodId, branchCode));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result ?? (object)new { })
+            .Build());
+    }
+
+    private static async Task<IResult> PutBranchWorkload(
+        string branchCode,
+        UpsertBranchWorkloadConfig command,
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var userName = http.User.FindFirst("name")?.Value ?? "system";
+        await bus.InvokeAsync(command with
+        {
+            InstitutionId = instId,
+            BranchCode = branchCode,
+            UpdatedBy = userName
+        });
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Alan ders yükü yapılandırması güncellendi.")
             .Build());
     }
 

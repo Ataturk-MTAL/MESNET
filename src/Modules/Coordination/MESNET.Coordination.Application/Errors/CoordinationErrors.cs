@@ -129,4 +129,16 @@ public static class CoordinationErrors
     public static Error InvalidAssignedHours(int assignedHours) =>
         new("Coordination.InvalidAssignedHours",
             $"Takdir edilen saat 0'dan büyük olmalıdır: {assignedHours}");
+
+    public static Error WorkloadPoolExceeded(int totalAssigned, int pool) =>
+        new("Coordination.WorkloadPoolExceeded",
+            $"Toplam takdir edilen saat ({totalAssigned}) ders yükü havuzunu ({pool}) aşamaz.");
+
+    public static Error BranchWorkloadConfigNotFound(string branchCode) =>
+        new("Coordination.BranchWorkloadConfigNotFound",
+            $"Alan ders yükü yapılandırması bulunamadı: {branchCode}");
+
+    public static Error TeacherHoursExceedMax(Guid teacherId, int totalHours, int maxHours) =>
+        new("Coordination.TeacherHoursExceedMax",
+            $"Öğretmenin toplam koordinatörlük saati ({totalHours}) azami limiti ({maxHours}) aşıyor. Öğretmen: {teacherId}");
 }

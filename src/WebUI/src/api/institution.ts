@@ -22,6 +22,8 @@ export interface InstitutionBranchDto {
   atWorkCount: number
   totalCount: number
   isActive: boolean
+  departmentHeadCount: number
+  workshopHeadCount: number
 }
 
 export interface StaffMemberDto {

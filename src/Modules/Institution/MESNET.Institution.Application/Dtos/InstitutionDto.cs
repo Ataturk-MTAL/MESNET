@@ -23,7 +23,9 @@ public sealed record InstitutionBranchDto(
     int AvailableCount,
     int AtWorkCount,
     int TotalCount,
-    bool IsActive);
+    bool IsActive,
+    int DepartmentHeadCount,
+    int WorkshopHeadCount);
 
 public sealed record StaffMemberDto(
     Guid Id,

@@ -31,4 +31,7 @@ public static class InstitutionErrors
 
     public static Error NoActiveAcademicPeriod(Guid institutionId) =>
         new("Institution.NoActiveAcademicPeriod", $"Kurumun aktif dönemi bulunmuyor: {institutionId}");
+
+    public static Error InvalidSupervisorCount() =>
+        new("Institution.InvalidSupervisorCount", "Şef sayısı negatif olamaz.");
 }

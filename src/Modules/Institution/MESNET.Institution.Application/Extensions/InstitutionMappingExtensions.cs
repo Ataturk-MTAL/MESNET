@@ -27,7 +27,9 @@ public static class InstitutionMappingExtensions
         vo.AvailableCount,
         vo.AtWorkCount,
         vo.TotalCount,
-        vo.IsActive);
+        vo.IsActive,
+        vo.DepartmentHeadCount,
+        vo.WorkshopHeadCount);
 
     public static StaffMemberDto ToDto(this StaffMember vo) => new(
         vo.Id,

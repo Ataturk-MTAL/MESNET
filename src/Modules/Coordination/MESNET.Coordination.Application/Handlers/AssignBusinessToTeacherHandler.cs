@@ -3,6 +3,7 @@ using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Core.Aggregates;
+using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.Enums;
 using MESNET.Coordination.Core.ReadModels;
 using MESNET.Coordination.Shared.Events;
@@ -43,6 +44,9 @@ public static class AssignBusinessToTeacherHandler
                     CoordinationErrors.SlotAlreadyAssigned(command.AssignedDay, command.PeriodNumber.Value));
             }
         }
+
+        // Öğretmen başına azami koordinatörlük saati kontrolü
+        await ValidateTeacherHourLimit(session, command.TeacherId, command.InstitutionId, view.Id, cancellationToken);
 
         // İlk slot → öğretmen bilgisi set et
         if (view.AssignedSlots.Count == 0)
@@ -91,6 +95,35 @@ public static class AssignBusinessToTeacherHandler
             command.PeriodNumber ?? 0,
             0,
             string.Empty);
+    }
+
+    private static async Task ValidateTeacherHourLimit(
+        IDocumentSession session,
+        Guid teacherId,
+        Guid institutionId,
+        Guid currentBusinessId,
+        CancellationToken cancellationToken)
+    {
+        var config = await session.Query<CoordinationConfig>()
+            .FirstOrDefaultAsync(c => c.InstitutionId == institutionId, cancellationToken);
+
+        if (config is null) return; // Config yoksa kontrol atlanır
+
+        // Öğretmenin tüm işletmelerdeki mevcut atanmış slot sayısını topla
+        var teacherBusinesses = await session.Query<BusinessCoordinationView>()
+            .Where(b => b.AssignedTeacherId == teacherId)
+            .ToListAsync(cancellationToken);
+
+        var teacherTotalSlots = teacherBusinesses.Sum(b => b.AssignedSlots.Count);
+
+        // +1 çünkü yeni slot eklenmek üzere
+        var newTotal = teacherTotalSlots + 1;
+
+        if (newTotal > config.MaxWeeklyExtraHours)
+        {
+            throw new DomainException(
+                CoordinationErrors.TeacherHoursExceedMax(teacherId, newTotal, config.MaxWeeklyExtraHours));
+        }
     }
 
     private static async Task AssignToScheduleSlot(

@@ -67,6 +67,14 @@ public static class MartenConfiguration
         options.Schema.For<BusinessEvaluation>().Index(x => x.InstitutionId);
         options.Schema.For<BusinessEvaluation>().Index(x => x.EvaluationDate);
 
+        // BranchWorkloadConfig (alan bazlı ders yükü havuzu)
+        options.Schema.For<BranchWorkloadConfig>().DatabaseSchemaName("coordination");
+        options.Schema.For<BranchWorkloadConfig>().Index(x => x.InstitutionId);
+        options.Schema.For<BranchWorkloadConfig>().Index(x => x.BranchCode);
+        options.Schema.For<BranchWorkloadConfig>().Index(x => x.AcademicPeriodId);
+        options.Schema.For<BranchWorkloadConfig>()
+            .Index(x => new { x.InstitutionId, x.BranchCode, x.AcademicPeriodId }, x => x.IsUnique = true);
+
         // AcademicPeriodView (cross-module read model)
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("coordination");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);

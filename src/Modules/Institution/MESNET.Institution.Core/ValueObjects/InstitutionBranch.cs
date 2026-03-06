@@ -17,4 +17,10 @@ public sealed record InstitutionBranch
     public int AtWorkCount { get; set; }
     public int TotalCount { get; set; }
     public bool IsActive { get; set; } = true;
+
+    /// <summary>Alan şefi sayısı (her alanda genelde 1)</summary>
+    public int DepartmentHeadCount { get; set; }
+
+    /// <summary>Atölye şefi sayısı (birden fazla olabilir)</summary>
+    public int WorkshopHeadCount { get; set; }
 }
