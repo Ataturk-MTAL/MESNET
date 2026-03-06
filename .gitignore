@@ -39,6 +39,9 @@ appsettings.*.local.json
 .aspire/
 src/MESNET.AppHost/appsettings.json
 
+## OSRM data (200 MB+ — her geliştirici prepare-mersin.sh ile oluşturur)
+src/MESNET.AppHost/osrm/data/
+
 ## Node / Frontend (src/WebUI)
 src/WebUI/node_modules/
 src/WebUI/dist/
