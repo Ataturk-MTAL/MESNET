@@ -77,6 +77,7 @@ const menuDefinition: NavGroup[] = [
       { title: 'Koordinasyon', icon: 'supervisor_account', to: { name: 'Coordination' }, permissions: ['coordinator:visit:manage', 'coordinator:schedule:manage'] },
       { title: 'Ders Programı', icon: 'calendar_month', to: { name: 'TeacherSchedule' }, permissions: ['coordinator:schedule:manage'] },
       { title: 'İşletme Dağıtımı', icon: 'assignment_ind', to: { name: 'BusinessAssignment' }, permissions: ['department:distribution:manage'] },
+      { title: 'Ders Yükü Havuzu', icon: 'calculate', to: { name: 'WorkloadConfig' }, permissions: ['department:distribution:manage'] },
     ],
   },
   {

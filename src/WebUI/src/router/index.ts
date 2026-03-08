@@ -124,6 +124,14 @@ const router = createRouter({
           meta: { permissions: ['department:distribution:manage'] },
         },
 
+        // Ders Yükü Havuzu
+        {
+          path: 'coordination/workload-config',
+          name: 'WorkloadConfig',
+          component: () => import('pages/coordination/WorkloadConfigPage.vue'),
+          meta: { permissions: ['department:distribution:manage'] },
+        },
+
         // Belgeler
         {
           path: 'documents',

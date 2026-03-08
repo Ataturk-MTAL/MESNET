@@ -102,6 +102,39 @@
               <div class="text-caption text-grey-6 q-mt-xs">
                 {{ biz.clusterId === null ? 'Tekil nokta' : `Küme ${biz.clusterId + 1}` }}
               </div>
+              <!-- Takdir edilen saat girişi -->
+              <template v-if="editable">
+                <q-separator class="q-my-xs" />
+                <div class="row items-center q-gutter-xs">
+                  <q-input
+                    :model-value="getPopupHours(biz.businessId)"
+                    type="number"
+                    dense
+                    outlined
+                    label="Takdir Edilen Saat"
+                    :min="1"
+                    style="width: 120px"
+                    @update:model-value="v => setPopupHours(biz.businessId, Number(v))"
+                  />
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    icon="check"
+                    color="positive"
+                    size="sm"
+                    @click.stop="savePopupHours(biz.businessId)"
+                  >
+                    <q-tooltip>Kaydet</q-tooltip>
+                  </q-btn>
+                </div>
+              </template>
+              <template v-else-if="assignedHours[biz.businessId]">
+                <div class="text-caption">
+                  <span class="text-grey-6">Takdir Edilen:</span> {{ assignedHours[biz.businessId] }} saat
+                </div>
+              </template>
+
               <q-separator class="q-my-xs" />
               <q-btn
                 v-if="schoolLocation"
@@ -141,10 +174,36 @@ const props = withDefaults(defineProps<{
   businesses: BusinessClusterDto[]
   schoolLocation: GeoLocation | null
   height?: string
+  assignedHours?: Record<string, number>
+  editable?: boolean
 }>(), {
   height: '500px',
   schoolLocation: null,
+  assignedHours: () => ({}),
+  editable: false,
 })
+
+const emit = defineEmits<{
+  'update:hours': [businessId: string, hours: number]
+}>()
+
+// ── Popup saat düzenleme ──
+const popupHoursInput = ref<Record<string, number>>({})
+
+function getPopupHours(businessId: string): number {
+  return popupHoursInput.value[businessId] ?? props.assignedHours[businessId] ?? 0
+}
+
+function setPopupHours(businessId: string, val: number) {
+  popupHoursInput.value[businessId] = val
+}
+
+function savePopupHours(businessId: string) {
+  const val = popupHoursInput.value[businessId]
+  if (val != null && val > 0) {
+    emit('update:hours', businessId, val)
+  }
+}
 
 // ── Renk Paleti ──
 const CLUSTER_PALETTE = [

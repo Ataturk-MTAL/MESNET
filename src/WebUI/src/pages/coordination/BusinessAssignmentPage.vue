@@ -82,256 +82,14 @@
         outside-arrows
         mobile-arrows
       >
-        <q-tab name="hours" icon="schedule" label="Takdir Edilen Saat" />
         <q-tab name="assignment" icon="drag_indicator" label="İşletme Dağıtımı" />
+        <q-tab name="hours-map" icon="map" label="İşletme Saatleri & Harita" />
         <q-tab name="teachers" icon="people" label="Öğretmen Özeti" />
-        <q-tab name="map" icon="map" label="Harita" />
       </q-tabs>
 
       <q-separator class="q-mb-md" />
 
       <q-tab-panels v-model="activeTab" animated>
-        <!-- ── Tab: Takdir Edilen Saat ── -->
-        <q-tab-panel name="hours" class="q-pa-none">
-          <!-- Kart 1: Alan Yapılandırması -->
-          <q-card flat bordered class="q-mb-md">
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-medium q-mb-sm">
-                Alan Ders Yükü Yapılandırması
-              </div>
-              <div class="text-caption text-grey-7 q-mb-md">
-                Norm Kadro Yönetmeliği Madde 22'ye göre grup sayısı ve şeflik saatleri ile toplam ders yükü havuzu hesaplanır.
-              </div>
-
-              <q-inner-loading :showing="workloadLoading" />
-
-              <div class="row q-col-gutter-md q-mb-md items-end">
-                <div class="col-12 col-sm-3">
-                  <q-select
-                    v-model="wlEducationType"
-                    :options="EDUCATION_TYPES"
-                    label="Eğitim Tipi"
-                    filled
-                    dense
-                    emit-value
-                    map-options
-                    :disable="periodStore.isReadOnly"
-                    @update:model-value="loadWorkloadConfig"
-                  />
-                </div>
-                <div class="col-auto">
-                  <q-btn
-                    flat
-                    dense
-                    color="orange-8"
-                    icon="sync"
-                    label="Öğrenci Sayılarını Güncelle"
-                    :loading="syncingCounts"
-                    :disable="periodStore.isReadOnly"
-                    @click="syncStudentCounts"
-                  >
-                    <q-tooltip>Enrollment kayıtlarından öğrenci sayılarını yeniden hesapla</q-tooltip>
-                  </q-btn>
-                </div>
-              </div>
-
-              <!-- Şeflik -->
-              <div class="text-body2 text-weight-medium q-mb-sm">Şeflik</div>
-              <div class="row q-col-gutter-md q-mb-md">
-                <div class="col-6 col-sm-3">
-                  <q-input
-                    v-model.number="wlDeptHeadCount"
-                    type="number"
-                    label="Alan Şefi Sayısı"
-                    filled
-                    dense
-                    :min="0"
-                    :max="1"
-                    :disable="periodStore.isReadOnly"
-                  />
-                </div>
-                <div class="col-6 col-sm-3">
-                  <q-input
-                    v-model.number="wlDeptHeadHours"
-                    type="number"
-                    label="Alan Şefi Saati"
-                    filled
-                    dense
-                    :min="0"
-                    :disable="periodStore.isReadOnly"
-                  />
-                </div>
-                <div class="col-6 col-sm-3">
-                  <q-input
-                    v-model.number="wlWorkshopHeadCount"
-                    type="number"
-                    label="Atölye Şefi Sayısı"
-                    filled
-                    dense
-                    :min="0"
-                    :disable="periodStore.isReadOnly"
-                  />
-                </div>
-                <div class="col-6 col-sm-3">
-                  <q-input
-                    v-model.number="wlWorkshopHeadHours"
-                    type="number"
-                    label="Atölye Şefi Saati"
-                    filled
-                    dense
-                    :min="0"
-                    :disable="periodStore.isReadOnly"
-                  />
-                </div>
-              </div>
-              <div class="text-body2 q-mb-md">
-                Şeflik Toplamı: <strong class="text-purple-8">{{ wlSupervisorTotal }}</strong> saat
-                <span class="text-caption text-grey-7">
-                  ({{ wlDeptHeadCount }} × {{ wlDeptHeadHours }} + {{ wlWorkshopHeadCount }} × {{ wlWorkshopHeadHours }})
-                </span>
-              </div>
-
-              <!-- Sınıf Bazlı Ders Yükü -->
-              <div class="text-body2 text-weight-medium q-mb-sm">Sınıf Bazlı Ders Yükü</div>
-              <q-markup-table flat bordered separator="cell" class="q-mb-md">
-                <thead>
-                  <tr class="bg-grey-2">
-                    <th class="text-center" style="width: 80px">Sınıf</th>
-                    <th class="text-center" style="width: 130px">Öğrenci Sayısı</th>
-                    <th class="text-center" style="width: 130px">Haftalık Ders</th>
-                    <th class="text-center" style="width: 80px">Grup</th>
-                    <th class="text-center" style="width: 100px">Alt Toplam</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(cl, idx) in wlClassLevels" :key="cl.classYear">
-                    <td class="text-center text-weight-medium">{{ cl.classYear }}. Sınıf</td>
-                    <td class="text-center text-weight-medium">
-                      {{ cl.studentCount }}
-                    </td>
-                    <td class="text-center">
-                      <q-input
-                        v-model.number="wlClassLevels[idx].weeklyLessonHours"
-                        type="number"
-                        dense
-                        outlined
-                        :min="0"
-                        style="max-width: 100px; margin: 0 auto"
-                        :disable="periodStore.isReadOnly"
-                      />
-                    </td>
-                    <td class="text-center text-weight-medium text-blue-8">
-                      {{ estimateGroupCount(wlEducationType, cl.classYear, cl.studentCount) }}
-                    </td>
-                    <td class="text-center text-weight-medium">
-                      {{ cl.weeklyLessonHours * estimateGroupCount(wlEducationType, cl.classYear, cl.studentCount) }}
-                    </td>
-                  </tr>
-                </tbody>
-              </q-markup-table>
-
-              <!-- Toplamlar + Kaydet -->
-              <div class="row items-center">
-                <div class="text-body2">
-                  Ders Yükü: <strong class="text-blue-8">{{ wlTeachingTotal }}</strong>
-                  &nbsp;+&nbsp; Şeflik: <strong class="text-purple-8">{{ wlSupervisorTotal }}</strong>
-                  &nbsp;=&nbsp; <strong class="text-teal-8 text-h6">HAVUZ: {{ wlPoolTotal }} saat</strong>
-                </div>
-                <q-space />
-                <q-btn
-                  color="teal"
-                  icon="save"
-                  label="Yapılandırmayı Kaydet"
-                  :loading="workloadSaving"
-                  :disable="periodStore.isReadOnly"
-                  @click="saveWorkloadConfig"
-                />
-              </div>
-            </q-card-section>
-          </q-card>
-
-          <!-- Kart 2: İşletme Saatleri -->
-          <q-card flat bordered>
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-medium q-mb-md">
-                İşletme Takdir Edilen Saatler
-              </div>
-
-              <!-- Uyarı Banner'ları -->
-              <q-banner v-if="hoursPoolOverLimit" rounded class="bg-red-1 text-red-9 q-mb-md">
-                <template #avatar><q-icon name="error" color="red-7" /></template>
-                Toplam takdir edilen saat ({{ hoursTotalAssigned }}) ders yükü havuzunu ({{ workloadConfig?.totalWorkloadPool ?? '—' }}) aşıyor!
-              </q-banner>
-              <q-banner v-if="hoursOverLimit" rounded class="bg-red-1 text-red-9 q-mb-md">
-                <template #avatar><q-icon name="error" color="red-7" /></template>
-                Toplam takdir edilen saat ({{ hoursTotalAssigned }}) toplam verilebilir saati ({{ hoursTotalAvailable }}) aşıyor!
-              </q-banner>
-              <q-banner v-else-if="hoursNearLimit" rounded class="bg-orange-1 text-orange-9 q-mb-md">
-                <template #avatar><q-icon name="warning" color="orange-7" /></template>
-                Toplam takdir edilen saat verilebilir saate yaklaşıyor: {{ hoursTotalAssigned }} / {{ hoursTotalAvailable }}
-              </q-banner>
-
-              <q-markup-table flat bordered separator="cell" class="q-mb-md">
-                <thead>
-                  <tr class="bg-grey-2">
-                    <th class="text-left">İşletme</th>
-                    <th class="text-center" style="width: 100px">Mesafe</th>
-                    <th class="text-center" style="width: 100px">Öğrenci</th>
-                    <th class="text-center" style="width: 120px">Verilebilir Maks.</th>
-                    <th class="text-center" style="width: 140px">Takdir Edilen</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="biz in assignments" :key="biz.businessId">
-                    <td class="text-left">{{ biz.businessName }}</td>
-                    <td class="text-center text-caption">
-                      {{ biz.distanceToSchoolKm != null ? `${biz.distanceToSchoolKm.toFixed(1)} km` : '—' }}
-                    </td>
-                    <td class="text-center">{{ biz.activeStudentCount }}</td>
-                    <td class="text-center text-weight-medium text-green-8">{{ biz.maxCoordinationHours }}</td>
-                    <td class="text-center">
-                      <q-input
-                        v-model.number="editedHours[biz.businessId]"
-                        type="number"
-                        dense
-                        outlined
-                        :min="1"
-                        :max="biz.maxCoordinationHours"
-                        style="max-width: 90px; margin: 0 auto"
-                        :disable="periodStore.isReadOnly"
-                        :rules="[v => (v > 0 && v <= biz.maxCoordinationHours) || `1-${biz.maxCoordinationHours}`]"
-                      />
-                    </td>
-                  </tr>
-                </tbody>
-              </q-markup-table>
-
-              <!-- Özet + Kaydet -->
-              <div class="row items-center q-mt-md">
-                <div class="text-body2">
-                  Σ Maks: <strong class="text-green-8">{{ hoursTotalAvailable }}</strong>
-                  &nbsp;|&nbsp; Σ Takdir: <strong :class="hoursOverLimit ? 'text-red-8' : 'text-blue-8'">{{ hoursTotalAssigned }}</strong>
-                  <template v-if="workloadConfig">
-                    &nbsp;|&nbsp; Havuz: <strong class="text-teal-8">{{ workloadConfig.totalWorkloadPool }}</strong>
-                  </template>
-                  &nbsp;|&nbsp; Kalan: <strong class="text-orange-8">{{ hoursRemaining }}</strong>
-                </div>
-                <q-space />
-                <q-btn
-                  color="primary"
-                  icon="save"
-                  label="Saatleri Kaydet"
-                  :loading="hoursSaving"
-                  :disable="changedHoursCount === 0 || periodStore.isReadOnly"
-                  @click="saveHours"
-                >
-                  <q-badge v-if="changedHoursCount > 0" color="red" floating>{{ changedHoursCount }}</q-badge>
-                </q-btn>
-              </div>
-            </q-card-section>
-          </q-card>
-        </q-tab-panel>
-
         <!-- ── Tab: İşletme Dağıtımı ── -->
         <q-tab-panel name="assignment" class="q-pa-none">
           <!-- Ana İçerik: 2 Sütun Layout -->
@@ -658,86 +416,177 @@
           </div>
         </q-tab-panel>
 
-        <!-- ── Tab 3: Harita ── -->
-        <q-tab-panel name="map" class="q-pa-none">
-          <!-- Harita araç çubuğu -->
-          <div class="row items-center q-gutter-sm q-mb-md">
-            <q-input
-              v-model.number="clusterEps"
-              type="number"
-              label="Yarıçap (m)"
-              filled
-              dense
-              style="width: 130px"
-              :min="100"
-              :max="10000"
-              :step="100"
-            />
-            <q-input
-              v-model.number="clusterMinPoints"
-              type="number"
-              label="Min. Nokta"
-              filled
-              dense
-              style="width: 110px"
-              :min="2"
-              :max="20"
-            />
-            <q-btn
-              color="primary"
-              icon="refresh"
-              label="Kümele"
-              :loading="clusterLoading"
-              @click="loadClusters"
-            />
-            <q-separator vertical inset class="q-mx-sm" />
-            <q-btn
-              color="teal"
-              icon="route"
-              label="Mesafe Hesapla"
-              :loading="recalculating"
-              :disable="periodStore.isReadOnly"
-              @click="recalculateDistances"
-            />
-          </div>
+        <!-- ── Tab: İşletme Saatleri & Harita ── -->
+        <q-tab-panel name="hours-map" class="q-pa-none">
+          <!-- Harita Bölümü -->
+          <q-card flat bordered class="q-mb-md">
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-medium q-mb-sm">Harita</div>
 
-          <div v-if="clusterLoading" class="text-center q-pa-xl">
-            <q-spinner color="primary" size="3em" />
-            <div class="text-caption text-grey-6 q-mt-sm">İşletme kümeleri yükleniyor...</div>
-          </div>
+              <!-- Harita araç çubuğu -->
+              <div class="row items-center q-gutter-sm q-mb-md">
+                <q-input
+                  v-model.number="clusterEps"
+                  type="number"
+                  label="Yarıçap (m)"
+                  filled
+                  dense
+                  style="width: 130px"
+                  :min="100"
+                  :max="10000"
+                  :step="100"
+                />
+                <q-input
+                  v-model.number="clusterMinPoints"
+                  type="number"
+                  label="Min. Nokta"
+                  filled
+                  dense
+                  style="width: 110px"
+                  :min="2"
+                  :max="20"
+                />
+                <q-btn
+                  color="primary"
+                  icon="refresh"
+                  label="Kümele"
+                  :loading="clusterLoading"
+                  @click="loadClusters"
+                />
+                <q-separator vertical inset class="q-mx-sm" />
+                <q-btn
+                  color="teal"
+                  icon="route"
+                  label="Mesafe Hesapla"
+                  :loading="recalculating"
+                  :disable="periodStore.isReadOnly"
+                  @click="recalculateDistances"
+                />
+              </div>
 
-          <div v-else-if="clusterError" class="text-center q-pa-xl text-grey-6">
-            <q-icon name="warning" size="3em" color="orange-6" class="q-mb-sm" />
-            <div>Kümeleme verisi yüklenemedi.</div>
-            <div class="text-caption q-mt-sm">PostGIS eklentisi henüz etkin olmayabilir. Sistem yöneticisi ile iletişime geçin.</div>
-          </div>
+              <div v-if="clusterLoading" class="text-center q-pa-xl">
+                <q-spinner color="primary" size="3em" />
+                <div class="text-caption text-grey-6 q-mt-sm">İşletme kümeleri yükleniyor...</div>
+              </div>
 
-          <div v-else-if="clusterData.length === 0" class="text-center q-pa-xl text-grey-6">
-            <q-icon name="location_off" size="3em" class="q-mb-sm" />
-            <div>Konum verisi olan işletme bulunamadı.</div>
-            <div class="text-caption q-mt-sm">İşletmelere koordinat atandıktan sonra harita burada gösterilecek.</div>
-          </div>
+              <div v-else-if="clusterError" class="text-center q-pa-xl text-grey-6">
+                <q-icon name="warning" size="3em" color="orange-6" class="q-mb-sm" />
+                <div>Kümeleme verisi yüklenemedi.</div>
+                <div class="text-caption q-mt-sm">PostGIS eklentisi henüz etkin olmayabilir. Sistem yöneticisi ile iletişime geçin.</div>
+              </div>
 
-          <div v-else>
-            <!-- Küme Özeti Chip'leri -->
-            <div class="row q-gutter-xs q-mb-md flex-wrap">
-              <q-chip
-                v-for="(count, clusterId) in clusterCounts"
-                :key="clusterId"
-                :style="{ backgroundColor: clusterColor(Number(clusterId)), color: '#fff' }"
-                dense
-                class="text-weight-medium"
-              >
-                {{ clusterId === 'null' ? 'Tek başına' : `Küme ${clusterId}` }}: {{ count }}
-              </q-chip>
-            </div>
+              <div v-else-if="clusterData.length === 0" class="text-center q-pa-xl text-grey-6">
+                <q-icon name="location_off" size="3em" class="q-mb-sm" />
+                <div>Konum verisi olan işletme bulunamadı.</div>
+                <div class="text-caption q-mt-sm">İşletmelere koordinat atandıktan sonra harita burada gösterilecek.</div>
+              </div>
 
-            <BusinessClusterMap
-              :businesses="clusterData"
-              :school-location="null"
-              height="600px"
-            />
-          </div>
+              <div v-else>
+                <!-- Küme Özeti Chip'leri -->
+                <div class="row q-gutter-xs q-mb-md flex-wrap">
+                  <q-chip
+                    v-for="(count, clusterId) in clusterCounts"
+                    :key="clusterId"
+                    :style="{ backgroundColor: clusterColor(Number(clusterId)), color: '#fff' }"
+                    dense
+                    class="text-weight-medium"
+                  >
+                    {{ clusterId === 'null' ? 'Tek başına' : `Küme ${clusterId}` }}: {{ count }}
+                  </q-chip>
+                </div>
+
+                <BusinessClusterMap
+                  :businesses="clusterData"
+                  :school-location="null"
+                  :assigned-hours="editedHours"
+                  :editable="!periodStore.isReadOnly"
+                  height="500px"
+                  @update:hours="onMapHoursUpdate"
+                />
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <!-- Saat Tablosu Bölümü -->
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-medium q-mb-md">
+                İşletme Takdir Edilen Saatler
+              </div>
+
+              <!-- Uyarı Banner'ları -->
+              <q-banner v-if="hoursPoolOverLimit" rounded class="bg-red-1 text-red-9 q-mb-md">
+                <template #avatar><q-icon name="error" color="red-7" /></template>
+                Toplam takdir edilen saat ({{ hoursTotalAssigned }}) ders yükü havuzunu ({{ workloadConfig?.totalWorkloadPool ?? '—' }}) aşıyor!
+              </q-banner>
+              <q-banner v-if="hoursOverLimit" rounded class="bg-red-1 text-red-9 q-mb-md">
+                <template #avatar><q-icon name="error" color="red-7" /></template>
+                Toplam takdir edilen saat ({{ hoursTotalAssigned }}) toplam verilebilir saati ({{ hoursTotalAvailable }}) aşıyor!
+              </q-banner>
+              <q-banner v-else-if="hoursNearLimit" rounded class="bg-orange-1 text-orange-9 q-mb-md">
+                <template #avatar><q-icon name="warning" color="orange-7" /></template>
+                Toplam takdir edilen saat verilebilir saate yaklaşıyor: {{ hoursTotalAssigned }} / {{ hoursTotalAvailable }}
+              </q-banner>
+
+              <q-markup-table flat bordered separator="cell" class="q-mb-md">
+                <thead>
+                  <tr class="bg-grey-2">
+                    <th class="text-left">İşletme</th>
+                    <th class="text-center" style="width: 100px">Mesafe</th>
+                    <th class="text-center" style="width: 100px">Öğrenci</th>
+                    <th class="text-center" style="width: 120px">Verilebilir Maks.</th>
+                    <th class="text-center" style="width: 140px">Takdir Edilen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="biz in assignments" :key="biz.businessId">
+                    <td class="text-left">{{ biz.businessName }}</td>
+                    <td class="text-center text-caption">
+                      {{ biz.distanceToSchoolKm != null ? `${biz.distanceToSchoolKm.toFixed(1)} km` : '—' }}
+                    </td>
+                    <td class="text-center">{{ biz.activeStudentCount }}</td>
+                    <td class="text-center text-weight-medium text-green-8">{{ biz.maxCoordinationHours }}</td>
+                    <td class="text-center">
+                      <q-input
+                        v-model.number="editedHours[biz.businessId]"
+                        type="number"
+                        dense
+                        outlined
+                        :min="1"
+                        :max="biz.maxCoordinationHours"
+                        style="max-width: 90px; margin: 0 auto"
+                        :disable="periodStore.isReadOnly"
+                        :rules="[v => (v > 0 && v <= biz.maxCoordinationHours) || `1-${biz.maxCoordinationHours}`]"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </q-markup-table>
+
+              <!-- Özet + Kaydet -->
+              <div class="row items-center q-mt-md">
+                <div class="text-body2">
+                  Σ Maks: <strong class="text-green-8">{{ hoursTotalAvailable }}</strong>
+                  &nbsp;|&nbsp; Σ Takdir: <strong :class="hoursOverLimit ? 'text-red-8' : 'text-blue-8'">{{ hoursTotalAssigned }}</strong>
+                  <template v-if="workloadConfig">
+                    &nbsp;|&nbsp; Havuz: <strong class="text-teal-8">{{ workloadConfig.totalWorkloadPool }}</strong>
+                  </template>
+                  &nbsp;|&nbsp; Kalan: <strong class="text-orange-8">{{ hoursRemaining }}</strong>
+                </div>
+                <q-space />
+                <q-btn
+                  color="primary"
+                  icon="save"
+                  label="Saatleri Kaydet"
+                  :loading="hoursSaving"
+                  :disable="changedHoursCount === 0 || periodStore.isReadOnly"
+                  @click="saveHours"
+                >
+                  <q-badge v-if="changedHoursCount > 0" color="red" floating>{{ changedHoursCount }}</q-badge>
+                </q-btn>
+              </div>
+            </q-card-section>
+          </q-card>
         </q-tab-panel>
       </q-tab-panels>
     </div>
@@ -771,7 +620,7 @@ import {
 } from 'src/api/coordination'
 import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
-import { useWorkloadConfig, estimateGroupCount, EDUCATION_TYPES } from 'src/composables/useWorkloadConfig'
+import { useWorkloadConfig } from 'src/composables/useWorkloadConfig'
 import { useAssignedHours } from 'src/composables/useAssignedHours'
 import { useAssignmentDnD } from 'src/composables/useAssignmentDnD'
 import { useClusterMap } from 'src/composables/useClusterMap'
@@ -982,14 +831,8 @@ const teacherOverview = useTeacherOverview({
   notify,
 })
 
-// Re-export composable values used by template
-const {
-  workloadConfig, workloadLoading, workloadSaving, syncingCounts,
-  wlEducationType, wlDeptHeadCount, wlWorkshopHeadCount,
-  wlDeptHeadHours, wlWorkshopHeadHours, wlClassLevels,
-  wlSupervisorTotal, wlTeachingTotal, wlPoolTotal,
-  loadWorkloadConfig, saveWorkloadConfig, syncStudentCounts,
-} = workload
+// Re-export composable values used by template (only pool data for warnings)
+const { workloadConfig, loadWorkloadConfig } = workload
 
 const {
   editedHours, hoursSaving, hoursTotalAvailable, hoursTotalAssigned,
@@ -1075,17 +918,22 @@ function selectTeacher(teacherId: string) {
   doTeacherChange(teacherId)
 }
 
+// ── Harita popup'tan saat güncelleme ──
+function onMapHoursUpdate(businessId: string, hours_val: number) {
+  editedHours.value[businessId] = hours_val
+}
+
 // ── Tab değişimi → lazy load ──
 watch(activeTab, (tab) => {
-  if (tab === 'hours') {
+  if (tab === 'hours-map') {
     hours.initEditedHours()
     loadWorkloadConfig().catch(() => {})
+    if (clusterData.value.length === 0 && !clusterError.value) {
+      loadClusters().catch(() => {})
+    }
   }
   if (tab === 'teachers' && teacherOverviewRows.value.length === 0) {
     loadTeacherOverview().catch(() => {})
-  }
-  if (tab === 'map' && clusterData.value.length === 0 && !clusterError.value) {
-    loadClusters().catch(() => {})
   }
 })
 
@@ -1098,7 +946,7 @@ watch(
       loadTeacherSchedule(selectedTeacherId.value)
     }
     if (activeTab.value === 'teachers') loadTeacherOverview().catch(() => {})
-    if (activeTab.value === 'map') loadClusters().catch(() => {})
+    if (activeTab.value === 'hours-map') loadClusters().catch(() => {})
   },
 )
 
