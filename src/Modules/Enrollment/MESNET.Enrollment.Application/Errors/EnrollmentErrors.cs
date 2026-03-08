@@ -30,4 +30,10 @@ public static class EnrollmentErrors
 
     public static Error AcademicPeriodClosed(Guid id) =>
         new("Enrollment.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, işlem yapılamaz: {id}");
+
+    public static Error InvalidEducationType(string value) =>
+        new("Enrollment.InvalidEducationType", $"Geçersiz eğitim tipi: '{value}'. Geçerli değerler: Formal, Mesem");
+
+    public static Error CannotDeregisterActiveInternship(Guid studentId) =>
+        new("Enrollment.CannotDeregisterActiveInternship", $"Aktif stajı olan öğrencinin kaydı silinemez. Önce staj feshedilmelidir: {studentId}");
 }

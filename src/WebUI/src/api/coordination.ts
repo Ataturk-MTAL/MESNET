@@ -334,7 +334,7 @@ export interface UpsertBranchWorkloadConfigRequest {
   workshopHeadCount: number
   departmentHeadHours: number
   workshopHeadHours: number
-  classLevels: { classYear: number; weeklyLessonHours: number; studentCount: number }[]
+  classLevels: { classYear: number; weeklyLessonHours: number }[]
 }
 
 export const coordinationApi = {
@@ -472,9 +472,9 @@ export const coordinationApi = {
 
   // ── Branch Workload Config ──
 
-  getBranchWorkloadConfig: (branchCode: string, academicPeriodId: string) =>
+  getBranchWorkloadConfig: (branchCode: string, academicPeriodId: string, educationType: string) =>
     api.get<BranchWorkloadConfigDto | null>(`/coordination/teachers/branch-workload/${branchCode}`, {
-      params: { academicPeriodId },
+      params: { academicPeriodId, educationType },
     }),
 
   upsertBranchWorkloadConfig: (branchCode: string, data: UpsertBranchWorkloadConfigRequest) =>

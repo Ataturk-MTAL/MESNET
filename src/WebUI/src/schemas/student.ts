@@ -4,6 +4,7 @@ export const registerStudentSchema = z.object({
   keycloakUserId: z.string().min(1, 'Kullanıcı seçilmelidir'),
   fullName: z.string().min(1, 'Ad Soyad belirtilmelidir'),
   branchCode: z.string().min(1, 'Alan seçilmelidir'),
+  educationType: z.string().min(1, 'Eğitim tipi seçilmelidir'),
   classYear: z.number().min(9, 'Sınıf 9-12 arasında olmalıdır').max(12, 'Sınıf 9-12 arasında olmalıdır'),
   specializationCode: z.string().optional(),
   section: z.string().max(5, 'Şube en fazla 5 karakter olmalıdır').optional(),

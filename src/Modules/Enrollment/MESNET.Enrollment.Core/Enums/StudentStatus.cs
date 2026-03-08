@@ -9,6 +9,7 @@ public sealed class StudentStatus : SmartEnum<StudentStatus>
     public static readonly StudentStatus Placed = new(nameof(Placed), 3, "Yerleştirildi");
     public static readonly StudentStatus ActiveInternship = new(nameof(ActiveInternship), 4, "Aktif Staj");
     public static readonly StudentStatus Completed = new(nameof(Completed), 5, "Tamamladı");
+    public static readonly StudentStatus Deregistered = new(nameof(Deregistered), 6, "Kayıt Silindi");
 
     public string Slug { get; }
 
@@ -17,16 +18,17 @@ public sealed class StudentStatus : SmartEnum<StudentStatus>
         Slug = slug;
     }
 
-    public bool IsFinal => this == Completed;
+    public bool IsFinal => this == Completed || this == Deregistered;
     public bool IsPlaceable => this == Applied || this == Registered;
 
     private static readonly Dictionary<StudentStatus, HashSet<StudentStatus>> Transitions = new()
     {
-        [Registered] = [Applied, Placed],
-        [Applied] = [Placed],
-        [Placed] = [ActiveInternship, Registered],
+        [Registered] = [Applied, Placed, Deregistered],
+        [Applied] = [Placed, Deregistered],
+        [Placed] = [ActiveInternship, Registered, Deregistered],
         [ActiveInternship] = [Completed],
-        [Completed] = []
+        [Completed] = [],
+        [Deregistered] = []
     };
 
     public bool CanTransitionTo(StudentStatus target)

@@ -11,6 +11,8 @@ using Wolverine;
 
 namespace MESNET.Enrollment.Api;
 
+public sealed record DeregisterStudentRequest(string Reason);
+
 public static class StudentEndpoints
 {
     public static IEndpointRouteBuilder MapStudentEndpoints(this IEndpointRouteBuilder app)
@@ -19,6 +21,7 @@ public static class StudentEndpoints
 
         group.MapPost("/", Post).RequireAuthorization(Permissions.Student.Manage);
         group.MapPatch("/{studentId:guid}", Patch).RequireAuthorization(Permissions.Student.Manage);
+        group.MapPost("/{studentId:guid}/deregister", PostDeregister).RequireAuthorization(Permissions.Student.Manage);
         group.MapGet("/{studentId:guid}", Get).RequireAuthorization(Permissions.Student.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Student.View);
 
@@ -33,6 +36,14 @@ public static class StudentEndpoints
                 .AddData(dto)
                 .AddMessage("Öğrenci kaydedildi.")
                 .Build());
+    }
+
+    private static async Task<IResult> PostDeregister(Guid studentId, DeregisterStudentRequest request, IMessageBus bus)
+    {
+        await bus.InvokeAsync(new DeregisterStudent(studentId, request.Reason));
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Öğrenci kaydı silindi.")
+            .Build());
     }
 
     private static async Task<IResult> Patch(Guid studentId, UpdateStudentProfile command, IMessageBus bus)

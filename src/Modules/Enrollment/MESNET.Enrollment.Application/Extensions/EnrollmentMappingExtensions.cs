@@ -15,6 +15,8 @@ public static class EnrollmentMappingExtensions
         entity.SpecializationCode,
         entity.SpecializationName,
         entity.ClassYear,
+        entity.EducationType.Name,
+        entity.EducationType.Slug,
         entity.Section,
         entity.StudentNumber,
         entity.PhoneNumber,

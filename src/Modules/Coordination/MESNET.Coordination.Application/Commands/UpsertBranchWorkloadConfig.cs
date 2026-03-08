@@ -14,5 +14,4 @@ public sealed record UpsertBranchWorkloadConfig(
 
 public sealed record ClassLevelInput(
     int ClassYear,
-    int WeeklyLessonHours,
-    int StudentCount);
+    int WeeklyLessonHours);

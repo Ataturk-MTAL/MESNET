@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Enums;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Application.Dtos;
 using MESNET.Enrollment.Application.Errors;
@@ -19,6 +20,9 @@ public static class RegisterStudentHandler
         if (period is null) throw new DomainException(EnrollmentErrors.AcademicPeriodNotFound(command.AcademicPeriodId));
         if (!period.IsActive) throw new DomainException(EnrollmentErrors.AcademicPeriodClosed(command.AcademicPeriodId));
 
+        if (!EducationType.TryFromName(command.EducationType, ignoreCase: true, out var educationType))
+            throw new DomainException(EnrollmentErrors.InvalidEducationType(command.EducationType));
+
         var student = new StudentProfile
         {
             Id = Guid.NewGuid(),
@@ -31,6 +35,8 @@ public static class RegisterStudentHandler
             SpecializationCode = command.SpecializationCode,
             SpecializationName = command.SpecializationName,
             ClassYear = command.ClassYear,
+            EducationType = educationType,
+            EducationTypeName = educationType.Name,
             Section = command.Section,
             StudentNumber = command.StudentNumber,
             PhoneNumber = command.PhoneNumber,
@@ -49,6 +55,6 @@ public static class RegisterStudentHandler
 
         session.Store(student);
 
-        return (student.ToDto(), new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.AcademicPeriodId, student.BranchCode));
+        return (student.ToDto(), new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.AcademicPeriodId, student.BranchCode, student.ClassYear, educationType.Name));
     }
 }

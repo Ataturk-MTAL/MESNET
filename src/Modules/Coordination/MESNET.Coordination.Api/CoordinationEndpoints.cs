@@ -374,12 +374,13 @@ public static class CoordinationEndpoints
     private static async Task<IResult> GetBranchWorkload(
         string branchCode,
         Guid academicPeriodId,
+        string educationType,
         IMessageBus bus,
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
         var result = await bus.InvokeAsync<BranchWorkloadConfig?>(
-            new GetBranchWorkloadConfig(instId, academicPeriodId, branchCode));
+            new GetBranchWorkloadConfig(instId, academicPeriodId, branchCode, educationType));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result ?? (object)new { })

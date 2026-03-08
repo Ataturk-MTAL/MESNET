@@ -10,6 +10,8 @@ public sealed record StudentProfileDto(
     string? SpecializationCode,
     string? SpecializationName,
     int ClassYear,
+    string EducationType,
+    string EducationTypeSlug,
     string? Section,
     string? StudentNumber,
     string? PhoneNumber,

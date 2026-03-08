@@ -11,6 +11,8 @@ export interface StudentProfileDto {
   specializationCode: string | null
   specializationName: string | null
   classYear: number
+  educationType: string
+  educationTypeSlug: string
   section: string | null
   studentNumber: string | null
   phoneNumber: string | null
@@ -55,6 +57,7 @@ export interface RegisterStudentRequest {
   branchCode: string
   branchName?: string
   academicPeriodId?: string
+  educationType: string
   specializationCode?: string
   specializationName?: string
   classYear: number
@@ -92,6 +95,11 @@ export interface TransferRequest {
   reason: string
 }
 
+export const EDUCATION_TYPES = [
+  { label: 'Örgün', value: 'Formal' },
+  { label: 'MESEM', value: 'Mesem' },
+] as const
+
 export const enrollmentApi = {
   listStudents: (params?: { institutionId?: string; academicPeriodId?: string; branchCode?: string; section?: string; status?: string } & PaginationParams) =>
     api.get<PagedResponse<StudentProfileDto>>('/students', { params }),
@@ -113,6 +121,9 @@ export const enrollmentApi = {
 
   createPlacement: (data: CreatePlacementRequest) =>
     api.post<{ placementId: string }>('/placements', data),
+
+  deregisterStudent: (studentId: string, reason: string) =>
+    api.post(`/students/${studentId}/deregister`, { reason }),
 
   transferStudent: (placementId: string, data: TransferRequest) =>
     api.post(`/placements/${placementId}/transfer`, data),

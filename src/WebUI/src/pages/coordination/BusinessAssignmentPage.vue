@@ -186,6 +186,7 @@
                     emit-value
                     map-options
                     :disable="periodStore.isReadOnly"
+                    @update:model-value="loadWorkloadConfig"
                   />
                 </div>
               </div>
@@ -261,16 +262,8 @@
                 <tbody>
                   <tr v-for="(cl, idx) in wlClassLevels" :key="cl.classYear">
                     <td class="text-center text-weight-medium">{{ cl.classYear }}. Sınıf</td>
-                    <td class="text-center">
-                      <q-input
-                        v-model.number="wlClassLevels[idx].studentCount"
-                        type="number"
-                        dense
-                        outlined
-                        :min="0"
-                        style="max-width: 100px; margin: 0 auto"
-                        :disable="periodStore.isReadOnly"
-                      />
+                    <td class="text-center text-weight-medium">
+                      {{ cl.studentCount }}
                     </td>
                     <td class="text-center">
                       <q-input
@@ -982,6 +975,7 @@ async function loadWorkloadConfig() {
     const res = await coordinationApi.getBranchWorkloadConfig(
       branchFilter.value,
       periodStore.selectedPeriodId,
+      wlEducationType.value,
     )
     const data = res.data
     if (data && data.id) {
@@ -1017,7 +1011,10 @@ async function saveWorkloadConfig() {
       workshopHeadCount: wlWorkshopHeadCount.value,
       departmentHeadHours: wlDeptHeadHours.value,
       workshopHeadHours: wlWorkshopHeadHours.value,
-      classLevels: wlClassLevels.value,
+      classLevels: wlClassLevels.value.map(cl => ({
+        classYear: cl.classYear,
+        weeklyLessonHours: cl.weeklyLessonHours,
+      })),
     })
     notify.success('Alan ders yükü yapılandırması kaydedildi.')
     await loadWorkloadConfig()

@@ -1,6 +1,7 @@
 using Marten;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Core.Entities;
+using MESNET.Coordination.Core.ReadModels;
 using MESNET.Coordination.Core.Services;
 
 namespace MESNET.Coordination.Application.Handlers;
@@ -12,30 +13,36 @@ public static class UpsertBranchWorkloadConfigHandler
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
-        var existing = await session.Query<BranchWorkloadConfig>()
-            .FirstOrDefaultAsync(c =>
-                c.InstitutionId == command.InstitutionId &&
-                c.BranchCode == command.BranchCode &&
-                c.AcademicPeriodId == command.AcademicPeriodId,
-                cancellationToken);
+        // Öğrenci sayılarını BranchStudentCountView'dan al
+        var countViewId = BranchStudentCountView.CreateId(
+            command.InstitutionId, command.AcademicPeriodId, command.BranchCode, command.EducationType);
+        var countView = await session.LoadAsync<BranchStudentCountView>(countViewId, cancellationToken);
 
         var classLevels = command.ClassLevels.Select(cl =>
         {
+            var studentCount = countView?.StudentCountByClassYear.GetValueOrDefault(cl.ClassYear, 0) ?? 0;
             var groupCount = GroupCalculator.CalculateGroups(
-                command.EducationType, cl.ClassYear, cl.StudentCount);
+                command.EducationType, cl.ClassYear, studentCount);
             return new ClassLevelConfig
             {
                 ClassYear = cl.ClassYear,
                 WeeklyLessonHours = cl.WeeklyLessonHours,
-                StudentCount = cl.StudentCount,
+                StudentCount = studentCount,
                 GroupCount = groupCount,
                 SubTotal = cl.WeeklyLessonHours * groupCount
             };
         }).ToList();
 
+        var existing = await session.Query<BranchWorkloadConfig>()
+            .FirstOrDefaultAsync(c =>
+                c.InstitutionId == command.InstitutionId &&
+                c.BranchCode == command.BranchCode &&
+                c.AcademicPeriodId == command.AcademicPeriodId &&
+                c.EducationType == command.EducationType,
+                cancellationToken);
+
         if (existing is not null)
         {
-            existing.EducationType = command.EducationType;
             existing.DepartmentHeadCount = command.DepartmentHeadCount;
             existing.WorkshopHeadCount = command.WorkshopHeadCount;
             existing.DepartmentHeadHours = command.DepartmentHeadHours;

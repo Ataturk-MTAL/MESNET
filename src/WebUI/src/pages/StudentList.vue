@@ -69,6 +69,16 @@
               @click="openTransfer(row)"
             />
           </PermissionGuard>
+          <PermissionGuard :permission="Permissions.Student.Manage">
+            <q-btn
+              v-if="row.status !== 'ActiveInternship' && row.status !== 'Completed' && row.status !== 'Deregistered'"
+              flat round dense icon="person_remove"
+              color="negative"
+              @click="openDeregister(row)"
+            >
+              <q-tooltip>Kayıt Sil</q-tooltip>
+            </q-btn>
+          </PermissionGuard>
         </q-td>
       </template>
     </AppTable>
@@ -265,6 +275,22 @@
           >
             <template #prepend>
               <q-icon name="account_tree" />
+            </template>
+          </q-select>
+          <q-select
+            v-model="addForm.educationType"
+            :options="educationTypeOptions"
+            label="Eğitim Tipi *"
+            filled
+            emit-value
+            map-options
+            option-label="label"
+            option-value="value"
+            :error="!!addErrors.educationType"
+            :error-message="addErrors.educationType"
+          >
+            <template #prepend>
+              <q-icon name="school" />
             </template>
           </q-select>
           <div class="row q-col-gutter-sm">
@@ -477,6 +503,40 @@
       </q-card>
     </q-dialog>
 
+    <!-- Kayıt Silme Dialog -->
+    <q-dialog v-model="deregisterDialog" persistent>
+      <q-card style="min-width: 400px">
+        <q-toolbar class="bg-negative text-white">
+          <q-icon name="person_remove" class="q-mr-sm" />
+          <q-toolbar-title>Kayıt Sil</q-toolbar-title>
+          <q-btn flat round dense icon="close" color="white" v-close-popup />
+        </q-toolbar>
+        <q-card-section>
+          <div class="text-body2 q-mb-md">
+            <strong>{{ selected?.fullName }}</strong> adlı öğrencinin kaydını silmek istediğinize emin misiniz?
+            Bu işlem geri alınamaz.
+          </div>
+          <q-input
+            v-model="deregisterReason"
+            label="Sebep *"
+            filled
+            type="textarea"
+            rows="2"
+            :rules="[v => !!v || 'Sebep belirtilmelidir']"
+          >
+            <template #prepend>
+              <q-icon name="notes" />
+            </template>
+          </q-input>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn unelevated color="negative" label="Kayıt Sil" :loading="saving" :disable="!deregisterReason" @click="doDeregister" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Öğrenci Düzenle Dialog -->
     <q-dialog v-model="editDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
       <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
@@ -617,7 +677,7 @@
 import { ref, reactive, onMounted, watch, computed } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
-import { enrollmentApi, type StudentProfileDto } from 'src/api/enrollment'
+import { enrollmentApi, EDUCATION_TYPES, type StudentProfileDto } from 'src/api/enrollment'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useKeycloakUserOptions, useBusinessOptions, useTeacherOptions, useBranchOptions, type SelectOption } from 'src/composables/useEntityOptions'
@@ -682,6 +742,7 @@ function zodValidate<T>(schema: { safeParse: (data: unknown) => { success: boole
 // ── reactive form objects ──
 const addForm = reactive({
   keycloakUserId: '', fullName: '', email: '', branchCode: '', specializationCode: '',
+  educationType: 'Formal' as string,
   classYear: 11, section: '', studentNumber: '', phoneNumber: '',
   tcKimlikNo: '', guardianName: '', guardianPhone: '',
 })
@@ -700,8 +761,13 @@ const placementErrors = reactive<Record<string, string>>({})
 const transferForm = reactive({ newBusinessId: '', reason: '' })
 const transferErrors = reactive<Record<string, string>>({})
 
+const deregisterDialog = ref(false)
+const deregisterReason = ref('')
+
 // branchName editForm'da validasyon dışı (UI helper)
 const editBranchName = ref('')
+
+const educationTypeOptions = [...EDUCATION_TYPES]
 
 const addSpecOptions = computed(() => branchOpts.getSpecializations(addForm.branchCode ?? ''))
 const editSpecOptions = computed(() => branchOpts.getSpecializations(editForm.branchCode ?? ''))
@@ -712,6 +778,7 @@ const statusOptions = [
   { label: 'Yerleştirildi', value: 'Placed' },
   { label: 'Aktif Staj', value: 'ActiveInternship' },
   { label: 'Tamamladı', value: 'Completed' },
+  { label: 'Kayıt Silindi', value: 'Deregistered' },
 ]
 
 const columns: QTableProps['columns'] = [
@@ -824,7 +891,7 @@ function onUserSelect(val: string | null) {
 function openAddDialog() {
   Object.assign(addForm, {
     keycloakUserId: '', fullName: '', email: '', branchCode: '', specializationCode: '',
-    classYear: 11, section: '', studentNumber: '', phoneNumber: '',
+    educationType: 'Formal', classYear: 11, section: '', studentNumber: '', phoneNumber: '',
     tcKimlikNo: '', guardianName: '', guardianPhone: '',
   })
   for (const key of Object.keys(addErrors)) addErrors[key] = ''
@@ -873,6 +940,7 @@ async function registerStudent() {
       branchCode: addForm.branchCode,
       branchName: branchOpts.getFieldName(addForm.branchCode) || undefined,
       academicPeriodId: periodStore.selectedPeriodId ?? undefined,
+      educationType: addForm.educationType,
       specializationCode: addForm.specializationCode || undefined,
       specializationName: selectedSpec?.label || undefined,
       classYear: addForm.classYear,
@@ -930,6 +998,27 @@ async function doTransfer() {
     await load()
   } catch (e) {
     notify.apiError(e, 'Transfer sırasında bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
+}
+
+function openDeregister(row: StudentProfileDto) {
+  selected.value = row
+  deregisterReason.value = ''
+  deregisterDialog.value = true
+}
+
+async function doDeregister() {
+  if (!selected.value || !deregisterReason.value) return
+  saving.value = true
+  try {
+    await enrollmentApi.deregisterStudent(selected.value.id, deregisterReason.value)
+    notify.success('Öğrenci kaydı silindi.')
+    deregisterDialog.value = false
+    await load()
+  } catch (e) {
+    notify.apiError(e, 'Kayıt silme sırasında bir hata oluştu.')
   } finally {
     saving.value = false
   }

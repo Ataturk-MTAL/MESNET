@@ -1,10 +1,10 @@
 namespace MESNET.Enrollment.Shared.Events;
 
-public sealed record StudentRegistered(
+public sealed record StudentDeregistered(
     Guid StudentId,
-    string FullName,
     Guid InstitutionId,
     Guid AcademicPeriodId,
     string BranchCode,
     int ClassYear,
-    string EducationType);
+    string EducationType,
+    string Reason);

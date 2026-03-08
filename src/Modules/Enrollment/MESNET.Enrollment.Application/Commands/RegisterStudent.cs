@@ -8,6 +8,7 @@ public sealed record RegisterStudent(
     string BranchCode,
     string BranchName,
     int ClassYear,
+    string EducationType,
     string? Section,
     string? SpecializationCode = null,
     string? SpecializationName = null,

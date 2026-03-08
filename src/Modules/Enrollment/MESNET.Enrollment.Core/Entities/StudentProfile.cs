@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Ardalis.SmartEnum.SystemTextJson;
+using MESNET.Common.Shared.Enums;
 using MESNET.Enrollment.Core.Enums;
 using MESNET.Enrollment.Core.ValueObjects;
 
@@ -25,6 +26,12 @@ public class StudentProfile
     public string? SpecializationName { get; set; }
     public int ClassYear { get; set; }
     public string? Section { get; set; }
+
+    [JsonConverter(typeof(SmartEnumNameConverter<EducationType, int>))]
+    public EducationType EducationType { get; set; } = EducationType.Formal;
+
+    /// <summary>LINQ sorguları için düz string kopyası</summary>
+    public string EducationTypeName { get; set; } = EducationType.Formal.Name;
 
     [JsonConverter(typeof(SmartEnumNameConverter<StudentStatus, int>))]
     public StudentStatus Status { get; set; } = StudentStatus.Registered;
