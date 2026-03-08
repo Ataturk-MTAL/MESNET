@@ -1,15 +1,10 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg">
-      <div class="col">
-        <div class="text-h5 text-weight-bold">Devamsızlık</div>
-      </div>
-      <div class="col-auto">
-        <PermissionGuard :permission="Permissions.Attendance.Manage">
-          <q-btn color="primary" icon="add" label="Devamsızlık Ekle" @click="openAddDialog" />
-        </PermissionGuard>
-      </div>
-    </div>
+    <PageHeader title="Devamsızlık">
+      <PermissionGuard :permission="Permissions.Attendance.Manage">
+        <q-btn color="primary" icon="add" label="Devamsızlık Ekle" @click="openAddDialog" />
+      </PermissionGuard>
+    </PageHeader>
 
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md">
@@ -138,146 +133,39 @@
       </template>
     </AppTable>
 
-    <!-- Devamsızlık Ekle Dialog -->
-    <q-dialog v-model="addDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-primary text-white">
-          <q-icon name="event_busy" class="q-mr-sm" />
-          <q-toolbar-title>Devamsızlık Ekle</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-select
-            v-model="addForm.studentId"
-            :options="placementOpts.options.value"
-            :loading="placementOpts.loading.value"
-            label="Öğrenci *"
-            filled
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            @filter="placementOpts.filter"
-          >
-            <template #prepend>
-              <q-icon name="person" />
-            </template>
-            <template #option="{ itemProps, opt }">
-              <q-item v-bind="itemProps">
-                <q-item-section>
-                  <q-item-label>{{ opt.label }}</q-item-label>
-                  <q-item-label caption v-if="opt.caption">{{ opt.caption }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-              </q-item>
-            </template>
-          </q-select>
-          <q-input
-            :model-value="addForm.businessName"
-            label="İşletme"
-            filled
-            readonly
-            :hint="addForm.businessId ? '' : 'Öğrenci seçildiğinde otomatik doldurulacaktır'"
-          >
-            <template #prepend>
-              <q-icon name="business" />
-            </template>
-          </q-input>
-          <q-input
-            v-model="addForm.date" label="Tarih" filled type="date"
-            :min="weekBounds.min" :max="weekBounds.max"
-            hint="Sadece geçerli hafta içi tarih seçilebilir"
-          >
-            <template #prepend>
-              <q-icon name="calendar_today" />
-            </template>
-          </q-input>
-          <q-select
-            v-model="addForm.absenceType"
-            :options="absenceTypeOptions"
-            label="Devamsızlık Türü"
-            filled emit-value map-options
-          >
-            <template #prepend>
-              <q-icon name="category" />
-            </template>
-          </q-select>
-          <q-input v-model="addForm.reason" label="Gerekçe (opsiyonel)" filled>
-            <template #prepend>
-              <q-icon name="notes" />
-            </template>
-          </q-input>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="createRecord" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Düzeltme Dialog -->
-    <q-dialog v-model="correctDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 400px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-orange text-white">
-          <q-icon name="edit_calendar" class="q-mr-sm" />
-          <q-toolbar-title>Devamsızlık Düzelt</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-select
-            v-model="correctForm.absenceType"
-            :options="absenceTypeOptions"
-            label="Devamsızlık Türü"
-            filled emit-value map-options
-          >
-            <template #prepend>
-              <q-icon name="category" />
-            </template>
-          </q-select>
-          <q-input v-model="correctForm.reason" label="Gerekçe" filled>
-            <template #prepend>
-              <q-icon name="notes" />
-            </template>
-          </q-input>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="orange" label="Düzelt" :loading="saving" @click="correctRecord" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <AddAttendanceForm v-model="addDialog" @saved="load" />
+    <CorrectAttendanceForm
+      v-model="correctDialog"
+      :record-id="selected?.id ?? ''"
+      :absence-type="selected?.absenceType ?? 'Unexcused'"
+      :reason="selected?.reason ?? ''"
+      @saved="load"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import type { QTableProps } from 'quasar'
-import { useQuasar } from 'quasar'
-import { attendanceApi, type AttendanceRecordDto, ABSENCE_TYPES } from 'src/api/attendance'
+
+import { attendanceApi, type AttendanceRecordDto } from 'src/api/attendance'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
-import { useStudentOptions, useBusinessOptions, usePlacementOptions } from 'src/composables/useEntityOptions'
+import { useStudentOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import BranchSelector from 'components/BranchSelector.vue'
-import { useAuthStore } from 'stores/auth'
+import PageHeader from 'components/PageHeader.vue'
+import { useConfirmDialog } from 'src/composables/useConfirmDialog'
+import AddAttendanceForm from 'components/forms/attendance/AddAttendanceForm.vue'
+import CorrectAttendanceForm from 'components/forms/attendance/CorrectAttendanceForm.vue'
 
-const $q = useQuasar()
 const notify = useNotify()
-const authStore = useAuthStore()
+const confirmDialog = useConfirmDialog()
 const periodStore = useAcademicPeriodStore()
-const placementOpts = usePlacementOptions()
 const filterStudentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
 const saving = ref(false)
@@ -356,27 +244,6 @@ const yearOptions = [
   { label: String(currentYear + 1), value: currentYear + 1 },
 ]
 
-const absenceTypeOptions = ABSENCE_TYPES.map((t) => ({ label: t.label, value: t.value }))
-
-// Geçerli hafta sınırları — MEB e-Okul kuralı: sadece bu hafta giriş yapılabilir
-const weekBounds = computed(() => {
-  const today = new Date()
-  const day = today.getDay() // 0=Pazar, 1=Pazartesi ...
-  const diffToMonday = day === 0 ? -6 : 1 - day
-  const monday = new Date(today)
-  monday.setDate(today.getDate() + diffToMonday)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  const fmt = (d: Date) => d.toISOString().slice(0, 10)
-  return { min: fmt(monday), max: fmt(sunday) }
-})
-
-const addForm = reactive({
-  studentId: '', businessId: '', businessName: '',
-  date: '', absenceType: 'Unexcused', reason: '',
-})
-
-const correctForm = reactive({ absenceType: 'Unexcused', reason: '' })
 
 const columns: QTableProps['columns'] = [
   { name: 'date', label: 'Tarih', field: 'date', align: 'left', sortable: true },
@@ -399,59 +266,28 @@ function isWithinDeleteWindow(dateStr: string) {
 }
 
 function confirmDelete(row: AttendanceRecordDto) {
-  $q.dialog({
+  confirmDialog.confirm({
     title: 'Devamsızlık Kaydını Sil',
     message: `${formatDate(row.date)} tarihli devamsızlık kaydını silmek istediğinize emin misiniz?`,
-    cancel: { label: 'İptal', flat: true },
-    ok: { label: 'Sil', color: 'negative' },
-    persistent: true,
-  }).onOk(async () => {
-    saving.value = true
-    try {
-      await attendanceApi.remove(row.id)
-      notify.success('Devamsızlık kaydı silindi.')
-      await load()
-    } catch (e) {
-      notify.apiError(e, 'Silme sırasında bir hata oluştu.')
-    } finally {
-      saving.value = false
-    }
+    okLabel: 'Sil',
+    onOk: async () => {
+      saving.value = true
+      try {
+        await attendanceApi.remove(row.id)
+        notify.success('Devamsızlık kaydı silindi.')
+        await load()
+      } catch (e) {
+        notify.apiError(e, 'Silme sırasında bir hata oluştu.')
+      } finally {
+        saving.value = false
+      }
+    },
   })
 }
 
 
 function openAddDialog() {
-  addForm.studentId = ''
-  addForm.businessId = ''
-  addForm.businessName = ''
-  addForm.date = ''
-  addForm.absenceType = 'Unexcused'
-  addForm.reason = ''
-  placementOpts.reset()
-  placementOpts.load({ academicPeriodId: periodStore.selectedPeriodId ?? undefined })
   addDialog.value = true
-}
-
-async function createRecord() {
-  saving.value = true
-  try {
-    await attendanceApi.create({
-      studentId: addForm.studentId,
-      businessId: addForm.businessId,
-      institutionId: authStore.user?.institutionId ?? '',
-      academicPeriodId: periodStore.selectedPeriodId ?? '',
-      date: new Date(addForm.date).toISOString(),
-      absenceType: addForm.absenceType,
-      reason: addForm.reason || undefined,
-    })
-    notify.success('Devamsızlık kaydedildi.')
-    addDialog.value = false
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'Kayıt sırasında bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
 }
 
 async function approve(row: AttendanceRecordDto) {
@@ -482,39 +318,8 @@ async function verify(row: AttendanceRecordDto) {
 
 function openCorrect(row: AttendanceRecordDto) {
   selected.value = row
-  correctForm.absenceType = row.absenceType
-  correctForm.reason = row.reason ?? ''
   correctDialog.value = true
 }
-
-async function correctRecord() {
-  if (!selected.value) return
-  saving.value = true
-  try {
-    await attendanceApi.correct(selected.value.id, {
-      absenceType: correctForm.absenceType,
-      reason: correctForm.reason || undefined,
-    })
-    notify.success('Devamsızlık düzeltildi.')
-    correctDialog.value = false
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'Düzeltme sırasında bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
-watch(() => addForm.studentId, (newId) => {
-  if (newId) {
-    const biz = placementOpts.getBusinessForStudent(newId)
-    addForm.businessId = biz?.businessId ?? ''
-    addForm.businessName = biz?.businessName ?? ''
-  } else {
-    addForm.businessId = ''
-    addForm.businessName = ''
-  }
-})
 
 watch(() => periodStore.selectedPeriodId, () => load())
 

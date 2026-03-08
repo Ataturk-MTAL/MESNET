@@ -12,17 +12,11 @@
     </q-banner>
 
     <template v-else-if="institution">
-      <div class="row items-center q-mb-lg">
-        <div class="col">
-          <div class="text-h5 text-weight-bold">{{ institution.fullName }}</div>
-          <div class="text-caption text-grey">Kurum Kodu: {{ institution.institutionCode }}</div>
-        </div>
-        <div class="col-auto">
-          <PermissionGuard :permission="Permissions.Institution.Manage">
-            <q-btn color="primary" icon="edit" label="Düzenle" @click="editDialog = true" />
-          </PermissionGuard>
-        </div>
-      </div>
+      <PageHeader :title="institution.fullName" :subtitle="`Kurum Kodu: ${institution.institutionCode}`">
+        <PermissionGuard :permission="Permissions.Institution.Manage">
+          <q-btn color="primary" icon="edit" label="Düzenle" @click="editDialog = true" />
+        </PermissionGuard>
+      </PageHeader>
 
       <q-tabs v-model="tab" align="left" class="q-mb-md">
         <q-tab name="info" label="Genel Bilgi" icon="info" />
@@ -289,339 +283,50 @@
       </q-tab-panels>
     </template>
 
-    <!-- Kurum Düzenleme Dialog -->
-    <q-dialog v-model="editDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-primary text-white">
-          <q-icon name="edit" class="q-mr-sm" />
-          <q-toolbar-title>Kurum Bilgilerini Güncelle</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input v-model="editForm.fullName" label="Kurum Adı" filled>
-            <template #prepend>
-              <q-icon name="account_balance" />
-            </template>
-          </q-input>
-          <q-input v-model="editForm.address" label="Adres" filled>
-            <template #prepend>
-              <q-icon name="location_on" />
-            </template>
-          </q-input>
-          <q-input v-model="editForm.phoneNumber" label="Telefon" filled>
-            <template #prepend>
-              <q-icon name="phone" />
-            </template>
-          </q-input>
-          <q-input v-model="editForm.email" label="E-posta" filled type="email">
-            <template #prepend>
-              <q-icon name="email" />
-            </template>
-          </q-input>
-          <q-input v-model="editForm.webUrl" label="Web Sitesi" filled>
-            <template #prepend>
-              <q-icon name="language" />
-            </template>
-          </q-input>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="saveInstitution" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Personel Ekleme Dialog -->
-    <q-dialog v-model="staffDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-teal text-white">
-          <q-icon name="person_add" class="q-mr-sm" />
-          <q-toolbar-title>Personel Yetkilendir</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-select
-            v-model="staffForm.keycloakUserId"
-            :options="userOpts.options.value"
-            :loading="userOpts.loading.value"
-            label="Kullanıcı *"
-            filled
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            @filter="userOpts.filter"
-            @update:model-value="onUserSelect"
-          >
-            <template #prepend>
-              <q-icon name="person_search" />
-            </template>
-            <template #option="{ itemProps, opt }">
-              <q-item v-bind="itemProps">
-                <q-item-section>
-                  <q-item-label>{{ opt.label }}</q-item-label>
-                  <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-              </q-item>
-            </template>
-          </q-select>
-          <q-input v-model="staffForm.fullName" label="Ad Soyad" filled readonly>
-            <template #prepend>
-              <q-icon name="badge" />
-            </template>
-          </q-input>
-          <q-select
-            v-model="staffForm.role"
-            :options="staffRoleOptions"
-            label="Rol *"
-            filled
-            emit-value
-            map-options
-          >
-            <template #prepend>
-              <q-icon name="manage_accounts" />
-            </template>
-          </q-select>
-          <q-select
-            v-model="staffForm.branchCode"
-            :options="branchSelectOptions"
-            label="Alan (opsiyonel)"
-            filled
-            emit-value
-            map-options
-            clearable
-          >
-            <template #prepend>
-              <q-icon name="category" />
-            </template>
-          </q-select>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="teal" label="Yetkilendir" :loading="saving" @click="addStaff" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Alan Ekleme Dialog -->
-    <q-dialog v-model="branchDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-green text-white">
-          <q-icon name="add_circle" class="q-mr-sm" />
-          <q-toolbar-title>Alan Ekle</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-select
-            v-model="branchForm.educationType"
-            :options="educationTypeOptions"
-            label="Eğitim Türü"
-            filled
-            emit-value
-            map-options
-            @update:model-value="onEducationTypeChange"
-          >
-            <template #prepend>
-              <q-icon name="school" />
-            </template>
-          </q-select>
-          <q-select
-            v-model="branchForm.fieldCode"
-            :options="availableFields"
-            :loading="loadingCatalog"
-            label="Alan *"
-            filled
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            :disable="!branchForm.educationType"
-            @filter="filterFields"
-          >
-            <template #prepend>
-              <q-icon name="category" />
-            </template>
-            <template #option="{ itemProps, opt }">
-              <q-item v-bind="itemProps">
-                <q-item-section>
-                  <q-item-label>{{ opt.label }}</q-item-label>
-                  <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-              </q-item>
-            </template>
-          </q-select>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn
-            unelevated
-            color="green"
-            label="Aktifleştir"
-            :loading="saving"
-            :disable="!branchForm.fieldCode"
-            @click="activateBranch"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Uzmanlık Düzenleme Dialog -->
-    <q-dialog v-model="specDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-secondary text-white">
-          <q-icon name="tune" class="q-mr-sm" />
-          <q-toolbar-title>Uzmanlıkları Düzenle</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <div class="text-subtitle2 q-mb-sm">{{ specForm.fieldName }}</div>
-          <div v-if="specForm.allSpecializations.length === 0" class="text-grey q-pa-md text-center">
-            Bu alan için uzmanlık tanımlanmamış.
-          </div>
-          <q-list v-else bordered separator>
-            <q-item v-for="spec in specForm.allSpecializations" :key="spec.code" tag="label">
-              <q-item-section>
-                <q-item-label>{{ spec.name }}</q-item-label>
-                <q-item-label caption>{{ spec.code }}</q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-checkbox v-model="specForm.selectedCodes" :val="spec.code" />
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="secondary" label="Kaydet" :loading="saving" @click="saveSpecializations" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Ders Programı Ayarları Dialog -->
-    <q-dialog v-model="scheduleDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 400px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-orange text-white">
-          <q-icon name="schedule" class="q-mr-sm" />
-          <q-toolbar-title>Ders Programı Ayarları</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <div class="text-subtitle2 q-mb-md">Günlük Ders Sayısı</div>
-          <q-slider
-            v-model="scheduleForm.dailyPeriodCount"
-            :min="1"
-            :max="12"
-            :step="1"
-            label
-            label-always
-            color="primary"
-            markers
-          />
-          <div class="text-center text-h5 text-primary q-mt-sm">
-            {{ scheduleForm.dailyPeriodCount }} ders
-          </div>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="orange" label="Kaydet" :loading="saving" @click="saveScheduleConfig" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-    <!-- Dönem Oluşturma Dialog -->
-    <q-dialog v-model="periodDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-indigo text-white">
-          <q-icon name="date_range" class="q-mr-sm" />
-          <q-toolbar-title>Yeni Akademik Dönem</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-md q-pb-none">
-          <q-banner dense rounded class="bg-orange-1 text-orange-9 text-caption">
-            <template #avatar>
-              <q-icon name="warning" color="orange-7" size="xs" />
-            </template>
-            Yeni dönem oluşturulduğunda mevcut aktif dönem otomatik kapatılır.
-          </q-banner>
-        </q-card-section>
-        <q-card-section class="q-gutter-md">
-          <q-input v-model="periodForm.name" label="Dönem Adı *" filled hint="Örn: 2025-2026">
-            <template #prepend>
-              <q-icon name="label" />
-            </template>
-          </q-input>
-          <div class="row q-col-gutter-md">
-            <div class="col-6">
-              <q-input v-model.number="periodForm.startYear" label="Başlangıç Yılı *" filled type="number">
-                <template #prepend>
-                  <q-icon name="event" />
-                </template>
-              </q-input>
-            </div>
-            <div class="col-6">
-              <q-input v-model.number="periodForm.endYear" label="Bitiş Yılı *" filled type="number">
-                <template #prepend>
-                  <q-icon name="event" />
-                </template>
-              </q-input>
-            </div>
-          </div>
-          <div class="row q-col-gutter-md">
-            <div class="col-6">
-              <q-input v-model="periodForm.startDate" label="Başlangıç Tarihi *" filled type="date">
-                <template #prepend>
-                  <q-icon name="calendar_today" />
-                </template>
-              </q-input>
-            </div>
-            <div class="col-6">
-              <q-input v-model="periodForm.endDate" label="Bitiş Tarihi *" filled type="date">
-                <template #prepend>
-                  <q-icon name="calendar_today" />
-                </template>
-              </q-input>
-            </div>
-          </div>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn
-            unelevated
-            color="indigo"
-            label="Oluştur"
-            :loading="saving"
-            :disable="!periodForm.name || !periodForm.startYear || !periodForm.endYear || !periodForm.startDate || !periodForm.endDate"
-            @click="createPeriod"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <EditInstitutionForm
+      v-model="editDialog"
+      :institution-id="institutionId"
+      :institution="institution"
+      @saved="load"
+    />
+    <AddStaffForm
+      v-model="staffDialog"
+      :institution-id="institutionId"
+      :branch-options="branchSelectOptions"
+      @saved="load"
+    />
+    <AddBranchForm
+      v-model="branchDialog"
+      :institution-id="institutionId"
+      :active-branch-codes="activeBranches.map(b => b.fieldCode)"
+      @saved="load"
+    />
+    <EditSpecializationsForm
+      v-model="specDialog"
+      :institution-id="institutionId"
+      :field-code="specTarget?.fieldCode ?? ''"
+      :field-name="specTarget?.fieldName ?? ''"
+      :all-specializations="specTarget?.allSpecializations ?? []"
+      :active-specializations="specTarget?.activeSpecializations ?? []"
+      @saved="load"
+    />
+    <ScheduleConfigForm
+      v-model="scheduleDialog"
+      :institution-id="institutionId"
+      :current-count="scheduleConfig?.dailyPeriodCount ?? 8"
+      @saved="loadSchedule"
+    />
+    <CreatePeriodForm
+      v-model="periodDialog"
+      :institution-id="institutionId"
+      @saved="load"
+    />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { QTableProps } from 'quasar'
-import { useQuasar } from 'quasar'
 import {
   institutionApi,
   type InstitutionDto,
@@ -636,15 +341,19 @@ import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
-import { useAuthStore } from 'stores/auth'
+import PageHeader from 'components/PageHeader.vue'
+import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
-import { useKeycloakUserOptions } from 'src/composables/useEntityOptions'
+import EditInstitutionForm from 'components/forms/institution/EditInstitutionForm.vue'
+import AddStaffForm from 'components/forms/institution/AddStaffForm.vue'
+import AddBranchForm from 'components/forms/institution/AddBranchForm.vue'
+import EditSpecializationsForm from 'components/forms/institution/EditSpecializationsForm.vue'
+import ScheduleConfigForm from 'components/forms/institution/ScheduleConfigForm.vue'
+import CreatePeriodForm from 'components/forms/institution/CreatePeriodForm.vue'
 
-const $q = useQuasar()
-const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
 const notify = useNotify()
-const userOpts = useKeycloakUserOptions()
+const confirmDialog = useConfirmDialog()
 
 // ── Core State ──
 const loading = ref(false)
@@ -653,7 +362,6 @@ const error = ref<string | null>(null)
 const institution = ref<InstitutionDto | null>(null)
 const scheduleConfig = ref<ScheduleConfigDto | null>(null)
 const fieldCatalog = ref<FieldOfStudyDto[]>([])
-const loadingCatalog = ref(false)
 
 const tab = ref('info')
 const institutionId = ref<string>('')
@@ -676,59 +384,13 @@ const specDialog = ref(false)
 const scheduleDialog = ref(false)
 const periodDialog = ref(false)
 
-// ── Edit Form ──
-const editForm = reactive({
-  fullName: '',
-  address: '',
-  phoneNumber: '',
-  email: '',
-  webUrl: '',
-})
-
-// ── Staff Form ──
-const staffForm = reactive({
-  keycloakUserId: '',
-  fullName: '',
-  role: '',
-  branchCode: null as string | null,
-})
-
-const staffRoleOptions = [
-  { label: 'Müdür', value: 'Principal' },
-  { label: 'Müdür Yardımcısı', value: 'VicePrincipal' },
-  { label: 'Koordinatör', value: 'Coordinator' },
-  { label: 'Alan Şefi', value: 'DepartmentHead' },
-  { label: 'Personel', value: 'Staff' },
-]
-
-// ── Branch Form ──
-const educationTypeOptions = [
-  { label: 'MESEM', value: 'Mesem' },
-  { label: 'Örgün', value: 'Formal' },
-]
-const branchForm = reactive({ educationType: '', fieldCode: '' })
-const allFieldOptions = ref<Array<{ label: string; value: string; caption: string }>>([])
-const availableFields = ref<Array<{ label: string; value: string; caption: string }>>([])
-
-// ── Specialization Form ──
-const specForm = reactive({
-  fieldCode: '',
-  fieldName: '',
-  allSpecializations: [] as SpecializationDto[],
-  selectedCodes: [] as string[],
-})
-
-// ── Schedule Form ──
-const scheduleForm = reactive({ dailyPeriodCount: 8 })
-
-// ── Period Form ──
-const periodForm = reactive({
-  name: '',
-  startYear: new Date().getFullYear(),
-  endYear: new Date().getFullYear() + 1,
-  startDate: '',
-  endDate: '',
-})
+// ── Specialization target (for passing to EditSpecializationsForm) ──
+const specTarget = ref<{
+  fieldCode: string
+  fieldName: string
+  allSpecializations: SpecializationDto[]
+  activeSpecializations: string[]
+} | null>(null)
 
 // ── Table Columns ──
 const staffColumns: QTableProps['columns'] = [
@@ -774,7 +436,6 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    // Önce kurum listesini al — token'daki ID'ye bağımlı olmadan
     if (!institutionId.value) {
       const listRes = await institutionApi.list()
       const institutions = listRes.data
@@ -793,11 +454,6 @@ async function load() {
     institution.value = instRes.data
     scheduleConfig.value = schedRes.data
     periods.value = periodsRes.data?.items ?? []
-    editForm.fullName = instRes.data.fullName
-    editForm.address = instRes.data.address ?? ''
-    editForm.phoneNumber = instRes.data.phoneNumber ?? ''
-    editForm.email = instRes.data.email ?? ''
-    editForm.webUrl = instRes.data.webUrl ?? ''
   } catch {
     error.value = 'Kurum bilgileri yüklenirken bir hata oluştu.'
   } finally {
@@ -805,247 +461,93 @@ async function load() {
   }
 }
 
-async function loadFieldCatalog(educationType?: string) {
-  loadingCatalog.value = true
+async function loadFieldCatalog() {
   try {
-    const res = await institutionApi.getFieldCatalog(educationType)
+    const res = await institutionApi.getFieldCatalog()
     fieldCatalog.value = res.data
-    const activeCodes = new Set(activeBranches.value.map((b) => b.fieldCode))
-    allFieldOptions.value = res.data
-      .filter((f) => !activeCodes.has(f.code))
-      .map((f) => ({ label: f.name, value: f.code, caption: `${f.code} — ${f.typeSlug}` }))
-    availableFields.value = allFieldOptions.value
   } catch (e) {
     notify.apiError(e, 'Alan kataloğu yüklenirken hata oluştu.')
-  } finally {
-    loadingCatalog.value = false
   }
 }
 
-// ── Edit Institution ──
-async function saveInstitution() {
-  saving.value = true
+async function loadSchedule() {
   try {
-    await institutionApi.update(institutionId.value, {
-      fullName: editForm.fullName,
-      address: editForm.address || undefined,
-      phoneNumber: editForm.phoneNumber || undefined,
-      email: editForm.email || undefined,
-      webUrl: editForm.webUrl || undefined,
-    })
-    notify.success('Kurum bilgileri güncellendi.')
-    editDialog.value = false
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'Güncelleme sırasında bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
+    const res = await institutionApi.getScheduleConfig(institutionId.value)
+    scheduleConfig.value = res.data
+  } catch { /* sessiz */ }
 }
 
-// ── Staff ──
+// ── Dialog Openers ──
 function openStaffDialog() {
-  staffForm.keycloakUserId = ''
-  staffForm.fullName = ''
-  staffForm.role = ''
-  staffForm.branchCode = null
-  userOpts.reset()
-  userOpts.load({ institutionId: institutionId.value })
   staffDialog.value = true
 }
 
-function onUserSelect(val: string | null) {
-  if (val) {
-    const selected = userOpts.allOptions.value.find((o) => o.value === val)
-    if (selected) staffForm.fullName = selected.label
-  } else {
-    staffForm.fullName = ''
-  }
-}
-
-async function addStaff() {
-  saving.value = true
-  try {
-    await institutionApi.authorizeStaff(institutionId.value, {
-      keycloakUserId: staffForm.keycloakUserId,
-      fullName: staffForm.fullName,
-      role: staffForm.role,
-      branchCode: staffForm.branchCode || undefined,
-    })
-    notify.success('Personel başarıyla yetkilendirildi.')
-    staffDialog.value = false
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'Personel eklenirken bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
-// ── Branch Management ──
 function openBranchDialog() {
-  branchForm.educationType = ''
-  branchForm.fieldCode = ''
-  availableFields.value = []
-  allFieldOptions.value = []
   branchDialog.value = true
 }
 
-async function onEducationTypeChange(val: string) {
-  branchForm.fieldCode = ''
-  await loadFieldCatalog(val || undefined)
-}
-
-function filterFields(val: string, update: (fn: () => void) => void) {
-  update(() => {
-    const needle = val.toLowerCase()
-    availableFields.value = needle
-      ? allFieldOptions.value.filter(
-          (o) => o.label.toLowerCase().includes(needle) || o.caption.toLowerCase().includes(needle),
-        )
-      : allFieldOptions.value
-  })
-}
-
-async function activateBranch() {
-  saving.value = true
-  try {
-    await institutionApi.activateBranch(institutionId.value, branchForm.fieldCode)
-    notify.success('Alan aktifleştirildi.')
-    branchDialog.value = false
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'Alan aktifleştirilirken hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
-function confirmDeactivateBranch(branch: InstitutionBranchDto) {
-  $q.dialog({
-    title: 'Pasife Al',
-    message: `"${branch.fieldName}" alanını pasife almak istediğinizden emin misiniz?`,
-    cancel: { flat: true, label: 'İptal' },
-    ok: { color: 'negative', label: 'Pasife Al' },
-    persistent: true,
-  }).onOk(async () => {
-    saving.value = true
-    try {
-      await institutionApi.deactivateBranch(institutionId.value, branch.fieldCode)
-      notify.success('Alan pasife alındı.')
-      await load()
-    } catch (e) {
-      notify.apiError(e, 'İşlem sırasında hata oluştu.')
-    } finally {
-      saving.value = false
-    }
-  })
-}
-
-// ── Specialization Management ──
 async function openSpecializationDialog(branch: InstitutionBranchDto) {
   if (fieldCatalog.value.length === 0) {
     await loadFieldCatalog()
   }
   const field = fieldCatalog.value.find((f) => f.code === branch.fieldCode)
-  specForm.fieldCode = branch.fieldCode
-  specForm.fieldName = branch.fieldName
-  specForm.allSpecializations = field?.specializations.filter((s) => s.isActive) ?? []
-  specForm.selectedCodes = [...branch.activeSpecializations]
+  specTarget.value = {
+    fieldCode: branch.fieldCode,
+    fieldName: branch.fieldName,
+    allSpecializations: field?.specializations.filter((s) => s.isActive) ?? [],
+    activeSpecializations: [...branch.activeSpecializations],
+  }
   specDialog.value = true
 }
 
-async function saveSpecializations() {
-  saving.value = true
-  try {
-    await institutionApi.updateSpecializations(institutionId.value, specForm.fieldCode, {
-      activeSpecializations: specForm.selectedCodes,
-    })
-    notify.success('Uzmanlık alanları güncellendi.')
-    specDialog.value = false
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'Güncelleme sırasında hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
-// ── Schedule Config ──
 function openScheduleDialog() {
-  scheduleForm.dailyPeriodCount = scheduleConfig.value?.dailyPeriodCount ?? 8
   scheduleDialog.value = true
 }
 
-async function saveScheduleConfig() {
-  saving.value = true
-  try {
-    await institutionApi.updateScheduleConfig(institutionId.value, {
-      dailyPeriodCount: scheduleForm.dailyPeriodCount,
-      updatedBy: authStore.user?.fullName ?? '',
-    })
-    notify.success('Ders programı ayarları güncellendi.')
-    scheduleDialog.value = false
-    const res = await institutionApi.getScheduleConfig(institutionId.value)
-    scheduleConfig.value = res.data
-  } catch (e) {
-    notify.apiError(e, 'Ayarlar kaydedilirken hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
-// ── Academic Period Management ──
 function openPeriodDialog() {
-  const year = new Date().getFullYear()
-  periodForm.name = `${year}-${year + 1}`
-  periodForm.startYear = year
-  periodForm.endYear = year + 1
-  periodForm.startDate = `${year}-09-08`
-  periodForm.endDate = `${year + 1}-06-19`
   periodDialog.value = true
 }
 
-async function createPeriod() {
-  saving.value = true
-  try {
-    await institutionApi.createAcademicPeriod(institutionId.value, {
-      name: periodForm.name,
-      startYear: periodForm.startYear,
-      endYear: periodForm.endYear,
-      startDate: periodForm.startDate,
-      endDate: periodForm.endDate,
-    })
-    notify.success('Akademik dönem oluşturuldu.')
-    periodDialog.value = false
-    await load()
-    await periodStore.loadPeriods()
-  } catch (e) {
-    notify.apiError(e, 'Dönem oluşturulurken bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
+// ── Direct Actions (no form needed) ──
+function confirmDeactivateBranch(branch: InstitutionBranchDto) {
+  confirmDialog.confirm({
+    title: 'Pasife Al',
+    message: `"${branch.fieldName}" alanını pasife almak istediğinizden emin misiniz?`,
+    okLabel: 'Pasife Al',
+    onOk: async () => {
+      saving.value = true
+      try {
+        await institutionApi.deactivateBranch(institutionId.value, branch.fieldCode)
+        notify.success('Alan pasife alındı.')
+        await load()
+      } catch (e) {
+        notify.apiError(e, 'İşlem sırasında hata oluştu.')
+      } finally {
+        saving.value = false
+      }
+    },
+  })
 }
 
 function confirmClosePeriod(period: AcademicPeriodDto) {
-  $q.dialog({
+  confirmDialog.confirm({
     title: 'Dönemi Kapat',
     message: `"${period.name}" dönemini kapatmak istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
-    cancel: { flat: true, label: 'İptal' },
-    ok: { color: 'orange-8', label: 'Kapat' },
-    persistent: true,
-  }).onOk(async () => {
-    saving.value = true
-    try {
-      await institutionApi.closeAcademicPeriod(institutionId.value, period.id)
-      notify.success('Dönem kapatıldı.')
-      await load()
-      await periodStore.loadPeriods()
-    } catch (e) {
-      notify.apiError(e, 'Dönem kapatılırken bir hata oluştu.')
-    } finally {
-      saving.value = false
-    }
+    okLabel: 'Kapat',
+    okColor: 'orange-8',
+    onOk: async () => {
+      saving.value = true
+      try {
+        await institutionApi.closeAcademicPeriod(institutionId.value, period.id)
+        notify.success('Dönem kapatıldı.')
+        await load()
+        await periodStore.loadPeriods()
+      } catch (e) {
+        notify.apiError(e, 'Dönem kapatılırken bir hata oluştu.')
+      } finally {
+        saving.value = false
+      }
+    },
   })
 }
 

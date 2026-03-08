@@ -1,15 +1,10 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg">
-      <div class="col">
-        <div class="text-h5 text-weight-bold">Sözleşmeler</div>
-      </div>
-      <div class="col-auto">
-        <PermissionGuard :permission="Permissions.Internship.Contract">
-          <q-btn color="primary" icon="add" label="Yeni Sözleşme" unelevated @click="openCreateDialog" />
-        </PermissionGuard>
-      </div>
-    </div>
+    <PageHeader title="Sözleşmeler">
+      <PermissionGuard :permission="Permissions.Internship.Contract">
+        <q-btn color="primary" icon="add" label="Yeni Sözleşme" unelevated @click="openCreateDialog" />
+      </PermissionGuard>
+    </PageHeader>
 
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md">
@@ -96,17 +91,9 @@
       </template>
     </AppTable>
 
-    <!-- Detay Drawer -->
-    <q-drawer v-model="detailOpen" side="right" bordered :width="520" overlay>
+    <!-- Detay Panel -->
+    <DetailPanel v-model="detailOpen" title="Sözleşme Detayı" :has-content="!!selected" :width="520">
       <template v-if="selected">
-        <q-toolbar class="bg-primary text-white">
-          <q-btn flat round dense icon="arrow_back" color="white" @click="detailOpen = false" />
-          <q-toolbar-title class="text-subtitle1 text-weight-medium">
-            Sözleşme Detayı
-          </q-toolbar-title>
-        </q-toolbar>
-        <q-scroll-area class="fit">
-          <div class="q-pa-md">
             <!-- Durum & Tarih -->
             <div class="row items-center q-mb-md q-gutter-sm">
               <StatusBadge :slug="selected.statusSlug" />
@@ -274,7 +261,7 @@
                     label="Talebi Reddet"
                     unelevated
                     :loading="saving"
-                    @click="() => { rejectTerminateForm.rejectedBy = authStore.user?.fullName ?? ''; rejectTerminateDialog = true }"
+                    @click="rejectTerminateDialog = true"
                   />
                 </template>
               </PermissionGuard>
@@ -288,7 +275,7 @@
                   label="Fesih Talebi Oluştur"
                   outline
                   :loading="saving"
-                  @click="() => { requestTerminateForm.reason = ''; requestTerminateForm.reasonType = 'BusinessRequest'; requestTerminateForm.requestedBy = authStore.user?.fullName ?? ''; requestTerminateDialog = true }"
+                  @click="requestTerminateDialog = true"
                 />
               </PermissionGuard>
 
@@ -302,405 +289,16 @@
                 />
               </PermissionGuard>
             </div>
-          </div>
-        </q-scroll-area>
       </template>
-    </q-drawer>
+    </DetailPanel>
 
-    <!-- ── Yeni Sözleşme Dialog ── -->
-    <q-dialog
-      v-model="createDialog"
-      persistent
-      :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
-    >
-      <q-card :style="$q.screen.gt.xs ? 'width: 520px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-primary text-white">
-          <q-icon name="description" class="q-mr-sm" />
-          <q-toolbar-title>Yeni Sözleşme Oluştur</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-select
-            v-model="createForm.studentId"
-            :options="studentOpts.options.value"
-            :loading="studentOpts.loading.value"
-            label="Öğrenci *"
-            filled
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            @filter="studentOpts.filter"
-          >
-            <template #prepend><q-icon name="school" /></template>
-            <template #option="{ itemProps, opt }">
-              <q-item v-bind="itemProps">
-                <q-item-section>
-                  <q-item-label>{{ opt.label }}</q-item-label>
-                  <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item><q-item-section class="text-grey">Sonuç bulunamadı</q-item-section></q-item>
-            </template>
-          </q-select>
-
-          <q-select
-            v-model="createForm.businessId"
-            :options="businessOpts.options.value"
-            :loading="businessOpts.loading.value"
-            label="İşletme *"
-            filled
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            @filter="businessOpts.filter"
-          >
-            <template #prepend><q-icon name="business" /></template>
-            <template #option="{ itemProps, opt }">
-              <q-item v-bind="itemProps">
-                <q-item-section>
-                  <q-item-label>{{ opt.label }}</q-item-label>
-                  <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item><q-item-section class="text-grey">Sonuç bulunamadı</q-item-section></q-item>
-            </template>
-          </q-select>
-
-          <TeacherSelector
-            v-model="createForm.teacherId"
-            label="Koordinatör Öğretmen (opsiyonel)"
-          />
-
-          <q-input v-model="createForm.startDate" label="Başlangıç Tarihi *" filled type="date">
-            <template #prepend><q-icon name="calendar_today" /></template>
-          </q-input>
-        </q-card-section>
-
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="primary" label="Oluştur" :loading="saving" @click="createContract" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- ── İmzala Dialog ── -->
-    <q-dialog
-      v-model="signDialog"
-      persistent
-      :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
-    >
-      <q-card :style="$q.screen.gt.xs ? 'width: 420px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-teal text-white">
-          <q-icon name="draw" class="q-mr-sm" />
-          <q-toolbar-title>Sözleşme İmzala</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-select
-            v-model="signForm.party"
-            :options="partyOptions"
-            label="İmzacı Taraf"
-            filled
-            emit-value
-            map-options
-          >
-            <template #prepend><q-icon name="group" /></template>
-          </q-select>
-          <q-input v-model="signForm.signedBy" label="İmzalayan Adı" filled>
-            <template #prepend><q-icon name="badge" /></template>
-          </q-input>
-        </q-card-section>
-
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="teal" label="İmzala" :loading="saving" @click="doSign" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- ── Askıya Al Dialog ── -->
-    <q-dialog
-      v-model="suspendDialog"
-      persistent
-      :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
-    >
-      <q-card :style="$q.screen.gt.xs ? 'width: 420px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-orange text-white">
-          <q-icon name="pause_circle" class="q-mr-sm" />
-          <q-toolbar-title>Sözleşmeyi Askıya Al</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-
-        <q-card-section class="q-pt-lg">
-          <q-input
-            v-model="suspendReason"
-            label="Askıya alma gerekçesi"
-            filled
-            type="textarea"
-            :rows="3"
-            autogrow
-          >
-            <template #prepend><q-icon name="notes" /></template>
-          </q-input>
-        </q-card-section>
-
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="orange" label="Askıya Al" :loading="saving" @click="doSuspend" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- ── Feshet Dialog ── -->
-    <q-dialog
-      v-model="terminateDialog"
-      persistent
-      :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
-    >
-      <q-card :style="$q.screen.gt.xs ? 'width: 460px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-negative text-white">
-          <q-icon name="gavel" class="q-mr-sm" />
-          <q-toolbar-title>Sözleşmeyi Feshet</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-select
-            v-model="terminateForm.reasonType"
-            :options="terminationReasonOptions"
-            label="Fesih Sebebi *"
-            filled
-            emit-value
-            map-options
-          >
-            <template #prepend><q-icon name="category" /></template>
-          </q-select>
-          <q-input
-            v-model="terminateForm.reason"
-            label="Açıklama"
-            filled
-            type="textarea"
-            :rows="3"
-            autogrow
-          >
-            <template #prepend><q-icon name="notes" /></template>
-          </q-input>
-        </q-card-section>
-
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="negative" label="Feshet" :loading="saving" @click="doTerminate" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- ── İşletme Fesih Talebi Dialog ── -->
-    <q-dialog
-      v-model="requestTerminateDialog"
-      persistent
-      :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
-    >
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-deep-orange text-white">
-          <q-icon name="report" class="q-mr-sm" />
-          <q-toolbar-title>Fesih Talebi Oluştur</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-banner class="bg-orange-1 text-orange-10 rounded-borders" dense>
-            <template #avatar><q-icon name="info" /></template>
-            Talebiniz kurum yönetimine iletilecek. Onay/red kararı size bildirilir.
-          </q-banner>
-
-          <q-select
-            v-model="requestTerminateForm.reasonType"
-            :options="terminationReasonOptions"
-            label="Fesih Sebebi *"
-            filled
-            emit-value
-            map-options
-          >
-            <template #prepend><q-icon name="category" /></template>
-          </q-select>
-
-          <q-input
-            v-model="requestTerminateForm.reason"
-            label="Açıklama *"
-            filled
-            type="textarea"
-            :rows="3"
-            autogrow
-          >
-            <template #prepend><q-icon name="notes" /></template>
-          </q-input>
-
-          <q-input v-model="requestTerminateForm.requestedBy" label="Talep Eden *" filled>
-            <template #prepend><q-icon name="person" /></template>
-          </q-input>
-        </q-card-section>
-
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn
-            unelevated
-            color="deep-orange"
-            label="Talebi Gönder"
-            :loading="saving"
-            :disable="!requestTerminateForm.reasonType || !requestTerminateForm.reason || !requestTerminateForm.requestedBy"
-            @click="doRequestTermination"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- ── Fesih Talebini Reddet Dialog ── -->
-    <q-dialog
-      v-model="rejectTerminateDialog"
-      persistent
-      :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
-    >
-      <q-card :style="$q.screen.gt.xs ? 'width: 440px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-teal text-white">
-          <q-icon name="thumb_down" class="q-mr-sm" />
-          <q-toolbar-title>Fesih Talebini Reddet</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-banner class="bg-teal-1 text-teal-10 rounded-borders" dense>
-            <template #avatar><q-icon name="info" /></template>
-            Red edildiğinde sözleşme aktif duruma geri dönecektir.
-          </q-banner>
-
-          <q-input
-            v-model="rejectTerminateForm.rejectionNote"
-            label="Red Gerekçesi (opsiyonel)"
-            filled
-            type="textarea"
-            :rows="3"
-            autogrow
-          >
-            <template #prepend><q-icon name="notes" /></template>
-          </q-input>
-
-          <q-input v-model="rejectTerminateForm.rejectedBy" label="Reddeden *" filled>
-            <template #prepend><q-icon name="person" /></template>
-          </q-input>
-        </q-card-section>
-
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn
-            unelevated
-            color="teal"
-            label="Talebi Reddet"
-            :loading="saving"
-            :disable="!rejectTerminateForm.rejectedBy"
-            @click="doRejectTermination"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- ── Evrak Yükle Dialog ── -->
-    <q-dialog
-      v-model="uploadDialog"
-      persistent
-      :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
-    >
-      <q-card :style="$q.screen.gt.xs ? 'width: 460px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-secondary text-white">
-          <q-icon name="upload_file" class="q-mr-sm" />
-          <q-toolbar-title>Evrak Yükle</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-select
-            v-model="uploadForm.documentType"
-            :options="documentTypeOptions"
-            label="Evrak Türü *"
-            filled
-            emit-value
-            map-options
-          >
-            <template #prepend><q-icon name="category" /></template>
-          </q-select>
-
-          <q-file
-            v-model="uploadForm.file"
-            label="PDF Dosyası *"
-            filled
-            accept=".pdf"
-          >
-            <template #prepend><q-icon name="attach_file" /></template>
-            <template #hint>Yalnızca PDF, maks. 10 MB</template>
-          </q-file>
-
-          <q-input
-            v-model="uploadForm.description"
-            label="Açıklama (opsiyonel)"
-            filled
-          >
-            <template #prepend><q-icon name="notes" /></template>
-          </q-input>
-
-          <q-input
-            v-model="uploadForm.uploadedBy"
-            label="Yükleyen *"
-            filled
-          >
-            <template #prepend><q-icon name="person" /></template>
-          </q-input>
-        </q-card-section>
-
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn
-            unelevated
-            color="secondary"
-            label="Yükle"
-            :loading="saving"
-            :disable="!uploadForm.file || !uploadForm.documentType || !uploadForm.uploadedBy"
-            @click="doUploadDocument"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <CreateContractForm v-model="createDialog" @saved="load" />
+    <SignContractForm v-model="signDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
+    <SuspendContractForm v-model="suspendDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
+    <TerminateContractForm v-model="terminateDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
+    <RequestTerminationForm v-model="requestTerminateDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
+    <RejectTerminationForm v-model="rejectTerminateDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
+    <UploadContractDocForm v-model="uploadDialog" :contract-id="uploadTarget?.id ?? ''" @saved="afterUploadSaved" />
 
     <!-- ── Evraklar Dialog ── -->
     <q-dialog
@@ -758,10 +356,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import type { QTableProps } from 'quasar'
-import { contractApi, type InternshipContractDto, TERMINATION_REASONS, DOCUMENT_TYPES } from 'src/api/contract'
+import { contractApi, type InternshipContractDto } from 'src/api/contract'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useStudentOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
@@ -770,17 +368,23 @@ import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
-import TeacherSelector from 'components/TeacherSelector.vue'
-import { useAuthStore } from 'stores/auth'
+import PageHeader from 'components/PageHeader.vue'
+import DetailPanel from 'components/DetailPanel.vue'
+import CreateContractForm from 'components/forms/contract/CreateContractForm.vue'
+import SignContractForm from 'components/forms/contract/SignContractForm.vue'
+import SuspendContractForm from 'components/forms/contract/SuspendContractForm.vue'
+import TerminateContractForm from 'components/forms/contract/TerminateContractForm.vue'
+import RequestTerminationForm from 'components/forms/contract/RequestTerminationForm.vue'
+import RejectTerminationForm from 'components/forms/contract/RejectTerminationForm.vue'
+import UploadContractDocForm from 'components/forms/contract/UploadContractDocForm.vue'
 
 const $q = useQuasar()
 const notify = useNotify()
-const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
 const studentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
+
 // ID → metadata lookup map'leri (tablo satırlarında isim göstermek için)
-// useStudentOptions allOptions: { label: fullName, value: id, caption: "Alan - X. Sınıf" }
 const studentMap = computed<Record<string, { fullName: string; info: string }>>(() => {
   const map: Record<string, { fullName: string; info: string }> = {}
   for (const opt of studentOpts.allOptions.value) {
@@ -789,7 +393,6 @@ const studentMap = computed<Record<string, { fullName: string; info: string }>>(
   return map
 })
 
-// useBusinessOptions allOptions: { label: name, value: id, caption: address }
 const businessMap = computed<Record<string, string>>(() => {
   const map: Record<string, string> = {}
   for (const opt of businessOpts.allOptions.value) {
@@ -805,10 +408,15 @@ const createDialog = ref(false)
 const signDialog = ref(false)
 const suspendDialog = ref(false)
 const terminateDialog = ref(false)
+const requestTerminateDialog = ref(false)
+const rejectTerminateDialog = ref(false)
 const uploadDialog = ref(false)
 const documentsDialog = ref(false)
 const statusFilter = ref<string | null>(null)
-const suspendReason = ref('')
+
+// Evrak yükleme/evraklar hedef sözleşme
+const uploadTarget = ref<InternshipContractDto | null>(null)
+const documentsTarget = ref<InternshipContractDto | null>(null)
 
 // ── Server-side pagination ──
 const filters = computed(() => ({
@@ -823,18 +431,6 @@ const { rows: contracts, loading, pagination, onRequest, load } = useServerPagin
   defaultDescending: true,
 })
 
-// Evrak yükleme formu
-const uploadTarget = ref<InternshipContractDto | null>(null)
-const uploadForm = reactive({
-  documentType: 'SignedContract' as 'SignedContract' | 'TerminationLetter' | 'Other',
-  file: null as File | null,
-  description: '',
-  uploadedBy: '',
-})
-
-// Evraklar dialog hedef sözleşme
-const documentsTarget = ref<InternshipContractDto | null>(null)
-
 const statusOptions = [
   { label: 'Tüm Durumlar', value: null },
   { label: 'Taslak', value: 'Draft' },
@@ -845,46 +441,6 @@ const statusOptions = [
   { label: 'Feshedildi', value: 'Terminated' },
   { label: 'Tamamlandı', value: 'Completed' },
 ]
-
-const partyOptions = [
-  { label: 'Kurum', value: 'Institution' },
-  { label: 'İşletme', value: 'Business' },
-  { label: 'Öğrenci', value: 'Student' },
-]
-
-const documentTypeOptions = DOCUMENT_TYPES.map((d) => ({ label: d.label, value: d.value }))
-
-const terminationReasonOptions = TERMINATION_REASONS.map((r) => ({ label: r.label, value: r.value }))
-
-const createForm = reactive({
-  studentId: '',
-  businessId: '',
-  teacherId: '',
-  startDate: '',
-})
-
-const signForm = reactive<{ party: 'Institution' | 'Business' | 'Student'; signedBy: string }>({
-  party: 'Institution',
-  signedBy: '',
-})
-
-const terminateForm = reactive({
-  reasonType: '',
-  reason: '',
-})
-
-const requestTerminateDialog = ref(false)
-const requestTerminateForm = reactive({
-  reasonType: '',
-  reason: '',
-  requestedBy: '',
-})
-
-const rejectTerminateDialog = ref(false)
-const rejectTerminateForm = reactive({
-  rejectedBy: '',
-  rejectionNote: '',
-})
 
 const signatureList = computed(() =>
   selected.value
@@ -912,15 +468,6 @@ function formatDate(iso: string | null | undefined) {
 }
 
 function openCreateDialog() {
-  createForm.studentId = ''
-  createForm.businessId = ''
-  createForm.teacherId = ''
-  createForm.startDate = ''
-  studentOpts.reset()
-  studentOpts.load()
-  businessOpts.reset()
-  businessOpts.load()
-  // TeacherSelector kendi onMounted'ında öğretmen listesini yükler.
   createDialog.value = true
 }
 
@@ -931,10 +478,6 @@ function openDetail(row: InternshipContractDto) {
 
 function openUploadDialog(contract: InternshipContractDto) {
   uploadTarget.value = contract
-  uploadForm.documentType = 'SignedContract'
-  uploadForm.file = null
-  uploadForm.description = ''
-  uploadForm.uploadedBy = authStore.user?.fullName ?? ''
   uploadDialog.value = true
 }
 
@@ -943,26 +486,7 @@ function openDocumentsDialog(contract: InternshipContractDto) {
   documentsDialog.value = true
 }
 
-async function createContract() {
-  saving.value = true
-  try {
-    await contractApi.create({
-      studentId: createForm.studentId,
-      businessId: createForm.businessId,
-      institutionId: authStore.user?.institutionId ?? '',
-      teacherId: createForm.teacherId || undefined,
-      startDate: new Date(createForm.startDate).toISOString(),
-    })
-    notify.success('Sözleşme oluşturuldu.')
-    createDialog.value = false
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'Sözleşme oluşturulurken bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
+// Doğrudan eylemler (form gerektirmeyen)
 async function doSubmit() {
   if (!selected.value) return
   saving.value = true
@@ -977,42 +501,12 @@ async function doSubmit() {
   }
 }
 
-async function doSign() {
-  if (!selected.value) return
-  saving.value = true
-  try {
-    await contractApi.sign(selected.value.id, { party: signForm.party, signedBy: signForm.signedBy })
-    notify.success('Sözleşme imzalandı.')
-    signDialog.value = false
-    await refreshSelected()
-  } catch (e) {
-    notify.apiError(e, 'İmzalama sırasında bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
 async function doActivate() {
   if (!selected.value) return
   saving.value = true
   try {
     await contractApi.activate(selected.value.id)
     notify.success('Sözleşme aktifleştirildi.')
-    await refreshSelected()
-  } catch (e) {
-    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function doSuspend() {
-  if (!selected.value) return
-  saving.value = true
-  try {
-    await contractApi.suspend(selected.value.id, { reason: suspendReason.value })
-    notify.success('Sözleşme askıya alındı.')
-    suspendDialog.value = false
     await refreshSelected()
   } catch (e) {
     notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
@@ -1035,61 +529,6 @@ async function doResume() {
   }
 }
 
-async function doTerminate() {
-  if (!selected.value) return
-  saving.value = true
-  try {
-    await contractApi.terminate(selected.value.id, {
-      reason: terminateForm.reason,
-      reasonType: terminateForm.reasonType,
-    })
-    notify.success('Sözleşme feshedildi.')
-    terminateDialog.value = false
-    await refreshSelected()
-  } catch (e) {
-    notify.apiError(e, 'Fesih sırasında bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function doRequestTermination() {
-  if (!selected.value) return
-  saving.value = true
-  try {
-    await contractApi.requestTermination(selected.value.id, {
-      reason: requestTerminateForm.reason,
-      reasonType: requestTerminateForm.reasonType,
-      requestedBy: requestTerminateForm.requestedBy,
-    })
-    notify.success('Fesih talebi oluşturuldu. Kurum onayı bekleniyor.')
-    requestTerminateDialog.value = false
-    await refreshSelected()
-  } catch (e) {
-    notify.apiError(e, 'Fesih talebi oluşturulurken bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function doRejectTermination() {
-  if (!selected.value) return
-  saving.value = true
-  try {
-    await contractApi.rejectTermination(selected.value.id, {
-      rejectedBy: rejectTerminateForm.rejectedBy,
-      rejectionNote: rejectTerminateForm.rejectionNote || undefined,
-    })
-    notify.success('Fesih talebi reddedildi. Sözleşme aktif duruma döndü.')
-    rejectTerminateDialog.value = false
-    await refreshSelected()
-  } catch (e) {
-    notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
 async function doComplete() {
   if (!selected.value) return
   saving.value = true
@@ -1099,30 +538,6 @@ async function doComplete() {
     await refreshSelected()
   } catch (e) {
     notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function doUploadDocument() {
-  if (!uploadTarget.value || !uploadForm.file) return
-  saving.value = true
-  try {
-    await contractApi.uploadDocument(uploadTarget.value.id, {
-      documentType: uploadForm.documentType,
-      file: uploadForm.file,
-      description: uploadForm.description || undefined,
-      uploadedBy: uploadForm.uploadedBy,
-    })
-    notify.success('Evrak başarıyla yüklendi.')
-    uploadDialog.value = false
-    // Listeyi ve eğer aynı sözleşme seçiliyse detayı güncelle
-    await load()
-    if (selected.value?.id === uploadTarget.value.id) {
-      await refreshSelected()
-    }
-  } catch (e) {
-    notify.apiError(e, 'Evrak yüklenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -1138,10 +553,16 @@ async function refreshSelected() {
   } catch { /* sessiz */ }
 }
 
+async function afterUploadSaved() {
+  await load()
+  if (uploadTarget.value && selected.value?.id === uploadTarget.value.id) {
+    await refreshSelected()
+  }
+}
+
 watch(() => periodStore.selectedPeriodId, () => load())
 
 onMounted(async () => {
-  // Tablo satırlarında isim göstermek için öğrenci ve işletme listelerini önceden yükle
   studentOpts.load()
   businessOpts.load()
   await load()

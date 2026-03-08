@@ -1,34 +1,29 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg">
-      <div class="col">
-        <div class="text-h5 text-weight-bold">İşletmeler</div>
-      </div>
-      <div class="col-auto q-gutter-sm row items-center">
-        <q-btn-toggle
-          v-model="viewMode"
-          toggle-color="primary"
-          flat
-          dense
-          :options="[
-            { value: 'table', slot: 'table' },
-            { value: 'map', slot: 'map' },
-          ]"
-        >
-          <template #table>
-            <q-icon name="view_list" />
-            <q-tooltip>Tablo Görünümü</q-tooltip>
-          </template>
-          <template #map>
-            <q-icon name="map" />
-            <q-tooltip>Harita Görünümü</q-tooltip>
-          </template>
-        </q-btn-toggle>
-        <PermissionGuard :permission="Permissions.Company.Manage">
-          <q-btn color="primary" icon="add_business" label="İşletme Ekle" @click="addDialog = true" />
-        </PermissionGuard>
-      </div>
-    </div>
+    <PageHeader title="İşletmeler">
+      <q-btn-toggle
+        v-model="viewMode"
+        toggle-color="primary"
+        flat
+        dense
+        :options="[
+          { value: 'table', slot: 'table' },
+          { value: 'map', slot: 'map' },
+        ]"
+      >
+        <template #table>
+          <q-icon name="view_list" />
+          <q-tooltip>Tablo Görünümü</q-tooltip>
+        </template>
+        <template #map>
+          <q-icon name="map" />
+          <q-tooltip>Harita Görünümü</q-tooltip>
+        </template>
+      </q-btn-toggle>
+      <PermissionGuard :permission="Permissions.Company.Manage">
+        <q-btn color="primary" icon="add_business" label="İşletme Ekle" @click="addDialog = true" />
+      </PermissionGuard>
+    </PageHeader>
 
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md">
@@ -171,72 +166,36 @@
     </div>
 
     <!-- Detay Panel — sağdan overlay -->
-    <transition name="slide-right">
-      <div v-if="selected" class="detail-backdrop" @click.self="closeDetail" />
-    </transition>
-    <transition name="slide-right">
-      <div v-if="selected" class="detail-panel">
-        <q-toolbar>
-          <q-toolbar-title class="text-subtitle1 text-weight-bold">{{ selected.name }}</q-toolbar-title>
-          <StatusBadge :slug="selected.statusSlug" class="q-mr-sm" />
-          <PermissionGuard :permission="Permissions.Company.Manage">
-            <q-btn flat round dense icon="edit" @click="openEditDialog">
-              <q-tooltip>Düzenle</q-tooltip>
-            </q-btn>
-          </PermissionGuard>
-          <q-btn flat round dense icon="close" @click="closeDetail" />
-        </q-toolbar>
-        <q-separator />
-        <div class="detail-panel-scroll">
-          <div class="q-pa-md q-gutter-sm">
-            <q-item dense>
-              <q-item-section avatar><q-icon name="location_on" /></q-item-section>
-              <q-item-section>
-                <q-item-label caption>Adres</q-item-label>
-                <q-item-label>{{ selected.address }}</q-item-label>
-              </q-item-section>
-            </q-item>
+    <DetailPanel v-model="detailOpen" :has-content="!!selected" :width="480">
+      <template #title>{{ selected?.name }}</template>
+      <template #toolbar-actions>
+        <StatusBadge :slug="selected?.statusSlug ?? ''" class="q-mr-sm" />
+        <PermissionGuard :permission="Permissions.Company.Manage">
+          <q-btn flat round dense icon="edit" @click="openEditDialog">
+            <q-tooltip>Düzenle</q-tooltip>
+          </q-btn>
+        </PermissionGuard>
+      </template>
+      <template v-if="selected">
+        <div class="q-gutter-sm">
+            <InfoItem icon="location_on" label="Adres" :value="selected.address" />
             <div v-if="selected.location" class="q-px-md q-mt-sm">
               <MapPicker :model-value="selected.location" readonly height="200px" />
             </div>
-            <q-item dense>
-              <q-item-section avatar><q-icon name="phone" /></q-item-section>
-              <q-item-section>
-                <q-item-label caption>Telefon</q-item-label>
-                <q-item-label>{{ selected.phoneNumber ?? '—' }}</q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item dense>
-              <q-item-section avatar><q-icon name="email" /></q-item-section>
-              <q-item-section>
-                <q-item-label caption>E-posta</q-item-label>
-                <q-item-label>{{ selected.email ?? '—' }}</q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item dense>
-              <q-item-section avatar><q-icon name="groups" /></q-item-section>
-              <q-item-section>
-                <q-item-label caption>Personel Sayısı</q-item-label>
-                <q-item-label>{{ selected.personnelCount }}</q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item dense>
-              <q-item-section avatar><q-icon name="category" /></q-item-section>
-              <q-item-section>
-                <q-item-label caption>Sektörler</q-item-label>
-                <q-item-label>
-                  <q-badge
-                    v-for="sec in selected.sectors"
-                    :key="sec.name"
-                    color="blue-grey-3"
-                    text-color="dark"
-                    class="q-mr-xs q-mb-xs"
-                    :label="sec.slug"
-                  />
-                  <span v-if="selected.sectors.length === 0" class="text-grey">Belirtilmemiş</span>
-                </q-item-label>
-              </q-item-section>
-            </q-item>
+            <InfoItem icon="phone" label="Telefon" :value="selected.phoneNumber" />
+            <InfoItem icon="email" label="E-posta" :value="selected.email" />
+            <InfoItem icon="groups" label="Personel Sayısı" :value="selected.personnelCount" />
+            <InfoItem icon="category" label="Sektörler">
+              <q-badge
+                v-for="sec in selected.sectors"
+                :key="sec.name"
+                color="blue-grey-3"
+                text-color="dark"
+                class="q-mr-xs q-mb-xs"
+                :label="sec.slug"
+              />
+              <span v-if="selected.sectors.length === 0" class="text-grey">Belirtilmemiş</span>
+            </InfoItem>
 
             <q-separator spaced />
             <div class="text-subtitle2 text-weight-medium">Kapasite</div>
@@ -327,255 +286,44 @@
                 </template>
               </div>
             </PermissionGuard>
-          </div>
         </div>
-      </div>
-    </transition>
+      </template>
+    </DetailPanel>
 
-    <!-- İşletme Ekle Dialog -->
-    <q-dialog v-model="addDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 600px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-primary text-white">
-          <q-icon name="add_business" class="q-mr-sm" />
-          <q-toolbar-title>Yeni İşletme Ekle</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input
-            v-model="addForm.name" label="İşletme Adı *" filled
-            :error="!!addErrors.name" :error-message="addErrors.name"
-          >
-            <template #prepend>
-              <q-icon name="business" />
-            </template>
-          </q-input>
-          <q-input
-            v-model="addForm.address" label="Adres *" filled
-            :error="!!addErrors.address" :error-message="addErrors.address"
-          >
-            <template #prepend>
-              <q-icon name="location_on" />
-            </template>
-          </q-input>
-          <q-input v-model="addForm.phoneNumber" label="Telefon" filled>
-            <template #prepend>
-              <q-icon name="phone" />
-            </template>
-          </q-input>
-          <q-input
-            v-model="addForm.email" label="E-posta" filled type="email"
-            :error="!!addErrors.email" :error-message="addErrors.email"
-          >
-            <template #prepend>
-              <q-icon name="email" />
-            </template>
-          </q-input>
-          <q-input v-model.number="addForm.personnelCount" label="Personel Sayısı" filled type="number">
-            <template #prepend>
-              <q-icon name="groups" />
-            </template>
-          </q-input>
-          <q-select
-            v-model="addForm.sectors"
-            :options="sectorOptions"
-            label="Sektörler"
-            filled
-            multiple
-            emit-value
-            map-options
-            use-chips
-          >
-            <template #prepend>
-              <q-icon name="category" />
-            </template>
-          </q-select>
-          <div class="text-subtitle2 q-mt-md q-mb-xs">
-            <q-icon name="map" class="q-mr-xs" />Konum
-          </div>
-          <MapPicker :model-value="addLocation" @update:model-value="v => addForm.location = v" height="250px" />
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="registerBusiness" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Red Dialog -->
-    <q-dialog v-model="rejectDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 400px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-negative text-white">
-          <q-icon name="cancel" class="q-mr-sm" />
-          <q-toolbar-title>Reddetme Gerekçesi</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input
-            v-model="rejectForm.reason" label="Gerekçe *" filled type="textarea" rows="3"
-            :error="!!rejectErrors.reason" :error-message="rejectErrors.reason"
-          >
-            <template #prepend>
-              <q-icon name="notes" />
-            </template>
-          </q-input>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="negative" label="Reddet" :loading="saving" @click="rejectBusiness" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Belge Yükleme Dialog -->
-    <q-dialog v-model="docUploadDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 400px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-secondary text-white">
-          <q-icon name="upload_file" class="q-mr-sm" />
-          <q-toolbar-title>Belge Yükle</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-select
-            v-model="docForm.type"
-            :options="docTypeOptions"
-            label="Belge Tipi *"
-            filled
-            emit-value
-            map-options
-          >
-            <template #prepend>
-              <q-icon name="description" />
-            </template>
-          </q-select>
-          <q-file
-            v-model="docForm.file"
-            label="Dosya Seç *"
-            filled
-            accept=".pdf,.jpg,.jpeg,.png"
-          >
-            <template #prepend>
-              <q-icon name="attach_file" />
-            </template>
-          </q-file>
-          <!-- Ön izleme -->
-          <div v-if="docForm.file" class="q-mt-sm">
-            <div class="text-caption text-grey q-mb-xs">Ön İzleme</div>
-            <iframe
-              v-if="docForm.file.type === 'application/pdf'"
-              :src="filePreviewUrl ?? ''"
-              style="width: 100%; height: 300px; border: 1px solid #ddd; border-radius: 4px"
-            />
-            <img
-              v-else
-              :src="filePreviewUrl ?? ''"
-              style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 4px"
-            />
-          </div>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="secondary" label="Yükle" :loading="saving" :disable="!docForm.file || !docForm.type" @click="uploadDocument" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-    <!-- İşletme Düzenle Dialog -->
-    <q-dialog v-model="editDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
-      <q-card :style="$q.screen.gt.xs ? 'width: 600px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-primary text-white">
-          <q-icon name="edit" class="q-mr-sm" />
-          <q-toolbar-title>İşletme Düzenle</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input
-            v-model="editForm.name" label="İşletme Adı *" filled
-            :error="!!editErrors.name" :error-message="editErrors.name"
-          >
-            <template #prepend>
-              <q-icon name="business" />
-            </template>
-          </q-input>
-          <q-input
-            v-model="editForm.address" label="Adres *" filled
-            :error="!!editErrors.address" :error-message="editErrors.address"
-          >
-            <template #prepend>
-              <q-icon name="location_on" />
-            </template>
-          </q-input>
-          <q-input v-model="editForm.phoneNumber" label="Telefon" filled>
-            <template #prepend>
-              <q-icon name="phone" />
-            </template>
-          </q-input>
-          <q-input
-            v-model="editForm.email" label="E-posta" filled type="email"
-            :error="!!editErrors.email" :error-message="editErrors.email"
-          >
-            <template #prepend>
-              <q-icon name="email" />
-            </template>
-          </q-input>
-          <q-input v-model="editForm.website" label="Web Sitesi" filled>
-            <template #prepend>
-              <q-icon name="language" />
-            </template>
-          </q-input>
-          <q-input v-model.number="editForm.personnelCount" label="Personel Sayısı" filled type="number">
-            <template #prepend>
-              <q-icon name="groups" />
-            </template>
-          </q-input>
-          <q-select
-            v-model="editForm.sectors"
-            :options="sectorOptions"
-            label="Sektörler"
-            filled
-            multiple
-            emit-value
-            map-options
-            use-chips
-          >
-            <template #prepend>
-              <q-icon name="category" />
-            </template>
-          </q-select>
-          <div class="text-subtitle2 q-mt-md q-mb-xs">
-            <q-icon name="map" class="q-mr-xs" />Konum
-          </div>
-          <MapPicker :model-value="editLocation" @update:model-value="v => editForm.location = v" height="250px" />
-        </q-card-section>
-        <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="saveEdit" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <!-- Form Dialogları -->
+    <AddBusinessForm v-model="addDialog" :sector-options="sectorOptions" @saved="load" />
+    <RejectBusinessForm v-model="rejectDialog" :business-id="selected?.id ?? ''" @saved="afterFormSaved" />
+    <UploadBusinessDocForm v-model="docUploadDialog" :business-id="selected?.id ?? ''" @saved="afterFormSaved" />
+    <EditBusinessForm v-model="editDialog" :business="selected" :sector-options="sectorOptions" @saved="afterFormSaved" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { businessApi, type BusinessDto, type SectorDto } from 'src/api/business'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
-import { registerBusinessSchema, editBusinessSchema, rejectBusinessSchema } from 'src/schemas/business'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import MapPicker from 'components/MapPicker.vue'
+import InfoItem from 'components/InfoItem.vue'
+import PageHeader from 'components/PageHeader.vue'
+import { useConfirmDialog } from 'src/composables/useConfirmDialog'
+import DetailPanel from 'components/DetailPanel.vue'
+import AddBusinessForm from 'components/forms/business/AddBusinessForm.vue'
+import EditBusinessForm from 'components/forms/business/EditBusinessForm.vue'
+import RejectBusinessForm from 'components/forms/business/RejectBusinessForm.vue'
+import UploadBusinessDocForm from 'components/forms/business/UploadBusinessDocForm.vue'
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 const $q = useQuasar()
 const notify = useNotify()
+const confirmDialog = useConfirmDialog()
 const viewMode = ref<'table' | 'map'>('table')
 const mapZoom = ref(7)
 const mapCenter = ref<[number, number]>([39.0, 35.0])
@@ -595,6 +343,7 @@ function getLatLng(biz: BusinessDto): [number, number] {
 
 const saving = ref(false)
 const selected = ref<BusinessDto | null>(null)
+const detailOpen = ref(false)
 const addDialog = ref(false)
 const rejectDialog = ref(false)
 const docUploadDialog = ref(false)
@@ -616,50 +365,6 @@ const { rows: businesses, loading, pagination, search, onRequest, onSearch, load
     filters,
     defaultSortBy: 'name',
   })
-const docForm = reactive({
-  type: '',
-  file: null as File | null,
-})
-
-// ── Zod validasyon helper ──
-function zodValidate<T>(schema: { safeParse: (data: unknown) => { success: boolean; error?: { issues: { path: (string | number)[]; message: string }[] }; data?: T } }, data: unknown, errors: Record<string, string>): data is T {
-  for (const key of Object.keys(errors)) errors[key] = ''
-  const result = schema.safeParse(data)
-  if (result.success) return true
-  for (const issue of result.error!.issues) {
-    const field = issue.path[0]
-    if (field && typeof field === 'string' && !errors[field]) {
-      errors[field] = issue.message
-    }
-  }
-  return false
-}
-
-// ── reactive form objects ──
-const addForm = reactive({
-  name: '', address: '', phoneNumber: '', email: '',
-  personnelCount: 0, location: null as { latitude: number; longitude: number } | null, sectors: [] as string[],
-})
-const addErrors = reactive<Record<string, string>>({})
-
-const editForm = reactive({
-  name: '', address: '', phoneNumber: '', email: '', website: '',
-  personnelCount: 0, location: null as { latitude: number; longitude: number } | null, sectors: [] as string[],
-})
-const editErrors = reactive<Record<string, string>>({})
-
-const rejectForm = reactive({ reason: '' })
-const rejectErrors = reactive<Record<string, string>>({})
-
-// location bridge for MapPicker (reactive → GeoLocation | null)
-const addLocation = computed(() => addForm.location)
-const editLocation = computed(() => editForm.location)
-
-const docTypeOptions = [
-  { label: 'Ustalık Belgesi', value: 'MasteryCertificate' },
-  { label: 'Usta Öğreticilik Belgesi', value: 'MasterInstructorCertificate' },
-]
-
 const statusOptions = [
   { label: 'Onay Bekliyor', value: 'PendingApproval' },
   { label: 'Aktif', value: 'Active' },
@@ -691,13 +396,18 @@ async function loadSectors() {
 }
 
 
-function openDetail(row: BusinessDto) {
-  selected.value = row
-  capacitySlots.value = row.capacity.totalSlots
+async function afterFormSaved() {
+  await load()
+  if (selected.value) {
+    const updated = businesses.value.find((b) => b.id === selected.value?.id)
+    if (updated) selected.value = updated
+  }
 }
 
-function closeDetail() {
-  selected.value = null
+function openDetail(row: BusinessDto) {
+  selected.value = row
+  detailOpen.value = true
+  capacitySlots.value = row.capacity.totalSlots
 }
 
 async function approve(row: BusinessDto) {
@@ -715,53 +425,7 @@ async function approve(row: BusinessDto) {
 
 function openReject(row: BusinessDto) {
   selected.value = row
-  rejectForm.reason = ''
-  for (const key of Object.keys(rejectErrors)) rejectErrors[key] = ''
   rejectDialog.value = true
-}
-
-async function rejectBusiness() {
-  if (!selected.value) return
-  if (!zodValidate(rejectBusinessSchema, rejectForm, rejectErrors)) return
-  saving.value = true
-  try {
-    await businessApi.reject(selected.value.id, rejectForm.reason)
-    notify.success('İşletme reddedildi.')
-    rejectDialog.value = false
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'Reddetme sırasında bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function registerBusiness() {
-  if (!zodValidate(registerBusinessSchema, addForm, addErrors)) return
-  saving.value = true
-  try {
-    await businessApi.register({
-      name: addForm.name,
-      address: addForm.address,
-      phoneNumber: addForm.phoneNumber || undefined,
-      email: addForm.email || undefined,
-      personnelCount: addForm.personnelCount || undefined,
-      location: addForm.location ?? undefined,
-      sectors: addForm.sectors.length > 0 ? addForm.sectors : undefined,
-    })
-    notify.success('İşletme başarıyla eklendi.')
-    addDialog.value = false
-    Object.assign(addForm, {
-      name: '', address: '', phoneNumber: '', email: '',
-      personnelCount: 0, location: null, sectors: [],
-    })
-    for (const key of Object.keys(addErrors)) addErrors[key] = ''
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'İşletme eklenirken bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
 }
 
 async function updateCapacity() {
@@ -794,48 +458,6 @@ async function approveDoc(documentId: string) {
   }
 }
 
-// Dosya ön izleme URL'i
-const _previewBlobUrl = ref<string | null>(null)
-
-const filePreviewUrl = computed(() => {
-  if (!docForm.file) return null
-  // Eski blob URL varsa temizle
-  if (_previewBlobUrl.value) {
-    URL.revokeObjectURL(_previewBlobUrl.value)
-  }
-  const url = URL.createObjectURL(docForm.file)
-  _previewBlobUrl.value = url
-  return url
-})
-
-// Dialog kapanınca veya dosya null olunca blob URL'i temizle
-watch(() => docForm.file, (newFile) => {
-  if (!newFile && _previewBlobUrl.value) {
-    URL.revokeObjectURL(_previewBlobUrl.value)
-    _previewBlobUrl.value = null
-  }
-})
-
-async function uploadDocument() {
-  if (!selected.value || !docForm.type || !docForm.file) return
-  saving.value = true
-  try {
-    await businessApi.uploadDocument(selected.value.id, docForm.file, docForm.type)
-    notify.success('Belge yüklendi.')
-    docUploadDialog.value = false
-    docForm.type = ''
-    docForm.file = null
-    await load()
-    // Drawer'daki detayı güncelle
-    const updated = businesses.value.find((b) => b.id === selected.value?.id)
-    if (updated) selected.value = updated
-  } catch (e) {
-    notify.apiError(e, 'Belge yüklenirken bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
-}
-
 async function previewDoc(documentId: string) {
   if (!selected.value) return
   try {
@@ -847,14 +469,11 @@ async function previewDoc(documentId: string) {
 }
 
 function confirmDeleteDoc(documentId: string, fileName: string) {
-  $q.dialog({
+  confirmDialog.confirm({
     title: 'Belge Sil',
     message: `"${fileName}" belgesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
-    cancel: { flat: true, label: 'İptal' },
-    ok: { color: 'negative', label: 'Sil' },
-    persistent: true,
-  }).onOk(async () => {
-    await deleteDoc(documentId)
+    okLabel: 'Sil',
+    onOk: () => deleteDoc(documentId),
   })
 }
 
@@ -874,48 +493,8 @@ async function deleteDoc(documentId: string) {
   }
 }
 
-// ── İşletme Düzenle ──
 function openEditDialog() {
-  if (!selected.value) return
-  Object.assign(editForm, {
-    name: selected.value.name,
-    address: selected.value.address,
-    phoneNumber: selected.value.phoneNumber ?? '',
-    email: selected.value.email ?? '',
-    website: selected.value.website ?? '',
-    personnelCount: selected.value.personnelCount,
-    location: selected.value.location ? { ...selected.value.location } : null,
-    sectors: selected.value.sectors.map((s: SectorDto) => s.name),
-  })
-  for (const key of Object.keys(editErrors)) editErrors[key] = ''
   editDialog.value = true
-}
-
-async function saveEdit() {
-  if (!selected.value) return
-  if (!zodValidate(editBusinessSchema, editForm, editErrors)) return
-  saving.value = true
-  try {
-    await businessApi.update(selected.value.id, {
-      name: editForm.name || undefined,
-      address: editForm.address || undefined,
-      phoneNumber: editForm.phoneNumber || undefined,
-      email: editForm.email || undefined,
-      website: editForm.website || undefined,
-      personnelCount: editForm.personnelCount || undefined,
-      location: editForm.location ?? undefined,
-      sectors: editForm.sectors,
-    })
-    notify.success('İşletme bilgileri güncellendi.')
-    editDialog.value = false
-    await load()
-    const updated = businesses.value.find((b) => b.id === selected.value?.id)
-    if (updated) selected.value = updated
-  } catch (e) {
-    notify.apiError(e, 'İşletme güncellenirken bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
 }
 
 // ── Durum Aksiyonları ──
@@ -971,25 +550,24 @@ async function activateBusiness() {
 function closeBusiness() {
   if (!selected.value) return
   const id = selected.value.id
-  $q.dialog({
+  confirmDialog.confirm({
     title: 'İşletmeyi Kapat',
     message: 'Bu işletmeyi kapatmak istediğinize emin misiniz? Bu işlem geri alınamaz.',
-    cancel: { flat: true, label: 'İptal' },
-    ok: { color: 'negative', label: 'Kapat' },
-    persistent: true,
-  }).onOk(async () => {
-    saving.value = true
-    try {
-      await businessApi.close(id)
-      notify.success('İşletme kapatıldı.')
-      await load()
-      const updated = businesses.value.find((b) => b.id === id)
-      if (updated) selected.value = updated
-    } catch (e) {
-      notify.apiError(e, 'İşletme kapatılırken bir hata oluştu.')
-    } finally {
-      saving.value = false
-    }
+    okLabel: 'Kapat',
+    onOk: async () => {
+      saving.value = true
+      try {
+        await businessApi.close(id)
+        notify.success('İşletme kapatıldı.')
+        await load()
+        const updated = businesses.value.find((b) => b.id === id)
+        if (updated) selected.value = updated
+      } catch (e) {
+        notify.apiError(e, 'İşletme kapatılırken bir hata oluştu.')
+      } finally {
+        saving.value = false
+      }
+    },
   })
 }
 
@@ -1005,48 +583,5 @@ onMounted(async () => {
   position: relative;
   height: calc(100vh - 220px);
   min-height: 400px;
-}
-
-/* Detay paneli — sağdan overlay */
-.detail-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 2000;
-}
-
-.detail-panel {
-  position: fixed;
-  top: 50px; /* header yüksekliği */
-  right: 0;
-  bottom: 0;
-  width: 480px;
-  max-width: 100vw;
-  background: white;
-  z-index: 2001;
-  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-}
-
-.detail-panel-scroll {
-  flex: 1;
-  overflow-y: auto;
-}
-
-/* Slide-right transition */
-.slide-right-enter-active,
-.slide-right-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-right-enter-from,
-.slide-right-leave-to {
-  opacity: 0;
-}
-
-.slide-right-enter-from .detail-panel,
-.slide-right-leave-to .detail-panel {
-  transform: translateX(100%);
 }
 </style>
