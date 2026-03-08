@@ -51,7 +51,7 @@
           <l-icon
             :icon-size="[32, 32]"
             :icon-anchor="[16, 32]"
-            :icon-url="schoolIconUrl"
+            :icon-url="SCHOOL_ICON_URL"
           />
           <l-popup><strong>Okul</strong></l-popup>
         </l-marker>
@@ -127,11 +127,8 @@ import 'leaflet/dist/leaflet.css'
 import { ref, computed } from 'vue'
 import { LMap, LTileLayer, LMarker, LIcon, LPopup, LCircleMarker, LPolyline } from '@vue-leaflet/vue-leaflet'
 import type { BusinessClusterDto } from 'src/api/coordination'
-
-interface GeoLocation {
-  latitude: number
-  longitude: number
-}
+import type { GeoLocation } from 'src/api/institution'
+import { SCHOOL_ICON_URL } from 'src/utils/mapConstants'
 
 interface RouteState {
   businessId: string
@@ -193,7 +190,6 @@ const mapCenter = computed<[number, number]>(() => {
   return MERSIN_CENTER
 })
 
-const schoolIconUrl = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='%231565C0'%3E%3Cpath d='M12 2L1 7l11 5 9-4.09V17h2V7L12 2zm0 14.18L3 12.09V17l9 5 9-5v-4.91l-9 4.09z'/%3E%3C/svg%3E`
 
 function onMapReady() {
   if (!props.schoolLocation && props.businesses.length === 0) zoom.value = 11

@@ -77,11 +77,7 @@ import 'leaflet/dist/leaflet.css'
 import { ref, computed, watch } from 'vue'
 import { LMap, LTileLayer, LMarker } from '@vue-leaflet/vue-leaflet'
 import type { LeafletMouseEvent } from 'leaflet'
-
-interface GeoLocation {
-  latitude: number
-  longitude: number
-}
+import type { GeoLocation } from 'src/api/institution'
 
 interface NominatimResult {
   place_id: number

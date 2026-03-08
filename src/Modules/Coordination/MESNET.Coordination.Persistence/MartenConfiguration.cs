@@ -73,7 +73,11 @@ public static class MartenConfiguration
         options.Schema.For<BranchStudentCountView>().Index(x => x.BranchCode);
         options.Schema.For<BranchStudentCountView>()
             .Index(x => new { x.InstitutionId, x.BranchCode, x.AcademicPeriodId, x.EducationType },
-                x => x.IsUnique = true);
+                x =>
+                {
+                    x.IsUnique = true;
+                    x.Name = "idx_branch_student_count_unique";
+                });
 
         // BranchWorkloadConfig (alan bazlı ders yükü havuzu)
         options.Schema.For<BranchWorkloadConfig>().DatabaseSchemaName("coordination");
@@ -81,7 +85,12 @@ public static class MartenConfiguration
         options.Schema.For<BranchWorkloadConfig>().Index(x => x.BranchCode);
         options.Schema.For<BranchWorkloadConfig>().Index(x => x.AcademicPeriodId);
         options.Schema.For<BranchWorkloadConfig>()
-            .Index(x => new { x.InstitutionId, x.BranchCode, x.AcademicPeriodId }, x => x.IsUnique = true);
+            .Index(x => new { x.InstitutionId, x.BranchCode, x.AcademicPeriodId },
+                x =>
+                {
+                    x.IsUnique = true;
+                    x.Name = "idx_branch_workload_config_unique";
+                });
 
         // AcademicPeriodView (cross-module read model)
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("coordination");

@@ -1,10 +1,6 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg">
-      <div class="col">
-        <div class="text-h5 text-weight-bold">Staj Takibi</div>
-      </div>
-    </div>
+    <PageHeader title="Staj Takibi" />
 
     <!-- Özet Kartlar -->
     <div class="row q-col-gutter-md q-mb-lg">
@@ -81,83 +77,28 @@
     </q-card>
 
     <!-- Detay Panel -->
-    <transition name="slide-right">
-      <div v-if="selected" class="detail-backdrop" @click.self="closeDetail" />
-    </transition>
-    <transition name="slide-right">
-      <div v-if="selected" class="detail-panel">
-        <q-toolbar>
-          <q-toolbar-title class="text-subtitle1 text-weight-bold">{{ selected.studentName }}</q-toolbar-title>
-          <StatusBadge :slug="selected.statusSlug" class="q-mr-sm" />
-          <q-btn flat round dense icon="close" @click="closeDetail" />
-        </q-toolbar>
-        <q-separator />
-        <div class="detail-panel-scroll">
-          <div class="q-pa-md q-gutter-sm">
-            <q-item dense>
-              <q-item-section avatar><q-icon name="person" /></q-item-section>
-              <q-item-section>
-                <q-item-label caption>Öğrenci</q-item-label>
-                <q-item-label>{{ selected.studentName }}</q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item dense>
-              <q-item-section avatar><q-icon name="business" /></q-item-section>
-              <q-item-section>
-                <q-item-label caption>İşletme</q-item-label>
-                <q-item-label>{{ selected.businessName }}</q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item v-if="selected.teacherName" dense>
-              <q-item-section avatar><q-icon name="school" /></q-item-section>
-              <q-item-section>
-                <q-item-label caption>Koordinatör Öğretmen</q-item-label>
-                <q-item-label>{{ selected.teacherName }}</q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item dense>
-              <q-item-section avatar><q-icon name="badge" /></q-item-section>
-              <q-item-section>
-                <q-item-label caption>Durum</q-item-label>
-                <q-item-label><StatusBadge :slug="selected.statusSlug" /></q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item dense>
-              <q-item-section avatar><q-icon name="source" /></q-item-section>
-              <q-item-section>
-                <q-item-label caption>Kaynak</q-item-label>
-                <q-item-label><q-badge color="blue-grey" :label="selected.sourceSlug" /></q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item dense>
-              <q-item-section avatar><q-icon name="event" /></q-item-section>
-              <q-item-section>
-                <q-item-label caption>Yerleştirme Tarihi</q-item-label>
-                <q-item-label>{{ formatDate(selected.placedAt) }}</q-item-label>
-              </q-item-section>
-            </q-item>
-            <template v-if="selected.transferredAt">
-              <q-separator spaced />
-              <div class="text-subtitle2 text-grey-7 q-px-md">Transfer Bilgisi</div>
-              <q-item dense>
-                <q-item-section avatar><q-icon name="swap_horiz" /></q-item-section>
-                <q-item-section>
-                  <q-item-label caption>Transfer Tarihi</q-item-label>
-                  <q-item-label>{{ formatDate(selected.transferredAt) }}</q-item-label>
-                </q-item-section>
-              </q-item>
-              <q-item v-if="selected.transferReason" dense>
-                <q-item-section avatar><q-icon name="notes" /></q-item-section>
-                <q-item-section>
-                  <q-item-label caption>Transfer Gerekçesi</q-item-label>
-                  <q-item-label>{{ selected.transferReason }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-          </div>
+    <DetailPanel v-model="detailOpen" :has-content="!!selected" :width="400">
+      <template #title>{{ selected?.studentName }}</template>
+      <template #toolbar-actions>
+        <StatusBadge :slug="selected?.statusSlug ?? ''" class="q-mr-sm" />
+      </template>
+      <template v-if="selected">
+        <div class="q-gutter-sm">
+          <InfoItem icon="person" label="Öğrenci" :value="selected.studentName" />
+          <InfoItem icon="business" label="İşletme" :value="selected.businessName" />
+          <InfoItem v-if="selected.teacherName" icon="school" label="Koordinatör Öğretmen" :value="selected.teacherName" />
+          <InfoItem icon="badge" label="Durum"><StatusBadge :slug="selected.statusSlug" /></InfoItem>
+          <InfoItem icon="source" label="Kaynak"><q-badge color="blue-grey" :label="selected.sourceSlug" /></InfoItem>
+          <InfoItem icon="event" label="Yerleştirme Tarihi" :value="formatDate(selected.placedAt)" />
+          <template v-if="selected.transferredAt">
+            <q-separator spaced />
+            <div class="text-subtitle2 text-grey-7 q-px-md">Transfer Bilgisi</div>
+            <InfoItem icon="swap_horiz" label="Transfer Tarihi" :value="formatDate(selected.transferredAt)" />
+            <InfoItem v-if="selected.transferReason" icon="notes" label="Transfer Gerekçesi" :value="selected.transferReason" />
+          </template>
         </div>
-      </div>
-    </transition>
+      </template>
+    </DetailPanel>
   </q-page>
 </template>
 
@@ -168,10 +109,14 @@ import { enrollmentApi, type InternshipPlacementDto } from 'src/api/enrollment'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import AppTable from 'components/AppTable.vue'
+import DetailPanel from 'components/DetailPanel.vue'
 import StatusBadge from 'components/StatusBadge.vue'
+import InfoItem from 'components/InfoItem.vue'
+import PageHeader from 'components/PageHeader.vue'
 
 const periodStore = useAcademicPeriodStore()
 const selected = ref<InternshipPlacementDto | null>(null)
+const detailOpen = ref(false)
 const statusFilter = ref<string | null>(null)
 
 const filters = computed(() => ({
@@ -218,49 +163,8 @@ function formatDate(iso: string) {
 
 function openDetail(row: InternshipPlacementDto) {
   selected.value = row
-}
-
-function closeDetail() {
-  selected.value = null
+  detailOpen.value = true
 }
 
 onMounted(load)
 </script>
-
-<style scoped>
-.detail-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 2000;
-}
-
-.detail-panel {
-  position: fixed;
-  top: 50px;
-  right: 0;
-  bottom: 0;
-  width: 400px;
-  max-width: 100vw;
-  background: white;
-  z-index: 2001;
-  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-}
-
-.detail-panel-scroll {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.slide-right-enter-active,
-.slide-right-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-right-enter-from,
-.slide-right-leave-to {
-  opacity: 0;
-}
-</style>

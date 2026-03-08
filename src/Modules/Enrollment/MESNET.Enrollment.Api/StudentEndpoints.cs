@@ -3,6 +3,7 @@ using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Application.Dtos;
+using MESNET.Enrollment.Application.Handlers;
 using MESNET.Enrollment.Application.Queries;
 using MESNET.Enrollment.Shared.Events;
 using Microsoft.AspNetCore.Builder;
@@ -50,17 +51,20 @@ public static class StudentEndpoints
 
     private static async Task<IResult> PostSyncCounts(SyncStudentCounts command, IMessageBus bus)
     {
-        var events = await bus.InvokeAsync<IEnumerable<StudentCountsSynced>>(command);
-        var count = 0;
-        foreach (var e in events)
+        var result = await bus.InvokeAsync<SyncStudentCountsResult>(command);
+        foreach (var e in result.Events)
         {
             await bus.PublishAsync(e);
-            count++;
         }
 
+        // Sayıları doğrudan response'ta dön — async event'ler henüz işlenmemiş olabilir
+        var counts = result.Events.ToDictionary(
+            e => $"{e.BranchCode}:{e.EducationType}",
+            e => e.CountsByClassYear);
+
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(new { syncedBranches = count })
-            .AddMessage($"{count} alan için öğrenci sayıları senkronize edildi.")
+            .AddData(new { syncedBranches = result.Events.Count, counts })
+            .AddMessage($"{result.Events.Count} alan için öğrenci sayıları senkronize edildi.")
             .Build());
     }
 

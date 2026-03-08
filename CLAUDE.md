@@ -317,6 +317,37 @@ private static async Task<IResult> Get(Guid id, IMessageBus bus)
 
 - `ICurrentUserService` — token'dan kullanıcı bilgisi okumak için endpoint'e inject edilebilir
 
+### SmartEnum Kuralı (Domain Enum'ları)
+
+Projede **normal C# enum KULLANILMAZ**. Tüm domain enum'ları `Ardalis.SmartEnum` ile tanımlanır. SmartEnum, zengin davranış (slug, geçiş kuralları, IsFinal vb.) ve Marten JSON serializasyonu için tercih edilir.
+
+**Paket:** `Ardalis.SmartEnum`, `Ardalis.SmartEnum.SystemTextJson`
+
+**Standart yapı:**
+```csharp
+public sealed class MyStatus : SmartEnum<MyStatus>
+{
+    public static readonly MyStatus Active = new(nameof(Active), 1, "Aktif");
+    public static readonly MyStatus Closed = new(nameof(Closed), 2, "Kapalı");
+
+    public string Slug { get; }  // Türkçe UI display
+
+    private MyStatus(string name, int value, string slug) : base(name, value)
+    {
+        Slug = slug;
+    }
+}
+```
+
+**Kurallar:**
+
+- `Name` = İngilizce (JSON serialize, backend iletişim)
+- `Slug` = Türkçe (UI display, hata mesajları)
+- Entity property'de `[JsonConverter(typeof(SmartEnumNameConverter<MyStatus, int>))]` attribute kullan
+- Marten LINQ'te SmartEnum doğrudan kullanılamaz → duplicate primitive alan ekle (bkz. Marten SmartEnum LINQ Kuralları)
+- Modüller arası event'lerde SmartEnum yerine `string` (Name değeri) gönder
+- `SmartEnumJsonConverterFactory` Marten STJ serializer'a kayıtlı olmalı (bkz. Common.Shared)
+
 ### CQRS Kuralları
 
 - Command handler'lar yazma işlemi yapar, event döndürür (`DomainException` fırlatır, `Result<T>` DÖNDÜRMEZ)
@@ -401,6 +432,30 @@ session.Query<MyAggregate>().Where(s => s.Semester.Name == semester.Name);    //
 session.Query<MyAggregate>().Where(s => s.Semester == semester);              // ❌ Exception
 ```
 
+1. **Select projection'da da aynı tuzak geçerli:** `.Select(s => new { StatusName = s.Status.Name })` da `data->'Status'->>'Name'` üretir ve NULL döner. SmartEnum alanını Select projection'da kullanma — entity'yi tamamen çekip in-memory filtrele/projekte et.
+
+### Marten Composite Index İsimlendirme
+
+PostgreSQL identifier sınırı 64 karakterdir. Marten composite index'lerde otomatik isim üretir (`mt_doc_{table}_uidx_{col1}{col2}...`) ve bu isim kolayca sınırı aşar → `PostgresqlIdentifierTooLongException`.
+
+**Çözüm:** Composite index tanımlarken her zaman kısa isim ver:
+
+```csharp
+// ❌ YANLIŞ — otomatik isim 64 karakteri aşabilir
+options.Schema.For<MyDoc>()
+    .Index(x => new { x.InstitutionId, x.BranchCode, x.AcademicPeriodId },
+        x => x.IsUnique = true);
+
+// ✅ DOĞRU — kısa isim ver
+options.Schema.For<MyDoc>()
+    .Index(x => new { x.InstitutionId, x.BranchCode, x.AcademicPeriodId },
+        x =>
+        {
+            x.IsUnique = true;
+            x.Name = "idx_mydoc_inst_branch_period";
+        });
+```
+
 ### Event Sourcing vs Document Storage
 
 - **Event sourcing kullan:** Staj sözleşmeleri, fesih süreçleri, devamsızlık kayıtları, dekont onay süreçleri gibi durum geçişleri olan entity'ler
@@ -426,6 +481,66 @@ builder.Host.UseWolverine(opts =>
     opts.Policies.UseDurableLocalQueues();
 });
 ```
+
+## Vue 3 / Quasar / Pinia Frontend Kuralları
+
+### Composable Extraction (Zorunlu)
+
+Bir Vue bileşeninin `<script setup>` bloğu **300 satırı** aştığında veya **3'ten fazla bağımsız ilgi alanı** (concern) içerdiğinde, mantıksal birimler `src/composables/` altında ayrı composable fonksiyonlarına taşınmalıdır.
+
+**Composable isimlendirme:** `use{İşlevAdı}.ts` — örneğin `useWorkloadConfig.ts`, `useClusterMap.ts`
+
+**Composable yapısı:**
+```typescript
+// src/composables/useFeatureName.ts
+import { ref, computed, type Ref, type ComputedRef } from 'vue'
+
+export interface UseFeatureNameOptions {
+  someRef: Ref<string | null>
+  notify: ReturnType<typeof useNotify>
+}
+
+export function useFeatureName(options: UseFeatureNameOptions) {
+  const { someRef, notify } = options
+
+  const loading = ref(false)
+  const data = ref<SomeType | null>(null)
+
+  const derivedValue = computed(() => /* ... */)
+
+  async function loadData() { /* ... */ }
+
+  return { loading, data, derivedValue, loadData }
+}
+```
+
+**Kurallar:**
+- Composable'lar dışarıdan `Ref` veya `ComputedRef` alır — store/service'e doğrudan erişmek yerine parametre olarak alır (test edilebilirlik)
+- Her composable kendi state'ini (`ref`), türetilmiş değerlerini (`computed`) ve aksiyonlarını (async fonksiyonlar) döndürür
+- Sayfada composable return değerleri destructure edilerek template'e expose edilir
+- Pure fonksiyonlar composable dışında `export function` olarak tanımlanabilir (ör. `estimateGroupCount`)
+
+### Bileşen Kuralları
+
+- **Inline `defineComponent` + `h()` render fonksiyonu YASAK** — her bileşen kendi `.vue` SFC dosyasında `<script setup>` ile tanımlanmalıdır
+- **`<script setup>` zorunlu** — Options API veya `setup()` fonksiyonu KULLANILMAZ
+- **Props:** `defineProps<{ ... }>()` ile TypeScript type-based props kullanılır, runtime `props:` objesi değil
+- **Emit:** `defineEmits<{ ... }>()` ile TypeScript type-based emits
+
+### Reaktivite Kuralları
+
+- `<script setup>` içinde mutable state **her zaman** `ref()` ile tanımlanır — düz `let` değişken YASAK
+  - ✅ `const pendingId = ref<string | null>(null)` → `pendingId.value = newId`
+  - ❌ `let pendingId: string | null = null` → `pendingId = newId`
+- Deep clone için `structuredClone()` kullanılır — `JSON.parse(JSON.stringify())` YASAK
+- Fire-and-forget async çağrılarda `.catch(() => {})` eklenir — `void fn()` hata yutabilir
+  - ✅ `loadData().catch(() => {})`
+  - ❌ `void loadData()`
+
+### Pinia Store Kuralları
+
+- **Setup store** (Composition API) tercih edilir — Options store değil
+- Store'dan destructure edilen ref'ler reaktivitelerini korur (`storeToRefs` gerekmez — `<script setup>` zaten unwrap eder)
 
 ## Kullanıcı Arayüzü Dili
 

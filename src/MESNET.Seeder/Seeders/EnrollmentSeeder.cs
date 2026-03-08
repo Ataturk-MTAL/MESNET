@@ -84,16 +84,16 @@ public static class EnrollmentSeeder
             }
         }
 
-        var students = new (string Key, string KcId, string Name, string BranchCode, string BranchName, int ClassYear, string? Section)[]
+        var students = new (string Key, string KcId, string Name, string BranchCode, string BranchName, int ClassYear, string? Section, string EducationType)[]
         {
-            ("Student1", "41000000-0000-0000-0000-000000000001", "Elif Demir",  "BT",  "Bilişim Teknolojileri", 11, "A"),
-            ("Student2", "41000000-0000-0000-0000-000000000002", "Can Yıldız",  "BT",  "Bilişim Teknolojileri", 11, "A"),
-            ("Student3", "41000000-0000-0000-0000-000000000003", "Ceren Aksoy", "BT",  "Bilişim Teknolojileri", 12, "B"),
-            ("Student4", "41000000-0000-0000-0000-000000000004", "Burak Şahin", "BT",  "Bilişim Teknolojileri", 11, "B"),
-            ("Student5", "41000000-0000-0000-0000-000000000005", "Deniz Koç",   "BT",  "Bilişim Teknolojileri", 12, "A"),
-            ("Student6", "41000000-0000-0000-0000-000000000006", "Selin Aydın", "MUF", "Muhasebe ve Finansman",  11, "A"),
-            ("Student7", "41000000-0000-0000-0000-000000000007", "Emre Polat",  "MUF", "Muhasebe ve Finansman",  12, "A"),
-            ("Student8", "41000000-0000-0000-0000-000000000008", "Aylin Türk",  "MUF", "Muhasebe ve Finansman",  11, "B")
+            ("Student1", "41000000-0000-0000-0000-000000000001", "Elif Demir",  "BT",  "Bilişim Teknolojileri", 11, "A",  "Formal"),
+            ("Student2", "41000000-0000-0000-0000-000000000002", "Can Yıldız",  "BT",  "Bilişim Teknolojileri", 11, "A",  "Formal"),
+            ("Student3", "41000000-0000-0000-0000-000000000003", "Ceren Aksoy", "BT",  "Bilişim Teknolojileri", 12, "B",  "Formal"),
+            ("Student4", "41000000-0000-0000-0000-000000000004", "Burak Şahin", "BT",  "Bilişim Teknolojileri", 11, "B",  "Formal"),
+            ("Student5", "41000000-0000-0000-0000-000000000005", "Deniz Koç",   "BT",  "Bilişim Teknolojileri", 12, "A",  "Formal"),
+            ("Student6", "41000000-0000-0000-0000-000000000006", "Selin Aydın", "MUF", "Muhasebe ve Finansman",  11, "A", "Formal"),
+            ("Student7", "41000000-0000-0000-0000-000000000007", "Emre Polat",  "MUF", "Muhasebe ve Finansman",  12, "A", "Mesem"),
+            ("Student8", "41000000-0000-0000-0000-000000000008", "Aylin Türk",  "MUF", "Muhasebe ve Finansman",  11, "B", "Mesem")
         };
 
         foreach (var s in students)
@@ -114,7 +114,8 @@ public static class EnrollmentSeeder
                 branchCode = s.BranchCode,
                 branchName = s.BranchName,
                 classYear = s.ClassYear,
-                section = s.Section
+                section = s.Section,
+                educationType = s.EducationType
             });
             if (data is not null)
             {
