@@ -151,36 +151,10 @@
           <q-btn flat round dense icon="close" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
-          <q-select
+          <TeacherSelector
             v-model="visitForm.teacherId"
-            :options="teacherOpts.options.value"
-            :loading="teacherOpts.loading.value"
             label="Öğretmen *"
-            filled
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            @filter="teacherOpts.filter"
-          >
-            <template #prepend>
-              <q-icon name="person" />
-            </template>
-            <template #option="{ itemProps, opt }">
-              <q-item v-bind="itemProps">
-                <q-item-section>
-                  <q-item-label>{{ opt.label }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-              </q-item>
-            </template>
-          </q-select>
+          />
           <q-select
             v-model="visitForm.businessId"
             :options="visitBusinessOpts.options.value"
@@ -316,18 +290,18 @@ import {
 } from 'src/api/coordination'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
-import { useTeacherOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
+import { useBusinessOptions } from 'src/composables/useEntityOptions'
 import { Permissions } from 'utils/permissions'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import AppTable from 'components/AppTable.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
+import TeacherSelector from 'components/TeacherSelector.vue'
 
 const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
-const teacherOpts = useTeacherOptions()
 const visitBusinessOpts = useBusinessOptions()
 const evalBusinessOpts = useBusinessOptions()
 
@@ -428,8 +402,7 @@ function openVisitDialog() {
   visitForm.businessId = ''
   visitForm.visitDate = ''
   visitForm.generalAssessment = ''
-  teacherOpts.reset()
-  teacherOpts.load()
+  // TeacherSelector kendi onMounted'ında öğretmen listesini yükler.
   visitBusinessOpts.reset()
   visitBusinessOpts.load()
   visitDialog.value = true

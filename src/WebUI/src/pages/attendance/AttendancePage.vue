@@ -69,18 +69,11 @@
         style="min-width: 100px"
         @update:model-value="load"
       />
-      <q-select
+      <BranchSelector
         v-model="branchFilter"
-        :options="branchOpts.options.value"
-        :loading="branchOpts.loading.value"
-        label="Alan"
-        filled dense emit-value map-options clearable
-        use-input
-        input-debounce="0"
-        option-label="label"
-        option-value="value"
+        dense
+        force-select
         style="min-width: 200px"
-        @filter="branchOpts.filter"
       />
       <q-btn color="primary" icon="search" label="Ara" @click="load" />
     </div>
@@ -271,12 +264,13 @@ import { useQuasar } from 'quasar'
 import { attendanceApi, type AttendanceRecordDto, ABSENCE_TYPES } from 'src/api/attendance'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
-import { useStudentOptions, useBusinessOptions, usePlacementOptions, useBranchOptions } from 'src/composables/useEntityOptions'
+import { useStudentOptions, useBusinessOptions, usePlacementOptions } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
+import BranchSelector from 'components/BranchSelector.vue'
 import { useAuthStore } from 'stores/auth'
 
 const $q = useQuasar()
@@ -286,7 +280,6 @@ const periodStore = useAcademicPeriodStore()
 const placementOpts = usePlacementOptions()
 const filterStudentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
-const branchOpts = useBranchOptions()
 const saving = ref(false)
 const selected = ref<AttendanceRecordDto | null>(null)
 const addDialog = ref(false)
@@ -528,7 +521,7 @@ watch(() => periodStore.selectedPeriodId, () => load())
 onMounted(() => {
   filterStudentOpts.load()
   businessOpts.load()
-  branchOpts.load()
+  // BranchSelector kendi onMounted'ında alan listesini yükler.
   load()
 })
 </script>

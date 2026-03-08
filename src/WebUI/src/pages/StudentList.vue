@@ -13,15 +13,10 @@
 
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md">
-      <q-select
+      <BranchSelector
         v-model="branchFilter"
-        :options="branchOpts.allOptions.value"
-        label="Alan"
-        filled
         dense
-        emit-value
-        map-options
-        clearable
+        force-select
         style="min-width: 200px"
         @update:model-value="load"
       />
@@ -406,37 +401,10 @@
               </q-item>
             </template>
           </q-select>
-          <q-select
+          <TeacherSelector
             v-model="placementForm.teacherId"
-            :options="teacherOpts.options.value"
-            :loading="teacherOpts.loading.value"
             label="Koordinatör Öğretmen (opsiyonel)"
-            filled
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            clearable
-            @filter="teacherOpts.filter"
-          >
-            <template #prepend>
-              <q-icon name="person" />
-            </template>
-            <template #option="{ itemProps, opt }">
-              <q-item v-bind="itemProps">
-                <q-item-section>
-                  <q-item-label>{{ opt.label }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-              </q-item>
-            </template>
-          </q-select>
+          />
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md">
@@ -680,13 +648,15 @@ import { useQuasar } from 'quasar'
 import { enrollmentApi, EDUCATION_TYPES, type StudentProfileDto } from 'src/api/enrollment'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
-import { useKeycloakUserOptions, useBusinessOptions, useTeacherOptions, useBranchOptions, type SelectOption } from 'src/composables/useEntityOptions'
+import { useKeycloakUserOptions, useBusinessOptions, useBranchOptions, type SelectOption } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { registerStudentSchema, editStudentSchema, placementSchema, transferSchema } from 'src/schemas/student'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
+import BranchSelector from 'components/BranchSelector.vue'
+import TeacherSelector from 'components/TeacherSelector.vue'
 
 const periodStore = useAcademicPeriodStore()
 
@@ -694,7 +664,6 @@ const $q = useQuasar()
 const notify = useNotify()
 const userOpts = useKeycloakUserOptions()
 const businessOpts = useBusinessOptions()
-const teacherOpts = useTeacherOptions()
 const transferBusinessOpts = useBusinessOptions()
 const branchOpts = useBranchOptions()
 
@@ -908,8 +877,7 @@ function openPlacement(row: StudentProfileDto) {
   for (const key of Object.keys(placementErrors)) placementErrors[key] = ''
   businessOpts.reset()
   businessOpts.load()
-  teacherOpts.reset()
-  teacherOpts.load()
+  // TeacherSelector kendi onMounted'ında öğretmen listesini yükler.
   placementDialog.value = true
 }
 

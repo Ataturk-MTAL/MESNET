@@ -379,31 +379,10 @@
             </template>
           </q-select>
 
-          <q-select
+          <TeacherSelector
             v-model="createForm.teacherId"
-            :options="teacherOpts.options.value"
-            :loading="teacherOpts.loading.value"
             label="Koordinatör Öğretmen (opsiyonel)"
-            filled
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            clearable
-            @filter="teacherOpts.filter"
-          >
-            <template #prepend><q-icon name="person" /></template>
-            <template #option="{ itemProps, opt }">
-              <q-item v-bind="itemProps">
-                <q-item-section><q-item-label>{{ opt.label }}</q-item-label></q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <q-item><q-item-section class="text-grey">Sonuç bulunamadı</q-item-section></q-item>
-            </template>
-          </q-select>
+          />
 
           <q-input v-model="createForm.startDate" label="Başlangıç Tarihi *" filled type="date">
             <template #prepend><q-icon name="calendar_today" /></template>
@@ -785,12 +764,13 @@ import type { QTableProps } from 'quasar'
 import { contractApi, type InternshipContractDto, TERMINATION_REASONS, DOCUMENT_TYPES } from 'src/api/contract'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
-import { useStudentOptions, useBusinessOptions, useTeacherOptions } from 'src/composables/useEntityOptions'
+import { useStudentOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
+import TeacherSelector from 'components/TeacherSelector.vue'
 import { useAuthStore } from 'stores/auth'
 
 const $q = useQuasar()
@@ -799,8 +779,6 @@ const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
 const studentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
-const teacherOpts = useTeacherOptions()
-
 // ID → metadata lookup map'leri (tablo satırlarında isim göstermek için)
 // useStudentOptions allOptions: { label: fullName, value: id, caption: "Alan - X. Sınıf" }
 const studentMap = computed<Record<string, { fullName: string; info: string }>>(() => {
@@ -942,8 +920,7 @@ function openCreateDialog() {
   studentOpts.load()
   businessOpts.reset()
   businessOpts.load()
-  teacherOpts.reset()
-  teacherOpts.load()
+  // TeacherSelector kendi onMounted'ında öğretmen listesini yükler.
   createDialog.value = true
 }
 

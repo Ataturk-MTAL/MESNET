@@ -5,31 +5,10 @@
     <!-- Öğretmen Seçici -->
     <div class="row q-col-gutter-md q-mb-lg">
       <div class="col-12 col-sm-6 col-md-4">
-        <q-select
+        <TeacherSelector
           v-model="selectedTeacherId"
-          :options="teacherOpts.options.value"
-          :loading="teacherOpts.loading.value"
-          label="Öğretmen"
-          filled
-          use-input
-          input-debounce="0"
-          emit-value
-          map-options
-          option-label="label"
-          option-value="value"
-          clearable
-          @filter="teacherOpts.filter"
           @update:model-value="onTeacherChange"
-        >
-          <template #prepend>
-            <q-icon name="person" />
-          </template>
-          <template #no-option>
-            <q-item>
-              <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-            </q-item>
-          </template>
-        </q-select>
+        />
       </div>
     </div>
 
@@ -226,16 +205,15 @@ import {
   type TeacherScheduleDto,
 } from 'src/api/coordination'
 import { institutionApi } from 'src/api/institution'
-import { useTeacherOptions } from 'src/composables/useEntityOptions'
 import { useNotify } from 'src/composables/useNotify'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import ScheduleGrid from 'components/ScheduleGrid.vue'
+import TeacherSelector from 'components/TeacherSelector.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
-const teacherOpts = useTeacherOptions()
 
 const selectedTeacherId = ref<string | null>(null)
 const loading = ref(false)
@@ -248,7 +226,7 @@ const currentVersion = ref(0)
 const viewingHistoryVersion = ref<number | null>(null)
 
 const scheduleData = ref<DailyScheduleInput[]>([])
-let originalScheduleData: DailyScheduleInput[] = []
+const originalScheduleData = ref<DailyScheduleInput[]>([])
 
 const currentScheduleId = ref<string | null>(null)
 const currentScheduleMeta = ref<{
@@ -356,7 +334,7 @@ async function loadCurrentSchedule() {
       semester: data.semester,
       updatedAt: data.updatedAt,
     }
-    originalScheduleData = JSON.parse(JSON.stringify(scheduleData.value))
+    originalScheduleData.value = structuredClone(scheduleData.value)
   } catch {
     if (periodCount.value > 0) {
       scheduleData.value = createEmptySchedule(periodCount.value)
@@ -364,7 +342,7 @@ async function loadCurrentSchedule() {
       currentVersion.value = 0
       currentScheduleId.value = null
       currentScheduleMeta.value = null
-      originalScheduleData = JSON.parse(JSON.stringify(scheduleData.value))
+      originalScheduleData.value = structuredClone(scheduleData.value)
     }
   } finally {
     loading.value = false
@@ -395,7 +373,7 @@ function viewVersion(ver: ScheduleVersionDto) {
   if (scheduleHistory.value && ver.version === scheduleHistory.value.currentVersion) {
     // Geçerli versiyona tıklandı — normal moda dön
     viewingHistoryVersion.value = null
-    scheduleData.value = JSON.parse(JSON.stringify(originalScheduleData))
+    scheduleData.value = structuredClone(originalScheduleData.value)
     return
   }
 
@@ -443,7 +421,7 @@ async function saveSchedule() {
     })
     notify.success('Ders programı kaydedildi.')
     hasExistingSchedule.value = true
-    originalScheduleData = JSON.parse(JSON.stringify(scheduleData.value))
+    originalScheduleData.value = structuredClone(scheduleData.value)
     editing.value = false
 
     // Önce güncel schedule'ı yükle (scheduleId'yi set eder), sonra geçmişi
@@ -457,7 +435,7 @@ async function saveSchedule() {
 }
 
 function cancelEditing() {
-  scheduleData.value = JSON.parse(JSON.stringify(originalScheduleData))
+  scheduleData.value = structuredClone(originalScheduleData.value)
   editing.value = false
 }
 
@@ -474,7 +452,7 @@ async function onTeacherChange(teacherId: string | null) {
 
   if (teacherId) {
     await loadCurrentSchedule()
-    loadHistory()
+    loadHistory().catch(() => {})
   }
 }
 
@@ -484,13 +462,13 @@ watch(
   async () => {
     if (selectedTeacherId.value) {
       await loadCurrentSchedule()
-      loadHistory()
+      loadHistory().catch(() => {})
     }
   },
 )
 
 onMounted(async () => {
   await loadScheduleConfig()
-  teacherOpts.load()
+  // TeacherSelector kendi onMounted'ında öğretmen listesini yükler.
 })
 </script>

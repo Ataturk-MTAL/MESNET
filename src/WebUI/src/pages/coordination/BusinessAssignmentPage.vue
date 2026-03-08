@@ -4,91 +4,21 @@
 
     <!-- Filtreler -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
-      <!-- Alan seçimi: yöneticiler seçebilir; alan şefi kendi alanını chip olarak görür -->
-      <div v-if="!authStore.isDepartmentHead" class="col-12 col-sm-3">
-        <q-select
+      <div class="col-12 col-sm-3">
+        <BranchSelector
           v-model="branchFilter"
-          :options="branchOpts.options.value"
-          :loading="branchOpts.loading.value"
-          label="Alan"
-          filled
-          use-input
-          input-debounce="0"
-          emit-value
-          map-options
-          option-label="label"
-          option-value="value"
-          clearable
-          @filter="branchOpts.filter"
           @update:model-value="onBranchChange"
-        >
-          <template #prepend>
-            <q-icon name="school" />
-          </template>
-          <template #no-option>
-            <q-item>
-              <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-            </q-item>
-          </template>
-        </q-select>
-      </div>
-      <div v-else class="col-12 col-sm-3">
-        <q-field label="Alan" filled stack-label>
-          <template #control>
-            <div class="self-center full-width no-outline">
-              <q-icon name="school" color="blue-7" class="q-mr-sm" />
-              {{ branchLabel }}
-            </div>
-          </template>
-        </q-field>
+        />
       </div>
 
       <div class="col-12 col-sm-3">
-        <q-select
+        <TeacherSelector
+          ref="teacherSelectorRef"
           v-model="selectedTeacherId"
-          :options="filteredTeacherOpts"
-          :loading="teacherOpts.loading.value"
-          label="Öğretmen"
-          filled
-          use-input
-          input-debounce="0"
-          emit-value
-          map-options
-          option-label="label"
-          option-value="value"
-          clearable
-          @filter="onTeacherFilter"
+          :branch-code="branchFilter"
+          :show-cross-branch="!authStore.isDepartmentHead && !!branchFilter"
           @update:model-value="onTeacherChange"
-        >
-          <template #prepend>
-            <q-icon name="person" />
-          </template>
-          <template #option="scope">
-            <q-item v-bind="scope.itemProps">
-              <q-item-section>
-                <q-item-label>{{ scope.opt.label }}</q-item-label>
-                <q-item-label
-                  v-if="!authStore.isDepartmentHead && branchFilter && scope.opt.branchCode !== branchFilter"
-                  caption
-                  class="text-orange-8"
-                >
-                  Farklı alan: {{ scope.opt.branchCode }}
-                </q-item-label>
-              </q-item-section>
-              <q-item-section
-                v-if="!authStore.isDepartmentHead && branchFilter && scope.opt.branchCode !== branchFilter"
-                side
-              >
-                <q-badge color="orange" label="Farklı alan" />
-              </q-item-section>
-            </q-item>
-          </template>
-          <template #no-option>
-            <q-item>
-              <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-            </q-item>
-          </template>
-        </q-select>
+        />
       </div>
       <div class="col-12 col-sm-auto q-gutter-sm">
         <q-btn
@@ -831,48 +761,49 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, defineComponent, h } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import {
   coordinationApi,
   type BusinessAssignmentDto,
   type CoordinationSummaryDto,
   type DailyScheduleDto,
-  type TeacherSummaryRowDto,
   type TeacherWorkloadSummaryDto,
-  type BusinessClusterDto,
-  type BranchWorkloadConfigDto,
 } from 'src/api/coordination'
-import { enrollmentApi } from 'src/api/enrollment'
 import { institutionApi } from 'src/api/institution'
-import { useTeacherOptions, useBranchOptions } from 'src/composables/useEntityOptions'
 import { useNotify } from 'src/composables/useNotify'
+import { useWorkloadConfig, estimateGroupCount, EDUCATION_TYPES } from 'src/composables/useWorkloadConfig'
+import { useAssignedHours } from 'src/composables/useAssignedHours'
+import { useAssignmentDnD } from 'src/composables/useAssignmentDnD'
+import { useClusterMap } from 'src/composables/useClusterMap'
+import { useTeacherOverview, teacherOverviewColumns } from 'src/composables/useTeacherOverview'
+import { useTeacherOptions } from 'src/composables/useEntityOptions'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import AssignmentGrid from 'components/AssignmentGrid.vue'
 import BusinessClusterMap from 'components/BusinessClusterMap.vue'
+import BranchSelector from 'components/BranchSelector.vue'
+import TeacherSelector from 'components/TeacherSelector.vue'
+import FreeSlotChip from 'components/FreeSlotChip.vue'
+import WorkloadIndicator from 'components/WorkloadIndicator.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
-const teacherOpts = useTeacherOptions()
-const branchOpts = useBranchOptions()
+const teacherSelectorRef = ref<InstanceType<typeof TeacherSelector> | null>(null)
 
 // ── Tab ──
 const activeTab = ref('assignment')
 
-// ── State ──
+// ── Core State ──
 const branchFilter = ref<string | null>(null)
 const selectedTeacherId = ref<string | null>(null)
 const businessSearch = ref('')
 const loading = ref(false)
-const saving = ref(false)
-const recalculating = ref(false)
 const scheduleLoading = ref(false)
 const periodCount = ref(0)
 const scheduleConfigMissing = ref(false)
-
 const showDiscardDialog = ref(false)
-let pendingTeacherId: string | null = null
+const pendingTeacherId = ref<string | null>(null)
 
 const assignments = ref<BusinessAssignmentDto[]>([])
 const rawSchedule = ref<DailyScheduleDto[]>([])
@@ -886,405 +817,17 @@ const summary = ref<CoordinationSummaryDto>({
   teacherWorkloads: [],
 })
 
-// ── Teacher Overview State ──
-const teacherOverviewRows = ref<TeacherSummaryRowDto[]>([])
-const teacherOverviewLoading = ref(false)
+// ── Sayfa düzeyinde teacherOpts: sadece isim çözümleme için ──
+// TeacherSelector bileşeni kendi instance'ını yönetir; buradaki instance
+// selectedTeacherName ve teacherOverview composable'ı için gereklidir.
+const teacherOpts = useTeacherOptions()
 
-// ── Cluster Map State ──
-const clusterData = ref<BusinessClusterDto[]>([])
-const clusterLoading = ref(false)
-const clusterError = ref(false)
-const clusterEps = ref(1000) // yarıçap metre
-const clusterMinPoints = ref(3)
-
-// ── Takdir Edilen Saat Düzenleme ──
-const hoursSaving = ref(false)
-const editedHours = ref<Record<string, number>>({}) // businessId → editedAssignedHours
-
-function initEditedHours() {
-  const map: Record<string, number> = {}
-  for (const a of assignments.value) {
-    map[a.businessId] = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
-  }
-  editedHours.value = map
-}
-
-const hoursTotalAvailable = computed(() =>
-  assignments.value.reduce((sum, a) => sum + a.maxCoordinationHours, 0),
-)
-const hoursTotalAssigned = computed(() =>
-  Object.values(editedHours.value).reduce((sum, h) => sum + h, 0),
-)
-const hoursRemaining = computed(() => hoursTotalAvailable.value - hoursTotalAssigned.value)
-const hoursOverLimit = computed(() => hoursTotalAssigned.value > hoursTotalAvailable.value)
-const hoursNearLimit = computed(() =>
-  !hoursOverLimit.value && hoursTotalAssigned.value > hoursTotalAvailable.value * 0.9,
-)
-
-const changedHoursCount = computed(() => {
-  let count = 0
-  for (const a of assignments.value) {
-    const current = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
-    if (editedHours.value[a.businessId] !== current) count++
-  }
-  return count
+// ── Computed: Teacher helpers ──
+const selectedTeacherName = computed(() => {
+  if (!selectedTeacherId.value) return ''
+  return teacherOpts.allOptions.value.find((o) => o.value === selectedTeacherId.value)?.label ?? ''
 })
 
-async function saveHours() {
-  hoursSaving.value = true
-  let successCount = 0
-  const errors: string[] = []
-
-  for (const a of assignments.value) {
-    const current = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
-    const edited = editedHours.value[a.businessId]
-    if (edited === undefined || edited === current) continue
-
-    try {
-      await coordinationApi.updateAssignedHours(a.businessId, { assignedHours: edited })
-      successCount++
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Bilinmeyen hata'
-      errors.push(`${a.businessName}: ${msg}`)
-    }
-  }
-
-  hoursSaving.value = false
-
-  if (successCount > 0) {
-    notify.success(`${successCount} işletmenin takdir edilen saati güncellendi.`)
-    await loadData()
-    initEditedHours()
-  }
-  if (errors.length > 0) {
-    notify.warning(`Hatalar: ${errors.join(', ')}`)
-  }
-}
-
-// ── Branch Workload Config ──
-const workloadConfig = ref<BranchWorkloadConfigDto | null>(null)
-const workloadLoading = ref(false)
-const workloadSaving = ref(false)
-const syncingCounts = ref(false)
-
-// Editable form state
-const wlEducationType = ref('Formal')
-const wlDeptHeadCount = ref(1)
-const wlWorkshopHeadCount = ref(0)
-const wlDeptHeadHours = ref(10)
-const wlWorkshopHeadHours = ref(6)
-const wlClassLevels = ref<{ classYear: number; weeklyLessonHours: number; studentCount: number }[]>([
-  { classYear: 10, weeklyLessonHours: 8, studentCount: 0 },
-  { classYear: 11, weeklyLessonHours: 8, studentCount: 0 },
-  { classYear: 12, weeklyLessonHours: 8, studentCount: 0 },
-])
-
-const EDUCATION_TYPES = [
-  { label: 'Örgün', value: 'Formal' },
-  { label: 'MESEM', value: 'Mesem' },
-]
-
-async function loadWorkloadConfig() {
-  if (!branchFilter.value || !periodStore.selectedPeriodId) return
-  workloadLoading.value = true
-  try {
-    const res = await coordinationApi.getBranchWorkloadConfig(
-      branchFilter.value,
-      periodStore.selectedPeriodId,
-      wlEducationType.value,
-    )
-    const data = res.data
-    if (data && data.id) {
-      workloadConfig.value = data
-      wlEducationType.value = data.educationType
-      wlDeptHeadCount.value = data.departmentHeadCount
-      wlWorkshopHeadCount.value = data.workshopHeadCount
-      wlDeptHeadHours.value = data.departmentHeadHours
-      wlWorkshopHeadHours.value = data.workshopHeadHours
-      wlClassLevels.value = data.classLevels.map(cl => ({
-        classYear: cl.classYear,
-        weeklyLessonHours: cl.weeklyLessonHours,
-        studentCount: cl.studentCount,
-      }))
-
-      // Tüm sınıf sayıları 0 ise BranchStudentCountView henüz doldurulmamış — otomatik senkronize et
-      const allZero = wlClassLevels.value.every(cl => cl.studentCount === 0)
-      if (allZero && !syncingCounts.value) {
-        await doAutoSync()
-      }
-    } else {
-      workloadConfig.value = null
-    }
-  } catch {
-    workloadConfig.value = null
-  } finally {
-    workloadLoading.value = false
-  }
-}
-
-async function saveWorkloadConfig() {
-  if (!branchFilter.value || !periodStore.selectedPeriodId) return
-  workloadSaving.value = true
-  try {
-    await coordinationApi.upsertBranchWorkloadConfig(branchFilter.value, {
-      academicPeriodId: periodStore.selectedPeriodId,
-      educationType: wlEducationType.value,
-      departmentHeadCount: wlDeptHeadCount.value,
-      workshopHeadCount: wlWorkshopHeadCount.value,
-      departmentHeadHours: wlDeptHeadHours.value,
-      workshopHeadHours: wlWorkshopHeadHours.value,
-      classLevels: wlClassLevels.value.map(cl => ({
-        classYear: cl.classYear,
-        weeklyLessonHours: cl.weeklyLessonHours,
-      })),
-    })
-    notify.success('Alan ders yükü yapılandırması kaydedildi.')
-    await loadWorkloadConfig()
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Bilinmeyen hata'
-    notify.error(`Kaydetme hatası: ${msg}`)
-  } finally {
-    workloadSaving.value = false
-  }
-}
-
-async function doAutoSync() {
-  const instId = authStore.user?.institutionId
-  if (!instId || !periodStore.selectedPeriodId) return
-  syncingCounts.value = true
-  try {
-    await enrollmentApi.syncStudentCounts(instId, periodStore.selectedPeriodId)
-    // Event async işlenecek, kısa bekleme sonrası yeniden yükle
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    const res = await coordinationApi.getBranchWorkloadConfig(
-      branchFilter.value!,
-      periodStore.selectedPeriodId,
-      wlEducationType.value,
-    )
-    const data = res.data
-    if (data && data.id) {
-      wlClassLevels.value = data.classLevels.map(cl => ({
-        classYear: cl.classYear,
-        weeklyLessonHours: cl.weeklyLessonHours,
-        studentCount: cl.studentCount,
-      }))
-      workloadConfig.value = data
-    }
-  } catch {
-    // Sessizce başarısız — kullanıcı manuel butonla deneyebilir
-  } finally {
-    syncingCounts.value = false
-  }
-}
-
-async function syncStudentCounts() {
-  const instId = authStore.user?.institutionId
-  if (!instId || !periodStore.selectedPeriodId) return
-  syncingCounts.value = true
-  try {
-    await enrollmentApi.syncStudentCounts(instId, periodStore.selectedPeriodId)
-    notify.success('Öğrenci sayıları senkronize edildi. Veriler güncelleniyor...')
-    // Event async işlenecek, kısa bekleme sonrası yeniden yükle
-    setTimeout(() => loadWorkloadConfig(), 1500)
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Bilinmeyen hata'
-    notify.error(`Senkronizasyon hatası: ${msg}`)
-  } finally {
-    syncingCounts.value = false
-  }
-}
-
-// Computed values for local preview (before save)
-const wlSupervisorTotal = computed(() =>
-  (wlDeptHeadCount.value * wlDeptHeadHours.value) + (wlWorkshopHeadCount.value * wlWorkshopHeadHours.value),
-)
-
-const wlTeachingTotal = computed(() =>
-  wlClassLevels.value.reduce((sum, cl) => {
-    const groups = estimateGroupCount(wlEducationType.value, cl.classYear, cl.studentCount)
-    return sum + cl.weeklyLessonHours * groups
-  }, 0),
-)
-
-const wlPoolTotal = computed(() => wlSupervisorTotal.value + wlTeachingTotal.value)
-
-// Frontend grup hesaplama (Madde 22 mirror)
-function estimateGroupCount(educationType: string, classYear: number, studentCount: number): number {
-  if (studentCount <= 0) return 0
-  if (educationType === 'Mesem') {
-    if (studentCount < 10) return 0
-    if (studentCount < 41) return 1
-    if (studentCount < 81) return 2
-    if (studentCount < 121) return 3
-    if (studentCount < 161) return 4
-    if (studentCount < 201) return 5
-    if (studentCount < 241) return 6
-    if (studentCount < 281) return 7
-    if (studentCount < 321) return 8
-    if (studentCount < 361) return 9
-    if (studentCount < 401) return 10
-    if (studentCount < 441) return 11
-    return 12
-  }
-  // Formal
-  if (classYear === 9) {
-    if (studentCount < 10) return 0
-    if (studentCount < 21) return 1
-    if (studentCount < 31) return 2
-    return 3
-  }
-  if (classYear >= 10 && classYear <= 12) {
-    if (studentCount < 8) return 0
-    if (studentCount < 17) return 1
-    if (studentCount < 25) return 2
-    if (studentCount < 33) return 3
-    return 4
-  }
-  return 0
-}
-
-// Havuz kısıtı: hoursTotalAssigned vs wlPoolTotal
-const hoursPoolOverLimit = computed(() => {
-  if (!workloadConfig.value) return false
-  return hoursTotalAssigned.value > workloadConfig.value.totalWorkloadPool
-})
-
-// ── Pending Changes ──
-interface PendingChange {
-  type: 'assign' | 'unassign'
-  businessId: string
-  businessName: string
-  day: string
-  periodNumber: number
-}
-
-const pendingChanges = ref<PendingChange[]>([])
-
-// ── Teacher filter ──
-const teacherFilterNeedle = ref('')
-
-const filteredTeacherOpts = computed(() => {
-  const needle = teacherFilterNeedle.value.toLowerCase()
-  let opts = [...teacherOpts.allOptions.value]
-  if (needle) {
-    opts = opts.filter((o) => o.label.toLowerCase().includes(needle))
-  }
-  // Cross-branch sıralama: kendi alan öğretmenleri üstte
-  if (branchFilter.value && !authStore.isDepartmentHead) {
-    opts.sort((a, b) => {
-      const aOwn = (a as { branchCode?: string }).branchCode === branchFilter.value ? 0 : 1
-      const bOwn = (b as { branchCode?: string }).branchCode === branchFilter.value ? 0 : 1
-      return aOwn !== bOwn ? aOwn - bOwn : a.label.localeCompare(b.label, 'tr')
-    })
-  }
-  return opts
-})
-
-function onTeacherFilter(val: string, update: (fn: () => void) => void) {
-  update(() => {
-    teacherFilterNeedle.value = val
-  })
-}
-
-// ── Computed: İşletme Ad Haritası ──
-const businessNameMap = computed(() => {
-  const map: Record<string, string> = {}
-  for (const a of assignments.value) {
-    map[a.businessId] = a.businessName
-  }
-  return map
-})
-
-// ── Computed: Atanmamış / Kısmi Atanmış İşletmeler ──
-const unassignedBusinesses = computed(() => {
-  const result: BusinessAssignmentDto[] = []
-
-  for (const biz of assignments.value) {
-    const targetHours = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
-    const backendSlots = biz.assignedSlots?.length ?? 0
-
-    // Pending değişiklikleri hesapla
-    const pendingAssigns = pendingChanges.value.filter(
-      (c) => c.businessId === biz.businessId && c.type === 'assign',
-    ).length
-    const pendingUnassigns = pendingChanges.value.filter(
-      (c) => c.businessId === biz.businessId && c.type === 'unassign',
-    ).length
-    const effectiveSlots = backendSlots + pendingAssigns - pendingUnassigns
-
-    // Hedef saate ulaşmamış → sol panelde göster (sürüklenebilir)
-    if (effectiveSlots < targetHours) {
-      result.push(biz)
-    }
-  }
-
-  return result
-})
-
-const filteredUnassigned = computed(() => {
-  if (!businessSearch.value) return unassignedBusinesses.value
-  const needle = businessSearch.value.toLocaleLowerCase('tr')
-  return unassignedBusinesses.value.filter(
-    (b) =>
-      b.businessName.toLocaleLowerCase('tr').includes(needle) ||
-      (b.district?.toLocaleLowerCase('tr').includes(needle) ?? false),
-  )
-})
-
-// ── Computed: Seçili öğretmene atanmış işletmeler ──
-const assignedToTeacher = computed(() => {
-  if (!selectedTeacherId.value) return []
-
-  const pendingUnassignIds = new Set(
-    pendingChanges.value.filter((c) => c.type === 'unassign').map((c) => c.businessId),
-  )
-
-  // Backend'den gelen + pending assign - pending unassign
-  const base = assignments.value.filter(
-    (a) =>
-      a.assignedTeacherId === selectedTeacherId.value && !pendingUnassignIds.has(a.businessId),
-  )
-
-  // Pending assign'ları da ekle (henüz backend'e gitmemiş)
-  for (const pc of pendingChanges.value) {
-    if (pc.type === 'assign' && !base.find((b) => b.businessId === pc.businessId)) {
-      const original = assignments.value.find((a) => a.businessId === pc.businessId)
-      if (original) {
-        base.push({
-          ...original,
-          assignedTeacherId: selectedTeacherId.value,
-          assignedDay: pc.day,
-          assignedPeriodNumber: pc.periodNumber,
-        })
-      }
-    }
-  }
-
-  return base
-})
-
-// ── Computed: Effective Schedule (raw + pending changes) ──
-const effectiveSchedule = computed((): DailyScheduleDto[] => {
-  // Deep clone
-  const schedule: DailyScheduleDto[] = JSON.parse(JSON.stringify(rawSchedule.value))
-
-  for (const change of pendingChanges.value) {
-    const daySchedule = schedule.find((d) => d.day === change.day)
-    if (!daySchedule) continue
-    const slot = daySchedule.periods.find((p) => p.periodNumber === change.periodNumber)
-    if (!slot) continue
-
-    if (change.type === 'assign') {
-      slot.assignedBusinessId = change.businessId
-    } else if (change.type === 'unassign') {
-      slot.assignedBusinessId = null
-    }
-  }
-
-  return schedule
-})
-
-// ── Computed: Summary ──
 const isOverLimit = computed(
   () => summary.value.totalAssignedHours > summary.value.totalAvailableHours,
 )
@@ -1293,19 +836,15 @@ const totalTeacherBusinessCount = computed(() =>
   summary.value.teacherWorkloads.reduce((sum: number, tw: TeacherWorkloadSummaryDto) => sum + tw.businessCount, 0),
 )
 
-const selectedTeacherName = computed(() => {
-  if (!selectedTeacherId.value) return ''
-  return teacherOpts.allOptions.value.find((o) => o.value === selectedTeacherId.value)?.label ?? ''
+const businessNameMap = computed(() => {
+  const map: Record<string, string> = {}
+  for (const a of assignments.value) {
+    map[a.businessId] = a.businessName
+  }
+  return map
 })
 
-const branchLabel = computed(() => {
-  if (!branchFilter.value) return ''
-  return (
-    branchOpts.allOptions?.value.find((o: { value: string; label: string }) => o.value === branchFilter.value)?.label ??
-    branchFilter.value
-  )
-})
-
+// ── Day labels ──
 const dayLabels: Record<string, string> = {
   Monday: 'Pazartesi',
   Tuesday: 'Salı',
@@ -1325,276 +864,11 @@ const teacherSummaryColumns = [
   { name: 'assignedHours', label: 'Atanan Saat', field: 'assignedHours', align: 'center' as const, sortable: true },
 ]
 
-// ── Teacher Overview Columns ──
-const teacherOverviewColumns = [
-  { name: 'teacherName', label: 'Öğretmen', field: 'teacherId', align: 'left' as const, sortable: false },
-  { name: 'businessCount', label: 'İşletme', field: 'businessCount', align: 'center' as const, sortable: true },
-  { name: 'assignedHours', label: 'Saat', field: 'assignedHours', align: 'center' as const, sortable: true },
-  { name: 'monday', label: 'Pzt', field: 'freeSlotsByDay', align: 'center' as const, sortable: false },
-  { name: 'tuesday', label: 'Sal', field: 'freeSlotsByDay', align: 'center' as const, sortable: false },
-  { name: 'wednesday', label: 'Çar', field: 'freeSlotsByDay', align: 'center' as const, sortable: false },
-  { name: 'thursday', label: 'Per', field: 'freeSlotsByDay', align: 'center' as const, sortable: false },
-  { name: 'friday', label: 'Cum', field: 'freeSlotsByDay', align: 'center' as const, sortable: false },
-  { name: 'workload', label: 'Yük', field: 'assignedHours', align: 'center' as const, sortable: false },
-]
-
-function teacherName(teacherId: string): string {
-  return teacherOpts.allOptions.value.find((o) => o.value === teacherId)?.label ?? teacherId
-}
-
-// Öğretmen overview için toplam serbest slot sayısı (atanmış dahil)
-function totalSlotsByDay(row: TeacherSummaryRowDto, day: string): number {
-  // TeacherSummaryRowDto'da totalSlotsByDay yok, sadece freeSlotsByDay var
-  // Boş slot sayısı olarak göster
-  return row.freeSlotsByDay[day] ?? 0
-}
-
-// ── Inline Components ──
-
-// FreeSlotChip: boş slot sayısını renkli chip olarak gösterir
-const FreeSlotChip = defineComponent({
-  props: { free: { type: Number, default: 0 }, total: { type: Number, default: 0 } },
-  setup(props) {
-    return () => {
-      const free = props.free ?? 0
-      const color = free === 0 ? 'red-2' : free <= 1 ? 'orange-2' : 'green-2'
-      const textColor = free === 0 ? 'red-9' : free <= 1 ? 'orange-9' : 'green-9'
-      return h(
-        'span',
-        {
-          class: [`bg-${color}`, `text-${textColor}`, 'q-px-xs', 'rounded-borders', 'text-caption', 'text-weight-medium'],
-          style: 'min-width: 24px; display: inline-block; text-align: center',
-        },
-        free > 0 ? String(free) : '—',
-      )
-    }
-  },
-})
-
-// WorkloadIndicator: atanmış saat renk göstergesi
-const WorkloadIndicator = defineComponent({
-  props: { assignedHours: { type: Number, default: 0 }, availableHours: { type: Number, default: 0 } },
-  setup(props) {
-    return () => {
-      const hours = props.assignedHours
-      const color = hours === 0 ? 'grey-4' : hours <= 4 ? 'green-7' : hours <= 8 ? 'orange-7' : 'red-7'
-      return h(
-        'span',
-        {
-          class: [`text-${color}`, 'text-weight-bold', 'text-caption'],
-        },
-        `${hours}s`,
-      )
-    }
-  },
-})
-
-// ── Cluster Map ──
-
-const CLUSTER_COLORS = [
-  '#e53935', '#8e24aa', '#1e88e5', '#00897b', '#43a047',
-  '#f4511e', '#6d4c41', '#546e7a', '#c0ca33', '#00acc1',
-  '#5e35b1', '#d81b60', '#039be5', '#00e676', '#ffb300',
-  '#fb8c00', '#f06292', '#4db6ac', '#9575cd', '#64b5f6',
-]
-
-function clusterColor(clusterId: number | null): string {
-  if (clusterId === null) return '#9e9e9e'
-  return CLUSTER_COLORS[clusterId % CLUSTER_COLORS.length] ?? '#9e9e9e'
-}
-
-const clusterCounts = computed(() => {
-  const counts: Record<string, number> = {}
-  for (const b of clusterData.value) {
-    const key = b.clusterId === null ? 'null' : String(b.clusterId)
-    counts[key] = (counts[key] ?? 0) + 1
-  }
-  // Sort: numbered clusters first, then 'null'
-  const sorted: Record<string, number> = {}
-  Object.keys(counts)
-    .sort((a, b) => {
-      if (a === 'null') return 1
-      if (b === 'null') return -1
-      return Number(a) - Number(b)
-    })
-    .forEach((k) => {
-      sorted[k] = counts[k]!
-    })
-  return sorted
-})
-
-// ── Slot Progress Helper ──
-
-function slotProgress(biz: BusinessAssignmentDto): { current: number; target: number } {
-  const target = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
-  const backendSlots = biz.assignedSlots?.length ?? 0
-  const pendingAssigns = pendingChanges.value.filter(
-    (c) => c.businessId === biz.businessId && c.type === 'assign',
-  ).length
-  const pendingUnassigns = pendingChanges.value.filter(
-    (c) => c.businessId === biz.businessId && c.type === 'unassign',
-  ).length
-  return { current: backendSlots + pendingAssigns - pendingUnassigns, target }
-}
-
-// ── DnD Event Handlers ──
-
-function onBusinessDragStart(event: DragEvent, biz: BusinessAssignmentDto) {
-  if (!event.dataTransfer) return
-  event.dataTransfer.setData('application/business-id', biz.businessId)
-  event.dataTransfer.effectAllowed = 'move'
-
-  // Drag preview style
-  const target = event.target as HTMLElement
-  target.classList.add('business-card--dragging')
-  setTimeout(() => target.classList.remove('business-card--dragging'), 0)
-}
-
-function onBusinessDropped(payload: { businessId: string; day: string; periodNumber: number }) {
-  const biz = assignments.value.find((a) => a.businessId === payload.businessId)
-  if (!biz) return
-
-  // Aynı slot'a tekrar bırakılmışsa — ignore
-  const existing = pendingChanges.value.find(
-    (c) =>
-      c.businessId === payload.businessId &&
-      c.type === 'assign' &&
-      c.day === payload.day &&
-      c.periodNumber === payload.periodNumber,
-  )
-  if (existing) return
-
-  // Hedef saat: takdir edilen saat > 0 ise onu kullan, yoksa verilebilir saat
-  const targetHours = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
-
-  // Mevcut atanmış slot sayısı (backend + pending)
-  const backendSlots = biz.assignedSlots?.length ?? 0
-  const pendingAssigns = pendingChanges.value.filter(
-    (c) => c.businessId === biz.businessId && c.type === 'assign',
-  ).length
-  const pendingUnassigns = pendingChanges.value.filter(
-    (c) => c.businessId === biz.businessId && c.type === 'unassign',
-  ).length
-  const currentSlots = backendSlots + pendingAssigns - pendingUnassigns
-
-  if (currentSlots >= targetHours) {
-    notify.warning(`${biz.businessName}: Tüm saatler atanmış (${currentSlots}/${targetHours}).`)
-    return
-  }
-
-  pendingChanges.value.push({
-    type: 'assign',
-    businessId: payload.businessId,
-    businessName: biz.businessName,
-    day: payload.day,
-    periodNumber: payload.periodNumber,
-  })
-}
-
-function onBusinessRemoved(payload: { businessId: string; day: string; periodNumber: number }) {
-  // Pending assign ise → sadece pending'i sil
-  const pendingAssignIdx = pendingChanges.value.findIndex(
-    (c) =>
-      c.businessId === payload.businessId &&
-      c.type === 'assign' &&
-      c.day === payload.day &&
-      c.periodNumber === payload.periodNumber,
-  )
-
-  if (pendingAssignIdx >= 0) {
-    pendingChanges.value.splice(pendingAssignIdx, 1)
-    return
-  }
-
-  // Backend'den gelen atama → unassign pending ekle
-  const biz = assignments.value.find((a) => a.businessId === payload.businessId)
-  if (!biz) return
-
-  pendingChanges.value.push({
-    type: 'unassign',
-    businessId: payload.businessId,
-    businessName: biz.businessName,
-    day: payload.day,
-    periodNumber: payload.periodNumber,
-  })
-}
-
-function removeAssignment(biz: BusinessAssignmentDto) {
-  // Multi-slot: tüm slot'ları kaldır
-  if (biz.assignedSlots?.length > 0) {
-    for (const slot of biz.assignedSlots) {
-      onBusinessRemoved({
-        businessId: biz.businessId,
-        day: slot.day,
-        periodNumber: slot.periodNumber,
-      })
-    }
-  } else if (biz.assignedDay) {
-    // Geriye uyumluluk: eski tek slot
-    onBusinessRemoved({
-      businessId: biz.businessId,
-      day: biz.assignedDay,
-      periodNumber: biz.assignedPeriodNumber ?? 0,
-    })
-  }
-}
-
-// ── Teacher Change ──
-
-function onBranchChange() {
-  selectedTeacherId.value = null
-  rawSchedule.value = []
-  pendingChanges.value = []
-  const instId = authStore.user?.institutionId ?? undefined
-  // DepartmentHead: sadece kendi alanı; Yöneticiler: tüm öğretmenler (cross-branch)
-  if (authStore.isDepartmentHead) {
-    void teacherOpts.reload({ institutionId: instId, branchCode: branchFilter.value ?? undefined })
-  } else {
-    void teacherOpts.reload({ institutionId: instId })
-  }
-  void loadData()
-  if (activeTab.value === 'hours') void loadWorkloadConfig()
-}
-
-function onTeacherChange(teacherId: string | null) {
-  if (pendingChanges.value.length > 0 && teacherId !== selectedTeacherId.value) {
-    pendingTeacherId = teacherId
-    showDiscardDialog.value = true
-    return
-  }
-  doTeacherChange(teacherId)
-}
-
-function confirmDiscard() {
-  showDiscardDialog.value = false
-  pendingChanges.value = []
-  doTeacherChange(pendingTeacherId)
-  pendingTeacherId = null
-}
-
-function doTeacherChange(teacherId: string | null) {
-  selectedTeacherId.value = teacherId
-  rawSchedule.value = []
-  if (teacherId) {
-    loadTeacherSchedule(teacherId)
-  }
-}
-
-function selectTeacher(teacherId: string) {
-  if (pendingChanges.value.length > 0) {
-    pendingTeacherId = teacherId
-    showDiscardDialog.value = true
-    return
-  }
-  doTeacherChange(teacherId)
-}
-
 // ── API: Load Data ──
 
 async function loadScheduleConfig() {
   const instId = authStore.user?.institutionId
   if (!instId) return
-
   try {
     const { data } = await institutionApi.getScheduleConfig(instId)
     if (data.configured && data.dailyPeriodCount) {
@@ -1612,7 +886,6 @@ async function loadScheduleConfig() {
 
 async function loadData() {
   if (!branchFilter.value) return
-
   loading.value = true
   try {
     const [assignRes, summaryRes] = await Promise.all([
@@ -1627,7 +900,7 @@ async function loadData() {
     ])
     assignments.value = assignRes.data ?? []
     summary.value = summaryRes.data ?? summary.value
-    initEditedHours()
+    hours.initEditedHours()
   } catch (e) {
     notify.apiError(e, 'İşletme listesi yüklenirken hata oluştu.')
   } finally {
@@ -1637,7 +910,6 @@ async function loadData() {
 
 async function loadTeacherSchedule(teacherId: string) {
   if (!periodStore.selectedPeriodId) return
-
   scheduleLoading.value = true
   try {
     const { data } = await coordinationApi.getCurrentSchedule(
@@ -1647,7 +919,6 @@ async function loadTeacherSchedule(teacherId: string) {
     )
     rawSchedule.value = data.weeklySchedule
   } catch {
-    // Program henüz yok — boş grid göster
     rawSchedule.value = createEmptySchedule()
   } finally {
     scheduleLoading.value = false
@@ -1667,117 +938,154 @@ function createEmptySchedule(): DailyScheduleDto[] {
   }))
 }
 
-async function loadTeacherOverview() {
-  if (!periodStore.selectedPeriodId) return
+// ── Composables ──
 
-  teacherOverviewLoading.value = true
-  try {
-    const { data } = await coordinationApi.getAllTeachersOverview(
-      periodStore.selectedPeriodId,
-      periodStore.selectedSemester,
-      branchFilter.value ?? undefined,
-    )
-    teacherOverviewRows.value = data
-  } catch (e) {
-    notify.apiError(e, 'Öğretmen özeti yüklenirken hata oluştu.')
-  } finally {
-    teacherOverviewLoading.value = false
+const institutionId = computed(() => authStore.user?.institutionId ?? undefined)
+const periodId = computed(() => periodStore.selectedPeriodId)
+const semester = computed(() => periodStore.selectedSemester)
+
+const workload = useWorkloadConfig({
+  branchFilter,
+  periodId,
+  institutionId,
+  notify,
+})
+
+const hours = useAssignedHours({
+  assignments,
+  workloadConfig: workload.workloadConfig,
+  notify,
+  loadData,
+})
+
+const dnd = useAssignmentDnD({
+  assignments,
+  rawSchedule,
+  selectedTeacherId,
+  selectedTeacherName,
+  notify,
+  authStore,
+  loadData,
+  loadTeacherSchedule,
+})
+
+const cluster = useClusterMap({
+  notify,
+  loadData,
+})
+
+const teacherOverview = useTeacherOverview({
+  periodId,
+  semester,
+  branchFilter,
+  teacherOpts,
+  notify,
+})
+
+// Re-export composable values used by template
+const {
+  workloadConfig, workloadLoading, workloadSaving, syncingCounts,
+  wlEducationType, wlDeptHeadCount, wlWorkshopHeadCount,
+  wlDeptHeadHours, wlWorkshopHeadHours, wlClassLevels,
+  wlSupervisorTotal, wlTeachingTotal, wlPoolTotal,
+  loadWorkloadConfig, saveWorkloadConfig, syncStudentCounts,
+} = workload
+
+const {
+  editedHours, hoursSaving, hoursTotalAvailable, hoursTotalAssigned,
+  hoursRemaining, hoursOverLimit, hoursNearLimit, hoursPoolOverLimit,
+  changedHoursCount, saveHours,
+} = hours
+
+const {
+  pendingChanges, saving, effectiveSchedule,
+  unassignedBusinesses, assignedToTeacher,
+  slotProgress, onBusinessDragStart, onBusinessDropped,
+  onBusinessRemoved, removeAssignment, saveAll,
+} = dnd
+
+const {
+  clusterData, clusterLoading, clusterError,
+  clusterEps, clusterMinPoints, clusterCounts,
+  recalculating, clusterColor,
+  loadClusters, recalculateDistances,
+} = cluster
+
+const {
+  teacherOverviewRows, teacherOverviewLoading,
+  teacherName, totalSlotsByDay,
+  loadTeacherOverview,
+} = teacherOverview
+
+// ── Filtered unassigned (UI search) ──
+const filteredUnassigned = computed(() => {
+  if (!businessSearch.value) return unassignedBusinesses.value
+  const needle = businessSearch.value.toLocaleLowerCase('tr')
+  return unassignedBusinesses.value.filter(
+    (b) =>
+      b.businessName.toLocaleLowerCase('tr').includes(needle) ||
+      (b.district?.toLocaleLowerCase('tr').includes(needle) ?? false),
+  )
+})
+
+// ── Teacher Change ──
+
+function onBranchChange() {
+  selectedTeacherId.value = null
+  rawSchedule.value = []
+  dnd.clearPending()
+  // TeacherSelector kendi watch'ı ile branchCode değişimini algılar ve reload yapar.
+  // Sayfa düzeyindeki teacherOpts'u da güncelle (isim çözümleme için).
+  const instId = authStore.user?.institutionId ?? undefined
+  teacherOpts.reload({ institutionId: instId, branchCode: branchFilter.value ?? undefined }).catch(() => {})
+  loadData().catch(() => {})
+  loadWorkloadConfig().catch(() => {})
+}
+
+function onTeacherChange(teacherId: string | null) {
+  if (pendingChanges.value.length > 0 && teacherId !== selectedTeacherId.value) {
+    pendingTeacherId.value = teacherId
+    showDiscardDialog.value = true
+    return
+  }
+  doTeacherChange(teacherId)
+}
+
+function confirmDiscard() {
+  showDiscardDialog.value = false
+  dnd.clearPending()
+  doTeacherChange(pendingTeacherId.value)
+  pendingTeacherId.value = null
+}
+
+function doTeacherChange(teacherId: string | null) {
+  selectedTeacherId.value = teacherId
+  rawSchedule.value = []
+  if (teacherId) {
+    loadTeacherSchedule(teacherId)
   }
 }
 
-async function loadClusters() {
-  clusterLoading.value = true
-  clusterError.value = false
-  try {
-    const { data } = await coordinationApi.getBusinessClusters(
-      clusterEps.value,
-      clusterMinPoints.value,
-    )
-    clusterData.value = data
-  } catch {
-    clusterError.value = true
-    clusterData.value = []
-  } finally {
-    clusterLoading.value = false
+function selectTeacher(teacherId: string) {
+  if (pendingChanges.value.length > 0) {
+    pendingTeacherId.value = teacherId
+    showDiscardDialog.value = true
+    return
   }
-}
-
-// ── API: Save ──
-
-async function saveAll() {
-  if (pendingChanges.value.length === 0 || !selectedTeacherId.value) return
-
-  saving.value = true
-  let successCount = 0
-  const total = pendingChanges.value.length
-  const errors: string[] = []
-
-  for (const change of [...pendingChanges.value]) {
-    try {
-      if (change.type === 'assign') {
-        const biz = assignments.value.find((a) => a.businessId === change.businessId)
-        const hours = biz?.assignedHours || biz?.maxCoordinationHours || 0
-        await coordinationApi.assignBusiness({
-          businessId: change.businessId,
-          teacherId: selectedTeacherId.value,
-          teacherName: selectedTeacherName.value,
-          assignedHours: hours,
-          assignedDay: change.day,
-          periodNumber: change.periodNumber,
-          assignedBy: authStore.user?.fullName ?? '',
-        })
-      } else {
-        await coordinationApi.unassignBusinessSlot(
-          change.businessId, change.day, change.periodNumber,
-        )
-      }
-      successCount++
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Bilinmeyen hata'
-      errors.push(`${change.businessName}: ${msg}`)
-    }
-  }
-
-  saving.value = false
-  pendingChanges.value = []
-
-  if (successCount === total) {
-    notify.success(`${successCount} işlem başarıyla kaydedildi.`)
-  } else {
-    notify.warning(`${successCount}/${total} işlem kaydedildi. Hatalar: ${errors.join(', ')}`)
-  }
-
-  // Verileri yenile
-  await Promise.all([
-    loadData(),
-    selectedTeacherId.value ? loadTeacherSchedule(selectedTeacherId.value) : Promise.resolve(),
-  ])
-}
-
-async function recalculateDistances() {
-  recalculating.value = true
-  try {
-    await coordinationApi.recalculateDistances()
-    notify.success('Mesafeler yeniden hesaplandı.')
-    await loadData()
-  } catch (e) {
-    notify.apiError(e, 'Mesafe hesaplama sırasında hata oluştu.')
-  } finally {
-    recalculating.value = false
-  }
+  doTeacherChange(teacherId)
 }
 
 // ── Tab değişimi → lazy load ──
 watch(activeTab, (tab) => {
   if (tab === 'hours') {
-    initEditedHours()
-    void loadWorkloadConfig()
+    hours.initEditedHours()
+    loadWorkloadConfig().catch(() => {})
   }
   if (tab === 'teachers' && teacherOverviewRows.value.length === 0) {
-    void loadTeacherOverview()
+    loadTeacherOverview().catch(() => {})
   }
   if (tab === 'map' && clusterData.value.length === 0 && !clusterError.value) {
-    void loadClusters()
+    loadClusters().catch(() => {})
   }
 })
 
@@ -1786,33 +1094,30 @@ watch(
   () => [periodStore.selectedPeriodId, periodStore.selectedSemester],
   () => {
     if (selectedTeacherId.value) {
-      pendingChanges.value = []
+      dnd.clearPending()
       loadTeacherSchedule(selectedTeacherId.value)
     }
-    // Yüklü tabları yenile
-    if (activeTab.value === 'teachers') void loadTeacherOverview()
-    if (activeTab.value === 'map') void loadClusters()
+    if (activeTab.value === 'teachers') loadTeacherOverview().catch(() => {})
+    if (activeTab.value === 'map') loadClusters().catch(() => {})
   },
 )
 
 // ── Init ──
+// BranchSelector ve TeacherSelector kendi onMounted'larında yüklenirler.
+// Burada sadece schedule config + sayfa düzeyindeki teacherOpts (isim çözümleme) yüklenir.
 onMounted(async () => {
   const instId = authStore.user?.institutionId ?? undefined
 
-  // DepartmentHead → kendi branşını otomatik seç, sadece o branşın öğretmenlerini yükle
   if (authStore.isDepartmentHead && authStore.user?.branchCode) {
     branchFilter.value = authStore.user.branchCode
     await Promise.all([
       teacherOpts.reload({ institutionId: instId, branchCode: authStore.user.branchCode }),
-      branchOpts.load(),
       loadScheduleConfig(),
     ])
     await loadData()
   } else {
-    // Yöneticiler → tüm öğretmenleri yükle, alan seçimini bekle
     await Promise.all([
       teacherOpts.load({ institutionId: instId }),
-      branchOpts.load(),
       loadScheduleConfig(),
     ])
   }
