@@ -175,7 +175,7 @@
 
               <q-inner-loading :showing="workloadLoading" />
 
-              <div class="row q-col-gutter-md q-mb-md">
+              <div class="row q-col-gutter-md q-mb-md items-end">
                 <div class="col-12 col-sm-3">
                   <q-select
                     v-model="wlEducationType"
@@ -188,6 +188,20 @@
                     :disable="periodStore.isReadOnly"
                     @update:model-value="loadWorkloadConfig"
                   />
+                </div>
+                <div class="col-auto">
+                  <q-btn
+                    flat
+                    dense
+                    color="orange-8"
+                    icon="sync"
+                    label="Öğrenci Sayılarını Güncelle"
+                    :loading="syncingCounts"
+                    :disable="periodStore.isReadOnly"
+                    @click="syncStudentCounts"
+                  >
+                    <q-tooltip>Enrollment kayıtlarından öğrenci sayılarını yeniden hesapla</q-tooltip>
+                  </q-btn>
                 </div>
               </div>
 
@@ -828,6 +842,7 @@ import {
   type BusinessClusterDto,
   type BranchWorkloadConfigDto,
 } from 'src/api/coordination'
+import { enrollmentApi } from 'src/api/enrollment'
 import { institutionApi } from 'src/api/institution'
 import { useTeacherOptions, useBranchOptions } from 'src/composables/useEntityOptions'
 import { useNotify } from 'src/composables/useNotify'
@@ -950,6 +965,7 @@ async function saveHours() {
 const workloadConfig = ref<BranchWorkloadConfigDto | null>(null)
 const workloadLoading = ref(false)
 const workloadSaving = ref(false)
+const syncingCounts = ref(false)
 
 // Editable form state
 const wlEducationType = ref('Formal')
@@ -990,6 +1006,12 @@ async function loadWorkloadConfig() {
         weeklyLessonHours: cl.weeklyLessonHours,
         studentCount: cl.studentCount,
       }))
+
+      // Tüm sınıf sayıları 0 ise BranchStudentCountView henüz doldurulmamış — otomatik senkronize et
+      const allZero = wlClassLevels.value.every(cl => cl.studentCount === 0)
+      if (allZero && !syncingCounts.value) {
+        await doAutoSync()
+      }
     } else {
       workloadConfig.value = null
     }
@@ -1023,6 +1045,52 @@ async function saveWorkloadConfig() {
     notify.error(`Kaydetme hatası: ${msg}`)
   } finally {
     workloadSaving.value = false
+  }
+}
+
+async function doAutoSync() {
+  const instId = authStore.user?.institutionId
+  if (!instId || !periodStore.selectedPeriodId) return
+  syncingCounts.value = true
+  try {
+    await enrollmentApi.syncStudentCounts(instId, periodStore.selectedPeriodId)
+    // Event async işlenecek, kısa bekleme sonrası yeniden yükle
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    const res = await coordinationApi.getBranchWorkloadConfig(
+      branchFilter.value!,
+      periodStore.selectedPeriodId,
+      wlEducationType.value,
+    )
+    const data = res.data
+    if (data && data.id) {
+      wlClassLevels.value = data.classLevels.map(cl => ({
+        classYear: cl.classYear,
+        weeklyLessonHours: cl.weeklyLessonHours,
+        studentCount: cl.studentCount,
+      }))
+      workloadConfig.value = data
+    }
+  } catch {
+    // Sessizce başarısız — kullanıcı manuel butonla deneyebilir
+  } finally {
+    syncingCounts.value = false
+  }
+}
+
+async function syncStudentCounts() {
+  const instId = authStore.user?.institutionId
+  if (!instId || !periodStore.selectedPeriodId) return
+  syncingCounts.value = true
+  try {
+    await enrollmentApi.syncStudentCounts(instId, periodStore.selectedPeriodId)
+    notify.success('Öğrenci sayıları senkronize edildi. Veriler güncelleniyor...')
+    // Event async işlenecek, kısa bekleme sonrası yeniden yükle
+    setTimeout(() => loadWorkloadConfig(), 1500)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Bilinmeyen hata'
+    notify.error(`Senkronizasyon hatası: ${msg}`)
+  } finally {
+    syncingCounts.value = false
   }
 }
 

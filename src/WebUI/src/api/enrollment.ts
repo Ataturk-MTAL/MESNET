@@ -125,6 +125,9 @@ export const enrollmentApi = {
   deregisterStudent: (studentId: string, reason: string) =>
     api.post(`/students/${studentId}/deregister`, { reason }),
 
+  syncStudentCounts: (institutionId: string, academicPeriodId: string) =>
+    api.post<{ syncedBranches: number }>('/students/sync-counts', { institutionId, academicPeriodId }),
+
   transferStudent: (placementId: string, data: TransferRequest) =>
     api.post(`/placements/${placementId}/transfer`, data),
 

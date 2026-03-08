@@ -4,6 +4,7 @@ using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Application.Dtos;
 using MESNET.Enrollment.Application.Queries;
+using MESNET.Enrollment.Shared.Events;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -22,6 +23,7 @@ public static class StudentEndpoints
         group.MapPost("/", Post).RequireAuthorization(Permissions.Student.Manage);
         group.MapPatch("/{studentId:guid}", Patch).RequireAuthorization(Permissions.Student.Manage);
         group.MapPost("/{studentId:guid}/deregister", PostDeregister).RequireAuthorization(Permissions.Student.Manage);
+        group.MapPost("/sync-counts", PostSyncCounts).RequireAuthorization(Permissions.Student.Manage);
         group.MapGet("/{studentId:guid}", Get).RequireAuthorization(Permissions.Student.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Student.View);
 
@@ -43,6 +45,22 @@ public static class StudentEndpoints
         await bus.InvokeAsync(new DeregisterStudent(studentId, request.Reason));
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Öğrenci kaydı silindi.")
+            .Build());
+    }
+
+    private static async Task<IResult> PostSyncCounts(SyncStudentCounts command, IMessageBus bus)
+    {
+        var events = await bus.InvokeAsync<IEnumerable<StudentCountsSynced>>(command);
+        var count = 0;
+        foreach (var e in events)
+        {
+            await bus.PublishAsync(e);
+            count++;
+        }
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(new { syncedBranches = count })
+            .AddMessage($"{count} alan için öğrenci sayıları senkronize edildi.")
             .Build());
     }
 
