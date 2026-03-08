@@ -81,8 +81,9 @@ public static class InstitutionSeeder
         // Specialization güncelleme idempotent (PUT — üzerine yazar)
         var branches = new[]
         {
+            (Code: "EET", Specs: new[] { "EET-ETD", "EET-EBO" }, Label: "EET (Elektrik Tesisatları, Endüstriyel Bakım Onarım)"),
             (Code: "BT", Specs: new[] { "BT-AG", "BT-YAZ" }, Label: "BT (Ağ İşletmenliği, Yazılım Geliştirme)"),
-            (Code: "MUF", Specs: new[] { "MUF-MUH", "MUF-DIS" }, Label: "MUF (Muhasebe, Dış Ticaret)"),
+            (Code: "MTT", Specs: new[] { "MTT-BMI", "MTT-MBO" }, Label: "MTT (Bilgisayarlı Makine İmalatı, Makine Bakım Onarım)"),
         };
 
         foreach (var (code, specs, label) in branches)
@@ -114,7 +115,7 @@ public static class InstitutionSeeder
         var staffMapping = new Dictionary<string, (string Role, string? BranchCode)>
         {
             ["admin"] = ("Principal", null),
-            ["teacher1"] = ("Coordinator", "BT"),
+            ["teacher1"] = ("Coordinator", "EET"),
         };
 
         try

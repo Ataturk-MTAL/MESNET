@@ -28,44 +28,77 @@ public static class BusinessSeeder
 
         Console.WriteLine($"  ℹ Mevcut işletme sayısı: {existingByName.Count}");
 
-        // ── Orijinal 5 işletme (ctx key'leri korunuyor) ──────────────────
+        // ── Orijinal 5 işletme — 3 alana (EET, BT, MTT) uyumlu ──────────────────
         var businessSectors = new Dictionary<string, string[]>
         {
-            ["Business1"] = ["InformationTechnology"],
-            ["Business2"] = ["ElectricalAndElectronics", "Machinery"],
-            ["Business3"] = ["InformationTechnology"],
-            ["Business4"] = ["Finance", "BusinessAndManagement"],
-            ["Business5"] = ["Finance", "BusinessAndManagement"],
+            ["Business1"] = ["ElectricalAndElectronics"],
+            ["Business2"] = ["InformationTechnology"],
+            ["Business3"] = ["Machinery"],
+            ["Business4"] = ["ElectricalAndElectronics", "Machinery"],
+            ["Business5"] = ["InformationTechnology"],
         };
 
-        await SeedBusiness(api, ctx, existingByName, "Business1", "Mersin Bilişim Teknolojileri A.Ş.", () => api.PostAsync("/api/businesses", new
+        // Business1: Elektrik-Elektronik sektörü (EET alanı için)
+        await SeedBusiness(api, ctx, existingByName, "Business1", "Mezitli Elektrik Mühendislik A.Ş.", () => api.PostAsync("/api/businesses", new
+        {
+            tenantId,
+            name = "Mezitli Elektrik Mühendislik A.Ş.",
+            address = "Davultepe Mah., Mezitli, Mersin",
+            phoneNumber = "0324 444 1001",
+            email = "info@mezitlielektrik.com.tr",
+            website = "https://mezitlielektrik.com.tr",
+            personnelCount = 35,
+            location = new { latitude = 36.7750, longitude = 34.5520 },
+            totalSlots = 10,
+            sectors = new[] { "ElectricalAndElectronics" }
+        }));
+
+        // Business2: Bilişim sektörü (BT alanı için)
+        await SeedBusiness(api, ctx, existingByName, "Business2", "Mersin Bilişim Teknolojileri A.Ş.", () => api.PostAsync("/api/businesses", new
         {
             tenantId,
             name = "Mersin Bilişim Teknolojileri A.Ş.",
             address = "Çiftlikköy Mah., Yenişehir, Mersin",
-            phoneNumber = "0324 444 1001",
+            phoneNumber = "0324 444 2002",
             email = "info@mersinbt.com",
             website = "https://mersinbt.com",
             personnelCount = 25,
             location = new { latitude = 36.8005, longitude = 34.6421 },
-            totalSlots = 5,
+            totalSlots = 10,
             sectors = new[] { "InformationTechnology" }
         }));
 
-        await SeedBusiness(api, ctx, existingByName, "Business2", "Akdeniz Yazılım ve Danışmanlık Ltd. Şti.", () => api.PostAsync("/api/businesses", new
+        // Business3: Makine sektörü (MTT alanı için)
+        await SeedBusiness(api, ctx, existingByName, "Business3", "Toroslar CNC Makine Sanayi A.Ş.", () => api.PostAsync("/api/businesses", new
         {
             tenantId,
-            name = "Akdeniz Yazılım ve Danışmanlık Ltd. Şti.",
-            address = "Mezitli Mah., Mezitli, Mersin",
-            phoneNumber = "0324 444 2002",
-            email = "info@akdenizyazilim.com",
-            personnelCount = 18,
-            location = new { latitude = 36.7812, longitude = 34.5534 },
-            totalSlots = 8,
-            sectors = new[] { "InformationTechnology" }
+            name = "Toroslar CNC Makine Sanayi A.Ş.",
+            address = "Arpaçsakarlar Mah., Toroslar, Mersin",
+            phoneNumber = "0324 444 3003",
+            email = "info@toroslarcnc.com",
+            website = "https://toroslarcnc.com",
+            personnelCount = 40,
+            location = new { latitude = 36.8150, longitude = 34.6200 },
+            totalSlots = 10,
+            sectors = new[] { "Machinery" }
         }));
 
-        await SeedBusiness(api, ctx, existingByName, "Business3", "Yeni Nesil Teknoloji", () => api.PostAsync("/api/businesses/self-register", new
+        // Business4: Elektrik + Makine sektörü (EET & MTT alanları için)
+        await SeedBusiness(api, ctx, existingByName, "Business4", "Akdeniz Otomasyon ve Makine Ltd. Şti.", () => api.PostAsync("/api/businesses", new
+        {
+            tenantId,
+            name = "Akdeniz Otomasyon ve Makine Ltd. Şti.",
+            address = "Kuyuluk Mah., Mezitli, Mersin",
+            phoneNumber = "0324 444 4004",
+            email = "info@akdenizotomasyon.com",
+            personnelCount = 22,
+            location = new { latitude = 36.7780, longitude = 34.5580 },
+            totalSlots = 8,
+            sectors = new[] { "ElectricalAndElectronics", "Machinery" }
+        }));
+
+        // Business5: Bilişim sektörü (BT alanı için — self-register)
+        await SeedBusiness(api, ctx, existingByName, "Business5", "Yeni Nesil Teknoloji", () => api.PostAsync("/api/businesses/self-register", new
         {
             tenantId,
             keycloakId = "53000000-0000-0000-0000-000000000001",
@@ -74,39 +107,12 @@ public static class BusinessSeeder
             representativeEmail = "can@yeninesitek.com",
             businessName = "Yeni Nesil Teknoloji",
             address = "Güneykent Mah., Toroslar, Mersin",
-            phoneNumber = "0324 444 3003",
+            phoneNumber = "0324 444 5005",
             email = "info@yeninesitek.com",
             personnelCount = 8,
             location = new { latitude = 36.8134, longitude = 34.6287 },
-            totalSlots = 3,
+            totalSlots = 5,
             sectors = new[] { "InformationTechnology" }
-        }));
-
-        await SeedBusiness(api, ctx, existingByName, "Business4", "Öz-Er Muhasebe ve Danışmanlık", () => api.PostAsync("/api/businesses", new
-        {
-            tenantId,
-            name = "Öz-Er Muhasebe ve Danışmanlık",
-            address = "Bahçe Mah., Akdeniz, Mersin",
-            phoneNumber = "0324 444 4004",
-            email = "info@ozermuhasebe.com",
-            personnelCount = 12,
-            location = new { latitude = 36.8021, longitude = 34.6152 },
-            totalSlots = 4,
-            sectors = new[] { "Finance", "BusinessAndManagement" }
-        }));
-
-        await SeedBusiness(api, ctx, existingByName, "Business5", "Mersin Ticaret ve Sanayi Odası", () => api.PostAsync("/api/businesses", new
-        {
-            tenantId,
-            name = "Mersin Ticaret ve Sanayi Odası",
-            address = "Atatürk Cad. MTSO Hizmet Binası, Akdeniz, Mersin",
-            phoneNumber = "0324 238 9800",
-            email = "info@mtso.org.tr",
-            website = "https://www.mtso.org.tr",
-            personnelCount = 60,
-            location = new { latitude = 36.8065, longitude = 34.6392 },
-            totalSlots = 6,
-            sectors = new[] { "Finance", "BusinessAndManagement" }
         }));
 
         // ── 95 ek işletme — Mersin genelinde gerçekçi dağılım ──────────────────

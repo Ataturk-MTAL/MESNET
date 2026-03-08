@@ -64,10 +64,10 @@ public static class ContractSeeder
         await api.PostAsync($"/api/contracts/{contractId}/submit");
         await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Institution", signedBy = "Ahmet Yılmaz" });
         await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Business", signedBy = "Mehmet Kaya" });
-        await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Student", signedBy = "Elif Demir" });
-        await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Parent", signedBy = "Fatma Demir" });
+        await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Student", signedBy = "Ahmet Yıldırım" });
+        await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Parent", signedBy = "Fatma Yıldırım" });
         await api.PostAsync($"/api/contracts/{contractId}/activate");
-        Console.WriteLine("  ✓ Sözleşme 1: oluşturuldu → imza → aktif");
+        Console.WriteLine("  ✓ Sözleşme 1: oluşturuldu → imza → aktif (EET öğrenci)");
     }
 
     private static async Task SeedContract2(
@@ -90,7 +90,7 @@ public static class ContractSeeder
             businessId = ctx.Get("Business2"),
             institutionId,
             academicPeriodId,
-            teacherId = ctx.Has("Teacher2") ? ctx.Get("Teacher2") : (Guid?)null,
+            teacherId = ctx.Has("Teacher3") ? ctx.Get("Teacher3") : (Guid?)null,
             startDate = now.AddMonths(-1)
         });
         if (data is null) return;
@@ -100,7 +100,7 @@ public static class ContractSeeder
 
         await api.PostAsync($"/api/contracts/{contractId}/submit");
         await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Institution", signedBy = "Ahmet Yılmaz" });
-        Console.WriteLine("  ✓ Sözleşme 2: oluşturuldu → imza bekliyor (kurum imzaladı)");
+        Console.WriteLine("  ✓ Sözleşme 2: oluşturuldu → imza bekliyor (BT öğrenci)");
     }
 
     private static async Task SeedContract3(
@@ -123,20 +123,20 @@ public static class ContractSeeder
             businessId = ctx.Get("Business2"),
             institutionId,
             academicPeriodId,
-            teacherId = ctx.Has("Teacher2") ? ctx.Get("Teacher2") : (Guid?)null,
+            teacherId = ctx.Has("Teacher4") ? ctx.Get("Teacher4") : (Guid?)null,
             startDate = now.AddDays(-5)
         });
         if (data is null) return;
 
         ctx.Set("Contract3", data.Value.GetProperty("contractId").GetGuid());
-        Console.WriteLine("  ✓ Sözleşme 3: taslak olarak oluşturuldu");
+        Console.WriteLine("  ✓ Sözleşme 3: taslak (BT öğrenci)");
     }
 
     private static async Task SeedContract4(
         MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId, DateTime now,
         Dictionary<Guid, Guid> existingByStudent)
     {
-        if (!ctx.Has("Student3") || !ctx.Has("Business1")) return;
+        if (!ctx.Has("Student3") || !ctx.Has("Business5")) return;
         var studentId = ctx.Get("Student3");
 
         if (existingByStudent.TryGetValue(studentId, out var existingId))
@@ -149,10 +149,10 @@ public static class ContractSeeder
         var data = await api.PostAsync("/api/contracts", new
         {
             studentId,
-            businessId = ctx.Get("Business1"),
+            businessId = ctx.Get("Business5"),
             institutionId,
             academicPeriodId,
-            teacherId = ctx.Has("Teacher1") ? ctx.Get("Teacher1") : (Guid?)null,
+            teacherId = ctx.Has("Teacher4") ? ctx.Get("Teacher4") : (Guid?)null,
             startDate = new DateTime(2024, 10, 1, 0, 0, 0, DateTimeKind.Utc)
         });
         if (data is null) return;
@@ -162,11 +162,11 @@ public static class ContractSeeder
 
         await api.PostAsync($"/api/contracts/{contractId}/submit");
         await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Institution", signedBy = "Ahmet Yılmaz" });
-        await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Business", signedBy = "Mehmet Kaya" });
+        await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Business", signedBy = "Can Özkan" });
         await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Student", signedBy = "Ceren Aksoy" });
         await api.PostAsync($"/api/contracts/{contractId}/sign", new { internshipContractId = contractId, party = "Parent", signedBy = "Murat Aksoy" });
         await api.PostAsync($"/api/contracts/{contractId}/activate");
         await api.PostAsync($"/api/contracts/{contractId}/complete");
-        Console.WriteLine("  ✓ Sözleşme 4: oluşturuldu → imza → aktif → tamamlandı");
+        Console.WriteLine("  ✓ Sözleşme 4: oluşturuldu → imza → aktif → tamamlandı (BT öğrenci)");
     }
 }

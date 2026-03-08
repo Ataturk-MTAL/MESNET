@@ -95,7 +95,7 @@ public static class AttendanceSeeder
             }
         }
 
-        // Attendance 3: Sağlık raporu — doğrulanmış
+        // Attendance 3: Sağlık raporu — doğrulanmış (BT öğrenci)
         if (ctx.Has("Student2") && ctx.Has("Business2"))
         {
             var date = now.AddDays(-12);
@@ -115,19 +115,19 @@ public static class AttendanceSeeder
                     date,
                     absenceType = "HealthReport",
                     reason = "Sağlık raporu",
-                    markedBy = "Mustafa Yılmaz"
+                    markedBy = "Hasan Kara"
                 });
                 if (d is not null)
                 {
                     var id = d.Value.GetProperty("attendanceId").GetGuid();
                     ctx.Set("Attendance3", id);
-                    await api.PostAsync($"/api/attendance/{id}/verify", new { attendanceId = id, verifiedBy = "Mustafa Yılmaz" });
+                    await api.PostAsync($"/api/attendance/{id}/verify", new { attendanceId = id, verifiedBy = "Hasan Kara" });
                     Console.WriteLine("  ✓ Devamsızlık 3: Sağlık raporu (doğrulanmış)");
                 }
             }
         }
 
-        // Attendance 4: Mazeretsiz — doğrulanmamış
+        // Attendance 4: Mazeretsiz — doğrulanmamış (BT öğrenci)
         if (ctx.Has("Student2") && ctx.Has("Business2"))
         {
             var date = now.AddDays(-3);
@@ -146,7 +146,7 @@ public static class AttendanceSeeder
                     institutionId,
                     date,
                     absenceType = "Unexcused",
-                    markedBy = "Mustafa Yılmaz"
+                    markedBy = "Hasan Kara"
                 });
                 if (d is not null)
                 {

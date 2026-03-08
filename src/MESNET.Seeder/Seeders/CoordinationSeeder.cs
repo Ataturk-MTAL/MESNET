@@ -80,10 +80,10 @@ public static class CoordinationSeeder
             }
         }
 
-        // Guidance Visit 2: Draft
-        if (ctx.Has("Teacher2") && ctx.Has("Business2") && ctx.Has("Student2"))
+        // Guidance Visit 2: Draft (BT öğretmen → BT işletme)
+        if (ctx.Has("Teacher3") && ctx.Has("Business2") && ctx.Has("Student2"))
         {
-            var matchKey = $"{ctx.Get("Teacher2")}|{ctx.Get("Business2")}";
+            var matchKey = $"{ctx.Get("Teacher3")}|{ctx.Get("Business2")}";
             var found = existingList.FirstOrDefault(x => x.Key == matchKey);
             if (found.Id != Guid.Empty)
             {
@@ -94,7 +94,7 @@ public static class CoordinationSeeder
             {
                 var d = await api.PostAsync("/api/coordination/guidance-visits", new
                 {
-                    teacherId = ctx.Get("Teacher2"),
+                    teacherId = ctx.Get("Teacher3"),
                     businessId = ctx.Get("Business2"),
                     institutionId,
                     visitDate = DateTime.UtcNow.AddDays(-3),
@@ -228,11 +228,11 @@ public static class CoordinationSeeder
             month = 12,
             activities = new[]
             {
-                new { day = 1, description = "Yazılım geliştirme ortamı kurulumu", hours = 8 },
-                new { day = 2, description = "Veritabanı tasarımı çalışması",      hours = 8 },
-                new { day = 3, description = "REST API geliştirme",                 hours = 8 },
-                new { day = 4, description = "Unit test yazma",                     hours = 8 },
-                new { day = 5, description = "Kod inceleme toplantısı",             hours = 4 }
+                new { day = 1, description = "Elektrik tesisat planı inceleme", hours = 8 },
+                new { day = 2, description = "Pano montaj çalışması",           hours = 8 },
+                new { day = 3, description = "Kablo döşeme uygulaması",         hours = 8 },
+                new { day = 4, description = "Topraklama ve izolasyon testi",   hours = 8 },
+                new { day = 5, description = "İş güvenliği eğitimi",           hours = 4 }
             },
             instructorComment = "Öğrenci aktif katılım sağlıyor.",
             teacherComment = "Gelişim olumlu."

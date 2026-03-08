@@ -72,7 +72,7 @@
     </q-banner>
 
     <!-- Tab Yapısı -->
-    <div v-if="branchFilter">
+    <div v-if="branchFilter" :key="branchFilter">
       <q-tabs
         v-model="activeTab"
         align="left"

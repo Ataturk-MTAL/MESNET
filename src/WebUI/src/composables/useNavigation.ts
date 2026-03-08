@@ -1,0 +1,166 @@
+import { computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { useAuthStore } from 'stores/auth'
+
+export interface NavItem {
+  title: string
+  icon: string
+  to: { name: string }
+  permissions: string[]
+}
+
+export interface NavGroup {
+  key: string
+  title: string
+  icon: string
+  to?: { name: string }
+  permissions: string[]
+  children: NavItem[]
+}
+
+const menuDefinition: NavGroup[] = [
+  {
+    key: 'home',
+    title: 'Ana Sayfa',
+    icon: 'dashboard',
+    to: { name: 'Dashboard' },
+    permissions: [],
+    children: [],
+  },
+  {
+    key: 'institution',
+    title: 'Kurum Yönetimi',
+    icon: 'account_balance',
+    permissions: [],
+    children: [
+      { title: 'Kurum Bilgileri', icon: 'account_balance', to: { name: 'Institution' }, permissions: ['institution:view'] },
+      { title: 'Kullanıcılar', icon: 'manage_accounts', to: { name: 'UserManagement' }, permissions: ['user:view', 'user:create'] },
+      { title: 'Roller', icon: 'admin_panel_settings', to: { name: 'RoleManagement' }, permissions: ['user:roles:manage'] },
+    ],
+  },
+  {
+    key: 'enrollment',
+    title: 'Kayıt & Öğrenci',
+    icon: 'school',
+    permissions: [],
+    children: [
+      { title: 'Öğrenciler', icon: 'school', to: { name: 'StudentList' }, permissions: ['student:view'] },
+    ],
+  },
+  {
+    key: 'business',
+    title: 'İşletmeler',
+    icon: 'business',
+    permissions: [],
+    children: [
+      { title: 'İşletme Listesi', icon: 'business', to: { name: 'CompanyList' }, permissions: ['company:view'] },
+    ],
+  },
+  {
+    key: 'internship',
+    title: 'Staj Yönetimi',
+    icon: 'work_history',
+    permissions: [],
+    children: [
+      { title: 'Staj Takibi', icon: 'work_history', to: { name: 'InternshipOverview' }, permissions: ['internship:view', 'internship:manage'] },
+      { title: 'Sözleşmeler', icon: 'description', to: { name: 'ContractList' }, permissions: ['internship:manage', 'internship:contract:manage'] },
+      { title: 'Devamsızlık', icon: 'event_available', to: { name: 'AttendanceList' }, permissions: ['attendance:view'] },
+      { title: 'Maaş / Dekont', icon: 'payments', to: { name: 'SalaryList' }, permissions: ['salary:view'] },
+    ],
+  },
+  {
+    key: 'coordination',
+    title: 'Koordinasyon',
+    icon: 'supervisor_account',
+    permissions: [],
+    children: [
+      { title: 'Koordinasyon', icon: 'supervisor_account', to: { name: 'Coordination' }, permissions: ['coordinator:visit:manage', 'coordinator:schedule:manage'] },
+      { title: 'Ders Programı', icon: 'calendar_month', to: { name: 'TeacherSchedule' }, permissions: ['coordinator:schedule:manage'] },
+      { title: 'İşletme Dağıtımı', icon: 'assignment_ind', to: { name: 'BusinessAssignment' }, permissions: ['department:distribution:manage'] },
+    ],
+  },
+  {
+    key: 'documents',
+    title: 'Belgeler & Raporlar',
+    icon: 'folder_open',
+    permissions: [],
+    children: [
+      { title: 'Belgeler', icon: 'folder_open', to: { name: 'Documents' }, permissions: ['document:view'] },
+      { title: 'Raporlar', icon: 'bar_chart', to: { name: 'Reporting' }, permissions: ['internship:report:manage'] },
+    ],
+  },
+]
+
+const STORAGE_KEY = 'mesnet-nav-expanded'
+
+export function useNavigation() {
+  const authStore = useAuthStore()
+  const route = useRoute()
+
+  const filteredMenu = computed(() => {
+    return menuDefinition
+      .map((group) => {
+        // Top-level link (children yok)
+        if (group.to && group.children.length === 0) {
+          const visible =
+            group.permissions.length === 0 || authStore.hasAnyPermission(group.permissions)
+          return visible ? group : null
+        }
+
+        // Children filtrele
+        const visibleChildren = group.children.filter(
+          (item) =>
+            item.permissions.length === 0 || authStore.hasAnyPermission(item.permissions),
+        )
+
+        if (visibleChildren.length === 0) return null
+
+        // Tek child → düz link'e terfi ettir
+        if (visibleChildren.length === 1) {
+          return { ...group, to: visibleChildren[0].to, children: [] as NavItem[] }
+        }
+
+        return { ...group, children: visibleChildren }
+      })
+      .filter(Boolean) as NavGroup[]
+  })
+
+  // Expand state — localStorage ile kalıcı
+  const expandedGroups = ref<Record<string, boolean>>(
+    JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'),
+  )
+
+  function toggleGroup(key: string) {
+    expandedGroups.value[key] = !expandedGroups.value[key]
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups.value))
+  }
+
+  function isExpanded(key: string): boolean {
+    return expandedGroups.value[key] ?? false
+  }
+
+  // Aktif route'a göre otomatik expand
+  const activeGroupKey = computed(() => {
+    const currentName = route.name as string
+    for (const group of filteredMenu.value) {
+      if (group.to?.name === currentName) return group.key
+      for (const child of group.children) {
+        if (child.to.name === currentName) return group.key
+      }
+    }
+    return null
+  })
+
+  watch(
+    activeGroupKey,
+    (key) => {
+      if (key && !expandedGroups.value[key]) {
+        expandedGroups.value[key] = true
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups.value))
+      }
+    },
+    { immediate: true },
+  )
+
+  return { filteredMenu, isExpanded, toggleGroup, activeGroupKey }
+}

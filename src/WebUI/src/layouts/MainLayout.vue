@@ -108,132 +108,51 @@
             Geçmiş dönem — salt okunur
           </q-banner>
 
-          <q-item clickable v-ripple :to="{ name: 'Dashboard' }" exact>
-            <q-item-section avatar><q-icon name="dashboard" /></q-item-section>
-            <q-item-section>Ana Sayfa</q-item-section>
-          </q-item>
+          <template v-for="group in filteredMenu">
+            <!-- Düz link (child yok veya tek child → terfi) -->
+            <q-item
+              v-if="group.to"
+              :key="group.key"
+              clickable
+              v-ripple
+              :to="group.to"
+              :active="activeGroupKey === group.key"
+            >
+              <q-item-section avatar><q-icon :name="group.icon" /></q-item-section>
+              <q-item-section>{{ group.title }}</q-item-section>
+            </q-item>
 
-          <q-item
-            v-if="authStore.hasPermission(Permissions.Institution.View)"
-            clickable v-ripple :to="{ name: 'Institution' }"
-          >
-            <q-item-section avatar><q-icon name="account_balance" /></q-item-section>
-            <q-item-section>Kurum</q-item-section>
-          </q-item>
-
-          <q-item
-            v-if="authStore.hasPermission(Permissions.Company.View)"
-            clickable v-ripple :to="{ name: 'CompanyList' }"
-          >
-            <q-item-section avatar><q-icon name="business" /></q-item-section>
-            <q-item-section>İşletmeler</q-item-section>
-          </q-item>
-
-          <q-item
-            v-if="authStore.hasPermission(Permissions.Student.View)"
-            clickable v-ripple :to="{ name: 'StudentList' }"
-          >
-            <q-item-section avatar><q-icon name="school" /></q-item-section>
-            <q-item-section>Öğrenciler</q-item-section>
-          </q-item>
-
-          <!-- Phase 2 — MEB Protokolü modülü implement edilince açılacak -->
-          <!-- <q-item
-            v-if="authStore.hasPermission(Permissions.Protocol.View)"
-            clickable v-ripple :to="{ name: 'ProtocolList' }"
-          >
-            <q-item-section avatar><q-icon name="assignment" /></q-item-section>
-            <q-item-section>Başvurular</q-item-section>
-          </q-item> -->
-
-          <q-item
-            v-if="authStore.hasAnyPermission([Permissions.Internship.View, Permissions.Internship.Manage])"
-            clickable v-ripple :to="{ name: 'InternshipOverview' }"
-          >
-            <q-item-section avatar><q-icon name="work_history" /></q-item-section>
-            <q-item-section>Staj Takibi</q-item-section>
-          </q-item>
-
-          <q-item
-            v-if="authStore.hasAnyPermission([Permissions.Internship.Manage, Permissions.Internship.Contract])"
-            clickable v-ripple :to="{ name: 'ContractList' }"
-          >
-            <q-item-section avatar><q-icon name="description" /></q-item-section>
-            <q-item-section>Sözleşmeler</q-item-section>
-          </q-item>
-
-          <q-item
-            v-if="authStore.hasPermission(Permissions.Attendance.View)"
-            clickable v-ripple :to="{ name: 'AttendanceList' }"
-          >
-            <q-item-section avatar><q-icon name="event_available" /></q-item-section>
-            <q-item-section>Devamsızlık</q-item-section>
-          </q-item>
-
-          <q-item
-            v-if="authStore.hasPermission(Permissions.Salary.View)"
-            clickable v-ripple :to="{ name: 'SalaryList' }"
-          >
-            <q-item-section avatar><q-icon name="payments" /></q-item-section>
-            <q-item-section>Maaş / Dekont</q-item-section>
-          </q-item>
-
-          <q-item
-            v-if="authStore.hasAnyPermission([Permissions.Coordinator.Visit, Permissions.Coordinator.Schedule])"
-            clickable v-ripple :to="{ name: 'Coordination' }"
-          >
-            <q-item-section avatar><q-icon name="supervisor_account" /></q-item-section>
-            <q-item-section>Koordinasyon</q-item-section>
-          </q-item>
-
-          <q-item
-            v-if="authStore.hasPermission(Permissions.Coordinator.Schedule)"
-            clickable v-ripple :to="{ name: 'TeacherSchedule' }"
-          >
-            <q-item-section avatar><q-icon name="calendar_month" /></q-item-section>
-            <q-item-section>Ders Programı</q-item-section>
-          </q-item>
-
-          <q-item
-            v-if="authStore.hasPermission(Permissions.DepartmentHead.Distribution)"
-            clickable v-ripple :to="{ name: 'BusinessAssignment' }"
-          >
-            <q-item-section avatar><q-icon name="assignment_ind" /></q-item-section>
-            <q-item-section>İşletme Dağıtımı</q-item-section>
-          </q-item>
-
-          <q-item
-            v-if="authStore.hasPermission(Permissions.Document.View)"
-            clickable v-ripple :to="{ name: 'Documents' }"
-          >
-            <q-item-section avatar><q-icon name="folder_open" /></q-item-section>
-            <q-item-section>Belgeler</q-item-section>
-          </q-item>
-
-          <q-item
-            v-if="authStore.hasPermission(Permissions.Internship.Report)"
-            clickable v-ripple :to="{ name: 'Reporting' }"
-          >
-            <q-item-section avatar><q-icon name="bar_chart" /></q-item-section>
-            <q-item-section>Raporlar</q-item-section>
-          </q-item>
+            <!-- Genişletilebilir grup -->
+            <q-expansion-item
+              v-else
+              :key="'g-' + group.key"
+              :icon="group.icon"
+              :label="group.title"
+              :model-value="isExpanded(group.key)"
+              @update:model-value="toggleGroup(group.key)"
+              :header-class="activeGroupKey === group.key ? 'text-primary' : ''"
+              dense-toggle
+            >
+              <q-item
+                v-for="item in group.children"
+                :key="item.to.name"
+                clickable
+                v-ripple
+                :to="item.to"
+                :inset-level="1"
+                dense
+              >
+                <q-item-section avatar><q-icon :name="item.icon" size="sm" /></q-item-section>
+                <q-item-section>{{ item.title }}</q-item-section>
+              </q-item>
+            </q-expansion-item>
+          </template>
 
           <q-separator spaced />
 
-          <q-item
-            v-if="authStore.hasAnyPermission([Permissions.UserManagement.View, Permissions.UserManagement.Create])"
-            clickable v-ripple :to="{ name: 'UserManagement' }"
-          >
-            <q-item-section avatar><q-icon name="manage_accounts" /></q-item-section>
-            <q-item-section>Kullanıcılar</q-item-section>
-          </q-item>
-
-          <q-item
-            v-if="authStore.hasPermission(Permissions.UserManagement.RolesManage)"
-            clickable v-ripple :to="{ name: 'RoleManagement' }"
-          >
-            <q-item-section avatar><q-icon name="admin_panel_settings" /></q-item-section>
-            <q-item-section>Roller</q-item-section>
+          <q-item clickable v-ripple @click="aboutDialog = true">
+            <q-item-section avatar><q-icon name="info" /></q-item-section>
+            <q-item-section>Hakkında</q-item-section>
           </q-item>
 
         </q-list>
@@ -243,6 +162,47 @@
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <!-- Hakkında Dialog -->
+    <q-dialog v-model="aboutDialog">
+      <q-card style="min-width: 400px; max-width: 500px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Hakkında</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="text-center q-pt-md">
+          <q-icon name="school" color="primary" size="64px" class="q-mb-md" />
+          <div class="text-h5 text-weight-bold text-primary q-mb-xs">MESNET</div>
+          <div class="text-subtitle2 text-grey-8 q-mb-lg">
+            Mesleki Eğitim Stajları Nitelikli, Eşgüdümlü Takip Sistemi
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <div class="text-body2 q-mb-md">
+            Bu yazılım<br />
+            <strong>Toroslar Atatürk Mesleki ve Teknik Anadolu Lisesi</strong><br />
+            <strong>Elektrik-Elektronik Teknolojisi</strong> alan öğretmenleri<br />
+            tarafından hazırlanmıştır.
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <div class="row justify-center q-gutter-x-md text-caption text-grey-7">
+            <div>
+              <q-icon name="tag" size="xs" class="q-mr-xs" />
+              Sürüm: <strong>{{ appVersion }}</strong>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-section class="text-center text-caption text-grey-6 q-pt-none">
+          &copy; {{ currentYear }} MESNET — Tüm hakları saklıdır.
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-layout>
 </template>
 
@@ -251,13 +211,17 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from 'stores/auth'
 import { useNotificationStore } from 'stores/notifications'
 import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
-import { Permissions } from 'utils/permissions'
 import { logout } from 'boot/auth'
+import { useNavigation } from 'src/composables/useNavigation'
 
 const authStore = useAuthStore()
+const { filteredMenu, isExpanded, toggleGroup, activeGroupKey } = useNavigation()
 const notificationStore = useNotificationStore()
 const periodStore = useAcademicPeriodStore()
 const drawerOpen = ref(false)
+const aboutDialog = ref(false)
+const appVersion = '0.1.0'
+const currentYear = new Date().getFullYear()
 
 const unreadCount = computed(() => notificationStore.notifications.length)
 
