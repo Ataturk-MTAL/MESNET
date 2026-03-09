@@ -40,6 +40,7 @@ public static class CoordinationEndpoints
         group.MapPatch("/assignments/{businessId:guid}/hours", PatchAssignedHours).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapDelete("/assignments/{businessId:guid}/slot", DeleteAssignmentSlot).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/assignments/{businessId:guid}/distance", PostManualDistance).RequireAuthorization(Permissions.DepartmentHead.Distribution);
+        group.MapGet("/assignments/{businessId:guid}/history", GetAssignmentHistory).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapGet("/summary", GetSummary).RequireAuthorization(Permissions.DepartmentHead.Workload);
         group.MapGet("/overview-all", GetAllTeachersOverview).RequireAuthorization(Permissions.DepartmentHead.Workload);
         group.MapGet("/business-clusters", GetBusinessClusters).RequireAuthorization(Permissions.DepartmentHead.Distribution);
@@ -243,6 +244,18 @@ public static class CoordinationEndpoints
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme mesafesi güncellendi.")
             .Build());
+    }
+
+    private static async Task<IResult> GetAssignmentHistory(
+        Guid businessId,
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var result = await bus.InvokeAsync<List<AssignmentHistoryEntryDto>>(
+            new GetAssignmentHistory(businessId, instId));
+
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
 
     private static async Task<IResult> GetSummary(

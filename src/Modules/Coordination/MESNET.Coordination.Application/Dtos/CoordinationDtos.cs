@@ -76,7 +76,19 @@ public sealed record BusinessAssignmentDto(
     int ActiveStudentCount,
     string BranchCode,
     string BranchName,
-    List<AssignedSlotInfoDto> AssignedSlots);
+    List<AssignedSlotInfoDto> AssignedSlots,
+    DateTime? LastModifiedAt = null,
+    string? LastModifiedBy = null);
+
+public sealed record AssignmentHistoryEntryDto(
+    DateTime Timestamp,
+    string Action,
+    string PerformedBy,
+    string? TeacherName,
+    string? SlotDay,
+    int? SlotPeriod,
+    int? AssignedHours,
+    string? Details);
 
 public sealed record AssignedSlotInfoDto(string Day, int PeriodNumber);
 

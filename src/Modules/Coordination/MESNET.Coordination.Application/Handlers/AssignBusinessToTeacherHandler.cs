@@ -48,11 +48,17 @@ public static class AssignBusinessToTeacherHandler
         // Öğretmen başına azami koordinatörlük saati kontrolü
         await ValidateTeacherHourLimit(session, command.TeacherId, command.InstitutionId, view.Id, cancellationToken);
 
-        // İlk slot → öğretmen bilgisi set et
+        // İlk slot → öğretmen bilgisi ve takdir edilen saat set et
         if (view.AssignedSlots.Count == 0)
         {
             view.AssignedTeacherId = command.TeacherId;
             view.AssignedTeacherName = command.TeacherName;
+
+            // Takdir edilen saat henüz girilmemişse, command'dan gelen değeri kullan
+            if (view.AssignedHours == 0 && command.AssignedHours > 0)
+            {
+                view.AssignedHours = command.AssignedHours;
+            }
         }
 
         // Farklı öğretmene atanmışsa hata
@@ -75,6 +81,22 @@ public static class AssignBusinessToTeacherHandler
             view.AssignedDay = firstSlot.Day;
             view.AssignedPeriodNumber = firstSlot.PeriodNumber;
         }
+
+        // Audit trail
+        var action = view.AssignedSlots.Count == 1 ? "Assigned" : "SlotAdded";
+        view.History.Insert(0, new AssignmentHistoryEntry(
+            DateTime.UtcNow,
+            action,
+            command.AssignedBy,
+            command.TeacherName,
+            command.AssignedDay,
+            command.PeriodNumber,
+            view.AssignedHours > 0 ? view.AssignedHours : null,
+            action == "Assigned"
+                ? $"{command.TeacherName} öğretmene atandı"
+                : $"{command.AssignedDay} {command.PeriodNumber}. saat eklendi"));
+        view.LastModifiedAt = DateTime.UtcNow;
+        view.LastModifiedBy = command.AssignedBy;
 
         session.Store(view);
 
@@ -157,7 +179,7 @@ public static class AssignBusinessToTeacherHandler
             schedule.Id,
             schedule.WeeklySchedule.Select(d => new DailyScheduleData(
                 d.Day.ToString(),
-                d.Periods.Select(p => new PeriodSlotData(p.PeriodNumber, p.Status.Name, p.CourseName)).ToList()
+                d.Periods.Select(p => new PeriodSlotData(p.PeriodNumber, p.Status.Name, p.CourseName, p.AssignedBusinessId)).ToList()
             )).ToList(),
             assignedBy,
             DateTime.UtcNow);

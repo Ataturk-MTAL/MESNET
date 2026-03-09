@@ -68,7 +68,8 @@ public sealed record TeacherSchedule(
             {
                 PeriodNumber = p.PeriodNumber,
                 Status = SlotStatus.FromName(p.Status, ignoreCase: true),
-                CourseName = p.CourseName
+                CourseName = p.CourseName,
+                AssignedBusinessId = p.AssignedBusinessId
             }).ToList()
         }).ToList();
     }
@@ -109,4 +110,5 @@ public sealed record DailyScheduleData(
 public sealed record PeriodSlotData(
     int PeriodNumber,
     string Status,
-    string? CourseName);
+    string? CourseName,
+    Guid? AssignedBusinessId = null);

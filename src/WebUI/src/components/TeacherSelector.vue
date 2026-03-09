@@ -103,7 +103,7 @@ function onFilter(val: string, update: (fn: () => void) => void) {
 // Branch değiştiğinde öğretmen listesini yeniden yükle
 watch(() => props.branchCode, async (newBranch) => {
   const instId = authStore.user?.institutionId ?? undefined
-  if (authStore.isDepartmentHead && newBranch) {
+  if (newBranch) {
     await teacherOpts.reload({ institutionId: instId, branchCode: newBranch })
   } else {
     await teacherOpts.reload({ institutionId: instId })
@@ -112,7 +112,7 @@ watch(() => props.branchCode, async (newBranch) => {
 
 onMounted(async () => {
   const instId = authStore.user?.institutionId ?? undefined
-  if (authStore.isDepartmentHead && props.branchCode) {
+  if (props.branchCode) {
     await teacherOpts.reload({ institutionId: instId, branchCode: props.branchCode })
   } else {
     await teacherOpts.load({ institutionId: instId })

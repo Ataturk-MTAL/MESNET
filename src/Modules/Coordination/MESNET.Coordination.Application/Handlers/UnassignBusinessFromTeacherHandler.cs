@@ -36,12 +36,28 @@ public static class UnassignBusinessFromTeacherHandler
             ClearScheduleSlot(session, view, view.AssignedDay, view.AssignedPeriodNumber.Value);
         }
 
+        // Audit trail
+        var teacherName = view.AssignedTeacherName;
+        var slotCount = view.AssignedSlots.Count;
+
         // View alanlarını temizle
         view.AssignedTeacherId = null;
         view.AssignedTeacherName = null;
         view.AssignedSlots.Clear();
         view.AssignedDay = null;
         view.AssignedPeriodNumber = null;
+
+        view.History.Insert(0, new AssignmentHistoryEntry(
+            DateTime.UtcNow,
+            "Unassigned",
+            command.UnassignedBy,
+            teacherName,
+            null,
+            null,
+            null,
+            $"{teacherName} öğretmenden tüm atama kaldırıldı ({slotCount} slot)"));
+        view.LastModifiedAt = DateTime.UtcNow;
+        view.LastModifiedBy = command.UnassignedBy;
 
         session.Store(view);
 
@@ -74,7 +90,7 @@ public static class UnassignBusinessFromTeacherHandler
                 schedule.Id,
                 schedule.WeeklySchedule.Select(d => new DailyScheduleData(
                     d.Day.ToString(),
-                    d.Periods.Select(p => new PeriodSlotData(p.PeriodNumber, p.Status.Name, p.CourseName)).ToList()
+                    d.Periods.Select(p => new PeriodSlotData(p.PeriodNumber, p.Status.Name, p.CourseName, p.AssignedBusinessId)).ToList()
                 )).ToList(),
                 "system",
                 DateTime.UtcNow);

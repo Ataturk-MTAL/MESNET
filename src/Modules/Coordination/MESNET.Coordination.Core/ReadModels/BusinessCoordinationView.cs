@@ -49,6 +49,17 @@ public sealed class BusinessCoordinationView
 
     public Guid InstitutionId { get; init; }
     public Guid AcademicPeriodId { get; set; }
+
+    // ── Audit Trail ──
+
+    /// <summary>Son değişiklik tarihi</summary>
+    public DateTime? LastModifiedAt { get; set; }
+
+    /// <summary>Son değişikliği yapan kişi</summary>
+    public string? LastModifiedBy { get; set; }
+
+    /// <summary>Atama değişiklik geçmişi (en yeni en üstte)</summary>
+    public List<AssignmentHistoryEntry> History { get; set; } = [];
 }
 
 /// <summary>
@@ -56,3 +67,17 @@ public sealed class BusinessCoordinationView
 /// BusinessCoordinationView.AssignedSlots koleksiyonunda tutulur.
 /// </summary>
 public sealed record AssignedSlotInfo(string Day, int PeriodNumber);
+
+/// <summary>
+/// İşletme atama geçmişi kaydı.
+/// Her atama/kaldırma/saat değişikliği bir entry olarak saklanır.
+/// </summary>
+public sealed record AssignmentHistoryEntry(
+    DateTime Timestamp,
+    string Action,           // "Assigned", "SlotAdded", "SlotRemoved", "Unassigned", "HoursUpdated"
+    string PerformedBy,
+    string? TeacherName,
+    string? SlotDay,
+    int? SlotPeriod,
+    int? AssignedHours,
+    string? Details);

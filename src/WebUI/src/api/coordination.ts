@@ -215,6 +215,19 @@ export interface BusinessAssignmentDto {
   branchCode: string
   branchName: string
   assignedSlots: AssignedSlotInfo[]
+  lastModifiedAt: string | null
+  lastModifiedBy: string | null
+}
+
+export interface AssignmentHistoryEntryDto {
+  timestamp: string
+  action: string       // "Assigned" | "SlotAdded" | "SlotRemoved" | "Unassigned" | "HoursUpdated"
+  performedBy: string
+  teacherName: string | null
+  slotDay: string | null
+  slotPeriod: number | null
+  assignedHours: number | null
+  details: string | null
 }
 
 export interface CoordinationSummaryDto {
@@ -447,6 +460,9 @@ export const coordinationApi = {
     api.delete(`/coordination/teachers/assignments/${businessId}/slot`, {
       params: { day, periodNumber },
     }),
+
+  getAssignmentHistory: (businessId: string) =>
+    api.get<AssignmentHistoryEntryDto[]>(`/coordination/teachers/assignments/${businessId}/history`),
 
   recalculateDistances: () =>
     api.post('/coordination/teachers/recalculate-distances'),

@@ -35,7 +35,16 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
   const saving = ref(false)
 
   const effectiveSchedule = computed((): DailyScheduleDto[] => {
-    const schedule: DailyScheduleDto[] = structuredClone(rawSchedule.value)
+    // Vue reactive proxy'leri structuredClone ile klonlanamaz — elle deep copy
+    const schedule: DailyScheduleDto[] = rawSchedule.value.map((day) => ({
+      day: day.day,
+      periods: day.periods.map((p) => ({
+        periodNumber: p.periodNumber,
+        status: p.status,
+        courseName: p.courseName ?? null,
+        assignedBusinessId: p.assignedBusinessId ?? null,
+      })),
+    }))
 
     for (const change of pendingChanges.value) {
       const daySchedule = schedule.find((d) => d.day === change.day)

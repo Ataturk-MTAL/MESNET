@@ -58,20 +58,18 @@ public static class AssignBusinessToFreeSlotHandler
             throw new DomainException(CoordinationErrors.SlotNotFree(command.Day, command.PeriodNumber));
         }
 
-        // 7. Mevcut schedule'ın tüm slotlarını kopyala + bu slot'a businessId ata
+        // 7. Önce slot'a businessId ata, sonra event data oluştur
+        periodSlot.AssignedBusinessId = command.BusinessId;
+
         var updatedWeekly = schedule.WeeklySchedule.Select(d => new DailyScheduleData(
             d.Day.ToString(),
             d.Periods.Select(p => new PeriodSlotData(
                 p.PeriodNumber,
                 p.Status.Name,
-                p.CourseName
+                p.CourseName,
+                p.AssignedBusinessId
             )).ToList()
         )).ToList();
-
-        // AssignedBusinessId'yi schedule event'e dahil etmek yerine,
-        // snapshot'taki mutable alanı güncelliyoruz.
-        // Event sourcing açısından bu atama schedule state'inin parçasıdır.
-        periodSlot.AssignedBusinessId = command.BusinessId;
 
         // Schedule updated event append
         var updateEvent = new ScheduleUpdated(

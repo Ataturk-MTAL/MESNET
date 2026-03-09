@@ -86,7 +86,22 @@ public static class UpdateBusinessAssignedHoursHandler
             }
         }
 
+        var oldHours = view.AssignedHours;
         view.AssignedHours = command.AssignedHours;
+
+        // Audit trail
+        view.History.Insert(0, new AssignmentHistoryEntry(
+            DateTime.UtcNow,
+            "HoursUpdated",
+            command.UpdatedBy,
+            view.AssignedTeacherName,
+            null,
+            null,
+            command.AssignedHours,
+            $"Takdir edilen saat {oldHours} → {command.AssignedHours} olarak değiştirildi"));
+        view.LastModifiedAt = DateTime.UtcNow;
+        view.LastModifiedBy = command.UpdatedBy;
+
         session.Store(view);
     }
 }

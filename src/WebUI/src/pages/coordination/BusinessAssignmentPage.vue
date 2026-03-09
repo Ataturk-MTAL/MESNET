@@ -72,7 +72,7 @@
     </q-banner>
 
     <!-- Tab Yapısı -->
-    <div v-if="branchFilter" :key="branchFilter">
+    <div v-if="branchFilter">
       <q-tabs
         v-model="activeTab"
         align="left"
@@ -261,18 +261,31 @@
                         </q-item-label>
                       </q-item-section>
                       <q-item-section side>
-                        <q-btn
-                          v-if="!periodStore.isReadOnly"
-                          flat
-                          round
-                          dense
-                          icon="close"
-                          color="red-5"
-                          size="sm"
-                          @click="removeAssignment(biz)"
-                        >
-                          <q-tooltip>Atamayı kaldır</q-tooltip>
-                        </q-btn>
+                        <div class="row no-wrap q-gutter-xs">
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="history"
+                            color="grey-7"
+                            size="sm"
+                            @click="showHistory(biz.businessId, biz.businessName)"
+                          >
+                            <q-tooltip>Atama geçmişi</q-tooltip>
+                          </q-btn>
+                          <q-btn
+                            v-if="!periodStore.isReadOnly"
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            color="red-5"
+                            size="sm"
+                            @click="removeAssignment(biz)"
+                          >
+                            <q-tooltip>Atamayı kaldır</q-tooltip>
+                          </q-btn>
+                        </div>
                       </q-item-section>
                     </q-item>
                   </q-list>
@@ -540,7 +553,21 @@
                 </thead>
                 <tbody>
                   <tr v-for="biz in assignments" :key="biz.businessId">
-                    <td class="text-left">{{ biz.businessName }}</td>
+                    <td class="text-left">
+                      {{ biz.businessName }}
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        icon="history"
+                        color="grey-6"
+                        size="xs"
+                        class="q-ml-xs"
+                        @click="showHistory(biz.businessId, biz.businessName)"
+                      >
+                        <q-tooltip>Atama geçmişi</q-tooltip>
+                      </q-btn>
+                    </td>
                     <td class="text-center text-caption">
                       {{ biz.distanceToSchoolKm != null ? `${biz.distanceToSchoolKm.toFixed(1)} km` : '—' }}
                     </td>
@@ -606,6 +633,49 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Atama Geçmişi Dialogu -->
+    <q-dialog v-model="historyDialog" position="right" full-height>
+      <q-card style="min-width: 420px; max-width: 500px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Atama Geçmişi</div>
+          <q-space />
+          <q-btn flat round dense icon="close" @click="historyDialog = false" />
+        </q-card-section>
+        <q-card-section class="text-subtitle2 text-grey-7 q-pt-none">
+          {{ historyBusinessName }}
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section class="scroll" style="max-height: calc(100vh - 140px)">
+          <div v-if="historyLoading" class="text-center q-pa-lg">
+            <q-spinner color="primary" size="2em" />
+          </div>
+
+          <div v-else-if="historyEntries.length === 0" class="text-center q-pa-lg text-grey-6">
+            Henüz geçmiş kaydı bulunmuyor.
+          </div>
+
+          <q-timeline v-else color="primary" layout="dense">
+            <q-timeline-entry
+              v-for="(entry, idx) in historyEntries"
+              :key="idx"
+              :icon="historyIcon(entry.action)"
+              :color="historyColor(entry.action)"
+            >
+              <template #subtitle>
+                {{ formatDate(entry.timestamp) }} — {{ entry.performedBy }}
+              </template>
+              <div class="text-body2">{{ entry.details }}</div>
+              <div v-if="entry.assignedHours" class="text-caption text-grey-7">
+                Takdir edilen saat: {{ entry.assignedHours }}
+              </div>
+            </q-timeline-entry>
+          </q-timeline>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -614,6 +684,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import {
   coordinationApi,
   type BusinessAssignmentDto,
+  type AssignmentHistoryEntryDto,
   type CoordinationSummaryDto,
   type DailyScheduleDto,
   type TeacherWorkloadSummaryDto,
@@ -916,6 +987,59 @@ function selectTeacher(teacherId: string) {
     return
   }
   doTeacherChange(teacherId)
+}
+
+// ── Atama Geçmişi ──
+const historyDialog = ref(false)
+const historyLoading = ref(false)
+const historyBusinessName = ref('')
+const historyEntries = ref<AssignmentHistoryEntryDto[]>([])
+
+async function showHistory(businessId: string, businessName: string) {
+  historyBusinessName.value = businessName
+  historyEntries.value = []
+  historyDialog.value = true
+  historyLoading.value = true
+  try {
+    const { data } = await coordinationApi.getAssignmentHistory(businessId)
+    historyEntries.value = data ?? []
+  } catch (e) {
+    notify.apiError(e, 'Geçmiş yüklenirken hata oluştu.')
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+function historyIcon(action: string): string {
+  switch (action) {
+    case 'Assigned': return 'person_add'
+    case 'SlotAdded': return 'add_circle'
+    case 'SlotRemoved': return 'remove_circle'
+    case 'Unassigned': return 'person_remove'
+    case 'HoursUpdated': return 'schedule'
+    default: return 'info'
+  }
+}
+
+function historyColor(action: string): string {
+  switch (action) {
+    case 'Assigned': return 'green'
+    case 'SlotAdded': return 'blue'
+    case 'SlotRemoved': return 'orange'
+    case 'Unassigned': return 'red'
+    case 'HoursUpdated': return 'teal'
+    default: return 'grey'
+  }
+}
+
+function formatDate(isoDate: string): string {
+  return new Date(isoDate).toLocaleString('tr-TR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 // ── Harita popup'tan saat güncelleme ──

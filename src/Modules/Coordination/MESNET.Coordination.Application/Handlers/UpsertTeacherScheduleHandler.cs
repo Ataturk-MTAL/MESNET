@@ -49,7 +49,7 @@ public static class UpsertTeacherScheduleHandler
         // 4. Event payload hazırla
         var weeklyData = command.WeeklySchedule.Select(d => new DailyScheduleData(
             d.Day,
-            d.Periods.Select(p => new PeriodSlotData(p.PeriodNumber, p.Status, p.CourseName)).ToList()
+            d.Periods.Select(p => new PeriodSlotData(p.PeriodNumber, p.Status, p.CourseName, null)).ToList()
         )).ToList();
 
         // 5. Mevcut schedule'ı ara — event sourcing snapshot'tan

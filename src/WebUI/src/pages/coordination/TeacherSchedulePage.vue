@@ -2,11 +2,18 @@
   <q-page padding>
     <div class="text-h5 text-weight-bold q-mb-lg">Öğretmen Ders Programı</div>
 
-    <!-- Öğretmen Seçici -->
-    <div class="row q-col-gutter-md q-mb-lg">
-      <div class="col-12 col-sm-6 col-md-4">
+    <!-- Filtreler -->
+    <div class="row q-col-gutter-md q-mb-lg items-end">
+      <div class="col-12 col-sm-6 col-md-5">
+        <BranchSelector
+          v-model="branchFilter"
+          @update:model-value="onBranchChange"
+        />
+      </div>
+      <div class="col-12 col-sm-6 col-md-5">
         <TeacherSelector
           v-model="selectedTeacherId"
+          :branch-code="branchFilter"
           @update:model-value="onTeacherChange"
         />
       </div>
@@ -210,11 +217,13 @@ import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import ScheduleGrid from 'components/ScheduleGrid.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
+import BranchSelector from 'components/BranchSelector.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
 
+const branchFilter = ref<string | null>(null)
 const selectedTeacherId = ref<string | null>(null)
 const loading = ref(false)
 const saving = ref(false)
@@ -246,6 +255,18 @@ const dayLabels = [
   { label: 'Perşembe', value: 'Thursday' },
   { label: 'Cuma', value: 'Friday' },
 ]
+
+/** Vue reactive proxy'leri kırarak düz obje kopyası oluşturur (structuredClone uyumsuzluğu için) */
+function cloneSchedule(data: DailyScheduleInput[]): DailyScheduleInput[] {
+  return data.map((day) => ({
+    day: day.day,
+    periods: day.periods.map((p) => ({
+      periodNumber: p.periodNumber,
+      status: p.status,
+      courseName: p.courseName || undefined,
+    })),
+  }))
+}
 
 function createEmptySchedule(periodCnt: number): DailyScheduleInput[] {
   return dayLabels.map((day) => ({
@@ -334,7 +355,7 @@ async function loadCurrentSchedule() {
       semester: data.semester,
       updatedAt: data.updatedAt,
     }
-    originalScheduleData.value = structuredClone(scheduleData.value)
+    originalScheduleData.value = cloneSchedule(scheduleData.value)
   } catch {
     if (periodCount.value > 0) {
       scheduleData.value = createEmptySchedule(periodCount.value)
@@ -342,7 +363,7 @@ async function loadCurrentSchedule() {
       currentVersion.value = 0
       currentScheduleId.value = null
       currentScheduleMeta.value = null
-      originalScheduleData.value = structuredClone(scheduleData.value)
+      originalScheduleData.value = cloneSchedule(scheduleData.value)
     }
   } finally {
     loading.value = false
@@ -373,7 +394,7 @@ function viewVersion(ver: ScheduleVersionDto) {
   if (scheduleHistory.value && ver.version === scheduleHistory.value.currentVersion) {
     // Geçerli versiyona tıklandı — normal moda dön
     viewingHistoryVersion.value = null
-    scheduleData.value = structuredClone(originalScheduleData.value)
+    scheduleData.value = cloneSchedule(originalScheduleData.value)
     return
   }
 
@@ -421,21 +442,33 @@ async function saveSchedule() {
     })
     notify.success('Ders programı kaydedildi.')
     hasExistingSchedule.value = true
-    originalScheduleData.value = structuredClone(scheduleData.value)
+    originalScheduleData.value = cloneSchedule(scheduleData.value)
     editing.value = false
-
-    // Önce güncel schedule'ı yükle (scheduleId'yi set eder), sonra geçmişi
-    await loadCurrentSchedule()
-    await loadHistory()
   } catch (e) {
     notify.apiError(e, 'Ders programı kaydedilirken hata oluştu.')
   } finally {
     saving.value = false
   }
+
+  // Kayıt sonrası güncel veriyi yeniden yükle (hata olsa bile UI bozulmasın)
+  await loadCurrentSchedule()
+  loadHistory().catch(() => {})
 }
 
 function cancelEditing() {
-  scheduleData.value = structuredClone(originalScheduleData.value)
+  scheduleData.value = cloneSchedule(originalScheduleData.value)
+  editing.value = false
+}
+
+function onBranchChange() {
+  selectedTeacherId.value = null
+  scheduleData.value = []
+  hasExistingSchedule.value = false
+  currentVersion.value = 0
+  viewingHistoryVersion.value = null
+  currentScheduleId.value = null
+  currentScheduleMeta.value = null
+  scheduleHistory.value = null
   editing.value = false
 }
 
@@ -469,6 +502,8 @@ watch(
 
 onMounted(async () => {
   await loadScheduleConfig()
-  // TeacherSelector kendi onMounted'ında öğretmen listesini yükler.
+  if (authStore.isDepartmentHead && authStore.user?.branchCode) {
+    branchFilter.value = authStore.user.branchCode
+  }
 })
 </script>

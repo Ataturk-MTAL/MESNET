@@ -117,7 +117,7 @@ public static class GetScheduleHistoryHandler
                 p.PeriodNumber,
                 p.Status,
                 p.CourseName,
-                null)).ToList()
+                p.AssignedBusinessId)).ToList()
         )).ToList();
     }
 }
