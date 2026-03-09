@@ -118,6 +118,7 @@ public static class BusinessSeeder
         // ── 95 ek işletme — Mersin genelinde gerçekçi dağılım ──────────────────
         var bulkBusinesses = GetBulkBusinessData();
         var createdCount = 0;
+        var allByName = new Dictionary<string, Guid>(existingByName, StringComparer.OrdinalIgnoreCase);
 
         foreach (var b in bulkBusinesses)
         {
@@ -141,9 +142,59 @@ public static class BusinessSeeder
 
             if (data is not null)
             {
+                var id = data.Value.GetProperty("id").GetGuid();
+                allByName[b.Name] = id;
                 createdCount++;
                 if (createdCount % 10 == 0)
                     Console.WriteLine($"  ✓ {createdCount} işletme oluşturuldu...");
+            }
+        }
+
+        // Alan bazlı işletmeleri ctx'e kaydet (yerleştirme seeder'ı için)
+        var bizMapping = new Dictionary<string, string>
+        {
+            // EET sektörlü (Elektrik-Elektronik)
+            ["Mezitli Elektrik Sanayi"] = "EET_Biz1",
+            ["Akdeniz Enerji Sistemleri"] = "EET_Biz2",
+            ["Solar Panel Mersin"] = "EET_Biz3",
+            ["Endüstriyel Kontrol Sistemleri"] = "EET_Biz4",
+            ["Akıllı Ev Teknolojileri"] = "EET_Biz5",
+            ["Elektro-Tek Mühendislik"] = "EET_Biz6",
+            ["Otomasyon Teknoloji A.Ş."] = "EET_Biz7",
+            ["LED Aydınlatma Mersin"] = "EET_Biz8",
+            ["Mekatronik Çözümler"] = "EET_Biz9",
+            ["Asansör Teknik Mersin"] = "EET_Biz10",
+            ["Medikal Cihaz Mersin"] = "EET_Biz11",
+            // BT sektörlü (Bilişim Teknolojileri)
+            ["Datamarin Yazılım A.Ş."] = "BT_Biz1",
+            ["Netsis Mersin Bayi"] = "BT_Biz2",
+            ["Kodlama Akademi Ltd. Şti."] = "BT_Biz3",
+            ["Akıllı Çözümler Bilişim"] = "BT_Biz4",
+            ["Mersin Web Tasarım"] = "BT_Biz5",
+            ["Bulut Bilgi Sistemleri"] = "BT_Biz6",
+            ["Siber Güvenlik Mersin"] = "BT_Biz7",
+            ["ERP Çözümleri Ltd. Şti."] = "BT_Biz8",
+            ["Yapay Zeka Laboratuvarı"] = "BT_Biz9",
+            ["Akdeniz Veri Merkezi"] = "BT_Biz10",
+            ["MersinSoft Yazılım"] = "BT_Biz11",
+            ["GameDev Studio Mersin"] = "BT_Biz12",
+            // MTT sektörlü (Makine/Metal)
+            ["Toroslar Makine Sanayi"] = "MTT_Biz1",
+            ["CNC Hassas İşleme"] = "MTT_Biz2",
+            ["Hidrolik Pnömatik Sistemler"] = "MTT_Biz3",
+            ["Klima ve Soğutma Sistemleri"] = "MTT_Biz4",
+            ["Torna ve Freze Atölyesi"] = "MTT_Biz5",
+            ["Çelik Konstrüksiyon Mersin"] = "MTT_Biz6",
+            ["Mersin Döküm Sanayi"] = "MTT_Biz7",
+            ["Kaynak ve Metal İşleri"] = "MTT_Biz8",
+            ["Alüminyum Profil A.Ş."] = "MTT_Biz9",
+            ["Otomotiv Yedek Parça Mersin"] = "MTT_Biz10",
+        };
+        foreach (var (name, ctxKey) in bizMapping)
+        {
+            if (allByName.TryGetValue(name, out var bizId))
+            {
+                ctx.Set(ctxKey, bizId);
             }
         }
 
