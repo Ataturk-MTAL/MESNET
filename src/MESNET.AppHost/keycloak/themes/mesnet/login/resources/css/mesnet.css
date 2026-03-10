@@ -1,5 +1,5 @@
 /* ─── MESNET Keycloak Login Theme ───
-   Quasar Material Design uyumlu tema
+   Quasar Material Design uyumlu tema — Keycloak 26 (PatternFly v4)
    Primary: #1976D2 (Material Blue 700)
    Secondary: #26A69A (Material Teal 400)
 ────────────────────────────────────── */
@@ -12,177 +12,290 @@
   --mesnet-surface: #FFFFFF;
   --mesnet-background: #F5F5F5;
   --mesnet-text: #212121;
-  --mesnet-text-secondary: #757575;
+  --mesnet-text-secondary: #616161;
   --mesnet-border: #E0E0E0;
   --mesnet-error: #C10015;
-  --mesnet-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
-  --mesnet-shadow-hover: 0 4px 8px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
-  --mesnet-radius: 8px;
-  --mesnet-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --mesnet-radius: 12px;
+  --mesnet-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ─── Page Background ─── */
+html.login-pf,
 .login-pf body,
-body.kc-login {
-  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 50%, #E8F5E9 100%) !important;
-  font-family: 'Roboto', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+body[data-page-id] {
+  background: linear-gradient(160deg, #e8eaf6 0%, #bbdefb 40%, #c8e6c9 100%) !important;
+  font-family: 'Roboto', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif !important;
   min-height: 100vh;
+  margin: 0;
+}
+
+/* ─── Center Layout ─── */
+.login-pf-page {
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100vh !important;
+  padding: 2rem 1rem !important;
+}
+
+.login-pf-page .container-fluid {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100vh !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+/* ─── Header / MESNET Title ─── */
+#kc-header {
+  background: transparent !important;
+  padding: 0 !important;
+  margin-bottom: 0.5rem !important;
+}
+
+#kc-header-wrapper {
+  text-align: center !important;
+  padding: 0 !important;
+  font-size: 2.25rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+  color: var(--mesnet-primary) !important;
+  text-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
 }
 
 /* ─── Login Card ─── */
-#kc-login {
-  background: var(--mesnet-surface);
-  border-radius: var(--mesnet-radius);
-  box-shadow: var(--mesnet-shadow);
-  transition: var(--mesnet-transition);
-  border: none;
-}
-
-#kc-login:hover {
-  box-shadow: var(--mesnet-shadow-hover);
-}
-
-/* Keycloak card container */
 .card-pf {
   background: var(--mesnet-surface) !important;
   border-radius: var(--mesnet-radius) !important;
-  box-shadow: var(--mesnet-shadow) !important;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.12),
+    0 24px 48px rgba(0, 0, 0, 0.06) !important;
   border: none !important;
-  padding: 2rem !important;
-  max-width: 440px !important;
+  padding: 2rem 2.5rem 2rem !important;
+  max-width: 420px !important;
+  width: 100% !important;
   margin: 0 auto !important;
+  transition: var(--mesnet-transition) !important;
 }
 
-/* ─── Header / Title ─── */
-#kc-header-wrapper {
-  text-align: center;
-  padding: 1.5rem 0;
+/* ─── Card Header ─── */
+.login-pf-header {
+  padding: 0 0 1rem 0 !important;
+  margin-bottom: 0.5rem !important;
 }
 
-#kc-header-wrapper h1,
-.kc-logo-text {
-  color: var(--mesnet-primary) !important;
+#kc-page-title {
+  font-size: 1.375rem !important;
   font-weight: 500 !important;
-  font-size: 1.75rem !important;
-  letter-spacing: -0.02em;
+  color: var(--mesnet-text) !important;
+  text-align: center !important;
+  margin: 0.5rem 0 0 !important;
+  line-height: 1.4 !important;
 }
 
-/* Header area */
-#kc-header {
-  background: transparent !important;
-  color: var(--mesnet-primary) !important;
+/* ─── Body/Content ─── */
+.login-pf-page .login-pf-body,
+.login-pf-page .login-pf-header {
+  padding: 0 !important;
+}
+
+#kc-content {
+  margin-top: 0 !important;
 }
 
 /* ─── Form Fields (Material style) ─── */
 .login-pf .form-control,
-input[type="text"],
-input[type="password"],
-input[type="email"] {
-  border: 1px solid var(--mesnet-border) !important;
-  border-radius: 4px !important;
-  padding: 12px 16px !important;
-  font-size: 1rem !important;
-  background: var(--mesnet-surface) !important;
+#kc-content input[type="text"],
+#kc-content input[type="password"],
+#kc-content input[type="email"] {
+  border: 1.5px solid var(--mesnet-border) !important;
+  border-radius: 6px !important;
+  padding: 14px 16px !important;
+  font-size: 0.9375rem !important;
+  background: #FAFAFA !important;
   color: var(--mesnet-text) !important;
   transition: var(--mesnet-transition) !important;
   outline: none !important;
   height: auto !important;
   box-shadow: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .login-pf .form-control:focus,
-input[type="text"]:focus,
-input[type="password"]:focus,
-input[type="email"]:focus {
+#kc-content input[type="text"]:focus,
+#kc-content input[type="password"]:focus,
+#kc-content input[type="email"]:focus {
   border-color: var(--mesnet-primary) !important;
-  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2) !important;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15) !important;
+  background: var(--mesnet-surface) !important;
+}
+
+.login-pf .form-control::placeholder {
+  color: #9E9E9E !important;
 }
 
 /* Labels */
 .login-pf label,
 .control-label {
   color: var(--mesnet-text-secondary) !important;
-  font-size: 0.875rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 500 !important;
   margin-bottom: 6px !important;
+  display: block !important;
+  letter-spacing: 0.01em;
+}
+
+/* Form groups spacing */
+.form-group {
+  margin-bottom: 1.25rem !important;
+}
+
+/* ─── Password wrapper (show/hide toggle) ─── */
+.pf-c-input-group,
+div[class*="kcInputGroup"] {
+  position: relative !important;
+}
+
+.pf-c-input-group input {
+  padding-right: 48px !important;
+}
+
+.pf-c-input-group .pf-c-button.pf-m-control,
+button[data-password-toggle] {
+  position: absolute !important;
+  right: 4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--mesnet-text-secondary) !important;
+  cursor: pointer !important;
+  padding: 8px !important;
+  z-index: 2 !important;
+  border-radius: 50% !important;
+  transition: var(--mesnet-transition) !important;
+}
+
+.pf-c-input-group .pf-c-button.pf-m-control:hover,
+button[data-password-toggle]:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: var(--mesnet-primary) !important;
 }
 
 /* ─── Primary Button (Material raised) ─── */
 .login-pf .btn-primary,
+#kc-login,
 #kc-login-btn,
 input[type="submit"].btn-primary,
-button.btn-primary {
-  background-color: var(--mesnet-primary) !important;
-  border-color: var(--mesnet-primary) !important;
+button.btn-primary,
+.pf-c-button.pf-m-primary {
+  background: linear-gradient(135deg, var(--mesnet-primary) 0%, var(--mesnet-primary-dark) 100%) !important;
+  border: none !important;
   color: #FFFFFF !important;
-  border-radius: 4px !important;
-  padding: 10px 24px !important;
+  border-radius: 6px !important;
+  padding: 12px 24px !important;
   font-size: 0.9375rem !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
-  box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3) !important;
+  letter-spacing: 0.06em !important;
+  box-shadow: 0 3px 8px rgba(25, 118, 210, 0.35) !important;
   transition: var(--mesnet-transition) !important;
   cursor: pointer !important;
   outline: none !important;
   width: 100% !important;
-  min-height: 44px !important;
+  min-height: 48px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-top: 0.5rem !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
 }
 
 .login-pf .btn-primary:hover,
+#kc-login:hover,
 #kc-login-btn:hover,
 input[type="submit"].btn-primary:hover,
-button.btn-primary:hover {
-  background-color: var(--mesnet-primary-dark) !important;
-  border-color: var(--mesnet-primary-dark) !important;
-  box-shadow: 0 4px 8px rgba(25, 118, 210, 0.4) !important;
+button.btn-primary:hover,
+.pf-c-button.pf-m-primary:hover {
+  background: linear-gradient(135deg, var(--mesnet-primary-dark) 0%, #0D47A1 100%) !important;
+  box-shadow: 0 6px 16px rgba(25, 118, 210, 0.45) !important;
   transform: translateY(-1px);
 }
 
 .login-pf .btn-primary:active,
-#kc-login-btn:active {
-  background-color: #0D47A1 !important;
-  box-shadow: 0 1px 2px rgba(25, 118, 210, 0.3) !important;
+#kc-login:active,
+#kc-login-btn:active,
+input[type="submit"].btn-primary:active {
+  background: #0D47A1 !important;
+  box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3) !important;
   transform: translateY(0);
+}
+
+.login-pf .btn-primary:focus-visible {
+  outline: 2px solid var(--mesnet-primary-light) !important;
+  outline-offset: 2px !important;
 }
 
 /* ─── Secondary / Link Buttons ─── */
 .login-pf .btn-default,
-.login-pf a {
+.login-pf a,
+#kc-content a {
   color: var(--mesnet-primary) !important;
   text-decoration: none !important;
   transition: var(--mesnet-transition) !important;
+  font-weight: 500 !important;
+  font-size: 0.8125rem !important;
 }
 
-.login-pf a:hover {
+.login-pf a:hover,
+#kc-content a:hover {
   color: var(--mesnet-primary-dark) !important;
-  text-decoration: underline !important;
+  text-decoration: none !important;
+}
+
+/* ─── Forgot Password Link ─── */
+#kc-form-options {
+  margin-top: 0.25rem !important;
+  text-align: right !important;
+}
+
+#kc-form-options .checkbox {
+  display: none !important; /* remember me genelde gereksiz */
 }
 
 /* ─── Checkbox (Material style) ─── */
 .login-pf .checkbox label,
 .login-pf .checkbox-inline {
   color: var(--mesnet-text-secondary) !important;
-  font-size: 0.875rem !important;
+  font-size: 0.8125rem !important;
 }
 
 /* ─── Alert Messages ─── */
+.login-pf .alert,
 .login-pf .alert-error,
 .login-pf .alert-danger,
 .kc-feedback-text {
   background-color: #FFEBEE !important;
   border: 1px solid #EF9A9A !important;
   color: var(--mesnet-error) !important;
-  border-radius: 4px !important;
+  border-radius: 6px !important;
   padding: 12px 16px !important;
-  font-size: 0.875rem !important;
+  font-size: 0.8125rem !important;
+  margin-bottom: 1rem !important;
 }
 
 .login-pf .alert-warning {
   background-color: #FFF8E1 !important;
   border: 1px solid #FFE082 !important;
-  color: #F57F17 !important;
-  border-radius: 4px !important;
+  color: #E65100 !important;
+  border-radius: 6px !important;
 }
 
 .login-pf .alert-info,
@@ -190,73 +303,155 @@ button.btn-primary:hover {
   background-color: #E8F5E9 !important;
   border: 1px solid #A5D6A7 !important;
   color: #2E7D32 !important;
-  border-radius: 4px !important;
+  border-radius: 6px !important;
+}
+
+.pf-c-alert__description,
+.pf-c-alert__title {
+  font-size: 0.8125rem !important;
 }
 
 /* ─── Locale Selector ─── */
-#kc-locale ul {
-  background: var(--mesnet-surface) !important;
-  border-radius: 4px !important;
-  box-shadow: var(--mesnet-shadow) !important;
-  border: 1px solid var(--mesnet-border) !important;
+#kc-locale {
+  position: relative !important;
+  text-align: right !important;
+  margin-bottom: 0.25rem !important;
 }
 
+#kc-current-locale-link {
+  background: transparent !important;
+  border: 1px solid var(--mesnet-border) !important;
+  border-radius: 4px !important;
+  padding: 4px 12px !important;
+  font-size: 0.75rem !important;
+  color: var(--mesnet-text-secondary) !important;
+  cursor: pointer !important;
+  transition: var(--mesnet-transition) !important;
+}
+
+#kc-current-locale-link:hover {
+  border-color: var(--mesnet-primary) !important;
+  color: var(--mesnet-primary) !important;
+}
+
+#kc-locale .pf-c-dropdown__menu,
+#kc-locale ul {
+  background: var(--mesnet-surface) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid var(--mesnet-border) !important;
+  overflow: hidden !important;
+  min-width: 140px !important;
+}
+
+#kc-locale .pf-c-dropdown__menu-item,
 #kc-locale a {
   color: var(--mesnet-text) !important;
   padding: 8px 16px !important;
+  font-size: 0.8125rem !important;
+  display: block !important;
+  font-weight: 400 !important;
 }
 
+#kc-locale .pf-c-dropdown__menu-item:hover,
 #kc-locale a:hover {
   background: #E3F2FD !important;
+  text-decoration: none !important;
 }
 
 /* ─── Footer / Links ─── */
 #kc-registration,
 #kc-info {
   text-align: center !important;
-  margin-top: 1rem !important;
+  margin-top: 1.25rem !important;
+  padding-top: 1rem !important;
+  border-top: 1px solid #F0F0F0 !important;
+}
+
+#kc-registration span,
+#kc-info span {
+  font-size: 0.8125rem !important;
+  color: var(--mesnet-text-secondary) !important;
 }
 
 #kc-registration a,
 #kc-info a {
   color: var(--mesnet-primary) !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
 }
 
-/* ─── Remember Me / Forgot Password Row ─── */
-#kc-form-options {
-  margin-top: 0.5rem !important;
+/* ─── Error page ─── */
+#kc-error-message .instruction {
+  text-align: center !important;
+  color: var(--mesnet-text-secondary) !important;
+  font-size: 0.9375rem !important;
+  padding: 1rem 0 !important;
 }
 
 /* ─── Social Login Buttons ─── */
-#kc-social-providers .zocial {
-  border-radius: 4px !important;
+#kc-social-providers .zocial,
+#kc-social-providers .pf-c-button {
+  border-radius: 6px !important;
   padding: 10px 16px !important;
   transition: var(--mesnet-transition) !important;
+  width: 100% !important;
+  margin-bottom: 0.5rem !important;
 }
 
 /* ─── Responsive ─── */
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .card-pf {
-    margin: 1rem !important;
+    margin: 0.5rem !important;
     padding: 1.5rem !important;
+    border-radius: 8px !important;
+  }
+
+  #kc-header-wrapper {
+    font-size: 1.75rem !important;
+  }
+
+  .login-pf-page {
+    padding: 1rem 0.5rem !important;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .card-pf {
+    padding: 2rem !important;
+    max-width: 400px !important;
   }
 }
 
 /* ─── Remove PatternFly defaults that conflict ─── */
-.login-pf-page .login-pf-header,
 .login-pf-page .login-pf-body {
   padding: 0 !important;
 }
 
-.login-pf-page {
-  background: transparent !important;
+/* Remove default background image */
+.login-pf-page .login-pf-page-header {
+  margin-bottom: 0 !important;
 }
 
-/* Center the login container */
-.login-pf-page .container-fluid {
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  min-height: 100vh !important;
+/* Fix for PF4 form-horizontal */
+.login-pf .form-horizontal .form-group {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Remove PF4 card border */
+.pf-c-card,
+.card-pf::before,
+.card-pf::after {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ─── Smooth page load ─── */
+html.login-pf body {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
