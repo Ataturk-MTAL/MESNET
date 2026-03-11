@@ -231,9 +231,10 @@ export interface AssignmentHistoryEntryDto {
 }
 
 export interface CoordinationSummaryDto {
-  totalAvailableHours: number
+  totalWorkloadPool: number
   totalAssignedHours: number
   remainingHours: number
+  totalMaxHours: number
   assignedBusinessCount: number
   unassignedBusinessCount: number
   teacherWorkloads: TeacherWorkloadSummaryDto[]

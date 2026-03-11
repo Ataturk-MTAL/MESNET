@@ -93,9 +93,10 @@ public sealed record AssignmentHistoryEntryDto(
 public sealed record AssignedSlotInfoDto(string Day, int PeriodNumber);
 
 public sealed record CoordinationSummaryDto(
-    int TotalAvailableHours,
+    int TotalWorkloadPool,
     int TotalAssignedHours,
     int RemainingHours,
+    int TotalMaxHours,
     int AssignedBusinessCount,
     int UnassignedBusinessCount,
     List<TeacherWorkloadSummaryDto> TeacherWorkloads);

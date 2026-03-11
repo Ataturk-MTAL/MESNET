@@ -169,8 +169,8 @@
                 <div class="col-6 col-sm-3">
                   <q-card flat bordered>
                     <q-card-section class="text-center q-pa-sm">
-                      <div class="text-caption text-grey-7">Verilebilir Saat</div>
-                      <div class="text-h5 text-green-8">{{ summary.totalAvailableHours }}</div>
+                      <div class="text-caption text-grey-7">Ders Yükü Havuzu</div>
+                      <div class="text-h5 text-green-8">{{ summary.totalWorkloadPool }}</div>
                     </q-card-section>
                   </q-card>
                 </div>
@@ -345,7 +345,7 @@
             <template #avatar>
               <q-icon name="error" color="red-7" />
             </template>
-            Toplam dağıtılan saat ({{ summary.totalAssignedHours }}) toplam verilebilir saati ({{ summary.totalAvailableHours }}) aşıyor.
+            Toplam dağıtılan saat ({{ summary.totalAssignedHours }}) ders yükü havuzunu ({{ summary.totalWorkloadPool }}) aşıyor.
           </q-banner>
         </q-tab-panel>
 
@@ -528,17 +528,13 @@
               </div>
 
               <!-- Uyarı Banner'ları -->
-              <q-banner v-if="hoursPoolOverLimit" rounded class="bg-red-1 text-red-9 q-mb-md">
-                <template #avatar><q-icon name="error" color="red-7" /></template>
-                Toplam takdir edilen saat ({{ hoursTotalAssigned }}) ders yükü havuzunu ({{ workloadConfig?.totalWorkloadPool ?? '—' }}) aşıyor!
-              </q-banner>
               <q-banner v-if="hoursOverLimit" rounded class="bg-red-1 text-red-9 q-mb-md">
                 <template #avatar><q-icon name="error" color="red-7" /></template>
-                Toplam takdir edilen saat ({{ hoursTotalAssigned }}) toplam verilebilir saati ({{ hoursTotalAvailable }}) aşıyor!
+                Toplam takdir edilen saat ({{ hoursTotalAssigned }}) ders yükü havuzunu ({{ hoursWorkloadPool }}) aşıyor!
               </q-banner>
               <q-banner v-else-if="hoursNearLimit" rounded class="bg-orange-1 text-orange-9 q-mb-md">
                 <template #avatar><q-icon name="warning" color="orange-7" /></template>
-                Toplam takdir edilen saat verilebilir saate yaklaşıyor: {{ hoursTotalAssigned }} / {{ hoursTotalAvailable }}
+                Toplam takdir edilen saat havuza yaklaşıyor: {{ hoursTotalAssigned }} / {{ hoursWorkloadPool }}
               </q-banner>
 
               <q-markup-table flat bordered separator="cell" class="q-mb-md">
@@ -593,12 +589,10 @@
               <!-- Özet + Kaydet -->
               <div class="row items-center q-mt-md">
                 <div class="text-body2">
-                  Σ Maks: <strong class="text-green-8">{{ hoursTotalAvailable }}</strong>
+                  Havuz: <strong class="text-green-8">{{ hoursWorkloadPool }}</strong>
                   &nbsp;|&nbsp; Σ Takdir: <strong :class="hoursOverLimit ? 'text-red-8' : 'text-blue-8'">{{ hoursTotalAssigned }}</strong>
-                  <template v-if="workloadConfig">
-                    &nbsp;|&nbsp; Havuz: <strong class="text-teal-8">{{ workloadConfig.totalWorkloadPool }}</strong>
-                  </template>
                   &nbsp;|&nbsp; Kalan: <strong class="text-orange-8">{{ hoursRemaining }}</strong>
+                  &nbsp;|&nbsp; Σ Maks: <strong class="text-grey-6">{{ hoursTotalMaxHours }}</strong>
                 </div>
                 <q-space />
                 <q-btn
@@ -729,9 +723,10 @@ const assignments = ref<BusinessAssignmentDto[]>([])
 const rawSchedule = ref<DailyScheduleDto[]>([])
 
 const summary = ref<CoordinationSummaryDto>({
-  totalAvailableHours: 0,
+  totalWorkloadPool: 0,
   totalAssignedHours: 0,
   remainingHours: 0,
+  totalMaxHours: 0,
   assignedBusinessCount: 0,
   unassignedBusinessCount: 0,
   teacherWorkloads: [],
@@ -749,7 +744,7 @@ const selectedTeacherName = computed(() => {
 })
 
 const isOverLimit = computed(
-  () => summary.value.totalAssignedHours > summary.value.totalAvailableHours,
+  () => summary.value.totalWorkloadPool > 0 && summary.value.totalAssignedHours > summary.value.totalWorkloadPool,
 )
 
 const totalTeacherBusinessCount = computed(() =>
@@ -902,12 +897,12 @@ const teacherOverview = useTeacherOverview({
   notify,
 })
 
-// Re-export composable values used by template (only pool data for warnings)
-const { workloadConfig, loadWorkloadConfig } = workload
+// Re-export composable values used by template
+const { loadWorkloadConfig } = workload
 
 const {
-  editedHours, hoursSaving, hoursTotalAvailable, hoursTotalAssigned,
-  hoursRemaining, hoursOverLimit, hoursNearLimit, hoursPoolOverLimit,
+  editedHours, hoursSaving, hoursTotalMaxHours, hoursWorkloadPool,
+  hoursTotalAssigned, hoursRemaining, hoursOverLimit, hoursNearLimit,
   changedHoursCount, saveHours,
 } = hours
 

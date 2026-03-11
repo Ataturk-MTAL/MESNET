@@ -1,6 +1,7 @@
 using Marten;
 using MESNET.Coordination.Application.Dtos;
 using MESNET.Coordination.Application.Queries;
+using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.ReadModels;
 
 namespace MESNET.Coordination.Application.Handlers;
@@ -23,10 +24,24 @@ public static class GetCoordinationSummaryHandler
 
         var views = await queryable.ToListAsync(cancellationToken);
 
-        var totalAvailable = views.Sum(v => v.MaxCoordinationHours);
+        var totalMaxHours = views.Sum(v => v.MaxCoordinationHours);
         var totalAssigned = views.Sum(v => v.AssignedHours);
         var assignedCount = views.Count(v => v.AssignedTeacherId is not null);
         var unassignedCount = views.Count(v => v.AssignedTeacherId is null);
+
+        // Ders yükü havuzunu BranchWorkloadConfig'den oku
+        var totalWorkloadPool = 0;
+        if (!string.IsNullOrWhiteSpace(query.BranchCode) && query.AcademicPeriodId.HasValue)
+        {
+            var workloadConfig = await session.Query<BranchWorkloadConfig>()
+                .FirstOrDefaultAsync(c =>
+                    c.InstitutionId == query.InstitutionId &&
+                    c.BranchCode == query.BranchCode &&
+                    c.AcademicPeriodId == query.AcademicPeriodId.Value,
+                    cancellationToken);
+
+            totalWorkloadPool = workloadConfig?.TotalWorkloadPool ?? 0;
+        }
 
         // Öğretmen bazlı özet
         var teacherWorkloads = views
@@ -42,9 +57,10 @@ public static class GetCoordinationSummaryHandler
             .ToList();
 
         return new CoordinationSummaryDto(
-            totalAvailable,
+            totalWorkloadPool,
             totalAssigned,
-            totalAvailable - totalAssigned,
+            totalWorkloadPool - totalAssigned,
+            totalMaxHours,
             assignedCount,
             unassignedCount,
             teacherWorkloads

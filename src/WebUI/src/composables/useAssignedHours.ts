@@ -27,26 +27,29 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
     editedHours.value = map
   }
 
-  const hoursTotalAvailable = computed(() =>
+  /** Σ MaxCoordinationHours — işletmelerin mesafe bazlı max saatlerinin toplamı (ikincil referans) */
+  const hoursTotalMaxHours = computed(() =>
     assignments.value.reduce((sum, a) => sum + a.maxCoordinationHours, 0),
   )
+
+  /** Ders yükü havuzu — birincil kısıt */
+  const hoursWorkloadPool = computed(() => workloadConfig.value?.totalWorkloadPool ?? 0)
 
   const hoursTotalAssigned = computed(() =>
     Object.values(editedHours.value).reduce((sum, h) => sum + h, 0),
   )
 
-  const hoursRemaining = computed(() => hoursTotalAvailable.value - hoursTotalAssigned.value)
+  const hoursRemaining = computed(() => hoursWorkloadPool.value - hoursTotalAssigned.value)
 
-  const hoursOverLimit = computed(() => hoursTotalAssigned.value > hoursTotalAvailable.value)
-
-  const hoursNearLimit = computed(() =>
-    !hoursOverLimit.value && hoursTotalAssigned.value > hoursTotalAvailable.value * 0.9,
+  const hoursOverLimit = computed(() =>
+    hoursWorkloadPool.value > 0 && hoursTotalAssigned.value > hoursWorkloadPool.value,
   )
 
-  const hoursPoolOverLimit = computed(() => {
-    if (!workloadConfig.value) return false
-    return hoursTotalAssigned.value > workloadConfig.value.totalWorkloadPool
-  })
+  const hoursNearLimit = computed(() =>
+    hoursWorkloadPool.value > 0 &&
+    !hoursOverLimit.value &&
+    hoursTotalAssigned.value > hoursWorkloadPool.value * 0.9,
+  )
 
   const changedHoursCount = computed(() => {
     let count = 0
@@ -91,12 +94,12 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
   return {
     editedHours,
     hoursSaving,
-    hoursTotalAvailable,
+    hoursTotalMaxHours,
+    hoursWorkloadPool,
     hoursTotalAssigned,
     hoursRemaining,
     hoursOverLimit,
     hoursNearLimit,
-    hoursPoolOverLimit,
     changedHoursCount,
     initEditedHours,
     saveHours,

@@ -48,6 +48,12 @@ public static class AssignBusinessToTeacherHandler
         // Öğretmen başına azami koordinatörlük saati kontrolü
         await ValidateTeacherHourLimit(session, command.TeacherId, command.InstitutionId, view.Id, cancellationToken);
 
+        // Ders yükü havuzu kontrolü — ilk atamada takdir edilen saat varsa havuzu aşmasın
+        if (view.AssignedSlots.Count == 0 && command.AssignedHours > 0)
+        {
+            await ValidateWorkloadPool(session, view, command.AssignedHours, cancellationToken);
+        }
+
         // İlk slot → öğretmen bilgisi ve takdir edilen saat set et
         if (view.AssignedSlots.Count == 0)
         {
@@ -117,6 +123,38 @@ public static class AssignBusinessToTeacherHandler
             command.PeriodNumber ?? 0,
             0,
             string.Empty);
+    }
+
+    private static async Task ValidateWorkloadPool(
+        IDocumentSession session,
+        BusinessCoordinationView view,
+        int newAssignedHours,
+        CancellationToken cancellationToken)
+    {
+        var workloadConfig = await session.Query<BranchWorkloadConfig>()
+            .FirstOrDefaultAsync(c =>
+                c.InstitutionId == view.InstitutionId &&
+                c.BranchCode == view.BranchCode &&
+                c.AcademicPeriodId == view.AcademicPeriodId,
+                cancellationToken);
+
+        if (workloadConfig is null) return;
+
+        var otherAssigned = await session.Query<BusinessCoordinationView>()
+            .Where(b =>
+                b.InstitutionId == view.InstitutionId &&
+                b.BranchCode == view.BranchCode &&
+                b.AcademicPeriodId == view.AcademicPeriodId &&
+                b.Id != view.Id)
+            .SumAsync(b => b.AssignedHours, cancellationToken);
+
+        var totalAssigned = otherAssigned + newAssignedHours;
+
+        if (totalAssigned > workloadConfig.TotalWorkloadPool)
+        {
+            throw new DomainException(
+                CoordinationErrors.WorkloadPoolExceeded(totalAssigned, workloadConfig.TotalWorkloadPool));
+        }
     }
 
     private static async Task ValidateTeacherHourLimit(
