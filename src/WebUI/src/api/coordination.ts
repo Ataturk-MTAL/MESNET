@@ -307,6 +307,7 @@ export interface BusinessClusterDto {
   isAssigned: boolean
   activeStudentCount: number
   distanceToSchoolKm: number | null
+  maxCoordinationHours: number
 }
 
 export interface SetManualDistanceRequest {
@@ -482,9 +483,9 @@ export const coordinationApi = {
 
   // ── Business Clusters ──
 
-  getBusinessClusters: (epsMeters = 1000, minPoints = 3) =>
+  getBusinessClusters: (epsMeters = 1000, minPoints = 3, branchCode?: string | null) =>
     api.get<BusinessClusterDto[]>('/coordination/teachers/business-clusters', {
-      params: { epsMeters, minPoints },
+      params: { epsMeters, minPoints, branchCode: branchCode ?? undefined },
     }),
 
   // ── Branch Workload Config ──

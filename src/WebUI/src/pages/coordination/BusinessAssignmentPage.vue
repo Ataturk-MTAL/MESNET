@@ -887,6 +887,7 @@ const dnd = useAssignmentDnD({
 const cluster = useClusterMap({
   notify,
   loadData,
+  branchFilter,
 })
 
 const teacherOverview = useTeacherOverview({
@@ -943,10 +944,8 @@ function onBranchChange() {
   selectedTeacherId.value = null
   rawSchedule.value = []
   dnd.clearPending()
-  // TeacherSelector kendi watch'ı ile branchCode değişimini algılar ve reload yapar.
-  // Sayfa düzeyindeki teacherOpts'u da güncelle (isim çözümleme için).
-  const instId = authStore.user?.institutionId ?? undefined
-  teacherOpts.reload({ institutionId: instId, branchCode: branchFilter.value ?? undefined }).catch(() => {})
+  // TeacherSelector ve sayfa düzeyindeki teacherOpts tüm öğretmenleri tutar;
+  // branch değişiminde client-side filtreleme yeterli, yeniden yüklemeye gerek yok.
   loadData().catch(() => {})
   loadWorkloadConfig().catch(() => {})
 }

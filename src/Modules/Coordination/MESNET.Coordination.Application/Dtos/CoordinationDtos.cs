@@ -159,4 +159,5 @@ public sealed record BusinessClusterDto(
     string? AssignedTeacherName,
     bool IsAssigned,
     int ActiveStudentCount,
-    double? DistanceToSchoolKm);
+    double? DistanceToSchoolKm,
+    int MaxCoordinationHours);     // mesafe formülünden hesaplanan maks saat

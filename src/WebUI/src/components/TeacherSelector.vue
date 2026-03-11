@@ -25,18 +25,15 @@
         <q-item-section>
           <q-item-label>{{ scope.opt.label }}</q-item-label>
           <q-item-label
-            v-if="showCrossBranch && branchCode && scope.opt.branchCode !== branchCode"
+            v-if="isCrossBranch(scope.opt)"
             caption
             class="text-orange-8"
           >
-            Farklı alan: {{ scope.opt.branchCode }}
+            Alan: {{ scope.opt.branchCode }}
           </q-item-label>
         </q-item-section>
-        <q-item-section
-          v-if="showCrossBranch && branchCode && scope.opt.branchCode !== branchCode"
-          side
-        >
-          <q-badge color="orange" label="Farklı alan" />
+        <q-item-section v-if="isCrossBranch(scope.opt)" side>
+          <q-badge color="orange" label="Alan dışı" />
         </q-item-section>
       </q-item>
     </template>
@@ -50,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useTeacherOptions } from 'src/composables/useEntityOptions'
 import { useAuthStore } from 'stores/auth'
 
@@ -82,9 +79,12 @@ const filteredOptions = computed(() => {
   let opts = [...teacherOpts.allOptions.value]
   if (needle) {
     opts = opts.filter((o) => o.label.toLowerCase().includes(needle))
+  } else if (props.branchCode && !props.showCrossBranch) {
+    // Arama yokken sadece alan öğretmenlerini göster
+    opts = opts.filter((o) => o.branchCode === props.branchCode)
   }
-  // Cross-branch sıralama: kendi alan öğretmenleri üstte
-  if (props.branchCode && props.showCrossBranch) {
+  // Sıralama: kendi alan öğretmenleri üstte
+  if (props.branchCode) {
     opts.sort((a, b) => {
       const aOwn = a.branchCode === props.branchCode ? 0 : 1
       const bOwn = b.branchCode === props.branchCode ? 0 : 1
@@ -94,29 +94,20 @@ const filteredOptions = computed(() => {
   return opts
 })
 
+function isCrossBranch(opt: { branchCode?: string | null }) {
+  return !!props.branchCode && opt.branchCode !== props.branchCode
+}
+
 function onFilter(val: string, update: (fn: () => void) => void) {
   update(() => {
     filterNeedle.value = val
   })
 }
 
-// Branch değiştiğinde öğretmen listesini yeniden yükle
-watch(() => props.branchCode, async (newBranch) => {
-  const instId = authStore.user?.institutionId ?? undefined
-  if (newBranch) {
-    await teacherOpts.reload({ institutionId: instId, branchCode: newBranch })
-  } else {
-    await teacherOpts.reload({ institutionId: instId })
-  }
-})
-
+// Tüm öğretmenleri yükle — filtreleme client-side yapılır
 onMounted(async () => {
   const instId = authStore.user?.institutionId ?? undefined
-  if (props.branchCode) {
-    await teacherOpts.reload({ institutionId: instId, branchCode: props.branchCode })
-  } else {
-    await teacherOpts.load({ institutionId: instId })
-  }
+  await teacherOpts.load({ institutionId: instId })
 })
 
 defineExpose({

@@ -92,6 +92,10 @@
               <div class="text-caption">
                 <span class="text-grey-6">Öğrenci:</span> {{ biz.activeStudentCount }}
               </div>
+              <div class="text-caption">
+                <span class="text-grey-6">Verilebilir Maks:</span>
+                <strong class="text-green-8">{{ biz.maxCoordinationHours }} saat</strong>
+              </div>
               <q-separator class="q-my-xs" />
               <div v-if="biz.isAssigned" class="text-caption text-positive">
                 <q-icon name="check_circle" size="12px" /> {{ biz.assignedTeacherName }}
@@ -113,6 +117,8 @@
                     outlined
                     label="Takdir Edilen Saat"
                     :min="1"
+                    :max="biz.maxCoordinationHours"
+                    :hint="`Maks: ${biz.maxCoordinationHours}`"
                     style="width: 120px"
                     @update:model-value="v => setPopupHours(biz.businessId, Number(v))"
                   />
@@ -125,7 +131,7 @@
                     size="sm"
                     @click.stop="savePopupHours(biz.businessId)"
                   >
-                    <q-tooltip>Kaydet</q-tooltip>
+                    <q-tooltip>Kaydet ve kapat</q-tooltip>
                   </q-btn>
                 </div>
               </template>
@@ -202,6 +208,10 @@ function savePopupHours(businessId: string) {
   const val = popupHoursInput.value[businessId]
   if (val != null && val > 0) {
     emit('update:hours', businessId, val)
+    // Popup'ı kapat
+    if (mapRef.value) {
+      ;(mapRef.value as { leafletObject?: { closePopup?: () => void } }).leafletObject?.closePopup?.()
+    }
   }
 }
 

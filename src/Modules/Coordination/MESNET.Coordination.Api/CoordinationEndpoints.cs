@@ -334,11 +334,12 @@ public static class CoordinationEndpoints
     private static async Task<IResult> GetBusinessClusters(
         double epsMeters,
         int minPoints,
+        string? branchCode,
         IMessageBus bus,
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
-        var query = new GetBusinessClusters(instId, epsMeters, minPoints);
+        var query = new GetBusinessClusters(instId, epsMeters, minPoints, branchCode);
         var result = await bus.InvokeAsync<List<BusinessClusterDto>>(query);
 
         return Results.Ok(ResponseBuilder.Success()

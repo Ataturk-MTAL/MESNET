@@ -6,7 +6,7 @@
     <!-- Wolverine -->
     <PackageVersion Include="Aspire.Hosting.Docker" Version="13.1.2-preview.1.26125.13" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="13.1.1" />
-    <PackageVersion Include="MailKit" Version="4.15.0" />
+    <PackageVersion Include="MailKit" Version="4.15.1" />
     <PackageVersion Include="Mjml.Net" Version="4.11.0" />
     <PackageVersion Include="WolverineFx" Version="5.15.0" />
     <PackageVersion Include="WolverineFx.Http" Version="5.15.0" />

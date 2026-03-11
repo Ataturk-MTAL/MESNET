@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, type Ref } from 'vue'
 import { coordinationApi, type BusinessClusterDto } from 'src/api/coordination'
 import type { useNotify } from 'src/composables/useNotify'
 
@@ -12,10 +12,11 @@ const CLUSTER_COLORS = [
 export interface UseClusterMapOptions {
   notify: ReturnType<typeof useNotify>
   loadData: () => Promise<void>
+  branchFilter: Ref<string | null>
 }
 
 export function useClusterMap(options: UseClusterMapOptions) {
-  const { notify, loadData } = options
+  const { notify, loadData, branchFilter } = options
 
   const clusterData = ref<BusinessClusterDto[]>([])
   const clusterLoading = ref(false)
@@ -55,6 +56,7 @@ export function useClusterMap(options: UseClusterMapOptions) {
       const { data } = await coordinationApi.getBusinessClusters(
         clusterEps.value,
         clusterMinPoints.value,
+        branchFilter.value,
       )
       clusterData.value = data
     } catch {

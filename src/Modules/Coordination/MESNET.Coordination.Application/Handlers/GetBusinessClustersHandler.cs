@@ -12,6 +12,7 @@ public static class GetBusinessClustersHandler
     /// eps parametresi metre → derece dönüşümü SQL içinde yapılır:
     ///   eps_degrees = eps_meters / (111320 * cos(radians(avg_lat)))
     /// avg_lat: tüm işletmelerin ortalama enlemi (CTE ile hesaplanır).
+    /// BranchCode filtresi opsiyonel — NULL geçilirse tüm alanlar döner.
     /// </summary>
     private const string ClusterSql = """
         WITH avg_lat AS (
@@ -20,6 +21,7 @@ public static class GetBusinessClustersHandler
             WHERE (data->>'institutionId')::uuid = @institutionId
               AND data->'location' IS NOT NULL
               AND data->'location'->>'latitude' IS NOT NULL
+              AND (@branchCode IS NULL OR data->>'branchCode' = @branchCode)
         )
         SELECT
             (data->>'id')::uuid                                        AS business_id,
@@ -34,6 +36,7 @@ public static class GetBusinessClustersHandler
                  THEN true ELSE false END                              AS is_assigned,
             COALESCE((data->>'activeStudentCount')::int, 0)            AS active_student_count,
             (data->>'distanceToSchoolKm')::float8                     AS distance_km,
+            COALESCE((data->>'maxCoordinationHours')::int, 0)          AS max_coordination_hours,
             ST_ClusterDBSCAN(
                 ST_SetSRID(
                     ST_MakePoint(
@@ -49,6 +52,7 @@ public static class GetBusinessClustersHandler
           AND data->'location' IS NOT NULL
           AND data->'location'->>'latitude' IS NOT NULL
           AND data->'location'->>'longitude' IS NOT NULL
+          AND (@branchCode IS NULL OR data->>'branchCode' = @branchCode)
         ORDER BY cluster_id NULLS LAST, business_name
         """;
 
@@ -68,6 +72,7 @@ public static class GetBusinessClustersHandler
             cmd.Parameters.AddWithValue("institutionId", query.InstitutionId);
             cmd.Parameters.AddWithValue("eps", query.EpsMeters);
             cmd.Parameters.AddWithValue("minPoints", query.MinPoints);
+            cmd.Parameters.AddWithValue("branchCode", (object?)query.BranchCode ?? DBNull.Value);
 
             await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
@@ -100,7 +105,8 @@ public static class GetBusinessClustersHandler
                     ActiveStudentCount: reader.GetInt32(reader.GetOrdinal("active_student_count")),
                     DistanceToSchoolKm: reader.IsDBNull(reader.GetOrdinal("distance_km"))
                         ? null
-                        : reader.GetDouble(reader.GetOrdinal("distance_km"))
+                        : reader.GetDouble(reader.GetOrdinal("distance_km")),
+                    MaxCoordinationHours: reader.GetInt32(reader.GetOrdinal("max_coordination_hours"))
                 ));
             }
         }
