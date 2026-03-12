@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Text.Json;
 using Marten;
 using MESNET.Common.Infrastructure.Pagination;
@@ -82,6 +83,59 @@ public static class DocumentQueryHandler
             .ToListAsync();
 
         return docs.Select(MapToSummary).ToList();
+    }
+
+    // ─── Toplu ZIP indirme ───
+    public static async Task<byte[]> Handle(
+        DownloadDocumentsZip query, IQuerySession session, IFileStorageService storage)
+    {
+        if (query.DocumentIds.Count == 0)
+            throw new DomainException(new Error("EMPTY_DOCUMENT_LIST", "Doküman listesi boş."));
+
+        var docs = new List<GeneratedDocument>();
+        foreach (var id in query.DocumentIds)
+        {
+            var doc = await session.LoadAsync<GeneratedDocument>(id);
+            if (doc is not null)
+                docs.Add(doc);
+        }
+
+        if (docs.Count == 0)
+            throw new DomainException(new Error("NO_DOCUMENTS_FOUND", "Seçili dokümanlar bulunamadı."));
+
+        using var zipStream = new MemoryStream();
+        using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var doc in docs)
+            {
+                Stream? pdfStream = null;
+
+                // MinIO'dan indir
+                if (!string.IsNullOrEmpty(doc.PdfStoragePath))
+                {
+                    var downloadResult = await storage.DownloadFileAsync(BucketName, doc.PdfStoragePath);
+                    if (downloadResult.IsSuccess)
+                        pdfStream = downloadResult.Value;
+                }
+
+                // Fallback: on-demand üretim
+                if (pdfStream is null)
+                {
+                    var pdfDocument = DeserializeToDocument(doc.FormType, doc.FormDataJson);
+                    var pdfBytes = pdfDocument.GeneratePdf();
+                    pdfStream = new MemoryStream(pdfBytes);
+                }
+
+                var entryName = $"{doc.FormType.Slug}/{doc.Id.ToString()[..8]}.pdf";
+                var entry = archive.CreateEntry(entryName, CompressionLevel.Fastest);
+
+                await using var entryStream = entry.Open();
+                await pdfStream.CopyToAsync(entryStream);
+                await pdfStream.DisposeAsync();
+            }
+        }
+
+        return zipStream.ToArray();
     }
 
     private static IDocument DeserializeToDocument(MebFormType formType, string json)

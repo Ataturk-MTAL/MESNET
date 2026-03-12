@@ -9,5 +9,9 @@
     <ProjectReference Include="../MESNET.Reporting.Core/MESNET.Reporting.Core.csproj" />
     <ProjectReference Include="../../../MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
     <ProjectReference Include="../../../MESNET.Common.Infrastructure/MESNET.Common.Infrastructure.csproj" />
+    <ProjectReference Include="../../Attendance/MESNET.Attendance.Shared/MESNET.Attendance.Shared.csproj" />
+    <ProjectReference Include="../../Enrollment/MESNET.Enrollment.Shared/MESNET.Enrollment.Shared.csproj" />
+    <ProjectReference Include="../../Business/MESNET.Business.Shared/MESNET.Business.Shared.csproj" />
+    <ProjectReference Include="../../Coordination/MESNET.Coordination.Shared/MESNET.Coordination.Shared.csproj" />
   </ItemGroup>
 </Project>

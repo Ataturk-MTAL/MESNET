@@ -24,8 +24,18 @@ public static class DocumentLifecycleEndpoints
         group.MapPost("/{documentId:guid}/print", MarkAsPrinted).RequireAuthorization(Permissions.Document.Track);
         group.MapPost("/{documentId:guid}/sign-and-return", MarkAsSignedAndReturned).RequireAuthorization(Permissions.Document.Verify);
         group.MapPost("/{documentId:guid}/archive", MarkAsArchived).RequireAuthorization(Permissions.Document.Approve);
+        group.MapPost("/download-zip", DownloadZip).RequireAuthorization(Permissions.Document.View);
         group.MapDelete("/{documentId:guid}", DeleteDocument).RequireAuthorization(Permissions.Institution.Manage);
         group.MapPost("/batch-delete", DeleteDocumentsBatch).RequireAuthorization(Permissions.Institution.Manage);
+    }
+
+    // --- Toplu ZIP indirme ---
+    private static async Task<IResult> DownloadZip(DownloadDocumentsZipRequest request, IMessageBus bus)
+    {
+        var zipBytes = await bus.InvokeAsync<byte[]>(
+            new DownloadDocumentsZip(request.DocumentIds));
+
+        return Results.File(zipBytes, "application/zip", "evraklar.zip");
     }
 
     // --- Dokuman detayi (FormDataJson haric) ---
@@ -149,3 +159,8 @@ public static class DocumentLifecycleEndpoints
 /// Toplu silme istegi body'si
 /// </summary>
 public sealed record DeleteDocumentsBatchRequest(List<Guid> DocumentIds);
+
+/// <summary>
+/// Toplu ZIP indirme istegi body'si
+/// </summary>
+public sealed record DownloadDocumentsZipRequest(List<Guid> DocumentIds);

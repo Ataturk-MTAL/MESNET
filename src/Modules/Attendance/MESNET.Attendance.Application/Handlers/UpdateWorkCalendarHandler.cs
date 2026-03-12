@@ -45,8 +45,12 @@ public static class UpdateWorkCalendarHandler
 
         session.Store(calendar);
 
+        var dayInfos = restrictedDays
+            .Select(d => new CalendarDayInfo(d.Date, d.Type.Name, d.Description))
+            .ToList();
+
         return (calendar.Id, new WorkCalendarUpdated(
             calendar.Id, calendar.InstitutionId, calendar.Year,
-            restrictedDays.Count, command.UpdatedBy));
+            restrictedDays.Count, command.UpdatedBy, dayInfos));
     }
 }

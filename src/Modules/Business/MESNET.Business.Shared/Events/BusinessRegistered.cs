@@ -11,4 +11,7 @@ public sealed record BusinessRegistered(
     Location? Location,
     RegistrationSource Source,
     int TotalSlots = 0,
-    List<string>? Sectors = null);
+    List<string>? Sectors = null,
+    string? PhoneNumber = null,
+    string? Email = null,
+    string? MasterInstructorName = null);

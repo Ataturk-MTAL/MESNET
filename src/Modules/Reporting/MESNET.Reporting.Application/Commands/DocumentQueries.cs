@@ -25,3 +25,8 @@ public sealed record GetPendingDocuments(
 /// Öğrenciye ait dokümanları getir
 /// </summary>
 public sealed record GetDocumentsByStudent(Guid StudentId);
+
+/// <summary>
+/// Seçili dokümanları ZIP olarak indir. Handler byte[] döner.
+/// </summary>
+public sealed record DownloadDocumentsZip(List<Guid> DocumentIds);

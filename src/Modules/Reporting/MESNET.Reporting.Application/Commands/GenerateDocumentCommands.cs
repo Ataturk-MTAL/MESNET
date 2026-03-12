@@ -20,3 +20,13 @@ public sealed record GenerateSkillExamDocument(SkillExamFormData Data, UserConte
 
 // ─── Form 6: İşletme Değerlendirme Formu ───
 public sealed record GenerateBusinessEvaluationDocument(BusinessEvaluationFormData Data, UserContext User);
+
+// ─── Form 7: Aylık Devam - Devamsızlık Bildirim Çizelgesi ───
+// Anlık önizleme — işletme bazlı (PDF byte[] döner, MinIO'ya yazılmaz)
+public sealed record GenerateMonthlyAttendancePreview(
+    Guid InstitutionId, Guid AcademicPeriodId,
+    Guid BusinessId, int Year, int Month,
+    string InstitutionName, string AcademicYear);
+
+// Arşivleme — işletme bazlı (MinIO'ya yazar + GeneratedDocument kaydeder)
+public sealed record GenerateMonthlyAttendanceDocument(MonthlyAttendanceReportData Data, UserContext User);

@@ -328,48 +328,51 @@ title: Senaryolar
   5. 'Kaydet' butonuna tıklayın.
 - **Sonuç:** Öğretmen(ler) sisteme kaydedilir.
 
-### 7. Öğretmen Raporları Oluşturma
+### 7. Otomatik Evrak Üretimi ve Toplu İndirme
 
-**Senaryo:** Kurum yönetiminin yetkilendirdiği personel öğretmenler için raporlar oluşturabilir.
+**Senaryo:** Tüm MEB formları sistem tarafından otomatik üretilir. Koordinatör öğretmen hiçbir evrak üretmez — sadece teslim etmediği evrakları toplu indirir, yazdırır ve işletmeye imzalatır.
 
-- **Aktör:** Kurum Yönetiminin Yetkilendirdiği Personel
+- **Aktör:** Koordinatör Öğretmen
 - **Ön Koşul:**
-  - Personel sisteme giriş yapmış olmalıdır.
-  - Öğretmen raporları oluşturma yetkisine sahip olmalıdır.
+  - Öğretmen sisteme giriş yapmış olmalıdır.
+  - Koordinatörlük ataması yapılmış olmalıdır.
+- **Otomatik Üretim Kuralları:**
+  - **Form 7 (Aylık Devamsızlık):** Her ayın son günü sistem otomatik üretir.
+  - **Form 3 (Günlük Rehberlik):** Haftalık ziyaret ataması yapılınca sistem otomatik üretir.
+  - **Form 2 (Aylık Eğitim Faaliyeti):** Her ayın son günü sistem otomatik üretir.
 - **Adımlar:**
-  1. 'Öğretmen Raporları' bölümüne gidin.
-  2. Rapor türünü seçin (Aylık/Günlük/Devamsızlık).
-  3. Bireysel veya toplu rapor seçeneğini belirleyin.
-  4. İlgili öğretmen(leri) seçin.
-  5. 'Rapor Oluştur' butonuna tıklayın.
-  6. Karekodlu raporu görüntüleyin ve yazdırın.
-- **Sonuç:** Karekodlu rapor oluşturulur ve yazdırılabilir.
+  1. 'Raporlar' bölümüne gidin.
+  2. Otomatik üretilmiş, teslim etmediğiniz evrakları listede görüntüleyin.
+  3. Evrakları seçin ve 'Seçilenleri ZIP İndir' butonuna tıklayın — tüm karekodlu PDF'ler tek ZIP dosyası olarak iner.
+  4. ZIP'i açın, PDF'leri yazdırın.
+  5. İşletmeye götürün ve işletme yetkilisine ıslak imza aldırın.
+  6. İmzalı evrakları müdür yardımcısına teslim edin.
+- **Sonuç:** Sistem otomatik ürettiği karekodlu MEB formları, koordinatör öğretmen tarafından toplu indirilir, yazdırılır ve işletmeye imzalatılır.
 
 ### 8. Evrak Teslim Takibi
 
-**Senaryo:** Kurum yönetimince yetkilendirilmiş personel (müdür yardımcıları vb.) işletme onaylı evrakların teslimini mobil uygulama üzerinden karekod okutarak veya web/mobil uygulama üzerinden manuel olarak yapabilir.
+**Senaryo:** Müdür yardımcısı, koordinatör öğretmenin işletmeden ıslak imza alarak teslim ettiği evrakları karekod okutarak veya manuel olarak "Teslim Alındı" işaretler.
 
-- **Aktör:** Kurum Yönetiminin Yetkilendirdiği Personel
+- **Aktör:** Müdür Yardımcısı
 - **Ön Koşul:**
-  - Personel sisteme giriş yapmış olmalıdır.
-  - Personele evrak teslim alma yetkisi verilmiş olmalıdır.
-  - Karekod okutma için mobil uygulama yüklenmiş olmalıdır.
+  - Müdür yardımcısı sisteme giriş yapmış olmalıdır.
+  - Evrak teslim alma yetkisi verilmiş olmalıdır.
 - **Adımlar:**
-  1. Teslim yöntemini seçin:
-     - Karekod ile Teslim (Mobil):
+  1. Koordinatör öğretmen, yazdırılmış ve işletme tarafından ıslak imzalanmış evrakları müdür yardımcısına teslim eder.
+  2. Müdür yardımcısı teslim yöntemini seçer:
+     - **Karekod ile Teslim (Mobil):**
        - Mobil uygulamayı açın.
        - 'Evrak Takip' bölümüne gidin.
        - 'Karekod Okut' butonuna tıklayın.
        - Evrak üzerindeki karekodu okutun.
-       - Evrak bilgilerini onaylayın.
-     - Manuel Teslim (Web/Mobil):
+       - Evrak bilgilerini doğrulayın ve 'Teslim Alındı' onaylayın.
+     - **Manuel Teslim (Web):**
        - 'Evrak Takip' bölümüne gidin.
-       - 'Manuel Teslim' butonuna tıklayın.
        - İlgili öğretmeni seçin.
        - Teslim alınan evrakları işaretleyin.
-       - Teslim tarihi otomatik olarak kaydedilir.
        - 'Teslim Alındı' butonuna tıklayın.
-- **Sonuç:** Evraklar, teslim alan yetkili personelin bilgisiyle birlikte sistemde "Teslim Alındı" olarak işaretlenir.
+  3. Teslim tarihi ve teslim alan yetkili bilgisi otomatik kaydedilir.
+- **Sonuç:** Evraklar sistemde "Teslim Alındı" olarak işaretlenir, teslim alan yetkili ve tarih bilgisi saklanır.
 
 ### 9. İşletme Ziyaret Programı Yönetimi
 
@@ -610,28 +613,28 @@ title: Senaryolar
 
 ### 2. Rapor İşlemleri
 
-**Senaryo:** Öğretmen, koordinatörlük raporlarını çıktı alıp işletmeye fiziksel olarak teslim edebilir.
+**Senaryo:** Tüm MEB formları sistem tarafından otomatik üretilir. Koordinatör öğretmen, teslim etmediği evrakları toplu indirir, yazdırır, işletmeye imzalatır ve müdür yardımcısına teslim eder.
 
-- **Aktör:** Öğretmen
+- **Aktör:** Koordinatör Öğretmen
 - **Ön Koşul:** Öğretmen sisteme giriş yapmış olmalıdır.
 - **Adımlar:**
-  1. 'Raporlar' bölümüne gidin
-  2. Rapor türünü seçin:
-     - Aylık ziyaret raporu
-     - Günlük ziyaret raporu
-     - Devamsızlık raporu
-  3. Rapor yazdırma:
-     - Tarih aralığı seçin
-     - İşletme seçin
-     - İlgili öğrencileri seçin
-     - 'Yazdır' butonuna tıklayın
-     - Karekodlu raporu yazdırın
-  4. Fiziksel onay süreci:
-     - İşletmeye raporu götürün
-     - İşletme yetkilisine imzalatın
-     - Islak imzalı raporu muhafaza edin
-  5. Kurum idaresine teslim edin
-- **Sonuç:** Karekodlu rapor fiziksel olarak işletmeye onaylatılır.
+  1. 'Raporlar' bölümüne gidin.
+  2. Otomatik üretilmiş, henüz teslim edilmemiş evrakları görüntüleyin:
+     - Aylık Devamsızlık Formu (Form 7) — ay sonu otomatik üretilir
+     - Aylık Eğitim Faaliyeti Formu (Form 2) — ay sonu otomatik üretilir
+     - Günlük Rehberlik Formu (Form 3) — haftalık atama yapılınca otomatik üretilir
+  3. Toplu indirme:
+     - Teslim edilmemiş evrakları seçin (veya tümünü seçin).
+     - 'Seçilenleri ZIP İndir' butonuna tıklayın.
+     - Tüm karekodlu PDF'ler tek ZIP dosyası olarak iner.
+  4. Yazdırma ve ıslak imza:
+     - ZIP'i açın ve PDF'leri yazdırın.
+     - İşletmeye götürün.
+     - İşletme yetkilisine ıslak imza aldırın.
+  5. Kurum idaresine teslim:
+     - Islak imzalı evrakları müdür yardımcısına teslim edin.
+     - Müdür yardımcısı karekod okutarak veya manuel olarak "Teslim Alındı" işaretler.
+- **Sonuç:** Otomatik üretilen karekodlu raporlar toplu indirilir, işletmede ıslak imzalatılır ve kurum idaresine teslim edilir.
 
 ### 3. Öğrenci Devamsızlık Yönetimi
 

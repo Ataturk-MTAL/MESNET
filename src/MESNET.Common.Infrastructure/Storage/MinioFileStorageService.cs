@@ -119,6 +119,46 @@ public sealed class MinioFileStorageService : IFileStorageService
         }
     }
 
+    public async Task<Result<Stream>> DownloadFileAsync(
+        string bucketName,
+        string objectPath,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var memoryStream = new MemoryStream();
+
+            var getObjectArgs = new GetObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectPath)
+                .WithCallbackStream(async (stream, ct) =>
+                {
+                    await stream.CopyToAsync(memoryStream, ct);
+                });
+
+            await _minioClient.GetObjectAsync(getObjectArgs, cancellationToken);
+            memoryStream.Position = 0;
+
+            _logger.LogDebug(
+                "Dosya indirildi: Bucket={Bucket}, Path={Path}, Size={Size}",
+                bucketName, objectPath, memoryStream.Length);
+
+            return Result<Stream>.Success(memoryStream);
+        }
+        catch (MinioException ex)
+        {
+            _logger.LogError(ex, "MinIO download hatası: Bucket={Bucket}, Path={Path}", bucketName, objectPath);
+            return Result<Stream>.Failure(
+                new Error("MINIO_DOWNLOAD_ERROR", $"Dosya indirme başarısız: {ex.Message}"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Beklenmeyen download hatası: Bucket={Bucket}, Path={Path}", bucketName, objectPath);
+            return Result<Stream>.Failure(
+                new Error("DOWNLOAD_ERROR", $"Dosya indirme hatası: {ex.Message}"));
+        }
+    }
+
     public async Task<Result> DeleteFileAsync(
         string bucketName,
         string objectPath,

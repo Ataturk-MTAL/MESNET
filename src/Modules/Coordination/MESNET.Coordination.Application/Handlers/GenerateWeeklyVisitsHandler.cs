@@ -5,12 +5,13 @@ using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.ReadModels;
+using MESNET.Coordination.Shared.Events;
 
 namespace MESNET.Coordination.Application.Handlers;
 
 public static class GenerateWeeklyVisitsHandler
 {
-    public static async Task<Guid> Handle(
+    public static async Task<(Guid, WeeklyVisitsGenerated)> Handle(
         GenerateWeeklyVisits command,
         IDocumentSession session,
         CancellationToken ct)
@@ -135,6 +136,19 @@ public static class GenerateWeeklyVisitsHandler
 
         await session.SaveChangesAsync(ct);
 
-        return plan.Id;
+        // Reporting modülü Form 3 (Günlük Rehberlik Formu) otomatik üretecek
+        var addressLookup = views.ToDictionary(v => v.Id, v => v.Address);
+        var @event = new WeeklyVisitsGenerated(
+            plan.Id,
+            command.InstitutionId,
+            command.AcademicPeriodId,
+            assignments.Select(a => new WeeklyVisitAssignmentInfo(
+                a.Id, a.TeacherId, a.TeacherName,
+                a.BusinessId, a.BusinessName,
+                addressLookup.GetValueOrDefault(a.BusinessId),
+                a.BranchCode, a.BranchName,
+                a.VisitDate, a.PeriodCount)).ToList());
+
+        return (plan.Id, @event);
     }
 }

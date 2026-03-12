@@ -7,4 +7,7 @@ public sealed record BusinessUpdated(
     string Name,
     string? Address,
     Location? Location,
-    List<string>? Sectors = null);
+    List<string>? Sectors = null,
+    string? PhoneNumber = null,
+    string? Email = null,
+    string? MasterInstructorName = null);

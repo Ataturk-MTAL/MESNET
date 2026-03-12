@@ -58,6 +58,9 @@ export const reportingApi = {
 
   deleteDocument: (documentId: string) =>
     api.delete(`/reports/documents/${documentId}`),
+
+  downloadDocumentsZip: (documentIds: string[]) =>
+    api.post('/reports/documents/download-zip', { documentIds }, { responseType: 'blob' }),
 }
 
 export const MEB_FORM_LABELS: Record<string, string> = {
@@ -67,6 +70,7 @@ export const MEB_FORM_LABELS: Record<string, string> = {
   AttendanceSheet: 'Devamsızlık Çizelgesi',
   SkillExam: 'Beceri Sınavı Not Fişi',
   BusinessEvaluation: 'İşletme Değerlendirme',
+  MonthlyAttendanceReport: 'Aylık Devamsızlık Formu',
 }
 
 export const DOCUMENT_STATUS_LABELS: Record<string, string> = {

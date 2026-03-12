@@ -2,14 +2,24 @@
   <q-page padding>
     <div class="row items-center q-mb-lg">
       <div class="text-h5 text-weight-bold col">MEB Formları ve Dokümanlar</div>
-      <q-btn
-        color="primary"
-        icon="refresh"
-        flat
-        round
-        :loading="loading"
-        @click="load"
-      />
+      <div class="q-gutter-sm">
+        <q-btn
+          v-if="selected.length > 0"
+          color="deep-purple"
+          icon="archive"
+          :label="`Seçilenleri ZIP İndir (${selected.length})`"
+          :loading="zipping"
+          @click="downloadSelectedZip"
+        />
+        <q-btn
+          color="primary"
+          icon="refresh"
+          flat
+          round
+          :loading="loading"
+          @click="load"
+        />
+      </div>
     </div>
 
     <!-- Filtreler -->
@@ -53,6 +63,9 @@
         :loading="loading"
         flat
         bordered
+        selection="multiple"
+        :selected="selected"
+        @update:selected="onSelectedUpdate"
         :rows-per-page-options="[10, 20, 50]"
         :pagination="pagination"
         no-data-label="Henüz doküman bulunmuyor"
@@ -142,10 +155,12 @@ const notify = useNotify()
 const authStore = useAuthStore()
 
 const downloading = ref<string | null>(null)
+const zipping = ref(false)
+const selected = ref<GeneratedDocumentSummaryDto[]>([])
 
 const filterState = reactive({
   formType: null as string | null,
-  status: null as string | null,
+  status: 'Generated' as string | null, // Varsayılan: teslim edilmemiş evraklar
 })
 
 const filters = computed(() => ({
@@ -173,6 +188,27 @@ const columns = [
   { name: 'generatedAt', label: 'Tarih', field: 'generatedAt', align: 'left' as const },
   { name: 'actions', label: 'İşlemler', field: 'id', align: 'center' as const },
 ]
+
+function onSelectedUpdate(val: readonly any[]) {
+  selected.value = val as GeneratedDocumentSummaryDto[]
+}
+
+async function downloadSelectedZip() {
+  if (selected.value.length === 0) return
+
+  zipping.value = true
+  try {
+    const ids = selected.value.map((d) => d.id)
+    const res = await reportingApi.downloadDocumentsZip(ids)
+    downloadBlob(res.data as Blob, 'evraklar.zip')
+    notify.success(`${ids.length} doküman ZIP olarak indirildi.`)
+    selected.value = []
+  } catch (e) {
+    notify.apiError(e, 'ZIP indirirken bir hata oluştu.')
+  } finally {
+    zipping.value = false
+  }
+}
 
 async function downloadPdf(doc: GeneratedDocumentSummaryDto) {
   downloading.value = doc.id

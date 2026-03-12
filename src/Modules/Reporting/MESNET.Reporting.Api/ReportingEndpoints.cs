@@ -22,6 +22,10 @@ public static class ReportingEndpoints
         group.MapPost("/attendance-sheet", PostAttendanceSheet).RequireAuthorization(Permissions.Attendance.Report);
         group.MapPost("/skill-exam", PostSkillExam).RequireAuthorization(Permissions.Coordinator.Report);
         group.MapPost("/business-evaluation", PostBusinessEvaluation).RequireAuthorization(Permissions.Coordinator.Visit);
+
+        // Form 7: Aylık Devam - Devamsızlık Bildirim Çizelgesi
+        group.MapGet("/monthly-attendance/preview", GetMonthlyAttendancePreview).RequireAuthorization(Permissions.Attendance.Report);
+        group.MapPost("/monthly-attendance", PostMonthlyAttendance).RequireAuthorization(Permissions.Attendance.Report);
     }
 
     // --- Form 1: Isletme Staj Sozlesmesi ---
@@ -117,6 +121,38 @@ public static class ReportingEndpoints
             ResponseBuilder.Success(201)
                 .AddData(new { documentId })
                 .AddMessage("İşletme değerlendirme formu oluşturuldu.")
+                .Build());
+    }
+
+    // --- Form 7: Aylik Devam - Devamsizlik Bildirim Cizelgesi (Preview) ---
+    private static async Task<IResult> GetMonthlyAttendancePreview(
+        Guid institutionId, Guid academicPeriodId, Guid businessId,
+        int year, int month, string institutionName, string academicYear,
+        IMessageBus bus)
+    {
+        var command = new GenerateMonthlyAttendancePreview(
+            institutionId, academicPeriodId, businessId, year, month,
+            institutionName, academicYear);
+
+        var pdfBytes = await bus.InvokeAsync<byte[]>(command);
+
+        return Results.File(pdfBytes, "application/pdf",
+            $"aylik-devamsizlik-{year}-{month:D2}.pdf");
+    }
+
+    // --- Form 7: Aylik Devam - Devamsizlik Bildirim Cizelgesi (Archive) ---
+    private static async Task<IResult> PostMonthlyAttendance(
+        MonthlyAttendanceReportData data, IMessageBus bus, HttpContext http)
+    {
+        var user = ExtractUserContext(http);
+        var command = new GenerateMonthlyAttendanceDocument(data, user);
+        var documentId = await bus.InvokeAsync<Guid>(command);
+
+        return Results.Created(
+            $"/api/reports/documents/{documentId}",
+            ResponseBuilder.Success(201)
+                .AddData(new { documentId })
+                .AddMessage("Aylık devamsızlık formu oluşturuldu.")
                 .Build());
     }
 

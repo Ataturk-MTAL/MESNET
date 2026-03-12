@@ -49,6 +49,18 @@ public interface IFileStorageService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Dosyayı MinIO'dan raw byte olarak indirir. ZIP paketleme için kullanılır.
+    /// </summary>
+    /// <param name="bucketName">Bucket adı</param>
+    /// <param name="objectPath">Object path</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Dosya stream'i</returns>
+    Task<Result<Stream>> DownloadFileAsync(
+        string bucketName,
+        string objectPath,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Bucket'ın var olup olmadığını kontrol eder, yoksa oluşturur.
     /// </summary>
     Task<Result> EnsureBucketExistsAsync(
