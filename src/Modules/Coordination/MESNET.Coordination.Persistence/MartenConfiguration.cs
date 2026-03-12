@@ -92,6 +92,25 @@ public static class MartenConfiguration
                     x.Name = "idx_branch_workload_config_unique";
                 });
 
+        // WeeklyVisitPlan (haftalık ziyaret planı)
+        options.Schema.For<WeeklyVisitPlan>().DatabaseSchemaName("coordination");
+        options.Schema.For<WeeklyVisitPlan>().Index(x => x.InstitutionId);
+        options.Schema.For<WeeklyVisitPlan>().Index(x => x.AcademicPeriodId);
+        options.Schema.For<WeeklyVisitPlan>()
+            .Index(x => new { x.InstitutionId, x.AcademicPeriodId, x.WeekNumber },
+                x =>
+                {
+                    x.IsUnique = false;
+                    x.Name = "idx_visit_plan_inst_period_week";
+                });
+
+        // WeeklyVisitAssignment (tekil ziyaret kaydı — QR kod kaynağı)
+        options.Schema.For<WeeklyVisitAssignment>().DatabaseSchemaName("coordination");
+        options.Schema.For<WeeklyVisitAssignment>().Index(x => x.PlanId);
+        options.Schema.For<WeeklyVisitAssignment>().Index(x => x.TeacherId);
+        options.Schema.For<WeeklyVisitAssignment>().Index(x => x.BusinessId);
+        options.Schema.For<WeeklyVisitAssignment>().Index(x => x.InstitutionId);
+
         // AcademicPeriodView (cross-module read model)
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("coordination");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);

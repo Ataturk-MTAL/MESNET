@@ -231,6 +231,9 @@ public static class Permissions
 
         /// <summary>Koordinatör ders programlarını görüntüleme.</summary>
         public const string ScheduleView = "department:schedule:view";
+
+        /// <summary>Haftalık ziyaret ataması oluşturma ve yönetimi.</summary>
+        public const string WeeklyVisit = "department:weekly-visit:manage";
     }
 
     /// <summary>

@@ -114,8 +114,17 @@ export const useAuthStore = defineStore('auth', () => {
           branchCode: data?.branchCode ?? null,
         }
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Permission yüklenirken hata:', err)
+      // 401 alıyorsa token geçersiz — yeniden login
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { status?: number } }
+        if (axiosErr.response?.status === 401) {
+          console.warn('[Auth] Token geçersiz, yeniden giriş yapılıyor...')
+          const { getKeycloak } = await import('boot/auth')
+          await getKeycloak().login()
+        }
+      }
     }
   }
 

@@ -128,6 +128,8 @@ try
             // JWT claim'lerin orijinal isimleriyle gelmesi için mapping'i kapat
             // Yoksa "sub" → ClaimTypes.NameIdentifier, "email" → ClaimTypes.Email olarak map edilir
             options.MapInboundClaims = false;
+            // Keycloak hazır olana kadar OIDC discovery'nin zaman aşımına uğramaması için
+            options.BackchannelTimeout = TimeSpan.FromSeconds(30);
             options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
             {
                 ValidateIssuer = !builder.Environment.IsDevelopment(),
@@ -136,6 +138,22 @@ try
                 NameClaimType = "preferred_username",
                 RoleClaimType = "role"
             };
+            // Development'ta 401 nedenini logla
+            if (builder.Environment.IsDevelopment())
+            {
+                options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        var logger = context.HttpContext.RequestServices
+                            .GetRequiredService<ILoggerFactory>()
+                            .CreateLogger("JwtBearer");
+                        logger.LogWarning(context.Exception,
+                            "JWT doğrulama hatası: {Message}", context.Exception.Message);
+                        return Task.CompletedTask;
+                    }
+                };
+            }
         });
 
     // 2. Authorization Policies + Custom Permission Handler + Claims Transformation
@@ -413,6 +431,7 @@ try
     app.MapGuidanceVisitEndpoints();
     app.MapMonthlyActivityReportEndpoints();
     app.MapSkillExamEndpoints();
+    app.MapWeeklyVisitEndpoints();
     // Internship
     app.MapInternshipEndpoints();
     // Reporting

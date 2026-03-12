@@ -536,7 +536,28 @@ title: Senaryolar
   5. Ödeme listesi oluştur
 - **Sonuç:** Dekontlar onaylanır ve ödeme listesi hazırlanır.
 
-### 14. Alan/Dal Aktifleştirme ve Yönetimi
+### 14. Haftalık Ziyaret Ataması
+
+**Senaryo:** Müdür yardımcısı, koordinatör öğretmenlerin haftalık işletme ziyaret atamalarını oluşturabilir.
+
+- **Aktör:** Müdür / Müdür Yardımcısı
+- **Ön Koşul:**
+  - İşletme-öğretmen atamaları yapılmış olmalıdır (İşletme Dağıtımı tamamlanmış).
+  - Öğretmen ders programları girilmiş olmalıdır.
+- **Adımlar:**
+  1. 'Koordinasyon > Haftalık Ziyaretler' bölümüne gidin.
+  2. Hafta seçimi yapın (yıl + hafta numarası veya tarih seçici).
+  3. Kapsam belirleyin:
+     - Tüm meslek öğretmenleri (tek tuşla)
+     - Alan bazında (alan seçerek)
+     - Tek öğretmen (öğretmen seçerek)
+  4. 'Ziyaret Oluştur' butonuna tıklayın.
+  5. Sistem, seçili kapsamdaki her öğretmen-işletme-gün-saat kombinasyonu için ayrı bir ziyaret kaydı (günlük form) oluşturur.
+  6. Oluşturulan ziyaretleri tabloda görüntüleyin (öğretmen, işletme, tarih, ders saati).
+  7. Hatalı oluşturulmuşsa planı silin ve yeniden oluşturun.
+- **Sonuç:** Her ziyaret kaydı benzersiz ID'ye sahiptir. Bu ID, günlük form raporlarında QR kod olarak basılır. Öğretmenler imzalı formları işletmeye götürür.
+
+### 15. Alan/Dal Aktifleştirme ve Yönetimi
 
 **Senaryo:** Kurum yönetimi MEB resmi alan/dal kataloğundan kurumun açtığı alanları ve dalları aktifleştirebilir, pasifleştirebilir ve yönetebilir.
 

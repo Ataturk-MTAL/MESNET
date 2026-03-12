@@ -386,27 +386,27 @@
 
               <template #body-cell-monday="{ row }">
                 <q-td class="text-center">
-                  <FreeSlotChip :free="row.freeSlotsByDay['Monday']" :total="totalSlotsByDay(row, 'Monday')" />
+                  <FreeSlotChip :free="row.freeSlotsByDay['Monday'] ?? 0" :assigned="row.assignedSlotsByDay?.['Monday'] ?? 0" />
                 </q-td>
               </template>
               <template #body-cell-tuesday="{ row }">
                 <q-td class="text-center">
-                  <FreeSlotChip :free="row.freeSlotsByDay['Tuesday']" :total="totalSlotsByDay(row, 'Tuesday')" />
+                  <FreeSlotChip :free="row.freeSlotsByDay['Tuesday'] ?? 0" :assigned="row.assignedSlotsByDay?.['Tuesday'] ?? 0" />
                 </q-td>
               </template>
               <template #body-cell-wednesday="{ row }">
                 <q-td class="text-center">
-                  <FreeSlotChip :free="row.freeSlotsByDay['Wednesday']" :total="totalSlotsByDay(row, 'Wednesday')" />
+                  <FreeSlotChip :free="row.freeSlotsByDay['Wednesday'] ?? 0" :assigned="row.assignedSlotsByDay?.['Wednesday'] ?? 0" />
                 </q-td>
               </template>
               <template #body-cell-thursday="{ row }">
                 <q-td class="text-center">
-                  <FreeSlotChip :free="row.freeSlotsByDay['Thursday']" :total="totalSlotsByDay(row, 'Thursday')" />
+                  <FreeSlotChip :free="row.freeSlotsByDay['Thursday'] ?? 0" :assigned="row.assignedSlotsByDay?.['Thursday'] ?? 0" />
                 </q-td>
               </template>
               <template #body-cell-friday="{ row }">
                 <q-td class="text-center">
-                  <FreeSlotChip :free="row.freeSlotsByDay['Friday']" :total="totalSlotsByDay(row, 'Friday')" />
+                  <FreeSlotChip :free="row.freeSlotsByDay['Friday'] ?? 0" :assigned="row.assignedSlotsByDay?.['Friday'] ?? 0" />
                 </q-td>
               </template>
 
@@ -923,7 +923,7 @@ const {
 
 const {
   teacherOverviewRows, teacherOverviewLoading,
-  teacherName, totalSlotsByDay,
+  teacherName,
   loadTeacherOverview,
 } = teacherOverview
 

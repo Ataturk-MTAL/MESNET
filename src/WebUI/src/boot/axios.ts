@@ -9,11 +9,23 @@ const api = axios.create({
 })
 
 // Her istekte güncel access token'ı Authorization header'a ekle
+// Token expire olmuş veya 30 sn içinde expire olacaksa proaktif yenile
 // FormData gönderiminde Content-Type header'ını sil (Axios boundary ile otomatik set eder)
 api.interceptors.request.use(async (config) => {
   const authStore = useAuthStore()
-  const token = authStore.accessToken
 
+  try {
+    const keycloak = getKeycloak()
+    // 30 sn'den az ömrü kaldıysa yenile — 401 döngüsünü önler
+    const refreshed = await keycloak.updateToken(30)
+    if (refreshed && keycloak.token) {
+      authStore.refreshToken(keycloak.token)
+    }
+  } catch {
+    // Refresh başarısızsa mevcut token ile devam et — 401 interceptor halleder
+  }
+
+  const token = authStore.accessToken
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }

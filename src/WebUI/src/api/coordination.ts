@@ -290,6 +290,7 @@ export interface TeacherSummaryRowDto {
   assignedHours: number
   scheduleExists: boolean
   freeSlotsByDay: Record<string, number>
+  assignedSlotsByDay: Record<string, number>
 }
 
 // ── Business Cluster DTO ──
@@ -350,6 +351,58 @@ export interface UpsertBranchWorkloadConfigRequest {
   departmentHeadHours: number
   workshopHeadHours: number
   classLevels: { classYear: number; weeklyLessonHours: number }[]
+}
+
+// ── Weekly Visit DTOs ──
+
+export interface WeeklyVisitPlanDto {
+  id: string
+  academicPeriodId: string
+  year: number
+  weekNumber: number
+  weekStartDate: string
+  weekEndDate: string
+  scope: string          // "Teacher" | "Branch" | "All"
+  scopeTeacherId: string | null
+  scopeBranchCode: string | null
+  assignmentCount: number
+  generatedBy: string
+  generatedAt: string
+}
+
+export interface WeeklyVisitAssignmentDto {
+  id: string
+  planId: string
+  teacherId: string
+  teacherName: string
+  businessId: string
+  businessName: string
+  branchCode: string
+  branchName: string
+  visitDate: string
+  day: string
+  periodCount: number
+  weekNumber: number
+}
+
+export interface GenerateWeeklyVisitsRequest {
+  academicPeriodId: string
+  year: number
+  weekNumber: number
+  scope: string
+  teacherId?: string
+  branchCode?: string
+}
+
+export interface AddWeeklyVisitAssignmentRequest {
+  teacherId: string
+  teacherName: string
+  businessId: string
+  businessName: string
+  branchCode: string
+  branchName: string
+  day: string
+  periodCount: number
 }
 
 export const coordinationApi = {
@@ -497,4 +550,24 @@ export const coordinationApi = {
 
   upsertBranchWorkloadConfig: (branchCode: string, data: UpsertBranchWorkloadConfigRequest) =>
     api.put(`/coordination/teachers/branch-workload/${branchCode}`, data),
+
+  // ── Weekly Visit ──
+
+  generateWeeklyVisits: (data: GenerateWeeklyVisitsRequest) =>
+    api.post<{ planId: string }>('/coordination/weekly-visits/generate', data),
+
+  deleteWeeklyVisitPlan: (planId: string) =>
+    api.delete(`/coordination/weekly-visits/plans/${planId}`),
+
+  listWeeklyVisitPlans: (params?: { academicPeriodId?: string; year?: number; weekNumber?: number } & PaginationParams) =>
+    api.get<PagedResponse<WeeklyVisitPlanDto>>('/coordination/weekly-visits/plans', { params }),
+
+  listWeeklyVisitAssignments: (planId: string, params?: { teacherId?: string; branchCode?: string } & PaginationParams) =>
+    api.get<PagedResponse<WeeklyVisitAssignmentDto>>(`/coordination/weekly-visits/plans/${planId}/assignments`, { params }),
+
+  addWeeklyVisitAssignment: (planId: string, data: AddWeeklyVisitAssignmentRequest) =>
+    api.post<{ assignmentId: string }>(`/coordination/weekly-visits/plans/${planId}/assignments`, data),
+
+  deleteWeeklyVisitAssignment: (planId: string, assignmentId: string) =>
+    api.delete(`/coordination/weekly-visits/plans/${planId}/assignments/${assignmentId}`),
 }

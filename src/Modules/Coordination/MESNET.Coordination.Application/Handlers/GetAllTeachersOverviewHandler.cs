@@ -58,6 +58,7 @@ public static class GetAllTeachersOverviewHandler
             var businessCount = group.Count();
 
             var freeSlotsByDay = new Dictionary<string, int>();
+            var assignedSlotsByDay = new Dictionary<string, int>();
             var scheduleExists = scheduleByTeacher.TryGetValue(teacherId, out var schedule);
 
             if (schedule is not null)
@@ -67,6 +68,8 @@ public static class GetAllTeachersOverviewHandler
                     var dayName = day.Day.ToString();
                     freeSlotsByDay[dayName] = day.Periods.Count(p =>
                         p.Status == SlotStatus.Free && p.AssignedBusinessId is null);
+                    assignedSlotsByDay[dayName] = day.Periods.Count(p =>
+                        p.AssignedBusinessId is not null);
                 }
             }
 
@@ -76,7 +79,8 @@ public static class GetAllTeachersOverviewHandler
                 businessCount,
                 assignedHours,
                 scheduleExists,
-                freeSlotsByDay));
+                freeSlotsByDay,
+                assignedSlotsByDay));
         }
 
         return result.OrderBy(r => r.TeacherName).ToList();

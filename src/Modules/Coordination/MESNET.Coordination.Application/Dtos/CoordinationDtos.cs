@@ -142,7 +142,38 @@ public sealed record TeacherSummaryRowDto(
     int BusinessCount,
     int AssignedHours,
     bool ScheduleExists,
-    Dictionary<string, int> FreeSlotsByDay);    // gün → boş slot sayısı
+    Dictionary<string, int> FreeSlotsByDay,       // gün → boş slot sayısı
+    Dictionary<string, int> AssignedSlotsByDay);   // gün → atanmış koordinatörlük slot sayısı
+
+// ── Weekly Visit ──
+
+public sealed record WeeklyVisitPlanDto(
+    Guid Id,
+    Guid AcademicPeriodId,
+    int Year,
+    int WeekNumber,
+    string WeekStartDate,
+    string WeekEndDate,
+    string Scope,
+    Guid? ScopeTeacherId,
+    string? ScopeBranchCode,
+    int AssignmentCount,
+    string GeneratedBy,
+    DateTime GeneratedAt);
+
+public sealed record WeeklyVisitAssignmentDto(
+    Guid Id,
+    Guid PlanId,
+    Guid TeacherId,
+    string TeacherName,
+    Guid BusinessId,
+    string BusinessName,
+    string BranchCode,
+    string BranchName,
+    string VisitDate,
+    string Day,
+    int PeriodCount,
+    int WeekNumber);
 
 /// <summary>
 /// İşletme kümeleme noktası (harita için)

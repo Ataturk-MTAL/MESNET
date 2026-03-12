@@ -141,4 +141,29 @@ public static class CoordinationErrors
     public static Error TeacherHoursExceedMax(Guid teacherId, int totalHours, int maxHours) =>
         new("Coordination.TeacherHoursExceedMax",
             $"Öğretmenin toplam koordinatörlük saati ({totalHours}) azami limiti ({maxHours}) aşıyor. Öğretmen: {teacherId}");
+
+    // WeeklyVisit
+    public static Error WeeklyVisitPlanNotFound(Guid planId) =>
+        new("Coordination.WeeklyVisitPlanNotFound",
+            $"Haftalık ziyaret planı bulunamadı: {planId}");
+
+    public static Error WeeklyVisitPlanAlreadyExists(int year, int weekNumber, string scope) =>
+        new("Coordination.WeeklyVisitPlanAlreadyExists",
+            $"Bu hafta ve kapsam için zaten bir ziyaret planı mevcut: Yıl={year}, Hafta={weekNumber}, Kapsam={scope}");
+
+    public static Error InvalidVisitScope(string scope) =>
+        new("Coordination.InvalidVisitScope",
+            $"Geçersiz ziyaret kapsamı: {scope}. Geçerli değerler: Teacher, Branch, All");
+
+    public static Error NoAssignmentsForScope(string scope) =>
+        new("Coordination.NoAssignmentsForScope",
+            $"Bu kapsam için atanmış işletme bulunamadı: {scope}");
+
+    public static Error WeeklyVisitAssignmentNotFound(Guid assignmentId) =>
+        new("Coordination.WeeklyVisitAssignmentNotFound",
+            $"Ziyaret ataması bulunamadı: {assignmentId}");
+
+    public static Error WeeklyVisitAssignmentDuplicate(Guid businessId, string day) =>
+        new("Coordination.WeeklyVisitAssignmentDuplicate",
+            $"Bu işletme ve gün için zaten bir ziyaret ataması mevcut: İşletme={businessId}, Gün={day}");
 }

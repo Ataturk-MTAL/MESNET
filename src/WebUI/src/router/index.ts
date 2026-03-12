@@ -132,6 +132,14 @@ const router = createRouter({
           meta: { permissions: ['department:distribution:manage'] },
         },
 
+        // Haftalık Ziyaretler
+        {
+          path: 'coordination/weekly-visits',
+          name: 'WeeklyVisits',
+          component: () => import('pages/coordination/WeeklyVisitPage.vue'),
+          meta: { permissions: ['department:weekly-visit:manage'] },
+        },
+
         // Belgeler
         {
           path: 'documents',

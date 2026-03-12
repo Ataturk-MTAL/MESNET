@@ -70,6 +70,7 @@ var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WithEnvironment("Osrm__BaseUrl", osrm.GetEndpoint("osrm"))
     .WaitFor(postgres)
     .WaitFor(rabbitmq)
+    .WaitFor(keycloak)
     .WaitFor(minio)
     .WaitFor(mailpit);
 

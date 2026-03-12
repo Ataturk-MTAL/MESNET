@@ -25,6 +25,7 @@ export async function bootAuth(): Promise<void> {
     pkceMethod: 'S256',
     checkLoginIframe: false,    // iframe polling devre dışı (CSP uyumu)
     silentCheckSsoFallback: false,
+    redirectUri: window.location.origin + window.location.pathname,
   })
 
   if (!authenticated) {
@@ -34,6 +35,21 @@ export async function bootAuth(): Promise<void> {
   }
 
   const authStore = useAuthStore()
+
+  // Token henüz expire olmadığından emin ol — Keycloak session recovery sonrası
+  // eski token gelmiş olabilir, zorla yenile
+  try {
+    const refreshed = await keycloak.updateToken(60) // 60 sn'den az kaldıysa yenile
+    if (refreshed) {
+      console.info('[Auth] Token boot sırasında yenilendi')
+    }
+  } catch {
+    // Refresh başarısız — eski session geçersiz, yeniden login gerekli
+    console.warn('[Auth] Token yenilenemedi, yeniden giriş yapılıyor...')
+    await keycloak.login()
+    return
+  }
+
   authStore.setFromKeycloak(keycloak)
 
   // Backend'den güncel permission listesini al (roller → permission dönüşümü backend'de yapılır)

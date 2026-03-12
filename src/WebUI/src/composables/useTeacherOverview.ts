@@ -33,10 +33,6 @@ export function useTeacherOverview(options: UseTeacherOverviewOptions) {
     return teacherOpts.allOptions.value.find((o) => o.value === teacherId)?.label ?? teacherId
   }
 
-  function totalSlotsByDay(row: TeacherSummaryRowDto, day: string): number {
-    return row.freeSlotsByDay[day] ?? 0
-  }
-
   async function loadTeacherOverview() {
     if (!periodId.value) return
 
@@ -59,7 +55,6 @@ export function useTeacherOverview(options: UseTeacherOverviewOptions) {
     teacherOverviewRows,
     teacherOverviewLoading,
     teacherName,
-    totalSlotsByDay,
     loadTeacherOverview,
   }
 }
