@@ -4,6 +4,13 @@
       <div class="text-h5 text-weight-bold col">MEB Formları ve Dokümanlar</div>
       <div class="q-gutter-sm">
         <q-btn
+          v-if="canGenerate"
+          color="teal"
+          icon="note_add"
+          label="Belge Oluştur"
+          @click="showGenerateDialog = true"
+        />
+        <q-btn
           v-if="selected.length > 0"
           color="deep-purple"
           icon="archive"
@@ -134,6 +141,67 @@
         </template>
       </q-table>
     </q-card>
+
+    <!-- Belge Oluştur Dialog -->
+    <q-dialog v-model="showGenerateDialog" persistent>
+      <q-card style="min-width: 420px">
+        <q-card-section>
+          <div class="text-h6">Toplu Belge Oluştur</div>
+          <div class="text-caption text-grey-7">
+            Seçili form tipi ve dönem için eksik belgeler otomatik oluşturulur.
+            Zaten oluşturulmuş belgeler tekrar oluşturulmaz.
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-gutter-md">
+          <q-select
+            v-model="batchForm.formType"
+            :options="batchFormTypeOptions"
+            label="Form Tipi"
+            filled
+            dense
+            emit-value
+            map-options
+          />
+
+          <div class="row q-col-gutter-sm">
+            <div class="col-6">
+              <q-select
+                v-model="batchForm.year"
+                :options="yearOptions"
+                label="Yıl"
+                filled
+                dense
+                emit-value
+                map-options
+              />
+            </div>
+            <div class="col-6">
+              <q-select
+                v-model="batchForm.month"
+                :options="monthOptions"
+                label="Ay"
+                filled
+                dense
+                emit-value
+                map-options
+              />
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="İptal" color="grey" @click="showGenerateDialog = false" />
+          <q-btn
+            label="Oluştur"
+            color="teal"
+            :loading="generating"
+            :disable="!batchForm.formType"
+            @click="generateBatch"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -143,6 +211,7 @@ import {
   reportingApi,
   downloadBlob,
   MEB_FORM_LABELS,
+  BATCH_FORM_TYPES,
   DOCUMENT_STATUS_LABELS,
   DOCUMENT_STATUS_COLORS,
   type GeneratedDocumentSummaryDto,
@@ -150,17 +219,24 @@ import {
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useAuthStore } from 'stores/auth'
+import { useAcademicPeriodStore } from 'stores/academicPeriod'
 
 const notify = useNotify()
 const authStore = useAuthStore()
+const periodStore = useAcademicPeriodStore()
 
 const downloading = ref<string | null>(null)
 const zipping = ref(false)
+const generating = ref(false)
 const selected = ref<GeneratedDocumentSummaryDto[]>([])
+const showGenerateDialog = ref(false)
+
+// Müdür/müdür yardımcısı belge oluşturabilir
+const canGenerate = computed(() => authStore.hasPermission('institution:manage'))
 
 const filterState = reactive({
   formType: null as string | null,
-  status: 'Generated' as string | null, // Varsayılan: teslim edilmemiş evraklar
+  status: 'Generated' as string | null,
 })
 
 const filters = computed(() => ({
@@ -179,6 +255,38 @@ const { rows: documents, loading, pagination, onRequest, load } =
 
 const formTypeOptions = Object.entries(MEB_FORM_LABELS).map(([value, label]) => ({ value, label }))
 const statusOptions = Object.entries(DOCUMENT_STATUS_LABELS).map(([value, label]) => ({ value, label }))
+const batchFormTypeOptions = Object.entries(BATCH_FORM_TYPES).map(([value, label]) => ({ value, label }))
+
+// Belge oluşturma dialog formu
+const now = new Date()
+const batchForm = reactive({
+  formType: 'MonthlyAttendanceReport' as string,
+  year: now.getFullYear(),
+  month: now.getMonth() + 1,
+})
+
+const yearOptions = computed(() => {
+  const currentYear = now.getFullYear()
+  return [currentYear - 1, currentYear, currentYear + 1].map((y) => ({
+    value: y,
+    label: String(y),
+  }))
+})
+
+const monthOptions = [
+  { value: 1, label: 'Ocak' },
+  { value: 2, label: 'Şubat' },
+  { value: 3, label: 'Mart' },
+  { value: 4, label: 'Nisan' },
+  { value: 5, label: 'Mayıs' },
+  { value: 6, label: 'Haziran' },
+  { value: 7, label: 'Temmuz' },
+  { value: 8, label: 'Ağustos' },
+  { value: 9, label: 'Eylül' },
+  { value: 10, label: 'Ekim' },
+  { value: 11, label: 'Kasım' },
+  { value: 12, label: 'Aralık' },
+]
 
 const columns = [
   { name: 'formType', label: 'Form Tipi', field: 'formType', align: 'left' as const },
@@ -191,6 +299,41 @@ const columns = [
 
 function onSelectedUpdate(val: readonly any[]) {
   selected.value = val as GeneratedDocumentSummaryDto[]
+}
+
+async function generateBatch() {
+  const institutionId = authStore.user?.institutionId
+  const periodId = periodStore.selectedPeriodId
+  const period = periodStore.selectedPeriod
+
+  if (!institutionId || !periodId || !period) {
+    notify.error('Kurum veya akademik dönem bilgisi bulunamadı.')
+    return
+  }
+
+  generating.value = true
+  try {
+    const res = await reportingApi.generateBatch({
+      formType: batchForm.formType,
+      year: batchForm.year,
+      month: batchForm.month,
+      institutionId,
+      academicPeriodId: periodId,
+      academicYear: `${period.startYear} / ${period.endYear}`,
+    })
+    const result = (res.data as any)?.data ?? res.data
+    if (result.generated > 0) {
+      notify.success(`${result.generated} yeni belge oluşturuldu, ${result.skipped} belge zaten mevcuttu.`)
+    } else {
+      notify.info('Tüm belgeler zaten oluşturulmuş — yeni belge üretilmedi.')
+    }
+    showGenerateDialog.value = false
+    await load()
+  } catch (e) {
+    notify.apiError(e, 'Belge oluşturulurken bir hata oluştu.')
+  } finally {
+    generating.value = false
+  }
 }
 
 async function downloadSelectedZip() {
@@ -218,7 +361,6 @@ async function downloadPdf(doc: GeneratedDocumentSummaryDto) {
     if (result?.url) {
       window.open(result.url, '_blank')
     } else {
-      // Fallback: blob olarak indir
       const blobRes = await reportingApi.getDocumentPdfBlob(doc.id)
       const label = formTypeLabel(doc.formType).replace(/\s+/g, '-').toLowerCase()
       downloadBlob(blobRes.data as Blob, `${label}-${doc.id.slice(0, 8)}.pdf`)

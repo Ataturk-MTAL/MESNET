@@ -25,6 +25,7 @@ public static class DocumentLifecycleEndpoints
         group.MapPost("/{documentId:guid}/sign-and-return", MarkAsSignedAndReturned).RequireAuthorization(Permissions.Document.Verify);
         group.MapPost("/{documentId:guid}/archive", MarkAsArchived).RequireAuthorization(Permissions.Document.Approve);
         group.MapPost("/download-zip", DownloadZip).RequireAuthorization(Permissions.Document.View);
+        group.MapPost("/generate-batch", GenerateBatch).RequireAuthorization(Permissions.Institution.Manage);
         group.MapDelete("/{documentId:guid}", DeleteDocument).RequireAuthorization(Permissions.Institution.Manage);
         group.MapPost("/batch-delete", DeleteDocumentsBatch).RequireAuthorization(Permissions.Institution.Manage);
     }
@@ -123,6 +124,24 @@ public static class DocumentLifecycleEndpoints
             .Build());
     }
 
+    // --- Toplu belge oluşturma (duplicate kontrolü ile) ---
+    private static async Task<IResult> GenerateBatch(GenerateBatchRequest request, IMessageBus bus, HttpContext http)
+    {
+        var user = ExtractUserContext(http);
+        var result = await bus.InvokeAsync<BatchGenerateResult>(
+            new GenerateBatchDocuments(
+                request.FormType, request.Year, request.Month,
+                request.InstitutionId, request.AcademicPeriodId,
+                request.AcademicYear, user));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage(result.Generated > 0
+                ? $"{result.Generated} yeni belge oluşturuldu, {result.Skipped} belge zaten mevcuttu."
+                : "Tüm belgeler zaten oluşturulmuş — yeni belge üretilmedi.")
+            .Build());
+    }
+
     // --- Tekil silme ---
     private static async Task<IResult> DeleteDocument(Guid documentId, IMessageBus bus, HttpContext http)
     {
@@ -164,3 +183,14 @@ public sealed record DeleteDocumentsBatchRequest(List<Guid> DocumentIds);
 /// Toplu ZIP indirme istegi body'si
 /// </summary>
 public sealed record DownloadDocumentsZipRequest(List<Guid> DocumentIds);
+
+/// <summary>
+/// Toplu belge oluşturma istegi body'si
+/// </summary>
+public sealed record GenerateBatchRequest(
+    string FormType,
+    int Year,
+    int Month,
+    Guid InstitutionId,
+    Guid AcademicPeriodId,
+    string AcademicYear);

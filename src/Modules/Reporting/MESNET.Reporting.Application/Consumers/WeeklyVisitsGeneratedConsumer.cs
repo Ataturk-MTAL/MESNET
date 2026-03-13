@@ -24,12 +24,12 @@ public static class WeeklyVisitsGeneratedConsumer
 
         foreach (var assignment in @event.Assignments)
         {
-            // Bu işletmedeki öğrenci listesini al
-            var students = await querySession.Query<StudentPlacementReportView>()
+            // Bu işletmedeki öğrenci sayısını al
+            var studentCount = await querySession.Query<StudentPlacementReportView>()
                 .Where(s => s.BusinessId == assignment.BusinessId
                          && s.InstitutionId == @event.InstitutionId
                          && s.AcademicPeriodId == @event.AcademicPeriodId)
-                .ToListAsync(ct);
+                .CountAsync(ct);
 
             var formData = new GuidanceVisitFormData
             {
@@ -37,14 +37,18 @@ public static class WeeklyVisitsGeneratedConsumer
                 BusinessId = assignment.BusinessId,
                 InstitutionId = @event.InstitutionId,
                 TeacherId = assignment.TeacherId,
-                InstitutionName = "", // Reporting modülünde kurum adı read model'i yok — PDF'te boş kalır
                 TeacherName = assignment.TeacherName,
                 BusinessName = assignment.BusinessName,
-                BusinessAddress = assignment.BusinessAddress ?? "",
+                BranchName = assignment.BranchName,
+                StudentCount = studentCount,
                 VisitDate = assignment.VisitDate.ToDateTime(TimeOnly.MinValue),
-                StudentNotes = students.Select(s =>
-                    new StudentVisitEntry(s.StudentName, "")).ToList()
-                // Gözlem alanları boş — öğretmen yazdırdıktan sonra elle doldurur
+                // İmza alanları — işletme yetkili adı event'ten gelmez, öğretmen yazdırıp elle doldurur
+                BusinessContactName = null,
+                VicePrincipalName = null,
+                // Serbest metin alanları boş — öğretmen yazdırdıktan sonra elle doldurur
+                NegativeFactors = null,
+                GuidanceActions = null,
+                ReportNotes = null,
             };
 
             var command = new GenerateGuidanceVisitDocument(formData, systemUser);

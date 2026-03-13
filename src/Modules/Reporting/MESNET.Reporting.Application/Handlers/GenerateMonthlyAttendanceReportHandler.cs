@@ -50,6 +50,7 @@ public static class GenerateMonthlyAttendanceReportHandler
         {
             Id = data.DocumentId,
             FormType = MebFormType.MonthlyAttendanceReport,
+            FormTypeName = MebFormType.MonthlyAttendanceReport.Name,
             FormDataJson = JsonSerializer.Serialize(data),
             GeneratedByName = command.User.FullName,
             GeneratedByUserId = command.User.UserId,

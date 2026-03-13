@@ -27,6 +27,12 @@ export interface PdfDownloadResult {
   url?: string
 }
 
+export interface BatchGenerateResult {
+  generated: number
+  skipped: number
+  formTypeSlug: string
+}
+
 export const reportingApi = {
   listDocuments: (params?: {
     status?: string
@@ -61,6 +67,15 @@ export const reportingApi = {
 
   downloadDocumentsZip: (documentIds: string[]) =>
     api.post('/reports/documents/download-zip', { documentIds }, { responseType: 'blob' }),
+
+  generateBatch: (params: {
+    formType: string
+    year: number
+    month: number
+    institutionId: string
+    academicPeriodId: string
+    academicYear: string
+  }) => api.post<BatchGenerateResult>('/reports/documents/generate-batch', params),
 }
 
 export const MEB_FORM_LABELS: Record<string, string> = {
@@ -71,6 +86,12 @@ export const MEB_FORM_LABELS: Record<string, string> = {
   SkillExam: 'Beceri Sınavı Not Fişi',
   BusinessEvaluation: 'İşletme Değerlendirme',
   MonthlyAttendanceReport: 'Aylık Devamsızlık Formu',
+}
+
+/** Toplu oluşturmaya uygun form tipleri */
+export const BATCH_FORM_TYPES: Record<string, string> = {
+  MonthlyAttendanceReport: 'Aylık Devamsızlık Formu (Form 7)',
+  MonthlyActivityReport: 'Aylık Eğitim Faaliyeti (Form 2)',
 }
 
 export const DOCUMENT_STATUS_LABELS: Record<string, string> = {

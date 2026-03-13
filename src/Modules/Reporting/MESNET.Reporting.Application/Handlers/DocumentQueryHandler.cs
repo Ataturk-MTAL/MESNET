@@ -57,11 +57,13 @@ public static class DocumentQueryHandler
     {
         IQueryable<GeneratedDocument> queryable = session.Query<GeneratedDocument>();
 
+        // SmartEnum LINQ tuzağı: d.Status.Name / d.FormType.Name NULL döner
+        // (SmartEnum string olarak serialize edilir, obje değil). Duplicate string alanları kullan.
         if (!string.IsNullOrEmpty(query.Status) && PhysicalDocumentStatus.TryFromName(query.Status, out var status))
-            queryable = queryable.Where(d => d.Status.Name == status.Name);
+            queryable = queryable.Where(d => d.StatusName == status.Name);
 
         if (!string.IsNullOrEmpty(query.FormType) && MebFormType.TryFromName(query.FormType, out var formType))
-            queryable = queryable.Where(d => d.FormType.Name == formType.Name);
+            queryable = queryable.Where(d => d.FormTypeName == formType.Name);
 
         if (query.TeacherId.HasValue)
             queryable = queryable.Where(d => d.TeacherId == query.TeacherId.Value);

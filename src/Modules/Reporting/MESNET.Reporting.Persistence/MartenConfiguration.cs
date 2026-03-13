@@ -11,9 +11,9 @@ public class ReportingMartenConfig : IConfigureMarten
         var schema = options.Schema.For<GeneratedDocument>();
         schema.DatabaseSchemaName("reporting");
 
-        // Tekil sorgular
-        schema.Index(x => x.Status);
-        schema.Index(x => x.FormType);
+        // Duplicate string alanlar (SmartEnum LINQ sorgularında kullanılır)
+        schema.Index(x => x.FormTypeName);
+        schema.Index(x => x.StatusName);
         schema.Index(x => x.GeneratedAt);
 
         // İlişkili entity ID'leri
@@ -23,8 +23,10 @@ public class ReportingMartenConfig : IConfigureMarten
         schema.Index(x => x.TeacherId);
 
         // Composite index'ler — Müdür Yardımcısı bekleyen dokümanları görmek için
-        schema.Index(x => new { x.TeacherId, x.Status });
-        schema.Index(x => new { x.InstitutionId, x.Status });
+        schema.Index(x => new { x.TeacherId, x.StatusName },
+            x => x.Name = "idx_gendoc_teacher_status");
+        schema.Index(x => new { x.InstitutionId, x.StatusName },
+            x => x.Name = "idx_gendoc_inst_status");
 
         // ─── Reporting Read Models ───
 

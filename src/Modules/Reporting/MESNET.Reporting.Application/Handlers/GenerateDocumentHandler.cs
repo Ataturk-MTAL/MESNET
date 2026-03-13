@@ -159,6 +159,7 @@ public static class GenerateDocumentHandler
         {
             Id = documentId,
             FormType = formType,
+            FormTypeName = formType.Name,
             FormDataJson = JsonSerializer.Serialize(formData, formData.GetType()),
             GeneratedByName = user.FullName,
             GeneratedByUserId = user.UserId,

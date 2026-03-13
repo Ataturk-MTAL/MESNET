@@ -14,6 +14,12 @@ public sealed class GeneratedDocument
     public required MebFormType FormType { get; init; }
     public PhysicalDocumentStatus Status { get; set; } = PhysicalDocumentStatus.Generated;
 
+    // Duplicate primitive alanlar — SmartEnum LINQ nested path tuzağı:
+    // data->'FormType'->>'Name' NULL döner (SmartEnum string olarak serialize edilir, obje değil).
+    // Bu alanlar Marten LINQ sorgularında kullanılır.
+    public required string FormTypeName { get; init; }
+    public string StatusName { get; set; } = "Generated";
+
     // İlişkili entity ID'leri
     public Guid? StudentId { get; init; }
     public Guid? BusinessId { get; init; }
@@ -56,6 +62,7 @@ public sealed class GeneratedDocument
     public void MarkAsPrinted(string userName, Guid userId)
     {
         Status = PhysicalDocumentStatus.Printed;
+        StatusName = PhysicalDocumentStatus.Printed.Name;
         PrintedAt = DateTime.UtcNow;
         PrintedByName = userName;
         PrintedByUserId = userId;
@@ -67,6 +74,7 @@ public sealed class GeneratedDocument
     public void MarkAsSignedAndReturned(string userName, Guid userId)
     {
         Status = PhysicalDocumentStatus.SignedAndReturned;
+        StatusName = PhysicalDocumentStatus.SignedAndReturned.Name;
         SignedAndReturnedAt = DateTime.UtcNow;
         ReturnedByName = userName;
         ReturnedByUserId = userId;
@@ -78,6 +86,7 @@ public sealed class GeneratedDocument
     public void MarkAsArchived(string userName, Guid userId)
     {
         Status = PhysicalDocumentStatus.Archived;
+        StatusName = PhysicalDocumentStatus.Archived.Name;
         ArchivedAt = DateTime.UtcNow;
         ArchivedByName = userName;
         ArchivedByUserId = userId;
