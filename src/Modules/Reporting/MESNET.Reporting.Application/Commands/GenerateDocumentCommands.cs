@@ -9,8 +9,15 @@ public sealed record GenerateInternshipContractDocument(InternshipContractFormDa
 // ─── Form 2: Aylık Eğitim Faaliyeti Formu ───
 public sealed record GenerateMonthlyActivityDocument(MonthlyActivityFormData Data, UserContext User);
 
-// ─── Form 3: Günlük Rehberlik Formu ───
+// ─── Form 3: Günlük Rehberlik Formu (tekil) ───
 public sealed record GenerateGuidanceVisitDocument(GuidanceVisitFormData Data, UserContext User);
+
+// ─── Form 3: Günlük Rehberlik Formu (toplu — öğretmen bazlı) ───
+// Bir öğretmenin tüm haftalık ziyaretleri tek PDF'te toplanır (ikişerli A5 yerleşim)
+public sealed record GenerateGuidanceVisitBatchDocument(
+    List<GuidanceVisitFormData> Forms, UserContext User,
+    Guid? InstitutionId = null, Guid? TeacherId = null,
+    string? Description = null);
 
 // ─── Form 4: Devamsızlık Çizelgesi ───
 public sealed record GenerateAttendanceSheetDocument(AttendanceSheetData Data, UserContext User);

@@ -17,7 +17,7 @@ public sealed class GeneratedDocument
     // Duplicate primitive alanlar — SmartEnum LINQ nested path tuzağı:
     // data->'FormType'->>'Name' NULL döner (SmartEnum string olarak serialize edilir, obje değil).
     // Bu alanlar Marten LINQ sorgularında kullanılır.
-    public required string FormTypeName { get; init; }
+    public string FormTypeName { get; init; } = "";
     public string StatusName { get; set; } = "Generated";
 
     // İlişkili entity ID'leri

@@ -11,6 +11,15 @@
           @click="showGenerateDialog = true"
         />
         <q-btn
+          v-if="canGenerate && selected.length > 0"
+          color="red"
+          icon="delete_sweep"
+          :label="`Seçilenleri Sil (${selected.length})`"
+          :loading="deleting"
+          flat
+          @click="deleteSelected"
+        />
+        <q-btn
           v-if="selected.length > 0"
           color="deep-purple"
           icon="archive"
@@ -137,6 +146,16 @@
               title="Arşivle"
               @click="archiveDoc(row.id)"
             />
+            <q-btn
+              v-if="canGenerate"
+              flat
+              round
+              dense
+              icon="delete"
+              color="red"
+              title="Sil"
+              @click="deleteDoc(row.id)"
+            />
           </q-td>
         </template>
       </q-table>
@@ -228,6 +247,7 @@ const periodStore = useAcademicPeriodStore()
 const downloading = ref<string | null>(null)
 const zipping = ref(false)
 const generating = ref(false)
+const deleting = ref(false)
 const selected = ref<GeneratedDocumentSummaryDto[]>([])
 const showGenerateDialog = ref(false)
 
@@ -236,7 +256,7 @@ const canGenerate = computed(() => authStore.hasPermission('institution:manage')
 
 const filterState = reactive({
   formType: null as string | null,
-  status: 'Generated' as string | null,
+  status: null as string | null,
 })
 
 const filters = computed(() => ({
@@ -336,6 +356,23 @@ async function generateBatch() {
   }
 }
 
+async function deleteSelected() {
+  if (selected.value.length === 0) return
+
+  deleting.value = true
+  try {
+    const ids = selected.value.map((d) => d.id)
+    await reportingApi.deleteDocumentsBatch(ids)
+    notify.success(`${ids.length} belge silindi.`)
+    selected.value = []
+    await load()
+  } catch (e) {
+    notify.apiError(e, 'Belgeler silinirken bir hata oluştu.')
+  } finally {
+    deleting.value = false
+  }
+}
+
 async function downloadSelectedZip() {
   if (selected.value.length === 0) return
 
@@ -389,6 +426,16 @@ async function markSignedReturned(id: string) {
     await load()
   } catch (e) {
     notify.apiError(e, 'İşlem başarısız.')
+  }
+}
+
+async function deleteDoc(id: string) {
+  try {
+    await reportingApi.deleteDocument(id)
+    notify.success('Belge silindi.')
+    await load()
+  } catch (e) {
+    notify.apiError(e, 'Silme işlemi başarısız.')
   }
 }
 

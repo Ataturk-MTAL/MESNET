@@ -8,35 +8,78 @@ namespace MESNET.Reporting.Application.Templates;
 
 /// <summary>
 /// Form 3: Günlük Rehberlik Görev Formu
-/// Yatay A4 — iki adet A5 form yan yana (kağıt tasarrufu)
-/// MEB standardına uygun: başlık, bilgi alanları, 3 serbest metin kutusu, imza bloğu, açıklamalar
+/// Bir öğretmenin tüm ziyaretleri tek PDF'te toplanır.
+/// Her yatay A4 sayfasında iki A5 form yan yana — aralarında kesikli kesim çizgisi.
+/// Tek sayıda form varsa son sayfanın sağ tarafı boş kalır.
 /// </summary>
 public class GuidanceVisitFormDocument : IDocument
 {
-    private readonly GuidanceVisitFormData _data;
+    private readonly IReadOnlyList<GuidanceVisitFormData> _forms;
 
-    public GuidanceVisitFormDocument(GuidanceVisitFormData data) => _data = data;
+    public GuidanceVisitFormDocument(IReadOnlyList<GuidanceVisitFormData> forms) => _forms = forms;
+
+    /// <summary>
+    /// Tek form için geriye dönük uyumluluk
+    /// </summary>
+    public GuidanceVisitFormDocument(GuidanceVisitFormData singleForm) : this([singleForm]) { }
 
     public DocumentMetadata GetMetadata() => DocumentMetadata.Default;
 
     public void Compose(IDocumentContainer container)
     {
-        container.Page(page =>
+        // Formları ikişerli grupla — son grup tek eleman olabilir
+        for (var i = 0; i < _forms.Count; i += 2)
         {
-            page.Size(PageSizes.A4.Landscape());
-            page.MarginVertical(0.8f, Unit.Centimetre);
-            page.MarginHorizontal(0.6f, Unit.Centimetre);
-            page.DefaultTextStyle(x => x.FontSize(7f));
+            var left = _forms[i];
+            var right = i + 1 < _forms.Count ? _forms[i + 1] : null;
 
-            page.Content().Row(row =>
+            container.Page(page =>
             {
-                row.RelativeItem().PaddingRight(4).Element(c => RenderSingleForm(c));
-                row.RelativeItem().PaddingLeft(4).Element(c => RenderSingleForm(c));
+                page.Size(PageSizes.A4.Landscape());
+                page.MarginVertical(0.7f, Unit.Centimetre);
+                page.MarginHorizontal(0.5f, Unit.Centimetre);
+                page.DefaultTextStyle(x => x.FontSize(7f));
+
+                page.Content().Row(row =>
+                {
+                    // Sol form
+                    row.RelativeItem().PaddingRight(8).Element(c => RenderSingleForm(c, left));
+
+                    // Kesikli kesim çizgisi (✂)
+                    row.ConstantItem(12).Element(RenderCutLine);
+
+                    // Sağ form veya boş alan
+                    row.RelativeItem().PaddingLeft(8).Element(c =>
+                    {
+                        if (right is not null)
+                            RenderSingleForm(c, right);
+                        // Sağ taraf boş — yarım A4 başka işte kullanılabilir
+                    });
+                });
             });
+        }
+    }
+
+    /// <summary>
+    /// Dikey kesikli kesim çizgisi — kağıt ortasından kesilecek yer
+    /// </summary>
+    private static void RenderCutLine(IContainer container)
+    {
+        container.Column(col =>
+        {
+            // Makas ikonu
+            col.Item().AlignCenter().Text(text => text.Span("✂").FontSize(7f).FontColor("#999999"));
+
+            // Kesikli çizgi — küçük dikdörtgenler dikey tekrar
+            for (var i = 0; i < 60; i++)
+            {
+                col.Item().AlignCenter().Width(0.5f).Height(4).Background("#BBBBBB");
+                col.Item().Height(3); // boşluk
+            }
         });
     }
 
-    private void RenderSingleForm(IContainer container)
+    private static void RenderSingleForm(IContainer container, GuidanceVisitFormData data)
     {
         container.Border(0.5f).BorderColor(MebFormStyles.BorderColor).Padding(8).Column(col =>
         {
@@ -56,17 +99,17 @@ public class GuidanceVisitFormDocument : IDocument
             });
 
             // ── QR kod (sağ üst) ──
-            col.Item().AlignRight().Element(c => c.QrCode(_data.DocumentId, 1.5f));
+            col.Item().AlignRight().Element(c => c.QrCode(data.DocumentId, 1.5f));
 
             // ── Bilgi alanları ──
-            col.Item().PaddingTop(4).Element(c => InfoField(c, "İşletmenin Adı", _data.BusinessName));
+            col.Item().PaddingTop(4).Element(c => InfoField(c, "İşletmenin Adı", data.BusinessName));
             col.Item().PaddingTop(2).Element(c => InfoField(c, "İzlemede Olduğu Öğrenci Sayısı",
-                _data.StudentCount > 0 ? _data.StudentCount.ToString() : "..."));
-            col.Item().PaddingTop(2).Element(c => InfoField(c, "Meslek Alan/Dalı", _data.BranchName));
+                data.StudentCount > 0 ? data.StudentCount.ToString() : "..."));
+            col.Item().PaddingTop(2).Element(c => InfoField(c, "Meslek Alan/Dalı", data.BranchName));
             col.Item().PaddingTop(2).Element(c => InfoField(c, "Görev Tarihi",
-                _data.VisitDate.ToString("dd.MM.yyyy")));
+                data.VisitDate.ToString("dd.MM.yyyy")));
             col.Item().PaddingTop(2).Element(c => InfoField(c, "Form ID",
-                _data.DocumentId.ToString()[..8]));
+                data.DocumentId.ToString()[..8]));
 
             // ── "Aylık Rehberlik Formuna Göre ;" başlığı ──
             col.Item().PaddingTop(10).Text(text =>
@@ -77,15 +120,15 @@ public class GuidanceVisitFormDocument : IDocument
             // ── 3 serbest metin kutusu ──
             col.Item().PaddingTop(6).Element(c =>
                 TextArea(c, "İşletmede öğrenim gören öğrencilerin eğitimini olumsuz yönde etkileyen hususlar: (varsa yazınız.)",
-                    _data.NegativeFactors));
+                    data.NegativeFactors));
 
             col.Item().PaddingTop(4).Element(c =>
                 TextArea(c, "Belirlenen aksaklıklarla ilgili yapılan rehberlik ve alınan önlemler:",
-                    _data.GuidanceActions));
+                    data.GuidanceActions));
 
             col.Item().PaddingTop(4).Element(c =>
                 TextArea(c, "Aylık Rehberlik formunda belirtilmesinde yarar görülen hususlar:",
-                    _data.ReportNotes));
+                    data.ReportNotes));
 
             // ── İmza bloğu ──
             col.Item().Extend().AlignBottom().Column(sig =>
@@ -95,19 +138,19 @@ public class GuidanceVisitFormDocument : IDocument
                     row.RelativeItem().Column(s =>
                     {
                         s.Item().Text(text => text.Span("İşletme Eğitim Yetkilisi").FontSize(7f));
-                        s.Item().Text(text => text.Span(_data.BusinessContactName ?? "").FontSize(7f).Bold());
+                        s.Item().Text(text => text.Span(data.BusinessContactName ?? "").FontSize(7f).Bold());
                         s.Item().Text(text => text.Span("Kaşe ve İmza").FontSize(6f));
                     });
                     row.RelativeItem().Column(s =>
                     {
                         s.Item().Text(text => text.Span("Koor. Öğretmen").FontSize(7f));
-                        s.Item().Text(text => text.Span(_data.TeacherName).FontSize(7f).Bold());
+                        s.Item().Text(text => text.Span(data.TeacherName).FontSize(7f).Bold());
                         s.Item().Text(text => text.Span("İmza").FontSize(6f));
                     });
                     row.RelativeItem().Column(s =>
                     {
                         s.Item().Text(text => text.Span("Koor. Md. Yrd.").FontSize(7f));
-                        s.Item().Text(text => text.Span(_data.VicePrincipalName ?? "").FontSize(7f).Bold());
+                        s.Item().Text(text => text.Span(data.VicePrincipalName ?? "").FontSize(7f).Bold());
                         s.Item().Text(text => text.Span("İmza").FontSize(6f));
                     });
                 });

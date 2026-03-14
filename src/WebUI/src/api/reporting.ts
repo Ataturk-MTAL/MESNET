@@ -65,6 +65,9 @@ export const reportingApi = {
   deleteDocument: (documentId: string) =>
     api.delete(`/reports/documents/${documentId}`),
 
+  deleteDocumentsBatch: (documentIds: string[]) =>
+    api.post('/reports/documents/batch-delete', { documentIds }),
+
   downloadDocumentsZip: (documentIds: string[]) =>
     api.post('/reports/documents/download-zip', { documentIds }, { responseType: 'blob' }),
 
@@ -92,6 +95,7 @@ export const MEB_FORM_LABELS: Record<string, string> = {
 export const BATCH_FORM_TYPES: Record<string, string> = {
   MonthlyAttendanceReport: 'Aylık Devamsızlık Formu (Form 7)',
   MonthlyActivityReport: 'Aylık Eğitim Faaliyeti (Form 2)',
+  GuidanceVisit: 'Günlük Rehberlik Formu (Form 3)',
 }
 
 export const DOCUMENT_STATUS_LABELS: Record<string, string> = {

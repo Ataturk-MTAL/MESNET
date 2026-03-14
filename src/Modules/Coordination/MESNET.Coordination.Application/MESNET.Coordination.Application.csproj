@@ -2,6 +2,7 @@
   <ItemGroup>
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Marten" />
+    <PackageReference Include="WolverineFx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../MESNET.Coordination.Core/MESNET.Coordination.Core.csproj" />

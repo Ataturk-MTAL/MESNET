@@ -53,7 +53,7 @@ public static class GenerateDocumentHandler
         return (doc.Id, BuildNotification(doc, command.User));
     }
 
-    // ─── Form 3: Günlük Rehberlik Formu ───
+    // ─── Form 3: Günlük Rehberlik Formu (tekil) ───
     public static async Task<(Guid, NotifyDocumentGenerated)> Handle(
         GenerateGuidanceVisitDocument command, IDocumentSession session, IFileStorageService storage)
     {
@@ -64,6 +64,27 @@ public static class GenerateDocumentHandler
             teacherId: command.Data.TeacherId);
 
         var pdf = new GuidanceVisitFormDocument(command.Data);
+        await UploadPdfSnapshot(storage, doc, pdf);
+
+        session.Store(doc);
+        return (doc.Id, BuildNotification(doc, command.User));
+    }
+
+    // ─── Form 3: Günlük Rehberlik Formu (toplu — öğretmen bazlı) ───
+    // Bir öğretmenin tüm haftalık ziyaretleri tek PDF'te toplanır
+    public static async Task<(Guid, NotifyDocumentGenerated)> Handle(
+        GenerateGuidanceVisitBatchDocument command, IDocumentSession session, IFileStorageService storage)
+    {
+        if (command.Forms.Count == 0) throw new InvalidOperationException("Batch boş olamaz.");
+
+        var batchId = Guid.NewGuid();
+        var doc = CreateDocument(
+            batchId, MebFormType.GuidanceVisit, command.Forms, command.User,
+            institutionId: command.InstitutionId,
+            teacherId: command.TeacherId,
+            description: command.Description);
+
+        var pdf = new GuidanceVisitFormDocument(command.Forms);
         await UploadPdfSnapshot(storage, doc, pdf);
 
         session.Store(doc);
@@ -153,7 +174,7 @@ public static class GenerateDocumentHandler
         Guid documentId, MebFormType formType, object formData, UserContext user,
         Guid? studentId = null, Guid? businessId = null,
         Guid? institutionId = null, Guid? teacherId = null,
-        string? academicYear = null)
+        string? academicYear = null, string? description = null)
     {
         return new GeneratedDocument
         {
@@ -168,7 +189,8 @@ public static class GenerateDocumentHandler
             BusinessId = businessId,
             InstitutionId = institutionId,
             TeacherId = teacherId,
-            AcademicYear = academicYear
+            AcademicYear = academicYear,
+            Description = description
         };
     }
 }

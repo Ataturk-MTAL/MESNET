@@ -10,48 +10,65 @@ namespace MESNET.Reporting.Application.Consumers;
 
 /// <summary>
 /// Haftalık ziyaret ataması yapılınca Form 3 (Günlük Rehberlik Formu) PDF'lerini otomatik üretir.
-/// Her atama (öğretmen-işletme-gün) için bir adet karekodlu PDF oluşturulur ve MinIO'ya arşivlenir.
+/// Bir öğretmenin tüm ziyaretleri tek PDF'te toplanır (ikişerli A5 yerleşim — kağıt tasarrufu).
 /// </summary>
 public static class WeeklyVisitsGeneratedConsumer
 {
     public static async Task Consume(
         WeeklyVisitsGenerated @event,
-        IQuerySession querySession,
+        IDocumentSession session,
         IMessageBus bus,
         CancellationToken ct)
     {
         var systemUser = new UserContext(Guid.Empty, "Sistem (Otomatik Rapor)");
 
-        foreach (var assignment in @event.Assignments)
+        // Öğretmen bazlı grupla — her öğretmen için tek PDF
+        var byTeacher = @event.Assignments.GroupBy(a => a.TeacherId);
+
+        foreach (var teacherGroup in byTeacher)
         {
-            // Bu işletmedeki öğrenci sayısını al
-            var studentCount = await querySession.Query<StudentPlacementReportView>()
-                .Where(s => s.BusinessId == assignment.BusinessId
-                         && s.InstitutionId == @event.InstitutionId
-                         && s.AcademicPeriodId == @event.AcademicPeriodId)
-                .CountAsync(ct);
+            var forms = new List<GuidanceVisitFormData>();
 
-            var formData = new GuidanceVisitFormData
+            foreach (var assignment in teacherGroup)
             {
-                DocumentId = assignment.AssignmentId, // QR kod kaynağı
-                BusinessId = assignment.BusinessId,
-                InstitutionId = @event.InstitutionId,
-                TeacherId = assignment.TeacherId,
-                TeacherName = assignment.TeacherName,
-                BusinessName = assignment.BusinessName,
-                BranchName = assignment.BranchName,
-                StudentCount = studentCount,
-                VisitDate = assignment.VisitDate.ToDateTime(TimeOnly.MinValue),
-                // İmza alanları — işletme yetkili adı event'ten gelmez, öğretmen yazdırıp elle doldurur
-                BusinessContactName = null,
-                VicePrincipalName = null,
-                // Serbest metin alanları boş — öğretmen yazdırdıktan sonra elle doldurur
-                NegativeFactors = null,
-                GuidanceActions = null,
-                ReportNotes = null,
-            };
+                // Bu işletmedeki öğrencileri al
+                var students = await session.Query<StudentPlacementReportView>()
+                    .Where(s => s.BusinessId == assignment.BusinessId
+                             && s.InstitutionId == @event.InstitutionId
+                             && s.AcademicPeriodId == @event.AcademicPeriodId)
+                    .ToListAsync(ct);
 
-            var command = new GenerateGuidanceVisitDocument(formData, systemUser);
+                // TeacherName'i placement view'lara yaz (batch generate için gerekli)
+                foreach (var s in students.Where(s => s.TeacherId == assignment.TeacherId
+                                                      && string.IsNullOrEmpty(s.TeacherName)))
+                {
+                    s.TeacherName = assignment.TeacherName;
+                    session.Store(s);
+                }
+
+                forms.Add(new GuidanceVisitFormData
+                {
+                    DocumentId = assignment.AssignmentId,
+                    BusinessId = assignment.BusinessId,
+                    InstitutionId = @event.InstitutionId,
+                    TeacherId = assignment.TeacherId,
+                    TeacherName = assignment.TeacherName,
+                    BusinessName = assignment.BusinessName,
+                    BranchName = assignment.BranchName,
+                    StudentCount = students.Count,
+                    VisitDate = assignment.VisitDate.ToDateTime(TimeOnly.MinValue),
+                });
+            }
+
+            var first = teacherGroup.First();
+            var pageCount = (forms.Count + 1) / 2;
+
+            var command = new GenerateGuidanceVisitBatchDocument(
+                forms, systemUser,
+                InstitutionId: @event.InstitutionId,
+                TeacherId: first.TeacherId,
+                Description: $"{first.TeacherName} — {forms.Count} ziyaret ({pageCount} sayfa)");
+
             await bus.InvokeAsync(command, ct);
         }
     }

@@ -147,7 +147,15 @@ public static class DocumentQueryHandler
         if (formType == MebFormType.MonthlyActivityReport)
             return new MonthlyActivityFormDocument(JsonSerializer.Deserialize<MonthlyActivityFormData>(json)!);
         if (formType == MebFormType.GuidanceVisit)
+        {
+            // Batch document — JSON List<GuidanceVisitFormData> olabilir
+            if (json.TrimStart().StartsWith('['))
+            {
+                var forms = JsonSerializer.Deserialize<List<GuidanceVisitFormData>>(json)!;
+                return new GuidanceVisitFormDocument(forms);
+            }
             return new GuidanceVisitFormDocument(JsonSerializer.Deserialize<GuidanceVisitFormData>(json)!);
+        }
         if (formType == MebFormType.AttendanceSheet)
             return new AttendanceSheetDocument(JsonSerializer.Deserialize<AttendanceSheetData>(json)!);
         if (formType == MebFormType.SkillExam)

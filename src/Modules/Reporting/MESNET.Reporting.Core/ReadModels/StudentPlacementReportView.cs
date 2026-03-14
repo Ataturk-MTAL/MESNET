@@ -20,6 +20,7 @@ public class StudentPlacementReportView
     public string BranchCode { get; set; } = "";
     public string BranchName { get; set; } = "";
     public Guid? TeacherId { get; set; }
+    public string TeacherName { get; set; } = "";
     public Guid InstitutionId { get; set; }
     public Guid AcademicPeriodId { get; set; }
 }
