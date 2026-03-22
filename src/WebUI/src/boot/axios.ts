@@ -66,9 +66,13 @@ api.interceptors.response.use(
           return api(originalRequest)
         }
       } catch {
-        // Refresh da başarısız — logout
-        const { logout } = await import('./auth')
-        await logout()
+        // Refresh da başarısız — sadece app mount edildikten sonra logout yap
+        // Boot sırasında logout → login → boot → logout sonsuz döngüsüne sebep olur
+        const authStore = useAuthStore()
+        if (authStore.isInitialized && authStore.permissions.length > 0) {
+          const { logout } = await import('./auth')
+          await logout()
+        }
       }
     }
 

@@ -44,7 +44,8 @@ export const useNotificationStore = defineStore('notifications', () => {
       })
 
       if (!response.ok || !response.body) {
-        console.warn('[SSE] Bağlantı başarısız:', response.status)
+        console.warn(`[SSE] Bağlantı başarısız: ${response.status}`)
+        // 401/403 — token geçersiz veya yetki yok, tekrar deneme
         return
       }
 

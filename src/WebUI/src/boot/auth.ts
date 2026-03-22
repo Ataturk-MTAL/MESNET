@@ -52,12 +52,15 @@ export async function bootAuth(): Promise<void> {
 
   authStore.setFromKeycloak(keycloak)
 
-  // Backend'den güncel permission listesini al (roller → permission dönüşümü backend'de yapılır)
+  // Backend'den güncel permission listesini al
+  // Aspire restart sonrası backend henüz hazır olmayabilir — retry ile bekle
   await authStore.loadPermissions()
 
-  // SSE bildirim bağlantısını aç
-  const notificationStore = useNotificationStore()
-  void notificationStore.connect()
+  // SSE bildirim bağlantısını aç (permission yüklendiyse)
+  if (authStore.permissions.length > 0) {
+    const notificationStore = useNotificationStore()
+    void notificationStore.connect()
+  }
 
   // 5 dakikada bir silent token refresh
   // onTokenExpired: token süresi dolduğunda

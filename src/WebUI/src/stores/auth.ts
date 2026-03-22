@@ -98,32 +98,52 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Backend'den güncel permission listesini ve kullanıcı bilgilerini yükle
   // PermissionClaimsTransformation roller → permission dönüşümünü yapar
-  async function loadPermissions(): Promise<void> {
+  //
+  // Aspire restart sonrası backend henüz ayağa kalkmamış olabilir.
+  // Network hatası (abort, timeout, ECONNREFUSED) → retry ile bekle.
+  // Gerçek 401 → token geçersiz → login redirect.
+  async function loadPermissions(maxRetries = 3): Promise<void> {
     if (!_accessToken.value) return
 
-    try {
-      // axios interceptor ResponseBuilder.data'yı otomatik unwrap eder
-      const { data } = await api.get('/auth/me')
-      permissions.value = data?.permissions ?? []
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // axios interceptor ResponseBuilder.data'yı otomatik unwrap eder
+        const { data } = await api.get('/auth/me')
+        permissions.value = data?.permissions ?? []
 
-      // Backend'den gelen bilgiler token claim'inden daha güvenilir
-      if (user.value) {
-        user.value = {
-          ...user.value,
-          ...(data?.institutionId ? { institutionId: data.institutionId } : {}),
-          branchCode: data?.branchCode ?? null,
+        // Backend'den gelen bilgiler token claim'inden daha güvenilir
+        if (user.value) {
+          user.value = {
+            ...user.value,
+            ...(data?.institutionId ? { institutionId: data.institutionId } : {}),
+            branchCode: data?.branchCode ?? null,
+          }
         }
-      }
-    } catch (err: unknown) {
-      console.error('Permission yüklenirken hata:', err)
-      // 401 alıyorsa token geçersiz — yeniden login
-      if (err && typeof err === 'object' && 'response' in err) {
-        const axiosErr = err as { response?: { status?: number } }
-        if (axiosErr.response?.status === 401) {
+        return // başarılı — çık
+      } catch (err: unknown) {
+        const axiosErr = err as { response?: { status?: number }; code?: string }
+        const status = axiosErr.response?.status
+        const code = axiosErr.code // 'ERR_NETWORK', 'ECONNABORTED', 'ERR_CANCELED'
+
+        // Gerçek 401 — token geçersiz, login redirect
+        if (status === 401) {
           console.warn('[Auth] Token geçersiz, yeniden giriş yapılıyor...')
           const { getKeycloak } = await import('boot/auth')
           await getKeycloak().login()
+          return
         }
+
+        // Network hatası veya backend henüz hazır değil — retry
+        const isNetworkError = !status || code === 'ERR_NETWORK' || code === 'ECONNABORTED' || code === 'ERR_CANCELED'
+        if (isNetworkError && attempt < maxRetries) {
+          const delay = attempt * 2000 // 2s, 4s
+          console.warn(`[Auth] Backend henüz hazır değil, ${delay / 1000}s sonra tekrar denenecek... (${attempt}/${maxRetries})`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+
+        // Son deneme de başarısız — sessiz kal, uygulama permission'sız başlasın
+        console.error('[Auth] Permission yüklenemedi:', err)
       }
     }
   }
