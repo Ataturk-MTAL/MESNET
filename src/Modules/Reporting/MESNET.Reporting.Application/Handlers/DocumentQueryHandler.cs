@@ -156,6 +156,16 @@ public static class DocumentQueryHandler
             }
             return new GuidanceVisitFormDocument(JsonSerializer.Deserialize<GuidanceVisitFormData>(json)!);
         }
+        if (formType == MebFormType.MonthlyAttendanceReport)
+        {
+            // Batch document — JSON List<MonthlyAttendanceReportData> olabilir
+            if (json.TrimStart().StartsWith('['))
+            {
+                var pages = JsonSerializer.Deserialize<List<MonthlyAttendanceReportData>>(json)!;
+                return new MonthlyAttendanceReportDocument(pages);
+            }
+            return new MonthlyAttendanceReportDocument(JsonSerializer.Deserialize<MonthlyAttendanceReportData>(json)!);
+        }
         if (formType == MebFormType.AttendanceSheet)
             return new AttendanceSheetDocument(JsonSerializer.Deserialize<AttendanceSheetData>(json)!);
         if (formType == MebFormType.SkillExam)

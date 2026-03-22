@@ -43,7 +43,8 @@ public sealed record GenerateBatchDocuments(
     Guid InstitutionId,
     Guid AcademicPeriodId,
     string AcademicYear,
-    UserContext User);
+    UserContext User,
+    string? InstitutionName = null);
 
 /// <summary>
 /// Toplu belge oluşturma sonucu

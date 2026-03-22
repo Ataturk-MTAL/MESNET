@@ -8,9 +8,15 @@ namespace MESNET.Reporting.Application.Templates;
 
 /// <summary>
 /// Form 3: Günlük Rehberlik Görev Formu
-/// Bir öğretmenin tüm ziyaretleri tek PDF'te toplanır.
-/// Her yatay A4 sayfasında iki A5 form yan yana — aralarında kesikli kesim çizgisi.
-/// Tek sayıda form varsa son sayfanın sağ tarafı boş kalır.
+/// A4 Landscape (842 × 595 pt) — iki A5 form yan yana, aralarında kesim çizgisi.
+///
+/// Düzen hesabı:
+///   Sayfa kenar boşlukları: tüm yönler 28pt (≈1cm)
+///   Kullanılabilir genişlik: 842 - 56 = 786 pt
+///   Kesim çizgisi: 14 pt
+///   Form arası simetrik boşluk: sol PaddingRight(8) + sağ PaddingLeft(8) = 16 pt
+///   Her form genişliği: (786 - 14 - 16) / 2 = 378 pt
+///   Form iç içerik: 378 - border(2×0.7) - padding(2×8) ≈ 360 pt
 /// </summary>
 public class GuidanceVisitFormDocument : IDocument
 {
@@ -18,16 +24,12 @@ public class GuidanceVisitFormDocument : IDocument
 
     public GuidanceVisitFormDocument(IReadOnlyList<GuidanceVisitFormData> forms) => _forms = forms;
 
-    /// <summary>
-    /// Tek form için geriye dönük uyumluluk
-    /// </summary>
     public GuidanceVisitFormDocument(GuidanceVisitFormData singleForm) : this([singleForm]) { }
 
     public DocumentMetadata GetMetadata() => DocumentMetadata.Default;
 
     public void Compose(IDocumentContainer container)
     {
-        // Formları ikişerli grupla — son grup tek eleman olabilir
         for (var i = 0; i < _forms.Count; i += 2)
         {
             var left = _forms[i];
@@ -36,136 +38,156 @@ public class GuidanceVisitFormDocument : IDocument
             container.Page(page =>
             {
                 page.Size(PageSizes.A4.Landscape());
-                page.MarginVertical(0.7f, Unit.Centimetre);
-                page.MarginHorizontal(0.5f, Unit.Centimetre);
-                page.DefaultTextStyle(x => x.FontSize(7f));
+                page.MarginTop(28); // 28pt ≈ 1cm — tüm kenarlar eşit
+                page.MarginLeft(28);
+                page.MarginBottom(28);
+                page.MarginRight(0);
+                page.DefaultTextStyle(x => x.FontSize(11f));
 
                 page.Content().Row(row =>
                 {
-                    // Sol form
-                    row.RelativeItem().PaddingRight(8).Element(c => RenderSingleForm(c, left));
+                    // Sol form — kesim çizgisinden 8pt boşluk
+                    row.ConstantItem(378).PaddingRight(8).Element(c => RenderSingleForm(c, left));
 
-                    // Kesikli kesim çizgisi (✂)
-                    row.ConstantItem(12).Element(RenderCutLine);
+                    // Kesim çizgisi — 14pt sabit
+                    row.ConstantItem(14).Element(RenderCutLine);
+                    row.ConstantItem(28);
 
-                    // Sağ form veya boş alan
-                    row.RelativeItem().PaddingLeft(8).Element(c =>
+                    // Sağ form — sol: kesim çizgisinden 8pt, sağ: 20pt delgeç/dosya payı
+                    row.ConstantItem(378).PaddingRight(8).Element(c =>
                     {
                         if (right is not null)
                             RenderSingleForm(c, right);
-                        // Sağ taraf boş — yarım A4 başka işte kullanılabilir
                     });
                 });
             });
         }
     }
 
-    /// <summary>
-    /// Dikey kesikli kesim çizgisi — kağıt ortasından kesilecek yer
-    /// </summary>
+    /// <summary>Dikey kesikli kesim çizgisi — makas ikonu + noktalı çizgi</summary>
     private static void RenderCutLine(IContainer container)
     {
         container.Column(col =>
         {
-            // Makas ikonu
-            col.Item().AlignCenter().Text(text => text.Span("✂").FontSize(7f).FontColor("#999999"));
-
-            // Kesikli çizgi — küçük dikdörtgenler dikey tekrar
-            for (var i = 0; i < 60; i++)
+            col.Item().AlignCenter().Text(text =>
+                text.Span("✂").FontSize(8f).FontColor("#AAAAAA"));
+            for (var i = 0; i < 70; i++)
             {
-                col.Item().AlignCenter().Width(0.5f).Height(4).Background("#BBBBBB");
-                col.Item().Height(3); // boşluk
+                col.Item().AlignCenter().Width(0.5f).Height(4).Background("#CCCCCC");
+                col.Item().Height(3);
             }
         });
     }
 
     private static void RenderSingleForm(IContainer container, GuidanceVisitFormData data)
     {
-        container.Border(0.5f).BorderColor(MebFormStyles.BorderColor).Padding(8).Column(col =>
+        container.Border(0.7f).BorderColor(MebFormStyles.BorderColor).Padding(8).Column(col =>
         {
-            // ── Başlık ──
-            col.Item().Column(header =>
+            // ── Başlık satırı: okul adı + MEB başlığı (sol) | QR (sağ) ──
+            col.Item().Row(titleRow =>
             {
-                header.Item().Text(text =>
+                titleRow.RelativeItem()
+                .ZIndex(1)
+                .Padding(15)
+                .Column(t =>
                 {
-                    text.AlignCenter();
-                    text.Span("İŞLETMELERDE MESLEK EĞİTİMİ").FontSize(9f).Bold();
+                    if (!string.IsNullOrWhiteSpace(data.InstitutionName))
+                    {
+                        t.Item().Text(text =>
+                        {
+                            text.AlignCenter();
+                            text.Span(data.InstitutionName.ToUpperInvariant()).FontSize(9f).Bold();
+                        });
+                    }
+
+                    t.Item().Text(text =>
+                    {
+                        text.AlignCenter();
+                        text.Span("İŞLETMELERDE MESLEK EĞİTİMİ").FontSize(9f).Bold();
+                    });
+                    t.Item().Text(text =>
+                    {
+                        text.AlignCenter();
+                        text.Span("GÜNLÜK REHBERLİK GÖREV FORMU").FontSize(9f).Bold();
+                    });
                 });
-                header.Item().Text(text =>
-                {
-                    text.AlignCenter();
-                    text.Span("GÜNLÜK REHBERLİK GÖREV FORMU").FontSize(9f).Bold();
-                });
+
+                // QR — 36pt sabit (1.2cm) — başlıkla hizalı
+                titleRow.ConstantItem(36).AlignBottom().Element(c => c.QrCode(data.DocumentId, 1.2f));
             });
 
-            // ── QR kod (sağ üst) ──
-            col.Item().AlignRight().Element(c => c.QrCode(data.DocumentId, 1.5f));
-
             // ── Bilgi alanları ──
-            col.Item().PaddingTop(4).Element(c => InfoField(c, "İşletmenin Adı", data.BusinessName));
+            col.Item().PaddingTop(5).Element(c => InfoField(c, "İşletmenin Adı", data.BusinessName));
             col.Item().PaddingTop(2).Element(c => InfoField(c, "İzlemede Olduğu Öğrenci Sayısı",
-                data.StudentCount > 0 ? data.StudentCount.ToString() : "..."));
+                data.StudentCount > 0 ? data.StudentCount.ToString() : ""));
             col.Item().PaddingTop(2).Element(c => InfoField(c, "Meslek Alan/Dalı", data.BranchName));
             col.Item().PaddingTop(2).Element(c => InfoField(c, "Görev Tarihi",
                 data.VisitDate.ToString("dd.MM.yyyy")));
             col.Item().PaddingTop(2).Element(c => InfoField(c, "Form ID",
                 data.DocumentId.ToString()[..8]));
 
-            // ── "Aylık Rehberlik Formuna Göre ;" başlığı ──
-            col.Item().PaddingTop(10).Text(text =>
-            {
-                text.Span("Aylık Rehberlik Formuna Göre ;").FontSize(8f).Bold().Underline();
-            });
+            // ── Aylık Rehberlik başlığı ──
+            col.Item().PaddingTop(7).Text(text =>
+                text.Span("Aylık Rehberlik Formuna Göre ;").FontSize(7.5f).Bold().Underline());
 
-            // ── 3 serbest metin kutusu ──
-            col.Item().PaddingTop(6).Element(c =>
+            // ── 3 metin alanı ──
+            col.Item().PaddingTop(4).Element(c =>
                 TextArea(c, "İşletmede öğrenim gören öğrencilerin eğitimini olumsuz yönde etkileyen hususlar: (varsa yazınız.)",
                     data.NegativeFactors));
 
-            col.Item().PaddingTop(4).Element(c =>
+            col.Item().PaddingTop(3).Element(c =>
                 TextArea(c, "Belirlenen aksaklıklarla ilgili yapılan rehberlik ve alınan önlemler:",
                     data.GuidanceActions));
 
-            col.Item().PaddingTop(4).Element(c =>
+            col.Item().PaddingTop(3).Element(c =>
                 TextArea(c, "Aylık Rehberlik formunda belirtilmesinde yarar görülen hususlar:",
                     data.ReportNotes));
 
-            // ── İmza bloğu ──
-            col.Item().Extend().AlignBottom().Column(sig =>
+            // ── İmza tablosu — 3 eşit sütun, ortalı, bordersız ──
+            col.Item().PaddingTop(8).Table(table =>
             {
-                sig.Item().PaddingTop(10).Row(row =>
+                table.ColumnsDefinition(cols =>
                 {
-                    row.RelativeItem().Column(s =>
-                    {
-                        s.Item().Text(text => text.Span("İşletme Eğitim Yetkilisi").FontSize(7f));
-                        s.Item().Text(text => text.Span(data.BusinessContactName ?? "").FontSize(7f).Bold());
-                        s.Item().Text(text => text.Span("Kaşe ve İmza").FontSize(6f));
-                    });
-                    row.RelativeItem().Column(s =>
-                    {
-                        s.Item().Text(text => text.Span("Koor. Öğretmen").FontSize(7f));
-                        s.Item().Text(text => text.Span(data.TeacherName).FontSize(7f).Bold());
-                        s.Item().Text(text => text.Span("İmza").FontSize(6f));
-                    });
-                    row.RelativeItem().Column(s =>
-                    {
-                        s.Item().Text(text => text.Span("Koor. Md. Yrd.").FontSize(7f));
-                        s.Item().Text(text => text.Span(data.VicePrincipalName ?? "").FontSize(7f).Bold());
-                        s.Item().Text(text => text.Span("İmza").FontSize(6f));
-                    });
+                    cols.RelativeColumn();
+                    cols.RelativeColumn();
+                    cols.RelativeColumn();
                 });
 
-                // ── Açıklamalar ──
-                sig.Item().PaddingTop(8).Column(notes =>
-                {
-                    notes.Item().Text(text => text.Span("Açıklamalar:").FontSize(6f).Bold());
-                    notes.Item().PaddingTop(2).Text(text =>
-                        text.Span("Bu form koordinatör öğretmen tarafından her görev için görev haftası başında koordinatör Müdür Yrd.'ndan alınır. Görev sonrasında okula geldiği gün içinde imzaları tamamlanmış olarak Koordinatör Md. Yrd.'na teslim edilir.")
-                            .FontSize(5.5f));
-                    notes.Item().PaddingTop(1).Text(text =>
-                        text.Span("Bu form \"Aylık Rehberlik Formu\"nun doldurulmasında esas alınır ve rapora eklenir.")
-                            .FontSize(5.5f));
-                });
+                // Satır 1: ünvan
+                table.Cell().AlignCenter().Text(text =>
+                    text.Span("İşletme Eğitim Yetkilisi").FontSize(6.5f));
+                table.Cell().AlignCenter().Text(text =>
+                    text.Span("Koor. Öğretmen").FontSize(6.5f));
+                table.Cell().AlignCenter().Text(text =>
+                    text.Span("Koor. Md. Yrd.").FontSize(6.5f));
+
+                // Satır 2: ad soyad (bold)
+                table.Cell().AlignCenter().PaddingTop(2).Text(text =>
+                    text.Span(data.BusinessContactName ?? "").FontSize(6.5f).Bold());
+                table.Cell().AlignCenter().PaddingTop(2).Text(text =>
+                    text.Span(data.TeacherName).FontSize(6.5f).Bold());
+                table.Cell().AlignCenter().PaddingTop(2).Text(text =>
+                    text.Span(data.VicePrincipalName ?? "").FontSize(6.5f).Bold());
+
+                // Satır 3: imza notu
+                table.Cell().AlignCenter().Text(text =>
+                    text.Span("Kaşe ve İmza").FontSize(5.5f).FontColor("#666666"));
+                table.Cell().AlignCenter().Text(text =>
+                    text.Span("İmza").FontSize(5.5f).FontColor("#666666"));
+                table.Cell().AlignCenter().Text(text =>
+                    text.Span("İmza").FontSize(5.5f).FontColor("#666666"));
+            });
+
+            // ── Açıklamalar ──
+            col.Item().PaddingTop(6).Column(notes =>
+            {
+                notes.Item().Text(text => text.Span("Açıklamalar:").FontSize(5.5f).Bold());
+                notes.Item().PaddingTop(1).Text(text =>
+                    text.Span("Bu form koordinatör öğretmen tarafından her görev için görev haftası başında koordinatör Müdür Yrd.'ndan alınır. Görev sonrasında okula geldiği gün içinde imzaları tamamlanmış olarak Koordinatör Md. Yrd.'na teslim edilir.")
+                        .FontSize(5f));
+                notes.Item().PaddingTop(1).Text(text =>
+                    text.Span("Bu form \"Aylık Rehberlik Formu\"nun doldurulmasında esas alınır ve rapora eklenir.")
+                        .FontSize(5f));
             });
         });
     }
@@ -174,9 +196,9 @@ public class GuidanceVisitFormDocument : IDocument
     {
         container.Row(row =>
         {
-            row.ConstantItem(160).Text(text => text.Span(label).FontSize(7f).Bold());
-            row.ConstantItem(10).Text(text => text.Span(":").FontSize(7f));
-            row.RelativeItem().Text(text => text.Span(value ?? "").FontSize(7f));
+            row.ConstantItem(145).Text(text => text.Span(label).FontSize(6.5f).Bold());
+            row.ConstantItem(8).Text(text => text.Span(":").FontSize(6.5f));
+            row.RelativeItem().Text(text => text.Span(value ?? "").FontSize(6.5f));
         });
     }
 
@@ -184,9 +206,9 @@ public class GuidanceVisitFormDocument : IDocument
     {
         container.Column(col =>
         {
-            col.Item().Text(text => text.Span(label).FontSize(6.5f));
-            col.Item().PaddingTop(2).MinHeight(40)
-                .Text(text => text.Span(content ?? "").FontSize(7f));
+            col.Item().Text(text => text.Span(label).FontSize(6f));
+            col.Item().PaddingTop(1).MinHeight(80)
+                .Text(text => text.Span(content ?? "").FontSize(6.5f));
         });
     }
 }

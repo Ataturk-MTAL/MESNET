@@ -91,6 +91,26 @@ public static class GenerateDocumentHandler
         return (doc.Id, BuildNotification(doc, command.User));
     }
 
+    // ─── Form 7: Aylık Devamsızlık — öğretmen bazlı toplu ───
+    public static async Task<(Guid, NotifyDocumentGenerated)> Handle(
+        GenerateMonthlyAttendanceBatchDocument command, IDocumentSession session, IFileStorageService storage)
+    {
+        if (command.Pages.Count == 0) throw new InvalidOperationException("Batch boş olamaz.");
+
+        var batchId = Guid.NewGuid();
+        var doc = CreateDocument(
+            batchId, MebFormType.MonthlyAttendanceReport, command.Pages, command.User,
+            institutionId: command.InstitutionId,
+            teacherId: command.TeacherId,
+            description: command.Description);
+
+        var pdf = new MonthlyAttendanceReportDocument(command.Pages);
+        await UploadPdfSnapshot(storage, doc, pdf);
+
+        session.Store(doc);
+        return (doc.Id, BuildNotification(doc, command.User));
+    }
+
     // ─── Form 4: Devamsızlık Çizelgesi ───
     public static async Task<(Guid, NotifyDocumentGenerated)> Handle(
         GenerateAttendanceSheetDocument command, IDocumentSession session, IFileStorageService storage)

@@ -78,7 +78,21 @@ export const reportingApi = {
     institutionId: string
     academicPeriodId: string
     academicYear: string
+    institutionName?: string
   }) => api.post<BatchGenerateResult>('/reports/documents/generate-batch', params),
+
+  previewBatchMonthlyAttendance: (params: {
+    institutionId: string
+    academicPeriodId: string
+    year: number
+    month: number
+    institutionName: string
+    academicYear: string
+  }) =>
+    api.get('/reports/monthly-attendance/preview-batch', {
+      params,
+      responseType: 'blob',
+    }),
 }
 
 export const MEB_FORM_LABELS: Record<string, string> = {

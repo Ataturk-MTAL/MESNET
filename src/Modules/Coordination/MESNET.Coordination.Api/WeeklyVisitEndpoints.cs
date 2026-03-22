@@ -36,6 +36,9 @@ public static class WeeklyVisitEndpoints
         group.MapDelete("/plans/{planId:guid}/assignments/{assignmentId:guid}", DeleteAssignment)
             .RequireAuthorization(Permissions.DepartmentHead.WeeklyVisit);
 
+        group.MapPost("/resync", PostResync)
+            .RequireAuthorization(Permissions.Institution.Manage);
+
         return app;
     }
 
@@ -148,6 +151,22 @@ public static class WeeklyVisitEndpoints
             .Build());
     }
 
+    private static async Task<IResult> PostResync(
+        ResyncWeeklyVisitsRequest request, HttpContext http, IMessageBus bus)
+    {
+        var instId = GetInstitutionId(http);
+
+        var count = await bus.InvokeAsync<int>(new ResyncWeeklyVisitEvents(
+            instId, request.AcademicPeriodId));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(new { resyncedAssignments = count })
+            .AddMessage(count > 0
+                ? $"{count} ziyaret ataması yeniden senkronize edildi."
+                : "Senkronize edilecek ziyaret ataması bulunamadı.")
+            .Build());
+    }
+
     private static Guid GetInstitutionId(HttpContext http)
     {
         var claim = http.User.FindFirst("institution_id")?.Value;
@@ -167,6 +186,9 @@ public sealed record GenerateWeeklyVisitsRequest(
     string Scope,
     Guid? TeacherId,
     string? BranchCode);
+
+public sealed record ResyncWeeklyVisitsRequest(
+    Guid AcademicPeriodId);
 
 public sealed record AddWeeklyVisitAssignmentRequest(
     Guid TeacherId,

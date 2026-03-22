@@ -11,6 +11,15 @@
           @click="showGenerateDialog = true"
         />
         <q-btn
+          v-if="canGenerate"
+          color="orange"
+          icon="sync"
+          label="Form 3 Verilerini Yenile"
+          :loading="resyncing"
+          flat
+          @click="resyncForm3"
+        />
+        <q-btn
           v-if="canGenerate && selected.length > 0"
           color="red"
           icon="delete_sweep"
@@ -212,6 +221,15 @@
         <q-card-actions align="right">
           <q-btn flat label="İptal" color="grey" @click="showGenerateDialog = false" />
           <q-btn
+            v-if="batchForm.formType === 'MonthlyAttendanceReport'"
+            flat
+            icon="preview"
+            label="Önizle"
+            color="blue"
+            :loading="previewing"
+            @click="previewBatchMonthlyAttendance"
+          />
+          <q-btn
             label="Oluştur"
             color="teal"
             :loading="generating"
@@ -235,6 +253,8 @@ import {
   DOCUMENT_STATUS_COLORS,
   type GeneratedDocumentSummaryDto,
 } from 'src/api/reporting'
+import { coordinationApi } from 'src/api/coordination'
+import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useAuthStore } from 'stores/auth'
@@ -244,10 +264,15 @@ const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
 
+const institutionName = ref<string | undefined>(undefined)
+
+
 const downloading = ref<string | null>(null)
 const zipping = ref(false)
 const generating = ref(false)
+const previewing = ref(false)
 const deleting = ref(false)
+const resyncing = ref(false)
 const selected = ref<GeneratedDocumentSummaryDto[]>([])
 const showGenerateDialog = ref(false)
 
@@ -321,6 +346,37 @@ function onSelectedUpdate(val: readonly any[]) {
   selected.value = val as GeneratedDocumentSummaryDto[]
 }
 
+async function previewBatchMonthlyAttendance() {
+  const institutionId = authStore.user?.institutionId
+  const periodId = periodStore.selectedPeriodId
+  const period = periodStore.selectedPeriod
+
+  if (!institutionId || !periodId || !period) {
+    notify.error('Kurum veya akademik dönem bilgisi bulunamadı.')
+    return
+  }
+
+  previewing.value = true
+  try {
+    const res = await reportingApi.previewBatchMonthlyAttendance({
+      institutionId,
+      academicPeriodId: periodId,
+      year: batchForm.year,
+      month: batchForm.month,
+      institutionName: institutionName.value ?? '',
+      academicYear: `${period.startYear} / ${period.endYear}`,
+    })
+    const blob = new Blob([res.data as BlobPart], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (e) {
+    notify.apiError(e, 'Önizleme oluşturulurken bir hata oluştu.')
+  } finally {
+    previewing.value = false
+  }
+}
+
 async function generateBatch() {
   const institutionId = authStore.user?.institutionId
   const periodId = periodStore.selectedPeriodId
@@ -340,6 +396,7 @@ async function generateBatch() {
       institutionId,
       academicPeriodId: periodId,
       academicYear: `${period.startYear} / ${period.endYear}`,
+      institutionName: institutionName.value,
     })
     const result = (res.data as any)?.data ?? res.data
     if (result.generated > 0) {
@@ -439,6 +496,25 @@ async function deleteDoc(id: string) {
   }
 }
 
+async function resyncForm3() {
+  const institutionId = authStore.user?.institutionId
+  const periodId = periodStore.selectedPeriodId
+  if (!institutionId || !periodId) {
+    notify.error('Kurum veya akademik dönem bilgisi bulunamadı.')
+    return
+  }
+  resyncing.value = true
+  try {
+    const res = await coordinationApi.resyncWeeklyVisitEvents({ institutionId, academicPeriodId: periodId })
+    const result = (res.data as any)?.data ?? res.data
+    notify.success(`${result.resyncedAssignments} ziyaret ataması yeniden işlendi. Form 3 verileri güncellendi.`)
+  } catch (e) {
+    notify.apiError(e, 'Yenileme sırasında bir hata oluştu.')
+  } finally {
+    resyncing.value = false
+  }
+}
+
 async function archiveDoc(id: string) {
   try {
     await reportingApi.markAsArchived(id)
@@ -471,5 +547,16 @@ function formatDate(dateStr: string): string {
   })
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  const id = authStore.user?.institutionId
+  if (id) {
+    try {
+      const { data } = await institutionApi.get(id)
+      institutionName.value = (data as any)?.data?.fullName ?? (data as any)?.fullName
+    } catch {
+      // kurum adı olmadan devam edilebilir
+    }
+  }
+})
 </script>

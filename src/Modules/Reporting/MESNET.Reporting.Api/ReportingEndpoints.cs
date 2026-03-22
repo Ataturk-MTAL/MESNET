@@ -25,6 +25,7 @@ public static class ReportingEndpoints
 
         // Form 7: Aylık Devam - Devamsızlık Bildirim Çizelgesi
         group.MapGet("/monthly-attendance/preview", GetMonthlyAttendancePreview).RequireAuthorization(Permissions.Attendance.Report);
+        group.MapGet("/monthly-attendance/preview-batch", GetMonthlyAttendanceBatchPreview).RequireAuthorization(Permissions.Attendance.Report);
         group.MapPost("/monthly-attendance", PostMonthlyAttendance).RequireAuthorization(Permissions.Attendance.Report);
     }
 
@@ -138,6 +139,21 @@ public static class ReportingEndpoints
 
         return Results.File(pdfBytes, "application/pdf",
             $"aylik-devamsizlik-{year}-{month:D2}.pdf");
+    }
+
+    // --- Form 7: Aylık Devam - Devamsızlık Bildirim Çizelgesi (Batch Preview — tüm öğretmenler) ---
+    private static async Task<IResult> GetMonthlyAttendanceBatchPreview(
+        Guid institutionId, Guid academicPeriodId,
+        int year, int month, string institutionName, string academicYear,
+        IMessageBus bus)
+    {
+        var command = new GenerateMonthlyAttendanceBatchPreview(
+            institutionId, academicPeriodId, year, month, institutionName, academicYear);
+
+        var pdfBytes = await bus.InvokeAsync<byte[]>(command);
+
+        return Results.File(pdfBytes, "application/pdf",
+            $"aylik-devamsizlik-toplu-{year}-{month:D2}.pdf");
     }
 
     // --- Form 7: Aylik Devam - Devamsizlik Bildirim Cizelgesi (Archive) ---

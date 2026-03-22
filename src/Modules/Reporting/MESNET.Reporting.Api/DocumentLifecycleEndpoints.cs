@@ -132,7 +132,8 @@ public static class DocumentLifecycleEndpoints
             new GenerateBatchDocuments(
                 request.FormType, request.Year, request.Month,
                 request.InstitutionId, request.AcademicPeriodId,
-                request.AcademicYear, user));
+                request.AcademicYear, user,
+                InstitutionName: request.InstitutionName));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result)
@@ -193,4 +194,5 @@ public sealed record GenerateBatchRequest(
     int Month,
     Guid InstitutionId,
     Guid AcademicPeriodId,
-    string AcademicYear);
+    string AcademicYear,
+    string? InstitutionName = null);

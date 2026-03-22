@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Marten;
 using MESNET.Common.Infrastructure.Storage;
+using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Reporting.Application.Commands;
 using MESNET.Reporting.Application.Templates;
@@ -25,7 +26,7 @@ public static class GenerateMonthlyAttendanceReportHandler
          "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
     /// <summary>
-    /// Anlık önizleme — PDF byte[] döner, MinIO'ya yazmaz.
+    /// Anlık önizleme — tekil işletme, PDF byte[] döner, MinIO'ya yazmaz.
     /// </summary>
     public static async Task<byte[]> Handle(GenerateMonthlyAttendancePreview command, IQuerySession session)
     {
@@ -36,6 +37,51 @@ public static class GenerateMonthlyAttendanceReportHandler
 
         var pdf = new MonthlyAttendanceReportDocument(data);
         return pdf.GeneratePdf();
+    }
+
+    /// <summary>
+    /// Anlık önizleme — öğretmen bazlı toplu, tüm öğretmenler × işletmeler → tek PDF.
+    /// MinIO'ya yazmaz, kaydetmez.
+    /// </summary>
+    public static async Task<byte[]> Handle(
+        GenerateMonthlyAttendanceBatchPreview command, IQuerySession session)
+    {
+        var placements = await session.Query<StudentPlacementReportView>()
+            .Where(p => p.InstitutionId == command.InstitutionId
+                        && p.AcademicPeriodId == command.AcademicPeriodId
+                        && p.BusinessId != Guid.Empty)
+            .ToListAsync();
+
+        if (placements.Count == 0)
+            throw new DomainException(new Error("NO_PLACEMENTS",
+                "Bu dönem için yerleştirme verisi bulunamadı."));
+
+        var pages = new List<MonthlyAttendanceReportData>();
+
+        var teacherGroups = placements
+            .Where(p => p.TeacherId.HasValue)
+            .GroupBy(p => p.TeacherId!.Value)
+            .ToList();
+
+        foreach (var teacherGroup in teacherGroups)
+        {
+            var businessIds = teacherGroup.Select(p => p.BusinessId).Distinct();
+            foreach (var businessId in businessIds)
+            {
+                var pageData = await BuildReportData(
+                    session,
+                    command.InstitutionId, command.AcademicPeriodId,
+                    businessId, command.Year, command.Month,
+                    command.InstitutionName, command.AcademicYear);
+                pages.Add(pageData);
+            }
+        }
+
+        if (pages.Count == 0)
+            throw new DomainException(new Error("NO_DATA",
+                "Önizleme için yeterli veri bulunamadı."));
+
+        return new MonthlyAttendanceReportDocument(pages).GeneratePdf();
     }
 
     /// <summary>
@@ -135,13 +181,14 @@ public static class GenerateMonthlyAttendanceReportHandler
             }
         }
 
-        // İşletme bilgileri — ilk placement'tan al
+        // İşletme ve öğretmen bilgileri — ilk placement'tan al
         var firstPlacement = placements.FirstOrDefault();
         var businessName = firstPlacement?.BusinessName ?? "";
         var businessPhone = firstPlacement?.BusinessPhone;
         var businessEmail = firstPlacement?.BusinessEmail;
         var businessContactName = firstPlacement?.BusinessContactName ?? "";
         var teacherId = firstPlacement?.TeacherId;
+        var coordinatorTeacherName = firstPlacement?.TeacherName ?? "";
 
         // 4. Öğrenci satırları
         var students = placements.Select(p =>
@@ -166,8 +213,8 @@ public static class GenerateMonthlyAttendanceReportHandler
             Month = month,
             DocumentDate = DateOnly.FromDateTime(DateTime.UtcNow),
             BusinessContactName = businessContactName,
-            CoordinatorTeacherName = "", // Frontend'den veya TeacherId lookup ile doldurulabilir
-            VicePrincipalName = "",      // Frontend'den veya InstitutionId lookup ile doldurulabilir
+            CoordinatorTeacherName = coordinatorTeacherName,
+            VicePrincipalName = "",      // InstitutionId lookup ile doldurulabilir (Phase 2)
             WeekendDays = weekendDays,
             HolidayDays = holidayDays,
             Students = students

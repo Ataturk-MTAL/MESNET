@@ -45,6 +45,13 @@ public class ReportingMartenConfig : IConfigureMarten
             .Index(x => new { x.InstitutionId, x.AcademicPeriodId, x.BusinessId },
                 x => x.Name = "idx_plc_rpt_inst_period_biz");
 
+        // VisitAssignmentReportView — haftalık ziyaret atamaları (Form 3 batch için)
+        options.Schema.For<VisitAssignmentReportView>().DatabaseSchemaName("reporting");
+        options.Schema.For<VisitAssignmentReportView>()
+            .Index(x => new { x.InstitutionId, x.TeacherId },
+                x => x.Name = "idx_visit_rpt_inst_teacher")
+            .Index(x => x.VisitDate);
+
         // WorkCalendarReportView — iş takvimi
         options.Schema.For<WorkCalendarReportView>().DatabaseSchemaName("reporting");
         options.Schema.For<WorkCalendarReportView>()

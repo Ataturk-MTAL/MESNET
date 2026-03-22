@@ -52,7 +52,9 @@ public static class GenerateBatchDocumentsHandler
     }
 
     /// <summary>
-    /// Form 7: Aylık Devamsızlık — işletme bazlı. Her işletme için en fazla 1 belge.
+    /// Form 7: Aylık Devamsızlık — öğretmen bazlı.
+    /// Her öğretmenin sorumlu olduğu tüm işletmeler tek PDF'te toplanır (her işletme = 1 sayfa).
+    /// Duplicate kontrolü: Bu ay için zaten MonthlyAttendanceReport dokümanı olan öğretmenler atlanır.
     /// </summary>
     private static async Task<BatchGenerateResult> GenerateForm7Batch(
         GenerateBatchDocuments command,
@@ -61,9 +63,9 @@ public static class GenerateBatchDocumentsHandler
         IQuerySession session,
         IMessageBus bus)
     {
-        var existingBusinessIds = existingDocs
-            .Where(d => d.BusinessId.HasValue)
-            .Select(d => d.BusinessId!.Value)
+        var existingTeacherIds = existingDocs
+            .Where(d => d.TeacherId.HasValue)
+            .Select(d => d.TeacherId!.Value)
             .ToHashSet();
 
         var placements = await session.Query<StudentPlacementReportView>()
@@ -76,27 +78,51 @@ public static class GenerateBatchDocumentsHandler
             throw new DomainException(new Error("NO_PLACEMENTS",
                 "Bu dönem için yerleştirme verisi bulunamadı. Önce öğrenci-işletme eşleştirmesi yapılmalı."));
 
-        var businessGroups = placements
-            .GroupBy(p => p.BusinessId)
-            .Where(g => !existingBusinessIds.Contains(g.Key))
+        // Öğretmen bazlı grupla
+        var teacherGroups = placements
+            .GroupBy(p => p.TeacherId ?? Guid.Empty)
+            .Where(g => g.Key != Guid.Empty && !existingTeacherIds.Contains(g.Key))
             .ToList();
 
         var generated = 0;
-        var skipped = existingBusinessIds.Count;
+        var skipped = existingTeacherIds.Count;
 
-        foreach (var group in businessGroups)
+        foreach (var teacherGroup in teacherGroups)
         {
-            var data = await GenerateMonthlyAttendanceReportHandler.BuildReportData(
-                session,
-                command.InstitutionId,
-                command.AcademicPeriodId,
-                group.Key,
-                command.Year, command.Month,
-                "",
-                command.AcademicYear);
+            var teacherId = teacherGroup.Key;
+            var teacherName = teacherGroup.First().TeacherName;
 
-            var generateCommand = new GenerateMonthlyAttendanceDocument(data, command.User);
-            await bus.InvokeAsync<Guid>(generateCommand);
+            // Bu öğretmenin işletmelerini grupla
+            var businessIds = teacherGroup
+                .Select(p => p.BusinessId)
+                .Distinct()
+                .ToList();
+
+            var pages = new List<MonthlyAttendanceReportData>();
+
+            foreach (var businessId in businessIds)
+            {
+                var pageData = await GenerateMonthlyAttendanceReportHandler.BuildReportData(
+                    session,
+                    command.InstitutionId,
+                    command.AcademicPeriodId,
+                    businessId,
+                    command.Year, command.Month,
+                    command.InstitutionName ?? "",
+                    command.AcademicYear);
+
+                pages.Add(pageData);
+            }
+
+            if (pages.Count == 0) continue;
+
+            var batchCommand = new GenerateMonthlyAttendanceBatchDocument(
+                pages, command.User,
+                InstitutionId: command.InstitutionId,
+                TeacherId: teacherId,
+                Description: $"{teacherName} — {pages.Count} işletme, {command.Month}/{command.Year}");
+
+            await bus.InvokeAsync<Guid>(batchCommand);
             generated++;
         }
 
@@ -170,6 +196,7 @@ public static class GenerateBatchDocumentsHandler
     /// <summary>
     /// Form 3: Günlük Rehberlik — öğretmen bazlı.
     /// Her öğretmenin tüm işletme ziyaretleri tek PDF'te toplanır (ikişerli A5 yerleşim).
+    /// Ziyaret atamaları VisitAssignmentReportView'dan okunur — öğretmenin gerçek ziyaret günleri.
     /// Duplicate kontrolü: Bu ay için zaten GuidanceVisit dokümanı olan öğretmenler atlanır.
     /// </summary>
     private static async Task<BatchGenerateResult> GenerateForm3Batch(
@@ -185,36 +212,31 @@ public static class GenerateBatchDocumentsHandler
             .Select(d => d.TeacherId!.Value)
             .ToHashSet();
 
-        var placements = await session.Query<StudentPlacementReportView>()
-            .Where(p => p.InstitutionId == command.InstitutionId
-                        && p.AcademicPeriodId == command.AcademicPeriodId
-                        && p.TeacherId != null
-                        && p.BusinessId != Guid.Empty)
+        // Seçilen ay aralığı
+        var startOfMonth = new DateOnly(command.Year, command.Month, 1);
+        var endOfMonth = startOfMonth.AddMonths(1);
+
+        // VisitAssignmentReportView'dan ziyaret atamalarını oku
+        // Bu view WeeklyVisitsGenerated event'i ile doldurulur
+        var assignments = await session.Query<VisitAssignmentReportView>()
+            .Where(a => a.InstitutionId == command.InstitutionId
+                        && a.AcademicPeriodId == command.AcademicPeriodId
+                        && a.VisitDate >= startOfMonth
+                        && a.VisitDate < endOfMonth)
             .ToListAsync();
 
-        if (placements.Count == 0)
-            throw new DomainException(new Error("NO_PLACEMENTS",
-                "Bu dönem için yerleştirme verisi bulunamadı. Önce öğrenci-işletme eşleştirmesi yapılmalı."));
+        if (assignments.Count == 0)
+            throw new DomainException(new Error("NO_VISIT_ASSIGNMENTS",
+                "Bu ay için ziyaret ataması bulunamadı. Önce haftalık ziyaret planı oluşturulmalı."));
 
         // Öğretmen bazlı grupla
-        var teacherGroups = placements
-            .Where(p => p.TeacherId.HasValue)
-            .GroupBy(p => p.TeacherId!.Value)
+        var teacherGroups = assignments
+            .GroupBy(a => a.TeacherId)
             .Where(g => !existingTeacherIds.Contains(g.Key))
             .ToList();
 
         var generated = 0;
         var skipped = existingTeacherIds.Count;
-
-        // Seçilen ayın iş günlerini hesapla (Pazartesi-Cuma)
-        var startOfMonth = new DateOnly(command.Year, command.Month, 1);
-        var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
-        var workDays = new List<DateOnly>();
-        for (var d = startOfMonth; d <= endOfMonth; d = d.AddDays(1))
-        {
-            if (d.DayOfWeek is >= DayOfWeek.Monday and <= DayOfWeek.Friday)
-                workDays.Add(d);
-        }
 
         foreach (var teacherGroup in teacherGroups)
         {
@@ -222,35 +244,22 @@ public static class GenerateBatchDocumentsHandler
             var teacherName = teacherGroup.First().TeacherName;
             if (string.IsNullOrEmpty(teacherName)) teacherName = "—";
 
-            // İşletme bazlı grupla — her işletme-gün çifti için bir form
-            var businessGroups = teacherGroup
-                .GroupBy(p => p.BusinessId)
-                .ToList();
-
-            var forms = new List<GuidanceVisitFormData>();
-
-            foreach (var bizGroup in businessGroups)
-            {
-                var firstPlacement = bizGroup.First();
-                var studentCount = bizGroup.Count();
-
-                // Her iş günü için bir form oluştur
-                foreach (var workDay in workDays)
+            var forms = teacherGroup
+                .OrderBy(a => a.VisitDate)
+                .Select(a => new GuidanceVisitFormData
                 {
-                    forms.Add(new GuidanceVisitFormData
-                    {
-                        DocumentId = Guid.NewGuid(),
-                        BusinessId = firstPlacement.BusinessId,
-                        InstitutionId = command.InstitutionId,
-                        TeacherId = teacherId,
-                        TeacherName = teacherName,
-                        BusinessName = firstPlacement.BusinessName,
-                        BranchName = firstPlacement.BranchName,
-                        StudentCount = studentCount,
-                        VisitDate = workDay.ToDateTime(TimeOnly.MinValue),
-                    });
-                }
-            }
+                    DocumentId = Guid.NewGuid(),
+                    BusinessId = a.BusinessId,
+                    InstitutionId = command.InstitutionId,
+                    InstitutionName = command.InstitutionName,
+                    TeacherId = teacherId,
+                    TeacherName = teacherName,
+                    BusinessName = a.BusinessName,
+                    BranchName = a.BranchName,
+                    StudentCount = a.StudentCount,
+                    VisitDate = a.VisitDate.ToDateTime(TimeOnly.MinValue),
+                })
+                .ToList();
 
             if (forms.Count == 0) continue;
 

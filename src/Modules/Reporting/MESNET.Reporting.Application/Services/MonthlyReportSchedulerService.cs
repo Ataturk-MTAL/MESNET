@@ -93,43 +93,63 @@ public class MonthlyReportSchedulerService : BackgroundService
                 .Where(p => p.BusinessId != Guid.Empty)
                 .ToListAsync(ct);
 
-            // ─── Form 7: Aylık Devamsızlık Raporu (işletme bazlı) ───
-            var businessGroups = placements
-                .GroupBy(p => new { p.InstitutionId, p.AcademicPeriodId, p.BusinessId })
+            // ─── Form 7: Aylık Devamsızlık Raporu (öğretmen bazlı toplu) ───
+            // Her öğretmen için: tüm işletmeler → tek PDF (her işletme = 1 sayfa)
+            var teacherGroups = placements
+                .Where(p => p.TeacherId.HasValue)
+                .GroupBy(p => new { p.InstitutionId, p.AcademicPeriodId, TeacherId = p.TeacherId!.Value })
                 .ToList();
 
-            _logger.LogInformation("Form 7: {Count} işletme grubu için rapor üretilecek", businessGroups.Count);
+            _logger.LogInformation("Form 7: {Count} öğretmen grubu için rapor üretilecek", teacherGroups.Count);
 
             var form7Generated = 0;
-            foreach (var group in businessGroups)
+            foreach (var teacherGroup in teacherGroups)
             {
                 if (ct.IsCancellationRequested) break;
 
                 try
                 {
-                    var data = await GenerateMonthlyAttendanceReportHandler.BuildReportData(
-                        session,
-                        group.Key.InstitutionId,
-                        group.Key.AcademicPeriodId,
-                        group.Key.BusinessId,
-                        year, month,
-                        "", // InstitutionName — scheduler'da bilinmiyor
-                        academicYear);
+                    var businessIds = teacherGroup
+                        .Select(p => p.BusinessId)
+                        .Distinct()
+                        .ToList();
 
-                    var command = new GenerateMonthlyAttendanceDocument(data, systemUser);
-                    await bus.InvokeAsync(command, ct);
+                    var pages = new List<MonthlyAttendanceReportData>();
+                    foreach (var businessId in businessIds)
+                    {
+                        var pageData = await GenerateMonthlyAttendanceReportHandler.BuildReportData(
+                            session,
+                            teacherGroup.Key.InstitutionId,
+                            teacherGroup.Key.AcademicPeriodId,
+                            businessId,
+                            year, month,
+                            "", // InstitutionName — scheduler'da bilinmiyor
+                            academicYear);
+                        pages.Add(pageData);
+                    }
+
+                    if (pages.Count == 0) continue;
+
+                    var teacherName = teacherGroup.First().TeacherName;
+                    var batchCommand = new GenerateMonthlyAttendanceBatchDocument(
+                        pages, systemUser,
+                        InstitutionId: teacherGroup.Key.InstitutionId,
+                        TeacherId: teacherGroup.Key.TeacherId,
+                        Description: $"{teacherName} — {pages.Count} işletme, {month}/{year}");
+
+                    await bus.InvokeAsync(batchCommand, ct);
                     form7Generated++;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex,
-                        "Form 7 üretim hatası — BusinessId: {BusinessId}, InstitutionId: {InstitutionId}",
-                        group.Key.BusinessId, group.Key.InstitutionId);
+                        "Form 7 üretim hatası — TeacherId: {TeacherId}, InstitutionId: {InstitutionId}",
+                        teacherGroup.Key.TeacherId, teacherGroup.Key.InstitutionId);
                 }
             }
 
             _logger.LogInformation("Form 7 üretimi tamamlandı — {Count}/{Total} başarılı",
-                form7Generated, businessGroups.Count);
+                form7Generated, teacherGroups.Count);
 
             // ─── Form 2: Aylık Eğitim Faaliyeti Formu (öğrenci bazlı) ───
             _logger.LogInformation("Form 2: {Count} öğrenci için rapor üretilecek", placements.Count);

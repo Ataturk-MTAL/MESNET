@@ -35,5 +35,17 @@ public sealed record GenerateMonthlyAttendancePreview(
     Guid BusinessId, int Year, int Month,
     string InstitutionName, string AcademicYear);
 
-// Arşivleme — işletme bazlı (MinIO'ya yazar + GeneratedDocument kaydeder)
+// Arşivleme — tekil işletme (MinIO'ya yazar + GeneratedDocument kaydeder)
 public sealed record GenerateMonthlyAttendanceDocument(MonthlyAttendanceReportData Data, UserContext User);
+
+// Arşivleme — öğretmen bazlı toplu (tüm işletmeler tek PDF, her işletme = 1 sayfa)
+public sealed record GenerateMonthlyAttendanceBatchDocument(
+    List<MonthlyAttendanceReportData> Pages, UserContext User,
+    Guid? InstitutionId = null, Guid? TeacherId = null,
+    string? Description = null);
+
+// Önizleme — tüm öğretmenlerin birleşik PDF'i, MinIO'ya yazılmaz
+public sealed record GenerateMonthlyAttendanceBatchPreview(
+    Guid InstitutionId, Guid AcademicPeriodId,
+    int Year, int Month,
+    string InstitutionName, string AcademicYear);

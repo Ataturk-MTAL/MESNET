@@ -570,4 +570,7 @@ export const coordinationApi = {
 
   deleteWeeklyVisitAssignment: (planId: string, assignmentId: string) =>
     api.delete(`/coordination/weekly-visits/plans/${planId}/assignments/${assignmentId}`),
+
+  resyncWeeklyVisitEvents: (data: { institutionId: string; academicPeriodId: string }) =>
+    api.post<{ resyncedAssignments: number }>('/coordination/weekly-visits/resync', data),
 }
