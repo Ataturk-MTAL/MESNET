@@ -7,4 +7,5 @@ public sealed record StudentRegistered(
     Guid AcademicPeriodId,
     string BranchCode,
     int ClassYear,
-    string EducationType);
+    string EducationType,
+    string StudentNumber = "");

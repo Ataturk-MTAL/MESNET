@@ -5,7 +5,10 @@
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "internationalizationEnabled": true,
-  "supportedLocales": ["tr", "en"],
+  "supportedLocales": [
+    "tr",
+    "en"
+  ],
   "defaultLocale": "tr",
   "loginTheme": "mesnet",
   "duplicateEmailsAllowed": false,
@@ -295,7 +298,9 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["InstitutionManager"]
+      "realmRoles": [
+        "InstitutionManager"
+      ]
     },
     {
       "username": "teacher1",
@@ -311,7 +316,9 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["Teacher"]
+      "realmRoles": [
+        "Teacher"
+      ]
     },
     {
       "username": "student1",
@@ -327,7 +334,63 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["Student"]
+      "realmRoles": [
+        "Student"
+      ]
+    },
+    {
+      "username": "viceprincipal",
+      "firstName": "Zeynep",
+      "lastName": "Yılmaz",
+      "email": "viceprincipal@mesnet.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "viceprincipal",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "InstitutionManager"
+      ]
+    },
+    {
+      "username": "teacher2",
+      "firstName": "Ayşe",
+      "lastName": "Çelik",
+      "email": "teacher2@mesnet.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "teacher2",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "Teacher"
+      ]
+    },
+    {
+      "username": "teacher3",
+      "firstName": "Mustafa",
+      "lastName": "Kaya",
+      "email": "teacher3@mesnet.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "teacher3",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "Teacher"
+      ]
     }
   ],
   "scopeMappings": [

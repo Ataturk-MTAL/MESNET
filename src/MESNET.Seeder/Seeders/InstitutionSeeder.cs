@@ -114,8 +114,11 @@ public static class InstitutionSeeder
         // username → (role, branchCode) eşleştirmesi
         var staffMapping = new Dictionary<string, (string Role, string? BranchCode)>
         {
-            ["admin"] = ("Principal", null),
-            ["teacher1"] = ("Coordinator", "EET"),
+            ["admin"]          = ("Principal",    null),
+            ["viceprincipal"]  = ("VicePrincipal", null),
+            ["teacher1"]       = ("Coordinator",  "EET"),
+            ["teacher2"]       = ("Coordinator",  "BT"),
+            ["teacher3"]       = ("Coordinator",  "MTT"),
         };
 
         try

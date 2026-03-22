@@ -55,6 +55,6 @@ public static class RegisterStudentHandler
 
         session.Store(student);
 
-        return (student.ToDto(), new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.AcademicPeriodId, student.BranchCode, student.ClassYear, educationType.Name));
+        return (student.ToDto(), new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.AcademicPeriodId, student.BranchCode, student.ClassYear, educationType.Name, student.StudentNumber ?? ""));
     }
 }

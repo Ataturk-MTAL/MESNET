@@ -19,7 +19,7 @@ public static class PlacementReportConsumer
             Id = @event.StudentId, // PlacementId henüz yok, StudentId kullan
             StudentId = @event.StudentId,
             StudentName = @event.FullName,
-            StudentNumber = "", // StudentRegistered'da okul no yok
+            StudentNumber = @event.StudentNumber,
             ClassName = $"{@event.BranchCode} - {(@event.ClassYear > 0 ? @event.ClassYear.ToString() : "?")}",
             ClassYear = @event.ClassYear,
             BranchCode = @event.BranchCode,
