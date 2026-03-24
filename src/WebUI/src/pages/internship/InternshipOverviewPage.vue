@@ -4,7 +4,7 @@
 
     <!-- Özet Kartlar -->
     <div class="row q-col-gutter-md q-mb-lg">
-      <div class="col-12 col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-md">
         <q-card flat bordered>
           <q-card-section class="text-center">
             <q-icon name="school" size="40px" color="primary" />
@@ -13,7 +13,7 @@
           </q-card-section>
         </q-card>
       </div>
-      <div class="col-12 col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-md">
         <q-card flat bordered>
           <q-card-section class="text-center">
             <q-icon name="work" size="40px" color="positive" />
@@ -22,7 +22,7 @@
           </q-card-section>
         </q-card>
       </div>
-      <div class="col-12 col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-md">
         <q-card flat bordered>
           <q-card-section class="text-center">
             <q-icon name="done_all" size="40px" color="purple" />
@@ -31,12 +31,21 @@
           </q-card-section>
         </q-card>
       </div>
-      <div class="col-12 col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-md">
         <q-card flat bordered>
           <q-card-section class="text-center">
             <q-icon name="cancel" size="40px" color="negative" />
             <div class="text-h4 text-weight-bold text-negative q-mt-sm">{{ stats.cancelled }}</div>
-            <div class="text-caption text-grey">İptal / Transfer</div>
+            <div class="text-caption text-grey">Fesih Yapıldı</div>
+          </q-card-section>
+        </q-card>
+      </div>
+      <div class="col-12 col-sm-6 col-md">
+        <q-card flat bordered>
+          <q-card-section class="text-center">
+            <q-icon name="event_busy" size="40px" color="warning" />
+            <div class="text-h4 text-weight-bold text-warning q-mt-sm">{{ stats.failedToComplete }}</div>
+            <div class="text-caption text-grey">Tamamlayamadı</div>
           </q-card-section>
         </q-card>
       </div>
@@ -47,17 +56,30 @@
       <q-card-section>
         <div class="text-subtitle1 text-weight-medium q-mb-md">Yerleştirmeler</div>
 
-        <div class="row q-gutter-sm q-mb-md">
-          <q-select
-            v-model="statusFilter"
-            :options="statusOptions"
-            label="Durum"
-            filled dense emit-value map-options clearable
-            style="min-width: 180px"
-          />
+        <div class="row q-col-gutter-sm q-mb-md items-end">
+          <div class="col-12 col-sm-4">
+            <BranchSelector v-model="branchFilter" dense force-select />
+          </div>
+          <div class="col-12 col-sm-4">
+            <q-select
+              v-model="statusFilter"
+              :options="statusOptions"
+              label="Durum"
+              filled dense emit-value map-options clearable
+            />
+          </div>
         </div>
 
-        <AppTable :rows="placements" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
+        <AppTable
+          :rows="placements"
+          :columns="columns"
+          :loading="loading"
+          :pagination="pagination"
+          show-search
+          :search="search"
+          @request="onRequest"
+          @search="onSearch"
+        >
           <template #body-cell-statusSlug="{ row }">
             <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
           </template>
@@ -76,6 +98,49 @@
       </q-card-section>
     </q-card>
 
+    <!-- Devamsızlık Durumu -->
+    <q-card flat bordered class="q-mt-md">
+      <q-card-section>
+        <div class="text-subtitle1 text-weight-medium q-mb-md">Devamsızlık Durumu</div>
+        <div class="text-caption text-grey q-mb-sm">
+          25 gün ve üzeri devamsız öğrenciler listelenir.
+          30 günü aşan öğrenciler <span class="text-negative text-weight-medium">kırmızı</span> ile gösterilir.
+        </div>
+
+        <q-table
+          flat
+          :rows="highAbsenceRows"
+          :columns="absenceColumns"
+          :loading="absenceLoading"
+          row-key="id"
+          :rows-per-page-options="[0]"
+          hide-bottom
+        >
+          <template #body-tr="{ row }">
+            <tr :class="row.totalAbsenceDays >= 30 ? 'bg-red-1' : 'bg-orange-1'">
+              <td class="text-left">{{ row.studentName }}</td>
+              <td class="text-left">{{ row.businessName }}</td>
+              <td class="text-center">
+                <span :class="row.totalAbsenceDays >= 30 ? 'text-negative text-weight-bold' : 'text-warning text-weight-medium'">
+                  {{ row.totalAbsenceDays }} gün
+                </span>
+              </td>
+              <td class="text-right">
+                <q-btn
+                  v-if="canManage && row.totalAbsenceDays >= 30"
+                  flat dense size="sm"
+                  color="negative"
+                  label="Tamamlayamadı İşaretle"
+                  :loading="markingId === row.placementId"
+                  @click="markFailed(row.placementId)"
+                />
+              </td>
+            </tr>
+          </template>
+        </q-table>
+      </q-card-section>
+    </q-card>
+
     <!-- Detay Panel -->
     <DetailPanel v-model="detailOpen" :has-content="!!selected" :width="400">
       <template #title>{{ selected?.studentName }}</template>
@@ -90,12 +155,6 @@
           <InfoItem icon="badge" label="Durum"><StatusBadge :slug="selected.statusSlug" /></InfoItem>
           <InfoItem icon="source" label="Kaynak"><q-badge color="blue-grey" :label="selected.sourceSlug" /></InfoItem>
           <InfoItem icon="event" label="Yerleştirme Tarihi" :value="formatDate(selected.placedAt)" />
-          <template v-if="selected.transferredAt">
-            <q-separator spaced />
-            <div class="text-subtitle2 text-grey-7 q-px-md">Transfer Bilgisi</div>
-            <InfoItem icon="swap_horiz" label="Transfer Tarihi" :value="formatDate(selected.transferredAt)" />
-            <InfoItem v-if="selected.transferReason" icon="notes" label="Transfer Gerekçesi" :value="selected.transferReason" />
-          </template>
         </div>
       </template>
     </DetailPanel>
@@ -103,28 +162,81 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import type { QTableProps } from 'quasar'
+import { useQuasar } from 'quasar'
 import { enrollmentApi, type InternshipPlacementDto } from 'src/api/enrollment'
+import { internshipApi } from 'src/api/internship'
+import type { InternshipSummaryDto } from 'src/api/internship'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useAuthStore } from 'stores/auth'
 import AppTable from 'components/AppTable.vue'
 import DetailPanel from 'components/DetailPanel.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import InfoItem from 'components/InfoItem.vue'
 import PageHeader from 'components/PageHeader.vue'
+import BranchSelector from 'components/BranchSelector.vue'
 
+const $q = useQuasar()
 const periodStore = useAcademicPeriodStore()
+const authStore = useAuthStore()
+
 const selected = ref<InternshipPlacementDto | null>(null)
 const detailOpen = ref(false)
 const statusFilter = ref<string | null>(null)
+const branchFilter = ref<string | null>(null)
+
+// ─── Devamsızlık bölümü ───
+const absenceLoading = ref(false)
+const highAbsenceRows = ref<InternshipSummaryDto[]>([])
+const markingId = ref<string | null>(null)
+const canManage = computed(() => authStore.hasPermission('internship:manage'))
+
+const absenceColumns: QTableProps['columns'] = [
+  { name: 'studentName', label: 'Öğrenci', field: 'studentName', align: 'left' },
+  { name: 'businessName', label: 'İşletme', field: 'businessName', align: 'left' },
+  { name: 'totalAbsenceDays', label: 'Devamsızlık', field: 'totalAbsenceDays', align: 'center' },
+  { name: 'actions', label: '', field: 'id', align: 'right' },
+]
+
+async function loadAbsenceData() {
+  if (!periodStore.selectedPeriodId) return
+  absenceLoading.value = true
+  try {
+    const res = await internshipApi.listInternships({
+      academicPeriodId: periodStore.selectedPeriodId,
+      minAbsenceDays: 25,
+      pageSize: 100,
+    })
+    highAbsenceRows.value = res.items ?? []
+  } finally {
+    absenceLoading.value = false
+  }
+}
+
+async function markFailed(placementId: string) {
+  markingId.value = placementId
+  try {
+    await internshipApi.markAsFailedToComplete(placementId)
+    $q.notify({ type: 'positive', message: 'Staj "Tamamlayamadı" olarak işaretlendi.' })
+    await Promise.all([load(), loadAbsenceData()])
+  } catch {
+    $q.notify({ type: 'negative', message: 'İşlem başarısız oldu.' })
+  } finally {
+    markingId.value = null
+  }
+}
+
+watch(() => periodStore.selectedPeriodId, loadAbsenceData)
 
 const filters = computed(() => ({
   ...(statusFilter.value ? { status: statusFilter.value } : {}),
+  ...(branchFilter.value ? { branchCode: branchFilter.value } : {}),
   ...(periodStore.selectedPeriodId ? { academicPeriodId: periodStore.selectedPeriodId } : {}),
 }))
 
-const { rows: placements, loading, pagination, onRequest, load } =
+const { rows: placements, loading, pagination, onRequest, onSearch, search, load } =
   useServerPagination<InternshipPlacementDto>({
     fetchFn: (params) => enrollmentApi.listPlacements(params),
     filters,
@@ -133,18 +245,18 @@ const { rows: placements, loading, pagination, onRequest, load } =
   })
 
 const statusOptions = [
-  { label: 'Eşleştirildi', value: 'Matched' },
-  { label: 'Aktif', value: 'Active' },
+  { label: 'Yerleştirildi', value: 'Matched' },
+  { label: 'Fesih Yapıldı', value: 'Cancelled' },
   { label: 'Tamamlandı', value: 'Completed' },
-  { label: 'Transfer Edildi', value: 'Transferred' },
-  { label: 'İptal Edildi', value: 'Cancelled' },
+  { label: 'Tamamlayamadı', value: 'FailedToComplete' },
 ]
 
 const stats = computed(() => ({
   placed: placements.value.filter((p) => p.status === 'Matched').length,
   active: placements.value.filter((p) => p.status === 'Active').length,
   completed: placements.value.filter((p) => p.status === 'Completed').length,
-  cancelled: placements.value.filter((p) => ['Cancelled', 'Transferred'].includes(p.status)).length,
+  cancelled: placements.value.filter((p) => p.status === 'Cancelled').length,
+  failedToComplete: placements.value.filter((p) => p.status === 'FailedToComplete').length,
 }))
 
 const columns: QTableProps['columns'] = [
@@ -166,5 +278,8 @@ function openDetail(row: InternshipPlacementDto) {
   detailOpen.value = true
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadAbsenceData()
+})
 </script>

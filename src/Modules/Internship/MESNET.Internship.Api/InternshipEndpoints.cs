@@ -1,3 +1,4 @@
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
@@ -39,13 +40,17 @@ public static class InternshipEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? studentId, Guid? businessId, Guid? institutionId, string? phase,
-        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false,
-        IMessageBus bus = default!)
+        Guid? studentId, Guid? businessId, Guid? institutionId, Guid? academicPeriodId,
+        string? phase, int? minAbsenceDays,
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
+        ICurrentUserService currentUser = default!, IMessageBus bus = default!)
     {
+        var user = currentUser.GetCurrentUser();
+        var effectiveInstitutionId = institutionId ?? user?.InstitutionId;
+
         var result = await bus.InvokeAsync<PagedResult<InternshipSummaryDto>>(
-            new ListInternships(studentId, businessId, institutionId, phase)
-            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending });
+            new ListInternships(studentId, businessId, effectiveInstitutionId, academicPeriodId, phase, minAbsenceDays)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result)

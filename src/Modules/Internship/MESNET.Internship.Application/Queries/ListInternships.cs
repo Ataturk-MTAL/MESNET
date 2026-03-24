@@ -6,4 +6,6 @@ public sealed record ListInternships(
     Guid? StudentId,
     Guid? BusinessId,
     Guid? InstitutionId,
-    string? Phase) : PagedQuery;
+    Guid? AcademicPeriodId,
+    string? Phase,
+    int? MinAbsenceDays = null) : PagedQuery;

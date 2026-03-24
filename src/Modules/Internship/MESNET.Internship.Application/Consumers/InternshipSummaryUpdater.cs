@@ -13,9 +13,13 @@ public static class InternshipSummaryUpdater
         var summary = new InternshipSummary
         {
             Id = e.InternshipId,
+            PlacementId = e.PlacementId,
             StudentId = e.StudentId,
+            StudentName = e.StudentName,
             BusinessId = e.BusinessId,
+            BusinessName = e.BusinessName,
             InstitutionId = e.InstitutionId,
+            AcademicPeriodId = e.AcademicPeriodId,
             Phase = InternshipPhase.AwaitingContract,
             StartedAt = e.StartedAt,
             LastUpdated = DateTime.UtcNow

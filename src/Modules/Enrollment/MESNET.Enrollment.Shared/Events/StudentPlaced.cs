@@ -8,6 +8,7 @@ public sealed record StudentPlaced(
     Guid AcademicPeriodId,
     Guid? TeacherId,
     DateTime PlacedAt,
+    string StudentName = "",
     string BusinessName = "",
     string BranchCode = "",
     string BranchName = "");

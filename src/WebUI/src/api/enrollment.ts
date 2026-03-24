@@ -40,15 +40,15 @@ export interface InternshipPlacementDto {
   businessId: string
   businessName: string
   institutionId: string
+  academicPeriodId: string
   teacherId: string | null
   teacherName: string | null
+  branchCode: string
   status: string
   statusSlug: string
   source: string
   sourceSlug: string
   placedAt: string
-  transferredAt: string | null
-  transferReason: string | null
 }
 
 export interface RegisterStudentRequest {
@@ -113,7 +113,7 @@ export const enrollmentApi = {
   updateStudent: (studentId: string, data: UpdateStudentRequest) =>
     api.patch(`/students/${studentId}`, data),
 
-  listPlacements: (params?: { businessId?: string; studentId?: string; academicPeriodId?: string; status?: string } & PaginationParams) =>
+  listPlacements: (params?: { businessId?: string; studentId?: string; academicPeriodId?: string; status?: string; branchCode?: string } & PaginationParams) =>
     api.get<PagedResponse<InternshipPlacementDto>>('/placements', { params }),
 
   getPlacement: (placementId: string) =>

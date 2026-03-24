@@ -23,18 +23,23 @@ public class InternshipSaga : Saga
     public TerminationApprovalChain? ApprovalChain { get; set; }
 
     // ─── START: StudentPlaced event ile saga başlar ───
+    public Guid PlacementId { get; set; }
+    public Guid AcademicPeriodId { get; set; }
+
     public static (InternshipSaga, InternshipStarted) Start(StudentPlaced e)
     {
         var id = Guid.NewGuid();
         var saga = new InternshipSaga
         {
             Id = id,
+            PlacementId = e.PlacementId,
             StudentId = e.StudentId,
             BusinessId = e.BusinessId,
             InstitutionId = e.InstitutionId,
+            AcademicPeriodId = e.AcademicPeriodId,
             Phase = InternshipPhase.AwaitingContract
         };
-        var started = new InternshipStarted(id, e.StudentId, e.BusinessId, e.InstitutionId, DateTime.UtcNow);
+        var started = new InternshipStarted(id, e.PlacementId, e.StudentId, e.StudentName, e.BusinessId, e.BusinessName, e.InstitutionId, e.AcademicPeriodId, DateTime.UtcNow);
         return (saga, started);
     }
 

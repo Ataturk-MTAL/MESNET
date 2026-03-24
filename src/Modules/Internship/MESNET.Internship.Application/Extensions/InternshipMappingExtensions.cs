@@ -6,11 +6,18 @@ namespace MESNET.Internship.Application.Extensions;
 
 public static class InternshipMappingExtensions
 {
-    public static InternshipSummaryDto ToDto(this InternshipSummary summary) => new(
+    public static InternshipSummaryDto ToDto(
+        this InternshipSummary summary,
+        string studentName = "",
+        string businessName = "") => new(
         summary.Id,
+        summary.PlacementId,
         summary.StudentId,
+        studentName,
         summary.BusinessId,
+        businessName,
         summary.InstitutionId,
+        summary.AcademicPeriodId,
         summary.ContractId,
         summary.Phase.Name,
         summary.Phase.Slug,

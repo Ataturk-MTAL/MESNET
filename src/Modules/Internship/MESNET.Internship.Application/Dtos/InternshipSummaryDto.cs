@@ -2,9 +2,13 @@ namespace MESNET.Internship.Application.Dtos;
 
 public sealed record InternshipSummaryDto(
     Guid Id,
+    Guid PlacementId,
     Guid StudentId,
+    string StudentName,
     Guid BusinessId,
+    string BusinessName,
     Guid InstitutionId,
+    Guid AcademicPeriodId,
     Guid? ContractId,
     string Phase,
     string PhaseSlug,

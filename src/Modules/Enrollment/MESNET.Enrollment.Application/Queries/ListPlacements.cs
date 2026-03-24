@@ -8,4 +8,5 @@ public sealed record ListPlacements(
     Guid? AcademicPeriodId,
     string? Status,
     Guid? InstitutionId = null,
-    Guid? TeacherId = null) : PagedQuery;
+    Guid? TeacherId = null,
+    string? BranchCode = null) : PagedQuery;

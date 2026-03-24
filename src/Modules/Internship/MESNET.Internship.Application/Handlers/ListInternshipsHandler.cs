@@ -25,12 +25,20 @@ public static class ListInternshipsHandler
         if (query.InstitutionId.HasValue)
             queryable = queryable.Where(s => s.InstitutionId == query.InstitutionId.Value);
 
+        if (query.AcademicPeriodId.HasValue)
+            queryable = queryable.Where(s => s.AcademicPeriodId == query.AcademicPeriodId.Value);
+
         if (!string.IsNullOrWhiteSpace(query.Phase) &&
             InternshipPhase.TryFromName(query.Phase, true, out var internshipPhase))
             queryable = queryable.Where(s => s.Phase.Name == internshipPhase.Name);
 
-        queryable = queryable.ApplySort(query.SortBy, query.Descending);
+        if (query.MinAbsenceDays.HasValue)
+            queryable = queryable.Where(s => s.TotalAbsenceDays >= query.MinAbsenceDays.Value);
 
-        return await queryable.ToPagedResultAsync(query, s => s.ToDto());
+        queryable = queryable.ApplySearch(query.Search, s => s.StudentName);
+        queryable = queryable.ApplySort(query.SortBy, query.Descending,
+            defaultSort: s => s.TotalAbsenceDays, defaultDescending: true);
+
+        return await queryable.ToPagedResultAsync(query, s => s.ToDto(s.StudentName, s.BusinessName));
     }
 }

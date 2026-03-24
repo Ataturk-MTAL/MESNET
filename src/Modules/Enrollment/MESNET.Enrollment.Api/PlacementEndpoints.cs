@@ -19,7 +19,7 @@ public static class PlacementEndpoints
         var group = app.MapGroup("/api/placements").RequireAuthorization();
 
         group.MapPost("/", Post).RequireAuthorization(Permissions.Internship.Approve);
-        group.MapPost("/{placementId:guid}/transfer", PostTransfer).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapPost("/{placementId:guid}/mark-failed", PostMarkFailed).RequireAuthorization(Permissions.Internship.Manage);
         group.MapGet("/{placementId:guid}", Get).RequireAuthorization(Permissions.Student.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Student.View);
 
@@ -36,12 +36,14 @@ public static class PlacementEndpoints
                 .Build());
     }
 
-    private static async Task<IResult> PostTransfer(
-        Guid placementId, TransferStudent command, IMessageBus bus)
+    private static async Task<IResult> PostMarkFailed(
+        Guid placementId, ICurrentUserService currentUser, IMessageBus bus)
     {
-        await bus.InvokeAsync(command with { PlacementId = placementId });
+        var institutionId = currentUser.GetCurrentUser()?.InstitutionId
+            ?? throw new DomainException(new Error("Auth.NoInstitution", "Kurum bilgisi bulunamadı."));
+        await bus.InvokeAsync(new MarkAsFailedToComplete(placementId, institutionId));
         return Results.Ok(ResponseBuilder.Success()
-            .AddMessage("Öğrenci transfer edildi.")
+            .AddMessage("Staj 'Tamamlayamadı' olarak işaretlendi.")
             .Build());
     }
 
@@ -56,7 +58,7 @@ public static class PlacementEndpoints
     }
 
     private static async Task<IResult> GetAll(
-        Guid? businessId, Guid? studentId, Guid? academicPeriodId, string? status,
+        Guid? businessId, Guid? studentId, Guid? academicPeriodId, string? status, string? branchCode,
         int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
         ICurrentUserService currentUser = default!, IMessageBus bus = default!)
     {
@@ -80,7 +82,7 @@ public static class PlacementEndpoints
         }
 
         var result = await bus.InvokeAsync<PagedResult<InternshipPlacementDto>>(
-            new ListPlacements(effectiveBusinessId, studentId, academicPeriodId, status, institutionId, teacherId)
+            new ListPlacements(effectiveBusinessId, studentId, academicPeriodId, status, institutionId, teacherId, branchCode)
             { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
         return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }

@@ -43,6 +43,8 @@ public static class PlaceStudentHandler
             InstitutionId = command.InstitutionId,
             AcademicPeriodId = command.AcademicPeriodId,
             TeacherId = command.TeacherId,
+            StudentName = student.FullName,
+            BranchCode = student.BranchCode,
             Source = ApplicationSource.InstitutionAssignment
         };
 
@@ -59,7 +61,7 @@ public static class PlaceStudentHandler
             teacherName = teacher?.FullName;
         }
 
-        return (placement.ToDto(student.FullName, business.BusinessName, teacherName), new StudentPlaced(
+        return (placement.ToDto(business.BusinessName, teacherName), new StudentPlaced(
             placement.Id,
             placement.StudentId,
             placement.BusinessId,
@@ -67,6 +69,7 @@ public static class PlaceStudentHandler
             placement.AcademicPeriodId,
             placement.TeacherId,
             placement.PlacedAt,
+            StudentName: student.FullName,
             BusinessName: business.BusinessName,
             BranchCode: student.BranchCode,
             BranchName: student.BranchName));

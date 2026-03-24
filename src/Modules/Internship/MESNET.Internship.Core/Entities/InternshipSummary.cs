@@ -5,9 +5,13 @@ namespace MESNET.Internship.Core.Entities;
 public class InternshipSummary
 {
     public Guid Id { get; set; }
+    public Guid PlacementId { get; set; }
     public Guid StudentId { get; set; }
+    public string StudentName { get; set; } = "";
     public Guid BusinessId { get; set; }
+    public string BusinessName { get; set; } = "";
     public Guid InstitutionId { get; set; }
+    public Guid AcademicPeriodId { get; set; }
     public Guid? ContractId { get; set; }
     public InternshipPhase Phase { get; set; } = InternshipPhase.Placed;
     public DateTime StartedAt { get; set; }
