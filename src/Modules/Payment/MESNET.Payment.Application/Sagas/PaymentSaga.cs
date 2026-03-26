@@ -13,6 +13,7 @@ public class PaymentSaga : Saga
     public Guid StudentId { get; set; }
     public Guid BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
+    public Guid AcademicPeriodId { get; set; }
     public string Month { get; set; } = default!;
     public decimal BaseWage { get; set; }
     public decimal DeductionAmount { get; set; }
@@ -52,6 +53,7 @@ public class PaymentSaga : Saga
             StudentId = @event.StudentId,
             BusinessId = @event.BusinessId,
             InstitutionId = @event.InstitutionId,
+            AcademicPeriodId = @event.AcademicPeriodId,
             Month = month,
             BaseWage = baseWage,
             DeductionAmount = deduction,
@@ -62,7 +64,7 @@ public class PaymentSaga : Saga
         };
 
         var salaryCalculated = new SalaryCalculated(
-            salaryId, @event.StudentId, month, netAmount, baseWage, deduction, govContrib);
+            salaryId, @event.StudentId, @event.AcademicPeriodId, month, netAmount, baseWage, deduction, govContrib);
 
         var receiptUploadRequested = new ReceiptUploadRequested(
             salaryId, @event.StudentId, @event.BusinessId, saga.ReceiptDueDate);

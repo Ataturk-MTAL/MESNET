@@ -25,5 +25,8 @@ public static class PaymentMappingExtensions
         summary.StudentConfirmedAt,
         summary.TeacherApprovedAt,
         summary.DeputyApprovedAt,
-        summary.LastUpdated);
+        summary.LastUpdated,
+        summary.StudentName,
+        summary.StudentNumber,
+        summary.BranchCode);
 }

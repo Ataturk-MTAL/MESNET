@@ -3,8 +3,11 @@
     <div class="text-h5 text-weight-bold q-mb-lg">Maaş / Dekont</div>
 
     <!-- Filtreler -->
-    <div class="row q-gutter-sm q-mb-md">
-      <q-input v-model="studentIdFilter" label="Öğrenci ID" filled dense clearable style="min-width: 200px" />
+    <div class="row q-gutter-sm q-mb-md items-center">
+      <BranchSelector v-model="branchCodeFilter" dense force-select style="min-width: 200px" />
+      <q-input v-model="searchFilter" label="Öğrenci Adı veya Numarası" filled dense clearable style="min-width: 220px">
+        <template #prepend><q-icon name="search" /></template>
+      </q-input>
       <q-select
         v-model="phaseFilter"
         :options="phaseOptions"
@@ -12,7 +15,48 @@
         filled dense emit-value map-options clearable
         style="min-width: 200px"
       />
-      <q-input v-model="monthFilter" label="Ay (YYYY-MM)" filled dense clearable style="min-width: 140px" />
+      <q-input v-model="monthFromFilter" label="Başlangıç Ayı" filled dense clearable readonly style="min-width: 150px">
+        <template #prepend><q-icon name="calendar_month" /></template>
+        <template #append>
+          <q-icon name="event" class="cursor-pointer">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-date
+                v-model="monthFromFilter"
+                emit-immediately
+                default-view="Months"
+                mask="YYYY-MM"
+                years-in-month-view
+                :options="(d) => !monthToFilter || d <= monthToFilter"
+              >
+                <div class="row items-center justify-end">
+                  <q-btn v-close-popup label="Tamam" color="primary" flat />
+                </div>
+              </q-date>
+            </q-popup-proxy>
+          </q-icon>
+        </template>
+      </q-input>
+      <q-input v-model="monthToFilter" label="Bitiş Ayı" filled dense clearable readonly style="min-width: 150px">
+        <template #prepend><q-icon name="calendar_month" /></template>
+        <template #append>
+          <q-icon name="event" class="cursor-pointer">
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-date
+                v-model="monthToFilter"
+                emit-immediately
+                default-view="Months"
+                mask="YYYY-MM"
+                years-in-month-view
+                :options="(d) => !monthFromFilter || d >= monthFromFilter"
+              >
+                <div class="row items-center justify-end">
+                  <q-btn v-close-popup label="Tamam" color="primary" flat />
+                </div>
+              </q-date>
+            </q-popup-proxy>
+          </q-icon>
+        </template>
+      </q-input>
       <q-btn color="primary" icon="search" label="Ara" @click="load" />
     </div>
 
@@ -174,6 +218,7 @@ import type { QTableProps } from 'quasar'
 import { paymentApi, type PaymentSummaryDto, PAYMENT_PHASES } from 'src/api/payment'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
+import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import DetailPanel from 'components/DetailPanel.vue'
 import UploadReceiptForm from 'components/forms/payment/UploadReceiptForm.vue'
@@ -181,25 +226,40 @@ import RejectPaymentForm from 'components/forms/payment/RejectPaymentForm.vue'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
+import BranchSelector from 'components/BranchSelector.vue'
 
 const notify = useNotify()
+const periodStore = useAcademicPeriodStore()
 const saving = ref(false)
 const selected = ref<PaymentSummaryDto | null>(null)
 const detailOpen = ref(false)
 const uploadReceiptDialog = ref(false)
 const rejectDialog = ref(false)
-const studentIdFilter = ref('')
+const searchFilter = ref('')
+const branchCodeFilter = ref<string | null>(null)
 const phaseFilter = ref<string | null>(null)
-const monthFilter = ref('')
+const monthFromFilter = ref('')
+const monthToFilter = ref('')
 const uploadType = ref<'business' | 'student'>('business')
 
 const phaseOptions = PAYMENT_PHASES.map((p) => ({ label: p.label, value: p.value }))
 
-const filters = computed(() => ({
-  studentId: studentIdFilter.value || undefined,
-  phase: phaseFilter.value ?? undefined,
-  month: monthFilter.value || undefined,
-}))
+// Dönem tarihinden YYYY-MM formatı türet
+function toYearMonth(dateStr: string): string {
+  return dateStr.slice(0, 7) // "2025-09-08" → "2025-09"
+}
+
+const filters = computed(() => {
+  const period = periodStore.selectedPeriod
+  return {
+    academicPeriodId: periodStore.selectedPeriodId ?? undefined,
+    search: searchFilter.value || undefined,
+    branchCode: branchCodeFilter.value ?? undefined,
+    phase: phaseFilter.value ?? undefined,
+    monthFrom: monthFromFilter.value || (period ? toYearMonth(period.startDate) : undefined),
+    monthTo: monthToFilter.value || (period ? toYearMonth(period.endDate) : undefined),
+  }
+})
 
 const { rows: payments, loading, pagination, onRequest, load } = useServerPagination<PaymentSummaryDto>({
   fetchFn: (params) => paymentApi.list(params),
@@ -209,6 +269,9 @@ const { rows: payments, loading, pagination, onRequest, load } = useServerPagina
 })
 
 const columns: QTableProps['columns'] = [
+  { name: 'studentName', label: 'Öğrenci', field: 'studentName', align: 'left', sortable: true },
+  { name: 'studentNumber', label: 'No', field: 'studentNumber', align: 'left' },
+  { name: 'branchCode', label: 'Alan', field: 'branchCode', align: 'left', sortable: true },
   { name: 'month', label: 'Ay', field: 'month', align: 'left', sortable: true },
   { name: 'amounts', label: 'Net / Brüt', field: 'netAmount', align: 'left' },
   { name: 'phaseSlug', label: 'Aşama', field: 'phaseSlug', align: 'left' },

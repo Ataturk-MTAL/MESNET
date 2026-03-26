@@ -1,18 +1,22 @@
 using Marten;
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.Enums;
+using MESNET.Payment.Core.ReadModels;
 using MESNET.Payment.Shared.Events;
 
 namespace MESNET.Payment.Application.Consumers;
 
 public static class PaymentSummaryUpdater
 {
-    public static void Handle(SalaryCalculated @event, IDocumentSession session)
+    public static async Task Handle(SalaryCalculated @event, IDocumentSession session)
     {
+        var profile = await session.LoadAsync<StudentPaymentProfile>(@event.StudentId);
+
         var summary = new PaymentSummary
         {
             Id = @event.SalaryPeriodId,
             StudentId = @event.StudentId,
+            AcademicPeriodId = @event.AcademicPeriodId,
             Month = @event.Month,
             BaseWage = @event.BaseWage,
             DeductionAmount = @event.Deduction,
@@ -20,7 +24,10 @@ public static class PaymentSummaryUpdater
             GovernmentContribution = @event.GovContribution,
             EmployerPayment = @event.NetAmount - @event.GovContribution,
             Phase = PaymentPhase.Calculated,
-            LastUpdated = DateTime.UtcNow
+            LastUpdated = DateTime.UtcNow,
+            StudentName = profile?.FullName ?? "",
+            StudentNumber = profile?.StudentNumber ?? "",
+            BranchCode = profile?.BranchCode ?? "",
         };
         session.Store(summary);
     }

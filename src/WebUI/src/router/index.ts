@@ -100,12 +100,28 @@ const router = createRouter({
           meta: { permissions: ['salary:view'] },
         },
 
-        // Koordinatör
+        // İşletme Değerlendirmeleri
         {
-          path: 'coordination',
-          name: 'Coordination',
-          component: () => import('pages/coordination/CoordinationPage.vue'),
-          meta: { permissions: ['coordinator:visit:manage', 'coordinator:schedule:manage'] },
+          path: 'coordination/evaluations',
+          name: 'BusinessEvaluations',
+          component: () => import('pages/coordination/BusinessEvaluationsPage.vue'),
+          meta: { permissions: ['coordinator:visit:manage'] },
+        },
+
+        // Beceri Sınavları
+        {
+          path: 'coordination/skill-exams',
+          name: 'SkillExams',
+          component: () => import('pages/coordination/SkillExamsPage.vue'),
+          meta: { permissions: ['coordinator:visit:manage'] },
+        },
+
+        // Aylık Faaliyet Raporları
+        {
+          path: 'coordination/activity-reports',
+          name: 'ActivityReports',
+          component: () => import('pages/coordination/ActivityReportsPage.vue'),
+          meta: { permissions: ['coordinator:report:manage'] },
         },
 
         // Ders Programı

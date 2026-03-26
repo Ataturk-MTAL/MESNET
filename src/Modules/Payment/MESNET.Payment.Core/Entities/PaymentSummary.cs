@@ -8,6 +8,7 @@ public class PaymentSummary
     public Guid StudentId { get; set; }
     public Guid BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
+    public Guid AcademicPeriodId { get; set; }
     public string Month { get; set; } = default!;
     public decimal BaseWage { get; set; }
     public decimal DeductionAmount { get; set; }
@@ -23,4 +24,9 @@ public class PaymentSummary
     public DateTime? TeacherApprovedAt { get; set; }
     public DateTime? DeputyApprovedAt { get; set; }
     public DateTime LastUpdated { get; set; }
+
+    // Denormalize öğrenci + alan bilgisi (StudentRegistered event'inden)
+    public string StudentName { get; set; } = "";
+    public string StudentNumber { get; set; } = "";
+    public string BranchCode { get; set; } = "";
 }

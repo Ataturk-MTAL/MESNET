@@ -36,8 +36,11 @@ public static class ListInternshipsHandler
             queryable = queryable.Where(s => s.TotalAbsenceDays >= query.MinAbsenceDays.Value);
 
         queryable = queryable.ApplySearch(query.Search, s => s.StudentName);
-        queryable = queryable.ApplySort(query.SortBy, query.Descending,
-            defaultSort: s => s.TotalAbsenceDays, defaultDescending: true);
+
+        // Varsayılan: devamsızlığa göre azalan (en çok devamsız üste)
+        var effectiveDescending = string.IsNullOrWhiteSpace(query.SortBy) ? true : query.Descending;
+        queryable = queryable.ApplySort(query.SortBy, effectiveDescending,
+            defaultSort: s => s.TotalAbsenceDays);
 
         return await queryable.ToPagedResultAsync(query, s => s.ToDto(s.StudentName, s.BusinessName));
     }

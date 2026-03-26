@@ -20,4 +20,7 @@ public sealed record PaymentSummaryDto(
     DateTime? StudentConfirmedAt,
     DateTime? TeacherApprovedAt,
     DateTime? DeputyApprovedAt,
-    DateTime LastUpdated);
+    DateTime LastUpdated,
+    string StudentName = "",
+    string StudentNumber = "",
+    string BranchCode = "");

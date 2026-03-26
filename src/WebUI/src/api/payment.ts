@@ -4,6 +4,9 @@ import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 export interface PaymentSummaryDto {
   id: string
   studentId: string
+  studentName: string
+  studentNumber: string
+  branchCode: string
   businessId: string
   institutionId: string
   month: string
@@ -36,7 +39,7 @@ export const PAYMENT_PHASES = [
 ] as const
 
 export const paymentApi = {
-  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; phase?: string; month?: string } & PaginationParams) =>
+  list: (params?: { studentId?: string; businessId?: string; institutionId?: string; academicPeriodId?: string; phase?: string; month?: string; branchCode?: string; monthFrom?: string; monthTo?: string } & PaginationParams) =>
     api.get<PagedResponse<PaymentSummaryDto>>('/payments', { params }),
 
   get: (paymentId: string) =>

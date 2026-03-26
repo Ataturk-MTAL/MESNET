@@ -36,12 +36,14 @@ public static class PaymentEndpoints
 
     private static async Task<IResult> GetAll(
         Guid? studentId = null, Guid? businessId = null, Guid? institutionId = null,
-        string? phase = null, string? month = null,
+        Guid? academicPeriodId = null,
+        string? phase = null, string? month = null, string? branchCode = null,
+        string? monthFrom = null, string? monthTo = null,
         int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
         IMessageBus bus = default!)
     {
         var result = await bus.InvokeAsync<PagedResult<PaymentSummaryDto>>(
-            new ListPaymentSummaries(studentId, businessId, institutionId, phase, month)
+            new ListPaymentSummaries(studentId, businessId, institutionId, academicPeriodId, phase, month, branchCode, monthFrom, monthTo)
             { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
         return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }

@@ -6,6 +6,7 @@ using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Application.Queries;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.Enums;
+using MESNET.Enrollment.Core.ReadModels;
 
 namespace MESNET.Enrollment.Application.Handlers;
 

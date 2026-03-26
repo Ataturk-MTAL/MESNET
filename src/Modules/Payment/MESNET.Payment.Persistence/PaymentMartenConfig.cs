@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Payment.Core.Entities;
+using MESNET.Payment.Core.ReadModels;
 
 namespace MESNET.Payment.Persistence;
 
@@ -18,8 +19,14 @@ public class PaymentMartenConfig : IConfigureMarten
         options.Schema.For<PaymentSummary>().Index(x => x.StudentId);
         options.Schema.For<PaymentSummary>().Index(x => x.BusinessId);
         options.Schema.For<PaymentSummary>().Index(x => x.InstitutionId);
+        options.Schema.For<PaymentSummary>().Index(x => x.AcademicPeriodId);
         options.Schema.For<PaymentSummary>().Index(x => x.Month);
         options.Schema.For<PaymentSummary>().Index(x => x.Phase);
         options.Schema.For<PaymentSummary>().Index(x => x.ReceiptDueDate);
+        options.Schema.For<PaymentSummary>().Index(x => x.BranchCode);
+
+        // StudentPaymentProfile — enrollment event'inden beslenen yerel öğrenci profili
+        options.Schema.For<StudentPaymentProfile>().DatabaseSchemaName("payment");
+        options.Schema.For<StudentPaymentProfile>().Index(x => x.BranchCode);
     }
 }

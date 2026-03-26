@@ -18,6 +18,7 @@
     <ProjectReference Include="../MESNET.Payment.Shared/MESNET.Payment.Shared.csproj" />
     <!-- Cross-module event consumption -->
     <ProjectReference Include="../../Attendance/MESNET.Attendance.Shared/MESNET.Attendance.Shared.csproj" />
+    <ProjectReference Include="../../Enrollment/MESNET.Enrollment.Shared/MESNET.Enrollment.Shared.csproj" />
   </ItemGroup>
 
 </Project>
