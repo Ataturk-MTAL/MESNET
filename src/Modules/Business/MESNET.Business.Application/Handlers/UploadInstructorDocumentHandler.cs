@@ -5,7 +5,6 @@ using MESNET.Business.Core.ValueObjects;
 using MESNET.Business.Shared.Events;
 using MESNET.Common.Infrastructure.Storage;
 using MESNET.Common.Shared;
-using MESNET.Payment.Application.Errors;
 using Microsoft.Extensions.Logging;
 
 namespace MESNET.Business.Application.Handlers;

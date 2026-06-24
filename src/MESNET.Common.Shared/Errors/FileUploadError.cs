@@ -1,9 +1,7 @@
-using MESNET.Common.Shared;
-
-namespace MESNET.Payment.Application.Errors;
+namespace MESNET.Common.Shared;
 
 /// <summary>
-/// Dosya yükleme ile ilgili hatalar.
+/// Dosya yükleme ile ilgili ortak hatalar (Business, Contract, Payment, Reporting paylaşır).
 /// </summary>
 public static class FileUploadError
 {
