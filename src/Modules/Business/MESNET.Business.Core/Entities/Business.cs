@@ -16,8 +16,17 @@ public class Business
     public string? Email { get; set; }
     public string? Website { get; set; }
 
+    private BusinessStatus _status = BusinessStatus.PendingApproval;
+
     [JsonConverter(typeof(SmartEnumNameConverter<BusinessStatus, int>))]
-    public BusinessStatus Status { get; set; } = BusinessStatus.PendingApproval;
+    public BusinessStatus Status
+    {
+        get => _status;
+        set { _status = value; StatusName = value.Name; }
+    }
+
+    // SmartEnum LINQ tuzağı: Status JSON'a düz string serialize edilir; sorgular için düz string kopya.
+    public string StatusName { get; private set; } = BusinessStatus.PendingApproval.Name;
 
     [JsonConverter(typeof(SmartEnumNameConverter<RegistrationSource, int>))]
     public RegistrationSource Source { get; set; } = RegistrationSource.InstitutionRegistered;

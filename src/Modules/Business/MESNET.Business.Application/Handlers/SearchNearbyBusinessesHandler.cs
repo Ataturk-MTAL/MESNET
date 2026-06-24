@@ -13,7 +13,7 @@ public static class SearchNearbyBusinessesHandler
     {
         var activeStatusName = BusinessStatus.Active.Name;
         var allActive = await session.Query<Core.Entities.Business>()
-            .Where(b => b.Status.Name == activeStatusName && b.Location != null)
+            .Where(b => b.StatusName == activeStatusName && b.Location != null)
             .ToListAsync();
 
         return allActive
