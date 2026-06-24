@@ -23,6 +23,9 @@ public sealed record InternshipContract(
     IReadOnlyList<ContractDocument> Documents,
     DateTime CreatedAt)
 {
+    // SmartEnum LINQ tuzağı: Status JSON'a düz string serialize edilir; sorgular için düz string kopya.
+    public string StatusName => Status.Name;
+
     public static InternshipContract Create(ContractCreated e) => new(
         e.ContractId, e.StudentId, e.BusinessId, e.InstitutionId, e.AcademicPeriodId, e.TeacherId,
         ContractStatus.Draft, e.StartDate, null,

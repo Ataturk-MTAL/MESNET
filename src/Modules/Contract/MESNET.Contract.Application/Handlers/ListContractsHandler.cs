@@ -30,7 +30,7 @@ public static class ListContractsHandler
 
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             ContractStatus.TryFromName(query.Status, true, out var status))
-            queryable = queryable.Where(c => c.Status.Name == status.Name);
+            queryable = queryable.Where(c => c.StatusName == status.Name);
 
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: c => c.CreatedAt);
 
