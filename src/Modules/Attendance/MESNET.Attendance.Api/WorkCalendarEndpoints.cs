@@ -1,8 +1,6 @@
-using Marten;
 using MESNET.Attendance.Application.Commands;
-using MESNET.Attendance.Application.Errors;
-using MESNET.Attendance.Application.Extensions;
-using MESNET.Attendance.Core.Entities;
+using MESNET.Attendance.Application.Dtos;
+using MESNET.Attendance.Application.Queries;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using Microsoft.AspNetCore.Builder;
@@ -34,19 +32,12 @@ public static class WorkCalendarEndpoints
     }
 
     private static async Task<IResult> Get(
-        Guid institutionId, int year, IQuerySession session)
+        Guid institutionId, int year, IMessageBus bus)
     {
-        var calendar = await session.Query<WorkCalendar>()
-            .FirstOrDefaultAsync(c => c.InstitutionId == institutionId && c.Year == year);
-
-        if (calendar is null)
-            return Results.NotFound(ResponseBuilder.Fail(404)
-                .AddMessage(AttendanceErrors.CalendarNotFound(institutionId, year).Description)
-                .AddErrors(AttendanceErrors.CalendarNotFound(institutionId, year))
-                .Build());
+        var calendar = await bus.InvokeAsync<WorkCalendarDto>(new GetWorkCalendar(institutionId, year));
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(calendar.ToDto())
+            .AddData(calendar)
             .Build());
     }
 }
