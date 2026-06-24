@@ -28,5 +28,9 @@ public class PaymentMartenConfig : IConfigureMarten
         // StudentPaymentProfile — enrollment event'inden beslenen yerel öğrenci profili
         options.Schema.For<StudentPaymentProfile>().DatabaseSchemaName("payment");
         options.Schema.For<StudentPaymentProfile>().Index(x => x.BranchCode);
+
+        // AcademicPeriodView — Institution event'lerinden (kapalı dönem kontrolü, #8)
+        options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("payment");
+        options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
     }
 }

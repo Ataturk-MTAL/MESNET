@@ -8,4 +8,4 @@ public sealed record UploadReceiptByBusiness(
     Guid BusinessId,
     int Month,
     int Year,
-    IFormFile ReceiptFile);
+    IFormFile ReceiptFile) : ISalaryPeriodScoped;

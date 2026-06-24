@@ -223,6 +223,10 @@ try
         opts.Policies.AutoApplyTransactions();
         opts.Policies.UseDurableLocalQueues();
 
+        // Kapalı akademik dönem koruması (#8) — Payment maaş/dekont yazma command'ları
+        opts.Policies.ForMessagesOfType<MESNET.Payment.Application.ISalaryPeriodScoped>()
+            .AddMiddleware(typeof(MESNET.Payment.Application.SalaryPeriodGuardMiddleware));
+
         // Modül Application assembly'lerini handler keşfi için tanıt
         // Wolverine varsayılan olarak sadece host assembly'yi tarar
         opts.Discovery.IncludeAssembly(typeof(MESNET.Institution.Application.Commands.CreateInstitution).Assembly);

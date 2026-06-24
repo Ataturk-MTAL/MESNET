@@ -7,4 +7,4 @@ public sealed record UploadReceiptByStudent(
     Guid StudentId,
     int Month,
     int Year,
-    IFormFile ReceiptFile);
+    IFormFile ReceiptFile) : ISalaryPeriodScoped;

@@ -15,4 +15,7 @@ public static class PaymentErrors
 
     public static Error OperationFailed(string operation, string message) =>
         new($"Payment.{operation}Failed", message);
+
+    public static Error AcademicPeriodClosed(Guid id) =>
+        new("Payment.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, ödeme işlemi yapılamaz: {id}");
 }
