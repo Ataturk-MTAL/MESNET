@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:project-osrm.org)",
+      "WebFetch(domain:www.haritamap.com)",
+      "WebFetch(domain:nominatim.openstreetmap.org)",
+      "WebFetch(domain:www.mtso.org.tr)",
+      "WebFetch(domain:www.firmasec.com)",
+      "WebFetch(domain:signoz.io)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "Bash(pnpm exec vue-tsc --noEmit)",
+      "Bash(dotnet clean src/MESNET.Presentation/MESNET.Presentation.csproj -q)",
+      "Bash(brew info osrm-backend)",
+      "Bash(brew install osrm-backend)",
+      "Bash(brew info osmium-tool)",
+      "Bash(brew install osmium-tool)",
+      "Bash(osmium extract --bbox 33.0,36.1,36.0,37.5 turkey-latest.osm.pbf -o mersin.osm.pbf --overwrite)",
+      "Bash(osrm-extract -p /opt/homebrew/share/osrm/profiles/car.lua turkey-latest.osm.pbf)",
+      "Bash(osrm-contract turkey-latest.osrm)",
+      "Bash(osrm-extract -p /opt/homebrew/share/osrm/profiles/car.lua mersin.osm.pbf)",
+      "Bash(osrm-contract mersin.osrm)",
+      "Bash(./prepare-mersin.sh)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}
