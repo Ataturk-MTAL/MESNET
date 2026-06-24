@@ -464,7 +464,16 @@ try
         {
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = "CREATE EXTENSION IF NOT EXISTS postgis";
-            await cmd.ExecuteNonQueryAsync();
+            try
+            {
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState is "23505" or "42710")
+            {
+                // CREATE EXTENSION IF NOT EXISTS PostgreSQL'de concurrency-safe değil:
+                // Marten 9 şema uygulamasıyla eşzamanlı çalışınca pg_extension'da unique
+                // ihlali (23505/42710) atabilir. Extension yine de mevcut → istenen son durum.
+            }
         }
     }
 

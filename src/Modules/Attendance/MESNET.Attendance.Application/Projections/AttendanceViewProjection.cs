@@ -4,7 +4,7 @@ using MESNET.Attendance.Shared.Events;
 
 namespace MESNET.Attendance.Application.Projections;
 
-public class AttendanceViewProjection : MultiStreamProjection<AttendanceView, Guid>
+public partial class AttendanceViewProjection : MultiStreamProjection<AttendanceView, Guid>
 {
     public AttendanceViewProjection()
     {
