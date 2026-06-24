@@ -26,16 +26,16 @@ public static class UpsertTeacherScheduleHandler
         if (period is null) throw new DomainException(CoordinationErrors.AcademicPeriodNotFound(command.AcademicPeriodId));
         if (!period.IsActive) throw new DomainException(CoordinationErrors.AcademicPeriodClosed(command.AcademicPeriodId));
 
-        // 1. Kurum ayarlarını oku (günlük ders sayısı)
-        var institution = await session.LoadAsync<MESNET.Institution.Core.Entities.Institution>(
+        // 1. Kurum ayarlarını oku (günlük ders sayısı) — event-tabanlı InstitutionView
+        var institution = await session.LoadAsync<InstitutionView>(
             command.InstitutionId, cancellationToken);
 
-        if (institution?.ScheduleConfig is null)
+        if (institution is null || institution.DailyPeriodCount <= 0)
         {
             throw new DomainException(CoordinationErrors.ConfigurationMissing("Kurum ders programı ayarları yapılmamış."));
         }
 
-        var maxPeriods = institution.ScheduleConfig.DailyPeriodCount;
+        var maxPeriods = institution.DailyPeriodCount;
 
         // 2. Semester validation
         if (!AcademicSemester.TryFromName(command.Semester, true, out var semester))

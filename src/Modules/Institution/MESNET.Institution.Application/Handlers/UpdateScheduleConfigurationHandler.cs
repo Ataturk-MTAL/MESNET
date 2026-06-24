@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Common.Shared;
 using MESNET.Institution.Application.Commands;
 using MESNET.Institution.Application.Errors;
+using MESNET.Institution.Shared.Events;
 
 namespace MESNET.Institution.Application.Handlers;
 
@@ -10,7 +11,7 @@ public static class UpdateScheduleConfigurationHandler
     private const int MinDailyPeriods = 1;
     private const int MaxDailyPeriods = 12;
 
-    public static async Task Handle(
+    public static async Task<InstitutionUpdated> Handle(
         UpdateScheduleConfiguration command,
         IDocumentSession session,
         CancellationToken cancellationToken)
@@ -31,5 +32,10 @@ public static class UpdateScheduleConfigurationHandler
 
         session.Store(institution);
         await session.SaveChangesAsync(cancellationToken);
+
+        // Coordination'ın InstitutionView'ı güncel kalsın (DailyPeriodCount değişti)
+        return new InstitutionUpdated(
+            institution.Id, institution.FullName, institution.Location,
+            institution.ScheduleConfig.DailyPeriodCount);
     }
 }

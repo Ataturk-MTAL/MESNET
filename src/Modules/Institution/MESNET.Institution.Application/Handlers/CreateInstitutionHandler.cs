@@ -24,7 +24,9 @@ public static class CreateInstitutionHandler
 
         session.Store(institution);
 
-        await bus.PublishAsync(new InstitutionUpdated(institution.Id, institution.FullName, institution.Location));
+        await bus.PublishAsync(new InstitutionUpdated(
+            institution.Id, institution.FullName, institution.Location,
+            institution.ScheduleConfig?.DailyPeriodCount ?? 0));
 
         return institution.Id;
     }

@@ -114,5 +114,8 @@ public static class MartenConfiguration
         // AcademicPeriodView (cross-module read model)
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("coordination");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
+
+        // InstitutionView (Institution modülünden InstitutionUpdated event'i ile beslenir)
+        options.Schema.For<InstitutionView>().DatabaseSchemaName("coordination");
     }
 }
