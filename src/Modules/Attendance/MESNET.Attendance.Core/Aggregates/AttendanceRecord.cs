@@ -22,6 +22,9 @@ public sealed record AttendanceRecord(
     DateTime? VerifiedAt,
     bool IsDeleted = false)
 {
+    // SmartEnum LINQ tuzağı: Status JSON'a düz string serialize edilir; sorgular için düz string kopya.
+    public string StatusName => Status.Name;
+
     public static AttendanceRecord Create(AttendanceMarked e) => new(
         e.AttendanceId,
         e.StudentId,

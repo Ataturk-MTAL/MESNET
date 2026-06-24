@@ -31,7 +31,7 @@ public static class ListAttendanceRecordsHandler
 
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             AttendanceStatus.TryFromName(query.Status, true, out var attendanceStatus))
-            queryable = queryable.Where(r => r.Status.Name == attendanceStatus.Name);
+            queryable = queryable.Where(r => r.StatusName == attendanceStatus.Name);
 
         if (query.Year.HasValue)
             queryable = queryable.Where(r => r.Date.Year == query.Year.Value);
