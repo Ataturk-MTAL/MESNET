@@ -15,7 +15,16 @@ public class PaymentSummary
     public decimal NetAmount { get; set; }
     public decimal GovernmentContribution { get; set; }
     public decimal EmployerPayment { get; set; }
-    public PaymentPhase Phase { get; set; } = PaymentPhase.Calculated;
+    private PaymentPhase _phase = PaymentPhase.Calculated;
+    public PaymentPhase Phase
+    {
+        get => _phase;
+        set { _phase = value; PhaseName = value.Name; }
+    }
+
+    // SmartEnum LINQ tuzağı: Phase JSON'a düz string serialize edilir, bu yüzden
+    // LINQ'te p.Phase.Name → data->'Phase'->>'Name' NULL döner. Sorgular için düz string kopya.
+    public string PhaseName { get; private set; } = PaymentPhase.Calculated.Name;
     public Guid? ReceiptId { get; set; }
     public string? ReceiptObjectPath { get; set; }
     public bool UploadedByStudent { get; set; }
