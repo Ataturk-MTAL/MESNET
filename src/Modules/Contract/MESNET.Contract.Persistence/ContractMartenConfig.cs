@@ -1,5 +1,5 @@
+using JasperFx.Events.Projections;
 using Marten;
-using Marten.Events.Projections;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.ReadModels;
 
