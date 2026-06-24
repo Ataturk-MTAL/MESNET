@@ -4,6 +4,7 @@ using MESNET.Attendance.Application.Extensions;
 using MESNET.Attendance.Application.Queries;
 using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Enums;
+using MESNET.Attendance.Core.ReadModels;
 using MESNET.Common.Infrastructure.Pagination;
 using MESNET.Common.Shared.Pagination;
 
@@ -38,6 +39,16 @@ public static class ListAttendanceRecordsHandler
 
         if (query.Month.HasValue)
             queryable = queryable.Where(r => r.Date.Month == query.Month.Value);
+
+        // Arama: öğrenci ad/numara üzerinden (lokal StudentNameView → eşleşen öğrenci id'leri → devamsızlık filtresi)
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var matchingStudentIds = await session.Query<StudentNameView>()
+                .ApplySearch(query.Search, s => s.FullName, s => s.StudentNumber)
+                .Select(s => s.Id)
+                .ToListAsync();
+            queryable = queryable.Where(r => matchingStudentIds.Contains(r.StudentId));
+        }
 
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: r => r.Date);
 
