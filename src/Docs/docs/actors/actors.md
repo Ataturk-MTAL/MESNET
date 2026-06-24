@@ -7,6 +7,8 @@ title: Aktör Tanımları
 > **Kapsam Notu:** Blockchain aktörleri (Blockchain Sistem Yöneticisi, Doğrulayıcı) ve Tenant Yöneticisi Phase 2 kapsamındadır.
 > Phase 1'de bu aktörler ve ilgili yetkiler implementasyona alınmayacaktır.
 
+> **Kimlik ve Yetki Altyapısı (Security Modülü):** Aşağıdaki tüm aktörlerin kimlik doğrulaması ve yetkilendirmesi **Security modülü** üzerinden yürür. Hesaplar Keycloak'ta (OAuth2/OIDC, PKCE) tutulur; her aktörün rolü 6 realm rolünden birine eşlenir (`InstitutionManager`, `InstitutionStaff`, `Teacher`, `Student`, `DepartmentHead`, `CompanyManager`). Aktörler sisteme **davet akışı** ile eklenir: yetkili kullanıcı davet oluşturur → Kurum Müdürü/Müdür Yardımcısı onaylar → davet edilen kişi hesabını tamamlar (`UserCreated` event'i ile ilgili profil — öğretmen, öğrenci, işletme yetkilisi — otomatik oluşur). Rol bazlı yetkiler ve doğrudan izinler için bkz. [Claims ve Permissions](#claims-ve-permissions) bölümü.
+
 ## ~~Üst Yönetim (Tenant) Aktörleri~~ (Phase 2)
 
 - **Tenant Yöneticisi** *(Phase 2 — Tenant modülü aktifleştirildiğinde)*
