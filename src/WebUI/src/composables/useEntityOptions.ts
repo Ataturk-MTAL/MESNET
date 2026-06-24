@@ -5,11 +5,34 @@ import { businessApi } from 'src/api/business'
 import { securityApi } from 'src/api/security'
 import { institutionApi, type FieldOfStudyDto, type InstitutionBranchDto } from 'src/api/institution'
 import { useAuthStore } from 'stores/auth'
+import type { PagedResponse } from 'src/types/pagination'
 
 export interface SelectOption {
   label: string
   value: string
   caption?: string
+}
+
+/**
+ * Sayfalı bir listeleme endpoint'inin TÜM kayıtlarını sayfa sayfa çeker.
+ * Seçim listelerinin tek sayfa (pageSize:100) ile sessizce kırpılmasını önler;
+ * label/lookup çözümlemesi için tüm kayıtlar yerelde tutulur (q-select use-input + map-options).
+ */
+async function fetchAllItems<T>(
+  fetchPage: (page: number, pageSize: number) => Promise<{ data: PagedResponse<T> }>,
+): Promise<T[]> {
+  const pageSize = 100
+  const all: T[] = []
+  let page = 1
+  // Güvenlik sınırı: en çok 100 sayfa — sonsuz döngü koruması
+  for (let i = 0; i < 100; i++) {
+    const res = await fetchPage(page, pageSize)
+    const items = res.data?.items ?? []
+    all.push(...items)
+    if (!res.data?.hasNextPage || items.length === 0) break
+    page++
+  }
+  return all
 }
 
 // ── İşletme Seçimi ──
@@ -23,8 +46,10 @@ export function useBusinessOptions() {
     if (loaded) return
     loading.value = true
     try {
-      const res = await businessApi.list({ status: 'Approved', pageSize: 100 })
-      allOptions.value = (res.data?.items ?? []).map((b: { name: string; id: string; address: string }) => ({
+      const items = await fetchAllItems((page, pageSize) =>
+        businessApi.list({ status: 'Approved', page, pageSize }),
+      )
+      allOptions.value = items.map((b: { name: string; id: string; address: string }) => ({
         label: b.name,
         value: b.id,
         caption: b.address,
@@ -69,8 +94,10 @@ export function useStudentOptions() {
     if (loaded) return
     loading.value = true
     try {
-      const res = await enrollmentApi.listStudents({ ...params, pageSize: 100 })
-      allOptions.value = (res.data?.items ?? []).map((s) => ({
+      const items = await fetchAllItems((page, pageSize) =>
+        enrollmentApi.listStudents({ ...params, page, pageSize }),
+      )
+      allOptions.value = items.map((s) => ({
         label: s.fullName,
         value: s.id,
         caption: `${s.branchCode} · ${s.classYear}/${s.section ?? '—'}`,
@@ -123,12 +150,15 @@ export function usePlacementOptions() {
     if (loaded) return
     loading.value = true
     try {
-      const res = await enrollmentApi.listPlacements({
-        ...params,
-        status: params?.status ?? 'Matched',
-        pageSize: 100,
-      })
-      allOptions.value = (res.data?.items ?? []).map((p) => ({
+      const items = await fetchAllItems((page, pageSize) =>
+        enrollmentApi.listPlacements({
+          ...params,
+          status: params?.status ?? 'Matched',
+          page,
+          pageSize,
+        }),
+      )
+      allOptions.value = items.map((p) => ({
         label: p.studentName,
         value: p.studentId,
         businessId: p.businessId,
@@ -189,8 +219,10 @@ export function useTeacherOptions() {
   async function reload(params?: { institutionId?: string; academicPeriodId?: string; branchCode?: string }) {
     loading.value = true
     try {
-      const res = await enrollmentApi.listTeachers({ ...params, pageSize: 100 })
-      allOptions.value = (res.data?.items ?? []).map((t) => ({
+      const items = await fetchAllItems((page, pageSize) =>
+        enrollmentApi.listTeachers({ ...params, page, pageSize }),
+      )
+      allOptions.value = items.map((t) => ({
         label: t.fullName,
         value: t.id,
         branchCode: t.branchCode ?? null,
@@ -231,8 +263,10 @@ export function useKeycloakUserOptions() {
     if (loaded) return
     loading.value = true
     try {
-      const res = await securityApi.listUsers({ ...params, pageSize: 100 })
-      allOptions.value = (res.data?.items ?? []).map((u) => ({
+      const items = await fetchAllItems((page, pageSize) =>
+        securityApi.listUsers({ ...params, page, pageSize }),
+      )
+      allOptions.value = items.map((u) => ({
         label: u.fullName,
         value: u.keycloakUserId,
         caption: `${u.email} (${u.username})`,
