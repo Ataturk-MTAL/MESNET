@@ -116,7 +116,7 @@
           :rows-per-page-options="[0]"
           hide-bottom
         >
-          <template #body-tr="{ row }">
+          <template #body="{ row }">
             <tr :class="row.totalAbsenceDays >= 30 ? 'bg-red-1' : 'bg-orange-1'">
               <td class="text-left">{{ row.studentName }}</td>
               <td class="text-left">{{ row.businessName }}</td>
@@ -209,7 +209,7 @@ async function loadAbsenceData() {
       minAbsenceDays: 25,
       pageSize: 100,
     })
-    highAbsenceRows.value = res.items ?? []
+    highAbsenceRows.value = res.data?.items ?? []
   } finally {
     absenceLoading.value = false
   }
