@@ -31,6 +31,7 @@ import { businessApi } from 'src/api/business'
 import { registerBusinessSchema } from 'src/schemas/business'
 import { useNotify } from 'src/composables/useNotify'
 import { zodValidate } from 'src/composables/useZodValidation'
+import { useEntityOptionsStore } from 'stores/entityOptions'
 import FormDialog from 'components/FormDialog.vue'
 import MapPicker from 'components/MapPicker.vue'
 import type { SelectOption } from 'src/composables/useEntityOptions'
@@ -44,6 +45,7 @@ defineProps<{
 const emit = defineEmits<{ saved: [] }>()
 
 const notify = useNotify()
+const entityOptionsStore = useEntityOptionsStore()
 const saving = ref(false)
 
 const form = reactive({
@@ -77,6 +79,7 @@ async function handleSave() {
       location: form.location ?? undefined,
       sectors: form.sectors.length > 0 ? form.sectors : undefined,
     })
+    entityOptionsStore.invalidateBusinesses()
     notify.success('İşletme başarıyla eklendi.')
     open.value = false
     emit('saved')

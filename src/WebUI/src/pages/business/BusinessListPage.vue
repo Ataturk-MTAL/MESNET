@@ -305,6 +305,7 @@ import { useQuasar } from 'quasar'
 import { businessApi, type BusinessDto, type SectorDto } from 'src/api/business'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
+import { useEntityOptionsStore } from 'stores/entityOptions'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
@@ -323,6 +324,7 @@ import 'leaflet/dist/leaflet.css'
 
 const $q = useQuasar()
 const notify = useNotify()
+const entityOptionsStore = useEntityOptionsStore()
 const confirmDialog = useConfirmDialog()
 const viewMode = ref<'table' | 'map'>('table')
 const mapZoom = ref(7)
@@ -414,6 +416,7 @@ async function approve(row: BusinessDto) {
   saving.value = true
   try {
     await businessApi.approve(row.id)
+    entityOptionsStore.invalidateBusinesses()
     notify.success('İşletme onaylandı.')
     await load()
   } catch (e) {

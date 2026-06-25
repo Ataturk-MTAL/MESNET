@@ -1,9 +1,8 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { watchThrottled } from '@vueuse/core'
 import { enrollmentApi } from 'src/api/enrollment'
-import { businessApi } from 'src/api/business'
-import { securityApi } from 'src/api/security'
 import { useInstitutionStore } from 'stores/institution'
+import { useEntityOptionsStore } from 'stores/entityOptions'
 import type { PagedResponse } from 'src/types/pagination'
 
 export interface SelectOption {
@@ -34,97 +33,66 @@ async function fetchAllItems<T>(
   return all
 }
 
-// ── İşletme Seçimi ──
+// ── İşletme Seçimi ── (store-backed cache, per-component filtrelenmiş görünüm)
 export function useBusinessOptions() {
+  const store = useEntityOptionsStore()
   const options = ref<SelectOption[]>([])
-  const allOptions = ref<SelectOption[]>([])
-  const loading = ref(false)
-  let loaded = false
+  const allOptions = computed(() => store.businesses)
+  const loading = computed(() => store.businessesLoading)
 
   async function load() {
-    if (loaded) return
-    loading.value = true
-    try {
-      const items = await fetchAllItems((page, pageSize) =>
-        businessApi.list({ status: 'Approved', page, pageSize }),
-      )
-      allOptions.value = items.map((b: { name: string; id: string; address: string }) => ({
-        label: b.name,
-        value: b.id,
-        caption: b.address,
-      }))
-      options.value = allOptions.value
-      loaded = true
-    } finally {
-      loading.value = false
-    }
+    await store.loadBusinesses()
+    options.value = store.businesses
   }
 
   function filter(val: string, update: (fn: () => void) => void) {
     update(() => {
       const needle = val.toLowerCase()
       options.value = needle
-        ? allOptions.value.filter(
+        ? store.businesses.filter(
             (o) =>
               o.label.toLowerCase().includes(needle) ||
               (o.caption?.toLowerCase().includes(needle) ?? false),
           )
-        : allOptions.value
+        : store.businesses
     })
   }
 
   function reset() {
-    loaded = false
     options.value = []
-    allOptions.value = []
   }
 
   return { options, allOptions, loading, load, filter, reset }
 }
 
-// ── Öğrenci Seçimi ──
+// ── Öğrenci Seçimi ── (store-backed cache, per-component filtrelenmiş görünüm)
 export function useStudentOptions() {
+  const store = useEntityOptionsStore()
   const options = ref<SelectOption[]>([])
-  const allOptions = ref<SelectOption[]>([])
-  const loading = ref(false)
-  let loaded = false
+  const allOptions = computed(() => store.students)
+  const loading = computed(() => store.studentsLoading)
 
-  async function load(params?: { institutionId?: string; branchCode?: string }) {
-    if (loaded) return
-    loading.value = true
-    try {
-      const items = await fetchAllItems((page, pageSize) =>
-        enrollmentApi.listStudents({ ...params, page, pageSize }),
-      )
-      allOptions.value = items.map((s) => ({
-        label: s.fullName,
-        value: s.id,
-        caption: `${s.branchCode} · ${s.classYear}/${s.section ?? '—'}`,
-      }))
-      options.value = allOptions.value
-      loaded = true
-    } finally {
-      loading.value = false
-    }
+  // params imzası korunur (tüketici uyumluluğu) ancak store sabit tam-listeyi çeker — params yok sayılır
+  async function load(_params?: { institutionId?: string; branchCode?: string }) {
+    await store.loadStudents()
+    options.value = store.students
   }
 
   function filter(val: string, update: (fn: () => void) => void) {
     update(() => {
       const needle = val.toLowerCase()
       options.value = needle
-        ? allOptions.value.filter(
+        ? store.students.filter(
             (o) =>
               o.label.toLowerCase().includes(needle) ||
               (o.caption?.toLowerCase().includes(needle) ?? false),
           )
-        : allOptions.value
+        : store.students
     })
   }
 
   function reset() {
-    loaded = false
     options.value = []
-    allOptions.value = []
   }
 
   return { options, allOptions, loading, load, filter, reset }
@@ -251,49 +219,34 @@ export function useTeacherOptions() {
   return { options, allOptions, loading, load, reload, filter, reset }
 }
 
-// ── Keycloak Kullanıcı Seçimi ──
+// ── Keycloak Kullanıcı Seçimi ── (store-backed cache, per-component filtrelenmiş görünüm)
 export function useKeycloakUserOptions() {
+  const store = useEntityOptionsStore()
   const options = ref<SelectOption[]>([])
-  const allOptions = ref<SelectOption[]>([])
-  const loading = ref(false)
-  let loaded = false
+  const allOptions = computed(() => store.keycloakUsers)
+  const loading = computed(() => store.keycloakUsersLoading)
 
-  async function load(params?: { role?: string; institutionId?: string }) {
-    if (loaded) return
-    loading.value = true
-    try {
-      const items = await fetchAllItems((page, pageSize) =>
-        securityApi.listUsers({ ...params, page, pageSize }),
-      )
-      allOptions.value = items.map((u) => ({
-        label: u.fullName,
-        value: u.keycloakUserId,
-        caption: `${u.email} (${u.username})`,
-      }))
-      options.value = allOptions.value
-      loaded = true
-    } finally {
-      loading.value = false
-    }
+  // params imzası korunur (tüketici uyumluluğu) ancak store sabit tam-listeyi çeker — params yok sayılır
+  async function load(_params?: { role?: string; institutionId?: string }) {
+    await store.loadKeycloakUsers()
+    options.value = store.keycloakUsers
   }
 
   function filter(val: string, update: (fn: () => void) => void) {
     update(() => {
       const needle = val.toLowerCase()
       options.value = needle
-        ? allOptions.value.filter(
+        ? store.keycloakUsers.filter(
             (o) =>
               o.label.toLowerCase().includes(needle) ||
               (o.caption?.toLowerCase().includes(needle) ?? false),
           )
-        : allOptions.value
+        : store.keycloakUsers
     })
   }
 
   function reset() {
-    loaded = false
     options.value = []
-    allOptions.value = []
   }
 
   return { options, allOptions, loading, load, filter, reset }

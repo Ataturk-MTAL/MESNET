@@ -68,6 +68,7 @@ import { ref, reactive, watch } from 'vue'
 import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useKeycloakUserOptions } from 'src/composables/useEntityOptions'
+import { useEntityOptionsStore } from 'stores/entityOptions'
 import FormDialog from 'components/FormDialog.vue'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
@@ -82,6 +83,7 @@ const emit = defineEmits<{ saved: [] }>()
 
 const notify = useNotify()
 const userOpts = useKeycloakUserOptions()
+const entityOptionsStore = useEntityOptionsStore()
 const saving = ref(false)
 
 const form = reactive({
@@ -128,6 +130,7 @@ async function handleSave() {
       role: form.role,
       branchCode: form.branchCode || undefined,
     })
+    entityOptionsStore.invalidateKeycloakUsers()
     notify.success('Personel başarıyla yetkilendirildi.')
     open.value = false
     emit('saved')
