@@ -13,8 +13,11 @@ public static class DeleteAttendanceHandler
 
     [AggregateHandler]
     public static AttendanceDeleted Handle(
-        DeleteAttendance command, AttendanceRecord record, ICurrentUserService currentUser)
+        DeleteAttendance command, AttendanceRecord? record, ICurrentUserService currentUser)
     {
+        if (record is null)
+            throw new DomainException("ATTENDANCE_NOT_FOUND", "Devamsızlık kaydı bulunamadı.");
+
         if (record.IsDeleted)
             throw new DomainException("ATTENDANCE_ALREADY_DELETED",
                 "Bu devamsızlık kaydı zaten silinmiş.");

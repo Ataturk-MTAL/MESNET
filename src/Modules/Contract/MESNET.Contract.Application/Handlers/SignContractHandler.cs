@@ -10,8 +10,11 @@ namespace MESNET.Contract.Application.Handlers;
 public static class SignContractHandler
 {
     [AggregateHandler]
-    public static object Handle(SignContract command, InternshipContract contract)
+    public static object Handle(SignContract command, InternshipContract? contract)
     {
+        if (contract is null)
+            throw new DomainException("CONTRACT_NOT_FOUND", "Sözleşme bulunamadı.");
+
         if (contract.Status != ContractStatus.AwaitingSignature)
             throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"İmzalama için sözleşme imza bekliyor durumunda olmalı. Mevcut durum: {contract.Status.Slug}.");

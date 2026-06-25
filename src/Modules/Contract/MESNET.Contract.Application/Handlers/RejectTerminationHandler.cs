@@ -10,8 +10,11 @@ namespace MESNET.Contract.Application.Handlers;
 public static class RejectTerminationHandler
 {
     [AggregateHandler]
-    public static ContractTerminationRejected Handle(RejectTermination command, InternshipContract contract)
+    public static ContractTerminationRejected Handle(RejectTermination command, InternshipContract? contract)
     {
+        if (contract is null)
+            throw new DomainException("CONTRACT_NOT_FOUND", "Sözleşme bulunamadı.");
+
         if (contract.Status != ContractStatus.TerminationRequested)
             throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Reddedilebilecek fesih talebi yok. Mevcut durum: {contract.Status.Slug}.");

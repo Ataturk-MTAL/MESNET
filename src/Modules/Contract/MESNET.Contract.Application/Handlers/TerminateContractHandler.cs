@@ -10,8 +10,11 @@ namespace MESNET.Contract.Application.Handlers;
 public static class TerminateContractHandler
 {
     [AggregateHandler]
-    public static ContractTerminated Handle(TerminateContract command, InternshipContract contract)
+    public static ContractTerminated Handle(TerminateContract command, InternshipContract? contract)
     {
+        if (contract is null)
+            throw new DomainException("CONTRACT_NOT_FOUND", "Sözleşme bulunamadı.");
+
         if (!contract.Status.CanTransitionTo(ContractStatus.Terminated))
             throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Sözleşme feshedilemez. Mevcut durum: {contract.Status.Slug}.");

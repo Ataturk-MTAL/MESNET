@@ -10,8 +10,11 @@ namespace MESNET.Contract.Application.Handlers;
 public static class ActivateContractHandler
 {
     [AggregateHandler]
-    public static ContractActivated Handle(ActivateContract command, InternshipContract contract)
+    public static ContractActivated Handle(ActivateContract command, InternshipContract? contract)
     {
+        if (contract is null)
+            throw new DomainException("CONTRACT_NOT_FOUND", "Sözleşme bulunamadı.");
+
         if (!contract.Status.CanTransitionTo(ContractStatus.Active))
             throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Sözleşme aktif edilemez. Mevcut durum: {contract.Status.Slug}.");

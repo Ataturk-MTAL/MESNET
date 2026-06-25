@@ -340,10 +340,18 @@ try
 
             ctx.Response.StatusCode = 500;
             ctx.Response.ContentType = "application/json";
-            await ctx.Response.WriteAsJsonAsync(
-                MESNET.Common.Shared.ResponseBuilder.Fail(500)
-                    .AddMessage("Beklenmeyen bir sunucu hatası oluştu.")
-                    .Build());
+            var builder500 = MESNET.Common.Shared.ResponseBuilder.Fail(500)
+                .AddMessage("Beklenmeyen bir sunucu hatası oluştu.");
+            // Dev: exception tipini/mesajını yanıta ekle (debugging — prod'da gizli)
+            if (app.Environment.IsDevelopment())
+                builder500 = builder500.AddErrors(new
+                {
+                    exception = ex?.GetType().FullName,
+                    message = ex?.Message,
+                    inner = innerEx?.GetType().FullName,
+                    innerMessage = innerEx?.Message,
+                });
+            await ctx.Response.WriteAsJsonAsync(builder500.Build());
         }
     }));
 

@@ -12,8 +12,11 @@ public static class VerifyAttendanceHandler
 {
     [AggregateHandler]
     public static AttendanceVerified Handle(
-        VerifyAttendance command, AttendanceRecord record, ICurrentUserService currentUser)
+        VerifyAttendance command, AttendanceRecord? record, ICurrentUserService currentUser)
     {
+        if (record is null)
+            throw new DomainException("ATTENDANCE_NOT_FOUND", "Devamsızlık kaydı bulunamadı.");
+
         if (!record.Status.CanTransitionTo(AttendanceStatus.Verified))
             throw new DomainException("ATTENDANCE_INVALID_STATUS",
                 $"Devamsızlık kaydı bu durumdan doğrulanamaz. Mevcut durum: {record.Status.Slug}.");
