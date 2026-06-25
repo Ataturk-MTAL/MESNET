@@ -1,8 +1,6 @@
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Commands;
-using MESNET.Enrollment.Core.Enums;
-using MESNET.Enrollment.Shared.Events;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -38,12 +36,10 @@ public static class ApplicationEndpoints
     private static async Task<IResult> PostRequest(
         RequestStudent command, IMessageBus bus)
     {
-        await bus.PublishAsync(
-            new InternshipApplied(
-                Guid.Empty,
-                command.BusinessId,
-                command.BranchCode,
-                ApplicationSource.BusinessRequest.Name));
+        // Komutu bus üzerinden gönder — RequestStudentValidator FluentValidation
+        // middleware'inde çalışır (boş/geçersiz gövde → 422). Handler InternshipApplied
+        // event'ini cascading message olarak yayınlar.
+        await bus.InvokeAsync(command);
 
         return Results.Created(
             $"/api/internship-applications/request/{command.BusinessId}",

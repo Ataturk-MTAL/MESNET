@@ -54,11 +54,12 @@ public static class UpsertTeacherScheduleHandler
 
         // 5. Mevcut schedule'ı ara — event sourcing snapshot'tan
         //    AcademicPeriodId + TeacherId + Semester ile arama (en güvenilir)
-        var existingSchedule = session.Query<TeacherSchedule>()
-            .FirstOrDefault(s =>
+        var existingSchedule = await session.Query<TeacherSchedule>()
+            .FirstOrDefaultAsync(s =>
                 s.TeacherId == command.TeacherId &&
                 s.AcademicPeriodId == command.AcademicPeriodId &&
-                s.SemesterNumber == semester.Number);
+                s.SemesterNumber == semester.Number,
+                cancellationToken);
 
         if (existingSchedule is not null)
         {

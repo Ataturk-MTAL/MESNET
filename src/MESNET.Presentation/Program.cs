@@ -218,6 +218,10 @@ try
     builder.Host.UseWolverine(opts =>
     {
         opts.UseFluentValidation();
+        // Wolverine 6'da service-location varsayılan NotAllowed → opaque/named-registration servisleri
+        // (örn. IKeycloakAdminService: named HttpClient + IConfiguration ile lambda kayıtlı) kullanan
+        // handler'ların codegen'i patlıyordu (InvalidServiceLocationException → 500). İzin ver (uyarıyla).
+        opts.ServiceLocationPolicy = JasperFx.CodeGeneration.Model.ServiceLocationPolicy.AllowedButWarn;
         opts.MultipleHandlerBehavior = MultipleHandlerBehavior.Separated;
         opts.Durability.MessageStorageSchemaName = "wolverine";
         opts.Policies.AutoApplyTransactions();
@@ -323,6 +327,28 @@ try
                 MESNET.Common.Shared.ResponseBuilder.Fail(422)
                     .AddMessage("Doğrulama hatası")
                     .AddErrors(errors)
+                    .Build());
+        }
+        else if (ex is Microsoft.AspNetCore.Http.BadHttpRequestException
+                 || ex?.InnerException is Microsoft.AspNetCore.Http.BadHttpRequestException)
+        {
+            // Eksik/hatalı istek gövdesi (zorunlu alan yok, JSON çözümlenemedi) → 400 (500 değil)
+            ctx.Response.StatusCode = 400;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(
+                MESNET.Common.Shared.ResponseBuilder.Fail(400)
+                    .AddMessage("Geçersiz veya eksik istek gövdesi.")
+                    .Build());
+        }
+        else if (ex is Wolverine.Persistence.Sagas.UnknownSagaException
+                 || ex?.InnerException is Wolverine.Persistence.Sagas.UnknownSagaException)
+        {
+            // İlgili saga/kayıt bulunamadı (örn. olmayan staj için onay) → 404 (500 değil)
+            ctx.Response.StatusCode = 404;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(
+                MESNET.Common.Shared.ResponseBuilder.Fail(404)
+                    .AddMessage("İlgili kayıt bulunamadı.")
                     .Build());
         }
         else

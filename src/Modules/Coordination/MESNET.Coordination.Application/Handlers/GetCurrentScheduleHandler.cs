@@ -15,20 +15,21 @@ public sealed record CurrentScheduleResult(TeacherScheduleDto? Schedule);
 
 public static class GetCurrentScheduleHandler
 {
-    public static CurrentScheduleResult Handle(
+    public static async Task<CurrentScheduleResult> Handle(
         GetCurrentSchedule query,
-        IQuerySession session)
+        IQuerySession session,
+        CancellationToken cancellationToken)
     {
         if (!AcademicSemester.TryFromName(query.Semester, true, out var semester))
             return new CurrentScheduleResult(null);
 
         // Seçili dönem + yarıyıl için schedule'ı getir
-        var schedule = session.Query<TeacherSchedule>()
+        var schedule = await session.Query<TeacherSchedule>()
             .Where(s =>
                 s.TeacherId == query.TeacherId &&
                 s.AcademicPeriodId == query.AcademicPeriodId &&
                 s.SemesterNumber == semester.Number)
-            .FirstOrDefault();
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (schedule is null) return new CurrentScheduleResult(null);
 

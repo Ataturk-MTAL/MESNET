@@ -10,9 +10,10 @@ namespace MESNET.Coordination.Application.Handlers;
 
 public static class GetTeacherScheduleHandler
 {
-    public static TeacherScheduleDto Handle(
+    public static async Task<TeacherScheduleDto> Handle(
         GetTeacherSchedule query,
-        IQuerySession session)
+        IQuerySession session,
+        CancellationToken cancellationToken)
     {
         // Semester validation
         if (!AcademicSemester.TryFromName(query.Semester, true, out var semester))
@@ -21,11 +22,12 @@ public static class GetTeacherScheduleHandler
         }
 
         // Schedule'ı bul (snapshot'tan)
-        var schedule = session.Query<TeacherSchedule>()
-            .FirstOrDefault(s =>
+        var schedule = await session.Query<TeacherSchedule>()
+            .FirstOrDefaultAsync(s =>
                 s.TeacherId == query.TeacherId &&
                 s.AcademicYear == query.AcademicYear &&
-                s.SemesterNumber == semester.Number);
+                s.SemesterNumber == semester.Number,
+                cancellationToken);
 
         if (schedule is null)
         {

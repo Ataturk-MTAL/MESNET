@@ -27,13 +27,13 @@ public static class UnassignBusinessFromTeacherHandler
         // Tüm slot'ları temizle (multi-slot)
         foreach (var assignedSlot in view.AssignedSlots)
         {
-            ClearScheduleSlot(session, view, assignedSlot.Day, assignedSlot.PeriodNumber);
+            await ClearScheduleSlot(session, view, assignedSlot.Day, assignedSlot.PeriodNumber, cancellationToken);
         }
 
         // Eski tek slot alanları (geriye uyumluluk fallback — AssignedSlots boş ama eski alanlar dolu)
         if (view.AssignedSlots.Count == 0 && view.AssignedPeriodNumber.HasValue && view.AssignedDay != null)
         {
-            ClearScheduleSlot(session, view, view.AssignedDay, view.AssignedPeriodNumber.Value);
+            await ClearScheduleSlot(session, view, view.AssignedDay, view.AssignedPeriodNumber.Value, cancellationToken);
         }
 
         // Audit trail
@@ -64,16 +64,18 @@ public static class UnassignBusinessFromTeacherHandler
         return new BusinessUnassignedFromTeacher(command.BusinessId);
     }
 
-    private static void ClearScheduleSlot(
+    private static async Task ClearScheduleSlot(
         IDocumentSession session,
         BusinessCoordinationView view,
         string slotDay,
-        int slotPeriodNumber)
+        int slotPeriodNumber,
+        CancellationToken cancellationToken)
     {
-        var schedule = session.Query<TeacherSchedule>()
-            .FirstOrDefault(s =>
+        var schedule = await session.Query<TeacherSchedule>()
+            .FirstOrDefaultAsync(s =>
                 s.TeacherId == view.AssignedTeacherId!.Value &&
-                s.AcademicPeriodId == view.AcademicPeriodId);
+                s.AcademicPeriodId == view.AcademicPeriodId,
+                cancellationToken);
 
         if (schedule is null) return;
 

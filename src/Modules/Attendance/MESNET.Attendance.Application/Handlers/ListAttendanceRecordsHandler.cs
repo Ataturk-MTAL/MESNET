@@ -34,11 +34,29 @@ public static class ListAttendanceRecordsHandler
             AttendanceStatus.TryFromName(query.Status, true, out var attendanceStatus))
             queryable = queryable.Where(r => r.StatusName == attendanceStatus.Name);
 
+        // Yıl/ay filtresi: Marten LINQ DateTime.Year/.Month üyelerini SQL'e çeviremez
+        // (BadLinqExpressionException). Bunun yerine yarı-açık tarih aralığı [start, end) kullanılır.
+        // Date alanı DateTime (UTC) olduğundan sınırlar da UTC Kind ile kurulur; gün içi saat bileşeni
+        // varsa bile yarı-açık aralık tüm günü kapsar.
         if (query.Year.HasValue)
-            queryable = queryable.Where(r => r.Date.Year == query.Year.Value);
+        {
+            var year = query.Year.Value;
 
-        if (query.Month.HasValue)
-            queryable = queryable.Where(r => r.Date.Month == query.Month.Value);
+            // Ay yalnızca yıl ile birlikte anlamlıdır.
+            if (query.Month.HasValue)
+            {
+                var month = query.Month.Value;
+                var start = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddMonths(1);
+                queryable = queryable.Where(r => r.Date >= start && r.Date < end);
+            }
+            else
+            {
+                var start = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                var end = start.AddYears(1);
+                queryable = queryable.Where(r => r.Date >= start && r.Date < end);
+            }
+        }
 
         // Arama: öğrenci ad/numara üzerinden (lokal StudentNameView → eşleşen öğrenci id'leri → devamsızlık filtresi)
         if (!string.IsNullOrWhiteSpace(query.Search))

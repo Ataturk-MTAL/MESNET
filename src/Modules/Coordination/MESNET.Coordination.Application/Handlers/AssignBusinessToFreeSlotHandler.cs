@@ -27,11 +27,12 @@ public static class AssignBusinessToFreeSlotHandler
         }
 
         // 3. TeacherSchedule'ı bul (snapshot'tan)
-        var schedule = session.Query<TeacherSchedule>()
-            .FirstOrDefault(s =>
+        var schedule = await session.Query<TeacherSchedule>()
+            .FirstOrDefaultAsync(s =>
                 s.TeacherId == command.TeacherId &&
                 s.AcademicYear == command.AcademicYear &&
-                s.SemesterNumber == semester.Number);
+                s.SemesterNumber == semester.Number,
+                cancellationToken);
 
         if (schedule is null)
         {
