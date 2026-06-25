@@ -37,39 +37,27 @@
     </div>
 
     <!-- Bilgi Mesajı -->
-    <q-banner
+    <AppNotice
       v-if="!branchFilter"
-      rounded
-      class="bg-blue-1 text-blue-9 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="info" color="blue-7" />
-      </template>
-      İşletme dağıtımı yapmak için önce bir alan seçin.
-    </q-banner>
+      type="info"
+      message="İşletme dağıtımı yapmak için önce bir alan seçin."
+      class="q-mb-md"
+    />
 
-    <q-banner
+    <AppNotice
       v-if="scheduleConfigMissing"
-      rounded
-      class="bg-orange-1 text-orange-9 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="warning" color="orange-7" />
-      </template>
-      Kurum için günlük ders sayısı ayarlanmamış. Lütfen önce Kurum sayfasından ders programı ayarını yapın.
-    </q-banner>
+      type="warning"
+      message="Kurum için günlük ders sayısı ayarlanmamış. Lütfen önce Kurum sayfasından ders programı ayarını yapın."
+      class="q-mb-md"
+    />
 
     <!-- Read-only Uyarı -->
-    <q-banner
+    <AppNotice
       v-if="periodStore.isReadOnly"
-      rounded
-      class="bg-grey-2 text-grey-8 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="lock" color="grey-6" />
-      </template>
-      Kapalı dönem — yalnızca görüntüleme modu.
-    </q-banner>
+      type="readonly"
+      message="Kapalı dönem — yalnızca görüntüleme modu."
+      class="q-mb-md"
+    />
 
     <!-- Tab Yapısı -->
     <div v-if="branchFilter">
@@ -229,16 +217,13 @@
               </q-card>
 
               <!-- Öğretmen seçilmemiş -->
-              <q-banner
+              <AppNotice
                 v-else-if="!selectedTeacherId"
-                rounded
-                class="bg-blue-1 text-blue-9 q-mb-md"
-              >
-                <template #avatar>
-                  <q-icon name="person_search" color="blue-7" />
-                </template>
-                Grid üzerinde atama yapmak için bir öğretmen seçin. Soldan işletme kartını sürükleyip grid üzerindeki boş saate bırakın.
-              </q-banner>
+                type="info"
+                icon="person_search"
+                message="Grid üzerinde atama yapmak için bir öğretmen seçin. Soldan işletme kartını sürükleyip grid üzerindeki boş saate bırakın."
+                class="q-mb-md"
+              />
 
               <!-- Atanmış İşletmeler Listesi (seçili öğretmen için) -->
               <q-card v-if="selectedTeacherId && assignedToTeacher.length > 0" flat bordered class="q-mb-md">
@@ -337,16 +322,13 @@
           </div>
 
           <!-- Limit Aşıldı Uyarı -->
-          <q-banner
+          <AppNotice
             v-if="isOverLimit"
-            rounded
-            class="bg-red-1 text-red-9 q-mt-md"
+            type="error"
+            class="q-mt-md"
           >
-            <template #avatar>
-              <q-icon name="error" color="red-7" />
-            </template>
             Toplam dağıtılan saat ({{ summary.totalAssignedHours }}) ders yükü havuzunu ({{ summary.totalWorkloadPool }}) aşıyor.
-          </q-banner>
+          </AppNotice>
         </q-tab-panel>
 
         <!-- ── Tab 2: Öğretmen Özeti ── -->
@@ -528,14 +510,12 @@
               </div>
 
               <!-- Uyarı Banner'ları -->
-              <q-banner v-if="hoursOverLimit" rounded class="bg-red-1 text-red-9 q-mb-md">
-                <template #avatar><q-icon name="error" color="red-7" /></template>
+              <AppNotice v-if="hoursOverLimit" type="error" class="q-mb-md">
                 Toplam takdir edilen saat ({{ hoursTotalAssigned }}) ders yükü havuzunu ({{ hoursWorkloadPool }}) aşıyor!
-              </q-banner>
-              <q-banner v-else-if="hoursNearLimit" rounded class="bg-orange-1 text-orange-9 q-mb-md">
-                <template #avatar><q-icon name="warning" color="orange-7" /></template>
+              </AppNotice>
+              <AppNotice v-else-if="hoursNearLimit" type="warning" class="q-mb-md">
                 Toplam takdir edilen saat havuza yaklaşıyor: {{ hoursTotalAssigned }} / {{ hoursWorkloadPool }}
-              </q-banner>
+              </AppNotice>
 
               <q-markup-table flat bordered separator="cell" class="q-mb-md">
                 <thead>
@@ -700,6 +680,7 @@ import BranchSelector from 'components/BranchSelector.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
 import FreeSlotChip from 'components/FreeSlotChip.vue'
 import WorkloadIndicator from 'components/WorkloadIndicator.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()

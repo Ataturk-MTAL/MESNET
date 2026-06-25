@@ -1,9 +1,11 @@
 <template>
   <FormDialog v-model="open" title="Fesih Talebi Oluştur" icon="report" color="deep-orange" save-label="Talebi Gönder" :saving="saving" :save-disabled="!form.reasonType || !form.reason || !form.requestedBy" @save="handleSave">
-        <q-banner class="bg-orange-1 text-orange-10 rounded-borders" dense>
-          <template #avatar><q-icon name="info" /></template>
-          Talebiniz kurum yönetimine iletilecek. Onay/red kararı size bildirilir.
-        </q-banner>
+        <AppNotice
+          type="warning"
+          icon="info"
+          dense
+          message="Talebiniz kurum yönetimine iletilecek. Onay/red kararı size bildirilir."
+        />
 
         <q-select
           v-model="form.reasonType"
@@ -39,6 +41,7 @@ import { contractApi, TERMINATION_REASONS } from 'src/api/contract'
 import { useNotify } from 'src/composables/useNotify'
 import { useAuthStore } from 'stores/auth'
 import FormDialog from 'components/FormDialog.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const open = defineModel<boolean>({ required: true })
 

@@ -56,16 +56,13 @@
     </div>
 
     <!-- Salt okunur uyarı -->
-    <q-banner
+    <AppNotice
       v-if="periodStore.isReadOnly"
-      rounded
-      class="bg-orange-1 text-orange-9 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="lock" color="orange-7" />
-      </template>
-      Seçili dönem kapatılmış — ziyaret oluşturma ve silme işlemleri devre dışı.
-    </q-banner>
+      type="warning"
+      icon="lock"
+      message="Seçili dönem kapatılmış — ziyaret oluşturma ve silme işlemleri devre dışı."
+      class="q-mb-md"
+    />
 
     <!-- Plan tablosu -->
     <AppTable
@@ -268,6 +265,7 @@ import { useQuasar } from 'quasar'
 import type { QTableProps } from 'quasar'
 import AppTable from 'src/components/AppTable.vue'
 import BranchSelector from 'src/components/BranchSelector.vue'
+import AppNotice from 'src/components/AppNotice.vue'
 import { useAcademicPeriodStore } from 'src/stores/academicPeriod'
 import { useWeeklyVisits, dayLabel, scopeLabel } from 'src/composables/useWeeklyVisits'
 import { coordinationApi, type BusinessAssignmentDto } from 'src/api/coordination'

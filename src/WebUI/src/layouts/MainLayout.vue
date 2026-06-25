@@ -96,17 +96,13 @@
           <q-separator v-if="periodStore.isLoaded && periodStore.periods.length > 0" spaced />
 
           <!-- Kapalı dönem uyarısı -->
-          <q-banner
+          <AppNotice
             v-if="periodStore.isReadOnly"
+            type="readonly"
             dense
-            rounded
-            class="bg-orange-1 text-orange-9 q-mx-sm q-mb-sm text-caption"
-          >
-            <template #avatar>
-              <q-icon name="lock" color="orange-7" size="xs" />
-            </template>
-            Geçmiş dönem — salt okunur
-          </q-banner>
+            message="Geçmiş dönem — salt okunur"
+            class="q-mx-sm q-mb-sm text-caption"
+          />
 
           <template v-for="group in filteredMenu">
             <!-- Düz link (child yok veya tek child → terfi) -->
@@ -213,6 +209,7 @@ import { useNotificationStore } from 'stores/notifications'
 import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
 import { logout } from 'boot/auth'
 import { useNavigation } from 'src/composables/useNavigation'
+import AppNotice from 'components/AppNotice.vue'
 
 const authStore = useAuthStore()
 const { filteredMenu, isExpanded, toggleGroup, activeGroupKey } = useNavigation()

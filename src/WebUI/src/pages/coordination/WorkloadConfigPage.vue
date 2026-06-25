@@ -12,28 +12,20 @@
       </div>
     </div>
 
-    <q-banner
+    <AppNotice
       v-if="!branchFilter"
-      rounded
-      class="bg-blue-1 text-blue-9 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="info" color="blue-7" />
-      </template>
-      Ders yükü havuzu yapılandırmak için önce bir alan seçin.
-    </q-banner>
+      type="info"
+      message="Ders yükü havuzu yapılandırmak için önce bir alan seçin."
+      class="q-mb-md"
+    />
 
     <!-- Read-only Uyarı -->
-    <q-banner
+    <AppNotice
       v-if="periodStore.isReadOnly"
-      rounded
-      class="bg-grey-2 text-grey-8 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="lock" color="grey-6" />
-      </template>
-      Kapalı dönem — yalnızca görüntüleme modu.
-    </q-banner>
+      type="readonly"
+      message="Kapalı dönem — yalnızca görüntüleme modu."
+      class="q-mb-md"
+    />
 
     <!-- Alan Ders Yükü Yapılandırması -->
     <q-card v-if="branchFilter" flat bordered>
@@ -201,6 +193,7 @@ import { useWorkloadConfig, estimateGroupCount, EDUCATION_TYPES } from 'src/comp
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import BranchSelector from 'components/BranchSelector.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()

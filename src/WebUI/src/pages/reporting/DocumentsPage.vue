@@ -2,9 +2,12 @@
   <q-page padding>
     <div class="text-h5 text-weight-bold q-mb-lg">Belgeler</div>
 
-    <q-banner type="info" class="q-mb-lg" dense>
-      Modüle özgü belgelere (işletme belgeleri, sözleşmeler) ilgili sayfalardan erişin.
-    </q-banner>
+    <AppNotice
+      type="info"
+      dense
+      message="Modüle özgü belgelere (işletme belgeleri, sözleşmeler) ilgili sayfalardan erişin."
+      class="q-mb-lg"
+    />
 
     <div class="row q-col-gutter-md">
       <div class="col-12 col-md-4">
@@ -37,3 +40,7 @@
     </div>
   </q-page>
 </template>
+
+<script setup lang="ts">
+import AppNotice from 'components/AppNotice.vue'
+</script>

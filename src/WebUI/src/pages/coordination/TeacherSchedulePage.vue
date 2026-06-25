@@ -20,28 +20,20 @@
     </div>
 
     <!-- Bilgi Mesajı -->
-    <q-banner
+    <AppNotice
       v-if="!selectedTeacherId"
-      rounded
-      class="bg-blue-1 text-blue-9 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="info" color="blue-7" />
-      </template>
-      Ders programını görüntülemek veya düzenlemek için bir öğretmen seçin.
-    </q-banner>
+      type="info"
+      message="Ders programını görüntülemek veya düzenlemek için bir öğretmen seçin."
+      class="q-mb-md"
+    />
 
     <!-- Schedule Config eksik -->
-    <q-banner
+    <AppNotice
       v-if="scheduleConfigMissing"
-      rounded
-      class="bg-orange-1 text-orange-9 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="warning" color="orange-7" />
-      </template>
-      Kurum için günlük ders sayısı ayarlanmamış. Lütfen önce Kurum sayfasından ders programı ayarını yapın.
-    </q-banner>
+      type="warning"
+      message="Kurum için günlük ders sayısı ayarlanmamış. Lütfen önce Kurum sayfasından ders programı ayarını yapın."
+      class="q-mb-md"
+    />
 
     <!-- Ana İçerik: Grid + Geçmiş Panel -->
     <div v-if="selectedTeacherId && periodCount > 0" class="row q-col-gutter-md">
@@ -219,6 +211,7 @@ import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import ScheduleGrid from 'components/ScheduleGrid.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
 import BranchSelector from 'components/BranchSelector.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()
