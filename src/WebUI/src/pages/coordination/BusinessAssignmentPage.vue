@@ -678,12 +678,10 @@ import { ref, computed, watch, onMounted } from 'vue'
 import {
   coordinationApi,
   type BusinessAssignmentDto,
-  type AssignmentHistoryEntryDto,
   type CoordinationSummaryDto,
   type DailyScheduleDto,
   type TeacherWorkloadSummaryDto,
 } from 'src/api/coordination'
-import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useWorkloadConfig } from 'src/composables/useWorkloadConfig'
 import { useAssignedHours } from 'src/composables/useAssignedHours'
@@ -691,6 +689,9 @@ import { useAssignmentDnD } from 'src/composables/useAssignmentDnD'
 import { useClusterMap } from 'src/composables/useClusterMap'
 import { useTeacherOverview, teacherOverviewColumns } from 'src/composables/useTeacherOverview'
 import { useTeacherOptions } from 'src/composables/useEntityOptions'
+import { useAssignmentHistory } from 'src/composables/useAssignmentHistory'
+import { useScheduleConfig } from 'src/composables/useScheduleConfig'
+import { useTeacherChangeFlow } from 'src/composables/useTeacherChangeFlow'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import AssignmentGrid from 'components/AssignmentGrid.vue'
@@ -714,10 +715,6 @@ const selectedTeacherId = ref<string | null>(null)
 const businessSearch = ref('')
 const loading = ref(false)
 const scheduleLoading = ref(false)
-const periodCount = ref(0)
-const scheduleConfigMissing = ref(false)
-const showDiscardDialog = ref(false)
-const pendingTeacherId = ref<string | null>(null)
 
 const assignments = ref<BusinessAssignmentDto[]>([])
 const rawSchedule = ref<DailyScheduleDto[]>([])
@@ -781,24 +778,6 @@ const teacherSummaryColumns = [
 
 // ── API: Load Data ──
 
-async function loadScheduleConfig() {
-  const instId = authStore.user?.institutionId
-  if (!instId) return
-  try {
-    const { data } = await institutionApi.getScheduleConfig(instId)
-    if (data.configured && data.dailyPeriodCount) {
-      periodCount.value = data.dailyPeriodCount
-      scheduleConfigMissing.value = false
-    } else {
-      periodCount.value = 0
-      scheduleConfigMissing.value = true
-    }
-  } catch {
-    periodCount.value = 0
-    scheduleConfigMissing.value = true
-  }
-}
-
 async function loadData() {
   if (!branchFilter.value) return
   loading.value = true
@@ -840,39 +819,22 @@ async function loadTeacherSchedule(teacherId: string) {
   }
 }
 
-function createEmptySchedule(): DailyScheduleDto[] {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-  return days.map((day) => ({
-    day,
-    periods: Array.from({ length: periodCount.value }, (_, i) => ({
-      periodNumber: i + 1,
-      status: 'Free',
-      courseName: null,
-      assignedBusinessId: null,
-    })),
-  }))
-}
-
 // ── Composables ──
 
 const institutionId = computed(() => authStore.user?.institutionId ?? undefined)
 const periodId = computed(() => periodStore.selectedPeriodId)
 const semester = computed(() => periodStore.selectedSemester)
 
-const workload = useWorkloadConfig({
-  branchFilter,
-  periodId,
-  institutionId,
-  notify,
-})
+const { periodCount, scheduleConfigMissing, loadScheduleConfig, createEmptySchedule } =
+  useScheduleConfig({ authStore })
 
+const workload = useWorkloadConfig({ branchFilter, periodId, institutionId, notify })
 const hours = useAssignedHours({
   assignments,
   workloadConfig: workload.workloadConfig,
   notify,
   loadData,
 })
-
 const dnd = useAssignmentDnD({
   assignments,
   rawSchedule,
@@ -883,13 +845,7 @@ const dnd = useAssignmentDnD({
   loadData,
   loadTeacherSchedule,
 })
-
-const cluster = useClusterMap({
-  notify,
-  loadData,
-  branchFilter,
-})
-
+const cluster = useClusterMap({ notify, loadData, branchFilter })
 const teacherOverview = useTeacherOverview({
   periodId,
   semester,
@@ -900,7 +856,6 @@ const teacherOverview = useTeacherOverview({
 
 // Re-export composable values used by template
 const { loadWorkloadConfig } = workload
-
 const {
   editedHours, hoursSaving, hoursTotalMaxHours, hoursWorkloadPool,
   hoursTotalAssigned, hoursRemaining, hoursOverLimit, hoursNearLimit,
@@ -922,10 +877,24 @@ const {
 } = cluster
 
 const {
-  teacherOverviewRows, teacherOverviewLoading,
-  teacherName,
-  loadTeacherOverview,
+  teacherOverviewRows, teacherOverviewLoading, teacherName, loadTeacherOverview,
 } = teacherOverview
+
+const {
+  historyDialog, historyLoading, historyBusinessName, historyEntries,
+  showHistory, historyIcon, historyColor, formatDate,
+} = useAssignmentHistory({ notify })
+
+const {
+  showDiscardDialog,
+  onTeacherChange, confirmDiscard, selectTeacher,
+} = useTeacherChangeFlow({
+  selectedTeacherId,
+  rawSchedule,
+  pendingChanges,
+  clearPending: dnd.clearPending,
+  loadTeacherSchedule,
+})
 
 // ── Filtered unassigned (UI search) ──
 const filteredUnassigned = computed(() => {
@@ -948,92 +917,6 @@ function onBranchChange() {
   // branch değişiminde client-side filtreleme yeterli, yeniden yüklemeye gerek yok.
   loadData().catch(() => {})
   loadWorkloadConfig().catch(() => {})
-}
-
-function onTeacherChange(teacherId: string | null) {
-  if (pendingChanges.value.length > 0 && teacherId !== selectedTeacherId.value) {
-    pendingTeacherId.value = teacherId
-    showDiscardDialog.value = true
-    return
-  }
-  doTeacherChange(teacherId)
-}
-
-function confirmDiscard() {
-  showDiscardDialog.value = false
-  dnd.clearPending()
-  doTeacherChange(pendingTeacherId.value)
-  pendingTeacherId.value = null
-}
-
-function doTeacherChange(teacherId: string | null) {
-  selectedTeacherId.value = teacherId
-  rawSchedule.value = []
-  if (teacherId) {
-    loadTeacherSchedule(teacherId)
-  }
-}
-
-function selectTeacher(teacherId: string) {
-  if (pendingChanges.value.length > 0) {
-    pendingTeacherId.value = teacherId
-    showDiscardDialog.value = true
-    return
-  }
-  doTeacherChange(teacherId)
-}
-
-// ── Atama Geçmişi ──
-const historyDialog = ref(false)
-const historyLoading = ref(false)
-const historyBusinessName = ref('')
-const historyEntries = ref<AssignmentHistoryEntryDto[]>([])
-
-async function showHistory(businessId: string, businessName: string) {
-  historyBusinessName.value = businessName
-  historyEntries.value = []
-  historyDialog.value = true
-  historyLoading.value = true
-  try {
-    const { data } = await coordinationApi.getAssignmentHistory(businessId)
-    historyEntries.value = data ?? []
-  } catch (e) {
-    notify.apiError(e, 'Geçmiş yüklenirken hata oluştu.')
-  } finally {
-    historyLoading.value = false
-  }
-}
-
-function historyIcon(action: string): string {
-  switch (action) {
-    case 'Assigned': return 'person_add'
-    case 'SlotAdded': return 'add_circle'
-    case 'SlotRemoved': return 'remove_circle'
-    case 'Unassigned': return 'person_remove'
-    case 'HoursUpdated': return 'schedule'
-    default: return 'info'
-  }
-}
-
-function historyColor(action: string): string {
-  switch (action) {
-    case 'Assigned': return 'green'
-    case 'SlotAdded': return 'blue'
-    case 'SlotRemoved': return 'orange'
-    case 'Unassigned': return 'red'
-    case 'HoursUpdated': return 'teal'
-    default: return 'grey'
-  }
-}
-
-function formatDate(isoDate: string): string {
-  return new Date(isoDate).toLocaleString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 // ── Harita popup'tan saat güncelleme ──
