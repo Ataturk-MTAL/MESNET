@@ -121,64 +121,59 @@
     </AppTable>
 
     <!-- Atama Detay Dialog -->
-    <q-dialog v-model="detailDialogOpen" maximized>
-      <q-card>
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Ziyaret Atamaları</div>
-          <q-space />
-          <q-btn
-            color="primary"
-            icon="add"
-            label="Eksik Atama Ekle"
-            size="sm"
-            :disable="periodStore.isReadOnly"
-            class="q-mr-md"
-            @click="openAddDialog"
-          />
-          <q-btn flat round dense icon="close" @click="detailDialogOpen = false" />
-        </q-card-section>
+    <DetailDialog v-model="detailDialogOpen" title="Ziyaret Atamaları" maximized>
+      <template #toolbar-actions>
+        <q-btn
+          color="primary"
+          icon="add"
+          label="Eksik Atama Ekle"
+          size="sm"
+          :disable="periodStore.isReadOnly"
+          class="q-mr-md"
+          @click="openAddDialog"
+        />
+      </template>
 
-        <q-card-section>
-          <AppTable
-            :rows="assignments"
-            :columns="assignmentColumns"
-            :loading="assignmentsLoading"
-            :pagination="assignmentsPagination"
-            row-key="id"
-            show-search
-            :search="assignmentSearch"
-            no-data-label="Atama bulunamadı."
-            @request="onAssignmentsRequest"
-            @search="onAssignmentSearch"
-          >
-            <template #body-cell-visitDate="{ row }">
-              <q-td class="text-center">{{ formatDateTR(row.visitDate) }}</q-td>
-            </template>
+      <q-card-section>
+        <AppTable
+          :rows="assignments"
+          :columns="assignmentColumns"
+          :loading="assignmentsLoading"
+          :pagination="assignmentsPagination"
+          row-key="id"
+          show-search
+          :search="assignmentSearch"
+          no-data-label="Atama bulunamadı."
+          @request="onAssignmentsRequest"
+          @search="onAssignmentSearch"
+        >
+          <template #body-cell-visitDate="{ row }">
+            <q-td class="text-center">{{ formatDateTR(row.visitDate) }}</q-td>
+          </template>
 
-            <template #body-cell-day="{ row }">
-              <q-td class="text-center">{{ dayLabel(row.day) }}</q-td>
-            </template>
+          <template #body-cell-day="{ row }">
+            <q-td class="text-center">{{ dayLabel(row.day) }}</q-td>
+          </template>
 
-            <template #body-cell-actions="{ row }">
-              <q-td class="q-gutter-xs">
-                <q-btn
-                  flat
-                  dense
-                  color="negative"
-                  icon="delete"
-                  size="sm"
-                  :disable="periodStore.isReadOnly"
-                  :loading="deletingAssignment"
-                  @click="confirmDeleteAssignment(row.id)"
-                >
-                  <q-tooltip>Sil</q-tooltip>
-                </q-btn>
-              </q-td>
-            </template>
-          </AppTable>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
+          <template #body-cell-actions="{ row }">
+            <q-td class="q-gutter-xs">
+              <q-btn
+                flat
+                dense
+                color="negative"
+                icon="delete"
+                size="sm"
+                :disable="periodStore.isReadOnly"
+                :loading="deletingAssignment"
+                @click="confirmDeleteAssignment(row.id)"
+              >
+                <q-tooltip>Sil</q-tooltip>
+              </q-btn>
+            </q-td>
+          </template>
+        </AppTable>
+      </q-card-section>
+    </DetailDialog>
 
     <!-- Eksik Atama Ekle Dialog -->
     <q-dialog v-model="addDialogOpen" persistent>
@@ -266,6 +261,7 @@ import type { QTableProps } from 'quasar'
 import AppTable from 'src/components/AppTable.vue'
 import BranchSelector from 'src/components/BranchSelector.vue'
 import AppNotice from 'src/components/AppNotice.vue'
+import DetailDialog from 'src/components/DetailDialog.vue'
 import { useAcademicPeriodStore } from 'src/stores/academicPeriod'
 import { useWeeklyVisits, dayLabel, scopeLabel } from 'src/composables/useWeeklyVisits'
 import { coordinationApi, type BusinessAssignmentDto } from 'src/api/coordination'

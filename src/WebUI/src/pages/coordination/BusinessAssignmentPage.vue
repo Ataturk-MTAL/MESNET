@@ -607,49 +607,48 @@
     </q-dialog>
 
     <!-- Atama Geçmişi Dialogu -->
-    <q-dialog v-model="historyDialog" position="right" full-height>
-      <q-card style="min-width: 420px; max-width: 500px">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Atama Geçmişi</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="historyDialog = false" />
-        </q-card-section>
-        <q-card-section class="text-subtitle2 text-grey-7 q-pt-none">
-          {{ historyBusinessName }}
-        </q-card-section>
+    <DetailDialog
+      v-model="historyDialog"
+      title="Atama Geçmişi"
+      position="right"
+      full-height
+      card-style="min-width: 420px; max-width: 500px"
+    >
+      <q-card-section class="text-subtitle2 text-grey-7 q-pt-none">
+        {{ historyBusinessName }}
+      </q-card-section>
 
-        <q-separator />
+      <q-separator />
 
-        <q-card-section class="scroll" style="max-height: calc(100vh - 140px)">
-          <DataState
-            :loading="historyLoading"
-            :empty="historyEntries.length === 0"
-            padding="q-pa-lg"
+      <q-card-section class="scroll" style="max-height: calc(100vh - 140px)">
+        <DataState
+          :loading="historyLoading"
+          :empty="historyEntries.length === 0"
+          padding="q-pa-lg"
+        >
+          <template #empty>
+            Henüz geçmiş kaydı bulunmuyor.
+          </template>
+
+        <q-timeline color="primary" layout="dense">
+          <q-timeline-entry
+            v-for="(entry, idx) in historyEntries"
+            :key="idx"
+            :icon="historyIcon(entry.action)"
+            :color="historyColor(entry.action)"
           >
-            <template #empty>
-              Henüz geçmiş kaydı bulunmuyor.
+            <template #subtitle>
+              {{ formatDate(entry.timestamp) }} — {{ entry.performedBy }}
             </template>
-
-          <q-timeline color="primary" layout="dense">
-            <q-timeline-entry
-              v-for="(entry, idx) in historyEntries"
-              :key="idx"
-              :icon="historyIcon(entry.action)"
-              :color="historyColor(entry.action)"
-            >
-              <template #subtitle>
-                {{ formatDate(entry.timestamp) }} — {{ entry.performedBy }}
-              </template>
-              <div class="text-body2">{{ entry.details }}</div>
-              <div v-if="entry.assignedHours" class="text-caption text-grey-7">
-                Takdir edilen saat: {{ entry.assignedHours }}
-              </div>
-            </q-timeline-entry>
-          </q-timeline>
-          </DataState>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
+            <div class="text-body2">{{ entry.details }}</div>
+            <div v-if="entry.assignedHours" class="text-caption text-grey-7">
+              Takdir edilen saat: {{ entry.assignedHours }}
+            </div>
+          </q-timeline-entry>
+        </q-timeline>
+        </DataState>
+      </q-card-section>
+    </DetailDialog>
   </q-page>
 </template>
 
@@ -682,6 +681,7 @@ import FreeSlotChip from 'components/FreeSlotChip.vue'
 import WorkloadIndicator from 'components/WorkloadIndicator.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
+import DetailDialog from 'components/DetailDialog.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()

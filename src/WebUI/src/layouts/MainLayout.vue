@@ -160,45 +160,41 @@
     </q-page-container>
 
     <!-- Hakkında Dialog -->
-    <q-dialog v-model="aboutDialog">
-      <q-card style="min-width: 400px; max-width: 500px">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Hakkında</div>
-          <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
-        </q-card-section>
+    <DetailDialog
+      v-model="aboutDialog"
+      title="Hakkında"
+      card-style="min-width: 400px; max-width: 500px"
+    >
+      <q-card-section class="text-center q-pt-md">
+        <q-icon name="school" color="primary" size="64px" class="q-mb-md" />
+        <div class="text-h5 text-weight-bold text-primary q-mb-xs">MESNET</div>
+        <div class="text-subtitle2 text-grey-8 q-mb-lg">
+          Mesleki Eğitim Stajları Nitelikli, Eşgüdümlü Takip Sistemi
+        </div>
 
-        <q-card-section class="text-center q-pt-md">
-          <q-icon name="school" color="primary" size="64px" class="q-mb-md" />
-          <div class="text-h5 text-weight-bold text-primary q-mb-xs">MESNET</div>
-          <div class="text-subtitle2 text-grey-8 q-mb-lg">
-            Mesleki Eğitim Stajları Nitelikli, Eşgüdümlü Takip Sistemi
+        <q-separator class="q-my-md" />
+
+        <div class="text-body2 q-mb-md">
+          Bu yazılım<br />
+          <strong>Toroslar Atatürk Mesleki ve Teknik Anadolu Lisesi</strong><br />
+          <strong>Elektrik-Elektronik Teknolojisi</strong> alan öğretmenleri<br />
+          tarafından hazırlanmıştır.
+        </div>
+
+        <q-separator class="q-my-md" />
+
+        <div class="row justify-center q-gutter-x-md text-caption text-grey-7">
+          <div>
+            <q-icon name="tag" size="xs" class="q-mr-xs" />
+            Sürüm: <strong>{{ appVersion }}</strong>
           </div>
+        </div>
+      </q-card-section>
 
-          <q-separator class="q-my-md" />
-
-          <div class="text-body2 q-mb-md">
-            Bu yazılım<br />
-            <strong>Toroslar Atatürk Mesleki ve Teknik Anadolu Lisesi</strong><br />
-            <strong>Elektrik-Elektronik Teknolojisi</strong> alan öğretmenleri<br />
-            tarafından hazırlanmıştır.
-          </div>
-
-          <q-separator class="q-my-md" />
-
-          <div class="row justify-center q-gutter-x-md text-caption text-grey-7">
-            <div>
-              <q-icon name="tag" size="xs" class="q-mr-xs" />
-              Sürüm: <strong>{{ appVersion }}</strong>
-            </div>
-          </div>
-        </q-card-section>
-
-        <q-card-section class="text-center text-caption text-grey-6 q-pt-none">
-          &copy; {{ currentYear }} MESNET — Tüm hakları saklıdır.
-        </q-card-section>
-      </q-card>
-    </q-dialog>
+      <q-card-section class="text-center text-caption text-grey-6 q-pt-none">
+        &copy; {{ currentYear }} MESNET — Tüm hakları saklıdır.
+      </q-card-section>
+    </DetailDialog>
   </q-layout>
 </template>
 
@@ -210,6 +206,7 @@ import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
 import { logout } from 'boot/auth'
 import { useNavigation } from 'src/composables/useNavigation'
 import AppNotice from 'components/AppNotice.vue'
+import DetailDialog from 'components/DetailDialog.vue'
 
 const authStore = useAuthStore()
 const { filteredMenu, isExpanded, toggleGroup, activeGroupKey } = useNavigation()
