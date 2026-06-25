@@ -247,16 +247,14 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import {
   reportingApi,
   downloadBlob,
-  MEB_FORM_LABELS,
-  BATCH_FORM_TYPES,
-  DOCUMENT_STATUS_LABELS,
-  DOCUMENT_STATUS_COLORS,
   type GeneratedDocumentSummaryDto,
 } from 'src/api/reporting'
 import { coordinationApi } from 'src/api/coordination'
 import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
+import { useReportingBatchGenerate } from 'src/composables/useReportingBatchGenerate'
+import { useReportingFormatters } from 'src/composables/useReportingFormatters'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 
@@ -269,12 +267,9 @@ const institutionName = ref<string | undefined>(undefined)
 
 const downloading = ref<string | null>(null)
 const zipping = ref(false)
-const generating = ref(false)
-const previewing = ref(false)
 const deleting = ref(false)
 const resyncing = ref(false)
 const selected = ref<GeneratedDocumentSummaryDto[]>([])
-const showGenerateDialog = ref(false)
 
 // Müdür/müdür yardımcısı belge oluşturabilir
 const canGenerate = computed(() => authStore.hasPermission('institution:manage'))
@@ -298,40 +293,32 @@ const { rows: documents, loading, pagination, onRequest, load } =
     defaultDescending: true,
   })
 
-const formTypeOptions = Object.entries(MEB_FORM_LABELS).map(([value, label]) => ({ value, label }))
-const statusOptions = Object.entries(DOCUMENT_STATUS_LABELS).map(([value, label]) => ({ value, label }))
-const batchFormTypeOptions = Object.entries(BATCH_FORM_TYPES).map(([value, label]) => ({ value, label }))
+const {
+  formTypeOptions,
+  statusOptions,
+  batchFormTypeOptions,
+  formTypeLabel,
+  statusLabel,
+  statusColor,
+  formatDate,
+} = useReportingFormatters()
 
-// Belge oluşturma dialog formu
-const now = new Date()
-const batchForm = reactive({
-  formType: 'MonthlyAttendanceReport' as string,
-  year: now.getFullYear(),
-  month: now.getMonth() + 1,
+const {
+  generating,
+  previewing,
+  showGenerateDialog,
+  batchForm,
+  yearOptions,
+  monthOptions,
+  previewBatchMonthlyAttendance,
+  generateBatch,
+} = useReportingBatchGenerate({
+  institutionName,
+  authStore,
+  periodStore,
+  notify,
+  load,
 })
-
-const yearOptions = computed(() => {
-  const currentYear = now.getFullYear()
-  return [currentYear - 1, currentYear, currentYear + 1].map((y) => ({
-    value: y,
-    label: String(y),
-  }))
-})
-
-const monthOptions = [
-  { value: 1, label: 'Ocak' },
-  { value: 2, label: 'Şubat' },
-  { value: 3, label: 'Mart' },
-  { value: 4, label: 'Nisan' },
-  { value: 5, label: 'Mayıs' },
-  { value: 6, label: 'Haziran' },
-  { value: 7, label: 'Temmuz' },
-  { value: 8, label: 'Ağustos' },
-  { value: 9, label: 'Eylül' },
-  { value: 10, label: 'Ekim' },
-  { value: 11, label: 'Kasım' },
-  { value: 12, label: 'Aralık' },
-]
 
 const columns = [
   { name: 'formType', label: 'Form Tipi', field: 'formType', align: 'left' as const },
@@ -344,73 +331,6 @@ const columns = [
 
 function onSelectedUpdate(val: readonly any[]) {
   selected.value = val as GeneratedDocumentSummaryDto[]
-}
-
-async function previewBatchMonthlyAttendance() {
-  const institutionId = authStore.user?.institutionId
-  const periodId = periodStore.selectedPeriodId
-  const period = periodStore.selectedPeriod
-
-  if (!institutionId || !periodId || !period) {
-    notify.error('Kurum veya akademik dönem bilgisi bulunamadı.')
-    return
-  }
-
-  previewing.value = true
-  try {
-    const res = await reportingApi.previewBatchMonthlyAttendance({
-      institutionId,
-      academicPeriodId: periodId,
-      year: batchForm.year,
-      month: batchForm.month,
-      institutionName: institutionName.value ?? '',
-      academicYear: `${period.startYear} / ${period.endYear}`,
-    })
-    const blob = new Blob([res.data as BlobPart], { type: 'application/pdf' })
-    const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 60000)
-  } catch (e) {
-    notify.apiError(e, 'Önizleme oluşturulurken bir hata oluştu.')
-  } finally {
-    previewing.value = false
-  }
-}
-
-async function generateBatch() {
-  const institutionId = authStore.user?.institutionId
-  const periodId = periodStore.selectedPeriodId
-  const period = periodStore.selectedPeriod
-
-  if (!institutionId || !periodId || !period) {
-    notify.error('Kurum veya akademik dönem bilgisi bulunamadı.')
-    return
-  }
-
-  generating.value = true
-  try {
-    const res = await reportingApi.generateBatch({
-      formType: batchForm.formType,
-      year: batchForm.year,
-      month: batchForm.month,
-      institutionId,
-      academicPeriodId: periodId,
-      academicYear: `${period.startYear} / ${period.endYear}`,
-      institutionName: institutionName.value,
-    })
-    const result = (res.data as any)?.data ?? res.data
-    if (result.generated > 0) {
-      notify.success(`${result.generated} yeni belge oluşturuldu, ${result.skipped} belge zaten mevcuttu.`)
-    } else {
-      notify.info('Tüm belgeler zaten oluşturulmuş — yeni belge üretilmedi.')
-    }
-    showGenerateDialog.value = false
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'Belge oluşturulurken bir hata oluştu.')
-  } finally {
-    generating.value = false
-  }
 }
 
 async function deleteSelected() {
@@ -523,28 +443,6 @@ async function archiveDoc(id: string) {
   } catch (e) {
     notify.apiError(e, 'İşlem başarısız.')
   }
-}
-
-function formTypeLabel(formType: string): string {
-  return MEB_FORM_LABELS[formType] ?? formType
-}
-
-function statusLabel(status: string): string {
-  return DOCUMENT_STATUS_LABELS[status] ?? status
-}
-
-function statusColor(status: string): string {
-  return DOCUMENT_STATUS_COLORS[status] ?? 'grey'
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 onMounted(async () => {

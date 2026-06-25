@@ -137,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { use } from 'echarts/core'
 import { PieChart, BarChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
@@ -146,13 +146,8 @@ import VChart from 'vue-echarts'
 import { useAuthStore } from 'stores/auth'
 import { useNotificationStore } from 'stores/notifications'
 import { Permissions } from 'utils/permissions'
-import { enrollmentApi } from 'src/api/enrollment'
-import { businessApi } from 'src/api/business'
-import { contractApi } from 'src/api/contract'
-import { attendanceApi } from 'src/api/attendance'
-import { institutionApi } from 'src/api/institution'
-import { securityApi } from 'src/api/security'
-import type { EChartsOption } from 'echarts'
+import { useDashboardStats } from 'src/composables/useDashboardStats'
+import { useDashboardActivity } from 'src/composables/useDashboardActivity'
 
 // ECharts tree-shaking
 use([PieChart, BarChart, TitleComponent, TooltipComponent, LegendComponent, GridComponent, SVGRenderer])
@@ -161,7 +156,6 @@ const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
 
 const institutionId = authStore.user?.institutionId ?? ''
-const institutionName = ref('')
 
 // Greeting
 const greeting = computed(() => {
@@ -176,84 +170,16 @@ const todayFormatted = new Date().toLocaleDateString('tr-TR', {
   year: 'numeric',
 })
 
-// Stats
-const stats = reactive({
-  students: 0,
-  studentsLoading: true,
-  businesses: 0,
-  businessesLoading: true,
-  activeContracts: 0,
-  contractsLoading: true,
-  pendingTotal: 0,
-  pendingLoading: true,
+// Stats, charts ve veri yükleme
+const { institutionName, stats, studentChartOption, contractChartOption, init } = useDashboardStats({
+  authStore,
+  institutionId,
 })
 
-// Chart data
-const studentChartOption = ref<EChartsOption | null>(null)
-const contractChartOption = ref<EChartsOption | null>(null)
-
-// Raw data holders for chart generation
-const allStudents = ref<{ status: string }[]>([])
-const allContracts = ref<{ status: string }[]>([])
-
-// Module icons
-const MODULE_ICONS: Record<string, string> = {
-  Institution: 'account_balance',
-  Business: 'business',
-  Enrollment: 'school',
-  Contract: 'description',
-  Attendance: 'event_available',
-  Payment: 'payments',
-  Coordination: 'supervisor_account',
-  Internship: 'work_history',
-  Reporting: 'bar_chart',
-  Security: 'manage_accounts',
-}
-
-// Event labels
-const EVENT_LABELS: Record<string, string> = {
-  'contract.created': 'Yeni sözleşme oluşturuldu',
-  'contract.submitted': 'Sözleşme imzaya gönderildi',
-  'contract.signed': 'Sözleşme imzalandı',
-  'contract.activated': 'Sözleşme aktifleştirildi',
-  'contract.suspended': 'Sözleşme askıya alındı',
-  'contract.terminated': 'Sözleşme feshedildi',
-  'contract.completed': 'Sözleşme tamamlandı',
-  'attendance.recorded': 'Devamsızlık kaydedildi',
-  'attendance.verified': 'Devamsızlık doğrulandı',
-  'attendance.corrected': 'Devamsızlık düzeltildi',
-  'payment.calculated': 'Maaş hesaplandı',
-  'payment.receipt.uploaded': 'Dekont yüklendi',
-  'payment.approved': 'Ödeme onaylandı',
-  'business.registered': 'Yeni işletme kaydedildi',
-  'business.approved': 'İşletme onaylandı',
-  'student.registered': 'Öğrenci kaydedildi',
-  'placement.created': 'Öğrenci yerleştirildi',
-  'placement.transferred': 'Öğrenci transfer edildi',
-  'visit.created': 'Rehberlik ziyareti eklendi',
-  'visit.approved': 'Ziyaret onaylandı',
-  'evaluation.created': 'İşletme değerlendirmesi eklendi',
-  'invitation.created': 'Yeni davet gönderildi',
-  'invitation.approved': 'Davet onaylandı',
-}
-
-function eventLabel(eventType: string): string {
-  return EVENT_LABELS[eventType] ?? eventType
-}
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Az önce'
-  if (mins < 60) return `${mins} dk önce`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours} sa önce`
-  const days = Math.floor(hours / 24)
-  return `${days} gün önce`
-}
-
-// Recent notifications (max 8)
-const recentNotifications = computed(() => notificationStore.notifications.slice(0, 8))
+// Son aktiviteler (bildirim akışı)
+const { MODULE_ICONS, recentNotifications, eventLabel, timeAgo } = useDashboardActivity({
+  notificationStore,
+})
 
 // Quick links — permission-filtered
 const quickLinks = computed(() => {
@@ -268,194 +194,8 @@ const quickLinks = computed(() => {
   return links.filter((l) => authStore.hasPermission(l.permission))
 })
 
-// Status label maps
-const STUDENT_STATUS_LABELS: Record<string, string> = {
-  Registered: 'Kayıtlı',
-  Applied: 'Başvurdu',
-  Placed: 'Yerleştirildi',
-  ActiveInternship: 'Aktif Staj',
-  Completed: 'Tamamladı',
-}
-
-const STUDENT_STATUS_COLORS: Record<string, string> = {
-  Registered: '#9E9E9E',
-  Applied: '#2196F3',
-  Placed: '#9C27B0',
-  ActiveInternship: '#4CAF50',
-  Completed: '#009688',
-}
-
-const CONTRACT_STATUS_LABELS: Record<string, string> = {
-  Draft: 'Taslak',
-  AwaitingSignature: 'İmza Bekliyor',
-  Active: 'Aktif',
-  Suspended: 'Askıda',
-  Terminated: 'Feshedildi',
-  Completed: 'Tamamlandı',
-}
-
-const CONTRACT_STATUS_COLORS: Record<string, string> = {
-  Draft: '#9E9E9E',
-  AwaitingSignature: '#FF9800',
-  Active: '#4CAF50',
-  Suspended: '#FF5722',
-  Terminated: '#F44336',
-  Completed: '#009688',
-}
-
-// Chart builders
-function buildStudentChart() {
-  const grouped: Record<string, number> = {}
-  for (const s of allStudents.value) {
-    grouped[s.status] = (grouped[s.status] ?? 0) + 1
-  }
-
-  const data = Object.entries(grouped).map(([status, count]) => ({
-    name: STUDENT_STATUS_LABELS[status] ?? status,
-    value: count,
-    itemStyle: { color: STUDENT_STATUS_COLORS[status] ?? '#607D8B' },
-  }))
-
-  if (data.length === 0) return
-
-  studentChartOption.value = {
-    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-    legend: { bottom: 0, left: 'center' },
-    series: [{
-      type: 'pie',
-      radius: ['45%', '70%'],
-      center: ['50%', '45%'],
-      avoidLabelOverlap: true,
-      label: { show: false },
-      emphasis: { label: { show: true, fontWeight: 'bold' } },
-      data,
-    }],
-  }
-}
-
-function buildContractChart() {
-  const grouped: Record<string, number> = {}
-  for (const c of allContracts.value) {
-    grouped[c.status] = (grouped[c.status] ?? 0) + 1
-  }
-
-  const order = ['Draft', 'AwaitingSignature', 'Active', 'Suspended', 'Terminated', 'Completed']
-  const categories: string[] = []
-  const values: number[] = []
-  const colors: string[] = []
-
-  for (const status of order) {
-    if (grouped[status]) {
-      categories.push(CONTRACT_STATUS_LABELS[status] ?? status)
-      values.push(grouped[status])
-      colors.push(CONTRACT_STATUS_COLORS[status] ?? '#607D8B')
-    }
-  }
-
-  if (categories.length === 0) return
-
-  contractChartOption.value = {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    grid: { left: 100, right: 30, top: 10, bottom: 20 },
-    xAxis: { type: 'value', minInterval: 1 },
-    yAxis: { type: 'category', data: categories },
-    series: [{
-      type: 'bar',
-      data: values.map((v, i) => ({ value: v, itemStyle: { color: colors[i] } })),
-      barMaxWidth: 30,
-    }],
-  }
-}
-
-// Data loaders
-async function loadStudents() {
-  try {
-    const res = await enrollmentApi.listStudents({ pageSize: 100 })
-    const data = res.data?.items ?? []
-    stats.students = res.data?.totalCount ?? 0
-    allStudents.value = data
-    buildStudentChart()
-  } catch { /* sessiz */ }
-  stats.studentsLoading = false
-}
-
-async function loadBusinesses() {
-  try {
-    const res = await businessApi.list({ status: 'Approved', pageSize: 1 })
-    stats.businesses = res.data?.totalCount ?? 0
-  } catch { /* sessiz */ }
-  stats.businessesLoading = false
-}
-
-async function loadContracts() {
-  try {
-    const res = await contractApi.list({ pageSize: 100 })
-    const data = res.data?.items ?? []
-    stats.activeContracts = data.filter((c: { status: string }) => c.status === 'Active').length
-    allContracts.value = data
-    buildContractChart()
-  } catch { /* sessiz */ }
-  stats.contractsLoading = false
-}
-
-async function loadPendingActions() {
-  let total = 0
-  const tasks: Promise<void>[] = []
-
-  if (authStore.hasPermission(Permissions.Internship.Contract)) {
-    tasks.push(
-      contractApi.list({ status: 'AwaitingSignature', pageSize: 1 })
-        .then((res) => { total += res.data?.totalCount ?? 0 })
-        .catch(() => {}),
-    )
-  }
-
-  if (authStore.hasPermission(Permissions.Attendance.View)) {
-    tasks.push(
-      attendanceApi.list({ status: 'Recorded', pageSize: 1 })
-        .then((res) => { total += res.data?.totalCount ?? 0 })
-        .catch(() => {}),
-    )
-  }
-
-  if (authStore.hasPermission(Permissions.Company.View)) {
-    tasks.push(
-      businessApi.list({ status: 'PendingApproval', pageSize: 1 })
-        .then((res) => { total += res.data?.totalCount ?? 0 })
-        .catch(() => {}),
-    )
-  }
-
-  if (authStore.hasPermission(Permissions.UserManagement.View)) {
-    tasks.push(
-      securityApi.listInvitations({ status: 'Pending', pageSize: 1 })
-        .then((res) => { total += res.data?.totalCount ?? 0 })
-        .catch(() => {}),
-    )
-  }
-
-  await Promise.allSettled(tasks)
-  stats.pendingTotal = total
-  stats.pendingLoading = false
-}
-
-async function loadInstitution() {
-  try {
-    const res = await institutionApi.get(institutionId)
-    institutionName.value = res.data?.fullName ?? ''
-  } catch { /* sessiz */ }
-}
-
 onMounted(async () => {
-  const tasks: Promise<void>[] = []
-
-  if (authStore.hasPermission(Permissions.Student.View)) tasks.push(loadStudents())
-  if (authStore.hasPermission(Permissions.Company.View)) tasks.push(loadBusinesses())
-  if (authStore.hasPermission(Permissions.Internship.Contract)) tasks.push(loadContracts())
-  tasks.push(loadPendingActions())
-  if (authStore.hasPermission(Permissions.Institution.View) && institutionId) tasks.push(loadInstitution())
-
-  await Promise.allSettled(tasks)
+  await init()
 })
 </script>
 

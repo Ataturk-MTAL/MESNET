@@ -207,12 +207,13 @@ import { ref, watch, onMounted } from 'vue'
 import {
   coordinationApi,
   type DailyScheduleInput,
-  type ScheduleHistoryDto,
   type ScheduleVersionDto,
   type TeacherScheduleDto,
 } from 'src/api/coordination'
 import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
+import { useTeacherScheduleHistory } from 'src/composables/useTeacherScheduleHistory'
+import { useTeacherScheduleFormat } from 'src/composables/useTeacherScheduleFormat'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import ScheduleGrid from 'components/ScheduleGrid.vue'
@@ -244,9 +245,14 @@ const currentScheduleMeta = ref<{
   updatedAt: string | null
 } | null>(null)
 
-// History panel
-const historyLoading = ref(false)
-const scheduleHistory = ref<ScheduleHistoryDto | null>(null)
+// History panel — bağımsız concern composable'a taşındı
+const { historyLoading, scheduleHistory, loadHistory } = useTeacherScheduleHistory({
+  selectedTeacherId,
+  currentScheduleId,
+})
+
+// Tarih biçimlendirme yardımcıları
+const { formatDate, formatDateTime } = useTeacherScheduleFormat()
 
 const dayLabels = [
   { label: 'Pazartesi', value: 'Monday' },
@@ -283,24 +289,6 @@ function freeSlotsPerDay(dayValue: string): number {
   const day = scheduleData.value.find((d) => d.day === dayValue)
   if (!day) return 0
   return day.periods.filter((p) => p.status === 'Free').length
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
-function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function mapScheduleToInput(schedule: TeacherScheduleDto): DailyScheduleInput[] {
@@ -367,26 +355,6 @@ async function loadCurrentSchedule() {
     }
   } finally {
     loading.value = false
-  }
-}
-
-async function loadHistory() {
-  if (!selectedTeacherId.value || !currentScheduleId.value) {
-    scheduleHistory.value = null
-    return
-  }
-
-  historyLoading.value = true
-  try {
-    const { data } = await coordinationApi.getScheduleHistory(
-      selectedTeacherId.value,
-      currentScheduleId.value,
-    )
-    scheduleHistory.value = data
-  } catch {
-    scheduleHistory.value = null
-  } finally {
-    historyLoading.value = false
   }
 }
 
