@@ -13,55 +13,46 @@
     <!-- Özet Kartları -->
     <div class="row q-col-gutter-md q-mb-lg">
       <div v-if="authStore.hasPermission(Permissions.Student.View)" class="col-12 col-sm-6 col-md-3">
-        <q-card flat bordered class="cursor-pointer stat-card" @click="$router.push('/enrollment/students')">
-          <q-card-section class="row items-center no-wrap">
-            <q-icon name="school" size="40px" color="primary" class="q-mr-md" />
-            <div>
-              <q-skeleton v-if="stats.studentsLoading" type="text" width="60px" />
-              <div v-else class="text-h4 text-weight-bold text-primary">{{ stats.students }}</div>
-              <div class="text-caption text-grey">Öğrenci</div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <StatCard
+          icon="school"
+          :value="stats.students"
+          label="Öğrenci"
+          color="primary"
+          :loading="stats.studentsLoading"
+          to="/enrollment/students"
+        />
       </div>
 
       <div v-if="authStore.hasPermission(Permissions.Company.View)" class="col-12 col-sm-6 col-md-3">
-        <q-card flat bordered class="cursor-pointer stat-card" @click="$router.push('/companies')">
-          <q-card-section class="row items-center no-wrap">
-            <q-icon name="business" size="40px" color="teal" class="q-mr-md" />
-            <div>
-              <q-skeleton v-if="stats.businessesLoading" type="text" width="60px" />
-              <div v-else class="text-h4 text-weight-bold text-teal">{{ stats.businesses }}</div>
-              <div class="text-caption text-grey">Aktif İşletme</div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <StatCard
+          icon="business"
+          :value="stats.businesses"
+          label="Aktif İşletme"
+          color="teal"
+          :loading="stats.businessesLoading"
+          to="/companies"
+        />
       </div>
 
       <div v-if="authStore.hasPermission(Permissions.Internship.Contract)" class="col-12 col-sm-6 col-md-3">
-        <q-card flat bordered class="cursor-pointer stat-card" @click="$router.push('/internship/contracts')">
-          <q-card-section class="row items-center no-wrap">
-            <q-icon name="description" size="40px" color="green" class="q-mr-md" />
-            <div>
-              <q-skeleton v-if="stats.contractsLoading" type="text" width="60px" />
-              <div v-else class="text-h4 text-weight-bold text-green">{{ stats.activeContracts }}</div>
-              <div class="text-caption text-grey">Aktif Sözleşme</div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <StatCard
+          icon="description"
+          :value="stats.activeContracts"
+          label="Aktif Sözleşme"
+          color="green"
+          :loading="stats.contractsLoading"
+          to="/internship/contracts"
+        />
       </div>
 
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card flat bordered class="stat-card">
-          <q-card-section class="row items-center no-wrap">
-            <q-icon name="pending_actions" size="40px" color="orange" class="q-mr-md" />
-            <div>
-              <q-skeleton v-if="stats.pendingLoading" type="text" width="60px" />
-              <div v-else class="text-h4 text-weight-bold text-orange">{{ stats.pendingTotal }}</div>
-              <div class="text-caption text-grey">Bekleyen İşlem</div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <StatCard
+          icon="pending_actions"
+          :value="stats.pendingTotal"
+          label="Bekleyen İşlem"
+          color="orange"
+          :loading="stats.pendingLoading"
+        />
       </div>
     </div>
 
@@ -148,6 +139,7 @@ import { useNotificationStore } from 'stores/notifications'
 import { Permissions } from 'utils/permissions'
 import { useDashboardStats } from 'src/composables/useDashboardStats'
 import { useDashboardActivity } from 'src/composables/useDashboardActivity'
+import StatCard from 'components/StatCard.vue'
 
 // ECharts tree-shaking
 use([PieChart, BarChart, TitleComponent, TooltipComponent, LegendComponent, GridComponent, SVGRenderer])
@@ -200,11 +192,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.stat-card:hover {
-  background-color: rgba(0, 0, 0, 0.02);
-  transition: background-color 0.2s;
-}
-
 .quick-link:hover {
   background-color: rgba(0, 0, 0, 0.03);
   transition: background-color 0.2s;

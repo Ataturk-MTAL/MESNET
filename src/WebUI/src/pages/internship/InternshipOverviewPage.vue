@@ -5,49 +5,19 @@
     <!-- Özet Kartlar -->
     <div class="row q-col-gutter-md q-mb-lg">
       <div class="col-12 col-sm-6 col-md">
-        <q-card flat bordered>
-          <q-card-section class="text-center">
-            <q-icon name="school" size="40px" color="primary" />
-            <div class="text-h4 text-weight-bold text-primary q-mt-sm">{{ stats.placed }}</div>
-            <div class="text-caption text-grey">Yerleştirildi</div>
-          </q-card-section>
-        </q-card>
+        <StatCard orientation="vertical" icon="school" :value="stats.placed" label="Yerleştirildi" color="primary" />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <q-card flat bordered>
-          <q-card-section class="text-center">
-            <q-icon name="work" size="40px" color="positive" />
-            <div class="text-h4 text-weight-bold text-positive q-mt-sm">{{ stats.active }}</div>
-            <div class="text-caption text-grey">Aktif Staj</div>
-          </q-card-section>
-        </q-card>
+        <StatCard orientation="vertical" icon="work" :value="stats.active" label="Aktif Staj" color="positive" />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <q-card flat bordered>
-          <q-card-section class="text-center">
-            <q-icon name="done_all" size="40px" color="purple" />
-            <div class="text-h4 text-weight-bold text-purple q-mt-sm">{{ stats.completed }}</div>
-            <div class="text-caption text-grey">Tamamlandı</div>
-          </q-card-section>
-        </q-card>
+        <StatCard orientation="vertical" icon="done_all" :value="stats.completed" label="Tamamlandı" color="purple" />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <q-card flat bordered>
-          <q-card-section class="text-center">
-            <q-icon name="cancel" size="40px" color="negative" />
-            <div class="text-h4 text-weight-bold text-negative q-mt-sm">{{ stats.cancelled }}</div>
-            <div class="text-caption text-grey">Fesih Yapıldı</div>
-          </q-card-section>
-        </q-card>
+        <StatCard orientation="vertical" icon="cancel" :value="stats.cancelled" label="Fesih Yapıldı" color="negative" />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <q-card flat bordered>
-          <q-card-section class="text-center">
-            <q-icon name="event_busy" size="40px" color="warning" />
-            <div class="text-h4 text-weight-bold text-warning q-mt-sm">{{ stats.failedToComplete }}</div>
-            <div class="text-caption text-grey">Tamamlayamadı</div>
-          </q-card-section>
-        </q-card>
+        <StatCard orientation="vertical" icon="event_busy" :value="stats.failedToComplete" label="Tamamlayamadı" color="warning" />
       </div>
     </div>
 
@@ -177,6 +147,7 @@ import StatusBadge from 'components/StatusBadge.vue'
 import InfoItem from 'components/InfoItem.vue'
 import PageHeader from 'components/PageHeader.vue'
 import BranchSelector from 'components/BranchSelector.vue'
+import StatCard from 'components/StatCard.vue'
 
 const $q = useQuasar()
 const periodStore = useAcademicPeriodStore()
