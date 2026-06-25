@@ -194,18 +194,19 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import {
   coordinationApi,
   type DailyScheduleInput,
   type ScheduleVersionDto,
   type TeacherScheduleDto,
 } from 'src/api/coordination'
-import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useTeacherScheduleHistory } from 'src/composables/useTeacherScheduleHistory'
 import { useTeacherScheduleFormat } from 'src/composables/useTeacherScheduleFormat'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useInstitutionStore } from 'stores/institution'
 import ScheduleGrid from 'components/ScheduleGrid.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
 import BranchSelector from 'components/BranchSelector.vue'
@@ -215,14 +216,16 @@ import DataState from 'components/DataState.vue'
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
+const institutionStore = useInstitutionStore()
+
+// Ders programı config artık merkezi store cache'inden okunur (doğrudan API çağrısı yok)
+const { periodCount, scheduleConfigMissing } = storeToRefs(institutionStore)
 
 const branchFilter = ref<string | null>(null)
 const selectedTeacherId = ref<string | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 const editing = ref(false)
-const periodCount = ref(0)
-const scheduleConfigMissing = ref(false)
 const hasExistingSchedule = ref(false)
 const currentVersion = ref(0)
 const viewingHistoryVersion = ref<number | null>(null)
@@ -292,25 +295,6 @@ function mapScheduleToInput(schedule: TeacherScheduleDto): DailyScheduleInput[] 
       courseName: p.courseName ?? undefined,
     })),
   }))
-}
-
-async function loadScheduleConfig() {
-  const instId = authStore.user?.institutionId
-  if (!instId) return
-
-  try {
-    const { data } = await institutionApi.getScheduleConfig(instId)
-    if (data.configured && data.dailyPeriodCount) {
-      periodCount.value = data.dailyPeriodCount
-      scheduleConfigMissing.value = false
-    } else {
-      periodCount.value = 0
-      scheduleConfigMissing.value = true
-    }
-  } catch {
-    periodCount.value = 0
-    scheduleConfigMissing.value = true
-  }
 }
 
 async function loadCurrentSchedule() {
@@ -461,7 +445,7 @@ watch(
 )
 
 onMounted(async () => {
-  await loadScheduleConfig()
+  await institutionStore.loadScheduleConfig()
   if (authStore.isDepartmentHead && authStore.user?.branchCode) {
     branchFilter.value = authStore.user.branchCode
   }

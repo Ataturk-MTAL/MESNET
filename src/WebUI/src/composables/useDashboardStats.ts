@@ -1,4 +1,4 @@
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import type { EChartsOption } from 'echarts'
 import type { useAuthStore } from 'stores/auth'
 import { Permissions } from 'utils/permissions'
@@ -6,8 +6,8 @@ import { enrollmentApi } from 'src/api/enrollment'
 import { businessApi } from 'src/api/business'
 import { contractApi } from 'src/api/contract'
 import { attendanceApi } from 'src/api/attendance'
-import { institutionApi } from 'src/api/institution'
 import { securityApi } from 'src/api/security'
+import { useInstitutionStore } from 'stores/institution'
 
 export interface UseDashboardStatsOptions {
   authStore: ReturnType<typeof useAuthStore>
@@ -52,7 +52,8 @@ const CONTRACT_STATUS_COLORS: Record<string, string> = {
 export function useDashboardStats(options: UseDashboardStatsOptions) {
   const { authStore, institutionId } = options
 
-  const institutionName = ref('')
+  const institutionStore = useInstitutionStore()
+  const institutionName = computed(() => institutionStore.institution?.fullName ?? '')
 
   // Stats
   const stats = reactive({
@@ -210,13 +211,6 @@ export function useDashboardStats(options: UseDashboardStatsOptions) {
     stats.pendingLoading = false
   }
 
-  async function loadInstitution() {
-    try {
-      const res = await institutionApi.get(institutionId)
-      institutionName.value = res.data?.fullName ?? ''
-    } catch { /* sessiz */ }
-  }
-
   async function init() {
     const tasks: Promise<void>[] = []
 
@@ -224,7 +218,9 @@ export function useDashboardStats(options: UseDashboardStatsOptions) {
     if (authStore.hasPermission(Permissions.Company.View)) tasks.push(loadBusinesses())
     if (authStore.hasPermission(Permissions.Internship.Contract)) tasks.push(loadContracts())
     tasks.push(loadPendingActions())
-    if (authStore.hasPermission(Permissions.Institution.View) && institutionId) tasks.push(loadInstitution())
+    if (authStore.hasPermission(Permissions.Institution.View) && institutionId) {
+      tasks.push(institutionStore.loadInstitution())
+    }
 
     await Promise.allSettled(tasks)
   }

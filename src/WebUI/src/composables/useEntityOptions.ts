@@ -3,8 +3,7 @@ import { watchThrottled } from '@vueuse/core'
 import { enrollmentApi } from 'src/api/enrollment'
 import { businessApi } from 'src/api/business'
 import { securityApi } from 'src/api/security'
-import { institutionApi, type FieldOfStudyDto, type InstitutionBranchDto } from 'src/api/institution'
-import { useAuthStore } from 'stores/auth'
+import { useInstitutionStore } from 'stores/institution'
 import type { PagedResponse } from 'src/types/pagination'
 
 export interface SelectOption {
@@ -313,27 +312,17 @@ export function useBranchOptions() {
   const searchQuery = ref('')
   let loaded = false
 
-  // Field catalog — specialization isim çözümlemesi için
-  let _fields: FieldOfStudyDto[] = []
-  let _branches: InstitutionBranchDto[] = []
+  const institutionStore = useInstitutionStore()
 
   async function load() {
     if (loaded) return
-    const authStore = useAuthStore()
-    const instId = authStore.user?.institutionId
-    if (!instId) {
-      console.warn('[useBranchOptions] institutionId bulunamadı.')
-      return
-    }
     loading.value = true
     try {
-      const [instRes, catalogRes] = await Promise.all([
-        institutionApi.get(instId),
-        institutionApi.getFieldCatalog(),
+      await Promise.all([
+        institutionStore.loadInstitution(),
+        institutionStore.loadFieldCatalog(),
       ])
-      _branches = instRes.data.branches?.filter((b) => b.isActive) ?? []
-      _fields = catalogRes.data ?? []
-      allOptions.value = _branches.map((b) => ({
+      allOptions.value = institutionStore.activeBranches.map((b) => ({
         label: `${b.fieldCode} — ${b.fieldName}`,
         value: b.fieldCode,
       }))
@@ -361,9 +350,9 @@ export function useBranchOptions() {
 
   /** Seçili branch code'a göre dal (specialization) seçenekleri döndürür */
   function getSpecializations(branchCode: string): SpecOption[] {
-    const branch = _branches.find((b) => b.fieldCode === branchCode)
+    const branch = institutionStore.activeBranches.find((b) => b.fieldCode === branchCode)
     if (!branch || !branch.activeSpecializations.length) return []
-    const field = _fields.find((f) => f.code === branchCode)
+    const field = institutionStore.fieldCatalog.find((f) => f.code === branchCode)
     if (!field) return []
     return branch.activeSpecializations.map((specCode) => {
       const spec = field.specializations.find((s) => s.code === specCode)
@@ -373,7 +362,7 @@ export function useBranchOptions() {
 
   /** Branch code'dan fieldName döndürür */
   function getFieldName(branchCode: string): string {
-    return _branches.find((b) => b.fieldCode === branchCode)?.fieldName ?? ''
+    return institutionStore.activeBranches.find((b) => b.fieldCode === branchCode)?.fieldName ?? ''
   }
 
   function reset() {
@@ -381,8 +370,6 @@ export function useBranchOptions() {
     searchQuery.value = ''
     options.value = []
     allOptions.value = []
-    _fields = []
-    _branches = []
   }
 
   return { options, allOptions, loading, searchQuery, load, filter, getSpecializations, getFieldName, reset }

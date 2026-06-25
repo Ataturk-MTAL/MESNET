@@ -1,41 +1,31 @@
-import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { type DailyScheduleDto } from 'src/api/coordination'
-import { institutionApi } from 'src/api/institution'
+import { useInstitutionStore } from 'stores/institution'
 import type { useAuthStore } from 'stores/auth'
 
 export interface UseScheduleConfigOptions {
-  authStore: ReturnType<typeof useAuthStore>
+  // Store auth bilgisini kendi aldığı için artık kullanılmaz; imza uyumu için tutulur.
+  authStore?: ReturnType<typeof useAuthStore>
 }
 
-export function useScheduleConfig(options: UseScheduleConfigOptions) {
-  const { authStore } = options
-
-  const periodCount = ref(0)
-  const scheduleConfigMissing = ref(false)
+/**
+ * useInstitutionStore üzerine ince wrapper. Ders programı config'i (günlük ders sayısı)
+ * artık merkezi store cache'inden okunur — doğrudan API çağrısı yapılmaz.
+ * Dönüş şekli korunur ki mevcut tüketiciler (BusinessAssignmentPage) değişmesin.
+ */
+export function useScheduleConfig(_options: UseScheduleConfigOptions = {}) {
+  const institutionStore = useInstitutionStore()
+  const { periodCount, scheduleConfigMissing } = storeToRefs(institutionStore)
 
   async function loadScheduleConfig() {
-    const instId = authStore.user?.institutionId
-    if (!instId) return
-    try {
-      const { data } = await institutionApi.getScheduleConfig(instId)
-      if (data.configured && data.dailyPeriodCount) {
-        periodCount.value = data.dailyPeriodCount
-        scheduleConfigMissing.value = false
-      } else {
-        periodCount.value = 0
-        scheduleConfigMissing.value = true
-      }
-    } catch {
-      periodCount.value = 0
-      scheduleConfigMissing.value = true
-    }
+    await institutionStore.loadScheduleConfig()
   }
 
   function createEmptySchedule(): DailyScheduleDto[] {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
     return days.map((day) => ({
       day,
-      periods: Array.from({ length: periodCount.value }, (_, i) => ({
+      periods: Array.from({ length: institutionStore.periodCount }, (_, i) => ({
         periodNumber: i + 1,
         status: 'Free',
         courseName: null,

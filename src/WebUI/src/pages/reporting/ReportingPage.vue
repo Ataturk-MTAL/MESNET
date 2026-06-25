@@ -250,19 +250,20 @@ import {
   type GeneratedDocumentSummaryDto,
 } from 'src/api/reporting'
 import { coordinationApi } from 'src/api/coordination'
-import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useReportingBatchGenerate } from 'src/composables/useReportingBatchGenerate'
 import { useReportingFormatters } from 'src/composables/useReportingFormatters'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useInstitutionStore } from 'stores/institution'
 
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
+const institutionStore = useInstitutionStore()
 
-const institutionName = ref<string | undefined>(undefined)
+const institutionName = computed<string | undefined>(() => institutionStore.institution?.fullName)
 
 
 const downloading = ref<string | null>(null)
@@ -447,14 +448,7 @@ async function archiveDoc(id: string) {
 
 onMounted(async () => {
   await load()
-  const id = authStore.user?.institutionId
-  if (id) {
-    try {
-      const { data } = await institutionApi.get(id)
-      institutionName.value = (data as any)?.data?.fullName ?? (data as any)?.fullName
-    } catch {
-      // kurum adı olmadan devam edilebilir
-    }
-  }
+  // Kurum adı (batch belge üretiminde kullanılır) — kurum adı olmadan da devam edilebilir
+  await institutionStore.loadInstitution()
 })
 </script>
