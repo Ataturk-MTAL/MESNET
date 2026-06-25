@@ -35,9 +35,7 @@
           </q-item>
         </template>
         <template #no-option>
-          <q-item>
-            <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-          </q-item>
+          <SelectEmptyOption />
         </template>
       </q-select>
       <q-select
@@ -159,6 +157,7 @@ import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import PageHeader from 'components/PageHeader.vue'
+import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import AddAttendanceForm from 'components/forms/attendance/AddAttendanceForm.vue'
 import CorrectAttendanceForm from 'components/forms/attendance/CorrectAttendanceForm.vue'

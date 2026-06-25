@@ -29,9 +29,7 @@
             </q-item>
           </template>
           <template #no-option>
-            <q-item>
-              <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-            </q-item>
+            <SelectEmptyOption />
           </template>
         </q-select>
         <q-input
@@ -69,9 +67,7 @@
             <q-icon name="category" />
           </template>
           <template #no-option>
-            <q-item>
-              <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-            </q-item>
+            <SelectEmptyOption />
           </template>
         </q-select>
         <q-select
@@ -178,6 +174,7 @@ import { zodValidate } from 'src/composables/useZodValidation'
 import { useKeycloakUserOptions, useBranchOptions, type SelectOption } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import FormDialog from 'components/FormDialog.vue'
+import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
 const open = defineModel<boolean>({ required: true })
 

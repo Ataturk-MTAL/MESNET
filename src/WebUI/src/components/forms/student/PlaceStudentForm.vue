@@ -29,9 +29,7 @@
             </q-item>
           </template>
           <template #no-option>
-            <q-item>
-              <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-            </q-item>
+            <SelectEmptyOption />
           </template>
         </q-select>
         <TeacherSelector
@@ -50,6 +48,7 @@ import { zodValidate } from 'src/composables/useZodValidation'
 import { useBusinessOptions } from 'src/composables/useEntityOptions'
 import FormDialog from 'components/FormDialog.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
+import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
 const open = defineModel<boolean>({ required: true })
 

@@ -27,9 +27,7 @@
         </q-item>
       </template>
       <template #no-option>
-        <q-item>
-          <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-        </q-item>
+        <SelectEmptyOption />
       </template>
     </q-select>
     <q-input v-model="form.fullName" label="Ad Soyad" filled readonly>
@@ -71,6 +69,7 @@ import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useKeycloakUserOptions } from 'src/composables/useEntityOptions'
 import FormDialog from 'components/FormDialog.vue'
+import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
 const open = defineModel<boolean>({ required: true })
 

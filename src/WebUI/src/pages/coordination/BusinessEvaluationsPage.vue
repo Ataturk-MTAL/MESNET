@@ -58,9 +58,7 @@
               </q-item>
             </template>
             <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-              </q-item>
+              <SelectEmptyOption />
             </template>
           </q-select>
           <q-input v-model="evalForm.evaluationDate" label="Değerlendirme Tarihi" filled type="date">
@@ -110,6 +108,7 @@ import { Permissions } from 'utils/permissions'
 import { useAuthStore } from 'stores/auth'
 import AppTable from 'components/AppTable.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
+import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
 const $q = useQuasar()
 const notify = useNotify()

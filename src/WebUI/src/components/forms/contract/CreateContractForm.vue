@@ -24,7 +24,7 @@
             </q-item>
           </template>
           <template #no-option>
-            <q-item><q-item-section class="text-grey">Sonuç bulunamadı</q-item-section></q-item>
+            <SelectEmptyOption />
           </template>
         </q-select>
 
@@ -52,7 +52,7 @@
             </q-item>
           </template>
           <template #no-option>
-            <q-item><q-item-section class="text-grey">Sonuç bulunamadı</q-item-section></q-item>
+            <SelectEmptyOption />
           </template>
         </q-select>
 
@@ -75,6 +75,7 @@ import { useStudentOptions, useBusinessOptions } from 'src/composables/useEntity
 import { useAuthStore } from 'stores/auth'
 import FormDialog from 'components/FormDialog.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
+import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
 const open = defineModel<boolean>({ required: true })
 
