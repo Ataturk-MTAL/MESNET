@@ -86,14 +86,14 @@ public static class CoordinationEndpoints
         string semester,
         IMessageBus bus)
     {
-        var schedule = await bus.InvokeAsync<TeacherScheduleDto?>(
+        var result = await bus.InvokeAsync<CurrentScheduleResult>(
             new GetCurrentSchedule(teacherId, academicPeriodId, semester));
 
-        if (schedule is null)
+        if (result.Schedule is null)
             return Results.NotFound(ResponseBuilder.Fail(404).AddMessage("Kayıtlı ders programı bulunamadı.").Build());
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(schedule)
+            .AddData(result.Schedule)
             .Build());
     }
 
