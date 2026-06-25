@@ -105,19 +105,14 @@
                 </q-card-section>
 
                 <q-card-section class="q-pt-sm business-list-container">
-                  <div v-if="loading" class="text-center q-pa-md">
-                    <q-spinner color="primary" size="2em" />
-                  </div>
-
-                  <div
-                    v-else-if="filteredUnassigned.length === 0"
-                    class="text-center q-pa-md text-grey-6"
+                  <DataState
+                    :loading="loading"
+                    :empty="filteredUnassigned.length === 0"
+                    empty-icon="check_circle"
+                    empty-text="Tüm işletmeler atanmış"
+                    padding="q-pa-md"
                   >
-                    <q-icon name="check_circle" size="2em" class="q-mb-sm" />
-                    <div class="text-caption">Tüm işletmeler atanmış</div>
-                  </div>
-
-                  <div v-else class="business-card-list">
+                  <div class="business-card-list">
                     <div
                       v-for="biz in filteredUnassigned"
                       :key="biz.businessId"
@@ -146,6 +141,7 @@
                       </div>
                     </div>
                   </div>
+                  </DataState>
                 </q-card-section>
               </q-card>
             </div>
@@ -459,24 +455,26 @@
                 />
               </div>
 
-              <div v-if="clusterLoading" class="text-center q-pa-xl">
-                <q-spinner color="primary" size="3em" />
-                <div class="text-caption text-grey-6 q-mt-sm">İşletme kümeleri yükleniyor...</div>
-              </div>
+              <DataState
+                :loading="clusterLoading"
+                :error="clusterError"
+                :empty="clusterData.length === 0"
+                loading-text="İşletme kümeleri yükleniyor..."
+                padding="q-pa-xl"
+                spinner-size="3em"
+              >
+                <template #error>
+                  <q-icon name="warning" size="3em" color="orange-6" class="q-mb-sm" />
+                  <div>Kümeleme verisi yüklenemedi.</div>
+                  <div class="text-caption q-mt-sm">PostGIS eklentisi henüz etkin olmayabilir. Sistem yöneticisi ile iletişime geçin.</div>
+                </template>
 
-              <div v-else-if="clusterError" class="text-center q-pa-xl text-grey-6">
-                <q-icon name="warning" size="3em" color="orange-6" class="q-mb-sm" />
-                <div>Kümeleme verisi yüklenemedi.</div>
-                <div class="text-caption q-mt-sm">PostGIS eklentisi henüz etkin olmayabilir. Sistem yöneticisi ile iletişime geçin.</div>
-              </div>
+                <template #empty>
+                  <q-icon name="location_off" size="3em" class="q-mb-sm" />
+                  <div>Konum verisi olan işletme bulunamadı.</div>
+                  <div class="text-caption q-mt-sm">İşletmelere koordinat atandıktan sonra harita burada gösterilecek.</div>
+                </template>
 
-              <div v-else-if="clusterData.length === 0" class="text-center q-pa-xl text-grey-6">
-                <q-icon name="location_off" size="3em" class="q-mb-sm" />
-                <div>Konum verisi olan işletme bulunamadı.</div>
-                <div class="text-caption q-mt-sm">İşletmelere koordinat atandıktan sonra harita burada gösterilecek.</div>
-              </div>
-
-              <div v-else>
                 <!-- Küme Özeti Chip'leri -->
                 <div class="row q-gutter-xs q-mb-md flex-wrap">
                   <q-chip
@@ -498,7 +496,7 @@
                   height="500px"
                   @update:hours="onMapHoursUpdate"
                 />
-              </div>
+              </DataState>
             </q-card-section>
           </q-card>
 
@@ -623,15 +621,16 @@
         <q-separator />
 
         <q-card-section class="scroll" style="max-height: calc(100vh - 140px)">
-          <div v-if="historyLoading" class="text-center q-pa-lg">
-            <q-spinner color="primary" size="2em" />
-          </div>
+          <DataState
+            :loading="historyLoading"
+            :empty="historyEntries.length === 0"
+            padding="q-pa-lg"
+          >
+            <template #empty>
+              Henüz geçmiş kaydı bulunmuyor.
+            </template>
 
-          <div v-else-if="historyEntries.length === 0" class="text-center q-pa-lg text-grey-6">
-            Henüz geçmiş kaydı bulunmuyor.
-          </div>
-
-          <q-timeline v-else color="primary" layout="dense">
+          <q-timeline color="primary" layout="dense">
             <q-timeline-entry
               v-for="(entry, idx) in historyEntries"
               :key="idx"
@@ -647,6 +646,7 @@
               </div>
             </q-timeline-entry>
           </q-timeline>
+          </DataState>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -681,6 +681,7 @@ import TeacherSelector from 'components/TeacherSelector.vue'
 import FreeSlotChip from 'components/FreeSlotChip.vue'
 import WorkloadIndicator from 'components/WorkloadIndicator.vue'
 import AppNotice from 'components/AppNotice.vue'
+import DataState from 'components/DataState.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()

@@ -141,22 +141,19 @@
               </div>
             </div>
 
-            <!-- Geçmiş yükleniyor -->
-            <div v-if="historyLoading" class="text-center q-pa-md">
-              <q-spinner color="primary" size="2em" />
-              <div class="text-caption text-grey-6 q-mt-sm">Yükleniyor...</div>
-            </div>
-
-            <!-- Geçmiş yok -->
-            <div v-else-if="!scheduleHistory" class="text-center q-pa-md text-grey-6">
-              <q-icon name="history" size="2em" class="q-mb-sm" />
-              <div class="text-caption">Henüz kayıtlı program yok</div>
-            </div>
-
-            <!-- Versiyon Listesi -->
-            <q-list v-else separator dense>
+            <!-- Geçmiş: yükleniyor / boş / versiyon listesi -->
+            <DataState
+              :loading="historyLoading"
+              :empty="!scheduleHistory"
+              loading-text="Yükleniyor..."
+              empty-icon="history"
+              empty-text="Henüz kayıtlı program yok"
+              padding="q-pa-md"
+            >
+              <!-- Versiyon Listesi -->
+              <q-list separator dense>
               <q-item
-                v-for="ver in scheduleHistory.versions.slice().reverse()"
+                v-for="ver in (scheduleHistory?.versions ?? []).slice().reverse()"
                 :key="ver.version"
                 clickable
                 :active="viewingHistoryVersion === ver.version"
@@ -186,7 +183,8 @@
                   <q-badge color="green-7" label="Geçerli" />
                 </q-item-section>
               </q-item>
-            </q-list>
+              </q-list>
+            </DataState>
           </q-card-section>
         </q-card>
       </div>
@@ -212,6 +210,7 @@ import ScheduleGrid from 'components/ScheduleGrid.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
+import DataState from 'components/DataState.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()
