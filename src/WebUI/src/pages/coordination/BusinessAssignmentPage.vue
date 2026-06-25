@@ -90,18 +90,12 @@
                     Atanmamış İşletmeler
                     <q-badge color="orange-7" class="q-ml-sm">{{ unassignedBusinesses.length }}</q-badge>
                   </div>
-                  <q-input
+                  <SearchInput
                     v-model="businessSearch"
-                    dense
-                    filled
                     placeholder="İşletme ara..."
-                    clearable
+                    icon-size="xs"
                     class="q-mb-sm"
-                  >
-                    <template #prepend>
-                      <q-icon name="search" size="xs" />
-                    </template>
-                  </q-input>
+                  />
                 </q-card-section>
 
                 <q-card-section class="q-pt-sm business-list-container">
@@ -682,6 +676,7 @@ import WorkloadIndicator from 'components/WorkloadIndicator.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
 import DetailDialog from 'components/DetailDialog.vue'
+import SearchInput from 'components/SearchInput.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()

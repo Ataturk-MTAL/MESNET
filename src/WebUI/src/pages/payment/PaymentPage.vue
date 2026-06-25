@@ -5,9 +5,7 @@
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md items-center">
       <BranchSelector v-model="branchCodeFilter" dense force-select style="min-width: 200px" />
-      <q-input v-model="searchFilter" label="Öğrenci Adı veya Numarası" filled dense clearable style="min-width: 220px">
-        <template #prepend><q-icon name="search" /></template>
-      </q-input>
+      <SearchInput v-model="searchFilter" label="Öğrenci Adı veya Numarası" style="min-width: 220px" />
       <q-select
         v-model="phaseFilter"
         :options="phaseOptions"
@@ -221,6 +219,7 @@ import { useServerPagination } from 'src/composables/useServerPagination'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import DetailPanel from 'components/DetailPanel.vue'
+import SearchInput from 'components/SearchInput.vue'
 import UploadReceiptForm from 'components/forms/payment/UploadReceiptForm.vue'
 import RejectPaymentForm from 'components/forms/payment/RejectPaymentForm.vue'
 import AppTable from 'components/AppTable.vue'
