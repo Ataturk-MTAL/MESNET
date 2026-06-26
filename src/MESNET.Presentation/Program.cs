@@ -185,16 +185,26 @@ try
     // ────────────────────────────────────────────────────────────────────────────────
     builder.Services.AddRateLimiter(options =>
     {
-        // Global sabit pencere — genel API koruması
-        options.AddFixedWindowLimiter("GlobalApi", limiterOptions =>
+        // Global varsayılan — TÜM isteklere uygulanır. Kimliği doğrulanmış kullanıcı (sub) veya
+        // anonim istekte IP başına sabit pencere. (Önceki "GlobalApi" named policy hiçbir endpoint'e
+        // bağlanmadığı için fiilen ölüydü; GlobalLimiter ile gerçekten etkinleştirildi.)
+        options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         {
-            limiterOptions.PermitLimit = 300;
-            limiterOptions.Window = TimeSpan.FromMinutes(1);
-            limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
-            limiterOptions.QueueLimit = 10;
+            var partitionKey = httpContext.User.FindFirst("sub")?.Value
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "anonymous";
+            return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey,
+                _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 300,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 10,
+                });
         });
 
-        // SSE endpoint'i — bağlantı başına uzun süreli, düşük limit
+        // SSE endpoint'i — bağlantı başına uzun süreli, düşük limit (.RequireRateLimiting ile uygulanıyor)
         options.AddFixedWindowLimiter("SseConnections", limiterOptions =>
         {
             limiterOptions.PermitLimit = 5;

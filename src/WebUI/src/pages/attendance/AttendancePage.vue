@@ -323,9 +323,9 @@ function openCorrect(row: AttendanceRecordDto) {
 watch(() => periodStore.selectedPeriodId, () => load())
 
 onMounted(() => {
-  filterStudentOpts.load()
-  businessOpts.load()
+  filterStudentOpts.load().catch(() => {})
+  businessOpts.load().catch(() => {})
   // BranchSelector kendi onMounted'ında alan listesini yükler.
-  load()
+  load().catch(() => {})
 })
 </script>

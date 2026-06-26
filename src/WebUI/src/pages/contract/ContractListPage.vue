@@ -563,8 +563,8 @@ async function afterUploadSaved() {
 watch(() => periodStore.selectedPeriodId, () => load())
 
 onMounted(async () => {
-  studentOpts.load()
-  businessOpts.load()
+  studentOpts.load().catch(() => {})
+  businessOpts.load().catch(() => {})
   await load()
 })
 </script>

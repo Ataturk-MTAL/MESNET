@@ -150,7 +150,7 @@ function openEvalDialog() {
   evalForm.result = 'Suitable'
   evalForm.notes = ''
   evalBusinessOpts.reset()
-  evalBusinessOpts.load()
+  evalBusinessOpts.load().catch(() => {})
   evalDialog.value = true
 }
 
