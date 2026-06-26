@@ -305,6 +305,20 @@ try
         var validationEx = ex as FluentValidation.ValidationException
             ?? ex?.InnerException as FluentValidation.ValidationException;
 
+        // Marten optimistic concurrency çakışması — inner zinciri tip ADIYLA yürü (namespace Marten
+        // sürümleri arasında değişebilir): ConcurrentUpdateException (document) /
+        // EventStreamUnexpectedMaxEventIdException ([AggregateHandler] event stream) / StreamLockedException.
+        var isConcurrencyConflict = false;
+        for (var cur = ex; cur is not null; cur = cur.InnerException)
+        {
+            if (cur.GetType().Name is "ConcurrentUpdateException" or "EventStreamUnexpectedMaxEventIdException"
+                or "ConcurrencyException" or "StreamLockedException")
+            {
+                isConcurrencyConflict = true;
+                break;
+            }
+        }
+
         if (domainEx is not null)
         {
             ctx.Response.StatusCode = 422;
@@ -349,6 +363,16 @@ try
             await ctx.Response.WriteAsJsonAsync(
                 MESNET.Common.Shared.ResponseBuilder.Fail(404)
                     .AddMessage("İlgili kayıt bulunamadı.")
+                    .Build());
+        }
+        else if (isConcurrencyConflict)
+        {
+            // Optimistic concurrency çakışması (aynı aggregate/event stream'e eşzamanlı yazma) → 409 (500 değil)
+            ctx.Response.StatusCode = 409;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(
+                MESNET.Common.Shared.ResponseBuilder.Fail(409)
+                    .AddMessage("Kayıt bu sırada başka bir işlemle değiştirildi. Lütfen sayfayı yenileyip tekrar deneyin.")
                     .Build());
         }
         else
