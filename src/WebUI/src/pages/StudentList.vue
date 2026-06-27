@@ -35,9 +35,9 @@
       </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
-          <q-btn flat round dense icon="visibility" @click="openDetail(row)" />
+          <q-btn flat round dense icon="visibility" aria-label="Detayları görüntüle" @click="openDetail(row)" />
           <PermissionGuard :permission="Permissions.Student.Manage">
-            <q-btn flat round dense icon="edit" color="grey-7" @click="openEditDialog(row)">
+            <q-btn flat round dense icon="edit" aria-label="Düzenle" color="grey-7" @click="openEditDialog(row)">
               <q-tooltip>Düzenle</q-tooltip>
             </q-btn>
           </PermissionGuard>
@@ -78,7 +78,7 @@
       <template #title>{{ selected?.fullName }}</template>
       <template #toolbar-actions>
         <PermissionGuard :permission="Permissions.Student.Manage">
-          <q-btn flat round dense icon="edit" @click="selected && openEditDialog(selected)">
+          <q-btn flat round dense icon="edit" aria-label="Düzenle" @click="selected && openEditDialog(selected)">
             <q-tooltip>Düzenle</q-tooltip>
           </q-btn>
         </PermissionGuard>

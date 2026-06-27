@@ -89,7 +89,7 @@
       </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
-          <q-btn flat round dense icon="visibility" @click="openDetail(row)" />
+          <q-btn flat round dense icon="visibility" aria-label="Detayları görüntüle" @click="openDetail(row)" />
           <PermissionGuard :permission="Permissions.Company.Manage">
             <q-btn
               v-if="row.status === 'PendingApproval'"
@@ -171,7 +171,7 @@
       <template #toolbar-actions>
         <StatusBadge :slug="selected?.statusSlug ?? ''" class="q-mr-sm" />
         <PermissionGuard :permission="Permissions.Company.Manage">
-          <q-btn flat round dense icon="edit" @click="openEditDialog">
+          <q-btn flat round dense icon="edit" aria-label="Düzenle" @click="openEditDialog">
             <q-tooltip>Düzenle</q-tooltip>
           </q-btn>
         </PermissionGuard>
@@ -231,7 +231,7 @@
                 </q-item-section>
                 <q-item-section side>
                   <div class="row no-wrap">
-                    <q-btn flat dense round icon="visibility" color="primary" @click="previewDoc(doc.id)">
+                    <q-btn flat dense round icon="visibility" aria-label="Detayları görüntüle" color="primary" @click="previewDoc(doc.id)">
                       <q-tooltip>Görüntüle</q-tooltip>
                     </q-btn>
                     <PermissionGuard :permission="Permissions.Document.Approve">
@@ -245,7 +245,7 @@
                       </q-btn>
                     </PermissionGuard>
                     <PermissionGuard :permission="Permissions.Company.Document">
-                      <q-btn flat dense round icon="delete" color="negative" @click="confirmDeleteDoc(doc.id, doc.fileName)">
+                      <q-btn flat dense round icon="delete" aria-label="Sil" color="negative" @click="confirmDeleteDoc(doc.id, doc.fileName)">
                         <q-tooltip>Sil</q-tooltip>
                       </q-btn>
                     </PermissionGuard>

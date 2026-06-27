@@ -2,13 +2,13 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
       <q-toolbar>
-        <q-btn flat dense round icon="menu" @click="drawerOpen = !drawerOpen" />
+        <q-btn flat dense round icon="menu" aria-label="Menüyü aç/kapat" @click="drawerOpen = !drawerOpen" />
         <q-toolbar-title>MESNET</q-toolbar-title>
         <q-space />
         <span v-if="authStore.user" class="text-body2 q-mr-md">
           {{ authStore.user.fullName }}
         </span>
-        <q-btn flat round dense icon="notifications" class="q-mr-xs">
+        <q-btn flat round dense icon="notifications" aria-label="Bildirimler" class="q-mr-xs">
           <q-badge v-if="unreadCount > 0" color="negative" floating>{{ unreadCount }}</q-badge>
           <q-tooltip>Bildirimler</q-tooltip>
           <q-menu anchor="bottom right" self="top right" style="min-width: 320px; max-width: 400px">
@@ -37,7 +37,7 @@
             </q-list>
           </q-menu>
         </q-btn>
-        <q-btn flat round dense icon="logout" @click="onLogout" />
+        <q-btn flat round dense icon="logout" aria-label="Çıkış yap" @click="onLogout" />
       </q-toolbar>
     </q-header>
 

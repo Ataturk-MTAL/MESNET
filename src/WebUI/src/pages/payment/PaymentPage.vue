@@ -70,7 +70,7 @@
       </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
-          <q-btn flat round dense icon="visibility" @click="openDetail(row)" />
+          <q-btn flat round dense icon="visibility" aria-label="Detayları görüntüle" @click="openDetail(row)" />
         </q-td>
       </template>
     </AppTable>

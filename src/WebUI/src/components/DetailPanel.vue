@@ -6,7 +6,7 @@
           <slot name="title">{{ title }}</slot>
         </q-toolbar-title>
         <slot name="toolbar-actions" />
-        <q-btn flat round dense icon="close" @click="open = false" />
+        <q-btn flat round dense icon="close" aria-label="Kapat" @click="open = false" />
       </q-toolbar>
       <q-separator />
       <q-scroll-area class="fit">

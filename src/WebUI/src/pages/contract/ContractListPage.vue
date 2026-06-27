@@ -86,7 +86,7 @@
             badge-color="primary"
             @click.stop="openDocumentsDialog(row)"
           />
-          <q-btn flat round dense icon="open_in_new" @click="openDetail(row)" />
+          <q-btn flat round dense icon="open_in_new" aria-label="Detayı aç" @click="openDetail(row)" />
         </q-td>
       </template>
     </AppTable>
@@ -311,7 +311,7 @@
         <q-toolbar class="bg-grey-8 text-white">
           <q-icon name="folder_open" class="q-mr-sm" />
           <q-toolbar-title>Yüklü Evraklar</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
+          <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
         </q-toolbar>
 
         <q-card-section>

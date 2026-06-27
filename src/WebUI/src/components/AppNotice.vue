@@ -58,7 +58,7 @@ function dismiss() {
     <slot>{{ message }}</slot>
 
     <template v-if="dismissible" #action>
-      <q-btn flat dense round icon="close" :color="style.iconColor" @click="dismiss" />
+      <q-btn flat dense round icon="close" aria-label="Kapat" :color="style.iconColor" @click="dismiss" />
     </template>
   </q-banner>
 </template>

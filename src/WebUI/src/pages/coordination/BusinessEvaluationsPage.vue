@@ -29,7 +29,7 @@
         <q-toolbar class="bg-teal text-white">
           <q-icon name="rate_review" class="q-mr-sm" />
           <q-toolbar-title>Değerlendirme Ekle</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
+          <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
           <q-select

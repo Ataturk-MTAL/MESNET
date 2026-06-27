@@ -15,7 +15,7 @@
           <q-icon name="search" />
         </template>
         <template #append>
-          <q-btn flat dense round icon="search" :loading="searching" @click="searchAddress" />
+          <q-btn flat dense round icon="search" aria-label="Ara" :loading="searching" @click="searchAddress" />
         </template>
       </q-input>
       <q-list

@@ -39,7 +39,7 @@ withDefaults(
         <div class="text-h6">{{ title }}</div>
         <q-space />
         <slot name="toolbar-actions" />
-        <q-btn flat round dense icon="close" @click="open = false" />
+        <q-btn flat round dense icon="close" aria-label="Kapat" @click="open = false" />
       </q-card-section>
 
       <!-- Alt başlık / separator / içerik tüketici tarafından -->
