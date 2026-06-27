@@ -30,6 +30,9 @@
                   <q-item-label class="text-caption text-weight-medium">{{ eventLabel(n.eventType) }}</q-item-label>
                   <q-item-label caption class="text-grey">{{ timeAgo(n.occurredAt) }}</q-item-label>
                 </q-item-section>
+                <q-item-section side>
+                  <q-btn flat round dense size="xs" icon="close" aria-label="Bildirimi kaldır" @click.stop="notificationStore.remove(i)" />
+                </q-item-section>
               </q-item>
               <q-item v-if="notificationStore.notifications.length > 0" dense clickable @click="notificationStore.clear()">
                 <q-item-section class="text-center text-caption text-grey">Tümünü temizle</q-item-section>

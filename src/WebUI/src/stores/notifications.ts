@@ -98,7 +98,12 @@ export const useNotificationStore = defineStore('notifications', () => {
     notifications.value = []
   }
 
-  return { notifications, connected, connect, disconnect, clear }
+  /** Tek bir bildirimi listeden kaldırır (index-bazlı — SseNotification'da benzersiz id yok). */
+  function remove(index: number) {
+    notifications.value.splice(index, 1)
+  }
+
+  return { notifications, connected, connect, disconnect, clear, remove }
 })
 
 /**
