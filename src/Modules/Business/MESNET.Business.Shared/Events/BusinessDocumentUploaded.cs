@@ -1,8 +1,7 @@
-using MESNET.Business.Core.Enums;
-
 namespace MESNET.Business.Shared.Events;
 
 public sealed record BusinessDocumentUploaded(
     Guid BusinessId,
     Guid DocumentId,
-    DocumentType DocumentType);
+    // Modüller arası event: SmartEnum yerine Name string'i taşınır (DocumentType.Name)
+    string DocumentType);

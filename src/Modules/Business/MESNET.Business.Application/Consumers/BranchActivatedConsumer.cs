@@ -14,7 +14,7 @@ public static class BranchActivatedConsumer
             InstitutionId = @event.InstitutionId,
             FieldCode = @event.FieldCode,
             FieldName = @event.FieldName,
-            EducationType = @event.Type.Name,
+            EducationType = @event.Type,
             IsActive = true,
             LastUpdated = DateTime.UtcNow
         };
