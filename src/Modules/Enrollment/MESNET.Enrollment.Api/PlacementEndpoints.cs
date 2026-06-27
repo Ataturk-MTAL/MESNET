@@ -60,29 +60,12 @@ public static class PlacementEndpoints
     private static async Task<IResult> GetAll(
         Guid? businessId, Guid? studentId, Guid? academicPeriodId, string? status, string? branchCode,
         int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
-        ICurrentUserService currentUser = default!, IMessageBus bus = default!)
+        IMessageBus bus = default!)
     {
-        var user = currentUser.GetCurrentUser();
-        var institutionId = user?.InstitutionId;
-        Guid? teacherId = null;
-        var effectiveBusinessId = businessId;
-
-        // Teacher: sadece koordine ettiği öğrencilerin yerleştirmelerini görsün
-        if (currentUser.IsInRole(MesnetRoles.Teacher)
-            && !currentUser.IsInRole(MesnetRoles.InstitutionManager)
-            && !currentUser.IsInRole(MesnetRoles.InstitutionStaff))
-        {
-            teacherId = await bus.InvokeAsync<Guid?>(new ResolveTeacherId(user!.UserId));
-        }
-
-        // CompanyManager: sadece kendi işletmesindeki yerleştirmeleri görsün
-        if (currentUser.IsInRole(MesnetRoles.CompanyManager) && user?.BusinessId.HasValue == true)
-        {
-            effectiveBusinessId = user.BusinessId;
-        }
-
+        // Yetki-kapsam daraltma (kurum + Teacher/CompanyManager) ListPlacementsHandler içinde
+        // ICurrentUserService'ten türetilir — endpoint yalnız ham filtreleri geçer (ince adaptör).
         var result = await bus.InvokeAsync<PagedResult<InternshipPlacementDto>>(
-            new ListPlacements(effectiveBusinessId, studentId, academicPeriodId, status, institutionId, teacherId, branchCode)
+            new ListPlacements(businessId, studentId, academicPeriodId, status, branchCode)
             { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
         return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }

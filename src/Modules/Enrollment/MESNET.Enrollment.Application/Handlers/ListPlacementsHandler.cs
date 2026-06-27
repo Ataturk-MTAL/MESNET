@@ -1,6 +1,8 @@
 using Marten;
 using MESNET.Common.Infrastructure.Pagination;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared.Pagination;
+using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Dtos;
 using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Application.Queries;
@@ -12,15 +14,37 @@ namespace MESNET.Enrollment.Application.Handlers;
 
 public static class ListPlacementsHandler
 {
-    public static async Task<PagedResult<InternshipPlacementDto>> Handle(ListPlacements query, IQuerySession session)
+    public static async Task<PagedResult<InternshipPlacementDto>> Handle(
+        ListPlacements query, IQuerySession session, ICurrentUserService currentUser)
     {
+        // Yetki-kapsam daraltma (endpoint'ten taşındı — CLAUDE.md: yetki kararı handler'da).
+        var user = currentUser.GetCurrentUser();
+        var institutionId = user?.InstitutionId;
+
+        // Teacher (kurum yöneticisi/personeli değilse) yalnız koordine ettiği öğrencileri görür.
+        Guid? teacherId = null;
+        if (user is not null
+            && currentUser.IsInRole(MesnetRoles.Teacher)
+            && !currentUser.IsInRole(MesnetRoles.InstitutionManager)
+            && !currentUser.IsInRole(MesnetRoles.InstitutionStaff))
+        {
+            var teacher = await session.Query<TeacherProfile>()
+                .FirstOrDefaultAsync(t => t.KeycloakUserId == user.UserId);
+            teacherId = teacher?.Id;
+        }
+
+        // CompanyManager yalnız kendi işletmesindeki yerleştirmeleri görür (filtreyi override eder).
+        var effectiveBusinessId = query.BusinessId;
+        if (currentUser.IsInRole(MesnetRoles.CompanyManager) && user?.BusinessId.HasValue == true)
+            effectiveBusinessId = user.BusinessId;
+
         IQueryable<InternshipPlacement> queryable = session.Query<InternshipPlacement>();
 
-        if (query.InstitutionId.HasValue)
-            queryable = queryable.Where(p => p.InstitutionId == query.InstitutionId.Value);
+        if (institutionId.HasValue)
+            queryable = queryable.Where(p => p.InstitutionId == institutionId.Value);
 
-        if (query.BusinessId.HasValue)
-            queryable = queryable.Where(p => p.BusinessId == query.BusinessId.Value);
+        if (effectiveBusinessId.HasValue)
+            queryable = queryable.Where(p => p.BusinessId == effectiveBusinessId.Value);
 
         if (query.StudentId.HasValue)
             queryable = queryable.Where(p => p.StudentId == query.StudentId.Value);
@@ -28,8 +52,8 @@ public static class ListPlacementsHandler
         if (query.AcademicPeriodId.HasValue)
             queryable = queryable.Where(p => p.AcademicPeriodId == query.AcademicPeriodId.Value);
 
-        if (query.TeacherId.HasValue)
-            queryable = queryable.Where(p => p.TeacherId == query.TeacherId.Value);
+        if (teacherId.HasValue)
+            queryable = queryable.Where(p => p.TeacherId == teacherId.Value);
 
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             PlacementStatus.TryFromName(query.Status, true, out var status))
