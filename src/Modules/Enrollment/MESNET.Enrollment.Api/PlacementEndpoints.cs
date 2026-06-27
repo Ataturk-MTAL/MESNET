@@ -20,6 +20,7 @@ public static class PlacementEndpoints
 
         group.MapPost("/", Post).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{placementId:guid}/mark-failed", PostMarkFailed).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapGet("/status-counts", GetStatusCounts).RequireAuthorization(Permissions.Student.View);
         group.MapGet("/{placementId:guid}", Get).RequireAuthorization(Permissions.Student.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Student.View);
 
@@ -68,5 +69,14 @@ public static class PlacementEndpoints
             new ListPlacements(businessId, studentId, academicPeriodId, status, branchCode)
             { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
         return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
+    }
+
+    // Overview kartları için durum-bazında TOPLAM sayım (sayfalamadan bağımsız). Kapsam liste ile aynı.
+    private static async Task<IResult> GetStatusCounts(
+        Guid? academicPeriodId, string? branchCode, IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<PlacementStatusCountsResult>(
+            new GetPlacementStatusCounts(academicPeriodId, branchCode));
+        return Results.Ok(ResponseBuilder.Success().AddData(result.Counts).Build());
     }
 }

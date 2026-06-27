@@ -222,13 +222,27 @@ const statusOptions = [
   { label: 'Tamamlayamadı', value: 'FailedToComplete' },
 ]
 
+// Özet kartlar TOPLAM sayımları backend'den alır — paginated `placements` (yalnız aktif sayfa, ≤20)
+// üzerinden hesaplanmaz (yanlış toplam bug'ı). Sayıma status filtresi uygulanmaz; branch+period uygulanır.
+const statusCounts = ref<Record<string, number>>({})
+
+async function loadStatusCounts() {
+  const res = await enrollmentApi.getPlacementStatusCounts({
+    ...(branchFilter.value ? { branchCode: branchFilter.value } : {}),
+    ...(periodStore.selectedPeriodId ? { academicPeriodId: periodStore.selectedPeriodId } : {}),
+  })
+  statusCounts.value = res.data
+}
+
 const stats = computed(() => ({
-  placed: placements.value.filter((p) => p.status === 'Matched').length,
-  active: placements.value.filter((p) => p.status === 'Active').length,
-  completed: placements.value.filter((p) => p.status === 'Completed').length,
-  cancelled: placements.value.filter((p) => p.status === 'Cancelled').length,
-  failedToComplete: placements.value.filter((p) => p.status === 'FailedToComplete').length,
+  placed: statusCounts.value.Matched ?? 0,
+  active: statusCounts.value.Active ?? 0,
+  completed: statusCounts.value.Completed ?? 0,
+  cancelled: statusCounts.value.Cancelled ?? 0,
+  failedToComplete: statusCounts.value.FailedToComplete ?? 0,
 }))
+
+watch([branchFilter, () => periodStore.selectedPeriodId], () => loadStatusCounts().catch(() => {}))
 
 const columns: QTableProps['columns'] = [
   { name: 'studentName', label: 'Öğrenci', field: 'studentName', align: 'left', sortable: true },
@@ -252,5 +266,6 @@ function openDetail(row: InternshipPlacementDto) {
 onMounted(() => {
   load()
   loadAbsenceData()
+  loadStatusCounts().catch(() => {})
 })
 </script>

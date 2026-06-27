@@ -2,7 +2,6 @@ using Marten;
 using MESNET.Common.Infrastructure.Pagination;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared.Pagination;
-using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Application.Dtos;
 using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Application.Queries;
@@ -17,26 +16,9 @@ public static class ListPlacementsHandler
     public static async Task<PagedResult<InternshipPlacementDto>> Handle(
         ListPlacements query, IQuerySession session, ICurrentUserService currentUser)
     {
-        // Yetki-kapsam daraltma (endpoint'ten taşındı — CLAUDE.md: yetki kararı handler'da).
-        var user = currentUser.GetCurrentUser();
-        var institutionId = user?.InstitutionId;
-
-        // Teacher (kurum yöneticisi/personeli değilse) yalnız koordine ettiği öğrencileri görür.
-        Guid? teacherId = null;
-        if (user is not null
-            && currentUser.IsInRole(MesnetRoles.Teacher)
-            && !currentUser.IsInRole(MesnetRoles.InstitutionManager)
-            && !currentUser.IsInRole(MesnetRoles.InstitutionStaff))
-        {
-            var teacher = await session.Query<TeacherProfile>()
-                .FirstOrDefaultAsync(t => t.KeycloakUserId == user.UserId);
-            teacherId = teacher?.Id;
-        }
-
-        // CompanyManager yalnız kendi işletmesindeki yerleştirmeleri görür (filtreyi override eder).
-        var effectiveBusinessId = query.BusinessId;
-        if (currentUser.IsInRole(MesnetRoles.CompanyManager) && user?.BusinessId.HasValue == true)
-            effectiveBusinessId = user.BusinessId;
+        // Yetki-kapsam (kurum + Teacher/CompanyManager) — liste ve sayım sorgularında ortak.
+        var (institutionId, teacherId, effectiveBusinessId) =
+            await PlacementQueryScope.ResolveAsync(currentUser, session, query.BusinessId);
 
         IQueryable<InternshipPlacement> queryable = session.Query<InternshipPlacement>();
 
