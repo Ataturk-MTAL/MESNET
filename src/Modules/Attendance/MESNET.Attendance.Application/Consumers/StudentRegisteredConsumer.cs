@@ -16,7 +16,8 @@ public static class StudentRegisteredConsumer
         {
             Id = @event.StudentId,
             FullName = @event.FullName,
-            StudentNumber = string.IsNullOrWhiteSpace(@event.StudentNumber) ? null : @event.StudentNumber
+            StudentNumber = string.IsNullOrWhiteSpace(@event.StudentNumber) ? null : @event.StudentNumber,
+            BranchCode = @event.BranchCode
         });
     }
 }

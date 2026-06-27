@@ -67,11 +67,12 @@
         dense
         force-select
         style="min-width: 200px"
+        @update:model-value="load"
       />
       <q-btn color="primary" icon="search" label="Ara" @click="load" />
     </div>
 
-    <AppTable :rows="filteredRecords" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
+    <AppTable :rows="records" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
       <template #body-cell-student="{ row }">
         <q-td>
           <div class="text-weight-medium">{{ studentMap[row.studentId]?.fullName ?? '—' }}</div>
@@ -183,6 +184,7 @@ const filters = computed(() => ({
   status: statusFilter.value ?? undefined,
   year: yearFilter.value ?? undefined,
   month: monthFilter.value ?? undefined,
+  branchCode: branchFilter.value || undefined,
 }))
 
 const { rows: records, loading, pagination, onRequest, load } = useServerPagination<AttendanceRecordDto>({
@@ -209,15 +211,6 @@ const businessMap = computed<Record<string, string>>(() => {
     map[opt.value] = opt.label
   }
   return map
-})
-
-// Alan filtresi: frontend-side filtering
-const filteredRecords = computed(() => {
-  if (!branchFilter.value) return records.value
-  return records.value.filter(r => {
-    const student = studentMap.value[r.studentId]
-    return student?.branchCode === branchFilter.value
-  })
 })
 
 const statusOptions = [

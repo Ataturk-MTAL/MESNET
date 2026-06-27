@@ -68,6 +68,17 @@ public static class ListAttendanceRecordsHandler
             queryable = queryable.Where(r => matchingStudentIds.Contains(r.StudentId));
         }
 
+        // Alan (branch) filtresi: öğrencinin branşı devamsızlık kaydında değil, lokal StudentNameView'da
+        // denormalize tutulur → o branştaki öğrenci id'leri → devamsızlık filtresi (2-adımlı sorgu).
+        if (!string.IsNullOrWhiteSpace(query.BranchCode))
+        {
+            var branchStudentIds = await session.Query<StudentNameView>()
+                .Where(s => s.BranchCode == query.BranchCode)
+                .Select(s => s.Id)
+                .ToListAsync();
+            queryable = queryable.Where(r => branchStudentIds.Contains(r.StudentId));
+        }
+
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: r => r.Date);
 
         return await queryable.ToPagedResultAsync(query, r => r.ToDto());

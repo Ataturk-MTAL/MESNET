@@ -9,4 +9,5 @@ public sealed record ListAttendanceRecords(
     Guid? AcademicPeriodId,
     string? Status,
     int? Year,
-    int? Month) : PagedQuery;
+    int? Month,
+    string? BranchCode = null) : PagedQuery;
