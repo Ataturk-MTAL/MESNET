@@ -1,3 +1,3 @@
 namespace MESNET.Contract.Application.Commands;
 
-public sealed record ActivateContract(Guid InternshipContractId);
+public sealed record ActivateContract(Guid InternshipContractId) : IContractPeriodScoped;

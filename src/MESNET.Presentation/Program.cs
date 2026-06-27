@@ -241,6 +241,14 @@ try
         opts.Policies.ForMessagesOfType<MESNET.Payment.Application.ISalaryPeriodScoped>()
             .AddMiddleware(typeof(MESNET.Payment.Application.SalaryPeriodGuardMiddleware));
 
+        // Kapalı akademik dönem koruması (#30) — Contract yaşam-döngüsü yazma command'ları
+        opts.Policies.ForMessagesOfType<MESNET.Contract.Application.IContractPeriodScoped>()
+            .AddMiddleware(typeof(MESNET.Contract.Application.ContractPeriodGuardMiddleware));
+
+        // Kapalı akademik dönem koruması (#30) — Attendance yazma command'ları
+        opts.Policies.ForMessagesOfType<MESNET.Attendance.Application.Guards.IAttendancePeriodScoped>()
+            .AddMiddleware(typeof(MESNET.Attendance.Application.Guards.AttendancePeriodGuardMiddleware));
+
         // Modül Application assembly'lerini handler keşfi için tanıt
         // Wolverine varsayılan olarak sadece host assembly'yi tarar
         opts.Discovery.IncludeAssembly(typeof(MESNET.Institution.Application.Commands.CreateInstitution).Assembly);

@@ -8,4 +8,4 @@ public sealed record RequestTermination(
     Guid InternshipContractId,
     string Reason,
     string ReasonType,
-    string RequestedBy);
+    string RequestedBy) : IContractPeriodScoped;

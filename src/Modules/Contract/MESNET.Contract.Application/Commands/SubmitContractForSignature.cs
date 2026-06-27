@@ -1,3 +1,3 @@
 namespace MESNET.Contract.Application.Commands;
 
-public sealed record SubmitContractForSignature(Guid InternshipContractId);
+public sealed record SubmitContractForSignature(Guid InternshipContractId) : IContractPeriodScoped;
