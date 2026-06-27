@@ -23,6 +23,10 @@ withDefaults(
     padding?: string
     /** Tekrar-dene butonu göster (error durumunda) */
     retryable?: boolean
+    /** Yükleniyor — spinner yerine içerik-şekilli skeleton satırlar (layout-shift'siz) */
+    skeleton?: boolean
+    /** Skeleton satır sayısı */
+    skeletonLines?: number
   }>(),
   {
     loading: false,
@@ -35,6 +39,8 @@ withDefaults(
     gears: false,
     spinnerSize: '2em',
     padding: 'q-pa-lg',
+    skeleton: false,
+    skeletonLines: 4,
   },
 )
 
@@ -42,7 +48,11 @@ const emit = defineEmits<{ retry: [] }>()
 </script>
 
 <template>
-  <div v-if="loading" :class="`text-center ${padding}`">
+  <div v-if="loading && skeleton" :class="padding">
+    <q-skeleton v-for="i in skeletonLines" :key="i" type="text" height="28px" class="q-mb-sm" />
+  </div>
+
+  <div v-else-if="loading" :class="`text-center ${padding}`">
     <q-spinner-gears v-if="gears" color="primary" :size="spinnerSize" />
     <q-spinner v-else color="primary" :size="spinnerSize" />
     <div v-if="loadingText" class="text-caption text-grey-6 q-mt-sm">{{ loadingText }}</div>

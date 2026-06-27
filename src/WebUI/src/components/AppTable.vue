@@ -20,7 +20,19 @@
       </q-input>
     </div>
 
+    <!-- İlk yükleme: spinner yerine içerik-şekilli skeleton satırlar (layout-shift'siz) -->
+    <div v-if="loading && rows.length === 0" class="q-mt-xs">
+      <q-skeleton
+        v-for="i in 6"
+        :key="i"
+        type="rect"
+        height="44px"
+        class="q-mb-xs rounded-borders"
+      />
+    </div>
+
     <q-table
+      v-else
       v-bind="$attrs"
       :rows="rows"
       :columns="columns"
