@@ -71,6 +71,12 @@
           </PermissionGuard>
         </q-td>
       </template>
+
+      <template #empty-action>
+        <PermissionGuard :permission="Permissions.Student.Manage">
+          <q-btn color="primary" icon="person_add" label="İlk öğrenciyi ekle" unelevated @click="openAddDialog" />
+        </PermissionGuard>
+      </template>
     </AppTable>
 
     <!-- Detay Panel — sağdan overlay -->

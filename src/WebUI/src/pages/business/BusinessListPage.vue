@@ -106,6 +106,12 @@
           </PermissionGuard>
         </q-td>
       </template>
+
+      <template #empty-action>
+        <PermissionGuard :permission="Permissions.Company.Manage">
+          <q-btn color="primary" icon="add_business" label="İlk işletmeyi ekle" unelevated @click="addDialog = true" />
+        </PermissionGuard>
+      </template>
     </AppTable>
 
     <!-- Harita Görünümü -->

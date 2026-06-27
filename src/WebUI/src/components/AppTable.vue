@@ -60,6 +60,10 @@
         <div class="full-width column flex-center q-pa-xl text-grey-6">
           <q-icon name="inbox" size="48px" class="q-mb-sm" />
           <span>{{ noDataLabel }}</span>
+          <!-- Boş durumda eyleme yönlendirme (ör. 'İlk kaydı ekle') — sayfa #empty-action slot'uyla verir -->
+          <div v-if="$slots['empty-action']" class="q-mt-md">
+            <slot name="empty-action" />
+          </div>
         </div>
       </template>
     </q-table>
