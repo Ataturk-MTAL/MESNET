@@ -25,6 +25,7 @@ public static class StudentEndpoints
         group.MapPatch("/{studentId:guid}", Patch).RequireAuthorization(Permissions.Student.Manage);
         group.MapPost("/{studentId:guid}/deregister", PostDeregister).RequireAuthorization(Permissions.Student.Manage);
         group.MapPost("/sync-counts", PostSyncCounts).RequireAuthorization(Permissions.Student.Manage);
+        group.MapPost("/resync-projections", PostResyncProjections).RequireAuthorization(Permissions.Student.Manage);
         group.MapGet("/{studentId:guid}", Get).RequireAuthorization(Permissions.Student.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Student.View);
 
@@ -63,6 +64,17 @@ public static class StudentEndpoints
         return Results.Ok(ResponseBuilder.Success()
             .AddData(new { syncedBranches = result.Events.Count, counts })
             .AddMessage($"{result.Events.Count} alan için öğrenci sayıları senkronize edildi.")
+            .Build());
+    }
+
+    // Tüm öğrenciler için StudentRegistered'ı yeniden yayınlar → cross-module read-model'leri
+    // (StudentNameView.BranchCode dahil) backfill eder. Read-model şeması değişince çalıştırılır.
+    private static async Task<IResult> PostResyncProjections(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ResyncStudentProjectionsResult>(new ResyncStudentProjections());
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(new { studentCount = result.StudentCount })
+            .AddMessage($"{result.StudentCount} öğrenci için read-model'ler yeniden yayınlandı.")
             .Build());
     }
 

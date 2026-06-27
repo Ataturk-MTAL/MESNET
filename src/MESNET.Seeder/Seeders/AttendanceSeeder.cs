@@ -11,6 +11,11 @@ public static class AttendanceSeeder
         var institutionId = ctx.Get("Institution");
         var now = DateTime.UtcNow;
 
+        // MarkAttendance yalnızca GEÇERLİ HAFTA tarihlerini kabul eder (MEB e-Okul uyumu) ve
+        // academicPeriodId zorunludur. Bu haftanın Pazartesi'sini baz alıp gün ofsetiyle tarih üret.
+        var monday = now.Date.AddDays(-(((int)now.DayOfWeek + 6) % 7));
+        var periodId = ctx.Has("AcademicPeriod") ? ctx.Get("AcademicPeriod") : Guid.Empty;
+
         // Mevcut devamsızlık kayıtlarını yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
         var existing = await api.GetAsync($"/api/attendance?institutionId={institutionId}&pageSize=100");
         var existingKeys = new Dictionary<string, Guid>(); // "studentId|date" → attendanceId
@@ -35,7 +40,7 @@ public static class AttendanceSeeder
         // Attendance 1: Mazeretsiz — doğrulanmış
         if (ctx.Has("Student1") && ctx.Has("Business1"))
         {
-            var date = now.AddDays(-15);
+            var date = monday.AddDays(0);
             var key = DateKey(ctx.Get("Student1"), date);
             if (existingKeys.TryGetValue(key, out var eid))
             {
@@ -49,6 +54,7 @@ public static class AttendanceSeeder
                     studentId = ctx.Get("Student1"),
                     businessId = ctx.Get("Business1"),
                     institutionId,
+                    academicPeriodId = periodId,
                     date,
                     absenceType = "Unexcused",
                     markedBy = "Ayşe Çelik"
@@ -66,7 +72,7 @@ public static class AttendanceSeeder
         // Attendance 2: Mazeretli — doğrulanmış
         if (ctx.Has("Student1") && ctx.Has("Business1"))
         {
-            var date = now.AddDays(-8);
+            var date = monday.AddDays(1);
             var key = DateKey(ctx.Get("Student1"), date);
             if (existingKeys.TryGetValue(key, out var eid))
             {
@@ -80,6 +86,7 @@ public static class AttendanceSeeder
                     studentId = ctx.Get("Student1"),
                     businessId = ctx.Get("Business1"),
                     institutionId,
+                    academicPeriodId = periodId,
                     date,
                     absenceType = "Excused",
                     reason = "Aile izni",
@@ -98,7 +105,7 @@ public static class AttendanceSeeder
         // Attendance 3: Sağlık raporu — doğrulanmış (BT öğrenci)
         if (ctx.Has("Student2") && ctx.Has("Business2"))
         {
-            var date = now.AddDays(-12);
+            var date = monday.AddDays(2);
             var key = DateKey(ctx.Get("Student2"), date);
             if (existingKeys.TryGetValue(key, out var eid))
             {
@@ -112,6 +119,7 @@ public static class AttendanceSeeder
                     studentId = ctx.Get("Student2"),
                     businessId = ctx.Get("Business2"),
                     institutionId,
+                    academicPeriodId = periodId,
                     date,
                     absenceType = "HealthReport",
                     reason = "Sağlık raporu",
@@ -130,7 +138,7 @@ public static class AttendanceSeeder
         // Attendance 4: Mazeretsiz — doğrulanmamış (BT öğrenci)
         if (ctx.Has("Student2") && ctx.Has("Business2"))
         {
-            var date = now.AddDays(-3);
+            var date = monday.AddDays(3);
             var key = DateKey(ctx.Get("Student2"), date);
             if (existingKeys.TryGetValue(key, out var eid))
             {
@@ -144,6 +152,7 @@ public static class AttendanceSeeder
                     studentId = ctx.Get("Student2"),
                     businessId = ctx.Get("Business2"),
                     institutionId,
+                    academicPeriodId = periodId,
                     date,
                     absenceType = "Unexcused",
                     markedBy = "Hasan Kara"
@@ -159,7 +168,7 @@ public static class AttendanceSeeder
         // Attendance 5: Mazeretsiz → düzeltildi → mazeretli
         if (ctx.Has("Student1") && ctx.Has("Business1"))
         {
-            var date = now.AddDays(-20);
+            var date = monday.AddDays(4);
             var key = DateKey(ctx.Get("Student1"), date);
             if (existingKeys.TryGetValue(key, out var eid))
             {
@@ -173,6 +182,7 @@ public static class AttendanceSeeder
                     studentId = ctx.Get("Student1"),
                     businessId = ctx.Get("Business1"),
                     institutionId,
+                    academicPeriodId = periodId,
                     date,
                     absenceType = "Unexcused",
                     markedBy = "Ayşe Çelik"
@@ -196,7 +206,7 @@ public static class AttendanceSeeder
         // Attendance 6: Mazeretsiz — kaydedilmiş
         if (ctx.Has("Student1") && ctx.Has("Business1"))
         {
-            var date = now.AddDays(-5);
+            var date = monday.AddDays(0);
             var key = DateKey(ctx.Get("Student1"), date);
             if (existingKeys.TryGetValue(key, out var eid))
             {
@@ -210,6 +220,7 @@ public static class AttendanceSeeder
                     studentId = ctx.Get("Student1"),
                     businessId = ctx.Get("Business1"),
                     institutionId,
+                    academicPeriodId = periodId,
                     date,
                     absenceType = "Unexcused",
                     markedBy = "Ayşe Çelik"
