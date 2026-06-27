@@ -2,6 +2,9 @@
   <q-page padding>
     <PageHeader title="Staj Takibi" />
 
+    <AppNotice v-if="periodStore.isReadOnly" type="readonly" class="q-mb-md"
+      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir." />
+
     <!-- Özet Kartlar -->
     <div class="row q-col-gutter-md q-mb-lg">
       <div class="col-12 col-sm-6 col-md">
@@ -96,7 +99,7 @@
                 </span>
               </td>
               <td class="text-right">
-                <q-btn
+                <q-btn :disable="periodStore.isReadOnly"
                   v-if="canManage && row.totalAbsenceDays >= 30"
                   flat dense size="sm"
                   color="negative"
@@ -148,6 +151,7 @@ import InfoItem from 'components/InfoItem.vue'
 import PageHeader from 'components/PageHeader.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import StatCard from 'components/StatCard.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const $q = useQuasar()
 const periodStore = useAcademicPeriodStore()

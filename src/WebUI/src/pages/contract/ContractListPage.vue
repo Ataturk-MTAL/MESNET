@@ -2,9 +2,12 @@
   <q-page padding>
     <PageHeader title="Sözleşmeler">
       <PermissionGuard :permission="Permissions.Internship.Contract">
-        <q-btn color="primary" icon="add" label="Yeni Sözleşme" unelevated @click="openCreateDialog" />
+        <q-btn :disable="periodStore.isReadOnly" color="primary" icon="add" label="Yeni Sözleşme" unelevated @click="openCreateDialog" />
       </PermissionGuard>
     </PageHeader>
+
+    <AppNotice v-if="periodStore.isReadOnly" type="readonly" class="q-mb-md"
+      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir." />
 
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md">
@@ -377,6 +380,7 @@ import TerminateContractForm from 'components/forms/contract/TerminateContractFo
 import RequestTerminationForm from 'components/forms/contract/RequestTerminationForm.vue'
 import RejectTerminationForm from 'components/forms/contract/RejectTerminationForm.vue'
 import UploadContractDocForm from 'components/forms/contract/UploadContractDocForm.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const $q = useQuasar()
 const notify = useNotify()

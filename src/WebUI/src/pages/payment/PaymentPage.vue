@@ -2,6 +2,9 @@
   <q-page padding>
     <div class="text-h5 text-weight-bold q-mb-lg">Maaş / Dekont</div>
 
+    <AppNotice v-if="periodStore.isReadOnly" type="readonly" class="q-mb-md"
+      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir." />
+
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md items-center">
       <BranchSelector v-model="branchCodeFilter" dense force-select style="min-width: 200px" />
@@ -226,6 +229,7 @@ import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import BranchSelector from 'components/BranchSelector.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const notify = useNotify()
 const periodStore = useAcademicPeriodStore()

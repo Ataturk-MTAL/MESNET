@@ -2,9 +2,12 @@
   <q-page padding>
     <PageHeader title="Devamsızlık">
       <PermissionGuard :permission="Permissions.Attendance.Manage">
-        <q-btn color="primary" icon="add" label="Devamsızlık Ekle" @click="openAddDialog" />
+        <q-btn :disable="periodStore.isReadOnly" color="primary" icon="add" label="Devamsızlık Ekle" @click="openAddDialog" />
       </PermissionGuard>
     </PageHeader>
+
+    <AppNotice v-if="periodStore.isReadOnly" type="readonly" class="q-mb-md"
+      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir." />
 
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md">
@@ -162,6 +165,7 @@ import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import AddAttendanceForm from 'components/forms/attendance/AddAttendanceForm.vue'
 import CorrectAttendanceForm from 'components/forms/attendance/CorrectAttendanceForm.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const notify = useNotify()
 const confirmDialog = useConfirmDialog()
