@@ -27,8 +27,8 @@
                   <q-icon :name="moduleIcon(n.module)" color="primary" size="sm" />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="text-caption text-weight-medium">{{ n.eventType }}</q-item-label>
-                  <q-item-label caption class="text-grey">{{ n.module }}</q-item-label>
+                  <q-item-label class="text-caption text-weight-medium">{{ eventLabel(n.eventType) }}</q-item-label>
+                  <q-item-label caption class="text-grey">{{ timeAgo(n.occurredAt) }}</q-item-label>
                 </q-item-section>
               </q-item>
               <q-item v-if="notificationStore.notifications.length > 0" dense clickable @click="notificationStore.clear()">
@@ -205,6 +205,7 @@ import { useNotificationStore } from 'stores/notifications'
 import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
 import { logout } from 'boot/auth'
 import { useNavigation } from 'src/composables/useNavigation'
+import { eventLabel, timeAgo } from 'src/utils/notificationFormat'
 import AppNotice from 'components/AppNotice.vue'
 import DetailDialog from 'components/DetailDialog.vue'
 
