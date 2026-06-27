@@ -51,11 +51,9 @@ public static class StudentEndpoints
 
     private static async Task<IResult> PostSyncCounts(SyncStudentCounts command, IMessageBus bus)
     {
+        // Event yayını handler içinde yapılır (StudentCountsSynced cross-module → PublishAsync).
+        // Endpoint yalnız komutu çalıştırıp özet sonucu döner.
         var result = await bus.InvokeAsync<SyncStudentCountsResult>(command);
-        foreach (var e in result.Events)
-        {
-            await bus.PublishAsync(e);
-        }
 
         // Sayıları doğrudan response'ta dön — async event'ler henüz işlenmemiş olabilir
         var counts = result.Events.ToDictionary(
