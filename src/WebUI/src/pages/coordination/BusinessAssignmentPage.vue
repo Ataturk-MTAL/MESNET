@@ -652,7 +652,6 @@ import {
   coordinationApi,
   type BusinessAssignmentDto,
   type CoordinationSummaryDto,
-  type DailyScheduleDto,
   type TeacherWorkloadSummaryDto,
 } from 'src/api/coordination'
 import { useNotify } from 'src/composables/useNotify'
@@ -664,6 +663,7 @@ import { useTeacherOverview, teacherOverviewColumns } from 'src/composables/useT
 import { useTeacherOptions } from 'src/composables/useEntityOptions'
 import { useAssignmentHistory } from 'src/composables/useAssignmentHistory'
 import { useScheduleConfig } from 'src/composables/useScheduleConfig'
+import { useTeacherScheduleLoader } from 'src/composables/useTeacherScheduleLoader'
 import { useTeacherChangeFlow } from 'src/composables/useTeacherChangeFlow'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
@@ -691,10 +691,8 @@ const branchFilter = ref<string | null>(null)
 const selectedTeacherId = ref<string | null>(null)
 const businessSearch = ref('')
 const loading = ref(false)
-const scheduleLoading = ref(false)
 
 const assignments = ref<BusinessAssignmentDto[]>([])
-const rawSchedule = ref<DailyScheduleDto[]>([])
 
 const summary = ref<CoordinationSummaryDto>({
   totalWorkloadPool: 0,
@@ -779,23 +777,6 @@ async function loadData() {
   }
 }
 
-async function loadTeacherSchedule(teacherId: string) {
-  if (!periodStore.selectedPeriodId) return
-  scheduleLoading.value = true
-  try {
-    const { data } = await coordinationApi.getCurrentSchedule(
-      teacherId,
-      periodStore.selectedPeriodId,
-      periodStore.selectedSemester,
-    )
-    rawSchedule.value = data.weeklySchedule
-  } catch {
-    rawSchedule.value = createEmptySchedule()
-  } finally {
-    scheduleLoading.value = false
-  }
-}
-
 // ── Composables ──
 
 const institutionId = computed(() => authStore.user?.institutionId ?? undefined)
@@ -804,6 +785,13 @@ const semester = computed(() => periodStore.selectedSemester)
 
 const { periodCount, scheduleConfigMissing, loadScheduleConfig, createEmptySchedule } =
   useScheduleConfig({ authStore })
+
+// Öğretmen-programı yükleme orkestrasyonu (rawSchedule + scheduleLoading state'ini sahiplenir)
+const { scheduleLoading, rawSchedule, loadTeacherSchedule } = useTeacherScheduleLoader({
+  periodId,
+  semester,
+  createEmptySchedule,
+})
 
 const workload = useWorkloadConfig({ branchFilter, periodId, institutionId, notify })
 const hours = useAssignedHours({
