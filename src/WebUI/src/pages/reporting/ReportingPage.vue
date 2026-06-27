@@ -251,6 +251,7 @@ import {
 } from 'src/api/reporting'
 import { coordinationApi } from 'src/api/coordination'
 import { useNotify } from 'src/composables/useNotify'
+import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useReportingBatchGenerate } from 'src/composables/useReportingBatchGenerate'
 import { useReportingFormatters } from 'src/composables/useReportingFormatters'
@@ -259,6 +260,7 @@ import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useInstitutionStore } from 'stores/institution'
 
 const notify = useNotify()
+const confirmDialog = useConfirmDialog()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
 const institutionStore = useInstitutionStore()
@@ -334,21 +336,28 @@ function onSelectedUpdate(val: readonly any[]) {
   selected.value = val as GeneratedDocumentSummaryDto[]
 }
 
-async function deleteSelected() {
+function deleteSelected() {
   if (selected.value.length === 0) return
-
-  deleting.value = true
-  try {
-    const ids = selected.value.map((d) => d.id)
-    await reportingApi.deleteDocumentsBatch(ids)
-    notify.success(`${ids.length} belge silindi.`)
-    selected.value = []
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'Belgeler silinirken bir hata oluştu.')
-  } finally {
-    deleting.value = false
-  }
+  const count = selected.value.length
+  confirmDialog.confirm({
+    title: 'Belgeleri Sil',
+    message: `${count} belgeyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
+    okLabel: 'Sil',
+    onOk: async () => {
+      deleting.value = true
+      try {
+        const ids = selected.value.map((d) => d.id)
+        await reportingApi.deleteDocumentsBatch(ids)
+        notify.success(`${ids.length} belge silindi.`)
+        selected.value = []
+        await load()
+      } catch (e) {
+        notify.apiError(e, 'Belgeler silinirken bir hata oluştu.')
+      } finally {
+        deleting.value = false
+      }
+    },
+  })
 }
 
 async function downloadSelectedZip() {
@@ -407,14 +416,21 @@ async function markSignedReturned(id: string) {
   }
 }
 
-async function deleteDoc(id: string) {
-  try {
-    await reportingApi.deleteDocument(id)
-    notify.success('Belge silindi.')
-    await load()
-  } catch (e) {
-    notify.apiError(e, 'Silme işlemi başarısız.')
-  }
+function deleteDoc(id: string) {
+  confirmDialog.confirm({
+    title: 'Belgeyi Sil',
+    message: 'Bu belgeyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+    okLabel: 'Sil',
+    onOk: async () => {
+      try {
+        await reportingApi.deleteDocument(id)
+        notify.success('Belge silindi.')
+        await load()
+      } catch (e) {
+        notify.apiError(e, 'Silme işlemi başarısız.')
+      }
+    },
+  })
 }
 
 async function resyncForm3() {
