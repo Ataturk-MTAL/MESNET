@@ -581,3 +581,10 @@ export function useFeatureName(options: UseFeatureNameOptions) {
 - Modüller: `src/Modules/`
 - Frontend: `src/WebUI/`
 - Ana API: `src/MESNET.Presentation/`
+
+## Sürümleme
+
+Tam kural: `VERSIONING.md`. Özet: SemVer `vMAJOR.MINOR.PATCH` + **minör parite kanalı** —
+**tek minör = ön-sürüm (pre-release)** (`v0.1.0`, `v0.3.0`), **çift minör = kararlı sürüm**
+(`v0.2.0`, `v0.4.0`). Her sürüm `vX.Y.Z` branch + tag; GitHub Release tek minörde `--prerelease`.
+`main` kararlı hat, geliştirme `dev`'de.
