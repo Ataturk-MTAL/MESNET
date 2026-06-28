@@ -160,7 +160,11 @@
     </q-drawer>
 
     <q-page-container>
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <transition name="page" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </q-page-container>
 
     <!-- Hakkında Dialog -->
@@ -262,3 +266,20 @@ async function onLogout() {
   await logout()
 }
 </script>
+
+<style>
+/* Sayfalar arası ince geçiş — daha akıcı navigasyon (mode=out-in: çakışmasız) */
+.page-enter-active,
+.page-leave-active {
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-leave-to {
+  opacity: 0;
+}
+</style>

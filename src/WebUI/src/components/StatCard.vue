@@ -56,8 +56,13 @@ function onClick() {
 </template>
 
 <style scoped>
+.stat-card.cursor-pointer {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
 .stat-card.cursor-pointer:hover {
-  background-color: rgba(0, 0, 0, 0.02);
-  transition: background-color 0.2s;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 </style>
