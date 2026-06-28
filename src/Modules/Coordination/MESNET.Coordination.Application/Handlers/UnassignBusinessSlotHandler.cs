@@ -37,7 +37,7 @@ public static class UnassignBusinessSlotHandler
         view.AssignedSlots.Remove(slotToRemove);
 
         // TeacherSchedule slot'unu temizle
-        ClearScheduleSlot(session, view, command.Day, command.PeriodNumber);
+        await ClearScheduleSlot(session, view, command.Day, command.PeriodNumber, cancellationToken);
 
         // Audit trail
         var teacherName = view.AssignedTeacherName;
@@ -76,18 +76,20 @@ public static class UnassignBusinessSlotHandler
         session.Store(view);
     }
 
-    private static void ClearScheduleSlot(
+    private static async Task ClearScheduleSlot(
         IDocumentSession session,
         BusinessCoordinationView view,
         string slotDay,
-        int slotPeriodNumber)
+        int slotPeriodNumber,
+        CancellationToken cancellationToken)
     {
         if (!view.AssignedTeacherId.HasValue) return;
 
-        var schedule = session.Query<TeacherSchedule>()
-            .FirstOrDefault(s =>
+        var schedule = await session.Query<TeacherSchedule>()
+            .FirstOrDefaultAsync(s =>
                 s.TeacherId == view.AssignedTeacherId!.Value &&
-                s.AcademicPeriodId == view.AcademicPeriodId);
+                s.AcademicPeriodId == view.AcademicPeriodId,
+                cancellationToken);
 
         if (schedule is null) return;
 

@@ -10,7 +10,7 @@
       <q-toolbar :class="`bg-${color} text-white`">
         <q-icon v-if="icon" :name="icon" class="q-mr-sm" />
         <q-toolbar-title>{{ title }}</q-toolbar-title>
-        <q-btn flat round dense icon="close" color="white" v-close-popup />
+        <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
       </q-toolbar>
 
       <q-card-section class="q-pt-lg q-gutter-md">

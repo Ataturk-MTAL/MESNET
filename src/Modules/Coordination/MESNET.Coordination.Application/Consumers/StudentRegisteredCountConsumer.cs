@@ -1,5 +1,5 @@
+using JasperFx;
 using Marten;
-using Marten.Exceptions;
 using MESNET.Coordination.Core.ReadModels;
 using MESNET.Enrollment.Shared.Events;
 using Wolverine.ErrorHandling;

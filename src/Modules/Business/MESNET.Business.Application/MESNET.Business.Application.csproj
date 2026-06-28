@@ -16,7 +16,5 @@
     <ProjectReference Include="../../Enrollment/MESNET.Enrollment.Shared/MESNET.Enrollment.Shared.csproj" />
     <ProjectReference Include="../../Coordination/MESNET.Coordination.Shared/MESNET.Coordination.Shared.csproj" />
     <ProjectReference Include="../../Security/MESNET.Security.Shared/MESNET.Security.Shared.csproj" />
-    <!-- FileUploadError için -->
-    <ProjectReference Include="../../Payment/MESNET.Payment.Application/MESNET.Payment.Application.csproj" />
   </ItemGroup>
 </Project>

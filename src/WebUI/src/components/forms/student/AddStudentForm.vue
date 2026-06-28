@@ -29,9 +29,7 @@
             </q-item>
           </template>
           <template #no-option>
-            <q-item>
-              <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-            </q-item>
+            <SelectEmptyOption />
           </template>
         </q-select>
         <q-input
@@ -69,9 +67,7 @@
             <q-icon name="category" />
           </template>
           <template #no-option>
-            <q-item>
-              <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-            </q-item>
+            <SelectEmptyOption />
           </template>
         </q-select>
         <q-select
@@ -177,13 +173,16 @@ import { useNotify } from 'src/composables/useNotify'
 import { zodValidate } from 'src/composables/useZodValidation'
 import { useKeycloakUserOptions, useBranchOptions, type SelectOption } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useEntityOptionsStore } from 'stores/entityOptions'
 import FormDialog from 'components/FormDialog.vue'
+import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
 const open = defineModel<boolean>({ required: true })
 
 const emit = defineEmits<{ saved: [] }>()
 
 const periodStore = useAcademicPeriodStore()
+const entityOptionsStore = useEntityOptionsStore()
 const notify = useNotify()
 const saving = ref(false)
 const userOpts = useKeycloakUserOptions()
@@ -254,6 +253,7 @@ async function handleSave() {
       guardianName: form.guardianName || undefined,
       guardianPhone: form.guardianPhone || undefined,
     })
+    entityOptionsStore.invalidateStudents()
     notify.success('Öğrenci başarıyla kaydedildi.')
     open.value = false
     emit('saved')

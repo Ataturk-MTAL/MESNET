@@ -70,7 +70,7 @@ public sealed class MailKitEmailService : IEmailService
                 ct);
 
             if (!string.IsNullOrEmpty(smtpUser))
-                await client.AuthenticateAsync(smtpUser, smtpPass, ct);
+                await client.AuthenticateAsync(smtpUser, smtpPass ?? string.Empty, ct);
 
             await client.SendAsync(message, ct);
             await client.DisconnectAsync(true, ct);

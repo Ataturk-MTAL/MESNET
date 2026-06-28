@@ -116,6 +116,10 @@ export const enrollmentApi = {
   listPlacements: (params?: { businessId?: string; studentId?: string; academicPeriodId?: string; status?: string; branchCode?: string } & PaginationParams) =>
     api.get<PagedResponse<InternshipPlacementDto>>('/placements', { params }),
 
+  // Durum-bazında TOPLAM sayım (sayfalamadan bağımsız) — overview kartları için. status filtresi taşımaz.
+  getPlacementStatusCounts: (params?: { academicPeriodId?: string; branchCode?: string }) =>
+    api.get<Record<string, number>>('/placements/status-counts', { params }),
+
   getPlacement: (placementId: string) =>
     api.get<InternshipPlacementDto>(`/placements/${placementId}`),
 

@@ -27,7 +27,8 @@ public static class AuthorizeStaffHandler
         institution.Staff.Add(staff);
         session.Store(institution);
 
-        await bus.PublishAsync(new StaffAuthorized(institution.Id, staff.Id, staff.Role, staff.BranchCode));
+        // Modüller arası event'te SmartEnum yerine Name string'i gönderilir
+        await bus.PublishAsync(new StaffAuthorized(institution.Id, staff.Id, staff.Role.Name, staff.BranchCode));
 
         return staff.Id;
     }

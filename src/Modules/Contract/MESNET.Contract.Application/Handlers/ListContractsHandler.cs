@@ -6,6 +6,7 @@ using MESNET.Contract.Application.Extensions;
 using MESNET.Contract.Application.Queries;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
+using MESNET.Contract.Core.ReadModels;
 
 namespace MESNET.Contract.Application.Handlers;
 
@@ -30,7 +31,17 @@ public static class ListContractsHandler
 
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             ContractStatus.TryFromName(query.Status, true, out var status))
-            queryable = queryable.Where(c => c.Status.Name == status.Name);
+            queryable = queryable.Where(c => c.StatusName == status.Name);
+
+        // Arama: öğrenci ad/numara üzerinden (lokal StudentNameView → eşleşen öğrenci id'leri → sözleşme filtresi)
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var matchingStudentIds = await session.Query<StudentNameView>()
+                .ApplySearch(query.Search, s => s.FullName, s => s.StudentNumber)
+                .Select(s => s.Id)
+                .ToListAsync();
+            queryable = queryable.Where(c => matchingStudentIds.Contains(c.StudentId));
+        }
 
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: c => c.CreatedAt);
 

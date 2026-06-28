@@ -1,7 +1,6 @@
 using MESNET.Common.Infrastructure.Storage;
 using MESNET.Common.Shared;
 using MESNET.Payment.Application.Commands;
-using MESNET.Payment.Application.Errors;
 using MESNET.Payment.Shared.Events;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

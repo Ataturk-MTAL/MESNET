@@ -11,8 +11,11 @@ public static class SubmitContractForSignatureHandler
 {
     [AggregateHandler]
     public static ContractSubmittedForSignature Handle(
-        SubmitContractForSignature command, InternshipContract contract)
+        SubmitContractForSignature command, InternshipContract? contract)
     {
+        if (contract is null)
+            throw new DomainException("CONTRACT_NOT_FOUND", "Sözleşme bulunamadı.");
+
         if (!contract.Status.CanTransitionTo(ContractStatus.AwaitingSignature))
             throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Sözleşme imzaya gönderilemez. Mevcut durum: {contract.Status.Slug}.");

@@ -13,20 +13,28 @@ var minioPassword = builder.AddParameter("minio-password", secret: true);
 
 // Altyapı servisleri — Persistent: AppHost kapansa bile container'lar ayakta kalır
 // Dev'de her restart'ta yeniden oluşturulmazlar, veri ve state korunur
+// Not: Altyapı endpoint'lerinde IsProxied=false — Aspire DCP proxy'si yerine doğrudan podman port
+// publish kullanılır (host:port → container). Host process'ler (API/seeder) ve sabit URL'ler
+// (Keycloak authority localhost:8080) için öngörülebilir; proxy kaynaklı port/JWKS karışıklığını önler.
 var postgres = builder.AddPostgres("postgres", password: postgresPassword)
     .WithImage("kartoza/postgis", "18-3.6")
     .WithBindMount("./postgres", "/docker-entrypoint-initdb.d")
     .WithPgAdmin(pgAdmin => pgAdmin.WithLifetime(ContainerLifetime.Persistent))
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent)
+    .WithEndpoint("tcp", e => e.IsProxied = false)
     .AddDatabase("mesnet");
 
 var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitmqUser, password: rabbitmqPassword)
     .WithImage("rabbitmq", "4-management-alpine")
     .WithDataVolume()
-    .WithLifetime(ContainerLifetime.Persistent);
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithEndpoint("tcp", e => e.IsProxied = false);
 
+// Keycloak proxy AÇIK kalır: çift http(8080)/https(8443) portu nedeniyle proxy kapatılınca
+// host:8080 yanlışlıkla HTTPS'e (8443) bağlanıyor → ERR_EMPTY_RESPONSE. Proxy'de 8080→8080 HTTP doğru.
 var keycloak = builder.AddKeycloak("keycloak", port: 8080, adminPassword: keycloakPassword)
+    .WithImageTag("26.6")  // latest keycloak; HTTP/HTTPS sorunu image değil Aspire.Hosting.Keycloak sürümünden
     .WithRealmImport("./keycloak")
     .WithBindMount("./keycloak/themes/mesnet", "/opt/keycloak/themes/mesnet")
     .WithDataVolume()
@@ -46,6 +54,8 @@ var minio = builder.AddContainer("minio", "minio/minio", "latest")
     .WithArgs("server", "/data", "--console-address", ":9001")
     .WithVolume("minio-data", "/data")
     .WithHttpHealthCheck("/minio/health/live", endpointName: "api")
+    .WithEndpoint("api", e => e.IsProxied = false)
+    .WithEndpoint("console", e => e.IsProxied = false)
     .WithLifetime(ContainerLifetime.Persistent);
 
 // OSRM — Open Source Routing Machine (rota bazlı mesafe hesaplama)
@@ -55,6 +65,7 @@ var osrm = builder.AddContainer("osrm", "ghcr.io/project-osrm/osrm-backend", "la
     .WithHttpEndpoint(port: 5002, targetPort: 5000, name: "osrm")
     .WithBindMount("./osrm/data", "/data")
     .WithArgs("osrm-routed", "--algorithm", "CH", "/data/mersin.osrm")
+    .WithEndpoint("osrm", e => e.IsProxied = false)
     .WithLifetime(ContainerLifetime.Persistent);
 
 var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
@@ -96,6 +107,7 @@ if (!builder.ExecutionContext.IsPublishMode)
         .WithEnvironment("KROKI_SAFE_MODE", "safe")
         .WithEnvironment("KROKI_PLANTUML_ALLOW_INCLUDE", "true")
         .WithEnvironment("KROKI_COMMAND_TIMEOUT", "60s")
+        .WithEndpoint("kroki", e => e.IsProxied = false)
         .WithLifetime(ContainerLifetime.Persistent);
 
     // Docusaurus docs site

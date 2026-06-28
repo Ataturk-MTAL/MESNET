@@ -2,13 +2,13 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
       <q-toolbar>
-        <q-btn flat dense round icon="menu" @click="drawerOpen = !drawerOpen" />
+        <q-btn flat dense round icon="menu" aria-label="Menüyü aç/kapat" @click="drawerOpen = !drawerOpen" />
         <q-toolbar-title>MESNET</q-toolbar-title>
         <q-space />
         <span v-if="authStore.user" class="text-body2 q-mr-md">
           {{ authStore.user.fullName }}
         </span>
-        <q-btn flat round dense icon="notifications" class="q-mr-xs">
+        <q-btn flat round dense icon="notifications" aria-label="Bildirimler" class="q-mr-xs">
           <q-badge v-if="unreadCount > 0" color="negative" floating>{{ unreadCount }}</q-badge>
           <q-tooltip>Bildirimler</q-tooltip>
           <q-menu anchor="bottom right" self="top right" style="min-width: 320px; max-width: 400px">
@@ -27,8 +27,11 @@
                   <q-icon :name="moduleIcon(n.module)" color="primary" size="sm" />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="text-caption text-weight-medium">{{ n.eventType }}</q-item-label>
-                  <q-item-label caption class="text-grey">{{ n.module }}</q-item-label>
+                  <q-item-label class="text-caption text-weight-medium">{{ eventLabel(n.eventType) }}</q-item-label>
+                  <q-item-label caption class="text-grey">{{ timeAgo(n.occurredAt) }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn flat round dense size="xs" icon="close" aria-label="Bildirimi kaldır" @click.stop="notificationStore.remove(i)" />
                 </q-item-section>
               </q-item>
               <q-item v-if="notificationStore.notifications.length > 0" dense clickable @click="notificationStore.clear()">
@@ -37,7 +40,7 @@
             </q-list>
           </q-menu>
         </q-btn>
-        <q-btn flat round dense icon="logout" @click="onLogout" />
+        <q-btn flat round dense icon="logout" aria-label="Çıkış yap" @click="onLogout" />
       </q-toolbar>
     </q-header>
 
@@ -96,17 +99,13 @@
           <q-separator v-if="periodStore.isLoaded && periodStore.periods.length > 0" spaced />
 
           <!-- Kapalı dönem uyarısı -->
-          <q-banner
+          <AppNotice
             v-if="periodStore.isReadOnly"
+            type="readonly"
             dense
-            rounded
-            class="bg-orange-1 text-orange-9 q-mx-sm q-mb-sm text-caption"
-          >
-            <template #avatar>
-              <q-icon name="lock" color="orange-7" size="xs" />
-            </template>
-            Geçmiş dönem — salt okunur
-          </q-banner>
+            message="Geçmiş dönem — salt okunur"
+            class="q-mx-sm q-mb-sm text-caption"
+          />
 
           <template v-for="group in filteredMenu">
             <!-- Düz link (child yok veya tek child → terfi) -->
@@ -164,45 +163,41 @@
     </q-page-container>
 
     <!-- Hakkında Dialog -->
-    <q-dialog v-model="aboutDialog">
-      <q-card style="min-width: 400px; max-width: 500px">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Hakkında</div>
-          <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
-        </q-card-section>
+    <DetailDialog
+      v-model="aboutDialog"
+      title="Hakkında"
+      card-style="min-width: 400px; max-width: 500px"
+    >
+      <q-card-section class="text-center q-pt-md">
+        <q-icon name="school" color="primary" size="64px" class="q-mb-md" />
+        <div class="text-h5 text-weight-bold text-primary q-mb-xs">MESNET</div>
+        <div class="text-subtitle2 text-grey-8 q-mb-lg">
+          Mesleki Eğitim Stajları Nitelikli, Eşgüdümlü Takip Sistemi
+        </div>
 
-        <q-card-section class="text-center q-pt-md">
-          <q-icon name="school" color="primary" size="64px" class="q-mb-md" />
-          <div class="text-h5 text-weight-bold text-primary q-mb-xs">MESNET</div>
-          <div class="text-subtitle2 text-grey-8 q-mb-lg">
-            Mesleki Eğitim Stajları Nitelikli, Eşgüdümlü Takip Sistemi
+        <q-separator class="q-my-md" />
+
+        <div class="text-body2 q-mb-md">
+          Bu yazılım<br />
+          <strong>Toroslar Atatürk Mesleki ve Teknik Anadolu Lisesi</strong><br />
+          <strong>Elektrik-Elektronik Teknolojisi</strong> alan öğretmenleri<br />
+          tarafından hazırlanmıştır.
+        </div>
+
+        <q-separator class="q-my-md" />
+
+        <div class="row justify-center q-gutter-x-md text-caption text-grey-7">
+          <div>
+            <q-icon name="tag" size="xs" class="q-mr-xs" />
+            Sürüm: <strong>{{ appVersion }}</strong>
           </div>
+        </div>
+      </q-card-section>
 
-          <q-separator class="q-my-md" />
-
-          <div class="text-body2 q-mb-md">
-            Bu yazılım<br />
-            <strong>Toroslar Atatürk Mesleki ve Teknik Anadolu Lisesi</strong><br />
-            <strong>Elektrik-Elektronik Teknolojisi</strong> alan öğretmenleri<br />
-            tarafından hazırlanmıştır.
-          </div>
-
-          <q-separator class="q-my-md" />
-
-          <div class="row justify-center q-gutter-x-md text-caption text-grey-7">
-            <div>
-              <q-icon name="tag" size="xs" class="q-mr-xs" />
-              Sürüm: <strong>{{ appVersion }}</strong>
-            </div>
-          </div>
-        </q-card-section>
-
-        <q-card-section class="text-center text-caption text-grey-6 q-pt-none">
-          &copy; {{ currentYear }} MESNET — Tüm hakları saklıdır.
-        </q-card-section>
-      </q-card>
-    </q-dialog>
+      <q-card-section class="text-center text-caption text-grey-6 q-pt-none">
+        &copy; {{ currentYear }} MESNET — Tüm hakları saklıdır.
+      </q-card-section>
+    </DetailDialog>
   </q-layout>
 </template>
 
@@ -213,6 +208,9 @@ import { useNotificationStore } from 'stores/notifications'
 import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
 import { logout } from 'boot/auth'
 import { useNavigation } from 'src/composables/useNavigation'
+import { eventLabel, timeAgo } from 'src/utils/notificationFormat'
+import AppNotice from 'components/AppNotice.vue'
+import DetailDialog from 'components/DetailDialog.vue'
 
 const authStore = useAuthStore()
 const { filteredMenu, isExpanded, toggleGroup, activeGroupKey } = useNavigation()

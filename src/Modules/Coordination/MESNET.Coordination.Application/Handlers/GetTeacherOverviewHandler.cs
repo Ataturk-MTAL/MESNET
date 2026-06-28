@@ -34,11 +34,12 @@ public static class GetTeacherOverviewHandler
             v.Id, v.Name, v.AssignedHours, v.AssignedDay)).ToList();
 
         // Ders programı → boş slot'lar
-        var schedule = session.Query<TeacherSchedule>()
-            .FirstOrDefault(s =>
+        var schedule = await session.Query<TeacherSchedule>()
+            .FirstOrDefaultAsync(s =>
                 s.TeacherId == query.TeacherId &&
                 s.AcademicPeriodId == query.AcademicPeriodId &&
-                s.SemesterNumber == semester.Number);
+                s.SemesterNumber == semester.Number,
+                cancellationToken);
 
         var freeSlotsByDay = new Dictionary<string, int>();
         var totalSlotsByDay = new Dictionary<string, int>();

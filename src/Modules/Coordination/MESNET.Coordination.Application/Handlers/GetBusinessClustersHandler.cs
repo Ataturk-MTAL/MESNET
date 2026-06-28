@@ -21,7 +21,7 @@ public static class GetBusinessClustersHandler
             WHERE (data->>'institutionId')::uuid = @institutionId
               AND data->'location' IS NOT NULL
               AND data->'location'->>'latitude' IS NOT NULL
-              AND (@branchCode IS NULL OR data->>'branchCode' = @branchCode)
+              AND (@branchCode::text IS NULL OR data->>'branchCode' = @branchCode::text)
         )
         SELECT
             (data->>'id')::uuid                                        AS business_id,
@@ -44,8 +44,8 @@ public static class GetBusinessClustersHandler
                         (data->'location'->>'latitude')::float8
                     ), 4326
                 ),
-                eps := (@eps / (111320.0 * cos(radians((SELECT lat FROM avg_lat))))),
-                minpoints := @minPoints
+                eps := (@eps::float8 / (111320.0 * cos(radians((SELECT lat FROM avg_lat))))),
+                minpoints := @minPoints::int
             ) OVER ()                                                  AS cluster_id
         FROM coordination.mt_doc_businesscoordinationview
         WHERE (data->>'institutionId')::uuid = @institutionId

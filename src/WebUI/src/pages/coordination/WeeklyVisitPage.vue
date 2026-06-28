@@ -56,16 +56,13 @@
     </div>
 
     <!-- Salt okunur uyarı -->
-    <q-banner
+    <AppNotice
       v-if="periodStore.isReadOnly"
-      rounded
-      class="bg-orange-1 text-orange-9 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="lock" color="orange-7" />
-      </template>
-      Seçili dönem kapatılmış — ziyaret oluşturma ve silme işlemleri devre dışı.
-    </q-banner>
+      type="warning"
+      icon="lock"
+      message="Seçili dönem kapatılmış — ziyaret oluşturma ve silme işlemleri devre dışı."
+      class="q-mb-md"
+    />
 
     <!-- Plan tablosu -->
     <AppTable
@@ -124,64 +121,59 @@
     </AppTable>
 
     <!-- Atama Detay Dialog -->
-    <q-dialog v-model="detailDialogOpen" maximized>
-      <q-card>
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Ziyaret Atamaları</div>
-          <q-space />
-          <q-btn
-            color="primary"
-            icon="add"
-            label="Eksik Atama Ekle"
-            size="sm"
-            :disable="periodStore.isReadOnly"
-            class="q-mr-md"
-            @click="openAddDialog"
-          />
-          <q-btn flat round dense icon="close" @click="detailDialogOpen = false" />
-        </q-card-section>
+    <DetailDialog v-model="detailDialogOpen" title="Ziyaret Atamaları" maximized>
+      <template #toolbar-actions>
+        <q-btn
+          color="primary"
+          icon="add"
+          label="Eksik Atama Ekle"
+          size="sm"
+          :disable="periodStore.isReadOnly"
+          class="q-mr-md"
+          @click="openAddDialog"
+        />
+      </template>
 
-        <q-card-section>
-          <AppTable
-            :rows="assignments"
-            :columns="assignmentColumns"
-            :loading="assignmentsLoading"
-            :pagination="assignmentsPagination"
-            row-key="id"
-            show-search
-            :search="assignmentSearch"
-            no-data-label="Atama bulunamadı."
-            @request="onAssignmentsRequest"
-            @search="onAssignmentSearch"
-          >
-            <template #body-cell-visitDate="{ row }">
-              <q-td class="text-center">{{ formatDateTR(row.visitDate) }}</q-td>
-            </template>
+      <q-card-section>
+        <AppTable
+          :rows="assignments"
+          :columns="assignmentColumns"
+          :loading="assignmentsLoading"
+          :pagination="assignmentsPagination"
+          row-key="id"
+          show-search
+          :search="assignmentSearch"
+          no-data-label="Atama bulunamadı."
+          @request="onAssignmentsRequest"
+          @search="onAssignmentSearch"
+        >
+          <template #body-cell-visitDate="{ row }">
+            <q-td class="text-center">{{ formatDateTR(row.visitDate) }}</q-td>
+          </template>
 
-            <template #body-cell-day="{ row }">
-              <q-td class="text-center">{{ dayLabel(row.day) }}</q-td>
-            </template>
+          <template #body-cell-day="{ row }">
+            <q-td class="text-center">{{ dayLabel(row.day) }}</q-td>
+          </template>
 
-            <template #body-cell-actions="{ row }">
-              <q-td class="q-gutter-xs">
-                <q-btn
-                  flat
-                  dense
-                  color="negative"
-                  icon="delete"
-                  size="sm"
-                  :disable="periodStore.isReadOnly"
-                  :loading="deletingAssignment"
-                  @click="confirmDeleteAssignment(row.id)"
-                >
-                  <q-tooltip>Sil</q-tooltip>
-                </q-btn>
-              </q-td>
-            </template>
-          </AppTable>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
+          <template #body-cell-actions="{ row }">
+            <q-td class="q-gutter-xs">
+              <q-btn
+                flat
+                dense
+                color="negative"
+                icon="delete"
+                size="sm"
+                :disable="periodStore.isReadOnly"
+                :loading="deletingAssignment"
+                @click="confirmDeleteAssignment(row.id)"
+              >
+                <q-tooltip>Sil</q-tooltip>
+              </q-btn>
+            </q-td>
+          </template>
+        </AppTable>
+      </q-card-section>
+    </DetailDialog>
 
     <!-- Eksik Atama Ekle Dialog -->
     <q-dialog v-model="addDialogOpen" persistent>
@@ -263,14 +255,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import type { QTableProps } from 'quasar'
 import AppTable from 'src/components/AppTable.vue'
 import BranchSelector from 'src/components/BranchSelector.vue'
+import AppNotice from 'src/components/AppNotice.vue'
+import DetailDialog from 'src/components/DetailDialog.vue'
 import { useAcademicPeriodStore } from 'src/stores/academicPeriod'
 import { useWeeklyVisits, dayLabel, scopeLabel } from 'src/composables/useWeeklyVisits'
-import { coordinationApi, type BusinessAssignmentDto } from 'src/api/coordination'
+import { useMissingAssignments } from 'src/composables/useMissingAssignments'
 
 const $q = useQuasar()
 const periodStore = useAcademicPeriodStore()
@@ -307,6 +301,23 @@ const {
   addAssignment,
 } = useWeeklyVisits({
   academicPeriodId: computed(() => periodStore.selectedPeriodId),
+})
+
+// ── Eksik Atama Yönetimi (composable'a çıkarıldı) ──
+const {
+  missingLoading,
+  missingAssignments,
+  bulkAdding,
+  missingGrouped,
+  openAddDialog,
+  submitMissingAssignment,
+  addBranchMissing,
+  addAllMissing,
+} = useMissingAssignments({
+  academicPeriodId: computed(() => periodStore.selectedPeriodId),
+  assignments,
+  addDialogOpen,
+  addAssignment,
 })
 
 const scopeOptions = [
@@ -381,165 +392,6 @@ function confirmDeleteAssignment(assignmentId: string) {
   }).onOk(() => {
     deleteAssignment(assignmentId).catch(() => {})
   })
-}
-
-// ── Eksik Atama Ekleme ──
-
-interface MissingAssignment {
-  businessId: string
-  businessName: string
-  teacherId: string
-  teacherName: string
-  branchCode: string
-  branchName: string
-  day: string
-  periodCount: number
-}
-
-interface MissingGroup {
-  branchCode: string
-  branchName: string
-  items: MissingAssignment[]
-}
-
-const missingLoading = ref(false)
-const missingAssignments = ref<MissingAssignment[]>([])
-const bulkAdding = ref(false)
-
-/** Eksik atamaları alan bazında grupla */
-const missingGrouped = computed<MissingGroup[]>(() => {
-  const map = new Map<string, MissingGroup>()
-  for (const item of missingAssignments.value) {
-    let group = map.get(item.branchCode)
-    if (!group) {
-      group = { branchCode: item.branchCode, branchName: item.branchName, items: [] }
-      map.set(item.branchCode, group)
-    }
-    group.items.push(item)
-  }
-  return [...map.values()].sort((a, b) => a.branchName.localeCompare(b.branchName, 'tr'))
-})
-
-async function openAddDialog() {
-  addDialogOpen.value = true
-  missingLoading.value = true
-  missingAssignments.value = []
-
-  try {
-    const res = await coordinationApi.listAssignments({
-      assignedOnly: true,
-      academicPeriodId: periodStore.selectedPeriodId ?? undefined,
-    })
-    const coordData = res.data as unknown as BusinessAssignmentDto[]
-
-    // Koordinasyon atamalarından işletme-gün çiftlerini çıkar
-    const allPairs: MissingAssignment[] = []
-    for (const biz of coordData) {
-      if (!biz.assignedTeacherId || biz.assignedSlots.length === 0) continue
-
-      // Gün bazında grupla (1 işletme + 1 gün = 1 ziyaret)
-      const slotsByDay = new Map<string, number>()
-      for (const slot of biz.assignedSlots) {
-        slotsByDay.set(slot.day, (slotsByDay.get(slot.day) ?? 0) + 1)
-      }
-
-      for (const [day, count] of slotsByDay) {
-        allPairs.push({
-          businessId: biz.businessId,
-          businessName: biz.businessName,
-          teacherId: biz.assignedTeacherId,
-          teacherName: biz.assignedTeacherName ?? '',
-          branchCode: biz.branchCode,
-          branchName: biz.branchName,
-          day,
-          periodCount: count,
-        })
-      }
-    }
-
-    // Mevcut plandaki atamaları set olarak tut
-    const existingKeys = new Set(
-      assignments.value.map(a => `${a.businessId}::${a.day}`),
-    )
-
-    // Eksik olanları filtrele
-    missingAssignments.value = allPairs.filter(
-      p => !existingKeys.has(`${p.businessId}::${p.day}`),
-    )
-  } catch {
-    missingAssignments.value = []
-  } finally {
-    missingLoading.value = false
-  }
-}
-
-async function submitMissingAssignment(item: MissingAssignment) {
-  await addAssignment({
-    teacherId: item.teacherId,
-    teacherName: item.teacherName,
-    businessId: item.businessId,
-    businessName: item.businessName,
-    branchCode: item.branchCode,
-    branchName: item.branchName,
-    day: item.day,
-    periodCount: item.periodCount,
-  }).catch(() => {})
-
-  // Eklenen kaydı listeden kaldır
-  missingAssignments.value = missingAssignments.value.filter(
-    m => !(m.businessId === item.businessId && m.day === item.day),
-  )
-}
-
-/** Belirli bir alanın tüm eksik atamalarını sırayla ekle */
-async function addBranchMissing(branchCode: string) {
-  const items = missingAssignments.value.filter(m => m.branchCode === branchCode)
-  if (items.length === 0) return
-
-  bulkAdding.value = true
-  try {
-    for (const item of items) {
-      await addAssignment({
-        teacherId: item.teacherId,
-        teacherName: item.teacherName,
-        businessId: item.businessId,
-        businessName: item.businessName,
-        branchCode: item.branchCode,
-        branchName: item.branchName,
-        day: item.day,
-        periodCount: item.periodCount,
-      }).catch(() => {})
-    }
-    // Eklenen alanı listeden kaldır
-    missingAssignments.value = missingAssignments.value.filter(m => m.branchCode !== branchCode)
-  } finally {
-    bulkAdding.value = false
-  }
-}
-
-/** Tüm eksik atamaları sırayla ekle */
-async function addAllMissing() {
-  if (missingAssignments.value.length === 0) return
-
-  bulkAdding.value = true
-  try {
-    const items = [...missingAssignments.value]
-    for (const item of items) {
-      await addAssignment({
-        teacherId: item.teacherId,
-        teacherName: item.teacherName,
-        businessId: item.businessId,
-        businessName: item.businessName,
-        branchCode: item.branchCode,
-        branchName: item.branchName,
-        day: item.day,
-        periodCount: item.periodCount,
-      }).catch(() => {})
-    }
-    missingAssignments.value = []
-  } finally {
-    bulkAdding.value = false
-  }
 }
 
 onMounted(() => {

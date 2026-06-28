@@ -6,26 +6,34 @@ using MESNET.Coordination.Core.Enums;
 
 namespace MESNET.Coordination.Application.Handlers;
 
+/// <summary>
+/// GetCurrentSchedule yanıt sarmalayıcısı.
+/// Wolverine InvokeAsync&lt;T&gt; handler null döndürünce hata fırlatır; "kayıtlı program yok"
+/// geçerli bir boş durumdur, bu yüzden nullable sonuç bir sonuç nesnesine sarılır (asla null değil).
+/// </summary>
+public sealed record CurrentScheduleResult(TeacherScheduleDto? Schedule);
+
 public static class GetCurrentScheduleHandler
 {
-    public static TeacherScheduleDto? Handle(
+    public static async Task<CurrentScheduleResult> Handle(
         GetCurrentSchedule query,
-        IQuerySession session)
+        IQuerySession session,
+        CancellationToken cancellationToken)
     {
         if (!AcademicSemester.TryFromName(query.Semester, true, out var semester))
-            return null;
+            return new CurrentScheduleResult(null);
 
         // Seçili dönem + yarıyıl için schedule'ı getir
-        var schedule = session.Query<TeacherSchedule>()
+        var schedule = await session.Query<TeacherSchedule>()
             .Where(s =>
                 s.TeacherId == query.TeacherId &&
                 s.AcademicPeriodId == query.AcademicPeriodId &&
                 s.SemesterNumber == semester.Number)
-            .FirstOrDefault();
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (schedule is null) return null;
+        if (schedule is null) return new CurrentScheduleResult(null);
 
-        return new TeacherScheduleDto(
+        return new CurrentScheduleResult(new TeacherScheduleDto(
             schedule.Id,
             schedule.TeacherId,
             schedule.InstitutionId,
@@ -44,6 +52,6 @@ public static class GetCurrentScheduleHandler
             schedule.CreatedAt,
             schedule.UpdatedAt,
             schedule.CreatedBy,
-            schedule.Version);
+            schedule.Version));
     }
 }

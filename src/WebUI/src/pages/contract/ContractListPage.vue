@@ -2,9 +2,12 @@
   <q-page padding>
     <PageHeader title="Sözleşmeler">
       <PermissionGuard :permission="Permissions.Internship.Contract">
-        <q-btn color="primary" icon="add" label="Yeni Sözleşme" unelevated @click="openCreateDialog" />
+        <q-btn :disable="periodStore.isReadOnly" color="primary" icon="add" label="Yeni Sözleşme" unelevated @click="openCreateDialog" />
       </PermissionGuard>
     </PageHeader>
+
+    <AppNotice v-if="periodStore.isReadOnly" type="readonly" class="q-mb-md"
+      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir." />
 
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md">
@@ -86,7 +89,7 @@
             badge-color="primary"
             @click.stop="openDocumentsDialog(row)"
           />
-          <q-btn flat round dense icon="open_in_new" @click="openDetail(row)" />
+          <q-btn flat round dense icon="open_in_new" aria-label="Detayı aç" @click="openDetail(row)" />
         </q-td>
       </template>
     </AppTable>
@@ -311,7 +314,7 @@
         <q-toolbar class="bg-grey-8 text-white">
           <q-icon name="folder_open" class="q-mr-sm" />
           <q-toolbar-title>Yüklü Evraklar</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
+          <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
         </q-toolbar>
 
         <q-card-section>
@@ -377,6 +380,7 @@ import TerminateContractForm from 'components/forms/contract/TerminateContractFo
 import RequestTerminationForm from 'components/forms/contract/RequestTerminationForm.vue'
 import RejectTerminationForm from 'components/forms/contract/RejectTerminationForm.vue'
 import UploadContractDocForm from 'components/forms/contract/UploadContractDocForm.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const $q = useQuasar()
 const notify = useNotify()
@@ -563,8 +567,8 @@ async function afterUploadSaved() {
 watch(() => periodStore.selectedPeriodId, () => load())
 
 onMounted(async () => {
-  studentOpts.load()
-  businessOpts.load()
+  studentOpts.load().catch(() => {})
+  businessOpts.load().catch(() => {})
   await load()
 })
 </script>

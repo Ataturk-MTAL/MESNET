@@ -37,7 +37,7 @@ public static class ListPaymentSummariesHandler
             q = q.Where(p => string.Compare(p.Month, query.MonthTo) <= 0);
 
         if (!string.IsNullOrWhiteSpace(query.Phase) && PaymentPhase.TryFromName(query.Phase, out var phase))
-            q = q.Where(p => p.Phase.Name == phase.Name);
+            q = q.Where(p => p.PhaseName == phase.Name);
 
         if (!string.IsNullOrWhiteSpace(query.BranchCode))
             q = q.Where(p => p.BranchCode == query.BranchCode);

@@ -12,8 +12,11 @@ public static class CorrectAttendanceHandler
 {
     [AggregateHandler]
     public static AttendanceCorrected Handle(
-        CorrectAttendance command, AttendanceRecord record, ICurrentUserService currentUser)
+        CorrectAttendance command, AttendanceRecord? record, ICurrentUserService currentUser)
     {
+        if (record is null)
+            throw new DomainException("ATTENDANCE_NOT_FOUND", "Devamsızlık kaydı bulunamadı.");
+
         if (!record.Status.CanTransitionTo(AttendanceStatus.Corrected))
             throw new DomainException("ATTENDANCE_INVALID_STATUS",
                 $"Devamsızlık kaydı bu durumdan düzeltilemez. Mevcut durum: {record.Status.Slug}.");

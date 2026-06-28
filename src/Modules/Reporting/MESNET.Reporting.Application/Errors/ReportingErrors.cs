@@ -35,4 +35,8 @@ public static class ReportingErrors
     public static Error DocumentDeleteFailed(Guid documentId, string reason) =>
         new("Reporting.DocumentDeleteFailed",
             $"Doküman silinemedi ({documentId}): {reason}");
+
+    public static Error EmptyDocumentList() =>
+        new("Reporting.EmptyDocumentList",
+            "İşlem için en az bir doküman seçilmelidir. Doküman listesi boş veya gönderilmedi.");
 }

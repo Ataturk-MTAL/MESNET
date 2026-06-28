@@ -24,5 +24,8 @@ public class AttendanceMartenConfig : IConfigureMarten
         options.Schema.For<InternshipPlacementView>().Index(x => x.StudentId);
         options.Schema.For<InternshipPlacementView>().Index(x => x.BusinessId);
         options.Schema.For<InternshipPlacementView>().Index(x => x.AcademicPeriodId);
+
+        // Öğrenci ad/numara araması için denormalize view (Enrollment.StudentRegistered ile beslenir)
+        options.Schema.For<StudentNameView>().DatabaseSchemaName("attendance");
     }
 }

@@ -9,7 +9,6 @@ public static class RequestTerminationHandler
     {
         return new InternshipTerminationRequested(
             command.InternshipId,
-            Guid.Empty,
             command.Reason,
             command.ReasonType,
             command.RequestedBy);

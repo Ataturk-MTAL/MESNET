@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Marten 9: event-sourced aggregate dispatcher'ları compile-time source generator ile üretilir;
+       generator, aggregate'in tanımlandığı assembly'de çalışmalı (runtime fallback yok). -->
+  <ItemGroup>
+    <PackageReference Include="Marten" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../../MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
     <ProjectReference Include="../MESNET.Attendance.Shared/MESNET.Attendance.Shared.csproj" />

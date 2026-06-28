@@ -37,39 +37,27 @@
     </div>
 
     <!-- Bilgi Mesajı -->
-    <q-banner
+    <AppNotice
       v-if="!branchFilter"
-      rounded
-      class="bg-blue-1 text-blue-9 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="info" color="blue-7" />
-      </template>
-      İşletme dağıtımı yapmak için önce bir alan seçin.
-    </q-banner>
+      type="info"
+      message="İşletme dağıtımı yapmak için önce bir alan seçin."
+      class="q-mb-md"
+    />
 
-    <q-banner
+    <AppNotice
       v-if="scheduleConfigMissing"
-      rounded
-      class="bg-orange-1 text-orange-9 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="warning" color="orange-7" />
-      </template>
-      Kurum için günlük ders sayısı ayarlanmamış. Lütfen önce Kurum sayfasından ders programı ayarını yapın.
-    </q-banner>
+      type="warning"
+      message="Kurum için günlük ders sayısı ayarlanmamış. Lütfen önce Kurum sayfasından ders programı ayarını yapın."
+      class="q-mb-md"
+    />
 
     <!-- Read-only Uyarı -->
-    <q-banner
+    <AppNotice
       v-if="periodStore.isReadOnly"
-      rounded
-      class="bg-grey-2 text-grey-8 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="lock" color="grey-6" />
-      </template>
-      Kapalı dönem — yalnızca görüntüleme modu.
-    </q-banner>
+      type="readonly"
+      message="Kapalı dönem — yalnızca görüntüleme modu."
+      class="q-mb-md"
+    />
 
     <!-- Tab Yapısı -->
     <div v-if="branchFilter">
@@ -102,34 +90,23 @@
                     Atanmamış İşletmeler
                     <q-badge color="orange-7" class="q-ml-sm">{{ unassignedBusinesses.length }}</q-badge>
                   </div>
-                  <q-input
+                  <SearchInput
                     v-model="businessSearch"
-                    dense
-                    filled
                     placeholder="İşletme ara..."
-                    clearable
+                    icon-size="xs"
                     class="q-mb-sm"
-                  >
-                    <template #prepend>
-                      <q-icon name="search" size="xs" />
-                    </template>
-                  </q-input>
+                  />
                 </q-card-section>
 
                 <q-card-section class="q-pt-sm business-list-container">
-                  <div v-if="loading" class="text-center q-pa-md">
-                    <q-spinner color="primary" size="2em" />
-                  </div>
-
-                  <div
-                    v-else-if="filteredUnassigned.length === 0"
-                    class="text-center q-pa-md text-grey-6"
+                  <DataState
+                    :loading="loading"
+                    :empty="filteredUnassigned.length === 0"
+                    empty-icon="check_circle"
+                    empty-text="Tüm işletmeler atanmış"
+                    padding="q-pa-md"
                   >
-                    <q-icon name="check_circle" size="2em" class="q-mb-sm" />
-                    <div class="text-caption">Tüm işletmeler atanmış</div>
-                  </div>
-
-                  <div v-else class="business-card-list">
+                  <div class="business-card-list">
                     <div
                       v-for="biz in filteredUnassigned"
                       :key="biz.businessId"
@@ -158,6 +135,7 @@
                       </div>
                     </div>
                   </div>
+                  </DataState>
                 </q-card-section>
               </q-card>
             </div>
@@ -229,16 +207,13 @@
               </q-card>
 
               <!-- Öğretmen seçilmemiş -->
-              <q-banner
+              <AppNotice
                 v-else-if="!selectedTeacherId"
-                rounded
-                class="bg-blue-1 text-blue-9 q-mb-md"
-              >
-                <template #avatar>
-                  <q-icon name="person_search" color="blue-7" />
-                </template>
-                Grid üzerinde atama yapmak için bir öğretmen seçin. Soldan işletme kartını sürükleyip grid üzerindeki boş saate bırakın.
-              </q-banner>
+                type="info"
+                icon="person_search"
+                message="Grid üzerinde atama yapmak için bir öğretmen seçin. Soldan işletme kartını sürükleyip grid üzerindeki boş saate bırakın."
+                class="q-mb-md"
+              />
 
               <!-- Atanmış İşletmeler Listesi (seçili öğretmen için) -->
               <q-card v-if="selectedTeacherId && assignedToTeacher.length > 0" flat bordered class="q-mb-md">
@@ -337,16 +312,13 @@
           </div>
 
           <!-- Limit Aşıldı Uyarı -->
-          <q-banner
+          <AppNotice
             v-if="isOverLimit"
-            rounded
-            class="bg-red-1 text-red-9 q-mt-md"
+            type="error"
+            class="q-mt-md"
           >
-            <template #avatar>
-              <q-icon name="error" color="red-7" />
-            </template>
             Toplam dağıtılan saat ({{ summary.totalAssignedHours }}) ders yükü havuzunu ({{ summary.totalWorkloadPool }}) aşıyor.
-          </q-banner>
+          </AppNotice>
         </q-tab-panel>
 
         <!-- ── Tab 2: Öğretmen Özeti ── -->
@@ -477,24 +449,26 @@
                 />
               </div>
 
-              <div v-if="clusterLoading" class="text-center q-pa-xl">
-                <q-spinner color="primary" size="3em" />
-                <div class="text-caption text-grey-6 q-mt-sm">İşletme kümeleri yükleniyor...</div>
-              </div>
+              <DataState
+                :loading="clusterLoading"
+                :error="clusterError"
+                :empty="clusterData.length === 0"
+                loading-text="İşletme kümeleri yükleniyor..."
+                padding="q-pa-xl"
+                spinner-size="3em"
+              >
+                <template #error>
+                  <q-icon name="warning" size="3em" color="orange-6" class="q-mb-sm" />
+                  <div>Kümeleme verisi yüklenemedi.</div>
+                  <div class="text-caption q-mt-sm">PostGIS eklentisi henüz etkin olmayabilir. Sistem yöneticisi ile iletişime geçin.</div>
+                </template>
 
-              <div v-else-if="clusterError" class="text-center q-pa-xl text-grey-6">
-                <q-icon name="warning" size="3em" color="orange-6" class="q-mb-sm" />
-                <div>Kümeleme verisi yüklenemedi.</div>
-                <div class="text-caption q-mt-sm">PostGIS eklentisi henüz etkin olmayabilir. Sistem yöneticisi ile iletişime geçin.</div>
-              </div>
+                <template #empty>
+                  <q-icon name="location_off" size="3em" class="q-mb-sm" />
+                  <div>Konum verisi olan işletme bulunamadı.</div>
+                  <div class="text-caption q-mt-sm">İşletmelere koordinat atandıktan sonra harita burada gösterilecek.</div>
+                </template>
 
-              <div v-else-if="clusterData.length === 0" class="text-center q-pa-xl text-grey-6">
-                <q-icon name="location_off" size="3em" class="q-mb-sm" />
-                <div>Konum verisi olan işletme bulunamadı.</div>
-                <div class="text-caption q-mt-sm">İşletmelere koordinat atandıktan sonra harita burada gösterilecek.</div>
-              </div>
-
-              <div v-else>
                 <!-- Küme Özeti Chip'leri -->
                 <div class="row q-gutter-xs q-mb-md flex-wrap">
                   <q-chip
@@ -516,7 +490,7 @@
                   height="500px"
                   @update:hours="onMapHoursUpdate"
                 />
-              </div>
+              </DataState>
             </q-card-section>
           </q-card>
 
@@ -528,14 +502,12 @@
               </div>
 
               <!-- Uyarı Banner'ları -->
-              <q-banner v-if="hoursOverLimit" rounded class="bg-red-1 text-red-9 q-mb-md">
-                <template #avatar><q-icon name="error" color="red-7" /></template>
+              <AppNotice v-if="hoursOverLimit" type="error" class="q-mb-md">
                 Toplam takdir edilen saat ({{ hoursTotalAssigned }}) ders yükü havuzunu ({{ hoursWorkloadPool }}) aşıyor!
-              </q-banner>
-              <q-banner v-else-if="hoursNearLimit" rounded class="bg-orange-1 text-orange-9 q-mb-md">
-                <template #avatar><q-icon name="warning" color="orange-7" /></template>
+              </AppNotice>
+              <AppNotice v-else-if="hoursNearLimit" type="warning" class="q-mb-md">
                 Toplam takdir edilen saat havuza yaklaşıyor: {{ hoursTotalAssigned }} / {{ hoursWorkloadPool }}
-              </q-banner>
+              </AppNotice>
 
               <q-markup-table flat bordered separator="cell" class="q-mb-md">
                 <thead>
@@ -629,47 +601,48 @@
     </q-dialog>
 
     <!-- Atama Geçmişi Dialogu -->
-    <q-dialog v-model="historyDialog" position="right" full-height>
-      <q-card style="min-width: 420px; max-width: 500px">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Atama Geçmişi</div>
-          <q-space />
-          <q-btn flat round dense icon="close" @click="historyDialog = false" />
-        </q-card-section>
-        <q-card-section class="text-subtitle2 text-grey-7 q-pt-none">
-          {{ historyBusinessName }}
-        </q-card-section>
+    <DetailDialog
+      v-model="historyDialog"
+      title="Atama Geçmişi"
+      position="right"
+      full-height
+      card-style="min-width: 420px; max-width: 500px"
+    >
+      <q-card-section class="text-subtitle2 text-grey-7 q-pt-none">
+        {{ historyBusinessName }}
+      </q-card-section>
 
-        <q-separator />
+      <q-separator />
 
-        <q-card-section class="scroll" style="max-height: calc(100vh - 140px)">
-          <div v-if="historyLoading" class="text-center q-pa-lg">
-            <q-spinner color="primary" size="2em" />
-          </div>
-
-          <div v-else-if="historyEntries.length === 0" class="text-center q-pa-lg text-grey-6">
+      <q-card-section class="scroll" style="max-height: calc(100vh - 140px)">
+        <DataState
+          :loading="historyLoading"
+          :empty="historyEntries.length === 0"
+          padding="q-pa-lg"
+        >
+          <template #empty>
             Henüz geçmiş kaydı bulunmuyor.
-          </div>
+          </template>
 
-          <q-timeline v-else color="primary" layout="dense">
-            <q-timeline-entry
-              v-for="(entry, idx) in historyEntries"
-              :key="idx"
-              :icon="historyIcon(entry.action)"
-              :color="historyColor(entry.action)"
-            >
-              <template #subtitle>
-                {{ formatDate(entry.timestamp) }} — {{ entry.performedBy }}
-              </template>
-              <div class="text-body2">{{ entry.details }}</div>
-              <div v-if="entry.assignedHours" class="text-caption text-grey-7">
-                Takdir edilen saat: {{ entry.assignedHours }}
-              </div>
-            </q-timeline-entry>
-          </q-timeline>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
+        <q-timeline color="primary" layout="dense">
+          <q-timeline-entry
+            v-for="(entry, idx) in historyEntries"
+            :key="idx"
+            :icon="historyIcon(entry.action)"
+            :color="historyColor(entry.action)"
+          >
+            <template #subtitle>
+              {{ formatDate(entry.timestamp) }} — {{ entry.performedBy }}
+            </template>
+            <div class="text-body2">{{ entry.details }}</div>
+            <div v-if="entry.assignedHours" class="text-caption text-grey-7">
+              Takdir edilen saat: {{ entry.assignedHours }}
+            </div>
+          </q-timeline-entry>
+        </q-timeline>
+        </DataState>
+      </q-card-section>
+    </DetailDialog>
   </q-page>
 </template>
 
@@ -678,12 +651,9 @@ import { ref, computed, watch, onMounted } from 'vue'
 import {
   coordinationApi,
   type BusinessAssignmentDto,
-  type AssignmentHistoryEntryDto,
   type CoordinationSummaryDto,
-  type DailyScheduleDto,
   type TeacherWorkloadSummaryDto,
 } from 'src/api/coordination'
-import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useWorkloadConfig } from 'src/composables/useWorkloadConfig'
 import { useAssignedHours } from 'src/composables/useAssignedHours'
@@ -691,6 +661,10 @@ import { useAssignmentDnD } from 'src/composables/useAssignmentDnD'
 import { useClusterMap } from 'src/composables/useClusterMap'
 import { useTeacherOverview, teacherOverviewColumns } from 'src/composables/useTeacherOverview'
 import { useTeacherOptions } from 'src/composables/useEntityOptions'
+import { useAssignmentHistory } from 'src/composables/useAssignmentHistory'
+import { useScheduleConfig } from 'src/composables/useScheduleConfig'
+import { useTeacherScheduleLoader } from 'src/composables/useTeacherScheduleLoader'
+import { useTeacherChangeFlow } from 'src/composables/useTeacherChangeFlow'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import AssignmentGrid from 'components/AssignmentGrid.vue'
@@ -699,6 +673,10 @@ import BranchSelector from 'components/BranchSelector.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
 import FreeSlotChip from 'components/FreeSlotChip.vue'
 import WorkloadIndicator from 'components/WorkloadIndicator.vue'
+import AppNotice from 'components/AppNotice.vue'
+import DataState from 'components/DataState.vue'
+import DetailDialog from 'components/DetailDialog.vue'
+import SearchInput from 'components/SearchInput.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()
@@ -713,14 +691,8 @@ const branchFilter = ref<string | null>(null)
 const selectedTeacherId = ref<string | null>(null)
 const businessSearch = ref('')
 const loading = ref(false)
-const scheduleLoading = ref(false)
-const periodCount = ref(0)
-const scheduleConfigMissing = ref(false)
-const showDiscardDialog = ref(false)
-const pendingTeacherId = ref<string | null>(null)
 
 const assignments = ref<BusinessAssignmentDto[]>([])
-const rawSchedule = ref<DailyScheduleDto[]>([])
 
 const summary = ref<CoordinationSummaryDto>({
   totalWorkloadPool: 0,
@@ -781,24 +753,6 @@ const teacherSummaryColumns = [
 
 // ── API: Load Data ──
 
-async function loadScheduleConfig() {
-  const instId = authStore.user?.institutionId
-  if (!instId) return
-  try {
-    const { data } = await institutionApi.getScheduleConfig(instId)
-    if (data.configured && data.dailyPeriodCount) {
-      periodCount.value = data.dailyPeriodCount
-      scheduleConfigMissing.value = false
-    } else {
-      periodCount.value = 0
-      scheduleConfigMissing.value = true
-    }
-  } catch {
-    periodCount.value = 0
-    scheduleConfigMissing.value = true
-  }
-}
-
 async function loadData() {
   if (!branchFilter.value) return
   loading.value = true
@@ -823,56 +777,29 @@ async function loadData() {
   }
 }
 
-async function loadTeacherSchedule(teacherId: string) {
-  if (!periodStore.selectedPeriodId) return
-  scheduleLoading.value = true
-  try {
-    const { data } = await coordinationApi.getCurrentSchedule(
-      teacherId,
-      periodStore.selectedPeriodId,
-      periodStore.selectedSemester,
-    )
-    rawSchedule.value = data.weeklySchedule
-  } catch {
-    rawSchedule.value = createEmptySchedule()
-  } finally {
-    scheduleLoading.value = false
-  }
-}
-
-function createEmptySchedule(): DailyScheduleDto[] {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-  return days.map((day) => ({
-    day,
-    periods: Array.from({ length: periodCount.value }, (_, i) => ({
-      periodNumber: i + 1,
-      status: 'Free',
-      courseName: null,
-      assignedBusinessId: null,
-    })),
-  }))
-}
-
 // ── Composables ──
 
 const institutionId = computed(() => authStore.user?.institutionId ?? undefined)
 const periodId = computed(() => periodStore.selectedPeriodId)
 const semester = computed(() => periodStore.selectedSemester)
 
-const workload = useWorkloadConfig({
-  branchFilter,
+const { periodCount, scheduleConfigMissing, loadScheduleConfig, createEmptySchedule } =
+  useScheduleConfig({ authStore })
+
+// Öğretmen-programı yükleme orkestrasyonu (rawSchedule + scheduleLoading state'ini sahiplenir)
+const { scheduleLoading, rawSchedule, loadTeacherSchedule } = useTeacherScheduleLoader({
   periodId,
-  institutionId,
-  notify,
+  semester,
+  createEmptySchedule,
 })
 
+const workload = useWorkloadConfig({ branchFilter, periodId, institutionId, notify })
 const hours = useAssignedHours({
   assignments,
   workloadConfig: workload.workloadConfig,
   notify,
   loadData,
 })
-
 const dnd = useAssignmentDnD({
   assignments,
   rawSchedule,
@@ -883,13 +810,7 @@ const dnd = useAssignmentDnD({
   loadData,
   loadTeacherSchedule,
 })
-
-const cluster = useClusterMap({
-  notify,
-  loadData,
-  branchFilter,
-})
-
+const cluster = useClusterMap({ notify, loadData, branchFilter })
 const teacherOverview = useTeacherOverview({
   periodId,
   semester,
@@ -900,7 +821,6 @@ const teacherOverview = useTeacherOverview({
 
 // Re-export composable values used by template
 const { loadWorkloadConfig } = workload
-
 const {
   editedHours, hoursSaving, hoursTotalMaxHours, hoursWorkloadPool,
   hoursTotalAssigned, hoursRemaining, hoursOverLimit, hoursNearLimit,
@@ -922,10 +842,24 @@ const {
 } = cluster
 
 const {
-  teacherOverviewRows, teacherOverviewLoading,
-  teacherName,
-  loadTeacherOverview,
+  teacherOverviewRows, teacherOverviewLoading, teacherName, loadTeacherOverview,
 } = teacherOverview
+
+const {
+  historyDialog, historyLoading, historyBusinessName, historyEntries,
+  showHistory, historyIcon, historyColor, formatDate,
+} = useAssignmentHistory({ notify })
+
+const {
+  showDiscardDialog,
+  onTeacherChange, confirmDiscard, selectTeacher,
+} = useTeacherChangeFlow({
+  selectedTeacherId,
+  rawSchedule,
+  pendingChanges,
+  clearPending: dnd.clearPending,
+  loadTeacherSchedule,
+})
 
 // ── Filtered unassigned (UI search) ──
 const filteredUnassigned = computed(() => {
@@ -948,92 +882,6 @@ function onBranchChange() {
   // branch değişiminde client-side filtreleme yeterli, yeniden yüklemeye gerek yok.
   loadData().catch(() => {})
   loadWorkloadConfig().catch(() => {})
-}
-
-function onTeacherChange(teacherId: string | null) {
-  if (pendingChanges.value.length > 0 && teacherId !== selectedTeacherId.value) {
-    pendingTeacherId.value = teacherId
-    showDiscardDialog.value = true
-    return
-  }
-  doTeacherChange(teacherId)
-}
-
-function confirmDiscard() {
-  showDiscardDialog.value = false
-  dnd.clearPending()
-  doTeacherChange(pendingTeacherId.value)
-  pendingTeacherId.value = null
-}
-
-function doTeacherChange(teacherId: string | null) {
-  selectedTeacherId.value = teacherId
-  rawSchedule.value = []
-  if (teacherId) {
-    loadTeacherSchedule(teacherId)
-  }
-}
-
-function selectTeacher(teacherId: string) {
-  if (pendingChanges.value.length > 0) {
-    pendingTeacherId.value = teacherId
-    showDiscardDialog.value = true
-    return
-  }
-  doTeacherChange(teacherId)
-}
-
-// ── Atama Geçmişi ──
-const historyDialog = ref(false)
-const historyLoading = ref(false)
-const historyBusinessName = ref('')
-const historyEntries = ref<AssignmentHistoryEntryDto[]>([])
-
-async function showHistory(businessId: string, businessName: string) {
-  historyBusinessName.value = businessName
-  historyEntries.value = []
-  historyDialog.value = true
-  historyLoading.value = true
-  try {
-    const { data } = await coordinationApi.getAssignmentHistory(businessId)
-    historyEntries.value = data ?? []
-  } catch (e) {
-    notify.apiError(e, 'Geçmiş yüklenirken hata oluştu.')
-  } finally {
-    historyLoading.value = false
-  }
-}
-
-function historyIcon(action: string): string {
-  switch (action) {
-    case 'Assigned': return 'person_add'
-    case 'SlotAdded': return 'add_circle'
-    case 'SlotRemoved': return 'remove_circle'
-    case 'Unassigned': return 'person_remove'
-    case 'HoursUpdated': return 'schedule'
-    default: return 'info'
-  }
-}
-
-function historyColor(action: string): string {
-  switch (action) {
-    case 'Assigned': return 'green'
-    case 'SlotAdded': return 'blue'
-    case 'SlotRemoved': return 'orange'
-    case 'Unassigned': return 'red'
-    case 'HoursUpdated': return 'teal'
-    default: return 'grey'
-  }
-}
-
-function formatDate(isoDate: string): string {
-  return new Date(isoDate).toLocaleString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 // ── Harita popup'tan saat güncelleme ──

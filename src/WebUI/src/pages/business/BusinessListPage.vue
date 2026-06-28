@@ -89,7 +89,7 @@
       </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
-          <q-btn flat round dense icon="visibility" @click="openDetail(row)" />
+          <q-btn flat round dense icon="visibility" aria-label="Detayları görüntüle" @click="openDetail(row)" />
           <PermissionGuard :permission="Permissions.Company.Manage">
             <q-btn
               v-if="row.status === 'PendingApproval'"
@@ -105,6 +105,12 @@
             />
           </PermissionGuard>
         </q-td>
+      </template>
+
+      <template #empty-action>
+        <PermissionGuard :permission="Permissions.Company.Manage">
+          <q-btn color="primary" icon="add_business" label="İlk işletmeyi ekle" unelevated @click="addDialog = true" />
+        </PermissionGuard>
       </template>
     </AppTable>
 
@@ -171,7 +177,7 @@
       <template #toolbar-actions>
         <StatusBadge :slug="selected?.statusSlug ?? ''" class="q-mr-sm" />
         <PermissionGuard :permission="Permissions.Company.Manage">
-          <q-btn flat round dense icon="edit" @click="openEditDialog">
+          <q-btn flat round dense icon="edit" aria-label="Düzenle" @click="openEditDialog">
             <q-tooltip>Düzenle</q-tooltip>
           </q-btn>
         </PermissionGuard>
@@ -231,7 +237,7 @@
                 </q-item-section>
                 <q-item-section side>
                   <div class="row no-wrap">
-                    <q-btn flat dense round icon="visibility" color="primary" @click="previewDoc(doc.id)">
+                    <q-btn flat dense round icon="visibility" aria-label="Detayları görüntüle" color="primary" @click="previewDoc(doc.id)">
                       <q-tooltip>Görüntüle</q-tooltip>
                     </q-btn>
                     <PermissionGuard :permission="Permissions.Document.Approve">
@@ -245,7 +251,7 @@
                       </q-btn>
                     </PermissionGuard>
                     <PermissionGuard :permission="Permissions.Company.Document">
-                      <q-btn flat dense round icon="delete" color="negative" @click="confirmDeleteDoc(doc.id, doc.fileName)">
+                      <q-btn flat dense round icon="delete" aria-label="Sil" color="negative" @click="confirmDeleteDoc(doc.id, doc.fileName)">
                         <q-tooltip>Sil</q-tooltip>
                       </q-btn>
                     </PermissionGuard>
@@ -305,6 +311,7 @@ import { useQuasar } from 'quasar'
 import { businessApi, type BusinessDto, type SectorDto } from 'src/api/business'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
+import { useEntityOptionsStore } from 'stores/entityOptions'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
@@ -323,6 +330,7 @@ import 'leaflet/dist/leaflet.css'
 
 const $q = useQuasar()
 const notify = useNotify()
+const entityOptionsStore = useEntityOptionsStore()
 const confirmDialog = useConfirmDialog()
 const viewMode = ref<'table' | 'map'>('table')
 const mapZoom = ref(7)
@@ -414,6 +422,7 @@ async function approve(row: BusinessDto) {
   saving.value = true
   try {
     await businessApi.approve(row.id)
+    entityOptionsStore.invalidateBusinesses()
     notify.success('İşletme onaylandı.')
     await load()
   } catch (e) {

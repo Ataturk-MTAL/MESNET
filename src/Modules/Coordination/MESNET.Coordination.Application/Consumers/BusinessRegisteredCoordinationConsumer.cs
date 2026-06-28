@@ -1,5 +1,4 @@
 using Marten;
-using MESNET.Business.Core.Enums;
 using MESNET.Business.Shared.Events;
 using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Application.Services;
@@ -22,7 +21,7 @@ public static class BusinessRegisteredCoordinationConsumer
         CancellationToken cancellationToken)
     {
         // Self-register işletmeler PendingApproval durumunda — haritada gösterilmez
-        if (@event.Source == RegistrationSource.SelfRegistered)
+        if (@event.Source == "SelfRegistered") // RegistrationSource.SelfRegistered.Name
             return;
 
         var existing = await session.LoadAsync<BusinessCoordinationView>(@event.BusinessId, cancellationToken);

@@ -17,7 +17,15 @@ public class UserInvitation
     public required string TargetRole { get; set; }
     public Guid? InstitutionId { get; set; }
     public Guid? BusinessId { get; set; }
-    public InvitationStatus Status { get; set; } = InvitationStatus.PendingApproval;
+    private InvitationStatus _status = InvitationStatus.PendingApproval;
+    public InvitationStatus Status
+    {
+        get => _status;
+        set { _status = value; StatusName = value.Name; }
+    }
+
+    // SmartEnum LINQ tuzağı: Status JSON'a düz string serialize edilir; sorgular için düz string kopya.
+    public string StatusName { get; private set; } = InvitationStatus.PendingApproval.Name;
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public string? CreatedByName { get; set; }
     public DateTime? ApprovedAt { get; set; }

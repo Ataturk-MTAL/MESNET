@@ -22,8 +22,8 @@ public static class MarkAttendanceHandler
         if (!period.IsActive) throw new DomainException(AttendanceErrors.AcademicPeriodClosed(command.AcademicPeriodId));
 
         // Öğrenci-işletme eşleşmesi doğrulaması
-        var placement = session.Query<InternshipPlacementView>()
-            .FirstOrDefault(p => p.StudentId == command.StudentId
+        var placement = await session.Query<InternshipPlacementView>()
+            .FirstOrDefaultAsync(p => p.StudentId == command.StudentId
                 && p.BusinessId == command.BusinessId);
 
         if (placement is null)
@@ -40,8 +40,8 @@ public static class MarkAttendanceHandler
             throw new DomainException("ATTENDANCE_OUTSIDE_CURRENT_WEEK",
                 "Devamsızlık girişi sadece geçerli hafta için yapılabilir. Geriye veya ileriye dönük giriş yapılamaz.");
 
-        var calendar = session.Query<WorkCalendar>()
-            .FirstOrDefault(c => c.InstitutionId == command.InstitutionId && c.Year == command.Date.Year);
+        var calendar = await session.Query<WorkCalendar>()
+            .FirstOrDefaultAsync(c => c.InstitutionId == command.InstitutionId && c.Year == command.Date.Year);
 
         if (calendar?.RestrictedDays.Any(d => d.Date.Date == command.Date.Date) == true)
             throw new DomainException("ATTENDANCE_RESTRICTED_DATE",

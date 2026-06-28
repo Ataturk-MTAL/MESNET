@@ -3,6 +3,7 @@ using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.Enums;
 using MESNET.Enrollment.Shared.Events;
+using Wolverine;
 
 namespace MESNET.Enrollment.Application.Handlers;
 
@@ -13,6 +14,7 @@ public static class SyncStudentCountsHandler
     public static async Task<SyncStudentCountsResult> Handle(
         SyncStudentCounts command,
         IQuerySession session,
+        IMessageBus bus,
         CancellationToken cancellationToken)
     {
         // Marten SmartEnum LINQ tuzağı: Status filtreleme/projection yapılamaz.
@@ -37,6 +39,10 @@ public static class SyncStudentCountsHandler
                 g.GroupBy(s => s.ClassYear)
                     .ToDictionary(cg => cg.Key, cg => cg.Count())))
             .ToList();
+
+        // Event yayınlama handler'ın işidir (cross-module → PublishAsync). Endpoint artık publish ETMEZ.
+        foreach (var e in events)
+            await bus.PublishAsync(e);
 
         return new SyncStudentCountsResult(events);
     }

@@ -158,10 +158,11 @@ public static class DocumentLifecycleEndpoints
     private static async Task<IResult> DeleteDocumentsBatch(DeleteDocumentsBatchRequest request, IMessageBus bus, HttpContext http)
     {
         var user = ExtractUserContext(http);
+        // Doğrulama (null/boş liste kontrolü) handler'a aittir — endpoint koleksiyonu dereference etmez.
         await bus.InvokeAsync(new DeleteDocumentsBatch(request.DocumentIds, user));
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddMessage($"{request.DocumentIds.Count} doküman silindi.")
+            .AddMessage("Seçili dokümanlar silindi.")
             .Build());
     }
 

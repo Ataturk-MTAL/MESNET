@@ -122,41 +122,29 @@ public static class SseNotificationEndpoint
     }
 
     /// <summary>
-    /// JWT claim'lerinden SseUserContext oluşturur.
-    /// Auth devre dışıyken dev modda query string parametreleri ile test edilebilir.
+    /// SseUserContext'i YALNIZCA doğrulanmış JWT claim'lerinden oluşturur (CurrentUserService ile
+    /// aynı kaynak/anahtarlar). Endpoint .RequireAuthorization() taşır. Kimlik alanları query string'den
+    /// OKUNMAZ — aksi halde claim'siz ama kimliği doğrulanmış bir kullanıcı `?institutionId=...&roles=...`
+    /// ile başka kurum/rol bildirimlerine erişebilirdi (cross-tenant/rol sızıntısı).
     /// </summary>
     private static SseUserContext ExtractSseUserContext(HttpContext http)
     {
-        var userId = Guid.TryParse(
-            http.User.FindFirst("sub")?.Value ?? http.Request.Query["userId"].FirstOrDefault(),
-            out var id) ? id : Guid.Empty;
+        var user = http.User;
 
-        var fullName = http.User.FindFirst("name")?.Value
-                       ?? http.User.FindFirst("preferred_username")?.Value
-                       ?? http.Request.Query["fullName"].FirstOrDefault()
+        var userId = Guid.TryParse(user.FindFirst("sub")?.Value, out var id) ? id : Guid.Empty;
+
+        var fullName = user.FindFirst("name")?.Value
+                       ?? user.FindFirst("preferred_username")?.Value
                        ?? "Bilinmeyen Kullanıcı";
 
-        var institutionId = Guid.TryParse(
-            http.User.FindFirst("institution_id")?.Value ?? http.Request.Query["institutionId"].FirstOrDefault(),
-            out var instId) ? instId : (Guid?)null;
+        var institutionId = Guid.TryParse(user.FindFirst("institution_id")?.Value, out var instId) ? instId : (Guid?)null;
+        var businessId = Guid.TryParse(user.FindFirst("business_id")?.Value, out var bizId) ? bizId : (Guid?)null;
+        var studentId = Guid.TryParse(user.FindFirst("student_id")?.Value, out var stuId) ? stuId : (Guid?)null;
 
-        var businessId = Guid.TryParse(
-            http.User.FindFirst("business_id")?.Value ?? http.Request.Query["businessId"].FirstOrDefault(),
-            out var bizId) ? bizId : (Guid?)null;
-
-        var studentId = Guid.TryParse(
-            http.User.FindFirst("student_id")?.Value ?? http.Request.Query["studentId"].FirstOrDefault(),
-            out var stuId) ? stuId : (Guid?)null;
-
-        var roles = http.User.FindAll("role")
-            .Select(c => c.Value)
-            .ToList();
-        if (roles.Count == 0 && http.Request.Query.TryGetValue("roles", out var queryRoles))
-            roles = queryRoles.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
-
-        var permissions = http.User.FindAll("permission")
-            .Select(c => c.Value)
-            .ToList();
+        // Keycloak realm rolleri ClaimTypes.Role'a maplenir (CurrentUserService.cs ile aynı) —
+        // kısa "role" anahtarı dolmaz, bu yüzden ClaimTypes.Role okunmalı.
+        var roles = user.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
+        var permissions = user.FindAll("permissions").Select(c => c.Value).ToList();
 
         return new SseUserContext(userId, fullName, institutionId, businessId, studentId, roles, permissions);
     }

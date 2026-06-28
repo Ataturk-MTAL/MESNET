@@ -16,7 +16,7 @@ public static class GetBusinessesByStatusHandler
         IQueryable<Core.Entities.Business> queryable = session.Query<Core.Entities.Business>();
 
         if (query.Status is not null && BusinessStatus.TryFromName(query.Status, true, out var businessStatus))
-            queryable = queryable.Where(b => b.Status.Name == businessStatus.Name);
+            queryable = queryable.Where(b => b.StatusName == businessStatus.Name);
 
         if (query.Sector is not null && BusinessSector.TryFromName(query.Sector, true, out var sector))
             queryable = queryable.Where(b => b.Sectors.Any(s => s == sector.Name));

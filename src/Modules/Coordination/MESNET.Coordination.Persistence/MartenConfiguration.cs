@@ -1,5 +1,5 @@
+using JasperFx.Events.Projections;
 using Marten;
-using Marten.Events.Projections;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.ReadModels;
@@ -114,5 +114,8 @@ public static class MartenConfiguration
         // AcademicPeriodView (cross-module read model)
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("coordination");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
+
+        // InstitutionView (Institution modülünden InstitutionUpdated event'i ile beslenir)
+        options.Schema.For<InstitutionView>().DatabaseSchemaName("coordination");
     }
 }

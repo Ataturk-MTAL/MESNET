@@ -14,8 +14,8 @@ public static class RecalculateDistancesHandler
         IOsrmDistanceService osrmService,
         CancellationToken cancellationToken)
     {
-        // Kurum lokasyonunu al
-        var institution = await session.LoadAsync<Institution.Core.Entities.Institution>(
+        // Kurum lokasyonunu al — event-tabanlı InstitutionView
+        var institution = await session.LoadAsync<InstitutionView>(
             command.InstitutionId, cancellationToken);
 
         var schoolLocation = institution?.Location;

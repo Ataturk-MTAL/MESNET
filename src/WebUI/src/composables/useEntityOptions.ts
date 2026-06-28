@@ -1,10 +1,9 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { watchThrottled } from '@vueuse/core'
 import { enrollmentApi } from 'src/api/enrollment'
-import { businessApi } from 'src/api/business'
-import { securityApi } from 'src/api/security'
-import { institutionApi, type FieldOfStudyDto, type InstitutionBranchDto } from 'src/api/institution'
-import { useAuthStore } from 'stores/auth'
+import { useInstitutionStore } from 'stores/institution'
+import { useEntityOptionsStore } from 'stores/entityOptions'
+import type { PagedResponse } from 'src/types/pagination'
 
 export interface SelectOption {
   label: string
@@ -12,93 +11,88 @@ export interface SelectOption {
   caption?: string
 }
 
-// ── İşletme Seçimi ──
+/**
+ * Sayfalı bir listeleme endpoint'inin TÜM kayıtlarını sayfa sayfa çeker.
+ * Seçim listelerinin tek sayfa (pageSize:100) ile sessizce kırpılmasını önler;
+ * label/lookup çözümlemesi için tüm kayıtlar yerelde tutulur (q-select use-input + map-options).
+ */
+async function fetchAllItems<T>(
+  fetchPage: (page: number, pageSize: number) => Promise<{ data: PagedResponse<T> }>,
+): Promise<T[]> {
+  const pageSize = 100
+  const all: T[] = []
+  let page = 1
+  // Güvenlik sınırı: en çok 100 sayfa — sonsuz döngü koruması
+  for (let i = 0; i < 100; i++) {
+    const res = await fetchPage(page, pageSize)
+    const items = res.data?.items ?? []
+    all.push(...items)
+    if (!res.data?.hasNextPage || items.length === 0) break
+    page++
+  }
+  return all
+}
+
+// ── İşletme Seçimi ── (store-backed cache, per-component filtrelenmiş görünüm)
 export function useBusinessOptions() {
+  const store = useEntityOptionsStore()
   const options = ref<SelectOption[]>([])
-  const allOptions = ref<SelectOption[]>([])
-  const loading = ref(false)
-  let loaded = false
+  const allOptions = computed(() => store.businesses)
+  const loading = computed(() => store.businessesLoading)
 
   async function load() {
-    if (loaded) return
-    loading.value = true
-    try {
-      const res = await businessApi.list({ status: 'Approved', pageSize: 100 })
-      allOptions.value = (res.data?.items ?? []).map((b: { name: string; id: string; address: string }) => ({
-        label: b.name,
-        value: b.id,
-        caption: b.address,
-      }))
-      options.value = allOptions.value
-      loaded = true
-    } finally {
-      loading.value = false
-    }
+    await store.loadBusinesses()
+    options.value = store.businesses
   }
 
   function filter(val: string, update: (fn: () => void) => void) {
     update(() => {
       const needle = val.toLowerCase()
       options.value = needle
-        ? allOptions.value.filter(
+        ? store.businesses.filter(
             (o) =>
               o.label.toLowerCase().includes(needle) ||
               (o.caption?.toLowerCase().includes(needle) ?? false),
           )
-        : allOptions.value
+        : store.businesses
     })
   }
 
   function reset() {
-    loaded = false
     options.value = []
-    allOptions.value = []
   }
 
   return { options, allOptions, loading, load, filter, reset }
 }
 
-// ── Öğrenci Seçimi ──
+// ── Öğrenci Seçimi ── (store-backed cache, per-component filtrelenmiş görünüm)
 export function useStudentOptions() {
+  const store = useEntityOptionsStore()
   const options = ref<SelectOption[]>([])
-  const allOptions = ref<SelectOption[]>([])
-  const loading = ref(false)
-  let loaded = false
+  const allOptions = computed(() => store.students)
+  const loading = computed(() => store.studentsLoading)
 
-  async function load(params?: { institutionId?: string; branchCode?: string }) {
-    if (loaded) return
-    loading.value = true
-    try {
-      const res = await enrollmentApi.listStudents({ ...params, pageSize: 100 })
-      allOptions.value = (res.data?.items ?? []).map((s) => ({
-        label: s.fullName,
-        value: s.id,
-        caption: `${s.branchCode} · ${s.classYear}/${s.section ?? '—'}`,
-      }))
-      options.value = allOptions.value
-      loaded = true
-    } finally {
-      loading.value = false
-    }
+  // params imzası korunur (tüketici uyumluluğu) ancak store sabit tam-listeyi çeker — params yok sayılır
+  async function load(_params?: { institutionId?: string; branchCode?: string }) {
+    await store.loadStudents()
+    options.value = store.students
   }
 
   function filter(val: string, update: (fn: () => void) => void) {
     update(() => {
       const needle = val.toLowerCase()
       options.value = needle
-        ? allOptions.value.filter(
+        ? store.students.filter(
             (o) =>
               o.label.toLowerCase().includes(needle) ||
               (o.caption?.toLowerCase().includes(needle) ?? false),
           )
-        : allOptions.value
+        : store.students
     })
   }
 
   function reset() {
-    loaded = false
     options.value = []
-    allOptions.value = []
   }
 
   return { options, allOptions, loading, load, filter, reset }
@@ -123,12 +117,15 @@ export function usePlacementOptions() {
     if (loaded) return
     loading.value = true
     try {
-      const res = await enrollmentApi.listPlacements({
-        ...params,
-        status: params?.status ?? 'Matched',
-        pageSize: 100,
-      })
-      allOptions.value = (res.data?.items ?? []).map((p) => ({
+      const items = await fetchAllItems((page, pageSize) =>
+        enrollmentApi.listPlacements({
+          ...params,
+          status: params?.status ?? 'Matched',
+          page,
+          pageSize,
+        }),
+      )
+      allOptions.value = items.map((p) => ({
         label: p.studentName,
         value: p.studentId,
         businessId: p.businessId,
@@ -189,8 +186,10 @@ export function useTeacherOptions() {
   async function reload(params?: { institutionId?: string; academicPeriodId?: string; branchCode?: string }) {
     loading.value = true
     try {
-      const res = await enrollmentApi.listTeachers({ ...params, pageSize: 100 })
-      allOptions.value = (res.data?.items ?? []).map((t) => ({
+      const items = await fetchAllItems((page, pageSize) =>
+        enrollmentApi.listTeachers({ ...params, page, pageSize }),
+      )
+      allOptions.value = items.map((t) => ({
         label: t.fullName,
         value: t.id,
         branchCode: t.branchCode ?? null,
@@ -220,47 +219,34 @@ export function useTeacherOptions() {
   return { options, allOptions, loading, load, reload, filter, reset }
 }
 
-// ── Keycloak Kullanıcı Seçimi ──
+// ── Keycloak Kullanıcı Seçimi ── (store-backed cache, per-component filtrelenmiş görünüm)
 export function useKeycloakUserOptions() {
+  const store = useEntityOptionsStore()
   const options = ref<SelectOption[]>([])
-  const allOptions = ref<SelectOption[]>([])
-  const loading = ref(false)
-  let loaded = false
+  const allOptions = computed(() => store.keycloakUsers)
+  const loading = computed(() => store.keycloakUsersLoading)
 
-  async function load(params?: { role?: string; institutionId?: string }) {
-    if (loaded) return
-    loading.value = true
-    try {
-      const res = await securityApi.listUsers({ ...params, pageSize: 100 })
-      allOptions.value = (res.data?.items ?? []).map((u) => ({
-        label: u.fullName,
-        value: u.keycloakUserId,
-        caption: `${u.email} (${u.username})`,
-      }))
-      options.value = allOptions.value
-      loaded = true
-    } finally {
-      loading.value = false
-    }
+  // params imzası korunur (tüketici uyumluluğu) ancak store sabit tam-listeyi çeker — params yok sayılır
+  async function load(_params?: { role?: string; institutionId?: string }) {
+    await store.loadKeycloakUsers()
+    options.value = store.keycloakUsers
   }
 
   function filter(val: string, update: (fn: () => void) => void) {
     update(() => {
       const needle = val.toLowerCase()
       options.value = needle
-        ? allOptions.value.filter(
+        ? store.keycloakUsers.filter(
             (o) =>
               o.label.toLowerCase().includes(needle) ||
               (o.caption?.toLowerCase().includes(needle) ?? false),
           )
-        : allOptions.value
+        : store.keycloakUsers
     })
   }
 
   function reset() {
-    loaded = false
     options.value = []
-    allOptions.value = []
   }
 
   return { options, allOptions, loading, load, filter, reset }
@@ -279,27 +265,17 @@ export function useBranchOptions() {
   const searchQuery = ref('')
   let loaded = false
 
-  // Field catalog — specialization isim çözümlemesi için
-  let _fields: FieldOfStudyDto[] = []
-  let _branches: InstitutionBranchDto[] = []
+  const institutionStore = useInstitutionStore()
 
   async function load() {
     if (loaded) return
-    const authStore = useAuthStore()
-    const instId = authStore.user?.institutionId
-    if (!instId) {
-      console.warn('[useBranchOptions] institutionId bulunamadı.')
-      return
-    }
     loading.value = true
     try {
-      const [instRes, catalogRes] = await Promise.all([
-        institutionApi.get(instId),
-        institutionApi.getFieldCatalog(),
+      await Promise.all([
+        institutionStore.loadInstitution(),
+        institutionStore.loadFieldCatalog(),
       ])
-      _branches = instRes.data.branches?.filter((b) => b.isActive) ?? []
-      _fields = catalogRes.data ?? []
-      allOptions.value = _branches.map((b) => ({
+      allOptions.value = institutionStore.activeBranches.map((b) => ({
         label: `${b.fieldCode} — ${b.fieldName}`,
         value: b.fieldCode,
       }))
@@ -327,9 +303,9 @@ export function useBranchOptions() {
 
   /** Seçili branch code'a göre dal (specialization) seçenekleri döndürür */
   function getSpecializations(branchCode: string): SpecOption[] {
-    const branch = _branches.find((b) => b.fieldCode === branchCode)
+    const branch = institutionStore.activeBranches.find((b) => b.fieldCode === branchCode)
     if (!branch || !branch.activeSpecializations.length) return []
-    const field = _fields.find((f) => f.code === branchCode)
+    const field = institutionStore.fieldCatalog.find((f) => f.code === branchCode)
     if (!field) return []
     return branch.activeSpecializations.map((specCode) => {
       const spec = field.specializations.find((s) => s.code === specCode)
@@ -339,7 +315,7 @@ export function useBranchOptions() {
 
   /** Branch code'dan fieldName döndürür */
   function getFieldName(branchCode: string): string {
-    return _branches.find((b) => b.fieldCode === branchCode)?.fieldName ?? ''
+    return institutionStore.activeBranches.find((b) => b.fieldCode === branchCode)?.fieldName ?? ''
   }
 
   function reset() {
@@ -347,8 +323,6 @@ export function useBranchOptions() {
     searchQuery.value = ''
     options.value = []
     allOptions.value = []
-    _fields = []
-    _branches = []
   }
 
   return { options, allOptions, loading, searchQuery, load, filter, getSpecializations, getFieldName, reset }

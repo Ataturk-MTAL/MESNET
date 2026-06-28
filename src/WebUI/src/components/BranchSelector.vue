@@ -37,9 +37,7 @@
       <q-icon :name="icon" />
     </template>
     <template #no-option>
-      <q-item>
-        <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-      </q-item>
+      <SelectEmptyOption />
     </template>
   </q-select>
 </template>
@@ -48,6 +46,7 @@
 import { computed, onMounted } from 'vue'
 import { useBranchOptions } from 'src/composables/useEntityOptions'
 import { useAuthStore } from 'stores/auth'
+import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
 withDefaults(defineProps<{
   label?: string

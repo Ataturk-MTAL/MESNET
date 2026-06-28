@@ -6,6 +6,8 @@
     <PackageReference Include="WolverineFx.Http" />
     <PackageReference Include="WolverineFx.Marten" />
     <PackageReference Include="WolverineFx.RabbitMQ" />
+    <!-- Wolverine 6: runtime Roslyn derleyicisi çekirdekten çıkarıldı; dev'de dinamik kod üretimi için gerekli -->
+    <PackageReference Include="WolverineFx.RuntimeCompilation" />
     <PackageReference Include="Marten" />
     <PackageReference Include="Aspire.Npgsql" />
     <PackageReference Include="Aspire.RabbitMQ.Client" />

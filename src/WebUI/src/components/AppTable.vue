@@ -20,7 +20,19 @@
       </q-input>
     </div>
 
+    <!-- İlk yükleme: spinner yerine içerik-şekilli skeleton satırlar (layout-shift'siz) -->
+    <div v-if="loading && rows.length === 0" class="q-mt-xs">
+      <q-skeleton
+        v-for="i in 6"
+        :key="i"
+        type="rect"
+        height="44px"
+        class="q-mb-xs rounded-borders"
+      />
+    </div>
+
     <q-table
+      v-else
       v-bind="$attrs"
       :rows="rows"
       :columns="columns"
@@ -48,6 +60,10 @@
         <div class="full-width column flex-center q-pa-xl text-grey-6">
           <q-icon name="inbox" size="48px" class="q-mb-sm" />
           <span>{{ noDataLabel }}</span>
+          <!-- Boş durumda eyleme yönlendirme (ör. 'İlk kaydı ekle') — sayfa #empty-action slot'uyla verir -->
+          <div v-if="$slots['empty-action']" class="q-mt-md">
+            <slot name="empty-action" />
+          </div>
         </div>
       </template>
     </q-table>

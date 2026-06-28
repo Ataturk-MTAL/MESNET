@@ -11,44 +11,58 @@ interface Props {
 
 const props = defineProps<Props>()
 
+// Anlamsal renk paleti — aynı AŞAMADAKİ durumlar aynı tonu paylaşır, aşamalar arası ayrışır.
+// (Etiket metni renk-körü kullanıcı için ayırt ediciliği zaten sağlar; renk ikincil sinyaldir.)
+const PENDING = 'amber-8' //     bekleyen: onay/imza/başvuru bekliyor
+const ACTIVE = 'green-7' //      olumlu/aktif: aktif, onaylandı, doğrulandı, ödendi
+const PROGRESS = 'teal-7' //     ara aşama: yerleştirildi, eşleştirildi
+const INFO = 'cyan-7' //         bilgilendirici ara durum: imzalandı, yüklendi, hesaplandı
+const WARNING = 'orange-8' //    uyarı: askıda, fesih talebi, süre doldu, itiraz
+const NEGATIVE = 'red-7' //      olumsuz: red, fesih, iptal
+const DONE = 'deep-purple-6' //  tamamlanmış: tamamlandı, transfer
+const NEUTRAL = 'blue-grey-6' // nötr: kayıtlı
+const DRAFT = 'grey-6' //        taslak/pasif
+const CLOSED = 'grey-9' //       kapatılmış
+
 const STATUS_COLORS: Record<string, string> = {
-  // İşletme durumları
-  'Onay Bekliyor': 'amber-8',
-  'Aktif': 'green-7',
-  'Reddedildi': 'red-7',
-  'Pasif': 'grey-6',
-  'Kapatılmış': 'grey-9',
-  // Öğrenci durumları
-  'Kayıtlı': 'blue-grey-6',
-  'Başvurdu': 'light-blue-7',
-  'Yerleştirildi': 'teal-7',
-  'Aktif Staj': 'green-7',
-  'Tamamladı': 'deep-purple-6',
-  // Sözleşme durumları
-  'Taslak': 'grey-6',
-  'İmza Bekliyor': 'amber-8',
-  'İmzaya Sunuldu': 'amber-8',
-  'İmzalandı': 'cyan-7',
-  'Askıda': 'orange-8',
-  'Fesih Talep Edildi': 'deep-orange-7',
-  'Feshedildi': 'red-7',
-  'Tamamlandı': 'deep-purple-6',
-  // Belge durumları
-  'Yüklendi': 'light-blue-7',
-  'Onaylandı': 'green-7',
-  'Süresi Doldu': 'orange-8',
-  // Yerleştirme durumları
-  'Eşleştirildi': 'teal-7',
-  'Transfer Edildi': 'deep-purple-6',
-  'İptal Edildi': 'red-7',
-  // Devamsızlık
-  'Onay Bekleniyor': 'amber-8',
-  'Doğrulandı': 'green-7',
-  'Düzeltildi': 'light-blue-7',
-  // Ödeme
-  'Hesaplandı': 'light-blue-7',
-  'Ödendi': 'green-7',
-  'İtiraz Edildi': 'orange-8',
+  // Bekleyen (amber)
+  'Onay Bekliyor': PENDING,
+  'Onay Bekleniyor': PENDING,
+  'İmza Bekliyor': PENDING,
+  'İmzaya Sunuldu': PENDING,
+  'Başvurdu': PENDING,
+  // Olumlu / aktif (yeşil)
+  'Aktif': ACTIVE,
+  'Aktif Staj': ACTIVE,
+  'Onaylandı': ACTIVE,
+  'Doğrulandı': ACTIVE,
+  'Ödendi': ACTIVE,
+  // Ara aşama (teal)
+  'Yerleştirildi': PROGRESS,
+  'Eşleştirildi': PROGRESS,
+  // Bilgilendirici ara durum (cyan)
+  'İmzalandı': INFO,
+  'Yüklendi': INFO,
+  'Hesaplandı': INFO,
+  'Düzeltildi': INFO,
+  // Uyarı (turuncu)
+  'Askıda': WARNING,
+  'Fesih Talep Edildi': WARNING,
+  'Süresi Doldu': WARNING,
+  'İtiraz Edildi': WARNING,
+  // Olumsuz (kırmızı)
+  'Reddedildi': NEGATIVE,
+  'Feshedildi': NEGATIVE,
+  'İptal Edildi': NEGATIVE,
+  // Tamamlanmış (mor)
+  'Tamamladı': DONE,
+  'Tamamlandı': DONE,
+  'Transfer Edildi': DONE,
+  // Nötr / taslak (gri)
+  'Kayıtlı': NEUTRAL,
+  'Taslak': DRAFT,
+  'Pasif': DRAFT,
+  'Kapatılmış': CLOSED,
 }
 
 const color = computed(() => STATUS_COLORS[props.slug] ?? 'grey-7')

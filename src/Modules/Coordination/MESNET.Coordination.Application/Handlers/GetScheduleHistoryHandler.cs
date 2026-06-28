@@ -24,10 +24,12 @@ public static class GetScheduleHistoryHandler
         else
         {
             // En son güncellenen schedule'ı al
-            schedule = session.Query<TeacherSchedule>()
+            var schedules = await session.Query<TeacherSchedule>()
                 .Where(s => s.TeacherId == query.TeacherId)
                 .OrderByDescending(s => s.CreatedAt)
-                .ToList()
+                .ToListAsync(cancellationToken);
+
+            schedule = schedules
                 .OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt)
                 .FirstOrDefault();
 
@@ -87,15 +89,17 @@ public static class GetScheduleHistoryHandler
     /// <summary>
     /// Öğretmenin tüm schedule stream'lerinin listesini getir
     /// </summary>
-    public static List<ScheduleStreamSummaryDto> Handle(
+    public static async Task<List<ScheduleStreamSummaryDto>> Handle(
         GetScheduleStreams query,
-        IQuerySession session)
+        IQuerySession session,
+        CancellationToken cancellationToken)
     {
-        IQueryable<TeacherSchedule> q = session.Query<TeacherSchedule>()
-            .Where(s => s.TeacherId == query.TeacherId);
+        var schedules = await session.Query<TeacherSchedule>()
+            .Where(s => s.TeacherId == query.TeacherId)
+            .OrderByDescending(s => s.CreatedAt)
+            .ToListAsync(cancellationToken);
 
-        return q.OrderByDescending(s => s.CreatedAt)
-            .ToList()
+        return schedules
             .OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt)
             .Select(s => new ScheduleStreamSummaryDto(
                 s.Id,

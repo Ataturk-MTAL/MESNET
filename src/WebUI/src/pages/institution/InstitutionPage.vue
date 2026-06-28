@@ -344,6 +344,7 @@ import PermissionGuard from 'components/PermissionGuard.vue'
 import PageHeader from 'components/PageHeader.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useInstitutionStore } from 'stores/institution'
 import EditInstitutionForm from 'components/forms/institution/EditInstitutionForm.vue'
 import AddStaffForm from 'components/forms/institution/AddStaffForm.vue'
 import AddBranchForm from 'components/forms/institution/AddBranchForm.vue'
@@ -352,6 +353,7 @@ import ScheduleConfigForm from 'components/forms/institution/ScheduleConfigForm.
 import CreatePeriodForm from 'components/forms/institution/CreatePeriodForm.vue'
 
 const periodStore = useAcademicPeriodStore()
+const institutionStore = useInstitutionStore()
 const notify = useNotify()
 const confirmDialog = useConfirmDialog()
 
@@ -454,6 +456,9 @@ async function load() {
     institution.value = instRes.data
     scheduleConfig.value = schedRes.data
     periods.value = periodsRes.data?.items ?? []
+    // Bu yönetim sayfası kurum/branş/program verisini değiştirir; paylaşılan store
+    // cache'ini geçersiz kıl → diğer sayfalar bir sonraki erişimde taze veri çeker.
+    institutionStore.clear()
   } catch {
     error.value = 'Kurum bilgileri yüklenirken bir hata oluştu.'
   } finally {
@@ -474,6 +479,7 @@ async function loadSchedule() {
   try {
     const res = await institutionApi.getScheduleConfig(institutionId.value)
     scheduleConfig.value = res.data
+    institutionStore.clear()
   } catch { /* sessiz */ }
 }
 

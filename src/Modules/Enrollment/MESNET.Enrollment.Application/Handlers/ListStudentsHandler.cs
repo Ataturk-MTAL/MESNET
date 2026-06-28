@@ -29,7 +29,7 @@ public static class ListStudentsHandler
 
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             StudentStatus.TryFromName(query.Status, true, out var status))
-            queryable = queryable.Where(s => s.Status.Name == status.Name);
+            queryable = queryable.Where(s => s.StatusName == status.Name);
 
         queryable = queryable.ApplySearch(query.Search, s => s.FullName, s => s.TcKimlikNo);
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: s => s.FullName);

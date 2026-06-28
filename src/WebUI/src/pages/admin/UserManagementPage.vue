@@ -43,10 +43,10 @@
           <template #body-cell-userActions="{ row }">
             <q-td class="text-right">
               <PermissionGuard :permission="Permissions.UserManagement.Update">
-                <q-btn flat round dense icon="edit" @click="openEditUser(row)" />
+                <q-btn flat round dense icon="edit" aria-label="Düzenle" @click="openEditUser(row)" />
               </PermissionGuard>
               <PermissionGuard :permission="Permissions.UserManagement.RolesManage">
-                <q-btn flat round dense icon="manage_accounts" @click="openRoles(row)" />
+                <q-btn flat round dense icon="manage_accounts" aria-label="Rolleri yönet" @click="openRoles(row)" />
               </PermissionGuard>
               <PermissionGuard :permission="Permissions.UserManagement.Update">
                 <q-btn
@@ -107,7 +107,7 @@
         <q-toolbar class="bg-primary text-white">
           <q-icon name="person_add" class="q-mr-sm" />
           <q-toolbar-title>Kullanıcı Davet Et</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
+          <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
           <q-input v-model="inviteForm.email" label="E-posta" filled type="email">
@@ -150,7 +150,7 @@
         <q-toolbar class="bg-purple text-white">
           <q-icon name="manage_accounts" class="q-mr-sm" />
           <q-toolbar-title>Roller: {{ selectedUser?.fullName }}</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
+          <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
           <q-option-group
@@ -178,12 +178,14 @@ import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { Permissions } from 'utils/permissions'
 import { useAuthStore } from 'stores/auth'
+import { useEntityOptionsStore } from 'stores/entityOptions'
 import AppTable from 'components/AppTable.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 
 const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
+const entityOptionsStore = useEntityOptionsStore()
 
 const tab = ref('users')
 const saving = ref(false)
@@ -289,6 +291,7 @@ async function sendInvitation() {
       lastName: inviteForm.lastName,
       targetRole: inviteForm.targetRole,
     })
+    entityOptionsStore.invalidateKeycloakUsers()
     notify.success('Davet gönderildi.')
     inviteDialog.value = false
     inviteForm.email = ''

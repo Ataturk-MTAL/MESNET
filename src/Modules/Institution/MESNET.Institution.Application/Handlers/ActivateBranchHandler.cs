@@ -34,6 +34,7 @@ public static class ActivateBranchHandler
         institution.Branches.Add(branch);
         session.Store(institution);
 
-        return new BranchActivated(institution.Id, field.Code, field.Name, field.Type);
+        // Modüller arası event'te SmartEnum yerine Name string'i gönderilir
+        return new BranchActivated(institution.Id, field.Code, field.Name, field.Type.Name);
     }
 }

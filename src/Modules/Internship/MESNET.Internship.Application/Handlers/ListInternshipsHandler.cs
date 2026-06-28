@@ -30,7 +30,7 @@ public static class ListInternshipsHandler
 
         if (!string.IsNullOrWhiteSpace(query.Phase) &&
             InternshipPhase.TryFromName(query.Phase, true, out var internshipPhase))
-            queryable = queryable.Where(s => s.Phase.Name == internshipPhase.Name);
+            queryable = queryable.Where(s => s.PhaseName == internshipPhase.Name);
 
         if (query.MinAbsenceDays.HasValue)
             queryable = queryable.Where(s => s.TotalAbsenceDays >= query.MinAbsenceDays.Value);

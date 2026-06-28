@@ -20,6 +20,7 @@ public static class PlacementEndpoints
 
         group.MapPost("/", Post).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{placementId:guid}/mark-failed", PostMarkFailed).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapGet("/status-counts", GetStatusCounts).RequireAuthorization(Permissions.Student.View);
         group.MapGet("/{placementId:guid}", Get).RequireAuthorization(Permissions.Student.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Student.View);
 
@@ -60,30 +61,22 @@ public static class PlacementEndpoints
     private static async Task<IResult> GetAll(
         Guid? businessId, Guid? studentId, Guid? academicPeriodId, string? status, string? branchCode,
         int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
-        ICurrentUserService currentUser = default!, IMessageBus bus = default!)
+        IMessageBus bus = default!)
     {
-        var user = currentUser.GetCurrentUser();
-        var institutionId = user?.InstitutionId;
-        Guid? teacherId = null;
-        var effectiveBusinessId = businessId;
-
-        // Teacher: sadece koordine ettiği öğrencilerin yerleştirmelerini görsün
-        if (currentUser.IsInRole(MesnetRoles.Teacher)
-            && !currentUser.IsInRole(MesnetRoles.InstitutionManager)
-            && !currentUser.IsInRole(MesnetRoles.InstitutionStaff))
-        {
-            teacherId = await bus.InvokeAsync<Guid?>(new ResolveTeacherId(user!.UserId));
-        }
-
-        // CompanyManager: sadece kendi işletmesindeki yerleştirmeleri görsün
-        if (currentUser.IsInRole(MesnetRoles.CompanyManager) && user?.BusinessId.HasValue == true)
-        {
-            effectiveBusinessId = user.BusinessId;
-        }
-
+        // Yetki-kapsam daraltma (kurum + Teacher/CompanyManager) ListPlacementsHandler içinde
+        // ICurrentUserService'ten türetilir — endpoint yalnız ham filtreleri geçer (ince adaptör).
         var result = await bus.InvokeAsync<PagedResult<InternshipPlacementDto>>(
-            new ListPlacements(effectiveBusinessId, studentId, academicPeriodId, status, institutionId, teacherId, branchCode)
+            new ListPlacements(businessId, studentId, academicPeriodId, status, branchCode)
             { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
         return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
+    }
+
+    // Overview kartları için durum-bazında TOPLAM sayım (sayfalamadan bağımsız). Kapsam liste ile aynı.
+    private static async Task<IResult> GetStatusCounts(
+        Guid? academicPeriodId, string? branchCode, IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<PlacementStatusCountsResult>(
+            new GetPlacementStatusCounts(academicPeriodId, branchCode));
+        return Results.Ok(ResponseBuilder.Success().AddData(result.Counts).Build());
     }
 }

@@ -88,6 +88,10 @@ public static class DocumentLifecycleHandler
     public static async Task<NotifyDocumentDeleted> Handle(
         DeleteDocumentsBatch command, IDocumentSession session, IFileStorageService storage)
     {
+        // Null/boş koleksiyon koruması: eksik veya boş gövdeyle gelen istek NRE yerine 422 döner.
+        if (command.DocumentIds is null || command.DocumentIds.Count == 0)
+            throw new DomainException(ReportingErrors.EmptyDocumentList());
+
         var docs = await session.LoadManyAsync<GeneratedDocument>(command.DocumentIds.ToArray());
         var notFoundIds = command.DocumentIds
             .Except(docs.Select(d => d.Id))

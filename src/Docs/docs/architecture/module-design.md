@@ -73,6 +73,50 @@ Hangi entity'nin hangi pattern'ı kullandığı, her modülün "Storage tipi" b�
 
 ## Modül Yapısı
 
+### 0. Security (Kimlik Doğrulama ve Kullanıcı Yönetimi)
+
+**Bounded Context:** Kullanıcı hesabı yönetimi, Keycloak entegrasyonu, rol ve doğrudan izin atama, kullanıcı davet akışı. Tüm modüllerin temel bağımlılığıdır — `UserCreated` event'i Institution, Enrollment ve Business modüllerinde ilgili profil kayıtlarının oluşmasını tetikler.
+
+**Aggregate Roots:**
+- `UserAccount` — Keycloak kullanıcısının yerel gölge kopyası (Keycloak ID, roller, doğrudan izinler, kurum/işletme/öğrenci bağı)
+- `UserInvitation` — Davet kaydı ve onay akışı durumu (token, hedef rol, metadata, geçerlilik)
+
+**Sorumluluklar:**
+- Keycloak Admin API ile kullanıcı oluşturma, güncelleme, aktif/pasif yapma, silme
+- Realm rolü atama ve değiştirme
+- Doğrudan izin (DirectPermissions) atama — Keycloak attribute + yerel gölge kopya
+- Kullanıcı davet süreci yönetimi (Onay Bekliyor → Onaylandı → Tamamlandı / Reddedildi / Süresi Doldu)
+- Davet e-postası gönderme ve yeniden gönderme
+- Kullanıcı ve davet listeleme, arama, sayfalama
+- Rol/izin değişiminde yetki claim cache invalidation (`PermissionClaimsTransformation`)
+
+**Kimlik Doğrulama Altyapısı:**
+- Keycloak (OAuth2 / OIDC, PKCE flow) — frontend public client, API confidential client
+- Realm rolleri (6): `InstitutionManager`, `InstitutionStaff`, `Teacher`, `Student`, `DepartmentHead`, `CompanyManager` (`MESNET.Common.Shared/Security/MesnetRoles.cs`)
+- Custom user attributes: `institution_id`, `business_id`, `direct_permissions`
+- İzin sabitleri `MESNET.Common.Shared/Security/Permissions.cs`'te tanımlı; Keycloak rolleri + doğrudan izinler `PermissionClaimsTransformation` (`MESNET.Common.Infrastructure`) ile JWT claim'lerine çevrilir
+
+**Davet Akışı:** `CreateInvitation` (davet oluştur) → `ApproveInvitation` (onayla; +7 gün geçerlilik + e-posta) → `CompleteInvitation` (Keycloak'a kullanıcı oluştur, rol/attribute ata, `UserAccount` kaydet) → `InvitationCompleted` + `UserCreated` cascade event'leri.
+
+**Storage tipi:** Document (CRUD ağırlıklı, event sourcing kullanılmaz)
+
+**Publish ettiği eventler:**
+- `UserCreated` — Institution / Enrollment / Business tarafından consume edilir (profil oluşturma)
+- `UserUpdated`
+- `UserRolesChanged`
+- `UserPermissionsChanged`
+- `UserActivated`
+- `UserDeactivated`
+- `UserDeleted`
+- `InvitationCreated`
+- `InvitationApproved`
+- `InvitationRejected`
+- `InvitationCompleted`
+
+**Dinlediği eventler:** Yok — Phase 1'de tek yönlü olay akışının kaynağıdır (başka modülün event'ini consume etmez).
+
+---
+
 ### 1. Business (İşletme Yönetimi)
 
 **Bounded Context:** İşletme kaydı, onay süreci, durum yönetimi, belgeleri ve konum yönetimi.
@@ -562,6 +606,7 @@ services.ConfigureMarten(opts =>
 
 | Modül | Schema | Storage | Açıklama |
 | ----- | ------ | ------- | -------- |
+| Security | `security` | Document | Kullanıcı hesabı, davet, rol/izin gölge kopyası |
 | Business | `business` | Document + Event | İşletme bilgileri, durum geçişleri |
 | Enrollment | `enrollment` | Document + Event | Öğrenci/öğretmen profilleri, yerleştirme |
 | Contract | `contract` | Event Sourcing | Sözleşme yaşam döngüsü |

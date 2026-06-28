@@ -23,6 +23,7 @@
 import { ref, reactive, watch } from 'vue'
 import { enrollmentApi } from 'src/api/enrollment'
 import { useNotify } from 'src/composables/useNotify'
+import { useEntityOptionsStore } from 'stores/entityOptions'
 import FormDialog from 'components/FormDialog.vue'
 
 const open = defineModel<boolean>({ required: true })
@@ -35,6 +36,7 @@ const props = defineProps<{
 const emit = defineEmits<{ saved: [] }>()
 
 const notify = useNotify()
+const entityOptionsStore = useEntityOptionsStore()
 const saving = ref(false)
 const form = reactive({ reason: '' })
 
@@ -49,6 +51,7 @@ async function handleSave() {
   saving.value = true
   try {
     await enrollmentApi.deregisterStudent(props.studentId, form.reason)
+    entityOptionsStore.invalidateStudents()
     notify.success('Öğrenci kaydı silindi.')
     open.value = false
     emit('saved')

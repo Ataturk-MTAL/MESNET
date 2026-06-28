@@ -1,5 +1,5 @@
+using JasperFx.Events.Projections;
 using Marten;
-using Marten.Events.Projections;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.ReadModels;
 
@@ -20,5 +20,8 @@ public class ContractMartenConfig : IConfigureMarten
 
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("contract");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
+
+        // Öğrenci ad/numara araması için denormalize view (Enrollment.StudentRegistered ile beslenir)
+        options.Schema.For<StudentNameView>().DatabaseSchemaName("contract");
     }
 }

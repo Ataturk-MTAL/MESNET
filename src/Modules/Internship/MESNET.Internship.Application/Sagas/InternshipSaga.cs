@@ -71,7 +71,8 @@ public class InternshipSaga : Saga
         RequiresParentApproval = false;
         ApprovalChain = new TerminationApprovalChain();
 
-        return new InternshipTerminationApprovalChainStarted(Id, e.StudentId, RequiresParentApproval);
+        // StudentId saga'nın kendi state'inden (trigger event'i taşımaz) — Start'ta set edilir.
+        return new InternshipTerminationApprovalChainStarted(Id, StudentId, RequiresParentApproval);
     }
 
     // ─── HANDLE: Onay Zinciri — Veli ───

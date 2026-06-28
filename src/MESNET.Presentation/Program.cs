@@ -185,16 +185,26 @@ try
     // ────────────────────────────────────────────────────────────────────────────────
     builder.Services.AddRateLimiter(options =>
     {
-        // Global sabit pencere — genel API koruması
-        options.AddFixedWindowLimiter("GlobalApi", limiterOptions =>
+        // Global varsayılan — TÜM isteklere uygulanır. Kimliği doğrulanmış kullanıcı (sub) veya
+        // anonim istekte IP başına sabit pencere. (Önceki "GlobalApi" named policy hiçbir endpoint'e
+        // bağlanmadığı için fiilen ölüydü; GlobalLimiter ile gerçekten etkinleştirildi.)
+        options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         {
-            limiterOptions.PermitLimit = 300;
-            limiterOptions.Window = TimeSpan.FromMinutes(1);
-            limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
-            limiterOptions.QueueLimit = 10;
+            var partitionKey = httpContext.User.FindFirst("sub")?.Value
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "anonymous";
+            return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey,
+                _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 300,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 10,
+                });
         });
 
-        // SSE endpoint'i — bağlantı başına uzun süreli, düşük limit
+        // SSE endpoint'i — bağlantı başına uzun süreli, düşük limit (.RequireRateLimiting ile uygulanıyor)
         options.AddFixedWindowLimiter("SseConnections", limiterOptions =>
         {
             limiterOptions.PermitLimit = 5;
@@ -218,10 +228,26 @@ try
     builder.Host.UseWolverine(opts =>
     {
         opts.UseFluentValidation();
+        // Wolverine 6'da service-location varsayılan NotAllowed → opaque/named-registration servisleri
+        // (örn. IKeycloakAdminService: named HttpClient + IConfiguration ile lambda kayıtlı) kullanan
+        // handler'ların codegen'i patlıyordu (InvalidServiceLocationException → 500). İzin ver (uyarıyla).
+        opts.ServiceLocationPolicy = JasperFx.CodeGeneration.Model.ServiceLocationPolicy.AllowedButWarn;
         opts.MultipleHandlerBehavior = MultipleHandlerBehavior.Separated;
         opts.Durability.MessageStorageSchemaName = "wolverine";
         opts.Policies.AutoApplyTransactions();
         opts.Policies.UseDurableLocalQueues();
+
+        // Kapalı akademik dönem koruması (#8) — Payment maaş/dekont yazma command'ları
+        opts.Policies.ForMessagesOfType<MESNET.Payment.Application.ISalaryPeriodScoped>()
+            .AddMiddleware(typeof(MESNET.Payment.Application.SalaryPeriodGuardMiddleware));
+
+        // Kapalı akademik dönem koruması (#30) — Contract yaşam-döngüsü yazma command'ları
+        opts.Policies.ForMessagesOfType<MESNET.Contract.Application.IContractPeriodScoped>()
+            .AddMiddleware(typeof(MESNET.Contract.Application.ContractPeriodGuardMiddleware));
+
+        // Kapalı akademik dönem koruması (#30) — Attendance yazma command'ları
+        opts.Policies.ForMessagesOfType<MESNET.Attendance.Application.Guards.IAttendancePeriodScoped>()
+            .AddMiddleware(typeof(MESNET.Attendance.Application.Guards.AttendancePeriodGuardMiddleware));
 
         // Modül Application assembly'lerini handler keşfi için tanıt
         // Wolverine varsayılan olarak sadece host assembly'yi tarar
@@ -297,6 +323,20 @@ try
         var validationEx = ex as FluentValidation.ValidationException
             ?? ex?.InnerException as FluentValidation.ValidationException;
 
+        // Marten optimistic concurrency çakışması — inner zinciri tip ADIYLA yürü (namespace Marten
+        // sürümleri arasında değişebilir): ConcurrentUpdateException (document) /
+        // EventStreamUnexpectedMaxEventIdException ([AggregateHandler] event stream) / StreamLockedException.
+        var isConcurrencyConflict = false;
+        for (var cur = ex; cur is not null; cur = cur.InnerException)
+        {
+            if (cur.GetType().Name is "ConcurrentUpdateException" or "EventStreamUnexpectedMaxEventIdException"
+                or "ConcurrencyException" or "StreamLockedException")
+            {
+                isConcurrencyConflict = true;
+                break;
+            }
+        }
+
         if (domainEx is not null)
         {
             ctx.Response.StatusCode = 422;
@@ -321,6 +361,38 @@ try
                     .AddErrors(errors)
                     .Build());
         }
+        else if (ex is Microsoft.AspNetCore.Http.BadHttpRequestException
+                 || ex?.InnerException is Microsoft.AspNetCore.Http.BadHttpRequestException)
+        {
+            // Eksik/hatalı istek gövdesi (zorunlu alan yok, JSON çözümlenemedi) → 400 (500 değil)
+            ctx.Response.StatusCode = 400;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(
+                MESNET.Common.Shared.ResponseBuilder.Fail(400)
+                    .AddMessage("Geçersiz veya eksik istek gövdesi.")
+                    .Build());
+        }
+        else if (ex is Wolverine.Persistence.Sagas.UnknownSagaException
+                 || ex?.InnerException is Wolverine.Persistence.Sagas.UnknownSagaException)
+        {
+            // İlgili saga/kayıt bulunamadı (örn. olmayan staj için onay) → 404 (500 değil)
+            ctx.Response.StatusCode = 404;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(
+                MESNET.Common.Shared.ResponseBuilder.Fail(404)
+                    .AddMessage("İlgili kayıt bulunamadı.")
+                    .Build());
+        }
+        else if (isConcurrencyConflict)
+        {
+            // Optimistic concurrency çakışması (aynı aggregate/event stream'e eşzamanlı yazma) → 409 (500 değil)
+            ctx.Response.StatusCode = 409;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(
+                MESNET.Common.Shared.ResponseBuilder.Fail(409)
+                    .AddMessage("Kayıt bu sırada başka bir işlemle değiştirildi. Lütfen sayfayı yenileyip tekrar deneyin.")
+                    .Build());
+        }
         else
         {
             // Beklenmeyen hatalar — 500 ama yine de yapısal ApiResponse dön
@@ -336,10 +408,18 @@ try
 
             ctx.Response.StatusCode = 500;
             ctx.Response.ContentType = "application/json";
-            await ctx.Response.WriteAsJsonAsync(
-                MESNET.Common.Shared.ResponseBuilder.Fail(500)
-                    .AddMessage("Beklenmeyen bir sunucu hatası oluştu.")
-                    .Build());
+            var builder500 = MESNET.Common.Shared.ResponseBuilder.Fail(500)
+                .AddMessage("Beklenmeyen bir sunucu hatası oluştu.");
+            // Dev: exception tipini/mesajını yanıta ekle (debugging — prod'da gizli)
+            if (app.Environment.IsDevelopment())
+                builder500 = builder500.AddErrors(new
+                {
+                    exception = ex?.GetType().FullName,
+                    message = ex?.Message,
+                    inner = innerEx?.GetType().FullName,
+                    innerMessage = innerEx?.Message,
+                });
+            await ctx.Response.WriteAsJsonAsync(builder500.Build());
         }
     }));
 
@@ -460,7 +540,16 @@ try
         {
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = "CREATE EXTENSION IF NOT EXISTS postgis";
-            await cmd.ExecuteNonQueryAsync();
+            try
+            {
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState is "23505" or "42710")
+            {
+                // CREATE EXTENSION IF NOT EXISTS PostgreSQL'de concurrency-safe değil:
+                // Marten 9 şema uygulamasıyla eşzamanlı çalışınca pg_extension'da unique
+                // ihlali (23505/42710) atabilir. Extension yine de mevcut → istenen son durum.
+            }
         }
     }
 

@@ -26,9 +26,7 @@
         </q-item>
       </template>
       <template #no-option>
-        <q-item>
-          <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-        </q-item>
+        <SelectEmptyOption />
       </template>
     </q-select>
     <q-input
@@ -77,6 +75,7 @@ import { usePlacementOptions } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useAuthStore } from 'stores/auth'
 import FormDialog from 'components/FormDialog.vue'
+import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
 const open = defineModel<boolean>({ required: true })
 const emit = defineEmits<{ saved: [] }>()

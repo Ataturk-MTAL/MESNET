@@ -2,9 +2,12 @@
   <q-page padding>
     <div class="text-h5 text-weight-bold q-mb-lg">Staj Başvuruları</div>
 
-    <q-banner type="info" class="q-mb-md" dense>
-      Bu sayfa öğrenci ve işletme başvurularını listeler. Yerleştirme için Öğrenciler sayfasını kullanın.
-    </q-banner>
+    <AppNotice
+      type="info"
+      dense
+      message="Bu sayfa öğrenci ve işletme başvurularını listeler. Yerleştirme için Öğrenciler sayfasını kullanın."
+      class="q-mb-md"
+    />
 
     <!-- Bu sayfa Phase 1'de pasif — başvurular öğrenci ve işletme sayfaları üzerinden yönetilir -->
     <div class="flex flex-center q-pa-xl text-grey-6 column">
@@ -20,4 +23,5 @@
 
 <script setup lang="ts">
 // Bu sayfa Phase 1'de pasif — başvuru yönetimi öğrenci/işletme sayfaları üzerinden yapılır.
+import AppNotice from 'components/AppNotice.vue'
 </script>

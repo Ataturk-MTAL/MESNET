@@ -9,10 +9,10 @@ public static class UpdateMinimumWageHandler
     public static async Task Handle(UpdateMinimumWage command, IDocumentSession session)
     {
         // Önceki config'i expire et
-        var currentConfig = session.Query<SalaryCalculationConfig>()
+        var currentConfig = await session.Query<SalaryCalculationConfig>()
             .Where(c => c.InstitutionId == command.InstitutionId)
             .Where(c => c.EffectiveTo == null)
-            .FirstOrDefault();
+            .FirstOrDefaultAsync();
 
         if (currentConfig is not null)
         {

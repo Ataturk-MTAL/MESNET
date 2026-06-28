@@ -1,9 +1,11 @@
 <template>
   <FormDialog v-model="open" title="Fesih Talebini Reddet" icon="thumb_down" color="teal" width="440px" save-label="Talebi Reddet" :saving="saving" :save-disabled="!form.rejectedBy" @save="handleSave">
-        <q-banner class="bg-teal-1 text-teal-10 rounded-borders" dense>
-          <template #avatar><q-icon name="info" /></template>
-          Red edildiğinde sözleşme aktif duruma geri dönecektir.
-        </q-banner>
+        <AppNotice
+          type="success"
+          icon="info"
+          dense
+          message="Red edildiğinde sözleşme aktif duruma geri dönecektir."
+        />
 
         <q-input
           v-model="form.rejectionNote"
@@ -28,6 +30,7 @@ import { contractApi } from 'src/api/contract'
 import { useNotify } from 'src/composables/useNotify'
 import { useAuthStore } from 'stores/auth'
 import FormDialog from 'components/FormDialog.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const open = defineModel<boolean>({ required: true })
 

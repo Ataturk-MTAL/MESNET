@@ -29,7 +29,7 @@
         <q-toolbar class="bg-teal text-white">
           <q-icon name="rate_review" class="q-mr-sm" />
           <q-toolbar-title>Değerlendirme Ekle</q-toolbar-title>
-          <q-btn flat round dense icon="close" color="white" v-close-popup />
+          <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
@@ -58,9 +58,7 @@
               </q-item>
             </template>
             <template #no-option>
-              <q-item>
-                <q-item-section class="text-grey">Sonuç bulunamadı</q-item-section>
-              </q-item>
+              <SelectEmptyOption />
             </template>
           </q-select>
           <q-input v-model="evalForm.evaluationDate" label="Değerlendirme Tarihi" filled type="date">
@@ -110,6 +108,7 @@ import { Permissions } from 'utils/permissions'
 import { useAuthStore } from 'stores/auth'
 import AppTable from 'components/AppTable.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
+import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
 const $q = useQuasar()
 const notify = useNotify()
@@ -151,7 +150,7 @@ function openEvalDialog() {
   evalForm.result = 'Suitable'
   evalForm.notes = ''
   evalBusinessOpts.reset()
-  evalBusinessOpts.load()
+  evalBusinessOpts.load().catch(() => {})
   evalDialog.value = true
 }
 

@@ -6,7 +6,6 @@ using MESNET.Contract.Application.Errors;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
 using MESNET.Contract.Shared.Events;
-using MESNET.Payment.Application.Errors;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

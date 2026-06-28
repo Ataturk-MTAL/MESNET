@@ -1,11 +1,12 @@
 <template>
   <FormDialog v-model="open" title="Yeni Akademik Dönem" icon="date_range" color="indigo" save-label="Oluştur" :saving="saving" :save-disabled="!form.name || !form.startYear || !form.endYear || !form.startDate || !form.endDate" @save="handleSave">
-    <q-banner dense rounded class="bg-orange-1 text-orange-9 text-caption">
-      <template #avatar>
-        <q-icon name="warning" color="orange-7" size="xs" />
-      </template>
-      Yeni dönem oluşturulduğunda mevcut aktif dönem otomatik kapatılır.
-    </q-banner>
+    <AppNotice
+      type="warning"
+      dense
+      rounded
+      class="text-caption"
+      message="Yeni dönem oluşturulduğunda mevcut aktif dönem otomatik kapatılır."
+    />
     <q-input v-model="form.name" label="Dönem Adı *" filled hint="Örn: 2025-2026">
       <template #prepend>
         <q-icon name="label" />
@@ -52,6 +53,7 @@ import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import FormDialog from 'components/FormDialog.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const open = defineModel<boolean>({ required: true })
 

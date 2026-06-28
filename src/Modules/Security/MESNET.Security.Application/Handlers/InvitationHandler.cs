@@ -20,7 +20,7 @@ public static class CreateInvitationHandler
         var existing = await session.Query<UserInvitation>()
             .Where(i => i.Email == command.Email
                         && i.TargetRole == command.TargetRole
-                        && (i.Status == InvitationStatus.PendingApproval || i.Status == InvitationStatus.Approved))
+                        && (i.StatusName == InvitationStatus.PendingApproval.Name || i.StatusName == InvitationStatus.Approved.Name))
             .FirstOrDefaultAsync();
 
         if (existing is not null)
@@ -183,8 +183,8 @@ public static class GetInvitationsHandler
         if (!string.IsNullOrEmpty(query.TargetRole))
             queryable = queryable.Where(i => i.TargetRole == query.TargetRole);
 
-        if (!string.IsNullOrEmpty(query.Status) && Enum.TryParse<InvitationStatus>(query.Status, true, out var status))
-            queryable = queryable.Where(i => i.Status == status);
+        if (!string.IsNullOrEmpty(query.Status) && InvitationStatus.TryFromName(query.Status, true, out var status))
+            queryable = queryable.Where(i => i.StatusName == status.Name);
 
         queryable = queryable.ApplySearch(query.Search, i => i.Email, i => i.FullName);
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: i => i.CreatedAt);

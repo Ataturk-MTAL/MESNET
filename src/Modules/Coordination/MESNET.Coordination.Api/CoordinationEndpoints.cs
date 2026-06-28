@@ -1,4 +1,3 @@
-using Marten;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Application.Commands;
@@ -87,14 +86,14 @@ public static class CoordinationEndpoints
         string semester,
         IMessageBus bus)
     {
-        var schedule = await bus.InvokeAsync<TeacherScheduleDto?>(
+        var result = await bus.InvokeAsync<CurrentScheduleResult>(
             new GetCurrentSchedule(teacherId, academicPeriodId, semester));
 
-        if (schedule is null)
+        if (result.Schedule is null)
             return Results.NotFound(ResponseBuilder.Fail(404).AddMessage("Kayıtlı ders programı bulunamadı.").Build());
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(schedule)
+            .AddData(result.Schedule)
             .Build());
     }
 
@@ -156,14 +155,14 @@ public static class CoordinationEndpoints
     // ── Coordination Config ──
 
     private static async Task<IResult> GetConfig(
-        IQuerySession session,
+        IMessageBus bus,
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
-        var config = await session.LoadAsync<CoordinationConfig>(instId);
+        var config = await bus.InvokeAsync<CoordinationConfig>(new GetCoordinationConfig(instId));
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddData(config ?? new CoordinationConfig { Id = instId, InstitutionId = instId })
+            .AddData(config)
             .Build());
     }
 

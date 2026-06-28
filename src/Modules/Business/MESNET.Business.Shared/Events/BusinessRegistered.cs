@@ -1,4 +1,3 @@
-using MESNET.Business.Core.Enums;
 using MESNET.Common.Shared;
 
 namespace MESNET.Business.Shared.Events;
@@ -9,7 +8,8 @@ public sealed record BusinessRegistered(
     string Name,
     string? Address,
     Location? Location,
-    RegistrationSource Source,
+    // Modüller arası event: SmartEnum yerine Name string'i taşınır (RegistrationSource.Name)
+    string Source,
     int TotalSlots = 0,
     List<string>? Sectors = null,
     string? PhoneNumber = null,

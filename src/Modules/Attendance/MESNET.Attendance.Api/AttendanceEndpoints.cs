@@ -102,13 +102,13 @@ public static class AttendanceEndpoints
 
     private static async Task<IResult> GetAll(
         Guid? studentId, Guid? businessId, Guid? institutionId, Guid? academicPeriodId, string? status,
-        int? year, int? month,
-        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false,
+        int? year, int? month, string? branchCode = null,
+        int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
         IMessageBus bus = default!)
     {
         var result = await bus.InvokeAsync<PagedResult<AttendanceRecordDto>>(
-            new ListAttendanceRecords(studentId, businessId, institutionId, academicPeriodId, status, year, month)
-            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending });
+            new ListAttendanceRecords(studentId, businessId, institutionId, academicPeriodId, status, year, month, branchCode)
+            { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result)

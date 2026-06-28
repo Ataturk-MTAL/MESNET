@@ -199,10 +199,11 @@ public static class AssignBusinessToTeacherHandler
         if (!Enum.TryParse<DayOfWeek>(day, true, out var dayOfWeek))
             return;
 
-        var schedule = session.Query<TeacherSchedule>()
-            .FirstOrDefault(s =>
+        var schedule = await session.Query<TeacherSchedule>()
+            .FirstOrDefaultAsync(s =>
                 s.TeacherId == teacherId &&
-                s.AcademicPeriodId == academicPeriodId);
+                s.AcademicPeriodId == academicPeriodId,
+                cancellationToken);
 
         if (schedule is null) return;
 

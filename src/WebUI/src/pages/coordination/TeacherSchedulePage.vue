@@ -20,28 +20,20 @@
     </div>
 
     <!-- Bilgi Mesajı -->
-    <q-banner
+    <AppNotice
       v-if="!selectedTeacherId"
-      rounded
-      class="bg-blue-1 text-blue-9 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="info" color="blue-7" />
-      </template>
-      Ders programını görüntülemek veya düzenlemek için bir öğretmen seçin.
-    </q-banner>
+      type="info"
+      message="Ders programını görüntülemek veya düzenlemek için bir öğretmen seçin."
+      class="q-mb-md"
+    />
 
     <!-- Schedule Config eksik -->
-    <q-banner
+    <AppNotice
       v-if="scheduleConfigMissing"
-      rounded
-      class="bg-orange-1 text-orange-9 q-mb-md"
-    >
-      <template #avatar>
-        <q-icon name="warning" color="orange-7" />
-      </template>
-      Kurum için günlük ders sayısı ayarlanmamış. Lütfen önce Kurum sayfasından ders programı ayarını yapın.
-    </q-banner>
+      type="warning"
+      message="Kurum için günlük ders sayısı ayarlanmamış. Lütfen önce Kurum sayfasından ders programı ayarını yapın."
+      class="q-mb-md"
+    />
 
     <!-- Ana İçerik: Grid + Geçmiş Panel -->
     <div v-if="selectedTeacherId && periodCount > 0" class="row q-col-gutter-md">
@@ -149,22 +141,19 @@
               </div>
             </div>
 
-            <!-- Geçmiş yükleniyor -->
-            <div v-if="historyLoading" class="text-center q-pa-md">
-              <q-spinner color="primary" size="2em" />
-              <div class="text-caption text-grey-6 q-mt-sm">Yükleniyor...</div>
-            </div>
-
-            <!-- Geçmiş yok -->
-            <div v-else-if="!scheduleHistory" class="text-center q-pa-md text-grey-6">
-              <q-icon name="history" size="2em" class="q-mb-sm" />
-              <div class="text-caption">Henüz kayıtlı program yok</div>
-            </div>
-
-            <!-- Versiyon Listesi -->
-            <q-list v-else separator dense>
+            <!-- Geçmiş: yükleniyor / boş / versiyon listesi -->
+            <DataState
+              :loading="historyLoading"
+              :empty="!scheduleHistory"
+              loading-text="Yükleniyor..."
+              empty-icon="history"
+              empty-text="Henüz kayıtlı program yok"
+              padding="q-pa-md"
+            >
+              <!-- Versiyon Listesi -->
+              <q-list separator dense>
               <q-item
-                v-for="ver in scheduleHistory.versions.slice().reverse()"
+                v-for="ver in (scheduleHistory?.versions ?? []).slice().reverse()"
                 :key="ver.version"
                 clickable
                 :active="viewingHistoryVersion === ver.version"
@@ -194,7 +183,8 @@
                   <q-badge color="green-7" label="Geçerli" />
                 </q-item-section>
               </q-item>
-            </q-list>
+              </q-list>
+            </DataState>
           </q-card-section>
         </q-card>
       </div>
@@ -204,32 +194,38 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import {
   coordinationApi,
   type DailyScheduleInput,
-  type ScheduleHistoryDto,
   type ScheduleVersionDto,
   type TeacherScheduleDto,
 } from 'src/api/coordination'
-import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
+import { useTeacherScheduleHistory } from 'src/composables/useTeacherScheduleHistory'
+import { useTeacherScheduleFormat } from 'src/composables/useTeacherScheduleFormat'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useInstitutionStore } from 'stores/institution'
 import ScheduleGrid from 'components/ScheduleGrid.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
 import BranchSelector from 'components/BranchSelector.vue'
+import AppNotice from 'components/AppNotice.vue'
+import DataState from 'components/DataState.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
+const institutionStore = useInstitutionStore()
+
+// Ders programı config artık merkezi store cache'inden okunur (doğrudan API çağrısı yok)
+const { periodCount, scheduleConfigMissing } = storeToRefs(institutionStore)
 
 const branchFilter = ref<string | null>(null)
 const selectedTeacherId = ref<string | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 const editing = ref(false)
-const periodCount = ref(0)
-const scheduleConfigMissing = ref(false)
 const hasExistingSchedule = ref(false)
 const currentVersion = ref(0)
 const viewingHistoryVersion = ref<number | null>(null)
@@ -244,9 +240,14 @@ const currentScheduleMeta = ref<{
   updatedAt: string | null
 } | null>(null)
 
-// History panel
-const historyLoading = ref(false)
-const scheduleHistory = ref<ScheduleHistoryDto | null>(null)
+// History panel — bağımsız concern composable'a taşındı
+const { historyLoading, scheduleHistory, loadHistory } = useTeacherScheduleHistory({
+  selectedTeacherId,
+  currentScheduleId,
+})
+
+// Tarih biçimlendirme yardımcıları
+const { formatDate, formatDateTime } = useTeacherScheduleFormat()
 
 const dayLabels = [
   { label: 'Pazartesi', value: 'Monday' },
@@ -285,24 +286,6 @@ function freeSlotsPerDay(dayValue: string): number {
   return day.periods.filter((p) => p.status === 'Free').length
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
-function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
 function mapScheduleToInput(schedule: TeacherScheduleDto): DailyScheduleInput[] {
   return schedule.weeklySchedule.map((day) => ({
     day: day.day,
@@ -312,25 +295,6 @@ function mapScheduleToInput(schedule: TeacherScheduleDto): DailyScheduleInput[] 
       courseName: p.courseName ?? undefined,
     })),
   }))
-}
-
-async function loadScheduleConfig() {
-  const instId = authStore.user?.institutionId
-  if (!instId) return
-
-  try {
-    const { data } = await institutionApi.getScheduleConfig(instId)
-    if (data.configured && data.dailyPeriodCount) {
-      periodCount.value = data.dailyPeriodCount
-      scheduleConfigMissing.value = false
-    } else {
-      periodCount.value = 0
-      scheduleConfigMissing.value = true
-    }
-  } catch {
-    periodCount.value = 0
-    scheduleConfigMissing.value = true
-  }
 }
 
 async function loadCurrentSchedule() {
@@ -367,26 +331,6 @@ async function loadCurrentSchedule() {
     }
   } finally {
     loading.value = false
-  }
-}
-
-async function loadHistory() {
-  if (!selectedTeacherId.value || !currentScheduleId.value) {
-    scheduleHistory.value = null
-    return
-  }
-
-  historyLoading.value = true
-  try {
-    const { data } = await coordinationApi.getScheduleHistory(
-      selectedTeacherId.value,
-      currentScheduleId.value,
-    )
-    scheduleHistory.value = data
-  } catch {
-    scheduleHistory.value = null
-  } finally {
-    historyLoading.value = false
   }
 }
 
@@ -501,7 +445,7 @@ watch(
 )
 
 onMounted(async () => {
-  await loadScheduleConfig()
+  await institutionStore.loadScheduleConfig()
   if (authStore.isDepartmentHead && authStore.user?.branchCode) {
     branchFilter.value = authStore.user.branchCode
   }

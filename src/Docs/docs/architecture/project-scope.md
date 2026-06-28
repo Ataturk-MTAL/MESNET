@@ -81,6 +81,7 @@ Blockchain, NFT ve sertifikasyon süreçleri bu fazda kapsam dışıdır.
 
 | Modül | Bounded Context | Storage |
 |-------|----------------|---------|
+| Security | Kullanıcı hesabı, Keycloak entegrasyonu, rol/izin, davet akışı | Document |
 | Business | İşletme kaydı, belgeleri, konum, kontenjan yönetimi | Document |
 | Enrollment | Öğrenci-işletme eşleştirme, başvuru, yerleştirme | Hybrid |
 | Contract | Staj sözleşmesi yaşam döngüsü, imza, fesih | Event Sourcing |

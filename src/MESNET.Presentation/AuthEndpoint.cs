@@ -1,6 +1,7 @@
 using System.Security.Claims;
-using Marten;
 using MESNET.Common.Shared;
+using MESNET.Institution.Application.Queries;
+using Wolverine;
 
 namespace MESNET.Presentation;
 
@@ -17,7 +18,7 @@ public static class AuthEndpoint
         return app;
     }
 
-    private static async Task<IResult> GetCurrentUser(ClaimsPrincipal user, IQuerySession session)
+    private static async Task<IResult> GetCurrentUser(ClaimsPrincipal user, IMessageBus bus)
     {
         var sub = user.FindFirst("sub")?.Value
             ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -41,16 +42,13 @@ public static class AuthEndpoint
         var businessId = user.FindFirst("business_id")?.Value;
         string? branchCode = null;
 
-        // DepartmentHead → kendi branş kodu (alan şefi kendi alanını görür)
+        // DepartmentHead → kendi branş kodu (alan şefi kendi alanını görür).
+        // Çözümleme Institution modülünün query handler'ında (cross-module Core entity'sine
+        // doğrudan host'tan sorgu atılmaz — schema/modül izolasyonu).
         if (roles.Contains("DepartmentHead", StringComparer.OrdinalIgnoreCase))
         {
-            var institution = await session
-                .Query<Institution.Core.Entities.Institution>()
-                .FirstOrDefaultAsync(i => i.Staff.Any(s => s.KeycloakId == sub));
-
-            var staffMember = institution?.Staff.FirstOrDefault(s => s.KeycloakId == sub);
-            if (staffMember?.BranchCode is not null)
-                branchCode = staffMember.BranchCode;
+            var result = await bus.InvokeAsync<StaffBranchCodeResult>(new GetStaffBranchCode(sub));
+            branchCode = result.BranchCode;
         }
 
         return Results.Ok(ResponseBuilder.Success()

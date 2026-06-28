@@ -91,8 +91,9 @@ public static class DocumentQueryHandler
     public static async Task<byte[]> Handle(
         DownloadDocumentsZip query, IQuerySession session, IFileStorageService storage)
     {
-        if (query.DocumentIds.Count == 0)
-            throw new DomainException(new Error("EMPTY_DOCUMENT_LIST", "Doküman listesi boş."));
+        // Null/boş koleksiyon koruması: eksik veya boş gövdeyle gelen istek NRE yerine 422 döner.
+        if (query.DocumentIds is null || query.DocumentIds.Count == 0)
+            throw new DomainException(ReportingErrors.EmptyDocumentList());
 
         var docs = new List<GeneratedDocument>();
         foreach (var id in query.DocumentIds)

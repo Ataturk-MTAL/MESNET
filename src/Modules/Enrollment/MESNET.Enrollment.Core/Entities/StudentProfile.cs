@@ -33,8 +33,18 @@ public class StudentProfile
     /// <summary>LINQ sorguları için düz string kopyası</summary>
     public string EducationTypeName { get; set; } = EducationType.Formal.Name;
 
+    private StudentStatus _status = StudentStatus.Registered;
+
     [JsonConverter(typeof(SmartEnumNameConverter<StudentStatus, int>))]
-    public StudentStatus Status { get; set; } = StudentStatus.Registered;
+    public StudentStatus Status
+    {
+        get => _status;
+        set { _status = value; StatusName = value.Name; }
+    }
+
+    /// <summary>LINQ sorguları için düz string kopyası — Status setter'ı otomatik senkron tutar
+    /// (SmartEnum nested-path LINQ tuzağı: s.Status.Name NULL döner).</summary>
+    public string StatusName { get; private set; } = StudentStatus.Registered.Name;
 
     public GuardianInfo? Guardian { get; set; }
     public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;

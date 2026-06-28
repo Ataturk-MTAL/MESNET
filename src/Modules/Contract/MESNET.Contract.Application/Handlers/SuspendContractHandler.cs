@@ -10,8 +10,11 @@ namespace MESNET.Contract.Application.Handlers;
 public static class SuspendContractHandler
 {
     [AggregateHandler]
-    public static ContractSuspended Handle(SuspendContract command, InternshipContract contract)
+    public static ContractSuspended Handle(SuspendContract command, InternshipContract? contract)
     {
+        if (contract is null)
+            throw new DomainException("CONTRACT_NOT_FOUND", "Sözleşme bulunamadı.");
+
         if (!contract.Status.CanTransitionTo(ContractStatus.Suspended))
             throw new DomainException("CONTRACT_INVALID_STATUS",
                 $"Sözleşme askıya alınamaz. Mevcut durum: {contract.Status.Slug}.");

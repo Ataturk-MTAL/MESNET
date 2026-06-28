@@ -23,6 +23,8 @@ public static class UpdateInstitutionHandler
 
         session.Store(institution);
 
-        return new InstitutionUpdated(institution.Id, institution.FullName, institution.Location);
+        return new InstitutionUpdated(
+            institution.Id, institution.FullName, institution.Location,
+            institution.ScheduleConfig?.DailyPeriodCount ?? 0);
     }
 }

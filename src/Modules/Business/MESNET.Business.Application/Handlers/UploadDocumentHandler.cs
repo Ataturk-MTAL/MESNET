@@ -121,6 +121,6 @@ public static class UploadDocumentHandler
             "İşletme belgesi yüklendi: BusinessId={BusinessId}, DocumentId={DocumentId}, Path={Path}",
             command.BusinessId, documentId, objectPath);
 
-        return new BusinessDocumentUploaded(business.Id, document.Id, document.Type);
+        return new BusinessDocumentUploaded(business.Id, document.Id, document.Type.Name);
     }
 }

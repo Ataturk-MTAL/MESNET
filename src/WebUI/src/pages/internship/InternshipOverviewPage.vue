@@ -2,52 +2,25 @@
   <q-page padding>
     <PageHeader title="Staj Takibi" />
 
+    <AppNotice v-if="periodStore.isReadOnly" type="readonly" class="q-mb-md"
+      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir." />
+
     <!-- Özet Kartlar -->
     <div class="row q-col-gutter-md q-mb-lg">
       <div class="col-12 col-sm-6 col-md">
-        <q-card flat bordered>
-          <q-card-section class="text-center">
-            <q-icon name="school" size="40px" color="primary" />
-            <div class="text-h4 text-weight-bold text-primary q-mt-sm">{{ stats.placed }}</div>
-            <div class="text-caption text-grey">Yerleştirildi</div>
-          </q-card-section>
-        </q-card>
+        <StatCard orientation="vertical" icon="school" :value="stats.placed" label="Yerleştirildi" color="primary" />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <q-card flat bordered>
-          <q-card-section class="text-center">
-            <q-icon name="work" size="40px" color="positive" />
-            <div class="text-h4 text-weight-bold text-positive q-mt-sm">{{ stats.active }}</div>
-            <div class="text-caption text-grey">Aktif Staj</div>
-          </q-card-section>
-        </q-card>
+        <StatCard orientation="vertical" icon="work" :value="stats.active" label="Aktif Staj" color="positive" />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <q-card flat bordered>
-          <q-card-section class="text-center">
-            <q-icon name="done_all" size="40px" color="purple" />
-            <div class="text-h4 text-weight-bold text-purple q-mt-sm">{{ stats.completed }}</div>
-            <div class="text-caption text-grey">Tamamlandı</div>
-          </q-card-section>
-        </q-card>
+        <StatCard orientation="vertical" icon="done_all" :value="stats.completed" label="Tamamlandı" color="purple" />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <q-card flat bordered>
-          <q-card-section class="text-center">
-            <q-icon name="cancel" size="40px" color="negative" />
-            <div class="text-h4 text-weight-bold text-negative q-mt-sm">{{ stats.cancelled }}</div>
-            <div class="text-caption text-grey">Fesih Yapıldı</div>
-          </q-card-section>
-        </q-card>
+        <StatCard orientation="vertical" icon="cancel" :value="stats.cancelled" label="Fesih Yapıldı" color="negative" />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <q-card flat bordered>
-          <q-card-section class="text-center">
-            <q-icon name="event_busy" size="40px" color="warning" />
-            <div class="text-h4 text-weight-bold text-warning q-mt-sm">{{ stats.failedToComplete }}</div>
-            <div class="text-caption text-grey">Tamamlayamadı</div>
-          </q-card-section>
-        </q-card>
+        <StatCard orientation="vertical" icon="event_busy" :value="stats.failedToComplete" label="Tamamlayamadı" color="warning" />
       </div>
     </div>
 
@@ -91,7 +64,7 @@
           </template>
           <template #body-cell-actions="{ row }">
             <q-td class="text-right">
-              <q-btn flat round dense icon="visibility" @click="openDetail(row)" />
+              <q-btn flat round dense icon="visibility" aria-label="Detayları görüntüle" @click="openDetail(row)" />
             </q-td>
           </template>
         </AppTable>
@@ -116,7 +89,7 @@
           :rows-per-page-options="[0]"
           hide-bottom
         >
-          <template #body-tr="{ row }">
+          <template #body="{ row }">
             <tr :class="row.totalAbsenceDays >= 30 ? 'bg-red-1' : 'bg-orange-1'">
               <td class="text-left">{{ row.studentName }}</td>
               <td class="text-left">{{ row.businessName }}</td>
@@ -126,7 +99,7 @@
                 </span>
               </td>
               <td class="text-right">
-                <q-btn
+                <q-btn :disable="periodStore.isReadOnly"
                   v-if="canManage && row.totalAbsenceDays >= 30"
                   flat dense size="sm"
                   color="negative"
@@ -177,6 +150,8 @@ import StatusBadge from 'components/StatusBadge.vue'
 import InfoItem from 'components/InfoItem.vue'
 import PageHeader from 'components/PageHeader.vue'
 import BranchSelector from 'components/BranchSelector.vue'
+import StatCard from 'components/StatCard.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const $q = useQuasar()
 const periodStore = useAcademicPeriodStore()
@@ -209,7 +184,7 @@ async function loadAbsenceData() {
       minAbsenceDays: 25,
       pageSize: 100,
     })
-    highAbsenceRows.value = res.items ?? []
+    highAbsenceRows.value = res.data?.items ?? []
   } finally {
     absenceLoading.value = false
   }
@@ -251,13 +226,27 @@ const statusOptions = [
   { label: 'Tamamlayamadı', value: 'FailedToComplete' },
 ]
 
+// Özet kartlar TOPLAM sayımları backend'den alır — paginated `placements` (yalnız aktif sayfa, ≤20)
+// üzerinden hesaplanmaz (yanlış toplam bug'ı). Sayıma status filtresi uygulanmaz; branch+period uygulanır.
+const statusCounts = ref<Record<string, number>>({})
+
+async function loadStatusCounts() {
+  const res = await enrollmentApi.getPlacementStatusCounts({
+    ...(branchFilter.value ? { branchCode: branchFilter.value } : {}),
+    ...(periodStore.selectedPeriodId ? { academicPeriodId: periodStore.selectedPeriodId } : {}),
+  })
+  statusCounts.value = res.data
+}
+
 const stats = computed(() => ({
-  placed: placements.value.filter((p) => p.status === 'Matched').length,
-  active: placements.value.filter((p) => p.status === 'Active').length,
-  completed: placements.value.filter((p) => p.status === 'Completed').length,
-  cancelled: placements.value.filter((p) => p.status === 'Cancelled').length,
-  failedToComplete: placements.value.filter((p) => p.status === 'FailedToComplete').length,
+  placed: statusCounts.value.Matched ?? 0,
+  active: statusCounts.value.Active ?? 0,
+  completed: statusCounts.value.Completed ?? 0,
+  cancelled: statusCounts.value.Cancelled ?? 0,
+  failedToComplete: statusCounts.value.FailedToComplete ?? 0,
 }))
+
+watch([branchFilter, () => periodStore.selectedPeriodId], () => loadStatusCounts().catch(() => {}))
 
 const columns: QTableProps['columns'] = [
   { name: 'studentName', label: 'Öğrenci', field: 'studentName', align: 'left', sortable: true },
@@ -281,5 +270,6 @@ function openDetail(row: InternshipPlacementDto) {
 onMounted(() => {
   load()
   loadAbsenceData()
+  loadStatusCounts().catch(() => {})
 })
 </script>
