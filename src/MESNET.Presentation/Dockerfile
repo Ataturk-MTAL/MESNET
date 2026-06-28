@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Solution ve proje dosyalarını önce kopyala (Docker layer cache)
-COPY MESNET.sln ./
+COPY MESNET.slnx ./
 COPY src/ ./src/
 
 WORKDIR /src/src/MESNET.Presentation
