@@ -81,6 +81,9 @@ export const securityApi = {
   deleteUser: (userAccountId: string) =>
     api.delete(`/security/users/${userAccountId}`),
 
+  syncUsers: () =>
+    api.post<{ total: number; created: number; updated: number }>('/security/users/sync'),
+
   listInvitations: (params?: { institutionId?: string; status?: string; targetRole?: string } & PaginationParams) =>
     api.get<PagedResponse<InvitationDto>>('/security/invitations', { params }),
 

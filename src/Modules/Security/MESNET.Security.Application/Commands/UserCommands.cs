@@ -30,3 +30,6 @@ public sealed record GetUserAccounts(
     bool? IsEnabled = null) : PagedQuery;
 
 public sealed record GetUserAccount(Guid UserAccountId);
+
+/// <summary>Keycloak'taki tüm kullanıcıları lokal UserAccount read-model'ine senkronize eder (upsert).</summary>
+public sealed record SyncUsersFromKeycloak;

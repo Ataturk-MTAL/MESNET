@@ -199,3 +199,61 @@ public static class DeleteUserHandler
         return new UserDeleted(account.Id, account.KeycloakUserId);
     }
 }
+
+/// <summary>Senkronizasyon sonucu — toplam/yeni/güncellenen sayıları.</summary>
+public sealed record SyncUsersResult(int Total, int Created, int Updated);
+
+public static class SyncUsersFromKeycloakHandler
+{
+    public static async Task<SyncUsersResult> Handle(
+        SyncUsersFromKeycloak command, IKeycloakAdminService keycloak, IDocumentSession session)
+    {
+        var kcResult = await keycloak.GetUsersAsync();
+        if (kcResult.IsFailure)
+            throw new DomainException(kcResult.Error);
+
+        var existing = await session.Query<UserAccount>().ToListAsync();
+        var byKeycloakId = existing
+            .GroupBy(u => u.KeycloakUserId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        int created = 0, updated = 0;
+        foreach (var ku in kcResult.Value)
+        {
+            if (byKeycloakId.TryGetValue(ku.Id, out var account))
+            {
+                // Keycloak kaynak — temel alanları + rolleri tazele (lokal kurum/işletme bağı korunur, KC'de varsa güncellenir)
+                account.Username = ku.Username;
+                account.Email = ku.Email;
+                account.FirstName = ku.FirstName;
+                account.LastName = ku.LastName;
+                account.IsEnabled = ku.Enabled;
+                account.Roles = ku.Roles;
+                if (ku.InstitutionId.HasValue) account.InstitutionId = ku.InstitutionId;
+                if (ku.BusinessId.HasValue) account.BusinessId = ku.BusinessId;
+                account.UpdatedAt = DateTime.UtcNow;
+                session.Store(account);
+                updated++;
+            }
+            else
+            {
+                session.Store(new UserAccount
+                {
+                    Id = Guid.NewGuid(),
+                    KeycloakUserId = ku.Id,
+                    Username = ku.Username,
+                    Email = ku.Email,
+                    FirstName = ku.FirstName,
+                    LastName = ku.LastName,
+                    IsEnabled = ku.Enabled,
+                    Roles = ku.Roles,
+                    InstitutionId = ku.InstitutionId,
+                    BusinessId = ku.BusinessId
+                });
+                created++;
+            }
+        }
+
+        return new SyncUsersResult(kcResult.Value.Count, created, updated);
+    }
+}

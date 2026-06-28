@@ -24,6 +24,7 @@ public static class UserManagementEndpoints
         group.MapPost("/{userAccountId:guid}/permissions", ChangePermissions).RequireAuthorization(Permissions.UserManagement.RolesManage);
         group.MapPost("/{userAccountId:guid}/toggle-status", ToggleStatus).RequireAuthorization(Permissions.UserManagement.Update);
         group.MapDelete("/{userAccountId:guid}", DeleteUser).RequireAuthorization(Permissions.UserManagement.Delete);
+        group.MapPost("/sync", SyncUsers).RequireAuthorization(Permissions.UserManagement.Create);
     }
 
     private static async Task<IResult> CreateUser(
@@ -111,6 +112,16 @@ public static class UserManagementEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Kullanıcı silindi.")
+            .Build());
+    }
+
+    private static async Task<IResult> SyncUsers(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<SyncUsersResult>(new SyncUsersFromKeycloak());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.Total} kullanıcı senkronize edildi ({result.Created} yeni, {result.Updated} güncellendi).")
             .Build());
     }
 }

@@ -236,4 +236,64 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
             return Result.Failure(Errors.SecurityErrors.KeycloakOperationFailed(ex.Message));
         }
     }
+
+    public async Task<Result<List<KeycloakUserInfo>>> GetUsersAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var users = await _userClient.GetUsersAsync(_realm,
+                new GetUsersRequestParameters { Max = 1000 }, ct) ?? [];
+
+            var result = new List<KeycloakUserInfo>();
+            foreach (var u in users)
+            {
+                if (string.IsNullOrEmpty(u.Id))
+                    continue;
+
+                // Kullanıcının realm rolleri
+                var roles = new List<string>();
+                var rolesResp = await _httpClient.GetAsync(
+                    $"{_authServerUrl}/admin/realms/{_realm}/users/{u.Id}/role-mappings/realm", ct);
+                if (rolesResp.IsSuccessStatusCode)
+                {
+                    var roleReps = await rolesResp.Content
+                        .ReadFromJsonAsync<List<RoleRepresentation>>(ct) ?? [];
+                    roles = roleReps
+                        .Where(r => !string.IsNullOrEmpty(r.Name))
+                        .Select(r => r.Name!)
+                        .ToList();
+                }
+
+                result.Add(new KeycloakUserInfo(
+                    u.Id,
+                    u.Username ?? string.Empty,
+                    u.Email ?? string.Empty,
+                    u.FirstName ?? string.Empty,
+                    u.LastName ?? string.Empty,
+                    u.Enabled ?? true,
+                    roles,
+                    ParseGuidAttribute(u.Attributes, "institution_id"),
+                    ParseGuidAttribute(u.Attributes, "business_id")));
+            }
+
+            return Result<List<KeycloakUserInfo>>.Success(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Keycloak kullanıcı listesi alma hatası");
+            return Result<List<KeycloakUserInfo>>.Failure(
+                Errors.SecurityErrors.KeycloakOperationFailed(ex.Message));
+        }
+    }
+
+    private static Guid? ParseGuidAttribute(
+        IDictionary<string, ICollection<string>>? attributes, string key)
+    {
+        if (attributes is not null
+            && attributes.TryGetValue(key, out var values)
+            && values.FirstOrDefault() is { } raw
+            && Guid.TryParse(raw, out var guid))
+            return guid;
+        return null;
+    }
 }
