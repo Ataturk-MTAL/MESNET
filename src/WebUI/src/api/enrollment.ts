@@ -90,11 +90,6 @@ export interface UpdateStudentRequest {
   guardianPhone?: string
 }
 
-export interface TransferRequest {
-  newBusinessId: string
-  reason: string
-}
-
 export const EDUCATION_TYPES = [
   { label: 'Örgün', value: 'Formal' },
   { label: 'MESEM', value: 'Mesem' },
@@ -131,9 +126,6 @@ export const enrollmentApi = {
 
   syncStudentCounts: (institutionId: string, academicPeriodId: string) =>
     api.post<{ syncedBranches: number; counts: Record<string, Record<string, number>> }>('/students/sync-counts', { institutionId, academicPeriodId }),
-
-  transferStudent: (placementId: string, data: TransferRequest) =>
-    api.post(`/placements/${placementId}/transfer`, data),
 
   listTeachers: (params?: { institutionId?: string; academicPeriodId?: string; branchCode?: string } & PaginationParams) =>
     api.get<PagedResponse<TeacherProfileDto>>('/teachers', { params }),

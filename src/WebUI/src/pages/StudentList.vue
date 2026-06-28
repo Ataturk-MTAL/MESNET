@@ -48,15 +48,6 @@
               @click="openPlacement(row)"
             ><q-tooltip>Yerleştir</q-tooltip></q-btn>
           </PermissionGuard>
-          <PermissionGuard :permission="Permissions.Internship.Manage">
-            <q-btn
-              v-if="row.status === 'ActiveInternship' || row.status === 'Placed'"
-              flat round dense icon="transfer_within_a_station"
-              color="warning"
-              aria-label="Başka işletmeye transfer et"
-              @click="openTransfer(row)"
-            ><q-tooltip>Başka işletmeye transfer et</q-tooltip></q-btn>
-          </PermissionGuard>
           <PermissionGuard :permission="Permissions.Student.Manage">
             <q-btn
               v-if="row.status !== 'ActiveInternship' && row.status !== 'Completed' && row.status !== 'Deregistered'"
@@ -109,7 +100,6 @@
 
     <AddStudentForm v-model="addDialog" @saved="load" />
     <PlaceStudentForm v-model="placementDialog" :student-id="selected?.id ?? ''" :student-name="selected?.fullName ?? ''" @saved="afterFormSaved" />
-    <TransferStudentForm v-model="transferDialog" :student-id="selected?.id ?? ''" :student-name="selected?.fullName ?? ''" @saved="afterFormSaved" />
     <DeregisterStudentForm v-model="deregisterDialog" :student-id="selected?.id ?? ''" :student-name="selected?.fullName ?? ''" @saved="afterFormSaved" />
     <EditStudentForm v-model="editDialog" :student="selected" @saved="afterFormSaved" />
   </q-page>
@@ -132,7 +122,6 @@ import DetailPanel from 'components/DetailPanel.vue'
 import AddStudentForm from 'components/forms/student/AddStudentForm.vue'
 import EditStudentForm from 'components/forms/student/EditStudentForm.vue'
 import PlaceStudentForm from 'components/forms/student/PlaceStudentForm.vue'
-import TransferStudentForm from 'components/forms/student/TransferStudentForm.vue'
 import DeregisterStudentForm from 'components/forms/student/DeregisterStudentForm.vue'
 
 const periodStore = useAcademicPeriodStore()
@@ -142,7 +131,6 @@ const detailOpen = ref(false)
 const addDialog = ref(false)
 const editDialog = ref(false)
 const placementDialog = ref(false)
-const transferDialog = ref(false)
 const deregisterDialog = ref(false)
 const branchFilter = ref<string | null>(null)
 const statusFilter = ref<string | null>(null)
@@ -199,11 +187,6 @@ function openAddDialog() {
 function openPlacement(row: StudentProfileDto) {
   selected.value = row
   placementDialog.value = true
-}
-
-function openTransfer(row: StudentProfileDto) {
-  selected.value = row
-  transferDialog.value = true
 }
 
 function openDeregister(row: StudentProfileDto) {
