@@ -98,10 +98,8 @@
       </template>
     </DetailPanel>
 
-    <AddStudentForm v-model="addDialog" @saved="load" />
     <PlaceStudentForm v-model="placementDialog" :student-id="selected?.id ?? ''" :student-name="selected?.fullName ?? ''" @saved="afterFormSaved" />
     <DeregisterStudentForm v-model="deregisterDialog" :student-id="selected?.id ?? ''" :student-name="selected?.fullName ?? ''" @saved="afterFormSaved" />
-    <EditStudentForm v-model="editDialog" :student="selected" @saved="afterFormSaved" />
   </q-page>
 </template>
 
@@ -119,17 +117,15 @@ import BranchSelector from 'components/BranchSelector.vue'
 import InfoItem from 'components/InfoItem.vue'
 import PageHeader from 'components/PageHeader.vue'
 import DetailPanel from 'components/DetailPanel.vue'
-import AddStudentForm from 'components/forms/student/AddStudentForm.vue'
-import EditStudentForm from 'components/forms/student/EditStudentForm.vue'
+import { useRouter } from 'vue-router'
 import PlaceStudentForm from 'components/forms/student/PlaceStudentForm.vue'
 import DeregisterStudentForm from 'components/forms/student/DeregisterStudentForm.vue'
 
 const periodStore = useAcademicPeriodStore()
+const router = useRouter()
 
 const selected = ref<StudentProfileDto | null>(null)
 const detailOpen = ref(false)
-const addDialog = ref(false)
-const editDialog = ref(false)
 const placementDialog = ref(false)
 const deregisterDialog = ref(false)
 const branchFilter = ref<string | null>(null)
@@ -176,12 +172,11 @@ function openDetail(row: StudentProfileDto) {
 }
 
 function openEditDialog(row: StudentProfileDto) {
-  selected.value = row
-  editDialog.value = true
+  void router.push(`/enrollment/students/${row.id}/edit`)
 }
 
 function openAddDialog() {
-  addDialog.value = true
+  void router.push('/enrollment/students/new')
 }
 
 function openPlacement(row: StudentProfileDto) {

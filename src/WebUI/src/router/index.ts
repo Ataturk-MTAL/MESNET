@@ -63,6 +63,18 @@ const router = createRouter({
               component: () => import('pages/StudentList.vue'),
               meta: { permissions: ['student:view'] },
             },
+            {
+              path: 'students/new',
+              name: 'StudentNew',
+              component: () => import('pages/StudentFormPage.vue'),
+              meta: { permissions: ['student:view'], formRoute: true },
+            },
+            {
+              path: 'students/:id/edit',
+              name: 'StudentEdit',
+              component: () => import('pages/StudentFormPage.vue'),
+              meta: { permissions: ['student:view'], formRoute: true },
+            },
             // Phase 2 — MEB Protokolü modülü implement edilince açılacak
             // {
             //   path: 'protocols',
