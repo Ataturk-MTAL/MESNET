@@ -1,13 +1,13 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg">
+    <div class="row items-center q-mb-lg q-mx-auto" style="max-width: 640px">
       <q-btn flat round dense icon="arrow_back" aria-label="Kurum bilgilerine dön" class="q-mr-sm" @click="goBack">
         <q-tooltip>Kurum bilgilerine dön</q-tooltip>
       </q-btn>
       <div class="text-h5 text-weight-bold col">Kurum Bilgilerini Düzenle</div>
     </div>
 
-    <q-card flat bordered style="max-width: 640px" class="relative-position">
+    <q-card flat bordered style="max-width: 640px" class="relative-position q-mx-auto">
       <q-inner-loading :showing="loading" />
       <q-card-section class="q-gutter-md">
         <q-input v-model="form.fullName" label="Kurum Adı" filled>

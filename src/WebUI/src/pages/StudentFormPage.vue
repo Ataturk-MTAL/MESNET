@@ -1,13 +1,13 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg">
+    <div class="row items-center q-mb-lg q-mx-auto" style="max-width: 760px">
       <q-btn flat round dense icon="arrow_back" aria-label="Öğrencilere dön" class="q-mr-sm" @click="goBack">
         <q-tooltip>Öğrencilere dön</q-tooltip>
       </q-btn>
       <div class="text-h5 text-weight-bold col">{{ isEdit ? 'Öğrenci Düzenle' : 'Yeni Öğrenci' }}</div>
     </div>
 
-    <q-card flat bordered style="max-width: 760px" class="relative-position">
+    <q-card flat bordered style="max-width: 760px" class="relative-position q-mx-auto">
       <q-inner-loading :showing="loading" />
       <q-card-section class="q-gutter-md">
         <!-- Kullanıcı seçimi yalnız yeni kayıtta -->

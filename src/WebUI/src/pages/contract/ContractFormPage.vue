@@ -1,13 +1,13 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg">
+    <div class="row items-center q-mb-lg q-mx-auto" style="max-width: 640px">
       <q-btn flat round dense icon="arrow_back" aria-label="Sözleşmelere dön" class="q-mr-sm" @click="goBack">
         <q-tooltip>Sözleşmelere dön</q-tooltip>
       </q-btn>
       <div class="text-h5 text-weight-bold col">Yeni Sözleşme</div>
     </div>
 
-    <q-card flat bordered style="max-width: 640px">
+    <q-card flat bordered style="max-width: 640px" class="q-mx-auto">
       <q-card-section class="q-gutter-md">
         <q-select
           v-model="form.studentId"
