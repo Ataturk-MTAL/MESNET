@@ -5,7 +5,7 @@
       <q-input
         v-model="searchQuery"
         label="Adres veya işletme ara..."
-        filled
+        outlined
         dense
         clearable
         @keyup.enter="searchAddress"

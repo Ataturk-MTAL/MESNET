@@ -14,7 +14,7 @@
           :options="studentOpts.options.value"
           :loading="studentOpts.loading.value"
           label="Öğrenci *"
-          filled
+          outlined
           use-input
           input-debounce="0"
           emit-value
@@ -40,7 +40,7 @@
           :options="businessOpts.options.value"
           :loading="businessOpts.loading.value"
           label="İşletme *"
-          filled
+          outlined
           use-input
           input-debounce="0"
           emit-value
@@ -63,7 +63,7 @@
 
         <TeacherSelector v-model="form.teacherId" label="Koordinatör Öğretmen (opsiyonel)" />
 
-        <q-input v-model="form.startDate" label="Başlangıç Tarihi *" filled type="date">
+        <q-input v-model="form.startDate" label="Başlangıç Tarihi *" outlined type="date">
           <template #prepend><q-icon name="calendar_today" /></template>
         </q-input>
       </q-card-section>

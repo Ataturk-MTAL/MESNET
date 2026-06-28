@@ -10,19 +10,19 @@
     <q-card flat bordered style="max-width: 640px" class="relative-position q-mx-auto">
       <q-inner-loading :showing="loading" />
       <q-card-section class="q-gutter-md">
-        <q-input v-model="form.fullName" label="Kurum Adı" filled>
+        <q-input v-model="form.fullName" label="Kurum Adı" outlined>
           <template #prepend><q-icon name="account_balance" /></template>
         </q-input>
-        <q-input v-model="form.address" label="Adres" filled>
+        <q-input v-model="form.address" label="Adres" outlined>
           <template #prepend><q-icon name="location_on" /></template>
         </q-input>
-        <q-input v-model="form.phoneNumber" label="Telefon" filled>
+        <q-input v-model="form.phoneNumber" label="Telefon" outlined>
           <template #prepend><q-icon name="phone" /></template>
         </q-input>
-        <q-input v-model="form.email" label="E-posta" filled type="email">
+        <q-input v-model="form.email" label="E-posta" outlined type="email">
           <template #prepend><q-icon name="email" /></template>
         </q-input>
-        <q-input v-model="form.webUrl" label="Web Sitesi" filled>
+        <q-input v-model="form.webUrl" label="Web Sitesi" outlined>
           <template #prepend><q-icon name="language" /></template>
         </q-input>
       </q-card-section>

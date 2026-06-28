@@ -12,37 +12,34 @@
         <q-inner-loading :showing="loading" />
         <q-card-section>
           <div class="row q-col-gutter-md">
-            <!-- Harita: geniş ekranda solda yarım, dar ekranda en altta tam genişlik -->
-            <div class="col-12 col-md-6 business-map-col">
-              <div class="text-subtitle2 q-mb-xs">
-                <q-icon name="map" class="q-mr-xs" />Konum
-              </div>
-              <MapPicker :model-value="form.location" height="480px" @update:model-value="(v) => (form.location = v)" />
-            </div>
-
-            <!-- Form alanları: geniş ekranda sağda, dar ekranda üstte -->
-            <div class="col-12 col-md-6 business-fields-col q-gutter-md">
-              <q-input v-model="form.name" label="İşletme Adı *" filled :error="!!errors.name" :error-message="errors.name">
+            <!-- Bilgi girişleri: solda (dar ekranda üstte) -->
+            <div class="col-12 col-md-6 q-gutter-md">
+              <q-input v-model="form.name" label="İşletme Adı *" outlined :error="!!errors.name" :error-message="errors.name">
                 <template #prepend><q-icon name="business" /></template>
               </q-input>
-              <q-input v-model="form.address" label="Adres *" filled :error="!!errors.address" :error-message="errors.address">
+              <q-input v-model="form.address" label="Adres *" outlined :error="!!errors.address" :error-message="errors.address">
                 <template #prepend><q-icon name="location_on" /></template>
               </q-input>
-              <q-input v-model="form.phoneNumber" label="Telefon" filled>
+              <q-input v-model="form.phoneNumber" label="Telefon" outlined>
                 <template #prepend><q-icon name="phone" /></template>
               </q-input>
-              <q-input v-model="form.email" label="E-posta" filled type="email" :error="!!errors.email" :error-message="errors.email">
+              <q-input v-model="form.email" label="E-posta" outlined type="email" :error="!!errors.email" :error-message="errors.email">
                 <template #prepend><q-icon name="email" /></template>
               </q-input>
-              <q-input v-if="isEdit" v-model="form.website" label="Web Sitesi" filled>
+              <q-input v-if="isEdit" v-model="form.website" label="Web Sitesi" outlined>
                 <template #prepend><q-icon name="language" /></template>
               </q-input>
-              <q-input v-model.number="form.personnelCount" label="Personel Sayısı" filled type="number">
+              <q-input v-model.number="form.personnelCount" label="Personel Sayısı" outlined type="number">
                 <template #prepend><q-icon name="groups" /></template>
               </q-input>
-              <q-select v-model="form.sectors" :options="sectorOptions" label="Sektörler" filled multiple emit-value map-options use-chips>
+              <q-select v-model="form.sectors" :options="sectorOptions" label="Sektörler" outlined multiple emit-value map-options use-chips>
                 <template #prepend><q-icon name="category" /></template>
               </q-select>
+            </div>
+
+            <!-- Harita: sağda (dar ekranda altta) -->
+            <div class="col-12 col-md-6">
+              <MapPicker :model-value="form.location" height="480px" @update:model-value="(v) => (form.location = v)" />
             </div>
           </div>
         </q-card-section>
@@ -187,15 +184,3 @@ onMounted(async () => {
   if (isEdit.value) await loadBusiness()
 })
 </script>
-
-<style scoped>
-/* Dar ekranda (md altı) harita en alta iner, form alanları üstte kalır */
-@media (max-width: 1023px) {
-  .business-map-col {
-    order: 2;
-  }
-  .business-fields-col {
-    order: 1;
-  }
-}
-</style>

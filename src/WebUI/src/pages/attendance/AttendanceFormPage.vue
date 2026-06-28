@@ -14,7 +14,7 @@
           :options="placementOpts.options.value"
           :loading="placementOpts.loading.value"
           label="Öğrenci *"
-          filled
+          outlined
           use-input
           input-debounce="0"
           emit-value
@@ -37,7 +37,7 @@
         <q-input
           :model-value="form.businessName"
           label="İşletme"
-          filled
+          outlined
           readonly
           :hint="form.businessId ? '' : 'Öğrenci seçildiğinde otomatik doldurulacaktır'"
         >
@@ -46,7 +46,7 @@
         <q-input
           v-model="form.date"
           label="Tarih"
-          filled
+          outlined
           type="date"
           :min="weekBounds.min"
           :max="weekBounds.max"
@@ -58,13 +58,13 @@
           v-model="form.absenceType"
           :options="absenceTypeOptions"
           label="Devamsızlık Türü"
-          filled
+          outlined
           emit-value
           map-options
         >
           <template #prepend><q-icon name="category" /></template>
         </q-select>
-        <q-input v-model="form.reason" label="Gerekçe (opsiyonel)" filled>
+        <q-input v-model="form.reason" label="Gerekçe (opsiyonel)" outlined>
           <template #prepend><q-icon name="notes" /></template>
         </q-input>
       </q-card-section>

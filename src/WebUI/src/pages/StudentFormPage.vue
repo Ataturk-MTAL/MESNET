@@ -17,7 +17,7 @@
           :options="userOpts.options.value"
           :loading="userOpts.loading.value"
           label="Kullanıcı *"
-          filled
+          outlined
           use-input
           input-debounce="0"
           emit-value
@@ -41,10 +41,10 @@
           <template #no-option><SelectEmptyOption /></template>
         </q-select>
 
-        <q-input v-model="form.fullName" label="Ad Soyad *" filled :error="!!errors.fullName" :error-message="errors.fullName">
+        <q-input v-model="form.fullName" label="Ad Soyad *" outlined :error="!!errors.fullName" :error-message="errors.fullName">
           <template #prepend><q-icon name="badge" /></template>
         </q-input>
-        <q-input v-model="form.email" label="Kullanıcı Adı (E-posta)" filled readonly>
+        <q-input v-model="form.email" label="Kullanıcı Adı (E-posta)" outlined readonly>
           <template #prepend><q-icon name="email" /></template>
         </q-input>
 
@@ -52,7 +52,7 @@
           v-model="form.branchCode"
           :options="branchOpts.options.value"
           label="Alan *"
-          filled
+          outlined
           use-input
           input-debounce="0"
           emit-value
@@ -72,7 +72,7 @@
           v-model="form.specializationCode"
           :options="specOptions"
           label="Dal"
-          filled
+          outlined
           emit-value
           map-options
           option-label="label"
@@ -85,7 +85,7 @@
           v-model="form.educationType"
           :options="educationTypeOptions"
           label="Eğitim Tipi *"
-          filled
+          outlined
           emit-value
           map-options
           option-label="label"
@@ -98,32 +98,32 @@
 
         <div class="row q-col-gutter-sm">
           <div class="col-6">
-            <q-input v-model.number="form.classYear" label="Sınıf (9-12)" filled type="number" min="9" max="12" :error="!!errors.classYear" :error-message="errors.classYear">
+            <q-input v-model.number="form.classYear" label="Sınıf (9-12)" outlined type="number" min="9" max="12" :error="!!errors.classYear" :error-message="errors.classYear">
               <template #prepend><q-icon name="class" /></template>
             </q-input>
           </div>
           <div class="col-6">
-            <q-input v-model="form.section" label="Şube" filled :error="!!errors.section" :error-message="errors.section">
+            <q-input v-model="form.section" label="Şube" outlined :error="!!errors.section" :error-message="errors.section">
               <template #prepend><q-icon name="sort_by_alpha" /></template>
             </q-input>
           </div>
         </div>
-        <q-input v-model="form.studentNumber" label="Öğrenci No" filled :error="!!errors.studentNumber" :error-message="errors.studentNumber">
+        <q-input v-model="form.studentNumber" label="Öğrenci No" outlined :error="!!errors.studentNumber" :error-message="errors.studentNumber">
           <template #prepend><q-icon name="pin" /></template>
         </q-input>
-        <q-input v-model="form.tcKimlikNo" label="T.C. Kimlik No" filled maxlength="11" :error="!!errors.tcKimlikNo" :error-message="errors.tcKimlikNo">
+        <q-input v-model="form.tcKimlikNo" label="T.C. Kimlik No" outlined maxlength="11" :error="!!errors.tcKimlikNo" :error-message="errors.tcKimlikNo">
           <template #prepend><q-icon name="fingerprint" /></template>
         </q-input>
-        <q-input v-model="form.phoneNumber" label="Telefon" filled :error="!!errors.phoneNumber" :error-message="errors.phoneNumber">
+        <q-input v-model="form.phoneNumber" label="Telefon" outlined :error="!!errors.phoneNumber" :error-message="errors.phoneNumber">
           <template #prepend><q-icon name="phone" /></template>
         </q-input>
 
         <q-separator />
         <div class="text-subtitle2 text-grey-7">Veli Bilgileri</div>
-        <q-input v-model="form.guardianName" label="Veli Adı" filled>
+        <q-input v-model="form.guardianName" label="Veli Adı" outlined>
           <template #prepend><q-icon name="person" /></template>
         </q-input>
-        <q-input v-model="form.guardianPhone" label="Veli Telefon" filled :error="!!errors.guardianPhone" :error-message="errors.guardianPhone">
+        <q-input v-model="form.guardianPhone" label="Veli Telefon" outlined :error="!!errors.guardianPhone" :error-message="errors.guardianPhone">
           <template #prepend><q-icon name="phone" /></template>
         </q-input>
       </q-card-section>
