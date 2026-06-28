@@ -526,6 +526,8 @@ export function useFeatureName(options: UseFeatureNameOptions) {
 - **`<script setup>` zorunlu** — Options API veya `setup()` fonksiyonu KULLANILMAZ
 - **Props:** `defineProps<{ ... }>()` ile TypeScript type-based props kullanılır, runtime `props:` objesi değil
 - **Emit:** `defineEmits<{ ... }>()` ile TypeScript type-based emits
+- **İkon butonu = `aria-label` + `<q-tooltip>`:** Yalnızca ikon içeren (label'sız) her `q-btn`, hem ekran okuyucu için `aria-label` hem görsel ipucu için `<q-tooltip>` içermelidir. `title` attribute'ü **KULLANILMAZ** (WCAG için güvenilir değil, görsel tooltip standart açılmaz). Özellikle tablo satır aksiyonları (göz/kalem/sil vb.) bu kurala uyar.
+- **Boş-durum nötr olmalı:** Liste/tablo boş durumu bir hata değildir — uyarı (⚠) ikonu yerine nötr ikon (ör. ilgili belge/kayıt ikonu) + mümkünse eylem çağrısı (CTA) gösterilir. Bağlam-bağımlı seçicilerde (önce alan seç → öğretmen) boş-durum metni bağlama göre değişir.
 
 ### Reaktivite Kuralları
 
