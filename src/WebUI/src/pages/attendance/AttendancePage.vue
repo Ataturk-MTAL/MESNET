@@ -135,7 +135,6 @@
       </template>
     </AppTable>
 
-    <AddAttendanceForm v-model="addDialog" @saved="load" />
     <CorrectAttendanceForm
       v-model="correctDialog"
       :record-id="selected?.id ?? ''"
@@ -163,18 +162,18 @@ import BranchSelector from 'components/BranchSelector.vue'
 import PageHeader from 'components/PageHeader.vue'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
-import AddAttendanceForm from 'components/forms/attendance/AddAttendanceForm.vue'
+import { useRouter } from 'vue-router'
 import CorrectAttendanceForm from 'components/forms/attendance/CorrectAttendanceForm.vue'
 import AppNotice from 'components/AppNotice.vue'
 
 const notify = useNotify()
+const router = useRouter()
 const confirmDialog = useConfirmDialog()
 const periodStore = useAcademicPeriodStore()
 const filterStudentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
 const saving = ref(false)
 const selected = ref<AttendanceRecordDto | null>(null)
-const addDialog = ref(false)
 const correctDialog = ref(false)
 const studentIdFilter = ref('')
 const statusFilter = ref<string | null>(null)
@@ -283,7 +282,7 @@ function confirmDelete(row: AttendanceRecordDto) {
 
 
 function openAddDialog() {
-  addDialog.value = true
+  void router.push('/attendance/new')
 }
 
 async function approve(row: AttendanceRecordDto) {

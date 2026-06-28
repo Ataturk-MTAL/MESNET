@@ -121,6 +121,12 @@ const router = createRouter({
           component: () => import('pages/attendance/AttendancePage.vue'),
           meta: { permissions: ['attendance:view'] },
         },
+        {
+          path: 'attendance/new',
+          name: 'AttendanceNew',
+          component: () => import('pages/attendance/AttendanceFormPage.vue'),
+          meta: { permissions: ['attendance:view'], formRoute: true },
+        },
 
         // Ücret / Maaş (Salary)
         {
