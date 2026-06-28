@@ -586,5 +586,6 @@ export function useFeatureName(options: UseFeatureNameOptions) {
 
 Tam kural: `VERSIONING.md`. Özet: SemVer `vMAJOR.MINOR.PATCH` + **minör parite kanalı** —
 **tek minör = ön-sürüm (pre-release)** (`v0.1.0`, `v0.3.0`), **çift minör = kararlı sürüm**
-(`v0.2.0`, `v0.4.0`). Her sürüm `vX.Y.Z` branch + tag; GitHub Release tek minörde `--prerelease`.
-`main` kararlı hat, geliştirme `dev`'de.
+(`v0.2.0`, `v0.4.0`). Akış: geliştirme `dev`'de → `dev → main` **PR ile** birleşir → tag
+`vX.Y.Z` **main**'de açılır → GitHub Release (tek minörde `--prerelease`). Tag push'u, imajları
+(API/WebUI/nginx/Docs) GHCR'ye **private** push eden CI'ı tetikler (public yayınlanmaz).

@@ -16,11 +16,21 @@ MESNET, [Anlamsal Sürümleme (SemVer)](https://semver.org/lang/tr/) `vMAJOR.MIN
 ## Branch & etiket akışı
 
 - Geliştirme `dev` branch'inde yapılır.
-- Her sürüm için `vX.Y.Z` adında bir **branch** + aynı isimde bir **git tag** açılır.
-- **GitHub Release:**
-  - Tek minör → `--prerelease` (ön-sürüm) işaretli.
-  - Çift minör → tam (kararlı) release.
-- `main`, **kararlı (çift minör)** sürüm hattıdır.
+- Sürüm: `dev → main` **Pull Request ile** birleştirilir.
+- Birleşme sonrası **git tag** (`vX.Y.Z`) **`main`** üzerinde açılır.
+- **GitHub Release** bu tag'den oluşturulur:
+  - **Tek minör** → `--prerelease` (ön-sürüm) işaretli.
+  - **Çift minör** → tam (kararlı) release.
+- `main`, tüm sürümlerin PR ile birleştiği hattır; minör parite yalnızca Release'in
+  ön-sürüm/kararlı işaretini belirler.
+
+## Konteyner imajları
+
+- Bir tag (`v*`) push edildiğinde **GitHub Actions** deploy edilebilir bileşenlerin imajlarını
+  derler ve **GHCR'ye** (`ghcr.io/ataturk-mtal/mesnet-*`) push eder: `mesnet-api`, `mesnet-web`,
+  `mesnet-nginx`, `mesnet-docs`.
+- Depo **private** olduğundan imajlar da **private**'tır — **public yayınlanmaz**.
+- İş akışı: `.github/workflows/release-containers.yml`.
 
 ## Sürüm geçmişi
 
