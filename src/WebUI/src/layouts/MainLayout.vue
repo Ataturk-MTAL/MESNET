@@ -11,7 +11,7 @@
         <q-btn flat round dense icon="notifications" aria-label="Bildirimler" class="q-mr-xs">
           <q-badge v-if="unreadCount > 0" color="negative" floating>{{ unreadCount }}</q-badge>
           <q-tooltip>Bildirimler</q-tooltip>
-          <q-menu anchor="bottom right" self="top right" style="min-width: 320px; max-width: 400px">
+          <q-menu anchor="bottom right" self="top right" style="min-width: 320px; max-width: 400px" @hide="notificationStore.markAllRead()">
             <q-list separator>
               <q-item v-if="notificationStore.notifications.length === 0" dense>
                 <q-item-section class="text-grey text-caption text-center q-pa-md">
@@ -22,6 +22,7 @@
                 v-for="(n, i) in notificationStore.notifications.slice(0, 10)"
                 :key="i"
                 dense
+                :class="{ 'bg-blue-1': !n.read }"
               >
                 <q-item-section avatar>
                   <q-icon :name="moduleIcon(n.module)" color="primary" size="sm" />
@@ -221,7 +222,7 @@ const aboutDialog = ref(false)
 const appVersion = '0.1.0'
 const currentYear = new Date().getFullYear()
 
-const unreadCount = computed(() => notificationStore.notifications.length)
+const unreadCount = computed(() => notificationStore.unreadCount)
 
 const semesterOpts = [...semesterOptions]
 

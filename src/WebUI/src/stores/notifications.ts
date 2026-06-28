@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useAuthStore } from 'stores/auth'
 
@@ -7,6 +7,8 @@ export interface SseNotification {
   module: string
   payload: unknown
   occurredAt: string
+  /** Okundu mu — store tarafında atanır (SSE payload'unda yoktur). */
+  read?: boolean
 }
 
 /**
@@ -70,7 +72,7 @@ export const useNotificationStore = defineStore('notifications', () => {
           if (notification) {
             // Sistem eventlerini (connection.established, keepalive) filtrele
             if (notification.eventType !== 'connection.established') {
-              notifications.value.unshift(notification)
+              notifications.value.unshift({ ...notification, read: false })
               // Max 50 bildirim tut
               if (notifications.value.length > 50) {
                 notifications.value.pop()
@@ -103,7 +105,17 @@ export const useNotificationStore = defineStore('notifications', () => {
     notifications.value.splice(index, 1)
   }
 
-  return { notifications, connected, connect, disconnect, clear, remove }
+  /** Tüm bildirimleri okundu işaretler (bildirim menüsü kapanınca çağrılır). */
+  function markAllRead() {
+    notifications.value.forEach((n) => {
+      n.read = true
+    })
+  }
+
+  /** Okunmamış bildirim sayısı (üst-bar rozeti). */
+  const unreadCount = computed(() => notifications.value.filter((n) => !n.read).length)
+
+  return { notifications, connected, connect, disconnect, clear, remove, markAllRead, unreadCount }
 })
 
 /**

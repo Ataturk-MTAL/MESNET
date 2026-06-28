@@ -28,7 +28,11 @@
     </div>
 
     <!-- Harita -->
-    <div :style="{ height, width: '100%' }">
+    <div
+      :style="{ height, width: '100%' }"
+      role="application"
+      aria-label="İşletme kümeleri haritası — ok tuşlarıyla kaydırın, artı/eksi tuşlarıyla yakınlaştırın."
+    >
       <l-map
         ref="mapRef"
         v-model:zoom="zoom"
