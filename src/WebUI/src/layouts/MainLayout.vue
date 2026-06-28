@@ -161,7 +161,7 @@
 
     <q-page-container>
       <router-view v-slot="{ Component }">
-        <transition name="page" mode="out-in">
+        <transition :name="transitionName" mode="out-in">
           <component :is="Component" />
         </transition>
       </router-view>
@@ -208,6 +208,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 import { useNotificationStore } from 'stores/notifications'
 import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
@@ -221,6 +222,15 @@ const authStore = useAuthStore()
 const { filteredMenu, isExpanded, toggleGroup, activeGroupKey } = useNavigation()
 const notificationStore = useNotificationStore()
 const periodStore = useAcademicPeriodStore()
+
+// Sayfa geçişi yönü: form route'una giriş → liste sola kayar/form sağdan girer; çıkış → tersi; diğer nav → fade
+const router = useRouter()
+const transitionName = ref('page')
+router.beforeEach((to, from) => {
+  if (to.meta.formRoute) transitionName.value = 'slide-left'
+  else if (from.meta.formRoute) transitionName.value = 'slide-right'
+  else transitionName.value = 'page'
+})
 const drawerOpen = ref(false)
 const aboutDialog = ref(false)
 const appVersion = '0.1.0'
@@ -280,6 +290,32 @@ async function onLogout() {
   transform: translateY(8px);
 }
 .page-leave-to {
+  opacity: 0;
+}
+
+/* Yönlü kayma — form route'larına giriş/çıkış (liste sola kayar, form sağdan girer) */
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease;
+}
+.slide-left-enter-from {
+  transform: translateX(40px);
+  opacity: 0;
+}
+.slide-left-leave-to {
+  transform: translateX(-40px);
+  opacity: 0;
+}
+.slide-right-enter-from {
+  transform: translateX(-40px);
+  opacity: 0;
+}
+.slide-right-leave-to {
+  transform: translateX(40px);
   opacity: 0;
 }
 </style>

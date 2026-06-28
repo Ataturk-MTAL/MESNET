@@ -40,6 +40,18 @@ const router = createRouter({
           component: () => import('pages/business/BusinessListPage.vue'),
           meta: { permissions: ['company:view'] },
         },
+        {
+          path: 'companies/new',
+          name: 'CompanyNew',
+          component: () => import('pages/business/BusinessFormPage.vue'),
+          meta: { permissions: ['company:manage'], formRoute: true },
+        },
+        {
+          path: 'companies/:id/edit',
+          name: 'CompanyEdit',
+          component: () => import('pages/business/BusinessFormPage.vue'),
+          meta: { permissions: ['company:manage'], formRoute: true },
+        },
 
         // Kayıt / Başvuru
         {

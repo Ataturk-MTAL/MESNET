@@ -21,7 +21,7 @@
         </template>
       </q-btn-toggle>
       <PermissionGuard :permission="Permissions.Company.Manage">
-        <q-btn color="primary" icon="add_business" label="İşletme Ekle" @click="addDialog = true" />
+        <q-btn color="primary" icon="add_business" label="İşletme Ekle" @click="router.push('/companies/new')" />
       </PermissionGuard>
     </PageHeader>
 
@@ -125,7 +125,7 @@
 
       <template #empty-action>
         <PermissionGuard :permission="Permissions.Company.Manage">
-          <q-btn color="primary" icon="add_business" label="İlk işletmeyi ekle" unelevated @click="addDialog = true" />
+          <q-btn color="primary" icon="add_business" label="İlk işletmeyi ekle" unelevated @click="router.push('/companies/new')" />
         </PermissionGuard>
       </template>
     </AppTable>
@@ -314,10 +314,8 @@
     </DetailPanel>
 
     <!-- Form Dialogları -->
-    <AddBusinessForm v-model="addDialog" :sector-options="sectorOptions" @saved="load" />
     <RejectBusinessForm v-model="rejectDialog" :business-id="selected?.id ?? ''" @saved="afterFormSaved" />
     <UploadBusinessDocForm v-model="docUploadDialog" :business-id="selected?.id ?? ''" @saved="afterFormSaved" />
-    <EditBusinessForm v-model="editDialog" :business="selected" :sector-options="sectorOptions" @saved="afterFormSaved" />
   </q-page>
 </template>
 
@@ -338,14 +336,14 @@ import InfoItem from 'components/InfoItem.vue'
 import PageHeader from 'components/PageHeader.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import DetailPanel from 'components/DetailPanel.vue'
-import AddBusinessForm from 'components/forms/business/AddBusinessForm.vue'
-import EditBusinessForm from 'components/forms/business/EditBusinessForm.vue'
+import { useRouter } from 'vue-router'
 import RejectBusinessForm from 'components/forms/business/RejectBusinessForm.vue'
 import UploadBusinessDocForm from 'components/forms/business/UploadBusinessDocForm.vue'
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 const $q = useQuasar()
+const router = useRouter()
 const notify = useNotify()
 const entityOptionsStore = useEntityOptionsStore()
 const confirmDialog = useConfirmDialog()
@@ -369,10 +367,8 @@ function getLatLng(biz: BusinessDto): [number, number] {
 const saving = ref(false)
 const selected = ref<BusinessDto | null>(null)
 const detailOpen = ref(false)
-const addDialog = ref(false)
 const rejectDialog = ref(false)
 const docUploadDialog = ref(false)
-const editDialog = ref(false)
 const statusFilter = ref<string | null>(null)
 const sectorFilter = ref<string | null>(null)
 const allSectors = ref<SectorDto[]>([])
@@ -535,7 +531,7 @@ async function deleteDoc(documentId: string) {
 }
 
 function openEditDialog() {
-  editDialog.value = true
+  if (selected.value) void router.push(`/companies/${selected.value.id}/edit`)
 }
 
 // ── Durum Aksiyonları ──
