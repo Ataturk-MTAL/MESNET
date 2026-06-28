@@ -247,7 +247,8 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
             var result = new List<KeycloakUserInfo>();
             foreach (var u in users)
             {
-                if (string.IsNullOrEmpty(u.Id))
+                // Service-account kullanıcıları (ör. service-account-mesnet-api) listeye dahil edilmez
+                if (string.IsNullOrEmpty(u.Id) || (u.Username?.StartsWith("service-account-", StringComparison.OrdinalIgnoreCase) ?? false))
                     continue;
 
                 // Kullanıcının realm rolleri

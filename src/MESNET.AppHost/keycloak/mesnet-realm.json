@@ -391,6 +391,20 @@
       "realmRoles": [
         "Teacher"
       ]
+    },
+    {
+      "username": "service-account-mesnet-api",
+      "enabled": true,
+      "serviceAccountClientId": "mesnet-api",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "view-clients",
+          "manage-realm"
+        ]
+      }
     }
   ],
   "scopeMappings": [
