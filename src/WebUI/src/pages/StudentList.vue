@@ -6,30 +6,28 @@
       </PermissionGuard>
     </PageHeader>
 
-    <!-- Filtreler -->
-    <div class="row q-gutter-sm q-mb-md">
-      <BranchSelector
-        v-model="branchFilter"
-        dense
-        force-select
-        style="min-width: 200px"
-        @update:model-value="load"
-      />
-      <q-select
-        v-model="statusFilter"
-        :options="statusOptions"
-        label="Durum"
-        filled
-        dense
-        emit-value
-        map-options
-        clearable
-        style="min-width: 180px"
-        @update:model-value="load"
-      />
-    </div>
-
     <AppTable :rows="students" :columns="columns" :loading="loading" :pagination="pagination" show-search :search="search" @request="onRequest" @search="onSearch">
+      <template #filters>
+        <BranchSelector
+          v-model="branchFilter"
+          dense
+          force-select
+          style="min-width: 200px"
+          @update:model-value="load"
+        />
+        <q-select
+          v-model="statusFilter"
+          :options="statusOptions"
+          label="Durum"
+          filled
+          dense
+          emit-value
+          map-options
+          clearable
+          style="min-width: 180px"
+          @update:model-value="load"
+        />
+      </template>
       <template #body-cell-statusSlug="{ row }">
         <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
       </template>

@@ -25,8 +25,8 @@
       </PermissionGuard>
     </PageHeader>
 
-    <!-- Filtreler -->
-    <div class="row q-gutter-sm q-mb-md">
+    <!-- Filtre + arama (aynı satır: filtreler solda, arama sağda) -->
+    <div class="row items-center q-gutter-sm q-mb-md">
       <q-select
         v-model="statusFilter"
         :options="statusOptions"
@@ -51,6 +51,23 @@
         style="min-width: 240px"
         @update:model-value="load"
       />
+      <q-space />
+      <q-input
+        :model-value="search"
+        dense
+        outlined
+        placeholder="Ara..."
+        style="min-width: 250px"
+        debounce="400"
+        @update:model-value="(v) => onSearch(String(v ?? ''))"
+      >
+        <template #prepend>
+          <q-icon name="search" />
+        </template>
+        <template v-if="search" #append>
+          <q-icon name="close" class="cursor-pointer" @click="onSearch('')" />
+        </template>
+      </q-input>
     </div>
 
     <!-- Tablo Görünümü -->
@@ -60,10 +77,7 @@
       :columns="columns"
       :loading="loading"
       :pagination="pagination"
-      show-search
-      :search="search"
       @request="onRequest"
-      @search="onSearch"
     >
       <template #body-cell-sectors="{ row }">
         <q-td>
