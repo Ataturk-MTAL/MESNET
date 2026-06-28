@@ -10,8 +10,11 @@ public static class SecurityErrors
     public static Error UserAlreadyExists(string username) =>
         new("Security.UserAlreadyExists", $"Bu kullanıcı adı zaten kayıtlı: {username}");
 
+    // Kullanıcıya ham teknik detay (HTTP kodu, exception metni) gösterilmez — detay sunucu
+    // loglarındadır (catch bloklarındaki _logger.LogError). 'detail' yalnızca çağrı uyumluluğu için.
     public static Error KeycloakOperationFailed(string detail) =>
-        new("Security.KeycloakOperationFailed", $"Keycloak işlemi başarısız: {detail}");
+        new("Security.KeycloakOperationFailed",
+            "Kimlik/yetkilendirme sunucusu işlemi şu anda gerçekleştirilemedi. Lütfen daha sonra tekrar deneyin.");
 
     public static Error InvalidRole(string role) =>
         new("Security.InvalidRole", $"Geçersiz rol: {role}");
