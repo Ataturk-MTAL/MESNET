@@ -32,6 +32,12 @@ const router = createRouter({
           component: () => import('pages/institution/InstitutionPage.vue'),
           meta: { permissions: ['institution:view'] },
         },
+        {
+          path: 'institution/edit',
+          name: 'InstitutionEdit',
+          component: () => import('pages/institution/InstitutionFormPage.vue'),
+          meta: { permissions: ['institution:view'], formRoute: true },
+        },
 
         // İşletme (Company)
         {

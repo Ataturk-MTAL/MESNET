@@ -14,7 +14,7 @@
     <template v-else-if="institution">
       <PageHeader :title="institution.fullName" :subtitle="`Kurum Kodu: ${institution.institutionCode}`">
         <PermissionGuard :permission="Permissions.Institution.Manage">
-          <q-btn color="primary" icon="edit" label="Düzenle" @click="editDialog = true" />
+          <q-btn color="primary" icon="edit" label="Düzenle" @click="router.push('/institution/edit')" />
         </PermissionGuard>
       </PageHeader>
 
@@ -283,12 +283,6 @@
       </q-tab-panels>
     </template>
 
-    <EditInstitutionForm
-      v-model="editDialog"
-      :institution-id="institutionId"
-      :institution="institution"
-      @saved="load"
-    />
     <AddStaffForm
       v-model="staffDialog"
       :institution-id="institutionId"
@@ -345,7 +339,7 @@ import PageHeader from 'components/PageHeader.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useInstitutionStore } from 'stores/institution'
-import EditInstitutionForm from 'components/forms/institution/EditInstitutionForm.vue'
+import { useRouter } from 'vue-router'
 import AddStaffForm from 'components/forms/institution/AddStaffForm.vue'
 import AddBranchForm from 'components/forms/institution/AddBranchForm.vue'
 import EditSpecializationsForm from 'components/forms/institution/EditSpecializationsForm.vue'
@@ -355,6 +349,7 @@ import CreatePeriodForm from 'components/forms/institution/CreatePeriodForm.vue'
 const periodStore = useAcademicPeriodStore()
 const institutionStore = useInstitutionStore()
 const notify = useNotify()
+const router = useRouter()
 const confirmDialog = useConfirmDialog()
 
 // ── Core State ──
@@ -379,7 +374,6 @@ const branchSelectOptions = computed(() =>
 )
 
 // ── Dialog Visibility ──
-const editDialog = ref(false)
 const staffDialog = ref(false)
 const branchDialog = ref(false)
 const specDialog = ref(false)
