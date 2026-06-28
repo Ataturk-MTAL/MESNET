@@ -7,21 +7,21 @@
       class="text-caption"
       message="Yeni dönem oluşturulduğunda mevcut aktif dönem otomatik kapatılır."
     />
-    <q-input v-model="form.name" label="Dönem Adı *" filled hint="Örn: 2025-2026">
+    <q-input v-model="form.name" label="Dönem Adı *" outlined hint="Örn: 2025-2026">
       <template #prepend>
         <q-icon name="label" />
       </template>
     </q-input>
     <div class="row q-col-gutter-md">
       <div class="col-6">
-        <q-input v-model.number="form.startYear" label="Başlangıç Yılı *" filled type="number">
+        <q-input v-model.number="form.startYear" label="Başlangıç Yılı *" outlined type="number">
           <template #prepend>
             <q-icon name="event" />
           </template>
         </q-input>
       </div>
       <div class="col-6">
-        <q-input v-model.number="form.endYear" label="Bitiş Yılı *" filled type="number">
+        <q-input v-model.number="form.endYear" label="Bitiş Yılı *" outlined type="number">
           <template #prepend>
             <q-icon name="event" />
           </template>
@@ -30,14 +30,14 @@
     </div>
     <div class="row q-col-gutter-md">
       <div class="col-6">
-        <q-input v-model="form.startDate" label="Başlangıç Tarihi *" filled type="date">
+        <q-input v-model="form.startDate" label="Başlangıç Tarihi *" outlined type="date">
           <template #prepend>
             <q-icon name="calendar_today" />
           </template>
         </q-input>
       </div>
       <div class="col-6">
-        <q-input v-model="form.endDate" label="Bitiş Tarihi *" filled type="date">
+        <q-input v-model="form.endDate" label="Bitiş Tarihi *" outlined type="date">
           <template #prepend>
             <q-icon name="calendar_today" />
           </template>

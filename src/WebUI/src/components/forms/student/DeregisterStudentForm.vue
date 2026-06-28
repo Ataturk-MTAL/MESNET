@@ -7,7 +7,7 @@
         <q-input
           v-model="form.reason"
           label="Sebep *"
-          filled
+          outlined
           type="textarea"
           rows="2"
           :rules="[v => !!v || 'Sebep belirtilmelidir']"

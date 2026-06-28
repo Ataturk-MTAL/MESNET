@@ -19,7 +19,7 @@
           v-model="statusFilter"
           :options="statusOptions"
           label="Durum"
-          filled
+          outlined
           dense
           emit-value
           map-options

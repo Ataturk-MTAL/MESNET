@@ -4,7 +4,7 @@
           v-model="form.documentType"
           :options="documentTypeOptions"
           label="Evrak Türü *"
-          filled
+          outlined
           emit-value
           map-options
         >
@@ -14,7 +14,7 @@
         <q-file
           v-model="form.file"
           label="PDF Dosyası *"
-          filled
+          outlined
           accept=".pdf"
         >
           <template #prepend><q-icon name="attach_file" /></template>
@@ -24,7 +24,7 @@
         <q-input
           v-model="form.description"
           label="Açıklama (opsiyonel)"
-          filled
+          outlined
         >
           <template #prepend><q-icon name="notes" /></template>
         </q-input>
@@ -32,7 +32,7 @@
         <q-input
           v-model="form.uploadedBy"
           label="Yükleyen *"
-          filled
+          outlined
         >
           <template #prepend><q-icon name="person" /></template>
         </q-input>

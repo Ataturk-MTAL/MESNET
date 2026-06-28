@@ -4,7 +4,7 @@
       v-model="form.educationType"
       :options="educationTypeOptions"
       label="Eğitim Türü"
-      filled
+      outlined
       emit-value
       map-options
       @update:model-value="onEducationTypeChange"
@@ -18,7 +18,7 @@
       :options="availableFields"
       :loading="loadingCatalog"
       label="Alan *"
-      filled
+      outlined
       use-input
       input-debounce="0"
       emit-value

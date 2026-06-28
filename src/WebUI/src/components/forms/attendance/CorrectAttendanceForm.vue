@@ -4,13 +4,13 @@
       v-model="form.absenceType"
       :options="absenceTypeOptions"
       label="Devamsızlık Türü"
-      filled emit-value map-options
+      outlined emit-value map-options
     >
       <template #prepend>
         <q-icon name="category" />
       </template>
     </q-select>
-    <q-input v-model="form.reason" label="Gerekçe" filled>
+    <q-input v-model="form.reason" label="Gerekçe" outlined>
       <template #prepend>
         <q-icon name="notes" />
       </template>

@@ -101,7 +101,6 @@
                       color="primary"
                       :icon="scheduleConfig?.configured ? 'edit' : 'settings'"
                       :label="scheduleConfig?.configured ? 'Düzenle' : 'Ayarla'"
-                      size="sm"
                       @click="openScheduleDialog"
                     />
                   </PermissionGuard>
@@ -213,7 +212,7 @@
             <div class="col text-subtitle1 text-weight-medium">Personel</div>
             <div class="col-auto">
               <PermissionGuard :permission="Permissions.Institution.Staff">
-                <q-btn color="primary" icon="person_add" label="Personel Ekle" size="sm" @click="openStaffDialog" />
+                <q-btn color="primary" icon="person_add" label="Personel Ekle" @click="openStaffDialog" />
               </PermissionGuard>
             </div>
           </div>
@@ -236,7 +235,7 @@
             <div class="col text-subtitle1 text-weight-medium">Akademik Dönemler</div>
             <div class="col-auto">
               <PermissionGuard :permission="Permissions.Institution.Manage">
-                <q-btn color="primary" icon="add" label="Yeni Dönem" size="sm" @click="openPeriodDialog" />
+                <q-btn color="primary" icon="add" label="Yeni Dönem" @click="openPeriodDialog" />
               </PermissionGuard>
             </div>
           </div>

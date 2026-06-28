@@ -56,7 +56,7 @@
               v-model="filterState.formType"
               :options="formTypeOptions"
               label="Form Tipi"
-              filled
+              outlined
               dense
               clearable
               emit-value
@@ -68,7 +68,7 @@
               v-model="filterState.status"
               :options="statusOptions"
               label="Durum"
-              filled
+              outlined
               dense
               clearable
               emit-value
@@ -200,7 +200,7 @@
             v-model="batchForm.formType"
             :options="batchFormTypeOptions"
             label="Form Tipi"
-            filled
+            outlined
             dense
             emit-value
             map-options
@@ -212,7 +212,7 @@
                 v-model="batchForm.year"
                 :options="yearOptions"
                 label="Yıl"
-                filled
+                outlined
                 dense
                 emit-value
                 map-options
@@ -223,7 +223,7 @@
                 v-model="batchForm.month"
                 :options="monthOptions"
                 label="Ay"
-                filled
+                outlined
                 dense
                 emit-value
                 map-options

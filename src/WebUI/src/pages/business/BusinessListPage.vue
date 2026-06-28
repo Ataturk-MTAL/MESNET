@@ -31,7 +31,7 @@
         v-model="statusFilter"
         :options="statusOptions"
         label="Durum"
-        filled
+        outlined
         dense
         emit-value
         map-options
@@ -43,7 +43,7 @@
         v-model="sectorFilter"
         :options="sectorOptions"
         label="Sektör"
-        filled
+        outlined
         dense
         emit-value
         map-options
@@ -228,7 +228,7 @@
                   v-model.number="capacitySlots"
                   type="number"
                   label="Toplam Kapasite"
-                  filled
+                  outlined
                   dense
                   class="col"
                 />

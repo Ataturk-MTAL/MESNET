@@ -414,7 +414,7 @@
                   v-model.number="clusterEps"
                   type="number"
                   label="Yarıçap (m)"
-                  filled
+                  outlined
                   dense
                   style="width: 130px"
                   :min="100"
@@ -425,7 +425,7 @@
                   v-model.number="clusterMinPoints"
                   type="number"
                   label="Min. Nokta"
-                  filled
+                  outlined
                   dense
                   style="width: 110px"
                   :min="2"

@@ -4,7 +4,7 @@
     :options="filteredOptions"
     :loading="teacherOpts.loading.value"
     :label="label"
-    filled
+    outlined
     :dense="dense"
     use-input
     input-debounce="0"

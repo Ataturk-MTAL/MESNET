@@ -110,17 +110,17 @@
           <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input v-model="inviteForm.email" label="E-posta" filled type="email">
+          <q-input v-model="inviteForm.email" label="E-posta" outlined type="email">
             <template #prepend>
               <q-icon name="email" />
             </template>
           </q-input>
-          <q-input v-model="inviteForm.firstName" label="Ad" filled>
+          <q-input v-model="inviteForm.firstName" label="Ad" outlined>
             <template #prepend>
               <q-icon name="person" />
             </template>
           </q-input>
-          <q-input v-model="inviteForm.lastName" label="Soyad" filled>
+          <q-input v-model="inviteForm.lastName" label="Soyad" outlined>
             <template #prepend>
               <q-icon name="person" />
             </template>
@@ -129,7 +129,7 @@
             v-model="inviteForm.targetRole"
             :options="roleOptions"
             label="Hedef Rol"
-            filled emit-value map-options
+            outlined emit-value map-options
           >
             <template #prepend>
               <q-icon name="manage_accounts" />

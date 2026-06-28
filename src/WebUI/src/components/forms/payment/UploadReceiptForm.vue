@@ -1,6 +1,6 @@
 <template>
   <FormDialog v-model="open" title="Dekont Yükle" icon="upload_file" color="secondary" width="400px" save-label="Yükle" :saving="saving" :save-disabled="!file" @save="handleSave">
-    <q-file v-model="file" label="Dosya Seç" filled accept=".pdf,.jpg,.jpeg,.png">
+    <q-file v-model="file" label="Dosya Seç" outlined accept=".pdf,.jpg,.jpeg,.png">
       <template #prepend>
         <q-icon name="attach_file" />
       </template>

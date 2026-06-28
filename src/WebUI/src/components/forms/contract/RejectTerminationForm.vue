@@ -10,7 +10,7 @@
         <q-input
           v-model="form.rejectionNote"
           label="Red Gerekçesi (opsiyonel)"
-          filled
+          outlined
           type="textarea"
           :rows="3"
           autogrow
@@ -18,7 +18,7 @@
           <template #prepend><q-icon name="notes" /></template>
         </q-input>
 
-        <q-input v-model="form.rejectedBy" label="Reddeden *" filled>
+        <q-input v-model="form.rejectedBy" label="Reddeden *" outlined>
           <template #prepend><q-icon name="person" /></template>
         </q-input>
   </FormDialog>

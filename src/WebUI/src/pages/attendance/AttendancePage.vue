@@ -16,7 +16,7 @@
         :options="filterStudentOpts.options.value"
         :loading="filterStudentOpts.loading.value"
         label="Öğrenci"
-        filled
+        outlined
         dense
         use-input
         input-debounce="0"
@@ -45,7 +45,7 @@
         v-model="statusFilter"
         :options="statusOptions"
         label="Durum"
-        filled dense emit-value map-options clearable
+        outlined dense emit-value map-options clearable
         style="min-width: 150px"
         @update:model-value="load"
       />
@@ -53,7 +53,7 @@
         v-model="monthFilter"
         :options="monthOptions"
         label="Ay"
-        filled dense emit-value map-options clearable
+        outlined dense emit-value map-options clearable
         style="min-width: 130px"
         @update:model-value="load"
       />
@@ -61,7 +61,7 @@
         v-model="yearFilter"
         :options="yearOptions"
         label="Yıl"
-        filled dense emit-value map-options clearable
+        outlined dense emit-value map-options clearable
         style="min-width: 100px"
         @update:model-value="load"
       />

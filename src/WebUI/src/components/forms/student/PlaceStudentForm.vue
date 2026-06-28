@@ -6,7 +6,7 @@
           :options="businessOpts.options.value"
           :loading="businessOpts.loading.value"
           label="İşletme *"
-          filled
+          outlined
           use-input
           input-debounce="0"
           emit-value
