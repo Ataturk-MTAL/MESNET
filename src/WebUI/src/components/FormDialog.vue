@@ -1,19 +1,25 @@
 <template>
+  <!-- Sağdan kayan yan-panel (side sheet) — merkezî modal yerine aynı ekrana kayar animasyonla girer -->
   <q-dialog
     v-model="open"
     persistent
+    position="right"
+    transition-show="slide-left"
+    transition-hide="slide-right"
     :maximized="$q.screen.lt.sm"
-    transition-show="slide-up"
-    transition-hide="slide-down"
   >
-    <q-card :style="$q.screen.gt.xs ? `width: ${width}; max-width: 95vw` : ''">
+    <q-card
+      class="column no-wrap full-height"
+      :style="$q.screen.gt.xs ? `width: ${width}; max-width: 95vw` : ''"
+    >
       <q-toolbar :class="`bg-${color} text-white`">
         <q-icon v-if="icon" :name="icon" class="q-mr-sm" />
         <q-toolbar-title>{{ title }}</q-toolbar-title>
         <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
       </q-toolbar>
 
-      <q-card-section class="q-pt-lg q-gutter-md">
+      <!-- İçerik: kalan yüksekliği alır ve uzun formlarda kendi içinde kayar -->
+      <q-card-section class="col scroll q-pt-lg q-gutter-md">
         <slot />
       </q-card-section>
 
