@@ -98,6 +98,12 @@ const router = createRouter({
               meta: { permissions: ['internship:contract:manage'] },
             },
             {
+              path: 'contracts/new',
+              name: 'ContractNew',
+              component: () => import('pages/contract/ContractFormPage.vue'),
+              meta: { permissions: ['internship:contract:manage'], formRoute: true },
+            },
+            {
               path: 'overview',
               name: 'InternshipOverview',
               component: () => import('pages/internship/InternshipOverviewPage.vue'),
