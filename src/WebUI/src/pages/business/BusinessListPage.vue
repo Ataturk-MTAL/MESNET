@@ -37,6 +37,7 @@
         map-options
         clearable
         style="min-width: 180px"
+        @update:model-value="load"
       />
       <q-select
         v-model="sectorFilter"
@@ -48,6 +49,7 @@
         map-options
         clearable
         style="min-width: 240px"
+        @update:model-value="load"
       />
     </div>
 
@@ -123,6 +125,7 @@
         :center="mapCenter"
         :use-global-leaflet="false"
         style="height: 100%; width: 100%; border-radius: 8px"
+        @ready="onBusinessMapReady"
       >
         <l-tile-layer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -305,7 +308,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { businessApi, type BusinessDto, type SectorDto } from 'src/api/business'
@@ -373,6 +376,21 @@ const { rows: businesses, loading, pagination, search, onRequest, onSearch, load
     filters,
     defaultSortBy: 'name',
   })
+
+// Harita: işletme marker'larına otomatik sığdır (fitBounds) — sabit zoom yerine veri extent'i
+function fitMapToBusinesses() {
+  const pts = businessesWithLocation.value.map(getLatLng)
+  const map = (
+    businessMapRef.value as {
+      leafletObject?: { fitBounds: (b: [number, number][], o?: { padding: [number, number] }) => void }
+    } | null
+  )?.leafletObject
+  if (map && pts.length) map.fitBounds(pts, { padding: [50, 50] })
+}
+function onBusinessMapReady() {
+  fitMapToBusinesses()
+}
+watch(businessesWithLocation, () => fitMapToBusinesses())
 const statusOptions = [
   { label: 'Onay Bekliyor', value: 'PendingApproval' },
   { label: 'Aktif', value: 'Active' },

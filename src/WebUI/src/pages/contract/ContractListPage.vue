@@ -76,19 +76,19 @@
               flat round dense
               icon="upload_file"
               color="secondary"
-              title="Evrak Yükle"
+              aria-label="Evrak yükle"
               @click.stop="openUploadDialog(row)"
-            />
+            ><q-tooltip>Evrak yükle</q-tooltip></q-btn>
           </PermissionGuard>
           <q-btn
             flat round dense
             icon="folder_open"
             color="grey-7"
-            title="Evraklar"
+            aria-label="Evrakları aç"
             :badge="row.documents?.length > 0 ? String(row.documents.length) : undefined"
             badge-color="primary"
             @click.stop="openDocumentsDialog(row)"
-          />
+          ><q-tooltip>Evrakları aç</q-tooltip></q-btn>
           <q-btn flat round dense icon="open_in_new" aria-label="Detayı aç" @click="openDetail(row)" />
         </q-td>
       </template>

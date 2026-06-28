@@ -265,7 +265,19 @@ const mapCenter = computed<[number, number]>(() => {
 
 
 function onMapReady() {
-  if (!props.schoolLocation && props.businesses.length === 0) zoom.value = 11
+  // Marker'lara otomatik sığdır (fitBounds) — sabit zoom yerine veri extent'i
+  const pts: [number, number][] = props.businesses.map((b) => [b.latitude, b.longitude])
+  if (props.schoolLocation) pts.push([props.schoolLocation.latitude, props.schoolLocation.longitude])
+  const map = (
+    mapRef.value as {
+      leafletObject?: { fitBounds: (b: [number, number][], o?: { padding: [number, number] }) => void }
+    } | null
+  )?.leafletObject
+  if (map && pts.length) {
+    map.fitBounds(pts, { padding: [50, 50] })
+  } else if (!props.schoolLocation && props.businesses.length === 0) {
+    zoom.value = 11
+  }
 }
 
 // ── Rota ──

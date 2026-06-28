@@ -46,27 +46,28 @@
               v-if="row.status === 'Applied'"
               flat round dense icon="place"
               color="primary"
-              title="Yerleştir"
+              aria-label="Yerleştir"
               @click="openPlacement(row)"
-            />
+            ><q-tooltip>Yerleştir</q-tooltip></q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Internship.Manage">
             <q-btn
               v-if="row.status === 'ActiveInternship' || row.status === 'Placed'"
               flat round dense icon="transfer_within_a_station"
               color="warning"
-              title="Transfer Et"
+              aria-label="Başka işletmeye transfer et"
               @click="openTransfer(row)"
-            />
+            ><q-tooltip>Başka işletmeye transfer et</q-tooltip></q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Student.Manage">
             <q-btn
               v-if="row.status !== 'ActiveInternship' && row.status !== 'Completed' && row.status !== 'Deregistered'"
               flat round dense icon="person_remove"
               color="negative"
+              aria-label="Kayıt sil"
               @click="openDeregister(row)"
             >
-              <q-tooltip>Kayıt Sil</q-tooltip>
+              <q-tooltip>Kayıt sil</q-tooltip>
             </q-btn>
           </PermissionGuard>
         </q-td>

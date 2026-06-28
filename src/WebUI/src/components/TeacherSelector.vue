@@ -39,7 +39,7 @@
     </template>
 
     <template #no-option>
-      <SelectEmptyOption />
+      <SelectEmptyOption :text="branchCode ? 'Bu alanda öğretmen yok' : 'Önce alan seçin'" />
     </template>
   </q-select>
 </template>

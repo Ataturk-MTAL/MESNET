@@ -5,7 +5,7 @@
       <div class="q-gutter-sm">
         <q-btn
           v-if="canGenerate"
-          color="teal"
+          color="primary"
           icon="note_add"
           label="Belge Oluştur"
           @click="showGenerateDialog = true"
@@ -97,6 +97,20 @@
         loading-label="Yükleniyor..."
         @request="onRequest"
       >
+        <template #no-data>
+          <div class="full-width column flex-center q-py-lg text-grey-7">
+            <q-icon name="description" size="42px" class="q-mb-sm" />
+            <div class="q-mb-md">Henüz doküman bulunmuyor</div>
+            <q-btn
+              v-if="canGenerate"
+              color="primary"
+              icon="note_add"
+              label="İlk belgeyi oluştur"
+              unelevated
+              @click="showGenerateDialog = true"
+            />
+          </div>
+        </template>
         <template #body-cell-formType="{ row }">
           <q-td>
             <q-badge color="blue-grey" :label="formTypeLabel(row.formType)" />

@@ -72,7 +72,6 @@
         style="min-width: 200px"
         @update:model-value="load"
       />
-      <q-btn color="primary" icon="search" label="Ara" @click="load" />
     </div>
 
     <AppTable :rows="records" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
@@ -103,33 +102,34 @@
               v-if="row.status === 'Pending'"
               flat round dense icon="thumb_up"
               color="primary"
-              title="Onayla"
+              aria-label="Onayla"
               @click="approve(row)"
-            />
+            ><q-tooltip>Onayla</q-tooltip></q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Approve">
             <q-btn
               v-if="row.status === 'Recorded'"
               flat round dense icon="check"
               color="positive"
-              title="Doğrula"
+              aria-label="Doğrula"
               @click="verify(row)"
-            />
+            ><q-tooltip>Doğrula</q-tooltip></q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Manage">
             <q-btn
               flat round dense icon="edit"
+              aria-label="Düzelt"
               @click="openCorrect(row)"
-            />
+            ><q-tooltip>Düzelt</q-tooltip></q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Delete">
             <q-btn
               v-if="isWithinDeleteWindow(row.date)"
               flat round dense icon="delete"
               color="negative"
-              title="Sil"
+              aria-label="Sil"
               @click="confirmDelete(row)"
-            />
+            ><q-tooltip>Sil</q-tooltip></q-btn>
           </PermissionGuard>
         </q-td>
       </template>

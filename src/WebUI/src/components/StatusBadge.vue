@@ -63,6 +63,10 @@ const STATUS_COLORS: Record<string, string> = {
   'Taslak': DRAFT,
   'Pasif': DRAFT,
   'Kapatılmış': CLOSED,
+  // Devamsızlık türü (AbsenceType slug'ları) — semantik ayrım
+  'Mazeretli': ACTIVE, //       mazeretli: kabul edilebilir (yeşil)
+  'Mazeretsiz': WARNING, //     mazeretsiz: dikkat gerektiren (turuncu)
+  'Sağlık Raporu': INFO, //     belgeli/sağlık raporu (cyan)
 }
 
 const color = computed(() => STATUS_COLORS[props.slug] ?? 'grey-7')
