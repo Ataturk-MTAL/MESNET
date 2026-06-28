@@ -102,7 +102,7 @@ export const useAuthStore = defineStore('auth', () => {
   // Aspire restart sonrası backend henüz ayağa kalkmamış olabilir.
   // Network hatası (abort, timeout, ECONNREFUSED) → retry ile bekle.
   // Gerçek 401 → token geçersiz → login redirect.
-  async function loadPermissions(maxRetries = 3): Promise<void> {
+  async function loadPermissions(maxRetries = 5): Promise<void> {
     if (!_accessToken.value) return
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -125,24 +125,28 @@ export const useAuthStore = defineStore('auth', () => {
         const status = axiosErr.response?.status
         const code = axiosErr.code // 'ERR_NETWORK', 'ECONNABORTED', 'ERR_CANCELED'
 
-        // Gerçek 401 — token geçersiz, login redirect
+        // 401 veya ağ hatası → GEÇİCİ kabul et + retry. keycloak.init (login-required) hemen
+        // sonrası token KESİN geçerlidir; bu noktada 401 büyük olasılıkla API'nin JWKS'i restart
+        // sonrası henüz yüklemediğindendir. HEMEN re-login YAPMA → aynı geçerli token → 401 →
+        // re-login → sonsuz refresh döngüsü. Önce retry, ısrar ederse re-login.
+        const isTransient = !status || status === 401
+          || code === 'ERR_NETWORK' || code === 'ECONNABORTED' || code === 'ERR_CANCELED'
+        if (isTransient && attempt < maxRetries) {
+          const delay = attempt * 1500 // 1.5s, 3s, 4.5s, 6s
+          console.warn(`[Auth] /auth/me henüz hazır değil (durum: ${status ?? 'ağ'}), ${delay / 1000}s sonra tekrar... (${attempt}/${maxRetries})`)
+          await new Promise((resolve) => setTimeout(resolve, delay))
+          continue
+        }
+
+        // Tüm denemeler tükendi ve hâlâ 401 → token gerçekten reddedildi → yeniden giriş
         if (status === 401) {
-          console.warn('[Auth] Token geçersiz, yeniden giriş yapılıyor...')
+          console.warn('[Auth] Token ısrarla reddedildi, yeniden giriş yapılıyor...')
           const { getKeycloak } = await import('boot/auth')
           await getKeycloak().login()
           return
         }
 
-        // Network hatası veya backend henüz hazır değil — retry
-        const isNetworkError = !status || code === 'ERR_NETWORK' || code === 'ECONNABORTED' || code === 'ERR_CANCELED'
-        if (isNetworkError && attempt < maxRetries) {
-          const delay = attempt * 2000 // 2s, 4s
-          console.warn(`[Auth] Backend henüz hazır değil, ${delay / 1000}s sonra tekrar denenecek... (${attempt}/${maxRetries})`)
-          await new Promise(resolve => setTimeout(resolve, delay))
-          continue
-        }
-
-        // Son deneme de başarısız — sessiz kal, uygulama permission'sız başlasın
+        // Ağ/diğer hata — sessiz kal, uygulama permission'sız başlasın
         console.error('[Auth] Permission yüklenemedi:', err)
       }
     }
