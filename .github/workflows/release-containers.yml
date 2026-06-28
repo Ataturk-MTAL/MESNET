@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: api # .NET API (Presentation) — context kök (MESNET.sln + src/)
+          - name: api # .NET API (Presentation) — context kök (MESNET.slnx + src/)
             context: .
             dockerfile: src/MESNET.Presentation/Dockerfile
           - name: web # Quasar/Vue frontend
