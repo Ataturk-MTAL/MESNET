@@ -573,4 +573,45 @@ export const coordinationApi = {
 
   resyncWeeklyVisitEvents: (data: { institutionId: string; academicPeriodId: string }) =>
     api.post<{ resyncedAssignments: number }>('/coordination/weekly-visits/resync', data),
+
+  // ── Dönem Notu (Dönem Not Fişi kaynağı) ──
+
+  // İşletme: kendi öğrencileri + not durumu
+  getMyStudentsForGrading: (academicPeriodId: string) =>
+    api.get<{ students: StudentGradeRow[] }>('/coordination/term-grades/my-students', { params: { academicPeriodId } }),
+
+  // Koordinatör/okul: gönderilmiş notlar (fiş üretilecekler)
+  getSubmittedTermGrades: (academicPeriodId: string) =>
+    api.get<{ students: StudentGradeRow[] }>('/coordination/term-grades/submitted', { params: { academicPeriodId } }),
+
+  enterTermGrade: (data: EnterTermGradeRequest) =>
+    api.post<{ id: string }>('/coordination/term-grades', data),
+
+  submitTermGrade: (id: string) =>
+    api.post(`/coordination/term-grades/${id}/submit`),
+}
+
+export interface StudentGradeRow {
+  studentId: string
+  studentName: string
+  branchName: string
+  gradeId: string | null
+  status: string | null
+  statusSlug: string | null
+  practiceGrades: number[]
+  serviceGrades: number[]
+  projectGrades: number[]
+  experimentGrades: number[]
+  masterInstructorName: string | null
+  termAverage: number | null
+}
+
+export interface EnterTermGradeRequest {
+  studentId: string
+  academicPeriodId: string
+  practiceGrades: number[]
+  serviceGrades: number[]
+  projectGrades: number[]
+  experimentGrades: number[]
+  masterInstructorName: string | null
 }

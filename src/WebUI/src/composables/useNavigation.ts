@@ -66,6 +66,7 @@ const menuDefinition: NavGroup[] = [
       { title: 'Sözleşmeler', icon: 'description', to: { name: 'ContractList' }, permissions: ['internship:manage', 'internship:contract:manage'] },
       { title: 'Devamsızlık', icon: 'event_available', to: { name: 'AttendanceList' }, permissions: ['attendance:view'] },
       { title: 'Maaş / Dekont', icon: 'payments', to: { name: 'SalaryList' }, permissions: ['salary:view'] },
+      { title: 'Dönem Notu Girişi', icon: 'edit_note', to: { name: 'TermGradeEntry' }, permissions: ['company:grade:enter'] },
     ],
   },
   {
@@ -81,6 +82,7 @@ const menuDefinition: NavGroup[] = [
       { title: 'Değerlendirmeler', icon: 'rate_review', to: { name: 'BusinessEvaluations' }, permissions: ['coordinator:visit:manage'] },
       { title: 'Beceri Sınavları', icon: 'quiz', to: { name: 'SkillExams' }, permissions: ['coordinator:visit:manage'] },
       { title: 'Faaliyet Raporları', icon: 'description', to: { name: 'ActivityReports' }, permissions: ['coordinator:report:manage'] },
+      { title: 'Dönem Not Fişleri', icon: 'grading', to: { name: 'TermGradeSlips' }, permissions: ['coordinator:report:manage'] },
     ],
   },
   {

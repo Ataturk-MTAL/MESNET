@@ -214,6 +214,22 @@ const router = createRouter({
           meta: { permissions: ['internship:report:manage'] },
         },
 
+        // Dönem Notu Girişi (işletme)
+        {
+          path: 'term-grades',
+          name: 'TermGradeEntry',
+          component: () => import('pages/coordination/TermGradeEntryPage.vue'),
+          meta: { permissions: ['company:grade:enter'] },
+        },
+
+        // Dönem Not Fişleri (koordinatör/okul)
+        {
+          path: 'term-grade-slips',
+          name: 'TermGradeSlips',
+          component: () => import('pages/coordination/TermGradeSlipsPage.vue'),
+          meta: { permissions: ['coordinator:report:manage'] },
+        },
+
         // Admin / Kullanıcı Yönetimi
         {
           path: 'admin',
