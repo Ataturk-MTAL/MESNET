@@ -103,6 +103,8 @@ export interface AcademicPeriodDto {
   statusSlug: string
   createdAt: string
   closedAt: string | null
+  gradeEntryStartDate: string | null
+  gradeEntryEndDate: string | null
 }
 
 export interface CreateAcademicPeriodRequest {
@@ -157,4 +159,12 @@ export const institutionApi = {
 
   closeAcademicPeriod: (institutionId: string, periodId: string) =>
     api.post(`/institutions/${institutionId}/academic-periods/${periodId}/close`),
+
+  // Dönem sonu not giriş penceresini aç/güncelle (müdür / müdür yardımcısı)
+  setGradeEntryWindow: (
+    institutionId: string,
+    periodId: string,
+    data: { startDate: string; endDate: string },
+  ) =>
+    api.post(`/institutions/${institutionId}/academic-periods/${periodId}/grade-entry-window`, data),
 }
