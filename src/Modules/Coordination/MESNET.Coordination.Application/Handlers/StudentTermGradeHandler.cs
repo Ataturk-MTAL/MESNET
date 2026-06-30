@@ -5,6 +5,7 @@ using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.Enums;
 using MESNET.Coordination.Core.ReadModels;
+using MESNET.Coordination.Shared.Events;
 
 namespace MESNET.Coordination.Application.Handlers;
 
@@ -65,7 +66,7 @@ public static class StudentTermGradeHandler
         return grade.Id;
     }
 
-    public static async Task Handle(
+    public static async Task<StudentTermGradeSubmitted> Handle(
         SubmitStudentTermGrade command, IDocumentSession session, CancellationToken ct)
     {
         var grade = await session.LoadAsync<StudentTermGrade>(command.StudentTermGradeId, ct)
@@ -85,6 +86,12 @@ public static class StudentTermGradeHandler
         grade.SubmittedAt = DateTime.UtcNow;
         session.Store(grade);
         await session.SaveChangesAsync(ct);
+
+        // Cascading event → Reporting StudentTermGradeView'ini besler (fiş gerçek notlardan üretilir)
+        return new StudentTermGradeSubmitted(
+            grade.Id, grade.StudentId, grade.BusinessId, grade.InstitutionId, grade.AcademicPeriodId,
+            grade.PracticeGrades, grade.ServiceGrades, grade.ProjectGrades, grade.ExperimentGrades,
+            grade.TermAverage, grade.MasterInstructorName, grade.SubmittedAt.Value);
     }
 
     // İşletmede verilen 4 kategorinin tüm notlarının aritmetik ortalaması (otomatik dönem ortalaması)

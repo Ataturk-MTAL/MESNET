@@ -26,6 +26,8 @@ public static class ReportingEndpoints
         // Form 8: Dönem Not Fişi
         group.MapPost("/term-grade-slip", PostTermGradeSlip).RequireAuthorization(Permissions.Coordinator.Report);
         group.MapGet("/term-grade-slip/preview", GetTermGradeSlipPreview);
+        // Gerçek (işletmenin gönderdiği) notlardan üret — okul/koordinatör
+        group.MapPost("/term-grade-slip/generate", PostGenerateTermGradeSlipFromGrades).RequireAuthorization(Permissions.Coordinator.Report);
 
         // Form 7: Aylık Devam - Devamsızlık Bildirim Çizelgesi
         group.MapGet("/monthly-attendance/preview", GetMonthlyAttendancePreview).RequireAuthorization(Permissions.Attendance.Report);
@@ -150,6 +152,21 @@ public static class ReportingEndpoints
     {
         var pdfBytes = await bus.InvokeAsync<byte[]>(new GenerateTermGradeSlipPreview());
         return Results.File(pdfBytes, "application/pdf", "donem-not-fisi-onizleme.pdf");
+    }
+
+    // --- Form 8: Donem Not Fisi — işletmenin gönderdiği gerçek notlardan üret ---
+    private static async Task<IResult> PostGenerateTermGradeSlipFromGrades(
+        GenerateTermGradeSlipFromGrades command, IMessageBus bus, HttpContext http)
+    {
+        var user = ExtractUserContext(http);
+        var documentId = await bus.InvokeAsync<Guid>(command with { User = user });
+
+        return Results.Created(
+            $"/api/reports/documents/{documentId}",
+            ResponseBuilder.Success(201)
+                .AddData(new { documentId })
+                .AddMessage("Dönem not fişi, işletmenin gönderdiği notlardan üretildi.")
+                .Build());
     }
 
     // --- Form 7: Aylik Devam - Devamsizlik Bildirim Cizelgesi (Preview) ---

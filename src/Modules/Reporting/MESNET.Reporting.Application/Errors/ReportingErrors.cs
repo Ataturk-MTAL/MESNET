@@ -39,4 +39,8 @@ public static class ReportingErrors
     public static Error EmptyDocumentList() =>
         new("Reporting.EmptyDocumentList",
             "İşlem için en az bir doküman seçilmelidir. Doküman listesi boş veya gönderilmedi.");
+
+    public static Error TermGradesNotFound(Guid studentId) =>
+        new("Reporting.TermGradesNotFound",
+            $"Bu öğrenci için gönderilmiş dönem notu bulunamadı; fiş üretilemez: {studentId}");
 }
