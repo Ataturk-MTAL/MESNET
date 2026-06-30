@@ -49,3 +49,9 @@ public sealed record GenerateMonthlyAttendanceBatchPreview(
     Guid InstitutionId, Guid AcademicPeriodId,
     int Year, int Month,
     string InstitutionName, string AcademicYear);
+
+// ─── Form 8: Dönem Not Fişi ───
+public sealed record GenerateTermGradeSlipDocument(TermGradeSlipFormData Data, UserContext User);
+
+// Layout önizleme — örnek veriyle PDF byte[] döner (MinIO'ya yazılmaz)
+public sealed record GenerateTermGradeSlipPreview;

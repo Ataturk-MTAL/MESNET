@@ -14,6 +14,7 @@ public sealed class MebFormType : SmartEnum<MebFormType>
     public static readonly MebFormType SkillExam = new(nameof(SkillExam), 5, "Beceri Sınavı Not Fişi");
     public static readonly MebFormType BusinessEvaluation = new(nameof(BusinessEvaluation), 6, "İşletme Değerlendirme Formu");
     public static readonly MebFormType MonthlyAttendanceReport = new(nameof(MonthlyAttendanceReport), 7, "Aylık Devamsızlık Formu");
+    public static readonly MebFormType TermGradeSlip = new(nameof(TermGradeSlip), 8, "Dönem Not Fişi");
 
     private MebFormType(string name, int value, string slug) : base(name, value)
     {

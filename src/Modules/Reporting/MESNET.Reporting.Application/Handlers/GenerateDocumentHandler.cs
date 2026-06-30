@@ -166,6 +166,53 @@ public static class GenerateDocumentHandler
         return (doc.Id, BuildNotification(doc, command.User));
     }
 
+    // ─── Form 8: Dönem Not Fişi ───
+    public static async Task<(Guid, NotifyDocumentGenerated)> Handle(
+        GenerateTermGradeSlipDocument command, IDocumentSession session, IFileStorageService storage)
+    {
+        var doc = CreateDocument(
+            command.Data.DocumentId, MebFormType.TermGradeSlip, command.Data, command.User,
+            studentId: command.Data.StudentId,
+            businessId: command.Data.BusinessId,
+            institutionId: command.Data.InstitutionId,
+            teacherId: command.Data.TeacherId,
+            academicYear: command.Data.AcademicYear);
+
+        var pdf = new TermGradeSlipDocument(command.Data);
+        await UploadPdfSnapshot(storage, doc, pdf);
+
+        session.Store(doc);
+        return (doc.Id, BuildNotification(doc, command.User));
+    }
+
+    // ─── Form 8: Dönem Not Fişi — layout önizleme (örnek veri, MinIO'ya yazılmaz) ───
+    public static byte[] Handle(GenerateTermGradeSlipPreview _)
+    {
+        var sample = new TermGradeSlipFormData
+        {
+            InstitutionName = "ATATÜRK MESLEKİ VE TEKNİK ANADOLU LİSESİ",
+            AcademicYear = "2025 / 2026",
+            Semester = "2. Dönem",
+            BusinessName = "DURUM GIDA SAN VE TİC. A. Ş.",
+            BusinessPhone = "0324 241 11 11",
+            BusinessEmail = "info@durumgida.com.tr",
+            StudentNumber = "2259",
+            StudentFullName = "METE ARACI",
+            BranchName = "AMP-12/D · Elektrik-Elektronik Teknolojisi",
+            PracticeGrades = [85, 90, 88, 92],
+            ServiceGrades = [80, 86, 90],
+            ProjectGrades = [88, 91],
+            ExperimentGrades = [84, 89],
+            TermAverage = 87.5m,
+            TermAverageInWords = "Seksen Yedi",
+            MasterInstructorName = "Ali USTA",
+            BusinessOfficialName = "EMİN TOK",
+            VicePrincipalName = "FATİH BOZDOĞAN",
+            PrincipalName = "Ömer YİĞİT",
+        };
+        return new TermGradeSlipDocument(sample).GeneratePdf();
+    }
+
     // ─── PDF snapshot üret ve MinIO'ya yükle ───
     private static async Task UploadPdfSnapshot(
         IFileStorageService storage, GeneratedDocument doc, QuestPDF.Infrastructure.IDocument pdfDocument)

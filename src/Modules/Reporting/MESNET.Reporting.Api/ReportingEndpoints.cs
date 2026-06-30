@@ -23,6 +23,10 @@ public static class ReportingEndpoints
         group.MapPost("/skill-exam", PostSkillExam).RequireAuthorization(Permissions.Coordinator.Report);
         group.MapPost("/business-evaluation", PostBusinessEvaluation).RequireAuthorization(Permissions.Coordinator.Visit);
 
+        // Form 8: Dönem Not Fişi
+        group.MapPost("/term-grade-slip", PostTermGradeSlip).RequireAuthorization(Permissions.Coordinator.Report);
+        group.MapGet("/term-grade-slip/preview", GetTermGradeSlipPreview);
+
         // Form 7: Aylık Devam - Devamsızlık Bildirim Çizelgesi
         group.MapGet("/monthly-attendance/preview", GetMonthlyAttendancePreview).RequireAuthorization(Permissions.Attendance.Report);
         group.MapGet("/monthly-attendance/preview-batch", GetMonthlyAttendanceBatchPreview).RequireAuthorization(Permissions.Attendance.Report);
@@ -123,6 +127,29 @@ public static class ReportingEndpoints
                 .AddData(new { documentId })
                 .AddMessage("İşletme değerlendirme formu oluşturuldu.")
                 .Build());
+    }
+
+    // --- Form 8: Donem Not Fisi ---
+    private static async Task<IResult> PostTermGradeSlip(
+        TermGradeSlipFormData data, IMessageBus bus, HttpContext http)
+    {
+        var user = ExtractUserContext(http);
+        var command = new GenerateTermGradeSlipDocument(data, user);
+        var documentId = await bus.InvokeAsync<Guid>(command);
+
+        return Results.Created(
+            $"/api/reports/documents/{documentId}",
+            ResponseBuilder.Success(201)
+                .AddData(new { documentId })
+                .AddMessage("Dönem not fişi oluşturuldu.")
+                .Build());
+    }
+
+    // --- Form 8: Donem Not Fisi (layout önizleme — örnek veri) ---
+    private static async Task<IResult> GetTermGradeSlipPreview(IMessageBus bus)
+    {
+        var pdfBytes = await bus.InvokeAsync<byte[]>(new GenerateTermGradeSlipPreview());
+        return Results.File(pdfBytes, "application/pdf", "donem-not-fisi-onizleme.pdf");
     }
 
     // --- Form 7: Aylik Devam - Devamsizlik Bildirim Cizelgesi (Preview) ---

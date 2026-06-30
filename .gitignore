@@ -62,3 +62,6 @@ src/Arch/out/
 
 ## Claude Code (kişisel/yerel ayarlar — settings.json paylaşılır)
 .claude/settings.local.json
+
+# Örnek raporlar (yerel referans — repoya gitmesine gerek yok)
+src/Modules/Reporting/MESNET.Reporting.Core/SampleReports/
