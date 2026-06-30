@@ -76,6 +76,13 @@ public static class MartenConfiguration
                     x.Name = "idx_student_term_grade_unique";
                 });
 
+        // CoordinationPlacedStudentView (işletme bazlı öğrenci listesi — Enrollment.StudentPlaced'den)
+        options.Schema.For<CoordinationPlacedStudentView>().DatabaseSchemaName("coordination");
+        options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.StudentId);
+        options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.BusinessId);
+        options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.InstitutionId);
+        options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.AcademicPeriodId);
+
         // BusinessEvaluation
         options.Schema.For<BusinessEvaluation>().DatabaseSchemaName("coordination");
         options.Schema.For<BusinessEvaluation>().Index(x => x.BusinessId);
