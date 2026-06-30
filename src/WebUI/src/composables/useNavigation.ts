@@ -36,6 +36,7 @@ const menuDefinition: NavGroup[] = [
       { title: 'Kurum Bilgileri', icon: 'account_balance', to: { name: 'Institution' }, permissions: ['institution:view'] },
       { title: 'Kullanıcılar', icon: 'manage_accounts', to: { name: 'UserManagement' }, permissions: ['user:view', 'user:create'] },
       { title: 'Roller', icon: 'admin_panel_settings', to: { name: 'RoleManagement' }, permissions: ['user:roles:manage'] },
+      { title: 'Yetki Kapsamı', icon: 'tune', to: { name: 'PermissionScope' }, permissions: ['user:roles:manage'] },
     ],
   },
   {

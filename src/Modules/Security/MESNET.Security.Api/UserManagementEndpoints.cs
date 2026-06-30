@@ -25,6 +25,25 @@ public static class UserManagementEndpoints
         group.MapPost("/{userAccountId:guid}/toggle-status", ToggleStatus).RequireAuthorization(Permissions.UserManagement.Update);
         group.MapDelete("/{userAccountId:guid}", DeleteUser).RequireAuthorization(Permissions.UserManagement.Delete);
         group.MapPost("/sync", SyncUsers).RequireAuthorization(Permissions.UserManagement.Create);
+
+        // Rol → atanabilir yetki domain kapsamı (yapılandırılabilir guardrail)
+        var scopes = app.MapGroup("/api/security/permission-scopes").WithTags("PermissionScope");
+        scopes.MapGet("/", GetScopes).RequireAuthorization(Permissions.UserManagement.RolesManage);
+        scopes.MapPut("/", PutScopes).RequireAuthorization(Permissions.UserManagement.RolesManage);
+    }
+
+    private static async Task<IResult> GetScopes(IMessageBus bus)
+    {
+        var dto = await bus.InvokeAsync<PermissionScopeDto>(new GetPermissionScopes());
+        return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
+    }
+
+    private static async Task<IResult> PutScopes(UpdatePermissionScopes command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command);
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Yetki kapsamları güncellendi.")
+            .Build());
     }
 
     private static async Task<IResult> CreateUser(

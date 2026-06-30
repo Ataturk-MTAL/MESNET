@@ -246,6 +246,12 @@ const router = createRouter({
               component: () => import('pages/admin/RolePage.vue'),
               meta: { permissions: ['user:roles:manage'] },
             },
+            {
+              path: 'permission-scopes',
+              name: 'PermissionScope',
+              component: () => import('pages/admin/PermissionScopePage.vue'),
+              meta: { permissions: ['user:roles:manage'] },
+            },
           ],
         },
       ],

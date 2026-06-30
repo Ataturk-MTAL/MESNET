@@ -139,9 +139,10 @@ public static class ChangeUserPermissionsHandler
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
         // Guardrail — kullanıcının rol kapsamı dışındaki yetkiler direct olarak ATANAMAZ
-        // (ör. işletme kullanıcısına kurum-yönetimi yetkisi verilemez)
+        // (ör. işletme kullanıcısına kurum-yönetimi yetkisi verilemez). Kapsam YAPILANDIRILABILIR.
+        var scope = await PermissionScopeHandler.LoadScopeAsync(session);
         var notAssignable = command.DirectPermissions
-            .Where(p => !AssignablePermissionScope.CanAssign(account.Roles, p))
+            .Where(p => !AssignablePermissionScope.CanAssign(scope, account.Roles, p))
             .ToList();
         if (notAssignable.Count > 0)
             throw new DomainException(SecurityErrors.PermissionNotAssignableToRole(
