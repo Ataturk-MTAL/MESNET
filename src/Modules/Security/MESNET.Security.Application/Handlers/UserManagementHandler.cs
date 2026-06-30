@@ -1,6 +1,7 @@
 using Marten;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Errors;
 using MESNET.Security.Application.Services;
@@ -136,6 +137,15 @@ public static class ChangeUserPermissionsHandler
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
         if (account is null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
+
+        // Guardrail — kullanıcının rol kapsamı dışındaki yetkiler direct olarak ATANAMAZ
+        // (ör. işletme kullanıcısına kurum-yönetimi yetkisi verilemez)
+        var notAssignable = command.DirectPermissions
+            .Where(p => !AssignablePermissionScope.CanAssign(account.Roles, p))
+            .ToList();
+        if (notAssignable.Count > 0)
+            throw new DomainException(SecurityErrors.PermissionNotAssignableToRole(
+                string.Join(", ", account.Roles), string.Join(", ", notAssignable)));
 
         var attributes = new Dictionary<string, string>
         {

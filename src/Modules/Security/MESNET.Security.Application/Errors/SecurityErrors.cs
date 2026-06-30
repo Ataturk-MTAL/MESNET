@@ -19,6 +19,11 @@ public static class SecurityErrors
     public static Error InvalidRole(string role) =>
         new("Security.InvalidRole", $"Geçersiz rol: {role}");
 
+    public static Error PermissionNotAssignableToRole(string roles, string permissions) =>
+        new("Security.PermissionNotAssignableToRole",
+            $"Bu yetkiler kullanıcının rolüne ({roles}) atanamaz: {permissions}. " +
+            "Yetki, rolün kapsamı dışında olamaz (ör. işletme kullanıcısına kurum-yönetimi yetkisi verilemez).");
+
     public static Error CannotDeleteSelf() =>
         new("Security.CannotDeleteSelf", "Kendi hesabınızı silemezsiniz.");
 
