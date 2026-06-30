@@ -511,6 +511,7 @@ try
     app.MapGuidanceVisitEndpoints();
     app.MapMonthlyActivityReportEndpoints();
     app.MapSkillExamEndpoints();
+    app.MapStudentTermGradeEndpoints();
     app.MapWeeklyVisitEndpoints();
     // Internship
     app.MapInternshipEndpoints();

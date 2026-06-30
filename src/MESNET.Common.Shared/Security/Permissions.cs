@@ -107,6 +107,9 @@ public static class Permissions
 
         /// <summary>Usta öğretici belgesi yönetimi.</summary>
         public const string MasterTrainer = "company:trainer:manage";
+
+        /// <summary>İşletmenin öğrenci dönem notlarını girmesi/göndermesi (Dönem Not Fişi kaynağı).</summary>
+        public const string EnterGrade = "company:grade:enter";
     }
 
     /// <summary>
