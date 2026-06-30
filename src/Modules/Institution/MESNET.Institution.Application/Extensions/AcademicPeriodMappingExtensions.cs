@@ -16,5 +16,7 @@ public static class AcademicPeriodMappingExtensions
         entity.Status.Name,
         entity.Status.Slug,
         entity.CreatedAt.ToString("O"),
-        entity.ClosedAt?.ToString("O"));
+        entity.ClosedAt?.ToString("O"),
+        entity.GradeEntryStartDate?.ToString("yyyy-MM-dd"),
+        entity.GradeEntryEndDate?.ToString("yyyy-MM-dd"));
 }

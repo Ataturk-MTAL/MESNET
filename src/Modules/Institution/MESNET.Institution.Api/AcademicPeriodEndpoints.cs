@@ -22,6 +22,8 @@ public static class AcademicPeriodEndpoints
         group.MapGet("/active", GetActive).RequireAuthorization(Permissions.Institution.View);
         group.MapPost("/", Post).RequireAuthorization(Permissions.Institution.Manage);
         group.MapPost("/{periodId:guid}/close", PostClose).RequireAuthorization(Permissions.Institution.Manage);
+        // Dönem sonu not giriş penceresini aç/güncelle — yalnız müdür/müdür yardımcısı
+        group.MapPost("/{periodId:guid}/grade-entry-window", PostSetGradeEntryWindow).RequireAuthorization(Permissions.Institution.Manage);
 
         return app;
     }
@@ -66,6 +68,15 @@ public static class AcademicPeriodEndpoints
         await bus.InvokeAsync(new CloseAcademicPeriod(periodId));
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Dönem kapatıldı.")
+            .Build());
+    }
+
+    private static async Task<IResult> PostSetGradeEntryWindow(
+        Guid institutionId, Guid periodId, SetGradeEntryWindow command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command with { AcademicPeriodId = periodId });
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Not giriş penceresi ayarlandı.")
             .Build());
     }
 }
