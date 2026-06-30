@@ -13,6 +13,7 @@ export const Permissions = {
     Delete: 'institution:delete',
     Staff: 'institution:staff:manage',
     Report: 'institution:report:view',
+    ManageGradeWindow: 'institution:grade-window:manage',
   },
 
   Student: {

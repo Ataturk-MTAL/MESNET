@@ -22,8 +22,8 @@ public static class AcademicPeriodEndpoints
         group.MapGet("/active", GetActive).RequireAuthorization(Permissions.Institution.View);
         group.MapPost("/", Post).RequireAuthorization(Permissions.Institution.Manage);
         group.MapPost("/{periodId:guid}/close", PostClose).RequireAuthorization(Permissions.Institution.Manage);
-        // Dönem sonu not giriş penceresini aç/güncelle — yalnız müdür/müdür yardımcısı
-        group.MapPost("/{periodId:guid}/grade-entry-window", PostSetGradeEntryWindow).RequireAuthorization(Permissions.Institution.Manage);
+        // Dönem sonu not giriş penceresini aç/güncelle — adanmış yetki (rolden bağımsız; yetkili olan herkes)
+        group.MapPost("/{periodId:guid}/grade-entry-window", PostSetGradeEntryWindow).RequireAuthorization(Permissions.Institution.ManageGradeWindow);
 
         return app;
     }

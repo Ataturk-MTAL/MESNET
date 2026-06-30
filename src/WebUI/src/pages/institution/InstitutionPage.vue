@@ -275,7 +275,7 @@
             </template>
             <template #body-cell-actions="{ row }">
               <q-td class="text-right">
-                <PermissionGuard :permission="Permissions.Institution.Manage">
+                <PermissionGuard :permission="Permissions.Institution.ManageGradeWindow">
                   <q-btn
                     v-if="row.status === 'Active'"
                     flat dense size="sm"
@@ -286,6 +286,8 @@
                   >
                     <q-tooltip>Dönem sonu not giriş penceresini aç/güncelle</q-tooltip>
                   </q-btn>
+                </PermissionGuard>
+                <PermissionGuard :permission="Permissions.Institution.Manage">
                   <q-btn
                     v-if="row.status === 'Active'"
                     flat dense size="sm"
