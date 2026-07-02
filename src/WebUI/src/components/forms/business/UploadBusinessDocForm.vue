@@ -1,9 +1,9 @@
 <template>
   <FormDialog v-model="open" title="Belge Yükle" icon="upload_file" color="secondary" width="400px" save-label="Yükle" :saving="saving" :save-disabled="!form.file || !form.type" @save="handleSave">
-    <q-select v-model="form.type" :options="docTypeOptions" label="Belge Tipi *" filled emit-value map-options>
+    <q-select v-model="form.type" :options="docTypeOptions" label="Belge Tipi *" outlined emit-value map-options>
       <template #prepend><q-icon name="description" /></template>
     </q-select>
-    <q-file v-model="form.file" label="Dosya Seç *" filled accept=".pdf,.jpg,.jpeg,.png">
+    <q-file v-model="form.file" label="Dosya Seç *" outlined accept=".pdf,.jpg,.jpeg,.png">
       <template #prepend><q-icon name="attach_file" /></template>
     </q-file>
     <!-- Ön izleme -->

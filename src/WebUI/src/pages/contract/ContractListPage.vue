@@ -15,7 +15,7 @@
         v-model="statusFilter"
         :options="statusOptions"
         label="Durum"
-        filled
+        outlined
         dense
         emit-value
         map-options
@@ -76,19 +76,19 @@
               flat round dense
               icon="upload_file"
               color="secondary"
-              title="Evrak Yükle"
+              aria-label="Evrak yükle"
               @click.stop="openUploadDialog(row)"
-            />
+            ><q-tooltip>Evrak yükle</q-tooltip></q-btn>
           </PermissionGuard>
           <q-btn
             flat round dense
             icon="folder_open"
             color="grey-7"
-            title="Evraklar"
+            aria-label="Evrakları aç"
             :badge="row.documents?.length > 0 ? String(row.documents.length) : undefined"
             badge-color="primary"
             @click.stop="openDocumentsDialog(row)"
-          />
+          ><q-tooltip>Evrakları aç</q-tooltip></q-btn>
           <q-btn flat round dense icon="open_in_new" aria-label="Detayı aç" @click="openDetail(row)" />
         </q-td>
       </template>
@@ -295,7 +295,6 @@
       </template>
     </DetailPanel>
 
-    <CreateContractForm v-model="createDialog" @saved="load" />
     <SignContractForm v-model="signDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
     <SuspendContractForm v-model="suspendDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
     <TerminateContractForm v-model="terminateDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
@@ -373,7 +372,7 @@ import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import PageHeader from 'components/PageHeader.vue'
 import DetailPanel from 'components/DetailPanel.vue'
-import CreateContractForm from 'components/forms/contract/CreateContractForm.vue'
+import { useRouter } from 'vue-router'
 import SignContractForm from 'components/forms/contract/SignContractForm.vue'
 import SuspendContractForm from 'components/forms/contract/SuspendContractForm.vue'
 import TerminateContractForm from 'components/forms/contract/TerminateContractForm.vue'
@@ -383,6 +382,7 @@ import UploadContractDocForm from 'components/forms/contract/UploadContractDocFo
 import AppNotice from 'components/AppNotice.vue'
 
 const $q = useQuasar()
+const router = useRouter()
 const notify = useNotify()
 const periodStore = useAcademicPeriodStore()
 const studentOpts = useStudentOptions()
@@ -408,7 +408,6 @@ const businessMap = computed<Record<string, string>>(() => {
 const saving = ref(false)
 const selected = ref<InternshipContractDto | null>(null)
 const detailOpen = ref(false)
-const createDialog = ref(false)
 const signDialog = ref(false)
 const suspendDialog = ref(false)
 const terminateDialog = ref(false)
@@ -472,7 +471,7 @@ function formatDate(iso: string | null | undefined) {
 }
 
 function openCreateDialog() {
-  createDialog.value = true
+  void router.push('/internship/contracts/new')
 }
 
 function openDetail(row: InternshipContractDto) {

@@ -16,7 +16,7 @@
         :options="filterStudentOpts.options.value"
         :loading="filterStudentOpts.loading.value"
         label="Öğrenci"
-        filled
+        outlined
         dense
         use-input
         input-debounce="0"
@@ -45,7 +45,7 @@
         v-model="statusFilter"
         :options="statusOptions"
         label="Durum"
-        filled dense emit-value map-options clearable
+        outlined dense emit-value map-options clearable
         style="min-width: 150px"
         @update:model-value="load"
       />
@@ -53,7 +53,7 @@
         v-model="monthFilter"
         :options="monthOptions"
         label="Ay"
-        filled dense emit-value map-options clearable
+        outlined dense emit-value map-options clearable
         style="min-width: 130px"
         @update:model-value="load"
       />
@@ -61,7 +61,7 @@
         v-model="yearFilter"
         :options="yearOptions"
         label="Yıl"
-        filled dense emit-value map-options clearable
+        outlined dense emit-value map-options clearable
         style="min-width: 100px"
         @update:model-value="load"
       />
@@ -72,7 +72,6 @@
         style="min-width: 200px"
         @update:model-value="load"
       />
-      <q-btn color="primary" icon="search" label="Ara" @click="load" />
     </div>
 
     <AppTable :rows="records" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
@@ -103,39 +102,39 @@
               v-if="row.status === 'Pending'"
               flat round dense icon="thumb_up"
               color="primary"
-              title="Onayla"
+              aria-label="Onayla"
               @click="approve(row)"
-            />
+            ><q-tooltip>Onayla</q-tooltip></q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Approve">
             <q-btn
               v-if="row.status === 'Recorded'"
               flat round dense icon="check"
               color="positive"
-              title="Doğrula"
+              aria-label="Doğrula"
               @click="verify(row)"
-            />
+            ><q-tooltip>Doğrula</q-tooltip></q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Manage">
             <q-btn
               flat round dense icon="edit"
+              aria-label="Düzelt"
               @click="openCorrect(row)"
-            />
+            ><q-tooltip>Düzelt</q-tooltip></q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Delete">
             <q-btn
               v-if="isWithinDeleteWindow(row.date)"
               flat round dense icon="delete"
               color="negative"
-              title="Sil"
+              aria-label="Sil"
               @click="confirmDelete(row)"
-            />
+            ><q-tooltip>Sil</q-tooltip></q-btn>
           </PermissionGuard>
         </q-td>
       </template>
     </AppTable>
 
-    <AddAttendanceForm v-model="addDialog" @saved="load" />
     <CorrectAttendanceForm
       v-model="correctDialog"
       :record-id="selected?.id ?? ''"
@@ -163,18 +162,18 @@ import BranchSelector from 'components/BranchSelector.vue'
 import PageHeader from 'components/PageHeader.vue'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
-import AddAttendanceForm from 'components/forms/attendance/AddAttendanceForm.vue'
+import { useRouter } from 'vue-router'
 import CorrectAttendanceForm from 'components/forms/attendance/CorrectAttendanceForm.vue'
 import AppNotice from 'components/AppNotice.vue'
 
 const notify = useNotify()
+const router = useRouter()
 const confirmDialog = useConfirmDialog()
 const periodStore = useAcademicPeriodStore()
 const filterStudentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
 const saving = ref(false)
 const selected = ref<AttendanceRecordDto | null>(null)
-const addDialog = ref(false)
 const correctDialog = ref(false)
 const studentIdFilter = ref('')
 const statusFilter = ref<string | null>(null)
@@ -283,7 +282,7 @@ function confirmDelete(row: AttendanceRecordDto) {
 
 
 function openAddDialog() {
-  addDialog.value = true
+  void router.push('/attendance/new')
 }
 
 async function approve(row: AttendanceRecordDto) {

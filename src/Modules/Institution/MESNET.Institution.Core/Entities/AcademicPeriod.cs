@@ -19,4 +19,9 @@ public class AcademicPeriod
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ClosedAt { get; set; }
+
+    // Dönem sonu not giriş penceresi — müdür/müdür yardımcısı tarafından açılır.
+    // Bu aralıkta işletme, öğrencilerinin dönem notlarını girebilir (bkz. StudentTermGrade).
+    public DateOnly? GradeEntryStartDate { get; set; }
+    public DateOnly? GradeEntryEndDate { get; set; }
 }

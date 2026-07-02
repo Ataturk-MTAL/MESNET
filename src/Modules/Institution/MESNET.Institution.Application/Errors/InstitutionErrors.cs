@@ -34,4 +34,7 @@ public static class InstitutionErrors
 
     public static Error InvalidSupervisorCount() =>
         new("Institution.InvalidSupervisorCount", "Şef sayısı negatif olamaz.");
+
+    public static Error InvalidGradeEntryWindow() =>
+        new("Institution.InvalidGradeEntryWindow", "Not giriş penceresi bitiş tarihi, başlangıç tarihinden önce olamaz.");
 }

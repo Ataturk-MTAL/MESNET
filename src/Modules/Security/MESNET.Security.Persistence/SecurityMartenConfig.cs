@@ -17,5 +17,8 @@ public class SecurityMartenConfig : IConfigureMarten
         options.Schema.For<UserInvitation>().Index(x => x.Email);
         options.Schema.For<UserInvitation>().Index(x => x.Status);
         options.Schema.For<UserInvitation>().Index(x => x.InstitutionId);
+
+        // Rol → atanabilir yetki domain kapsamı (singleton, yapılandırılabilir)
+        options.Schema.For<PermissionScopeConfig>().DatabaseSchemaName("security");
     }
 }

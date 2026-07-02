@@ -26,4 +26,13 @@ public interface IKeycloakAdminService
 
     Task<Result> SetUserAttributesAsync(
         string keycloakUserId, Dictionary<string, string> attributes, CancellationToken ct = default);
+
+    /// <summary>Realm'deki tüm kullanıcıları (rolleri + institution/business attribute'larıyla) döndürür.</summary>
+    Task<Result<List<KeycloakUserInfo>>> GetUsersAsync(CancellationToken ct = default);
 }
+
+/// <summary>Senkronizasyon için Keycloak'tan çekilen kullanıcı bilgisi.</summary>
+public sealed record KeycloakUserInfo(
+    string Id, string Username, string Email,
+    string FirstName, string LastName, bool Enabled,
+    List<string> Roles, Guid? InstitutionId, Guid? BusinessId);

@@ -35,7 +35,6 @@ export const EVENT_LABELS: Record<string, string> = {
   'business.approved': 'İşletme onaylandı',
   'student.registered': 'Öğrenci kaydedildi',
   'placement.created': 'Öğrenci yerleştirildi',
-  'placement.transferred': 'Öğrenci transfer edildi',
   'visit.created': 'Rehberlik ziyareti eklendi',
   'visit.approved': 'Ziyaret onaylandı',
   'evaluation.created': 'İşletme değerlendirmesi eklendi',

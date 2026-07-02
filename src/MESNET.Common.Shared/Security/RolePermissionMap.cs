@@ -106,6 +106,7 @@ public static class RolePermissionMap
             Permissions.Company.UploadReceipt,
             Permissions.Company.MasterTrainer,
             Permissions.Company.RequestStudent,
+            Permissions.Company.EnterGrade,
             Permissions.Attendance.Manage,
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage

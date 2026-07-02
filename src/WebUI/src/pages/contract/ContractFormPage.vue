@@ -1,11 +1,20 @@
 <template>
-  <FormDialog v-model="open" title="Yeni Sözleşme Oluştur" icon="description" width="520px" save-label="Oluştur" :saving="saving" @save="handleSave">
+  <q-page padding>
+    <div class="row items-center q-mb-lg q-mx-auto" style="max-width: 640px">
+      <q-btn flat round dense icon="arrow_back" aria-label="Sözleşmelere dön" class="q-mr-sm" @click="goBack">
+        <q-tooltip>Sözleşmelere dön</q-tooltip>
+      </q-btn>
+      <div class="text-h5 text-weight-bold col">Yeni Sözleşme</div>
+    </div>
+
+    <q-card flat bordered style="max-width: 640px" class="q-mx-auto">
+      <q-card-section class="q-gutter-md">
         <q-select
           v-model="form.studentId"
           :options="studentOpts.options.value"
           :loading="studentOpts.loading.value"
           label="Öğrenci *"
-          filled
+          outlined
           use-input
           input-debounce="0"
           emit-value
@@ -23,9 +32,7 @@
               </q-item-section>
             </q-item>
           </template>
-          <template #no-option>
-            <SelectEmptyOption />
-          </template>
+          <template #no-option><SelectEmptyOption /></template>
         </q-select>
 
         <q-select
@@ -33,7 +40,7 @@
           :options="businessOpts.options.value"
           :loading="businessOpts.loading.value"
           label="İşletme *"
-          filled
+          outlined
           use-input
           input-debounce="0"
           emit-value
@@ -51,36 +58,36 @@
               </q-item-section>
             </q-item>
           </template>
-          <template #no-option>
-            <SelectEmptyOption />
-          </template>
+          <template #no-option><SelectEmptyOption /></template>
         </q-select>
 
-        <TeacherSelector
-          v-model="form.teacherId"
-          label="Koordinatör Öğretmen (opsiyonel)"
-        />
+        <TeacherSelector v-model="form.teacherId" label="Koordinatör Öğretmen (opsiyonel)" />
 
-        <q-input v-model="form.startDate" label="Başlangıç Tarihi *" filled type="date">
+        <q-input v-model="form.startDate" label="Başlangıç Tarihi *" outlined type="date">
           <template #prepend><q-icon name="calendar_today" /></template>
         </q-input>
-  </FormDialog>
+      </q-card-section>
+
+      <q-separator />
+      <q-card-actions align="right" class="q-pa-md">
+        <q-btn flat label="İptal" color="grey-7" @click="goBack" />
+        <q-btn unelevated color="primary" label="Oluştur" :loading="saving" @click="handleSave" />
+      </q-card-actions>
+    </q-card>
+  </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { contractApi } from 'src/api/contract'
 import { useNotify } from 'src/composables/useNotify'
 import { useStudentOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
 import { useAuthStore } from 'stores/auth'
-import FormDialog from 'components/FormDialog.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
-const open = defineModel<boolean>({ required: true })
-
-const emit = defineEmits<{ saved: [] }>()
-
+const router = useRouter()
 const notify = useNotify()
 const authStore = useAuthStore()
 const saving = ref(false)
@@ -94,18 +101,9 @@ const form = reactive({
   startDate: '',
 })
 
-watch(open, (isOpen) => {
-  if (isOpen) {
-    form.studentId = ''
-    form.businessId = ''
-    form.teacherId = ''
-    form.startDate = ''
-    studentOpts.reset()
-    studentOpts.load()
-    businessOpts.reset()
-    businessOpts.load()
-  }
-})
+function goBack() {
+  void router.push('/internship/contracts')
+}
 
 async function handleSave() {
   saving.value = true
@@ -118,12 +116,18 @@ async function handleSave() {
       startDate: new Date(form.startDate).toISOString(),
     })
     notify.success('Sözleşme oluşturuldu.')
-    open.value = false
-    emit('saved')
+    goBack()
   } catch (e) {
     notify.apiError(e, 'Sözleşme oluşturulurken bir hata oluştu.')
   } finally {
     saving.value = false
   }
 }
+
+onMounted(() => {
+  studentOpts.reset()
+  studentOpts.load()
+  businessOpts.reset()
+  businessOpts.load()
+})
 </script>

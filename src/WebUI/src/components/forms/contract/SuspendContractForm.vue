@@ -3,7 +3,7 @@
         <q-input
           v-model="form.reason"
           label="Askıya alma gerekçesi"
-          filled
+          outlined
           type="textarea"
           :rows="3"
           autogrow

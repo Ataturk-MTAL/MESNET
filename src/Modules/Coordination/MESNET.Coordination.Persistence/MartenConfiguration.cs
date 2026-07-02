@@ -61,6 +61,28 @@ public static class MartenConfiguration
         options.Schema.For<SkillExam>().Index(x => x.AcademicYear);
         options.Schema.For<SkillExam>().Index(x => x.AcademicPeriodId);
 
+        // StudentTermGrade (dönem notları — Dönem Not Fişi kaynağı)
+        options.Schema.For<StudentTermGrade>().DatabaseSchemaName("coordination");
+        options.Schema.For<StudentTermGrade>().Index(x => x.StudentId);
+        options.Schema.For<StudentTermGrade>().Index(x => x.BusinessId);
+        options.Schema.For<StudentTermGrade>().Index(x => x.InstitutionId);
+        options.Schema.For<StudentTermGrade>().Index(x => x.AcademicPeriodId);
+        options.Schema.For<StudentTermGrade>().Index(x => x.StatusName);
+        options.Schema.For<StudentTermGrade>()
+            .Index(x => new { x.StudentId, x.AcademicPeriodId },
+                x =>
+                {
+                    x.IsUnique = true;
+                    x.Name = "idx_student_term_grade_unique";
+                });
+
+        // CoordinationPlacedStudentView (işletme bazlı öğrenci listesi — Enrollment.StudentPlaced'den)
+        options.Schema.For<CoordinationPlacedStudentView>().DatabaseSchemaName("coordination");
+        options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.StudentId);
+        options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.BusinessId);
+        options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.InstitutionId);
+        options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.AcademicPeriodId);
+
         // BusinessEvaluation
         options.Schema.For<BusinessEvaluation>().DatabaseSchemaName("coordination");
         options.Schema.For<BusinessEvaluation>().Index(x => x.BusinessId);

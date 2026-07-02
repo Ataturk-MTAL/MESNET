@@ -7,10 +7,29 @@ import type { AxiosError } from 'axios'
  * Diğer hatalar → fallback mesajı
  */
 export function extractApiError(err: unknown, fallback: string): string {
-  const axiosErr = err as AxiosError<{ message?: string; code?: number }>
+  const axiosErr = err as AxiosError<{ message?: string; code?: number | string }>
+  const status = axiosErr?.response?.status
   const msg = axiosErr?.response?.data?.message
-  if (msg && typeof msg === 'string') return msg
+  // İş kuralı / doğrulama hataları (4xx) backend'in açıklayıcı mesajını taşır → kullanıcıya göster.
+  // Sunucu/altyapı hataları (5xx), ağ/timeout → ham teknik metin gösterme, genel (fallback) mesaj ver.
+  if (status && status >= 400 && status < 500 && typeof msg === 'string' && msg.length > 0) {
+    return msg
+  }
   return fallback
+}
+
+/** Geliştirici için tam teknik detayı tarayıcı konsoluna basar (kullanıcıya gösterilmez). */
+function logApiError(err: unknown) {
+  const axiosErr = err as AxiosError<{ message?: string; code?: number | string }>
+  const res = axiosErr?.response
+  console.error('[API Hatası]', {
+    status: res?.status,
+    method: axiosErr?.config?.method?.toUpperCase(),
+    url: axiosErr?.config?.url,
+    code: res?.data?.code,
+    serverMessage: res?.data?.message,
+    error: err,
+  })
 }
 
 export function useNotify() {
@@ -32,8 +51,12 @@ export function useNotify() {
     })
   }
 
-  /** Backend API hatasından mesaj çıkarır ve bildirim gösterir. */
+  /**
+   * Backend API hatasını işler: geliştirici detayını KONSOLA basar (kullanıcıya gösterilmez),
+   * kullanıcıya temiz/anlaşılır bir mesaj gösterir.
+   */
   function apiError(err: unknown, fallback: string) {
+    logApiError(err)
     error(extractApiError(err, fallback))
   }
 

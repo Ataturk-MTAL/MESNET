@@ -45,7 +45,7 @@
               v-model="wlEducationType"
               :options="EDUCATION_TYPES"
               label="Eğitim Tipi"
-              filled
+              outlined
               dense
               emit-value
               map-options
@@ -77,7 +77,7 @@
               v-model.number="wlDeptHeadCount"
               type="number"
               label="Alan Şefi Sayısı"
-              filled
+              outlined
               dense
               :min="0"
               :max="1"
@@ -89,7 +89,7 @@
               v-model.number="wlDeptHeadHours"
               type="number"
               label="Alan Şefi Saati"
-              filled
+              outlined
               dense
               :min="0"
               :disable="periodStore.isReadOnly"
@@ -100,7 +100,7 @@
               v-model.number="wlWorkshopHeadCount"
               type="number"
               label="Atölye Şefi Sayısı"
-              filled
+              outlined
               dense
               :min="0"
               :disable="periodStore.isReadOnly"
@@ -111,7 +111,7 @@
               v-model.number="wlWorkshopHeadHours"
               type="number"
               label="Atölye Şefi Saati"
-              filled
+              outlined
               dense
               :min="0"
               :disable="periodStore.isReadOnly"

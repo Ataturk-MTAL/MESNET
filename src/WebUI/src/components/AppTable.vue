@@ -1,8 +1,11 @@
 <template>
   <div>
-    <!-- Arama çubuğu (server-side mod + showSearch aktifse) -->
-    <div v-if="showSearch" class="row justify-end q-mb-sm">
+    <!-- Filtre + arama çubuğu (aynı satır: filtreler solda, arama sağda) -->
+    <div v-if="showSearch || $slots.filters" class="row items-center q-gutter-sm q-mb-md">
+      <slot name="filters" />
+      <q-space />
       <q-input
+        v-if="showSearch"
         :model-value="search"
         dense
         outlined

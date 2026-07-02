@@ -5,7 +5,7 @@
       <q-input
         v-model="searchQuery"
         label="Adres veya işletme ara..."
-        filled
+        outlined
         dense
         clearable
         @keyup.enter="searchAddress"
@@ -43,7 +43,11 @@
     </div>
 
     <!-- Harita -->
-    <div :style="{ height, width: '100%' }">
+    <div
+      :style="{ height, width: '100%' }"
+      role="application"
+      aria-label="Konum seçme haritası — ok tuşlarıyla kaydırın, artı/eksi tuşlarıyla yakınlaştırın. Konum, yukarıdaki adres aramasıyla da seçilebilir."
+    >
       <l-map
         ref="mapRef"
         v-model:zoom="zoom"

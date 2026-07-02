@@ -4,13 +4,13 @@
           v-model="form.party"
           :options="partyOptions"
           label="İmzacı Taraf"
-          filled
+          outlined
           emit-value
           map-options
         >
           <template #prepend><q-icon name="group" /></template>
         </q-select>
-        <q-input v-model="form.signedBy" label="İmzalayan Adı" filled>
+        <q-input v-model="form.signedBy" label="İmzalayan Adı" outlined>
           <template #prepend><q-icon name="badge" /></template>
         </q-input>
   </FormDialog>

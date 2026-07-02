@@ -11,4 +11,6 @@ public sealed record AcademicPeriodDto(
     string Status,
     string StatusSlug,
     string CreatedAt,
-    string? ClosedAt);
+    string? ClosedAt,
+    string? GradeEntryStartDate,
+    string? GradeEntryEndDate);

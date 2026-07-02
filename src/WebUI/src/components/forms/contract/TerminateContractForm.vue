@@ -4,7 +4,7 @@
           v-model="form.reasonType"
           :options="terminationReasonOptions"
           label="Fesih Sebebi *"
-          filled
+          outlined
           emit-value
           map-options
         >
@@ -13,7 +13,7 @@
         <q-input
           v-model="form.reason"
           label="Açıklama"
-          filled
+          outlined
           type="textarea"
           :rows="3"
           autogrow

@@ -5,7 +5,7 @@
       :options="userOpts.options.value"
       :loading="userOpts.loading.value"
       label="Kullanıcı *"
-      filled
+      outlined
       use-input
       input-debounce="0"
       emit-value
@@ -30,7 +30,7 @@
         <SelectEmptyOption />
       </template>
     </q-select>
-    <q-input v-model="form.fullName" label="Ad Soyad" filled readonly>
+    <q-input v-model="form.fullName" label="Ad Soyad" outlined readonly>
       <template #prepend>
         <q-icon name="badge" />
       </template>
@@ -39,7 +39,7 @@
       v-model="form.role"
       :options="staffRoleOptions"
       label="Rol *"
-      filled
+      outlined
       emit-value
       map-options
     >
@@ -51,7 +51,7 @@
       v-model="form.branchCode"
       :options="branchOptions"
       label="Alan (opsiyonel)"
-      filled
+      outlined
       emit-value
       map-options
       clearable

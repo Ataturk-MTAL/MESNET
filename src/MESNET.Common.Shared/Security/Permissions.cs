@@ -27,6 +27,9 @@ public static class Permissions
 
         /// <summary>Kuruma ait raporları görüntüleme.</summary>
         public const string Report = "institution:report:view";
+
+        /// <summary>Dönem sonu not giriş penceresini açma/kapatma (rolden bağımsız — yetkili olan herkes).</summary>
+        public const string ManageGradeWindow = "institution:grade-window:manage";
     }
 
     /// <summary>
@@ -107,6 +110,9 @@ public static class Permissions
 
         /// <summary>Usta öğretici belgesi yönetimi.</summary>
         public const string MasterTrainer = "company:trainer:manage";
+
+        /// <summary>İşletmenin öğrenci dönem notlarını girmesi/göndermesi (Dönem Not Fişi kaynağı).</summary>
+        public const string EnterGrade = "company:grade:enter";
     }
 
     /// <summary>

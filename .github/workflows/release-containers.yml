@@ -33,7 +33,7 @@ jobs:
             dockerfile: src/Docs/Dockerfile
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5 # node24 (v4 node20 deprecate ediliyordu); docker/* action'ları henüz node20 (Docker güncelleyince node24'e geçecek)
 
       - name: Owner'ı küçük harfe çevir (GHCR küçük harf ister)
         id: owner

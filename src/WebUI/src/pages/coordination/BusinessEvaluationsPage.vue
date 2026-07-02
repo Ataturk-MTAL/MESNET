@@ -37,7 +37,7 @@
             :options="evalBusinessOpts.options.value"
             :loading="evalBusinessOpts.loading.value"
             label="İşletme *"
-            filled
+            outlined
             use-input
             input-debounce="0"
             emit-value
@@ -61,7 +61,7 @@
               <SelectEmptyOption />
             </template>
           </q-select>
-          <q-input v-model="evalForm.evaluationDate" label="Değerlendirme Tarihi" filled type="date">
+          <q-input v-model="evalForm.evaluationDate" label="Değerlendirme Tarihi" outlined type="date">
             <template #prepend>
               <q-icon name="calendar_today" />
             </template>
@@ -70,13 +70,13 @@
             v-model="evalForm.result"
             :options="evalResultOptions"
             label="Sonuç"
-            filled emit-value map-options
+            outlined emit-value map-options
           >
             <template #prepend>
               <q-icon name="fact_check" />
             </template>
           </q-select>
-          <q-input v-model="evalForm.notes" label="Notlar" filled type="textarea" rows="2">
+          <q-input v-model="evalForm.notes" label="Notlar" outlined type="textarea" rows="2">
             <template #prepend>
               <q-icon name="notes" />
             </template>

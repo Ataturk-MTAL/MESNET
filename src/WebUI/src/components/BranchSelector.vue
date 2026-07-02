@@ -3,7 +3,7 @@
   <q-field
     v-if="authStore.isDepartmentHead && !forceSelect"
     :label="label"
-    filled
+    outlined
     :dense="dense"
     stack-label
   >
@@ -22,7 +22,7 @@
     :options="branchOpts.options.value"
     :loading="branchOpts.loading.value"
     :label="label"
-    filled
+    outlined
     :dense="dense"
     use-input
     input-debounce="0"

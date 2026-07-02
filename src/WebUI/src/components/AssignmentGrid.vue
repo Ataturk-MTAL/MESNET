@@ -1,6 +1,6 @@
 <template>
   <div class="assignment-grid">
-    <table class="full-width">
+    <table class="full-width" aria-label="Ders programı ve işletme atama tablosu. Hücreler gün ve saate göre düzenlenmiştir; her hücre dolu (ders), boş veya atanmış işletme durumunu gösterir.">
       <thead>
         <tr>
           <th class="period-header text-caption text-grey-7">Saat</th>
@@ -21,6 +21,7 @@
             :key="day.value"
             class="grid-cell"
             :class="cellClass(day.value, period)"
+            :aria-label="cellLabel(day.label, day.value, period)"
           >
             <!-- Dolu hücre — sürükleme kabul etmez -->
             <div v-if="isOccupied(day.value, period)" class="occupied-cell">
@@ -65,6 +66,7 @@
                   size="8px"
                   color="red-5"
                   class="remove-btn"
+                  :aria-label="`${getBusinessName(day.value, period)} atamasını kaldır`"
                   @click.stop="onRemoveClick(day.value, period)"
                 >
                   <q-tooltip>Atamayı kaldır</q-tooltip>
@@ -142,6 +144,13 @@ function cellClass(day: string, period: number): string {
   if (isOccupied(day, period)) return 'cell-occupied'
   if (getAssignedBusinessId(day, period)) return 'cell-assigned'
   return 'cell-free'
+}
+
+// Ekran okuyucu için hücre durumunu açıklar (gün, saat ve dolu/boş/atanmış durumu).
+function cellLabel(dayLabel: string, day: string, period: number): string {
+  if (isOccupied(day, period)) return `${dayLabel}, ${period}. saat: ${getCourseName(day, period) || 'ders'}`
+  if (getAssignedBusinessId(day, period)) return `${dayLabel}, ${period}. saat: ${getBusinessName(day, period)} atanmış`
+  return `${dayLabel}, ${period}. saat: boş`
 }
 
 // ── Özet computed'ları ──

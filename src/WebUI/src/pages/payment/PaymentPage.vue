@@ -13,10 +13,10 @@
         v-model="phaseFilter"
         :options="phaseOptions"
         label="Aşama"
-        filled dense emit-value map-options clearable
+        outlined dense emit-value map-options clearable
         style="min-width: 200px"
       />
-      <q-input v-model="monthFromFilter" label="Başlangıç Ayı" filled dense clearable readonly style="min-width: 150px">
+      <q-input v-model="monthFromFilter" label="Başlangıç Ayı" outlined dense clearable readonly style="min-width: 150px">
         <template #prepend><q-icon name="calendar_month" /></template>
         <template #append>
           <q-icon name="event" class="cursor-pointer">
@@ -37,7 +37,7 @@
           </q-icon>
         </template>
       </q-input>
-      <q-input v-model="monthToFilter" label="Bitiş Ayı" filled dense clearable readonly style="min-width: 150px">
+      <q-input v-model="monthToFilter" label="Bitiş Ayı" outlined dense clearable readonly style="min-width: 150px">
         <template #prepend><q-icon name="calendar_month" /></template>
         <template #append>
           <q-icon name="event" class="cursor-pointer">

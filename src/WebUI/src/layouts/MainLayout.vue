@@ -11,7 +11,7 @@
         <q-btn flat round dense icon="notifications" aria-label="Bildirimler" class="q-mr-xs">
           <q-badge v-if="unreadCount > 0" color="negative" floating>{{ unreadCount }}</q-badge>
           <q-tooltip>Bildirimler</q-tooltip>
-          <q-menu anchor="bottom right" self="top right" style="min-width: 320px; max-width: 400px">
+          <q-menu anchor="bottom right" self="top right" style="min-width: 320px; max-width: 400px" @hide="notificationStore.markAllRead()">
             <q-list separator>
               <q-item v-if="notificationStore.notifications.length === 0" dense>
                 <q-item-section class="text-grey text-caption text-center q-pa-md">
@@ -22,6 +22,7 @@
                 v-for="(n, i) in notificationStore.notifications.slice(0, 10)"
                 :key="i"
                 dense
+                :class="{ 'bg-blue-1': !n.read }"
               >
                 <q-item-section avatar>
                   <q-icon :name="moduleIcon(n.module)" color="primary" size="sm" />
@@ -159,7 +160,11 @@
     </q-drawer>
 
     <q-page-container>
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <transition :name="transitionName" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </q-page-container>
 
     <!-- Hakkında Dialog -->
@@ -203,6 +208,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 import { useNotificationStore } from 'stores/notifications'
 import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
@@ -216,12 +222,21 @@ const authStore = useAuthStore()
 const { filteredMenu, isExpanded, toggleGroup, activeGroupKey } = useNavigation()
 const notificationStore = useNotificationStore()
 const periodStore = useAcademicPeriodStore()
+
+// Sayfa geçişi yönü: form route'una giriş → liste sola kayar/form sağdan girer; çıkış → tersi; diğer nav → fade
+const router = useRouter()
+const transitionName = ref('page')
+router.beforeEach((to, from) => {
+  if (to.meta.formRoute) transitionName.value = 'slide-left'
+  else if (from.meta.formRoute) transitionName.value = 'slide-right'
+  else transitionName.value = 'page'
+})
 const drawerOpen = ref(false)
 const aboutDialog = ref(false)
 const appVersion = '0.1.0'
 const currentYear = new Date().getFullYear()
 
-const unreadCount = computed(() => notificationStore.notifications.length)
+const unreadCount = computed(() => notificationStore.unreadCount)
 
 const semesterOpts = [...semesterOptions]
 
@@ -261,3 +276,46 @@ async function onLogout() {
   await logout()
 }
 </script>
+
+<style>
+/* Sayfalar arası ince geçiş — daha akıcı navigasyon (mode=out-in: çakışmasız) */
+.page-enter-active,
+.page-leave-active {
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-leave-to {
+  opacity: 0;
+}
+
+/* Yönlü kayma — form route'larına giriş/çıkış (liste sola kayar, form sağdan girer) */
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease;
+}
+.slide-left-enter-from {
+  transform: translateX(40px);
+  opacity: 0;
+}
+.slide-left-leave-to {
+  transform: translateX(-40px);
+  opacity: 0;
+}
+.slide-right-enter-from {
+  transform: translateX(-40px);
+  opacity: 0;
+}
+.slide-right-leave-to {
+  transform: translateX(40px);
+  opacity: 0;
+}
+</style>

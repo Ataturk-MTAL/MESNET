@@ -1,6 +1,6 @@
 <template>
   <FormDialog v-model="open" title="Reddetme Gerekçesi" icon="cancel" color="negative" width="400px" save-label="Reddet" :saving="saving" @save="handleSave">
-    <q-input v-model="reason" label="Gerekçe" filled type="textarea" rows="3">
+    <q-input v-model="reason" label="Gerekçe" outlined type="textarea" rows="3">
       <template #prepend>
         <q-icon name="notes" />
       </template>

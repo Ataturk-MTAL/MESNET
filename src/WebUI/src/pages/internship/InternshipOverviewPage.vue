@@ -38,7 +38,7 @@
               v-model="statusFilter"
               :options="statusOptions"
               label="Durum"
-              filled dense emit-value map-options clearable
+              outlined dense emit-value map-options clearable
             />
           </div>
         </div>

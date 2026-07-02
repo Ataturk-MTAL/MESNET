@@ -32,6 +32,12 @@ const router = createRouter({
           component: () => import('pages/institution/InstitutionPage.vue'),
           meta: { permissions: ['institution:view'] },
         },
+        {
+          path: 'institution/edit',
+          name: 'InstitutionEdit',
+          component: () => import('pages/institution/InstitutionFormPage.vue'),
+          meta: { permissions: ['institution:view'], formRoute: true },
+        },
 
         // İşletme (Company)
         {
@@ -39,6 +45,18 @@ const router = createRouter({
           name: 'CompanyList',
           component: () => import('pages/business/BusinessListPage.vue'),
           meta: { permissions: ['company:view'] },
+        },
+        {
+          path: 'companies/new',
+          name: 'CompanyNew',
+          component: () => import('pages/business/BusinessFormPage.vue'),
+          meta: { permissions: ['company:manage'], formRoute: true },
+        },
+        {
+          path: 'companies/:id/edit',
+          name: 'CompanyEdit',
+          component: () => import('pages/business/BusinessFormPage.vue'),
+          meta: { permissions: ['company:manage'], formRoute: true },
         },
 
         // Kayıt / Başvuru
@@ -50,6 +68,18 @@ const router = createRouter({
               name: 'StudentList',
               component: () => import('pages/StudentList.vue'),
               meta: { permissions: ['student:view'] },
+            },
+            {
+              path: 'students/new',
+              name: 'StudentNew',
+              component: () => import('pages/StudentFormPage.vue'),
+              meta: { permissions: ['student:view'], formRoute: true },
+            },
+            {
+              path: 'students/:id/edit',
+              name: 'StudentEdit',
+              component: () => import('pages/StudentFormPage.vue'),
+              meta: { permissions: ['student:view'], formRoute: true },
             },
             // Phase 2 — MEB Protokolü modülü implement edilince açılacak
             // {
@@ -74,6 +104,12 @@ const router = createRouter({
               meta: { permissions: ['internship:contract:manage'] },
             },
             {
+              path: 'contracts/new',
+              name: 'ContractNew',
+              component: () => import('pages/contract/ContractFormPage.vue'),
+              meta: { permissions: ['internship:contract:manage'], formRoute: true },
+            },
+            {
               path: 'overview',
               name: 'InternshipOverview',
               component: () => import('pages/internship/InternshipOverviewPage.vue'),
@@ -90,6 +126,12 @@ const router = createRouter({
           name: 'AttendanceList',
           component: () => import('pages/attendance/AttendancePage.vue'),
           meta: { permissions: ['attendance:view'] },
+        },
+        {
+          path: 'attendance/new',
+          name: 'AttendanceNew',
+          component: () => import('pages/attendance/AttendanceFormPage.vue'),
+          meta: { permissions: ['attendance:view'], formRoute: true },
         },
 
         // Ücret / Maaş (Salary)
@@ -172,6 +214,22 @@ const router = createRouter({
           meta: { permissions: ['internship:report:manage'] },
         },
 
+        // Dönem Notu Girişi (işletme)
+        {
+          path: 'term-grades',
+          name: 'TermGradeEntry',
+          component: () => import('pages/coordination/TermGradeEntryPage.vue'),
+          meta: { permissions: ['company:grade:enter'] },
+        },
+
+        // Dönem Not Fişleri (koordinatör/okul)
+        {
+          path: 'term-grade-slips',
+          name: 'TermGradeSlips',
+          component: () => import('pages/coordination/TermGradeSlipsPage.vue'),
+          meta: { permissions: ['coordinator:report:manage'] },
+        },
+
         // Admin / Kullanıcı Yönetimi
         {
           path: 'admin',
@@ -186,6 +244,12 @@ const router = createRouter({
               path: 'roles',
               name: 'RoleManagement',
               component: () => import('pages/admin/RolePage.vue'),
+              meta: { permissions: ['user:roles:manage'] },
+            },
+            {
+              path: 'permission-scopes',
+              name: 'PermissionScope',
+              component: () => import('pages/admin/PermissionScopePage.vue'),
               meta: { permissions: ['user:roles:manage'] },
             },
           ],

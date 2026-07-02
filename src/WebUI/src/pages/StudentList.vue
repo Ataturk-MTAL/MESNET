@@ -6,30 +6,28 @@
       </PermissionGuard>
     </PageHeader>
 
-    <!-- Filtreler -->
-    <div class="row q-gutter-sm q-mb-md">
-      <BranchSelector
-        v-model="branchFilter"
-        dense
-        force-select
-        style="min-width: 200px"
-        @update:model-value="load"
-      />
-      <q-select
-        v-model="statusFilter"
-        :options="statusOptions"
-        label="Durum"
-        filled
-        dense
-        emit-value
-        map-options
-        clearable
-        style="min-width: 180px"
-        @update:model-value="load"
-      />
-    </div>
-
     <AppTable :rows="students" :columns="columns" :loading="loading" :pagination="pagination" show-search :search="search" @request="onRequest" @search="onSearch">
+      <template #filters>
+        <BranchSelector
+          v-model="branchFilter"
+          dense
+          force-select
+          style="min-width: 200px"
+          @update:model-value="load"
+        />
+        <q-select
+          v-model="statusFilter"
+          :options="statusOptions"
+          label="Durum"
+          outlined
+          dense
+          emit-value
+          map-options
+          clearable
+          style="min-width: 180px"
+          @update:model-value="load"
+        />
+      </template>
       <template #body-cell-statusSlug="{ row }">
         <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
       </template>
@@ -46,27 +44,19 @@
               v-if="row.status === 'Applied'"
               flat round dense icon="place"
               color="primary"
-              title="Yerleştir"
+              aria-label="Yerleştir"
               @click="openPlacement(row)"
-            />
-          </PermissionGuard>
-          <PermissionGuard :permission="Permissions.Internship.Manage">
-            <q-btn
-              v-if="row.status === 'ActiveInternship' || row.status === 'Placed'"
-              flat round dense icon="transfer_within_a_station"
-              color="warning"
-              title="Transfer Et"
-              @click="openTransfer(row)"
-            />
+            ><q-tooltip>Yerleştir</q-tooltip></q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Student.Manage">
             <q-btn
               v-if="row.status !== 'ActiveInternship' && row.status !== 'Completed' && row.status !== 'Deregistered'"
               flat round dense icon="person_remove"
               color="negative"
+              aria-label="Kayıt sil"
               @click="openDeregister(row)"
             >
-              <q-tooltip>Kayıt Sil</q-tooltip>
+              <q-tooltip>Kayıt sil</q-tooltip>
             </q-btn>
           </PermissionGuard>
         </q-td>
@@ -108,11 +98,8 @@
       </template>
     </DetailPanel>
 
-    <AddStudentForm v-model="addDialog" @saved="load" />
     <PlaceStudentForm v-model="placementDialog" :student-id="selected?.id ?? ''" :student-name="selected?.fullName ?? ''" @saved="afterFormSaved" />
-    <TransferStudentForm v-model="transferDialog" :student-id="selected?.id ?? ''" :student-name="selected?.fullName ?? ''" @saved="afterFormSaved" />
     <DeregisterStudentForm v-model="deregisterDialog" :student-id="selected?.id ?? ''" :student-name="selected?.fullName ?? ''" @saved="afterFormSaved" />
-    <EditStudentForm v-model="editDialog" :student="selected" @saved="afterFormSaved" />
   </q-page>
 </template>
 
@@ -130,20 +117,16 @@ import BranchSelector from 'components/BranchSelector.vue'
 import InfoItem from 'components/InfoItem.vue'
 import PageHeader from 'components/PageHeader.vue'
 import DetailPanel from 'components/DetailPanel.vue'
-import AddStudentForm from 'components/forms/student/AddStudentForm.vue'
-import EditStudentForm from 'components/forms/student/EditStudentForm.vue'
+import { useRouter } from 'vue-router'
 import PlaceStudentForm from 'components/forms/student/PlaceStudentForm.vue'
-import TransferStudentForm from 'components/forms/student/TransferStudentForm.vue'
 import DeregisterStudentForm from 'components/forms/student/DeregisterStudentForm.vue'
 
 const periodStore = useAcademicPeriodStore()
+const router = useRouter()
 
 const selected = ref<StudentProfileDto | null>(null)
 const detailOpen = ref(false)
-const addDialog = ref(false)
-const editDialog = ref(false)
 const placementDialog = ref(false)
-const transferDialog = ref(false)
 const deregisterDialog = ref(false)
 const branchFilter = ref<string | null>(null)
 const statusFilter = ref<string | null>(null)
@@ -189,22 +172,16 @@ function openDetail(row: StudentProfileDto) {
 }
 
 function openEditDialog(row: StudentProfileDto) {
-  selected.value = row
-  editDialog.value = true
+  void router.push(`/enrollment/students/${row.id}/edit`)
 }
 
 function openAddDialog() {
-  addDialog.value = true
+  void router.push('/enrollment/students/new')
 }
 
 function openPlacement(row: StudentProfileDto) {
   selected.value = row
   placementDialog.value = true
-}
-
-function openTransfer(row: StudentProfileDto) {
-  selected.value = row
-  transferDialog.value = true
 }
 
 function openDeregister(row: StudentProfileDto) {

@@ -93,6 +93,19 @@ export const reportingApi = {
       params,
       responseType: 'blob',
     }),
+
+  // Dönem Not Fişi'ni işletmenin gönderdiği gerçek notlardan üret (koordinatör/okul)
+  generateTermGradeSlipFromGrades: (data: {
+    studentId: string
+    academicPeriodId: string
+    institutionName: string
+    academicYear: string
+    semester: string
+    makeupTrainingScore: number | null
+    skillCompetitionScore: number | null
+    vicePrincipalName: string | null
+    principalName: string | null
+  }) => api.post<{ documentId: string }>('/reports/term-grade-slip/generate', data),
 }
 
 export const MEB_FORM_LABELS: Record<string, string> = {

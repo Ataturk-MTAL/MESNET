@@ -21,34 +21,53 @@
         </template>
       </q-btn-toggle>
       <PermissionGuard :permission="Permissions.Company.Manage">
-        <q-btn color="primary" icon="add_business" label="İşletme Ekle" @click="addDialog = true" />
+        <q-btn color="primary" icon="add_business" label="İşletme Ekle" @click="router.push('/companies/new')" />
       </PermissionGuard>
     </PageHeader>
 
-    <!-- Filtreler -->
-    <div class="row q-gutter-sm q-mb-md">
+    <!-- Filtre + arama (aynı satır: filtreler solda, arama sağda) -->
+    <div class="row items-center q-gutter-sm q-mb-md">
       <q-select
         v-model="statusFilter"
         :options="statusOptions"
         label="Durum"
-        filled
+        outlined
         dense
         emit-value
         map-options
         clearable
         style="min-width: 180px"
+        @update:model-value="load"
       />
       <q-select
         v-model="sectorFilter"
         :options="sectorOptions"
         label="Sektör"
-        filled
+        outlined
         dense
         emit-value
         map-options
         clearable
         style="min-width: 240px"
+        @update:model-value="load"
       />
+      <q-space />
+      <q-input
+        :model-value="search"
+        dense
+        outlined
+        placeholder="Ara..."
+        style="min-width: 250px"
+        debounce="400"
+        @update:model-value="(v) => onSearch(String(v ?? ''))"
+      >
+        <template #prepend>
+          <q-icon name="search" />
+        </template>
+        <template v-if="search" #append>
+          <q-icon name="close" class="cursor-pointer" @click="onSearch('')" />
+        </template>
+      </q-input>
     </div>
 
     <!-- Tablo Görünümü -->
@@ -58,10 +77,7 @@
       :columns="columns"
       :loading="loading"
       :pagination="pagination"
-      show-search
-      :search="search"
       @request="onRequest"
-      @search="onSearch"
     >
       <template #body-cell-sectors="{ row }">
         <q-td>
@@ -109,7 +125,7 @@
 
       <template #empty-action>
         <PermissionGuard :permission="Permissions.Company.Manage">
-          <q-btn color="primary" icon="add_business" label="İlk işletmeyi ekle" unelevated @click="addDialog = true" />
+          <q-btn color="primary" icon="add_business" label="İlk işletmeyi ekle" unelevated @click="router.push('/companies/new')" />
         </PermissionGuard>
       </template>
     </AppTable>
@@ -123,6 +139,7 @@
         :center="mapCenter"
         :use-global-leaflet="false"
         style="height: 100%; width: 100%; border-radius: 8px"
+        @ready="onBusinessMapReady"
       >
         <l-tile-layer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -211,7 +228,7 @@
                   v-model.number="capacitySlots"
                   type="number"
                   label="Toplam Kapasite"
-                  filled
+                  outlined
                   dense
                   class="col"
                 />
@@ -297,15 +314,13 @@
     </DetailPanel>
 
     <!-- Form Dialogları -->
-    <AddBusinessForm v-model="addDialog" :sector-options="sectorOptions" @saved="load" />
     <RejectBusinessForm v-model="rejectDialog" :business-id="selected?.id ?? ''" @saved="afterFormSaved" />
     <UploadBusinessDocForm v-model="docUploadDialog" :business-id="selected?.id ?? ''" @saved="afterFormSaved" />
-    <EditBusinessForm v-model="editDialog" :business="selected" :sector-options="sectorOptions" @saved="afterFormSaved" />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { businessApi, type BusinessDto, type SectorDto } from 'src/api/business'
@@ -321,14 +336,14 @@ import InfoItem from 'components/InfoItem.vue'
 import PageHeader from 'components/PageHeader.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import DetailPanel from 'components/DetailPanel.vue'
-import AddBusinessForm from 'components/forms/business/AddBusinessForm.vue'
-import EditBusinessForm from 'components/forms/business/EditBusinessForm.vue'
+import { useRouter } from 'vue-router'
 import RejectBusinessForm from 'components/forms/business/RejectBusinessForm.vue'
 import UploadBusinessDocForm from 'components/forms/business/UploadBusinessDocForm.vue'
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 const $q = useQuasar()
+const router = useRouter()
 const notify = useNotify()
 const entityOptionsStore = useEntityOptionsStore()
 const confirmDialog = useConfirmDialog()
@@ -352,10 +367,8 @@ function getLatLng(biz: BusinessDto): [number, number] {
 const saving = ref(false)
 const selected = ref<BusinessDto | null>(null)
 const detailOpen = ref(false)
-const addDialog = ref(false)
 const rejectDialog = ref(false)
 const docUploadDialog = ref(false)
-const editDialog = ref(false)
 const statusFilter = ref<string | null>(null)
 const sectorFilter = ref<string | null>(null)
 const allSectors = ref<SectorDto[]>([])
@@ -373,6 +386,21 @@ const { rows: businesses, loading, pagination, search, onRequest, onSearch, load
     filters,
     defaultSortBy: 'name',
   })
+
+// Harita: işletme marker'larına otomatik sığdır (fitBounds) — sabit zoom yerine veri extent'i
+function fitMapToBusinesses() {
+  const pts = businessesWithLocation.value.map(getLatLng)
+  const map = (
+    businessMapRef.value as {
+      leafletObject?: { fitBounds: (b: [number, number][], o?: { padding: [number, number] }) => void }
+    } | null
+  )?.leafletObject
+  if (map && pts.length) map.fitBounds(pts, { padding: [50, 50] })
+}
+function onBusinessMapReady() {
+  fitMapToBusinesses()
+}
+watch(businessesWithLocation, () => fitMapToBusinesses())
 const statusOptions = [
   { label: 'Onay Bekliyor', value: 'PendingApproval' },
   { label: 'Aktif', value: 'Active' },
@@ -503,7 +531,7 @@ async function deleteDoc(documentId: string) {
 }
 
 function openEditDialog() {
-  editDialog.value = true
+  if (selected.value) void router.push(`/companies/${selected.value.id}/edit`)
 }
 
 // ── Durum Aksiyonları ──

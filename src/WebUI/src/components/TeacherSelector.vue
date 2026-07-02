@@ -4,7 +4,7 @@
     :options="filteredOptions"
     :loading="teacherOpts.loading.value"
     :label="label"
-    filled
+    outlined
     :dense="dense"
     use-input
     input-debounce="0"
@@ -39,7 +39,7 @@
     </template>
 
     <template #no-option>
-      <SelectEmptyOption />
+      <SelectEmptyOption :text="branchCode ? 'Bu alanda öğretmen yok' : 'Önce alan seçin'" />
     </template>
   </q-select>
 </template>

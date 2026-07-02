@@ -15,8 +15,11 @@
       <q-tab-panel name="users">
         <div class="row items-center q-mb-md">
           <div class="col text-subtitle1 text-weight-medium">Kullanıcılar</div>
-          <div class="col-auto">
+          <div class="col-auto q-gutter-sm">
             <PermissionGuard :permission="Permissions.UserManagement.Create">
+              <q-btn outline color="primary" icon="sync" label="Senkronize Et" :loading="syncing" @click="syncUsers">
+                <q-tooltip>Keycloak'taki kullanıcıları içe aktar / güncelle</q-tooltip>
+              </q-btn>
               <q-btn color="primary" icon="person_add" label="Davet Gönder" @click="inviteDialog = true" />
             </PermissionGuard>
           </div>
@@ -110,17 +113,17 @@
           <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input v-model="inviteForm.email" label="E-posta" filled type="email">
+          <q-input v-model="inviteForm.email" label="E-posta" outlined type="email">
             <template #prepend>
               <q-icon name="email" />
             </template>
           </q-input>
-          <q-input v-model="inviteForm.firstName" label="Ad" filled>
+          <q-input v-model="inviteForm.firstName" label="Ad" outlined>
             <template #prepend>
               <q-icon name="person" />
             </template>
           </q-input>
-          <q-input v-model="inviteForm.lastName" label="Soyad" filled>
+          <q-input v-model="inviteForm.lastName" label="Soyad" outlined>
             <template #prepend>
               <q-icon name="person" />
             </template>
@@ -129,7 +132,7 @@
             v-model="inviteForm.targetRole"
             :options="roleOptions"
             label="Hedef Rol"
-            filled emit-value map-options
+            outlined emit-value map-options
           >
             <template #prepend>
               <q-icon name="manage_accounts" />
@@ -189,6 +192,7 @@ const entityOptionsStore = useEntityOptionsStore()
 
 const tab = ref('users')
 const saving = ref(false)
+const syncing = ref(false)
 
 const selectedUser = ref<UserAccountDto | null>(null)
 const inviteDialog = ref(false)
@@ -341,6 +345,20 @@ async function resendInvitation(row: InvitationDto) {
     notify.apiError(e, 'İşlem sırasında bir hata oluştu.')
   } finally {
     saving.value = false
+  }
+}
+
+async function syncUsers() {
+  syncing.value = true
+  try {
+    const { data } = await securityApi.syncUsers()
+    entityOptionsStore.invalidateKeycloakUsers()
+    notify.success(`${data.total} kullanıcı senkronize edildi (${data.created} yeni, ${data.updated} güncellendi).`)
+    await loadUsers()
+  } catch (e) {
+    notify.apiError(e, 'Senkronizasyon sırasında bir hata oluştu.')
+  } finally {
+    syncing.value = false
   }
 }
 

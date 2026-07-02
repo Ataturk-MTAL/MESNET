@@ -59,6 +59,12 @@ export interface ChangePermissionsRequest {
   permissions: string[]
 }
 
+export interface PermissionScopeData {
+  roles: string[]
+  allDomains: string[]
+  allowedDomainsByRole: Record<string, string[]>
+}
+
 export const securityApi = {
   listUsers: (params?: { institutionId?: string; businessId?: string; role?: string; isEnabled?: boolean } & PaginationParams) =>
     api.get<PagedResponse<UserAccountDto>>('/security/users', { params }),
@@ -80,6 +86,16 @@ export const securityApi = {
 
   deleteUser: (userAccountId: string) =>
     api.delete(`/security/users/${userAccountId}`),
+
+  syncUsers: () =>
+    api.post<{ total: number; created: number; updated: number }>('/security/users/sync'),
+
+  // Rol → atanabilir yetki domain kapsamı (yapılandırılabilir guardrail)
+  getPermissionScopes: () =>
+    api.get<PermissionScopeData>('/security/permission-scopes'),
+
+  updatePermissionScopes: (data: { allowedDomainsByRole: Record<string, string[]> }) =>
+    api.put('/security/permission-scopes', data),
 
   listInvitations: (params?: { institutionId?: string; status?: string; targetRole?: string } & PaginationParams) =>
     api.get<PagedResponse<InvitationDto>>('/security/invitations', { params }),

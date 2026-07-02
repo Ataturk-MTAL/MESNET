@@ -11,7 +11,7 @@
           v-model="form.reasonType"
           :options="terminationReasonOptions"
           label="Fesih Sebebi *"
-          filled
+          outlined
           emit-value
           map-options
         >
@@ -21,7 +21,7 @@
         <q-input
           v-model="form.reason"
           label="Açıklama *"
-          filled
+          outlined
           type="textarea"
           :rows="3"
           autogrow
@@ -29,7 +29,7 @@
           <template #prepend><q-icon name="notes" /></template>
         </q-input>
 
-        <q-input v-model="form.requestedBy" label="Talep Eden *" filled>
+        <q-input v-model="form.requestedBy" label="Talep Eden *" outlined>
           <template #prepend><q-icon name="person" /></template>
         </q-input>
   </FormDialog>

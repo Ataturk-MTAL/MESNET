@@ -5,7 +5,7 @@
       <div class="q-gutter-sm">
         <q-btn
           v-if="canGenerate"
-          color="teal"
+          color="primary"
           icon="note_add"
           label="Belge Oluştur"
           @click="showGenerateDialog = true"
@@ -56,7 +56,7 @@
               v-model="filterState.formType"
               :options="formTypeOptions"
               label="Form Tipi"
-              filled
+              outlined
               dense
               clearable
               emit-value
@@ -68,7 +68,7 @@
               v-model="filterState.status"
               :options="statusOptions"
               label="Durum"
-              filled
+              outlined
               dense
               clearable
               emit-value
@@ -97,6 +97,20 @@
         loading-label="Yükleniyor..."
         @request="onRequest"
       >
+        <template #no-data>
+          <div class="full-width column flex-center q-py-lg text-grey-7">
+            <q-icon name="description" size="42px" class="q-mb-sm" />
+            <div class="q-mb-md">Henüz doküman bulunmuyor</div>
+            <q-btn
+              v-if="canGenerate"
+              color="primary"
+              icon="note_add"
+              label="İlk belgeyi oluştur"
+              unelevated
+              @click="showGenerateDialog = true"
+            />
+          </div>
+        </template>
         <template #body-cell-formType="{ row }">
           <q-td>
             <q-badge color="blue-grey" :label="formTypeLabel(row.formType)" />
@@ -186,7 +200,7 @@
             v-model="batchForm.formType"
             :options="batchFormTypeOptions"
             label="Form Tipi"
-            filled
+            outlined
             dense
             emit-value
             map-options
@@ -198,7 +212,7 @@
                 v-model="batchForm.year"
                 :options="yearOptions"
                 label="Yıl"
-                filled
+                outlined
                 dense
                 emit-value
                 map-options
@@ -209,7 +223,7 @@
                 v-model="batchForm.month"
                 :options="monthOptions"
                 label="Ay"
-                filled
+                outlined
                 dense
                 emit-value
                 map-options

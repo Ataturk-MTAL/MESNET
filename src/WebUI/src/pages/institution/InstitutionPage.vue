@@ -14,7 +14,7 @@
     <template v-else-if="institution">
       <PageHeader :title="institution.fullName" :subtitle="`Kurum Kodu: ${institution.institutionCode}`">
         <PermissionGuard :permission="Permissions.Institution.Manage">
-          <q-btn color="primary" icon="edit" label="Düzenle" @click="editDialog = true" />
+          <q-btn color="primary" icon="edit" label="Düzenle" @click="router.push('/institution/edit')" />
         </PermissionGuard>
       </PageHeader>
 
@@ -101,7 +101,6 @@
                       color="primary"
                       :icon="scheduleConfig?.configured ? 'edit' : 'settings'"
                       :label="scheduleConfig?.configured ? 'Düzenle' : 'Ayarla'"
-                      size="sm"
                       @click="openScheduleDialog"
                     />
                   </PermissionGuard>
@@ -213,7 +212,7 @@
             <div class="col text-subtitle1 text-weight-medium">Personel</div>
             <div class="col-auto">
               <PermissionGuard :permission="Permissions.Institution.Staff">
-                <q-btn color="primary" icon="person_add" label="Personel Ekle" size="sm" @click="openStaffDialog" />
+                <q-btn color="primary" icon="person_add" label="Personel Ekle" @click="openStaffDialog" />
               </PermissionGuard>
             </div>
           </div>
@@ -236,7 +235,7 @@
             <div class="col text-subtitle1 text-weight-medium">Akademik Dönemler</div>
             <div class="col-auto">
               <PermissionGuard :permission="Permissions.Institution.Manage">
-                <q-btn color="primary" icon="add" label="Yeni Dönem" size="sm" @click="openPeriodDialog" />
+                <q-btn color="primary" icon="add" label="Yeni Dönem" @click="openPeriodDialog" />
               </PermissionGuard>
             </div>
           </div>
@@ -264,8 +263,30 @@
             <template #body-cell-createdAt="{ row }">
               <q-td>{{ formatDate(row.createdAt) }}</q-td>
             </template>
+            <template #body-cell-gradeWindow="{ row }">
+              <q-td>
+                <q-badge
+                  v-if="row.gradeEntryStartDate && row.gradeEntryEndDate"
+                  color="teal-7"
+                  :label="`${formatDate(row.gradeEntryStartDate)} – ${formatDate(row.gradeEntryEndDate)}`"
+                />
+                <span v-else class="text-grey-5">—</span>
+              </q-td>
+            </template>
             <template #body-cell-actions="{ row }">
               <q-td class="text-right">
+                <PermissionGuard :permission="Permissions.Institution.ManageGradeWindow">
+                  <q-btn
+                    v-if="row.status === 'Active'"
+                    flat dense size="sm"
+                    icon="event_available"
+                    label="Not Girişi"
+                    color="teal-8"
+                    @click="openGradeWindowDialog(row)"
+                  >
+                    <q-tooltip>Dönem sonu not giriş penceresini aç/güncelle</q-tooltip>
+                  </q-btn>
+                </PermissionGuard>
                 <PermissionGuard :permission="Permissions.Institution.Manage">
                   <q-btn
                     v-if="row.status === 'Active'"
@@ -283,12 +304,6 @@
       </q-tab-panels>
     </template>
 
-    <EditInstitutionForm
-      v-model="editDialog"
-      :institution-id="institutionId"
-      :institution="institution"
-      @saved="load"
-    />
     <AddStaffForm
       v-model="staffDialog"
       :institution-id="institutionId"
@@ -321,6 +336,12 @@
       :institution-id="institutionId"
       @saved="load"
     />
+    <GradeEntryWindowForm
+      v-model="gradeWindowDialog"
+      :institution-id="institutionId"
+      :period="gradeWindowTarget"
+      @saved="load"
+    />
   </q-page>
 </template>
 
@@ -345,16 +366,18 @@ import PageHeader from 'components/PageHeader.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useInstitutionStore } from 'stores/institution'
-import EditInstitutionForm from 'components/forms/institution/EditInstitutionForm.vue'
+import { useRouter } from 'vue-router'
 import AddStaffForm from 'components/forms/institution/AddStaffForm.vue'
 import AddBranchForm from 'components/forms/institution/AddBranchForm.vue'
 import EditSpecializationsForm from 'components/forms/institution/EditSpecializationsForm.vue'
 import ScheduleConfigForm from 'components/forms/institution/ScheduleConfigForm.vue'
 import CreatePeriodForm from 'components/forms/institution/CreatePeriodForm.vue'
+import GradeEntryWindowForm from 'components/forms/institution/GradeEntryWindowForm.vue'
 
 const periodStore = useAcademicPeriodStore()
 const institutionStore = useInstitutionStore()
 const notify = useNotify()
+const router = useRouter()
 const confirmDialog = useConfirmDialog()
 
 // ── Core State ──
@@ -379,12 +402,13 @@ const branchSelectOptions = computed(() =>
 )
 
 // ── Dialog Visibility ──
-const editDialog = ref(false)
 const staffDialog = ref(false)
 const branchDialog = ref(false)
 const specDialog = ref(false)
 const scheduleDialog = ref(false)
 const periodDialog = ref(false)
+const gradeWindowDialog = ref(false)
+const gradeWindowTarget = ref<AcademicPeriodDto | null>(null)
 
 // ── Specialization target (for passing to EditSpecializationsForm) ──
 const specTarget = ref<{
@@ -407,6 +431,7 @@ const periodColumns: QTableProps['columns'] = [
   { name: 'startDate', label: 'Başlangıç', field: 'startDate', align: 'left' },
   { name: 'endDate', label: 'Bitiş', field: 'endDate', align: 'left' },
   { name: 'status', label: 'Durum', field: 'status', align: 'left' },
+  { name: 'gradeWindow', label: 'Not Penceresi', field: 'id', align: 'left' },
   { name: 'createdAt', label: 'Oluşturulma', field: 'createdAt', align: 'left' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ]
@@ -512,6 +537,11 @@ function openScheduleDialog() {
 
 function openPeriodDialog() {
   periodDialog.value = true
+}
+
+function openGradeWindowDialog(period: AcademicPeriodDto) {
+  gradeWindowTarget.value = period
+  gradeWindowDialog.value = true
 }
 
 // ── Direct Actions (no form needed) ──

@@ -89,6 +89,22 @@ public static class CoordinationErrors
     public static Error AcademicPeriodClosed(Guid id) =>
         new("Coordination.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, işlem yapılamaz: {id}");
 
+    // Dönem notu
+    public static Error GradeEntryWindowClosed(Guid periodId) =>
+        new("Coordination.GradeEntryWindowClosed",
+            "Dönem sonu not giriş penceresi şu an kapalı. Lütfen okul/kurum müdürlüğünün belirlediği tarihlerde tekrar deneyin.");
+
+    public static Error StudentNotPlacedAtBusiness(Guid studentId) =>
+        new("Coordination.StudentNotPlacedAtBusiness",
+            $"Bu öğrenci işletmenize yerleştirilmemiş; notu giremezsiniz: {studentId}");
+
+    public static Error StudentTermGradeNotFound(Guid id) =>
+        new("Coordination.StudentTermGradeNotFound", $"Dönem notu kaydı bulunamadı: {id}");
+
+    public static Error StudentTermGradeAlreadySubmitted(Guid id) =>
+        new("Coordination.StudentTermGradeAlreadySubmitted",
+            $"Bu dönem notu zaten gönderilmiş, düzenlenemez: {id}");
+
     // Coordination Assignment
     public static Error BusinessNotFound(Guid businessId) =>
         new("Coordination.BusinessNotFound",

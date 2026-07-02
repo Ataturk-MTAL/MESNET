@@ -45,6 +45,13 @@ public class ReportingMartenConfig : IConfigureMarten
             .Index(x => new { x.InstitutionId, x.AcademicPeriodId, x.BusinessId },
                 x => x.Name = "idx_plc_rpt_inst_period_biz");
 
+        // StudentTermGradeView — işletmenin gönderdiği dönem notları (Form 8 / Dönem Not Fişi kaynağı)
+        options.Schema.For<StudentTermGradeView>().DatabaseSchemaName("reporting");
+        options.Schema.For<StudentTermGradeView>()
+            .Index(x => x.StudentId)
+            .Index(x => new { x.StudentId, x.AcademicPeriodId },
+                x => x.Name = "idx_term_grade_rpt_student_period");
+
         // VisitAssignmentReportView — haftalık ziyaret atamaları (Form 3 batch için)
         options.Schema.For<VisitAssignmentReportView>().DatabaseSchemaName("reporting");
         options.Schema.For<VisitAssignmentReportView>()

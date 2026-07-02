@@ -15,6 +15,7 @@ const props = defineProps<Props>()
 // (Etiket metni renk-körü kullanıcı için ayırt ediciliği zaten sağlar; renk ikincil sinyaldir.)
 const PENDING = 'amber-8' //     bekleyen: onay/imza/başvuru bekliyor
 const ACTIVE = 'green-7' //      olumlu/aktif: aktif, onaylandı, doğrulandı, ödendi
+const SUCCESS = 'green-9' //     başarıyla tamamlandı (aktif yeşilden koyu — terminal başarı)
 const PROGRESS = 'teal-7' //     ara aşama: yerleştirildi, eşleştirildi
 const INFO = 'cyan-7' //         bilgilendirici ara durum: imzalandı, yüklendi, hesaplandı
 const WARNING = 'orange-8' //    uyarı: askıda, fesih talebi, süre doldu, itiraz
@@ -54,15 +55,21 @@ const STATUS_COLORS: Record<string, string> = {
   'Reddedildi': NEGATIVE,
   'Feshedildi': NEGATIVE,
   'İptal Edildi': NEGATIVE,
-  // Tamamlanmış (mor)
-  'Tamamladı': DONE,
-  'Tamamlandı': DONE,
+  // Başarıyla tamamlandı (yeşil — aktif yeşilden koyu ton)
+  'Tamamladı': SUCCESS,
+  'Tamamlandı': SUCCESS,
+  'Tamamlanmış': SUCCESS, // ContractStatus.Completed slug'ı (önceden eşlemesizdi → gri)
+  // Transfer / aktarılmış (mor)
   'Transfer Edildi': DONE,
   // Nötr / taslak (gri)
   'Kayıtlı': NEUTRAL,
   'Taslak': DRAFT,
   'Pasif': DRAFT,
   'Kapatılmış': CLOSED,
+  // Devamsızlık türü (AbsenceType slug'ları) — semantik ayrım
+  'Mazeretli': ACTIVE, //       mazeretli: kabul edilebilir (yeşil)
+  'Mazeretsiz': WARNING, //     mazeretsiz: dikkat gerektiren (turuncu)
+  'Sağlık Raporu': INFO, //     belgeli/sağlık raporu (cyan)
 }
 
 const color = computed(() => STATUS_COLORS[props.slug] ?? 'grey-7')

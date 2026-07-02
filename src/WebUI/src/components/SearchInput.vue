@@ -9,8 +9,8 @@ withDefaults(
     placeholder?: string
     /** Yoğun görünüm */
     dense?: boolean
-    /** Dolu (filled) stil */
-    filled?: boolean
+    /** Dolu (outlined) stil */
+    outlined?: boolean
     /** Arama ikonu boyutu */
     iconSize?: string
   }>(),
@@ -18,14 +18,14 @@ withDefaults(
     label: undefined,
     placeholder: undefined,
     dense: true,
-    filled: true,
+    outlined: true,
     iconSize: undefined,
   },
 )
 </script>
 
 <template>
-  <q-input v-model="model" :label="label" :placeholder="placeholder" :dense="dense" :filled="filled" clearable>
+  <q-input v-model="model" :label="label" :placeholder="placeholder" :dense="dense" :outlined="outlined" clearable>
     <template #prepend>
       <q-icon name="search" :size="iconSize" />
     </template>
