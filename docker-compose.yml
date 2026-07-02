@@ -1,28 +1,30 @@
 services:
 
-  # ── Reverse Proxy ──────────────────────────────────────────────
-  nginx-proxy:
+  # ── Reverse Proxy + Static (Caddy) ─────────────────────────────
+  # Otomatik HTTPS. Web (Vue SPA) + Docs static'i gömülü sunar; /api → api,
+  # auth.${APP_DOMAIN} → keycloak, docs.${APP_DOMAIN} → docs static.
+  caddy:
     build:
-      context: ./src/nginx
+      context: .
+      dockerfile: src/caddy/Dockerfile
+      args:
+        # Vite public config build zamanında gömülür (bkz. src/caddy/Dockerfile)
+        VITE_KEYCLOAK_URL: https://auth.${APP_DOMAIN}
+        VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-mesnet}
+        VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-mesnet-web}
+        VITE_OSRM_URL: ${VITE_OSRM_URL:-}
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
     volumes:
-      - ./certs:/etc/nginx/ssl:ro          # TLS sertifikaları (Let's Encrypt / manual)
-      - ./certbot/www:/var/www/certbot:ro  # ACME challenge
-    depends_on:
-      - frontend
-      - api
-    restart: unless-stopped
-
-  # ── Frontend (Vue SPA) ─────────────────────────────────────────
-  frontend:
-    build:
-      context: ./src/WebUI
-    expose:
-      - "80"
+      - caddy-data:/data      # ACME sertifikaları (kalıcı — yeniden başlatmada yeniden almaz)
+      - caddy-config:/config
     depends_on:
       - api
+      - keycloak
     restart: unless-stopped
 
   # ── Backend API (.NET 10) ──────────────────────────────────────
@@ -107,9 +109,7 @@ services:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     expose:
-      - "8080"
-    ports:
-      - "8080:8080"    # Production'da kapat — sadece reverse proxy üzerinden eriş
+      - "8080"    # Yalnız iç ağ; dışarıya auth.${APP_DOMAIN} üzerinden Caddy açar
     depends_on:
       postgres:
         condition: service_healthy
@@ -140,3 +140,5 @@ volumes:
   postgres-data:
   rabbitmq-data:
   minio-data:
+  caddy-data:      # Caddy ACME sertifikaları (kalıcı)
+  caddy-config:

@@ -1,0 +1,55 @@
+# MESNET — Caddy reverse proxy + static server
+# Otomatik HTTPS (Let's Encrypt/ACME). Web (Vue SPA) ve Docs static'i doğrudan sunar,
+# /api'yi backend'e, auth.'ı Keycloak'a proxy'ler. Domain/e-posta env'den gelir.
+{
+	email {$ACME_EMAIL}
+}
+
+# ── Ana uygulama: Vue SPA + API ─────────────────────────────────
+{$APP_DOMAIN} {
+	encode gzip zstd
+
+	# Belge/dekont yüklemeleri için gövde limiti
+	request_body {
+		max_size 20MB
+	}
+
+	# SSE — bildirim akışı (anlık flush, buffering yok)
+	handle /api/notifications/stream {
+		reverse_proxy api:8080 {
+			flush_interval -1
+		}
+	}
+
+	# Backend API
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# Vue SPA — static + client-side routing fallback
+	handle {
+		root * /srv/web
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+# ── Docs (Docusaurus static) ────────────────────────────────────
+docs.{$APP_DOMAIN} {
+	encode gzip zstd
+	root * /srv/docs
+	try_files {path} {path}/ {path}.html
+	file_server
+}
+
+# ── Keycloak (kimlik doğrulama) ─────────────────────────────────
+auth.{$APP_DOMAIN} {
+	reverse_proxy keycloak:8080
+}

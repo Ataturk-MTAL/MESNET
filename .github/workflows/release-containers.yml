@@ -22,15 +22,9 @@ jobs:
           - name: api # .NET API (Presentation) — context kök (MESNET.slnx + src/)
             context: .
             dockerfile: src/MESNET.Presentation/Dockerfile
-          - name: web # Quasar/Vue frontend
-            context: src/WebUI
-            dockerfile: src/WebUI/Dockerfile
-          - name: nginx # reverse proxy
-            context: src/nginx
-            dockerfile: src/nginx/Dockerfile
-          - name: docs # Docusaurus dokümantasyon sitesi
-            context: src/Docs
-            dockerfile: src/Docs/Dockerfile
+          - name: caddy # Caddy: Vue SPA + Docusaurus static gömülü + reverse proxy — context kök
+            context: .
+            dockerfile: src/caddy/Dockerfile
     steps:
       - name: Checkout
         uses: actions/checkout@v5 # node24 (v4 node20 deprecate ediliyordu); docker/* action'ları henüz node20 (Docker güncelleyince node24'e geçecek)
@@ -58,6 +52,21 @@ jobs:
       - name: Buildx kur
         uses: docker/setup-buildx-action@v3
 
+      # Caddy imajı Vite public config'i build zamanında gömer. Domain deploy'a özeldir;
+      # repo değişkenlerinden al (yoksa Dockerfile default'u 'https://auth.localhost').
+      - name: Caddy build-args hesapla
+        id: bargs
+        if: matrix.name == 'caddy'
+        run: |
+          {
+            echo "args<<EOF"
+            echo "VITE_KEYCLOAK_URL=${{ vars.VITE_KEYCLOAK_URL || (vars.APP_DOMAIN && format('https://auth.{0}', vars.APP_DOMAIN)) || 'https://auth.localhost' }}"
+            echo "VITE_KEYCLOAK_REALM=${{ vars.VITE_KEYCLOAK_REALM || 'mesnet' }}"
+            echo "VITE_KEYCLOAK_CLIENT_ID=${{ vars.VITE_KEYCLOAK_CLIENT_ID || 'mesnet-web' }}"
+            echo "VITE_OSRM_URL=${{ vars.VITE_OSRM_URL }}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Derle ve GHCR'ye push (private)
         uses: docker/build-push-action@v6
         with:
@@ -66,5 +75,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ steps.bargs.outputs.args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
