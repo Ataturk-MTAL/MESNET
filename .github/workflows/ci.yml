@@ -1,0 +1,68 @@
+name: CI
+
+# Hızlı kapı: dev/main'e push ve bu dallara açılan PR'larda derleme + tip kontrolü.
+# (Black-box entegrasyon testleri stack gerektirir — ayrı bir workflow olarak planlanıyor.)
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+# Aynı ref için yeni push gelirse öncekini iptal et
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend — derleme
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5 # node24
+
+      - name: .NET SDK kur (global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: NuGet cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Çözümü derle (MESNET.slnx)
+        run: dotnet build MESNET.slnx -c Release
+
+      # Test projesi solution'da değil — en azından DERLENDİĞİNİ doğrula (çalıştırma stack gerektirir)
+      - name: Test projesini derle
+        run: dotnet build tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj -c Release
+
+  frontend:
+    name: Frontend — type-check & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/WebUI
+    steps:
+      - uses: actions/checkout@v5 # node24
+
+      - name: pnpm kur
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Node kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/WebUI/pnpm-lock.yaml
+
+      - name: Bağımlılıklar
+        run: pnpm install --frozen-lockfile
+
+      # "build" scripti önce vue-tsc --noEmit (type-check) sonra vite build çalıştırır
+      - name: Type-check & build
+        run: pnpm build
