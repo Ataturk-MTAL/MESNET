@@ -51,13 +51,19 @@
             <!-- Boş + atanmamış — Drop Zone -->
             <div
               v-else-if="!getAssignedBusinessId(day.value, period)"
-              :ref="(el) => registerDropZone(el as HTMLElement, day.value, period)"
               class="drop-zone"
-              :class="{ 'drop-zone--disabled': disabled, 'drop-zone--target': !disabled && selected !== null }"
+              :class="{
+                'drop-zone--disabled': disabled,
+                'drop-zone--target': !disabled && selected !== null,
+                'drop-zone--active': activeDropZone === dropZoneKey(day.value, period),
+              }"
               role="button"
               tabindex="0"
               :aria-disabled="disabled"
               :aria-label="dropZoneLabel(day.label, period)"
+              @dragover="onDropZoneDragOver($event, day.value, period)"
+              @dragleave="onDropZoneDragLeave(day.value, period)"
+              @drop="onDropZoneDrop($event, day.value, period)"
               @keydown.enter.prevent="onDropZoneKey(day.value, period)"
               @keydown.space.prevent="onDropZoneKey(day.value, period)"
               @keydown.esc.prevent="emit('selection-cancelled')"
@@ -155,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from 'vue'
+import { computed, ref } from 'vue'
 import type { DailyScheduleDto, PeriodSlotDto } from 'src/api/coordination'
 import type { AssignmentSelection } from 'src/composables/useKeyboardAssignment'
 
@@ -263,56 +269,64 @@ function onDragStart(event: DragEvent, day: string, period: number) {
   event.dataTransfer.effectAllowed = 'move'
 }
 
-// Drop zone'ları kaydetmek için native event listener kullanıyoruz
-const dropZoneCleanups: (() => void)[] = []
+// Drop zone olayları şablonda bildirimsel olarak bağlanır (@dragover/@dragleave/@drop).
+//
+// Daha önce burada bir `:ref="(el) => registerDropZone(el, ...)"` geri çağrısı vardı ve
+// içinde el.addEventListener çağrılıyordu. Vue, FONKSİYON tipindeki template ref'i her
+// yamada yeniden çalıştırır ve satır içi ok fonksiyonu her render'da yeni kimlik aldığı
+// için eskisi hiç null ile çağrılmaz — yani her render aynı DOM düğümüne 3 listener daha
+// ekliyordu, temizlik ise yalnız onBeforeUnmount'ta yapılıyordu. Ölçüm: mount'ta 30
+// listener, 5 prop güncellemesinden sonra 165. Sonuç: tek bırakma işleminde
+// business-dropped/business-removed olayları defalarca yayılabiliyordu.
+// Şablon bağlaması bu riski tamamen ortadan kaldırır — Vue listener kimliğini kendi yönetir.
 
-function registerDropZone(el: HTMLElement | null, day: string, period: number) {
-  if (!el) return
+/** Sürükleme sırasında vurgulanan hücre; classList yerine reaktif durum. */
+const activeDropZone = ref<string | null>(null)
 
-  const onDragOver = (e: DragEvent) => {
-    if (props.disabled) return
-    e.preventDefault()
-    e.dataTransfer!.dropEffect = 'move'
-    el.classList.add('drop-zone--active')
+function dropZoneKey(day: string, period: number): string {
+  return `${day}-${period}`
+}
+
+function onDropZoneDragOver(event: DragEvent, day: string, period: number) {
+  if (props.disabled) return
+  // preventDefault YALNIZ etkin hücrede: aksi halde devre dışı hücre de bırakmayı kabul eder.
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  activeDropZone.value = dropZoneKey(day, period)
+}
+
+function onDropZoneDragLeave(day: string, period: number) {
+  // Yalnız AYRILAN hücre hâlâ vurguluysa temizle. Hücreden hücreye geçerken tarayıcı
+  // dragover(yeni) olayını dragleave(eski) olayından önce yayabilir; koşulsuz silmek
+  // yeni hücrenin vurgusunu anında söndürür (eski classList'li kodda bu olmuyordu,
+  // çünkü her hücre kendi sınıfını yönetiyordu).
+  if (activeDropZone.value === dropZoneKey(day, period)) {
+    activeDropZone.value = null
+  }
+}
+
+function onDropZoneDrop(event: DragEvent, day: string, period: number) {
+  event.preventDefault()
+  activeDropZone.value = null
+  if (props.disabled) return
+
+  const businessId = event.dataTransfer?.getData('application/business-id')
+  const fromDay = event.dataTransfer?.getData('application/from-day')
+  const fromPeriod = event.dataTransfer?.getData('application/from-period')
+
+  if (!businessId) return
+
+  // Eski konumdan kaldır (grid'den grid'e taşıma)
+  if (fromDay && fromPeriod) {
+    emit('business-removed', {
+      businessId,
+      day: fromDay,
+      periodNumber: parseInt(fromPeriod),
+    })
   }
 
-  const onDragLeave = () => {
-    el.classList.remove('drop-zone--active')
-  }
-
-  const onDrop = (e: DragEvent) => {
-    e.preventDefault()
-    el.classList.remove('drop-zone--active')
-    if (props.disabled) return
-
-    const businessId = e.dataTransfer?.getData('application/business-id')
-    const fromDay = e.dataTransfer?.getData('application/from-day')
-    const fromPeriod = e.dataTransfer?.getData('application/from-period')
-
-    if (!businessId) return
-
-    // Eski konumdan kaldır (grid'den grid'e taşıma)
-    if (fromDay && fromPeriod) {
-      emit('business-removed', {
-        businessId,
-        day: fromDay,
-        periodNumber: parseInt(fromPeriod),
-      })
-    }
-
-    // Yeni konuma ata
-    emit('business-dropped', { businessId, day, periodNumber: period })
-  }
-
-  el.addEventListener('dragover', onDragOver)
-  el.addEventListener('dragleave', onDragLeave)
-  el.addEventListener('drop', onDrop)
-
-  dropZoneCleanups.push(() => {
-    el.removeEventListener('dragover', onDragOver)
-    el.removeEventListener('dragleave', onDragLeave)
-    el.removeEventListener('drop', onDrop)
-  })
+  // Yeni konuma ata
+  emit('business-dropped', { businessId, day, periodNumber: period })
 }
 
 // ── Klavye erişilebilirliği (#88) ──
@@ -365,10 +379,6 @@ function onRemoveClick(day: string, period: number) {
     emit('business-removed', { businessId, day, periodNumber: period })
   }
 }
-
-onBeforeUnmount(() => {
-  dropZoneCleanups.forEach((fn) => fn())
-})
 </script>
 
 <style scoped>
