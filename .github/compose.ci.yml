@@ -9,7 +9,13 @@
 # CI konteynerlerine ait dev değerleri, gerçek bir sır değil.
 services:
   postgres:
-    image: postgis/postgis:17-3.5
+    # docker-compose.yml ve MESNET.AppHost ile AYNI imaj — CI'ın dev'den farklı bir PostgreSQL
+    # sürümünde koşması, dev'de görünmeyen hatayı CI'da (ya da tersini) doğurur. Önceden CI
+    # PostgreSQL 17, dev 18 idi.
+    #
+    # kartoza/postgis:18-3.6 → Debian 13 (trixie), PostgreSQL 18.4, PostGIS 3.6. Resmî
+    # postgis/postgis'te trixie etiketi yok ve 18-3.6'nın arm64 imajı da yok (yerelde çalışmaz).
+    image: kartoza/postgis:18-3.6
     environment:
       POSTGRES_USER: mesnet
       POSTGRES_PASSWORD: mesnet_dev
