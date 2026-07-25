@@ -443,7 +443,11 @@ onBeforeUnmount(() => {
   gap: 4px;
   border: 2px dashed transparent;
   border-radius: 4px;
-  transition: all 0.2s;
+  /* transition: all yerine değişen özellikler — tarayıcı her özelliği izlemesin,
+     layout özellikleri yanlışlıkla animasyonlanmasın. */
+  transition-property: border-color, background-color, opacity;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-out;
   opacity: 0.6;
 }
 
@@ -489,5 +493,10 @@ onBeforeUnmount(() => {
 
 .remove-btn {
   margin-left: auto;
+  /* İkon 8px kalıyor (hücre dar) ama dokunma hedefi WCAG 2.2 SC 2.5.8'in istediği
+     24x24 CSS px'e çıkarılıyor. Görünmez pseudo-element yerine butonun kendisi
+     büyütüldü: genişletilmiş hedef chip etiketiyle çakışıp yanlış tıklama üretmesin. */
+  min-width: 24px;
+  min-height: 24px;
 }
 </style>

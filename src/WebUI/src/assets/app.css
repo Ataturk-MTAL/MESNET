@@ -1,0 +1,27 @@
+/*
+ * Uygulama geneli stiller. Quasar'ın kendi CSS'inden SONRA yüklenir (bkz. main.ts),
+ * böylece buradaki kurallar Quasar'ınkileri ezebilir.
+ */
+
+/*
+ * Hareket azaltma tercihi (WCAG 2.3.3).
+ *
+ * İşletim sistemi düzeyinde "hareketi azalt" seçen kullanıcıya animasyon gönderilmez.
+ * Bu uygulamada hareket az değil: sürükle-bırak geçişleri, drawer açılışı, form
+ * route'larının yönlü kayma animasyonu (slide-left / slide-right) ve Quasar'ın kendi
+ * bileşen geçişleri. Vestibüler duyarlılığı olan kullanıcı için bunlar rahatsız edici.
+ *
+ * Süre sıfırlanmıyor, 0.01ms'e çekiliyor: tam sıfır bazı tarayıcılarda transitionend
+ * olayını hiç tetiklemez ve o olaya bağlı mantık (Quasar'ın bazı bileşenleri dahil)
+ * takılı kalır.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

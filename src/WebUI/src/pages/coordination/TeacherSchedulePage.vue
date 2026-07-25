@@ -188,6 +188,7 @@
                   icon="refresh"
                   size="sm"
                   :loading="historyLoading"
+                  aria-label="Geçmişi yenile"
                   @click="loadHistory"
                 >
                   <q-tooltip>Geçmişi yenile</q-tooltip>

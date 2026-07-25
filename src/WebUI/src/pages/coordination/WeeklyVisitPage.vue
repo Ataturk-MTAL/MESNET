@@ -118,6 +118,7 @@
             color="primary"
             icon="visibility"
             size="sm"
+            aria-label="Ziyaret detayını göster"
             @click="openDetail(row.id)"
           >
             <q-tooltip>Detay</q-tooltip>
@@ -130,6 +131,7 @@
             size="sm"
             :disable="periodStore.isReadOnly"
             :loading="deleting"
+            aria-label="Ziyareti sil"
             @click="confirmDelete(row.id)"
           >
             <q-tooltip>Sil</q-tooltip>
@@ -191,6 +193,7 @@
                 size="sm"
                 :disable="periodStore.isReadOnly"
                 :loading="deletingAssignment"
+                aria-label="Ziyaret atamasını sil"
                 @click="confirmDeleteAssignment(row.id)"
               >
                 <q-tooltip>Sil</q-tooltip>
@@ -293,6 +296,7 @@
                     icon="add"
                     size="sm"
                     :loading="addingAssignment"
+                    aria-label="Eksik ziyaret atamasını ekle"
                     @click="submitMissingAssignment(item)"
                   >
                     <q-tooltip>Ekle</q-tooltip>

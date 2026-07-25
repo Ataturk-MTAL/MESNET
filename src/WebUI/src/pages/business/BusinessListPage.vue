@@ -141,8 +141,11 @@
               dense
               icon="check_circle"
               color="positive"
+              aria-label="İşletmeyi onayla"
               @click="approve(row)"
-            />
+            >
+              <q-tooltip>Onayla</q-tooltip>
+            </q-btn>
             <q-btn
               v-if="row.status === 'PendingApproval'"
               flat
@@ -150,8 +153,11 @@
               dense
               icon="cancel"
               color="negative"
+              aria-label="İşletmeyi reddet"
               @click="openReject(row)"
-            />
+            >
+              <q-tooltip>Reddet</q-tooltip>
+            </q-btn>
           </PermissionGuard>
         </q-td>
       </template>
@@ -400,6 +406,7 @@
                       round
                       icon="check"
                       color="positive"
+                      aria-label="Belgeyi onayla"
                       @click="approveDoc(doc.id)"
                     >
                       <q-tooltip>Onayla</q-tooltip>

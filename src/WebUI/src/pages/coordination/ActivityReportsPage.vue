@@ -29,8 +29,11 @@
               dense
               icon="send"
               color="primary"
+              aria-label="Raporu gönder"
               @click="submitReport(row)"
-            />
+            >
+              <q-tooltip>Gönder</q-tooltip>
+            </q-btn>
             <q-btn
               v-if="row.status === 'Submitted'"
               flat
@@ -38,8 +41,11 @@
               dense
               icon="check"
               color="positive"
+              aria-label="Raporu onayla"
               @click="approveReport(row)"
-            />
+            >
+              <q-tooltip>Onayla</q-tooltip>
+            </q-btn>
           </PermissionGuard>
         </q-td>
       </template>
