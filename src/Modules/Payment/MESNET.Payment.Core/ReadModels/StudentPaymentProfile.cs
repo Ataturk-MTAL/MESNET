@@ -25,4 +25,10 @@ public class StudentPaymentProfile
     /// eksik veri fazla ödeme üretmesin diye düşük orana düşülür (#83).
     /// </summary>
     public bool HasJourneymanQualification { get; set; }
+
+    /// <summary>Yaşa uygun asgari ücret seçimi için (#85). null ise genel asgari ücret uygulanır.</summary>
+    public DateTime? BirthDate { get; set; }
+
+    /// <summary>Student / CandidateApprentice / Apprentice (#85).</summary>
+    public string CategoryName { get; set; } = "Student";
 }

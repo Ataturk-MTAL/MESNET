@@ -23,6 +23,11 @@ public static class RegisterStudentHandler
         if (!EducationType.TryFromName(command.EducationType, ignoreCase: true, out var educationType))
             throw new DomainException(EnrollmentErrors.InvalidEducationType(command.EducationType));
 
+        // Geçersiz kategori sessizce "Öğrenci"ye düşerse aday çırak/çırak yanlış ücret tabanı
+        // alır; açıkça hata ver (#85).
+        if (!StudentCategory.TryFromName(command.Category, ignoreCase: true, out var studentCategory))
+            throw new DomainException(EnrollmentErrors.InvalidStudentCategory(command.Category));
+
         var student = new StudentProfile
         {
             Id = Guid.NewGuid(),
@@ -41,7 +46,10 @@ public static class RegisterStudentHandler
             StudentNumber = command.StudentNumber,
             PhoneNumber = command.PhoneNumber,
             TcKimlikNo = command.TcKimlikNo,
-            HasJourneymanQualification = command.HasJourneymanQualification
+            HasJourneymanQualification = command.HasJourneymanQualification,
+            BirthDate = command.BirthDate,
+            Category = studentCategory,
+            CategoryName = studentCategory.Name
         };
 
         if (command.GuardianName is not null || command.GuardianPhone is not null)
@@ -56,6 +64,6 @@ public static class RegisterStudentHandler
 
         session.Store(student);
 
-        return (student.ToDto(), new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.AcademicPeriodId, student.BranchCode, student.ClassYear, educationType.Name, student.StudentNumber ?? "", student.HasJourneymanQualification));
+        return (student.ToDto(), new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.AcademicPeriodId, student.BranchCode, student.ClassYear, educationType.Name, student.StudentNumber ?? "", student.HasJourneymanQualification, student.BirthDate, student.Category.Name));
     }
 }

@@ -17,6 +17,7 @@ public static class SalaryCalculator
     private const int DaysInSalaryMonth = 30;      // business-rules.md §6.2: GünlükÜcret = Taban / 30
     private const int ApprenticeshipClassYear = 12; // MESEM 12. sınıf = kalfalık yeterliği
     private const string MesemEducationType = "Mesem";
+    private const int MinorAgeThreshold = 16;      // 3308 md.25: "yaşına uygun asgari ücret" (#85)
 
     public sealed record Result(
         decimal BaseWage,
@@ -40,6 +41,16 @@ public static class SalaryCalculator
     /// Ay içindeki onaylanmış, ücret kesintisine tabi devamsızlık gün sayısı — mazeretsiz
     /// devamsızlık ve ücretsiz izin günleri (<c>AbsenceType.AffectsSalary</c>).
     /// </param>
+    /// <param name="ageAtCalculation">
+    /// Öğrencinin hesap ayındaki yaşı (#85). 3308 Madde 25 ve MEB Ortaöğretim Kurumları
+    /// Yönetmeliği (6)(a) "YAŞINA UYGUN asgari ücret" diyor; 16 yaşından küçükler için ayrı
+    /// (daha düşük) asgari ücret belirlenir. null (doğum tarihi bilinmiyor) ise genel asgari
+    /// ücret uygulanır — eksik veri düşük ödeme üretmesin.
+    /// </param>
+    /// <param name="isApprentice">
+    /// Aday çırak veya çırak mı (#85). Madde 25: "aday çırak ve çırağa yaşına uygun asgari
+    /// ücretin yüzde otuzundan ... aşağı ücret ödenemez" — işletme büyüklüğüne bakılmaz.
+    /// </param>
     /// <param name="agreedMonthlyWage">
     /// Sözleşmede taahhüt edilen aylık ücret (#84). 3308 Madde 25: ücret "düzenlenecek sözleşme
     /// ile tespit edilir", kanundaki yüzdeler yalnız ALT SINIRDIR ("aşağı ücret ödenemez").
@@ -52,7 +63,9 @@ public static class SalaryCalculator
         int classYear,
         bool hasJourneymanQualification,
         int deductibleAbsenceDays,
-        decimal? agreedMonthlyWage = null)
+        decimal? agreedMonthlyWage = null,
+        int? ageAtCalculation = null,
+        bool isApprentice = false)
     {
         var isMesem = string.Equals(educationTypeName, MesemEducationType, StringComparison.OrdinalIgnoreCase);
         var isLargeBusiness = personnelCount >= config.PersonnelThreshold;
@@ -61,14 +74,23 @@ public static class SalaryCalculator
         // öğrencilerine uygulanır; yeterliği olmayan MESEM öğrencisi işletme büyüklüğü oranına
         // düşer. Yeterlik bilinmiyorsa (varsayılan false) düşük oran uygulanır — eksik veri
         // fazla ödeme üretmesin.
-        var baseRate = isMesem && classYear >= ApprenticeshipClassYear && hasJourneymanQualification
-            ? config.MEM12thGradeRate
-            : isLargeBusiness
-                ? config.LargeBusinessRate
-                : config.SmallBusinessRate;
+        // Aday çırak/çırak oranı işletme büyüklüğünden bağımsızdır (Madde 25).
+        var baseRate = isApprentice
+            ? config.ApprenticeRate
+            : isMesem && classYear >= ApprenticeshipClassYear && hasJourneymanQualification
+                ? config.MEM12thGradeRate
+                : isLargeBusiness
+                    ? config.LargeBusinessRate
+                    : config.SmallBusinessRate;
+
+        // "Yaşına uygun asgari ücret" (#85): 16 yaşından küçüklere ayrı tutar belirlenmişse o
+        // uygulanır. Yaş bilinmiyorsa veya ayrı tutar tanımlı değilse genel asgari ücret.
+        var applicableMinimumWage = ageAtCalculation is { } age && age < MinorAgeThreshold
+            ? config.MinimumWageUnder16 ?? config.MinimumWage
+            : config.MinimumWage;
 
         // Yasal taban — 3308 Madde 25'in altına inilemeyecek tutar.
-        var statutoryFloor = config.MinimumWage * baseRate;
+        var statutoryFloor = applicableMinimumWage * baseRate;
 
         // Sözleşmede taahhüt edilen ücret varsa ve yasal tabandan yüksekse esas alınan odur (#84).
         // Düşükse sözleşme kanuna aykırıdır; sistem taban ücreti ödemeye devam eder.

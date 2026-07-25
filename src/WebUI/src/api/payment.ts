@@ -73,6 +73,23 @@ export const paymentApi = {
   reject: (paymentId: string, reason: string) =>
     api.post(`/payments/${paymentId}/reject`, { reason }),
 
-  updateMinimumWage: (amount: number, effectiveDate: string) =>
-    api.put('/payments/config/minimum-wage', { amount, effectiveDate }),
+  /**
+   * Asgari ücret güncelleme. Alan adları backend'deki UpdateMinimumWage komutuyla birebir
+   * olmalı — önceki hâli `{ amount, effectiveDate }` gönderiyordu ve hiçbir alan eşleşmiyordu.
+   * minimumWageUnder16: 16 yaşından küçükler için yaşa uygun asgari ücret (#85).
+   */
+  updateMinimumWage: (
+    institutionId: string,
+    newMinimumWage: number,
+    effectiveFrom: string,
+    updatedBy: string,
+    newMinimumWageUnder16?: number,
+  ) =>
+    api.put('/payments/config/minimum-wage', {
+      institutionId,
+      newMinimumWage,
+      newMinimumWageUnder16: newMinimumWageUnder16 ?? null,
+      effectiveFrom,
+      updatedBy,
+    }),
 }

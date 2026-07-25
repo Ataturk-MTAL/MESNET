@@ -18,4 +18,9 @@ public sealed record RegisterStudent(
     string? GuardianName = null,
     string? GuardianPhone = null,
     // 3308 Madde 25: %50 oranının şartı — kalfalık yeterliği (#83)
-    bool HasJourneymanQualification = false);
+    bool HasJourneymanQualification = false,
+    // StudentProfile'da alan zaten vardı ama kayıt komutu doldurmuyordu; "yaşına uygun asgari
+    // ücret" (3308 md.25) bu olmadan hesaplanamıyor (#85).
+    DateTime? BirthDate = null,
+    // Öğrenci / Aday Çırak / Çırak — StudentCategory.Name (#85)
+    string Category = "Student");

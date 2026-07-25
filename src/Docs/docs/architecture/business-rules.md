@@ -239,16 +239,27 @@ Her devamsızlık kaydı, aktif `InternshipPlacement`'taki öğrenci-işletme e�
 
 ### 6.1 Taban Ücret Hesabı
 
-| İşletme Tipi | Oran | Formül |
-| ------------ | ---- | ------ |
-| 20+ personel çalıştıran | %30 | Net Asgari Ücret × 0.30 |
-| 20'den az personel çalıştıran | %15 | Net Asgari Ücret × 0.15 |
-| MEM 12. sınıf (kalfalık yeterliği) | %50 | Net Asgari Ücret × 0.50 |
+| Durum | Oran | Formül |
+| ----- | ---- | ------ |
+| Aday çırak / çırak | %30 | **Yaşına uygun** asgari ücret × 0.30 |
+| 20+ personel çalıştıran işletmede öğrenci | %30 | Yaşına uygun asgari ücret × 0.30 |
+| 20'den az personel çalıştıran işletmede öğrenci | %15 | Yaşına uygun asgari ücret × 0.15 |
+| MEM 12. sınıf (kalfalık yeterliği) | %50 | Yaşına uygun asgari ücret × 0.50 |
 
-> **Not:** Bu oranlar yasal asgari değerlerdir. İşletmeler daha yüksek ücret ödeyebilir.
-> Madde 25'in ilk cümlesi ücretin **sözleşmeyle** tespit edileceğini söyler; yüzdeler yalnız
-> alt sınırdır. Sistem şu an tabanı ücret olarak hesaplıyor, sözleşmedeki daha yüksek ücreti
-> kaydetmiyor.
+> **Yaşına uygun asgari ücret** (Madde 25; MEB Ortaöğretim Kurumları Yönetmeliği 6/a): 16
+> yaşından küçükler için ayrı (daha düşük) asgari ücret belirlenir. Sistemde
+> `SalaryCalculationConfig.MinimumWageUnder16` alanı tutulur; tanımlı değilse yaş ayrımı
+> yapılmaz ve genel asgari ücret uygulanır. Yaş, maaşın hesaplandığı aya göre bulunur.
+
+> **Aday çırak / çırak** oranı işletme büyüklüğünden **bağımsızdır**: Madde 25 "aday çırak ve
+> çırağa yaşına uygun asgari ücretin yüzde otuzundan ... aşağı ücret ödenemez" der. Kategori
+> öğrenci kaydında seçilir (`Öğrenci` / `Aday Çırak` / `Çırak`).
+
+> **Not:** Bu oranlar yasal asgari değerlerdir. Madde 25'in ilk cümlesi ücretin **sözleşmeyle**
+> tespit edileceğini söyler; yüzdeler yalnız alt sınırdır. Sistem sözleşmedeki aylık ücreti
+> (`Contract.AgreedMonthlyWage`) kaydeder ve yasal tabandan yüksekse onu esas alır; düşükse
+> tabanı öder. Devlet katkısı matrahı **yasal taban** olarak kalır (Geçici Madde 12:
+> "ödenebilecek en az ücret"), sözleşmedeki fazlası işveren payına eklenir.
 
 > **%50 oranının şartı:** Kanun "**kalfalık yeterliğini kazanan** mesleki eğitim merkezi
 > 12'nci sınıf öğrencileri" diyor. Yeterliği olmayan MESEM 12. sınıf öğrencisi işletme
