@@ -14,6 +14,10 @@ public static class ServiceRegistration
     {
         // Wolverine handlers otomatik olarak keşfedilir
 
+        // Ay sonunda aktif yerleştirmeler için maaş dönemi açar (#63) — maaş devamsızlığa
+        // değil aya bağlıdır, devamsızlığı olmayan öğrenci de ücretini almalıdır.
+        services.AddHostedService<Services.MonthlySalarySchedulerService>();
+
         // Marten saga registration (Wolverine otomatik yönetir, sadece schema config gerekli)
         services.ConfigureMarten(opts =>
         {

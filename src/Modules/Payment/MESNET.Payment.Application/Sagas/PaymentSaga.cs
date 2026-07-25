@@ -49,8 +49,12 @@ public class PaymentSaga : Saga
     {
         var result = await CalculateAsync(command, session);
 
-        var receiptDueDate = new DateTime(
-            command.ReferenceDate.Year, command.ReferenceDate.Month, 8, 23, 59, 59);
+        // business-rules.md §6.6: ücret her ayın 8'ine kadar yatırılır — çalışılan ayın DEĞİL,
+        // TAKİP EDEN ayın 8'i. Maaş ay sonunda hesaplandığı için referans ayın 8'i kullanılsaydı
+        // son ödeme günü daha doğduğu anda geçmişte kalırdı (#63).
+        var nextMonth = new DateTime(command.ReferenceDate.Year, command.ReferenceDate.Month, 1)
+            .AddMonths(1);
+        var receiptDueDate = new DateTime(nextMonth.Year, nextMonth.Month, 8, 23, 59, 59);
 
         var saga = new PaymentSaga
         {

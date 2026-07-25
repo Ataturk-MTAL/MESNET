@@ -26,6 +26,7 @@ public static class PaymentEndpoints
         group.MapPost("/{id:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Salary.Approve);
         group.MapPost("/{id:guid}/reject", PostReject).RequireAuthorization(Permissions.Salary.Approve);
         group.MapPut("/config/minimum-wage", PutMinimumWage).RequireAuthorization(Permissions.Salary.Parameter);
+        group.MapPost("/open-monthly-periods", PostOpenMonthlyPeriods).RequireAuthorization(Permissions.Salary.Calculate);
     }
 
     private static async Task<IResult> Get(Guid id, IMessageBus bus)
@@ -146,4 +147,27 @@ public static class PaymentEndpoints
             .AddMessage("Asgari ücret güncellendi.")
             .Build());
     }
+
+    /// <summary>
+    /// Verilen ay için maaş dönemlerini elle açar. Normalde ay sonunda zamanlayıcı yapar;
+    /// bu endpoint kaçırılmış koşu, sisteme geçişin ilk ayı veya sonradan eklenen yerleştirmeler
+    /// içindir. Zaten kaydı olan öğrenciler atlanır, tekrar çalıştırmak güvenlidir (#63).
+    /// </summary>
+    private static async Task<IResult> PostOpenMonthlyPeriods(
+        OpenMonthlyPeriodsRequest? request, IMessageBus bus)
+    {
+        var referenceDate = request?.ReferenceDate ?? DateTime.UtcNow;
+        var month = request?.Month ?? referenceDate.ToString("yyyy-MM");
+
+        var result = await bus.InvokeAsync<OpenMonthlySalaryPeriodsResult>(
+            new OpenMonthlySalaryPeriods(month, referenceDate));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.Opened} maaş dönemi açıldı, {result.Skipped} kayıt zaten vardı.")
+            .Build());
+    }
 }
+
+/// <summary>Gövde boş bırakılırsa içinde bulunulan ay ve şu an kullanılır.</summary>
+public sealed record OpenMonthlyPeriodsRequest(string? Month, DateTime? ReferenceDate);
