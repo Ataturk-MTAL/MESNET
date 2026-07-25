@@ -105,12 +105,19 @@ public static class Extensions
             var options = sp.GetRequiredService<IOptions<MinioStorageOptions>>().Value;
 
             // Aspire endpoint "http://host:port" formatında geliyor,
-            // MinIO client sadece "host:port" bekliyor — scheme'i strip et
+            // MinIO client sadece "host:port" bekliyor — scheme'i strip et.
+            //
+            // Yalnız GERÇEK http/https şeması varsa strip et (#79): Uri.TryCreate("localhost:9000",
+            // Absolute) true döner — "localhost" şema, "9000" path olarak parse edilir — ama "//"
+            // olmadığı için Authority BOŞ string'tir. Şema kontrolü olmadan şemasız host:port
+            // değeri (appsettings.Development.json'daki gibi) endpoint'i boşaltıp uygulamayı
+            // açılışta düşürüyordu: "is the value of the endpoint. It can't be null or empty."
             var endpoint = options.Endpoint;
-            if (Uri.TryCreate(endpoint, UriKind.Absolute, out var uri))
+            if (Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
             {
                 endpoint = uri.Authority;
-                if (uri.Scheme == "https")
+                if (uri.Scheme == Uri.UriSchemeHttps)
                     options.UseSSL = true;
             }
 
