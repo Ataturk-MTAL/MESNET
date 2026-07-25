@@ -1,6 +1,6 @@
 using Marten;
-using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Shared;
+using MESNET.Payment.Application.Commands;
 using MESNET.Payment.Application.Errors;
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.Enums;
@@ -30,57 +30,62 @@ public class PaymentSaga : Saga
     public bool TeacherApproved { get; set; }
     public bool DeputyApproved { get; set; }
 
-    // ─── START: Attendance'dan maaş hesaplama tetiklenir ───
+    // ─── START: CalculateMonthlySalary ile maaş dönemi açılır ───
+    // Giriş mesajı bilinçli olarak AttendanceMarked DEĞİL: doğrudan devamsızlık olayıyla
+    // başlayınca her giriş yeni bir saga açıyordu (#62). Artık SalaryTriggerConsumer araya
+    // giriyor, kimliği (öğrenci, ay) ikilisinden deterministik üretiyor ve kayıt zaten varsa
+    // hiç tetiklemiyor. Aynı komut #63'teki aylık zamanlayıcının da giriş noktası olacak.
+    //
     // Marten 9 senkron veri erişimini kaldırdı; .FirstOrDefault() burada
-    // "As of Marten 9.0, only asynchronous data access is supported" fırlatıyordu ve
-    // AttendanceMarked her seferinde dead letter'a düşüyordu — yani hiç saga oluşmuyordu (#73).
-    // Saga başlangıcı BİRDEN ÇOK cascading mesaj döndürüyorsa `OutgoingMessages` kullanılmalı.
-    // (PaymentSaga, SalaryCalculated, ReceiptUploadRequested) şeklindeki 3'lü tuple'da Wolverine
-    // yalnız 1. elemanı saga olarak alıyor, 2. ve 3. elemanları sessizce düşürüyordu — ne
-    // SalaryCalculated yayınlanıyor ne dead letter oluşuyordu, PaymentSummary hiç yaratılmıyordu.
+    // "As of Marten 9.0, only asynchronous data access is supported" fırlatıyordu (#73).
+    // Birden çok cascading mesaj `OutgoingMessages` ile döndürülmeli — 3'lü tuple'da Wolverine
+    // yalnız 1. elemanı saga olarak alıp diğerlerini sessizce düşürüyordu.
     // Async başlangıcın konvansiyondaki adı StartAsync.
     public static async Task<(PaymentSaga, OutgoingMessages)> StartAsync(
-        AttendanceMarked @event,
+        CalculateMonthlySalary command,
         IDocumentSession session)
     {
-        var salaryId = Guid.NewGuid();
-        var month = @event.Date.ToString("yyyy-MM");
-
         // SalaryCalculationConfig'den parametreleri al
         var config = await session.Query<SalaryCalculationConfig>()
-            .Where(c => c.InstitutionId == @event.InstitutionId)
-            .Where(c => c.EffectiveFrom <= @event.Date && (c.EffectiveTo == null || c.EffectiveTo >= @event.Date))
+            .Where(c => c.InstitutionId == command.InstitutionId)
+            .Where(c => c.EffectiveFrom <= command.ReferenceDate
+                        && (c.EffectiveTo == null || c.EffectiveTo >= command.ReferenceDate))
             .FirstOrDefaultAsync();
 
-        // 3308 Madde 25 formülü (placeholder — gerçek implementasyonda business size, MEM durumu, devamsızlık hesabı yapılacak)
+        // 3308 Madde 25 formülü (placeholder — işletme büyüklüğü, MESEM durumu ve devamsızlık
+        // kesintisi hâlâ hesaba katılmıyor; taban ücret ham asgari ücret olarak alınıyor → #64)
         decimal baseWage = config?.MinimumWage ?? 6631.40m;
-        decimal deduction = 0m;             // TODO: Devamsızlık × günlük ücret
+        decimal deduction = 0m;             // TODO: Devamsızlık × günlük ücret (#64)
         decimal netAmount = baseWage - deduction;
-        decimal govContrib = netAmount * 0.3333m;  // TODO: Devlet katkısı oranı (config'den)
+        decimal govContrib = netAmount * 0.3333m;  // TODO: Devlet katkısı oranı config'den (#64)
+
+        var receiptDueDate = new DateTime(
+            command.ReferenceDate.Year, command.ReferenceDate.Month, 8, 23, 59, 59);
 
         var saga = new PaymentSaga
         {
-            Id = salaryId,
-            StudentId = @event.StudentId,
-            BusinessId = @event.BusinessId,
-            InstitutionId = @event.InstitutionId,
-            AcademicPeriodId = @event.AcademicPeriodId,
-            Month = month,
+            Id = command.SalaryPeriodId,
+            StudentId = command.StudentId,
+            BusinessId = command.BusinessId,
+            InstitutionId = command.InstitutionId,
+            AcademicPeriodId = command.AcademicPeriodId,
+            Month = command.Month,
             BaseWage = baseWage,
             DeductionAmount = deduction,
             NetAmount = netAmount,
             GovernmentContribution = govContrib,
             Phase = PaymentPhase.AwaitingReceipt,
-            ReceiptDueDate = new DateTime(@event.Date.Year, @event.Date.Month, 8, 23, 59, 59)
+            ReceiptDueDate = receiptDueDate
         };
 
         var messages = new OutgoingMessages
         {
             new SalaryCalculated(
-                salaryId, @event.StudentId, @event.AcademicPeriodId, month,
-                netAmount, baseWage, deduction, govContrib),
+                command.SalaryPeriodId, command.StudentId, command.BusinessId,
+                command.InstitutionId, command.AcademicPeriodId, command.Month,
+                netAmount, baseWage, deduction, govContrib, receiptDueDate),
             new ReceiptUploadRequested(
-                salaryId, @event.StudentId, @event.BusinessId, saga.ReceiptDueDate)
+                command.SalaryPeriodId, command.StudentId, command.BusinessId, receiptDueDate)
         };
 
         return (saga, messages);

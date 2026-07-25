@@ -20,6 +20,10 @@ public static class PaymentSummaryConsumer
         {
             Id = @event.SalaryPeriodId,
             StudentId = @event.StudentId,
+            // BusinessId/InstitutionId/ReceiptDueDate atanmadığı sürece özet kaydı boş Guid ve
+            // null tarihle yazılıyordu; işletme/kurum filtreleri ve son-gün indeksi ölüydü (#74).
+            BusinessId = @event.BusinessId,
+            InstitutionId = @event.InstitutionId,
             AcademicPeriodId = @event.AcademicPeriodId,
             Month = @event.Month,
             BaseWage = @event.BaseWage,
@@ -27,6 +31,7 @@ public static class PaymentSummaryConsumer
             NetAmount = @event.NetAmount,
             GovernmentContribution = @event.GovContribution,
             EmployerPayment = @event.NetAmount - @event.GovContribution,
+            ReceiptDueDate = @event.ReceiptDueDate,
             Phase = PaymentPhase.Calculated,
             LastUpdated = DateTime.UtcNow,
             StudentName = profile?.FullName ?? "",
