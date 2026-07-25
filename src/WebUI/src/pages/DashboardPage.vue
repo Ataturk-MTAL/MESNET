@@ -131,8 +131,8 @@
               separator
             >
               <q-item
-                v-for="(n, i) in recentNotifications"
-                :key="i"
+                v-for="n in recentNotifications"
+                :key="n.id"
                 dense
               >
                 <q-item-section avatar>

@@ -112,6 +112,11 @@
 import { ref, computed, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 
+// Kök öğe q-table değil, sarmalayıcı <div>. inheritAttrs açık kalsaydı tanımsız her
+// öznitelik (class, dense, selection...) hem köke düşer hem de v-bind="$attrs" ile
+// q-table'a geçerdi — çift uygulama. Yalnız q-table alsın.
+defineOptions({ inheritAttrs: false })
+
 type QTablePagination = NonNullable<QTableProps['pagination']>
 
 interface Props {

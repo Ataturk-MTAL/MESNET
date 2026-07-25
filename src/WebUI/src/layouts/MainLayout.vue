@@ -51,7 +51,7 @@
               </q-item>
               <q-item
                 v-for="(n, i) in notificationStore.notifications.slice(0, 10)"
-                :key="i"
+                :key="n.id"
                 dense
                 :class="{ 'bg-blue-1': !n.read }"
               >

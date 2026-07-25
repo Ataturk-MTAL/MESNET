@@ -3,6 +3,12 @@ import { defineStore } from 'pinia'
 import { useAuthStore } from 'stores/auth'
 
 export interface SseNotification {
+  /**
+   * İstemci tarafında üretilen kararlı kimlik — SSE payload'unda id yoktur.
+   * v-for :key için gerekli: liste başa ekleniyor (unshift), bu yüzden dizi indeksi her
+   * yeni bildirimde kayar ve indeks anahtarı aynı bildirimi "yeni öğe" gibi gösterir.
+   */
+  id: string
   eventType: string
   module: string
   payload: unknown
@@ -26,6 +32,9 @@ export const useNotificationStore = defineStore('notifications', () => {
   const connected = ref(false)
 
   let abortController: AbortController | null = null
+
+  /** Bildirim kimliği için artan sayaç — aynı ms'te gelen iki olay bile çakışmaz. */
+  let notificationCounter = 0
 
   async function connect() {
     if (connected.value) return
@@ -72,7 +81,11 @@ export const useNotificationStore = defineStore('notifications', () => {
           if (notification) {
             // Sistem eventlerini (connection.established, keepalive) filtrele
             if (notification.eventType !== 'connection.established') {
-              notifications.value.unshift({ ...notification, read: false })
+              notifications.value.unshift({
+                ...notification,
+                id: `sse-${++notificationCounter}`,
+                read: false,
+              })
               // Max 50 bildirim tut
               if (notifications.value.length > 50) {
                 notifications.value.pop()

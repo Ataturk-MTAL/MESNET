@@ -65,10 +65,13 @@
             <q-icon name="email" />
           </template>
         </q-input>
+        <!-- Kaynakta engelle: güvensiz şema kaydedilirse görüntüleyen herkes risk altında. -->
         <q-input
           v-model="form.webUrl"
           label="Web Sitesi"
           outlined
+          :rules="[webUrlRule]"
+          lazy-rules
         >
           <template #prepend>
             <q-icon name="language" />
@@ -105,6 +108,13 @@ import { useRouter } from 'vue-router'
 import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useInstitutionStore } from 'stores/institution'
+import { isSafeUrl } from 'utils/safeUrl'
+
+/** Boş geçilebilir; doluysa yalnız http(s) kabul edilir. */
+function webUrlRule(value: string): true | string {
+  if (!value) return true
+  return isSafeUrl(value) || 'Geçerli bir web adresi girin (yalnız http/https).'
+}
 
 const router = useRouter()
 const notify = useNotify()

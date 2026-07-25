@@ -132,14 +132,39 @@ export function useNavigation() {
       .filter(Boolean) as NavGroup[]
   })
 
-  // Expand state — localStorage ile kalıcı
-  const expandedGroups = ref<Record<string, boolean>>(
-    JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'),
-  )
+  // Expand state — localStorage ile kalıcı.
+  //
+  // Okuma ve yazma korumalı: bu composable MainLayout'un setup'ında senkron çalışır.
+  // Bozuk bir JSON değeri (elle düzenleme, yarım yazma, ileride şema değişikliği) burada
+  // fırlatırsa TÜM ana düzen render edilemez ve kullanıcı localStorage'ı elle temizleyene
+  // kadar uygulamaya giremez. Yazma tarafı da kotayı dolduran ya da özel modda depolamayı
+  // kapatan tarayıcılarda fırlatabilir. Menü açık/kapalı durumu kritik veri değil —
+  // hata yutulmaz, varsayılana düşülür.
+  function loadExpandedGroups(): Record<string, boolean> {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return {}
+      const parsed: unknown = JSON.parse(raw)
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {}
+      return parsed as Record<string, boolean>
+    } catch {
+      return {}
+    }
+  }
+
+  function persistExpandedGroups() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups.value))
+    } catch {
+      // Kalıcılık kaybı kabul edilebilir; menü bu oturumda çalışmaya devam eder.
+    }
+  }
+
+  const expandedGroups = ref<Record<string, boolean>>(loadExpandedGroups())
 
   function toggleGroup(key: string) {
     expandedGroups.value[key] = !expandedGroups.value[key]
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups.value))
+    persistExpandedGroups()
   }
 
   function isExpanded(key: string): boolean {
@@ -163,7 +188,7 @@ export function useNavigation() {
     (key) => {
       if (key && !expandedGroups.value[key]) {
         expandedGroups.value[key] = true
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups.value))
+        persistExpandedGroups()
       }
     },
     { immediate: true },
