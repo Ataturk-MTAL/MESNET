@@ -12,6 +12,13 @@ public sealed record NotificationTarget
     public IReadOnlyList<Guid>? UserIds { get; init; }
 
     /// <summary>
+    /// Hedeflenen öğrenci profili ID'leri. Kullanıcının Keycloak ID'si yerine öğrenci
+    /// profili ID'siyle hedefleme sağlar — bir modül, öğrencinin kullanıcı hesabını
+    /// bilmeden ona bildirim gönderebilir (#69). SseUserContext.StudentId ile eşleşir.
+    /// </summary>
+    public IReadOnlyList<Guid>? StudentIds { get; init; }
+
+    /// <summary>
     /// Belirli bir kuruma ait tüm kullanıcılar
     /// </summary>
     public Guid? InstitutionId { get; init; }

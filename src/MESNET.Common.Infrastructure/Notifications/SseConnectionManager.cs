@@ -53,6 +53,11 @@ internal sealed class SseConnectionManager
         if (target.UserIds is { Count: > 0 } && target.UserIds.Contains(user.UserId))
             return true;
 
+        // Öğrenci profili eşleşme — modüller öğrencinin Keycloak ID'sini bilmeden hedefleyebilsin (#69)
+        if (target.StudentIds is { Count: > 0 } && user.StudentId.HasValue
+            && target.StudentIds.Contains(user.StudentId.Value))
+            return true;
+
         // InstitutionId eşleşme
         if (target.InstitutionId.HasValue && user.InstitutionId == target.InstitutionId.Value)
             return true;

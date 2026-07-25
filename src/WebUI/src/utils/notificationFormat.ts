@@ -30,6 +30,8 @@ export const EVENT_LABELS: Record<string, string> = {
   'attendance.corrected': 'Devamsızlık düzeltildi',
   'payment.calculated': 'Maaş hesaplandı',
   'payment.receipt.uploaded': 'Dekont yüklendi',
+  'payment.receipt-overdue.student': 'Dekont gecikti — kendiniz yükleyebilirsiniz',
+  'payment.receipt-overdue.approver': 'Dekont son gününde yüklenmedi',
   'payment.approved': 'Ödeme onaylandı',
   'business.registered': 'Yeni işletme kaydedildi',
   'business.approved': 'İşletme onaylandı',
