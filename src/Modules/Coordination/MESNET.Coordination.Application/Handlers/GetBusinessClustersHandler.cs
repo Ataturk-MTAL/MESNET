@@ -63,6 +63,11 @@ public static class GetBusinessClustersHandler
     {
         var result = new List<BusinessClusterDto>();
 
+        // Raw ADO.NET, Marten'ın tembel tablo oluşturmasını atlar — yeni veritabanında tablo
+        // henüz yoksa sorgu 42P01 ile düşüp HTTP 500 üretir. Şemayı açıkça garanti et (#67).
+        await store.Storage.Database.EnsureStorageExistsAsync(
+            typeof(Core.ReadModels.BusinessCoordinationView), cancellationToken);
+
         var conn = store.Storage.Database.CreateConnection();
         await conn.OpenAsync(cancellationToken);
         await using (conn)
