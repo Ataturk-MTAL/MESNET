@@ -40,13 +40,19 @@ public static class SalaryCalculator
     /// Ay içindeki onaylanmış, ücret kesintisine tabi devamsızlık gün sayısı — mazeretsiz
     /// devamsızlık ve ücretsiz izin günleri (<c>AbsenceType.AffectsSalary</c>).
     /// </param>
+    /// <param name="agreedMonthlyWage">
+    /// Sözleşmede taahhüt edilen aylık ücret (#84). 3308 Madde 25: ücret "düzenlenecek sözleşme
+    /// ile tespit edilir", kanundaki yüzdeler yalnız ALT SINIRDIR ("aşağı ücret ödenemez").
+    /// null veya yasal tabandan düşükse yasal taban uygulanır.
+    /// </param>
     public static Result Calculate(
         SalaryCalculationConfig config,
         int personnelCount,
         string educationTypeName,
         int classYear,
         bool hasJourneymanQualification,
-        int deductibleAbsenceDays)
+        int deductibleAbsenceDays,
+        decimal? agreedMonthlyWage = null)
     {
         var isMesem = string.Equals(educationTypeName, MesemEducationType, StringComparison.OrdinalIgnoreCase);
         var isLargeBusiness = personnelCount >= config.PersonnelThreshold;
@@ -61,7 +67,14 @@ public static class SalaryCalculator
                 ? config.LargeBusinessRate
                 : config.SmallBusinessRate;
 
-        var baseWage = config.MinimumWage * baseRate;
+        // Yasal taban — 3308 Madde 25'in altına inilemeyecek tutar.
+        var statutoryFloor = config.MinimumWage * baseRate;
+
+        // Sözleşmede taahhüt edilen ücret varsa ve yasal tabandan yüksekse esas alınan odur (#84).
+        // Düşükse sözleşme kanuna aykırıdır; sistem taban ücreti ödemeye devam eder.
+        var baseWage = agreedMonthlyWage is { } agreed && agreed > statutoryFloor
+            ? agreed
+            : statutoryFloor;
 
         // §6.2 Devamsızlık kesintisi — mazeretsiz devamsızlık ve ücretsiz izin günleri.
         var dailyWage = baseWage / DaysInSalaryMonth;
@@ -86,7 +99,10 @@ public static class SalaryCalculator
         // düşürüp düşürmediği kanunda yazmıyor (Geçici Madde 12: "usul ve esaslar Bakanlık ve
         // Türkiye İş Kurumu tarafından belirlenir") — bu tavan, ikincil mevzuat netleşene kadar
         // güvenli sınır. Normal devamsızlık seviyelerinde devreye girmez.
-        var govContribution = Math.Min(baseWage * govRate, netAmount);
+        // Matrah YASAL TABAN, sözleşmedeki fazlası değil (#84): Geçici Madde 12 katkıyı
+        // "ödenebilecek EN AZ ücret" üzerinden tanımlıyor. İşletme daha yüksek ücret ödemeyi
+        // seçtiyse aradaki fark işveren payına eklenir, devlet katkısını büyütmez.
+        var govContribution = Math.Min(statutoryFloor * govRate, netAmount);
 
         return new Result(baseWage, deduction, netAmount, govContribution);
     }

@@ -112,6 +112,20 @@
             <q-icon name="calendar_today" />
           </template>
         </q-input>
+
+        <q-input
+          v-model.number="form.agreedMonthlyWage"
+          label="Anlaşılan Aylık Ücret (₺)"
+          outlined
+          type="number"
+          min="0"
+          step="0.01"
+          hint="Boş bırakılırsa 3308 sayılı Kanun'daki yasal taban uygulanır. Yasal tabanın altında bir tutar girilse bile taban ödenir."
+        >
+          <template #prepend>
+            <q-icon name="payments" />
+          </template>
+        </q-input>
       </q-card-section>
 
       <q-separator />
@@ -159,6 +173,7 @@ const form = reactive({
   businessId: '',
   teacherId: '',
   startDate: '',
+  agreedMonthlyWage: null as number | null,
 })
 
 function goBack() {
@@ -174,6 +189,8 @@ async function handleSave() {
       institutionId: authStore.user?.institutionId ?? '',
       teacherId: form.teacherId || undefined,
       startDate: new Date(form.startDate).toISOString(),
+      // Boş bırakıldıysa alanı hiç gönderme — backend null'ı "yasal taban uygula" diye yorumluyor
+      ...(form.agreedMonthlyWage ? { agreedMonthlyWage: form.agreedMonthlyWage } : {}),
     })
     notify.success('Sözleşme oluşturuldu.')
     goBack()

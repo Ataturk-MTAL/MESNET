@@ -45,6 +45,7 @@ public static class CreateContractHandler
             command.AcademicPeriodId,
             command.TeacherId,
             command.StartDate,
+            command.AgreedMonthlyWage,
             DateTime.UtcNow);
 
         session.Events.StartStream<InternshipContract>(contractId, @event);

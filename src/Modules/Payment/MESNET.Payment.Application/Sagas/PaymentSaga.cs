@@ -137,13 +137,18 @@ public class PaymentSaga : Saga
 
         var deductibleDays = await CountDeductibleAbsenceDaysAsync(session, command.StudentId, command.Month);
 
+        // Sözleşmede taahhüt edilen ücret (#84). Yürürlükte sözleşme yoksa veya ücret
+        // belirtilmemişse null geçilir ve yasal taban uygulanır.
+        var contractWage = await session.LoadAsync<StudentContractWageView>(command.StudentId);
+
         return SalaryCalculator.Calculate(
             config,
             business?.PersonnelCount ?? 0,
             student?.EducationTypeName ?? "",
             student?.ClassYear ?? 0,
             student?.HasJourneymanQualification ?? false,
-            deductibleDays);
+            deductibleDays,
+            contractWage is { IsActive: true } ? contractWage.AgreedMonthlyWage : null);
     }
 
     /// <summary>

@@ -42,6 +42,9 @@ public class PaymentMartenConfig : IConfigureMarten
         options.Schema.For<PlacementView>().Index(x => x.StudentId);
         options.Schema.For<PlacementView>().Index(x => x.AcademicPeriodId);
 
+        // StudentContractWageView — Contract event'lerinden; sözleşme ücreti yasal tabanın üstündeyse esas alınır (#84)
+        options.Schema.For<StudentContractWageView>().DatabaseSchemaName("payment");
+
         // AcademicPeriodView — Institution event'lerinden (kapalı dönem kontrolü, #8)
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("payment");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
