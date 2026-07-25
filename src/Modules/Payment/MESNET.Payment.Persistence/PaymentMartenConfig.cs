@@ -37,6 +37,11 @@ public class PaymentMartenConfig : IConfigureMarten
         options.Schema.For<StudentAbsenceView>().Index(x => new { x.StudentId, x.Month },
             x => x.Name = "idx_absence_student_month");
 
+        // PlacementView — Enrollment event'lerinden; aylık maaş zamanlayıcısının çalışma listesi (#63)
+        options.Schema.For<PlacementView>().DatabaseSchemaName("payment");
+        options.Schema.For<PlacementView>().Index(x => x.StudentId);
+        options.Schema.For<PlacementView>().Index(x => x.AcademicPeriodId);
+
         // AcademicPeriodView — Institution event'lerinden (kapalı dönem kontrolü, #8)
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("payment");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);

@@ -27,25 +27,20 @@ namespace MESNET.Payment.Application.Consumers;
 /// </remarks>
 public static class SalaryTriggerConsumer
 {
-    public static async Task<object?> Handle(AttendanceMarked @event, IQuerySession session)
+    public static async Task<RecalculateMonthlySalary?> Handle(
+        AttendanceMarked @event, IQuerySession session)
     {
         var month = @event.Date.ToString("yyyy-MM");
         var salaryPeriodId = SalaryPeriodId.For(@event.StudentId, month);
 
+        // Maaş dönemini artık devamsızlık AÇMIYOR — MonthlySalarySchedulerService ay sonunda
+        // aktif yerleştirmeler için açıyor (#63). Devamsızlık yalnız kesintiyi etkiler.
+        // Ay sonu koşusundan önce gelen devamsızlıklar için henüz kayıt yoktur; o zaman
+        // yapılacak bir şey yok, hesap ay sonunda zaten biriken tüm günlerle yapılacak.
         var existing = await session.LoadAsync<PaymentSummary>(salaryPeriodId);
+        if (existing is null) return null;
 
-        // Ay için kayıt zaten varsa yeni saga açma — bunun yerine tutarı güncelle: kesinti
-        // ancak biriken devamsızlıkla doğru olur, ilk hesap hep tek gün üzerindendir (#64).
-        if (existing is not null)
-            return new RecalculateMonthlySalary(salaryPeriodId, @event.Date);
-
-        return new CalculateMonthlySalary(
-            salaryPeriodId,
-            @event.StudentId,
-            @event.BusinessId,
-            @event.InstitutionId,
-            @event.AcademicPeriodId,
-            month,
-            @event.Date);
+        // Ay sonu hesabından SONRA gelen düzeltme/geç giriş: tutarı güncelle.
+        return new RecalculateMonthlySalary(salaryPeriodId, @event.Date);
     }
 }
