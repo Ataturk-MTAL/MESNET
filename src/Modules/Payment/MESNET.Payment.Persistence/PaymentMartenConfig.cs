@@ -29,6 +29,14 @@ public class PaymentMartenConfig : IConfigureMarten
         options.Schema.For<StudentPaymentProfile>().DatabaseSchemaName("payment");
         options.Schema.For<StudentPaymentProfile>().Index(x => x.BranchCode);
 
+        // BusinessPaymentProfile — Business event'lerinden; taban ücret oranı personel sayısına bağlı (#64)
+        options.Schema.For<BusinessPaymentProfile>().DatabaseSchemaName("payment");
+
+        // StudentAbsenceView — Attendance event'lerinden; devamsızlık kesintisi buradan sayılır (#64)
+        options.Schema.For<StudentAbsenceView>().DatabaseSchemaName("payment");
+        options.Schema.For<StudentAbsenceView>().Index(x => new { x.StudentId, x.Month },
+            x => x.Name = "idx_absence_student_month");
+
         // AcademicPeriodView — Institution event'lerinden (kapalı dönem kontrolü, #8)
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("payment");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);

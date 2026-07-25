@@ -2,8 +2,10 @@ using Marten;
 using MESNET.Common.Shared;
 using MESNET.Payment.Application.Commands;
 using MESNET.Payment.Application.Errors;
+using MESNET.Payment.Application.Services;
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.Enums;
+using MESNET.Payment.Core.ReadModels;
 using MESNET.Payment.Shared.Events;
 using Wolverine;
 using Wolverine.Persistence.Sagas;
@@ -45,19 +47,7 @@ public class PaymentSaga : Saga
         CalculateMonthlySalary command,
         IDocumentSession session)
     {
-        // SalaryCalculationConfig'den parametreleri al
-        var config = await session.Query<SalaryCalculationConfig>()
-            .Where(c => c.InstitutionId == command.InstitutionId)
-            .Where(c => c.EffectiveFrom <= command.ReferenceDate
-                        && (c.EffectiveTo == null || c.EffectiveTo >= command.ReferenceDate))
-            .FirstOrDefaultAsync();
-
-        // 3308 Madde 25 formülü (placeholder — işletme büyüklüğü, MESEM durumu ve devamsızlık
-        // kesintisi hâlâ hesaba katılmıyor; taban ücret ham asgari ücret olarak alınıyor → #64)
-        decimal baseWage = config?.MinimumWage ?? 6631.40m;
-        decimal deduction = 0m;             // TODO: Devamsızlık × günlük ücret (#64)
-        decimal netAmount = baseWage - deduction;
-        decimal govContrib = netAmount * 0.3333m;  // TODO: Devlet katkısı oranı config'den (#64)
+        var result = await CalculateAsync(command, session);
 
         var receiptDueDate = new DateTime(
             command.ReferenceDate.Year, command.ReferenceDate.Month, 8, 23, 59, 59);
@@ -70,10 +60,10 @@ public class PaymentSaga : Saga
             InstitutionId = command.InstitutionId,
             AcademicPeriodId = command.AcademicPeriodId,
             Month = command.Month,
-            BaseWage = baseWage,
-            DeductionAmount = deduction,
-            NetAmount = netAmount,
-            GovernmentContribution = govContrib,
+            BaseWage = result.BaseWage,
+            DeductionAmount = result.Deduction,
+            NetAmount = result.NetAmount,
+            GovernmentContribution = result.GovernmentContribution,
             Phase = PaymentPhase.AwaitingReceipt,
             ReceiptDueDate = receiptDueDate
         };
@@ -83,13 +73,85 @@ public class PaymentSaga : Saga
             new SalaryCalculated(
                 command.SalaryPeriodId, command.StudentId, command.BusinessId,
                 command.InstitutionId, command.AcademicPeriodId, command.Month,
-                netAmount, baseWage, deduction, govContrib, receiptDueDate),
+                result.NetAmount, result.BaseWage, result.Deduction,
+                result.GovernmentContribution, receiptDueDate),
             new ReceiptUploadRequested(
                 command.SalaryPeriodId, command.StudentId, command.BusinessId, receiptDueDate)
         };
 
         return (saga, messages);
     }
+
+    // ─── HANDLE: Ay içinde yeni devamsızlık geldi, tutarı yeniden hesapla ───
+    // Kesinti ancak ay boyunca biriken devamsızlıkla doğru olur. Tetikleyici ayın ilk
+    // devamsızlığı olduğu için ilk hesap hep tek gün üzerinden çıkar; sonraki her giriş
+    // bu handler'la tutarı günceller. Yalnız dekont beklenirken geçerli — onay süreci
+    // başladıysa (dekont yüklendi, öğrenci/öğretmen onayladı) tutar dondurulur.
+    public async Task<SalaryRecalculated?> Handle(
+        [SagaIdentityFrom(nameof(RecalculateMonthlySalary.SalaryPeriodId))] RecalculateMonthlySalary command,
+        IQuerySession session)
+    {
+        // Onay süreci başladıysa tutar dondurulur — dekont yüklenmiş bir ödemenin tutarı
+        // sonradan değişirse öğrenci/öğretmen/müdür yrd. onayladıkları rakamdan başkasını almış olur.
+        if (Phase != PaymentPhase.AwaitingReceipt) return null;
+
+        var result = await CalculateAsync(
+            new CalculateMonthlySalary(
+                Id, StudentId, BusinessId, InstitutionId, AcademicPeriodId, Month, command.ReferenceDate),
+            session);
+
+        if (result.NetAmount == NetAmount && result.Deduction == DeductionAmount) return null;
+
+        BaseWage = result.BaseWage;
+        DeductionAmount = result.Deduction;
+        NetAmount = result.NetAmount;
+        GovernmentContribution = result.GovernmentContribution;
+
+        return new SalaryRecalculated(
+            Id, StudentId, Month,
+            result.NetAmount, result.BaseWage, result.Deduction, result.GovernmentContribution);
+    }
+
+    private static async Task<SalaryCalculator.Result> CalculateAsync(
+        CalculateMonthlySalary command, IQuerySession session)
+    {
+        var config = await session.Query<SalaryCalculationConfig>()
+            .Where(c => c.InstitutionId == command.InstitutionId)
+            .Where(c => c.EffectiveFrom <= command.ReferenceDate
+                        && (c.EffectiveTo == null || c.EffectiveTo >= command.ReferenceDate))
+            .FirstOrDefaultAsync();
+
+        // Config yoksa sessizce eski bir sabitle hesaplamak yanlış tutar üretir (#64) — hata ver.
+        if (config is null)
+            throw new DomainException(PaymentErrors.SalaryConfigMissing(command.InstitutionId));
+
+        var business = await session.LoadAsync<BusinessPaymentProfile>(command.BusinessId);
+        var student = await session.LoadAsync<StudentPaymentProfile>(command.StudentId);
+
+        var unexcusedDays = await CountUnexcusedDaysAsync(session, command.StudentId, command.Month);
+
+        return SalaryCalculator.Calculate(
+            config,
+            business?.PersonnelCount ?? 0,
+            student?.EducationTypeName ?? "",
+            student?.ClassYear ?? 0,
+            unexcusedDays);
+    }
+
+    /// <summary>
+    /// Onaylanmış mazeretsiz devamsızlık günü sayısı. <c>Pending</c> sayılmaz: işletmenin tek
+    /// taraflı girişi öğretmen onayı olmadan öğrencinin ücretini kesemez.
+    /// </summary>
+    private static Task<int> CountUnexcusedDaysAsync(IQuerySession session, Guid studentId, string month)
+        => session.Query<StudentAbsenceView>()
+            .Where(a => a.StudentId == studentId
+                        && a.Month == month
+                        && a.AbsenceTypeName == UnexcusedAbsence
+                        && a.StatusName != PendingStatus)
+            .CountAsync();
+
+    private const string UnexcusedAbsence = "Unexcused";
+    private const string PendingStatus = "Pending";
 
     // ─── HANDLE: İşletme dekontu yükledi ───
     // Saga korelasyonu: olaylar anahtarı `SalaryPeriodId` adıyla taşıyor. Wolverine'in varsayılan

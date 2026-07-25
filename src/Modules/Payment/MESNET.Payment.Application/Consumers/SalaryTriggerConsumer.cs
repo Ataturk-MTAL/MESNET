@@ -27,14 +27,17 @@ namespace MESNET.Payment.Application.Consumers;
 /// </remarks>
 public static class SalaryTriggerConsumer
 {
-    public static async Task<CalculateMonthlySalary?> Handle(
-        AttendanceMarked @event, IQuerySession session)
+    public static async Task<object?> Handle(AttendanceMarked @event, IQuerySession session)
     {
         var month = @event.Date.ToString("yyyy-MM");
         var salaryPeriodId = SalaryPeriodId.For(@event.StudentId, month);
 
         var existing = await session.LoadAsync<PaymentSummary>(salaryPeriodId);
-        if (existing is not null) return null;
+
+        // Ay için kayıt zaten varsa yeni saga açma — bunun yerine tutarı güncelle: kesinti
+        // ancak biriken devamsızlıkla doğru olur, ilk hesap hep tek gün üzerindendir (#64).
+        if (existing is not null)
+            return new RecalculateMonthlySalary(salaryPeriodId, @event.Date);
 
         return new CalculateMonthlySalary(
             salaryPeriodId,

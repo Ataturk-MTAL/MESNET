@@ -41,6 +41,22 @@ public static class PaymentSummaryConsumer
         session.Store(summary);
     }
 
+    // Ay içinde devamsızlık biriktikçe tutar güncellenir (#64). Faz değişmez —
+    // saga yalnız AwaitingReceipt'teyken yeniden hesaplar.
+    public static async Task Handle(SalaryRecalculated @event, IDocumentSession session)
+    {
+        var summary = await session.LoadAsync<PaymentSummary>(@event.SalaryPeriodId);
+        if (summary is null) return;
+
+        summary.BaseWage = @event.BaseWage;
+        summary.DeductionAmount = @event.Deduction;
+        summary.NetAmount = @event.NetAmount;
+        summary.GovernmentContribution = @event.GovContribution;
+        summary.EmployerPayment = @event.NetAmount - @event.GovContribution;
+        summary.LastUpdated = DateTime.UtcNow;
+        session.Store(summary);
+    }
+
     public static async Task Handle(ReceiptUploadedByBusiness @event, IDocumentSession session)
     {
         var summary = await session.LoadAsync<PaymentSummary>(@event.SalaryPeriodId);

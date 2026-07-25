@@ -16,6 +16,11 @@ public static class PaymentErrors
     public static Error OperationFailed(string operation, string message) =>
         new($"Payment.{operation}Failed", message);
 
+    // Config yoksa sessizce sabit bir tutarla hesaplamak yanlış para üretir — hata ver (#64).
+    public static Error SalaryConfigMissing(Guid institutionId) =>
+        new("Payment.SalaryConfigMissing",
+            $"Kuruma ait maaş hesaplama ayarı bulunamadı, ücret hesaplanamıyor: {institutionId}");
+
     public static Error AcademicPeriodClosed(Guid id) =>
         new("Payment.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, ödeme işlemi yapılamaz: {id}");
 }
