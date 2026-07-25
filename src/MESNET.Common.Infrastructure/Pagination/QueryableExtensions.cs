@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Reflection;
 using Marten;
 using MESNET.Common.Shared.Pagination;
 
@@ -7,9 +8,36 @@ namespace MESNET.Common.Infrastructure.Pagination;
 public static class QueryableExtensions
 {
     /// <summary>
+    /// <c>sortBy</c> ile sıralanmasına izin verilen skaler tipler. Query-string'den gelen ad
+    /// reflection ile eşlendiği için, izin listesi olmadan koleksiyon veya karmaşık tipteki bir
+    /// alan da sıralamaya girebiliyordu; PostgreSQL bunu ORDER BY'da çeviremeyip HTTP 500
+    /// üretiyordu (#65):
+    /// <code>GET /api/businesses?sortBy=Sectors
+    /// Npgsql.PostgresException: 22P02: malformed array literal: "[""Machinery""]"</code>
+    /// SmartEnum alanları da liste dışıdır: JSON'da skaler string oldukları için sorgu patlamaz
+    /// ama sıralama İngilizce <c>Name</c> değerine göre yapılır, kullanıcının gördüğü Türkçe
+    /// <c>Slug</c> sırasına göre değil. Sıralama gerekiyorsa entity'deki duplicate primitive
+    /// alan (<c>StatusName</c> vb.) kullanılmalıdır — bkz. CLAUDE.md SmartEnum LINQ kuralı.
+    /// </summary>
+    private static readonly HashSet<Type> SortableTypes =
+    [
+        typeof(string), typeof(bool), typeof(char), typeof(Guid),
+        typeof(DateTime), typeof(DateTimeOffset), typeof(DateOnly), typeof(TimeOnly), typeof(TimeSpan),
+        typeof(byte), typeof(sbyte), typeof(short), typeof(ushort),
+        typeof(int), typeof(uint), typeof(long), typeof(ulong),
+        typeof(decimal), typeof(double), typeof(float),
+    ];
+
+    private static bool IsSortable(PropertyInfo property)
+        => property.CanRead
+           && property.GetIndexParameters().Length == 0
+           && SortableTypes.Contains(
+               Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType);
+
+    /// <summary>
     /// String property adına göre dinamik sıralama uygular.
     /// Marten LINQ uyumlu expression-based OrderBy üretir.
-    /// sortBy null veya eşleşme yoksa defaultSort kullanılır.
+    /// sortBy null, eşleşme yok veya alan sıralanabilir tipte değilse defaultSort kullanılır.
     /// </summary>
     public static IQueryable<T> ApplySort<T>(
         this IQueryable<T> queryable,
@@ -20,7 +48,8 @@ public static class QueryableExtensions
         if (!string.IsNullOrWhiteSpace(sortBy))
         {
             var property = typeof(T).GetProperties()
-                .FirstOrDefault(p => p.Name.Equals(sortBy, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(p => p.Name.Equals(sortBy, StringComparison.OrdinalIgnoreCase)
+                                     && IsSortable(p));
 
             if (property is not null)
             {
