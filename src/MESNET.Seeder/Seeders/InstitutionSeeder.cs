@@ -77,8 +77,9 @@ public static class InstitutionSeeder
 
     private static async Task EnsureBranchesAsync(MesnetApiClient api, Guid institutionId)
     {
-        // Branch aktifleştirme idempotent değil (zaten varsa 422 döner, sorun yok)
-        // Specialization güncelleme idempotent (PUT — üzerine yazar)
+        // Branch aktifleştirme idempotent DEĞİL — zaten aktifse 422 "Alan 'EET' zaten aktif."
+        // döner. Önce mevcut branşları oku, yalnız eksik olanı POST et (#80).
+        // Specialization güncelleme idempotent (PUT — üzerine yazar), her koşuda çalışabilir.
         var branches = new[]
         {
             (Code: "EET", Specs: new[] { "EET-ETD", "EET-EBO" }, Label: "EET (Elektrik Tesisatları, Endüstriyel Bakım Onarım)"),
@@ -86,13 +87,45 @@ public static class InstitutionSeeder
             (Code: "MTT", Specs: new[] { "MTT-BMI", "MTT-MBO" }, Label: "MTT (Bilgisayarlı Makine İmalatı, Makine Bakım Onarım)"),
         };
 
+        var activeCodes = await GetActiveBranchCodesAsync(api, institutionId);
+
         foreach (var (code, specs, label) in branches)
         {
-            await api.PostAsync($"/api/institutions/{institutionId}/branches", new { fieldCode = code });
+            if (activeCodes.Contains(code))
+            {
+                Console.WriteLine($"  → Alan \"{label}\" zaten aktif");
+            }
+            else
+            {
+                var created = await api.PostAsync($"/api/institutions/{institutionId}/branches", new { fieldCode = code });
+                if (created is null)
+                {
+                    Console.WriteLine($"  ✗ Alan \"{label}\" aktifleştirilemedi — dallar atlanıyor");
+                    continue;
+                }
+                Console.WriteLine($"  ✓ Alan \"{label}\" aktif");
+            }
+
             await api.PutAsync($"/api/institutions/{institutionId}/branches/{code}/specializations",
                 new { activeSpecializations = specs });
-            Console.WriteLine($"  ✓ Alan \"{label}\" aktif");
         }
+    }
+
+    private static async Task<HashSet<string>> GetActiveBranchCodesAsync(MesnetApiClient api, Guid institutionId)
+    {
+        var codes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var inst = await api.GetAsync($"/api/institutions/{institutionId}");
+        if (inst is not { } instEl || !instEl.TryGetProperty("branches", out var branchArr)
+            || branchArr.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return codes;
+
+        foreach (var b in branchArr.EnumerateArray())
+        {
+            if (b.TryGetProperty("fieldCode", out var fc) && fc.GetString() is { } code)
+                codes.Add(code);
+        }
+
+        return codes;
     }
 
     private static async Task EnsureStaffAsync(MesnetApiClient api, KeycloakAdminService keycloak, Guid institutionId)
@@ -160,10 +193,12 @@ public static class InstitutionSeeder
     {
         try
         {
-            var periods = await api.GetAsync($"/api/institutions/{institutionId}/academic-periods");
-            if (periods is { } pArr && pArr.ValueKind == System.Text.Json.JsonValueKind.Array && pArr.GetArrayLength() > 0)
+            // Endpoint PagedResult döndürüyor ({ items: [...] }); eskiden düz dizi bekleniyordu,
+            // bu yüzden kontrol hiç tutmuyor ve her koşuda 422 "Bu dönem zaten mevcut" alınıyordu (#80).
+            var periods = await api.GetListAsync($"/api/institutions/{institutionId}/academic-periods");
+            if (periods.Count > 0)
             {
-                var periodId = pArr[0].GetProperty("id").GetGuid();
+                var periodId = periods[0].GetProperty("id").GetGuid();
                 ctx.Set("AcademicPeriod", periodId);
                 Console.WriteLine($"  → Akademik dönem mevcut (id: {periodId.ToString()[..8]}...)");
                 return;
@@ -179,11 +214,16 @@ public static class InstitutionSeeder
             startDate = "2025-09-08",
             endDate = "2026-06-19"
         });
-        if (data is not null)
+
+        // Başarısız çağrıdan sonra başarı satırı basma (#80) — ayrıca ctx boş kalırsa
+        // sonraki seeder'lar akademik dönemsiz çalışır, sessizce yanlış veri üretirdi.
+        if (data is null)
         {
-            var periodId = data.Value.GetProperty("id").GetGuid();
-            ctx.Set("AcademicPeriod", periodId);
+            Console.WriteLine("  ✗ Akademik dönem \"2025-2026\" oluşturulamadı");
+            return;
         }
+
+        ctx.Set("AcademicPeriod", data.Value.GetProperty("id").GetGuid());
         Console.WriteLine("  ✓ Akademik dönem \"2025-2026\" oluşturuldu");
     }
 }

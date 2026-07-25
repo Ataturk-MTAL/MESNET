@@ -90,5 +90,16 @@ catch (HttpRequestException ex)
 
 sw.Stop();
 Console.WriteLine();
+
+// Başarısız çağrılar sessizce yutulmasın (#80): "Tamamlandı" yazısı, aralarda 422 alınmışken
+// de basılıyordu. Artık hata sayısı özetlenir ve sıfırdan farklıysa çıkış kodu 2 olur —
+// CI'da seeder adımı bu sayede kırmızıya düşebilir.
+if (api.FailureCount > 0)
+{
+    Console.WriteLine($"═══ {api.FailureCount} başarısız çağrıyla bitti ({sw.Elapsed.TotalSeconds:F1}s) ═══");
+    Console.WriteLine("  Yukarıdaki ✗ satırlarına bakın.");
+    return 2;
+}
+
 Console.WriteLine($"═══ Tamamlandı ({sw.Elapsed.TotalSeconds:F1}s) ═══");
 return 0;

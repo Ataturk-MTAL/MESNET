@@ -155,6 +155,15 @@ jobs:
           KEYCLOAK_TOKEN_URL: http://localhost:8080/realms/mesnet/protocol/openid-connect/token
         run: dotnet test tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj -c Release --logger 'console;verbosity=normal'
 
+      # Seeder BOŞ veritabanında koşar — asıl idempotency/gövde sınavı bu (#80). Testlerden
+      # SONRA çalışır ki seed edilen veri test beklentilerini bozmasın. Seeder artık başarısız
+      # çağrı sayısını özetliyor ve sıfırdan farklıysa çıkış kodu 2 dönüyor.
+      - name: Seeder (boş veritabanında)
+        env:
+          Seeder__ApiBaseUrl: http://127.0.0.1:5270
+          Seeder__KeycloakTokenUrl: http://localhost:8080/realms/mesnet/protocol/openid-connect/token
+        run: dotnet run --project src/MESNET.Seeder -c Release
+
       # Başarısızlıkta kök nedeni görmek için: 500'ler API log'unda, bağlantı hataları konteynerlerde.
       - name: Başarısızlıkta log'lar
         if: failure()
