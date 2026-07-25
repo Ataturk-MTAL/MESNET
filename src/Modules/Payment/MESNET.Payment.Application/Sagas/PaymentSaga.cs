@@ -119,6 +119,9 @@ public class PaymentSaga : Saga
             .Where(c => c.InstitutionId == command.InstitutionId)
             .Where(c => c.EffectiveFrom <= command.ReferenceDate
                         && (c.EffectiveTo == null || c.EffectiveTo >= command.ReferenceDate))
+            // Birden fazla kayıt eşleşirse en yenisi geçerlidir; sıralama olmadan hangisinin
+            // geleceği belirsizdi ve tutar çalıştırmadan çalıştırmaya değişebilirdi (#75).
+            .OrderByDescending(c => c.EffectiveFrom)
             .FirstOrDefaultAsync();
 
         // Config yoksa sessizce eski bir sabitle hesaplamak yanlış tutar üretir (#64) — hata ver.
