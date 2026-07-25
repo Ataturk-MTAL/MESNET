@@ -4,6 +4,54 @@
  */
 
 /*
+ * macOS'ta metin varsayılan olarak bir tık kalın çiziliyor; antialiased kesim
+ * arayüz tipografisini olması gereken ağırlığa getirir.
+ */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * Sabit genişlikli rakamlar.
+ *
+ * Orantılı fontta "1" ile "8" farklı genişliktedir; sayı değişince sütun kayar ve
+ * göz zıplar. tabular-nums YALNIZ rakam glifini etkiler, harflere dokunmaz — bu
+ * yüzden karışık içerikli tablo hücrelerinde de güvenle uygulanabilir.
+ *
+ * Kapsam: tablo hücreleri (144 q-td), sayaç kartları ve elle işaretlenen yerler.
+ */
+.q-table th,
+.q-table td,
+.stat-value,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Metin sarma.
+ *
+ * balance → başlıklar ve kısa etiketler; son satırda tek kelime kalmasın.
+ *   Tarayıcılar bunu sınırlı satır sayısında uygular (genelde <= 6), uzun metinde
+ *   kendiliğinden devre dışı kalır.
+ * pretty  → kısa/orta açıklama ve caption metinleri.
+ *
+ * Uzun düz metin, kod ve <pre> içeriğine UYGULANMAZ — oralarda satır kırma
+ * maliyeti faydasından büyük.
+ */
+.text-h3,
+.text-h4,
+.text-h5,
+.text-h6 {
+  text-wrap: balance;
+}
+
+.text-caption,
+.q-item__label--caption {
+  text-wrap: pretty;
+}
+
+/*
  * Hareket azaltma tercihi (WCAG 2.3.3).
  *
  * İşletim sistemi düzeyinde "hareketi azalt" seçen kullanıcıya animasyon gönderilmez.
