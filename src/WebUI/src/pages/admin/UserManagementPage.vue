@@ -116,8 +116,11 @@
                   dense
                   :icon="row.isEnabled ? 'person_off' : 'person'"
                   :color="row.isEnabled ? 'negative' : 'positive'"
+                  :aria-label="row.isEnabled ? 'Kullanıcıyı pasifleştir' : 'Kullanıcıyı aktifleştir'"
                   @click="toggleStatus(row)"
-                />
+                >
+                  <q-tooltip>{{ row.isEnabled ? 'Pasifleştir' : 'Aktifleştir' }}</q-tooltip>
+                </q-btn>
               </PermissionGuard>
             </q-td>
           </template>
@@ -157,8 +160,11 @@
                   dense
                   icon="check"
                   color="positive"
+                  aria-label="Daveti onayla"
                   @click="approveInvitation(row)"
-                />
+                >
+                  <q-tooltip>Onayla</q-tooltip>
+                </q-btn>
                 <q-btn
                   v-if="row.status === 'PendingApproval'"
                   flat
@@ -166,8 +172,11 @@
                   dense
                   icon="close"
                   color="negative"
+                  aria-label="Daveti reddet"
                   @click="rejectInvitation(row)"
-                />
+                >
+                  <q-tooltip>Reddet</q-tooltip>
+                </q-btn>
               </PermissionGuard>
               <q-btn
                 v-if="row.status === 'Approved'"
@@ -176,8 +185,11 @@
                 dense
                 icon="send"
                 color="primary"
+                aria-label="Daveti yeniden gönder"
                 @click="resendInvitation(row)"
-              />
+              >
+                <q-tooltip>Yeniden gönder</q-tooltip>
+              </q-btn>
             </q-td>
           </template>
         </AppTable>

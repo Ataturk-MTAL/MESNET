@@ -33,8 +33,12 @@
         icon="close"
         size="xs"
         color="grey-6"
+        class="clear-route-btn"
+        aria-label="Rota seçimini temizle"
         @click="clearRoute"
-      />
+      >
+        <q-tooltip>Rota seçimini temizle</q-tooltip>
+      </q-btn>
     </div>
 
     <!-- Harita -->
@@ -165,6 +169,7 @@
                     icon="check"
                     color="positive"
                     size="sm"
+                    aria-label="Koordinasyon saatini kaydet ve kapat"
                     @click.stop="savePopupHours(biz.businessId)"
                   >
                     <q-tooltip>Kaydet ve kapat</q-tooltip>
@@ -378,5 +383,11 @@ function formatDuration(seconds: number): string {
 <style scoped>
 .cluster-map-wrapper {
   width: 100%;
+}
+
+/* Dokunma hedefi WCAG 2.2 SC 2.5.8 (24x24 CSS px) — size="xs" görsel olarak küçük kalıyor. */
+.clear-route-btn {
+  min-width: 24px;
+  min-height: 24px;
 }
 </style>

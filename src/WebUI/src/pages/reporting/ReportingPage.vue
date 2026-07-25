@@ -44,8 +44,11 @@
           flat
           round
           :loading="loading"
+          aria-label="Listeyi yenile"
           @click="load"
-        />
+        >
+          <q-tooltip>Yenile</q-tooltip>
+        </q-btn>
       </div>
     </div>
 

@@ -4,6 +4,8 @@ import { Quasar, Notify, Loading, Dialog } from 'quasar'
 import quasarTR from 'quasar/lang/tr'
 import '@quasar/extras/material-icons/material-icons.css'
 import 'quasar/src/css/index.sass'
+// Quasar CSS'inden SONRA: uygulama geneli kurallar (hareket azaltma tercihi) öncelik kazansın
+import './assets/app.css'
 
 import App from './App.vue'
 import router from './router'

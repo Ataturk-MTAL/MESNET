@@ -372,6 +372,7 @@
                             icon="history"
                             color="grey-7"
                             size="sm"
+                            aria-label="Atama geçmişini göster"
                             @click="showHistory(biz.businessId, biz.businessName)"
                           >
                             <q-tooltip>Atama geçmişi</q-tooltip>
@@ -384,6 +385,7 @@
                             icon="close"
                             color="red-5"
                             size="sm"
+                            aria-label="Atamayı kaldır"
                             @click="removeAssignment(biz)"
                           >
                             <q-tooltip>Atamayı kaldır</q-tooltip>
@@ -763,6 +765,7 @@
                         color="grey-6"
                         size="xs"
                         class="q-ml-xs"
+                        aria-label="Atama geçmişini göster"
                         @click="showHistory(biz.businessId, biz.businessName)"
                       >
                         <q-tooltip>Atama geçmişi</q-tooltip>
@@ -1279,7 +1282,10 @@ onMounted(async () => {
   border-radius: 8px;
   padding: 10px 12px;
   cursor: grab;
-  transition: all 0.2s;
+  /* Hover'da değişen üç özellik — transition: all değil. */
+  transition-property: box-shadow, border-color, transform;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-out;
   user-select: none;
 }
 
