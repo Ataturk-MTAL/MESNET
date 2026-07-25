@@ -340,7 +340,25 @@ DevletKatkısı = AylıkTabanÜcret × DevletKatkısıOranı
 
 - İşletme her ayın **8'ine kadar** öğrenci banka hesabına ücret yatırır
 - Dekont her ayın **25'ine kadar** okula teslim edilir
-- Dekont onay zinciri: İşletme → Öğretmen → Kurum → Öğrenci onayı
+
+**Dekont onay zinciri** (sıra zorunludur, atlanırsa HTTP 422):
+
+| # | Aktör | İşlem | Faz (`PaymentPhase`) |
+|---|-------|-------|----------------------|
+| 1 | İşletme | Dekontu yükler | `ReceiptUploaded` |
+| 2 | **Öğrenci** | Parayı hesabına aldığını onaylar | `StudentConfirmed` |
+| 3 | Koordinatör öğretmen | Dekontu onaylar | `TeacherApproved` |
+| 4 | Müdür yardımcısı | Son onayı verir | `DeputyApproved` → `Completed` |
+
+Öğrenci onayı **ilk sırada** çünkü dekont, ödemenin *yapılmış olduğunun* belgesidir; paranın
+gerçekten hesaba geçtiğini doğrulayabilecek tek taraf öğrencidir. Okul tarafı (öğretmen, müdür
+yardımcısı) bu doğrulamadan önce onay verirse, kimsenin teyit etmediği bir ödemeyi onaylamış olur.
+
+Sıra saga (`PaymentSaga`) içindeki guard'larla ve üç handler'daki faz kontrolüyle zorlanır:
+`ConfirmSalaryHandler`, `ApproveReceiptByTeacherHandler`, `ApproveReceiptByDeputyHandler`.
+
+> Bu tabloda "müdür yardımcısı" denen aktör, eski metinde "Kurum" olarak geçiyordu — kodda
+> karşılığı `ReceiptApprovedByDeputy` / `PaymentPhase.DeputyApproved`'dır (#81).
 
 ---
 

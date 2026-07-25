@@ -548,12 +548,12 @@ Attendance → AttendanceLimitExceeded event
   → Contract dinler → sözleşme fesih sürecini başlatır
 ```
 
-**Dekont onay zinciri:**
+**Dekont onay zinciri:** (sıra zorunlu — bkz. business-rules.md §6.6)
 ```
-Payment → ReceiptUploaded (işletme)
-  → ReceiptApprovedByTeacher (öğretmen onayı)
-  → ReceiptApprovedByInstitution (kurum onayı)
-  → SalaryConfirmedByStudent (öğrenci onayı)
+Payment → ReceiptUploadedByBusiness (işletme dekontu yükler)
+  → SalaryConfirmedByStudent (öğrenci parayı aldığını onaylar)
+  → ReceiptApprovedByTeacher (koordinatör öğretmen onaylar)
+  → ReceiptApprovedByDeputy (müdür yardımcısı son onay) → PaymentCompleted
 ```
 
 **Internship saga — staj yaşam döngüsü:**
