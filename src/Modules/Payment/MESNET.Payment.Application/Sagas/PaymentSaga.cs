@@ -1,9 +1,12 @@
 using Marten;
 using MESNET.Attendance.Shared.Events;
+using MESNET.Common.Shared;
+using MESNET.Payment.Application.Errors;
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.Enums;
 using MESNET.Payment.Shared.Events;
 using Wolverine;
+using Wolverine.Persistence.Sagas;
 
 namespace MESNET.Payment.Application.Sagas;
 
@@ -73,7 +76,13 @@ public class PaymentSaga : Saga
     }
 
     // ─── HANDLE: İşletme dekontu yükledi ───
-    public void Handle(ReceiptUploadedByBusiness @event)
+    // Saga korelasyonu: olaylar anahtarı `SalaryPeriodId` adıyla taşıyor. Wolverine'in varsayılan
+    // konvansiyonu ({SagaTipi}Id / SagaId / Id) bu adı tanımadığı için korelasyon kurulamıyordu ve
+    // saga'daki sıra kontrolleri hiç çalışmıyordu. Alternatif olan [SagaIdentity] attribute'ü olay
+    // record'una konurdu — ama o zaman Payment.Shared'e WolverineFx bağımlılığı girer ve bu olayları
+    // tüketen tüm modüllere yayılırdı. [SagaIdentityFrom] handler tarafında kalır, Shared temiz kalır.
+    public void Handle(
+        [SagaIdentityFrom(nameof(ReceiptUploadedByBusiness.SalaryPeriodId))] ReceiptUploadedByBusiness @event)
     {
         ReceiptId = @event.ReceiptId;
         Phase = PaymentPhase.ReceiptUploaded;
@@ -81,7 +90,8 @@ public class PaymentSaga : Saga
     }
 
     // ─── HANDLE: Öğrenci dekontu yükledi (fallback — 8. günde işletme yüklemediyse) ───
-    public void Handle(ReceiptUploadedByStudent @event)
+    public void Handle(
+        [SagaIdentityFrom(nameof(ReceiptUploadedByStudent.SalaryPeriodId))] ReceiptUploadedByStudent @event)
     {
         ReceiptId = @event.ReceiptId;
         Phase = PaymentPhase.ReceiptUploaded;
@@ -89,36 +99,42 @@ public class PaymentSaga : Saga
     }
 
     // ─── HANDLE: Öğrenci "aldım" dedi (1. adım — öğrenci parayı almalı) ───
-    public void Handle(SalaryConfirmedByStudent @event)
+    public void Handle(
+        [SagaIdentityFrom(nameof(SalaryConfirmedByStudent.SalaryPeriodId))] SalaryConfirmedByStudent @event)
     {
         if (Phase != PaymentPhase.ReceiptUploaded)
-            throw new InvalidOperationException($"Geçersiz durum. Mevcut: {Phase.Slug}, Gerekli: {PaymentPhase.ReceiptUploaded.Slug}");
+            throw new DomainException(PaymentErrors.InvalidPhase(Phase.Slug, PaymentPhase.ReceiptUploaded.Slug));
 
         StudentConfirmed = true;
         Phase = PaymentPhase.StudentConfirmed;
     }
 
     // ─── HANDLE: Koordinatör öğretmen onayladı (2. adım) ───
-    public void Handle(ReceiptApprovedByTeacher @event)
+    public void Handle(
+        [SagaIdentityFrom(nameof(ReceiptApprovedByTeacher.SalaryPeriodId))] ReceiptApprovedByTeacher @event)
     {
         if (!StudentConfirmed)
-            throw new InvalidOperationException("Önce öğrenci maaşı aldığını onaylamalı.");
+            throw new DomainException(PaymentErrors.ApprovalRequired("Öğrenci"));
 
         if (Phase != PaymentPhase.StudentConfirmed)
-            throw new InvalidOperationException($"Geçersiz durum. Mevcut: {Phase.Slug}, Gerekli: {PaymentPhase.StudentConfirmed.Slug}");
+            throw new DomainException(PaymentErrors.InvalidPhase(Phase.Slug, PaymentPhase.StudentConfirmed.Slug));
 
         TeacherApproved = true;
         Phase = PaymentPhase.TeacherApproved;
     }
 
     // ─── HANDLE: Müdür yardımcısı onayladı (3. adım — son yetkili) ───
-    public PaymentCompleted Handle(ReceiptApprovedByDeputy @event)
+    public PaymentCompleted Handle(
+        [SagaIdentityFrom(nameof(ReceiptApprovedByDeputy.SalaryPeriodId))] ReceiptApprovedByDeputy @event)
     {
-        if (!StudentConfirmed || !TeacherApproved)
-            throw new InvalidOperationException("Öğrenci ve koordinatör öğretmen onayı gerekli.");
+        if (!StudentConfirmed)
+            throw new DomainException(PaymentErrors.ApprovalRequired("Öğrenci"));
+
+        if (!TeacherApproved)
+            throw new DomainException(PaymentErrors.ApprovalRequired("Koordinatör öğretmen"));
 
         if (Phase != PaymentPhase.TeacherApproved)
-            throw new InvalidOperationException($"Geçersiz durum. Mevcut: {Phase.Slug}, Gerekli: {PaymentPhase.TeacherApproved.Slug}");
+            throw new DomainException(PaymentErrors.InvalidPhase(Phase.Slug, PaymentPhase.TeacherApproved.Slug));
 
         DeputyApproved = true;
         Phase = PaymentPhase.Completed;
@@ -128,7 +144,8 @@ public class PaymentSaga : Saga
     }
 
     // ─── HANDLE: Dekont reddedildi ───
-    public void Handle(ReceiptRejected @event)
+    public void Handle(
+        [SagaIdentityFrom(nameof(ReceiptRejected.SalaryPeriodId))] ReceiptRejected @event)
     {
         ReceiptId = null;
         StudentConfirmed = false;

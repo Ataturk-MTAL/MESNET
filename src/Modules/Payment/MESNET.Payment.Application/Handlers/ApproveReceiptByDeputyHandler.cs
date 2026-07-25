@@ -3,6 +3,7 @@ using MESNET.Common.Shared;
 using MESNET.Payment.Application.Commands;
 using MESNET.Payment.Application.Errors;
 using MESNET.Payment.Core.Entities;
+using MESNET.Payment.Core.Enums;
 using MESNET.Payment.Shared.Events;
 
 namespace MESNET.Payment.Application.Handlers;
@@ -18,6 +19,12 @@ public static class ApproveReceiptByDeputyHandler
             throw new DomainException(PaymentErrors.NotFound(command.SalaryPeriodId));
         if (summary.ReceiptId is not { } receiptId)
             throw new DomainException(PaymentErrors.ApprovalRequired("Müdür yardımcısı"));
+
+        // 3. adım (son yetkili): öğrenci ve koordinatör öğretmen onayı olmadan onaylanamaz (bkz. #72).
+        // Faz zinciri sıralı ilerlediği için TeacherApproved kontrolü ikisini birden kapsar.
+        if (summary.Phase != PaymentPhase.TeacherApproved)
+            throw new DomainException(PaymentErrors.InvalidPhase(
+                summary.Phase.Slug, PaymentPhase.TeacherApproved.Slug));
 
         return new ReceiptApprovedByDeputy(command.SalaryPeriodId, receiptId, command.ApprovedBy, DateTime.UtcNow);
     }
