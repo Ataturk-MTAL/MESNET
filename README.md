@@ -73,7 +73,7 @@ src/
 
 - .NET 10.0 SDK
 - Node.js 20+ & pnpm
-- PostgreSQL 16+
+- PostgreSQL 18 + PostGIS 3.6 (`kartoza/postgis:18-3.6` — Debian trixie tabanlı, çok mimarili)
 - Keycloak 26+
 - MinIO
 - .NET Aspire workload (`dotnet workload install aspire`)
