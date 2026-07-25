@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using Ardalis.SmartEnum.SystemTextJson;
-using MESNET.Institution.Core.Enums;
+using MESNET.Common.Shared.Enums;
 
 namespace MESNET.Institution.Core.ValueObjects;
 
