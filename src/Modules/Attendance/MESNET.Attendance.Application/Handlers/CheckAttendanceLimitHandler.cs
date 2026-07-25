@@ -6,11 +6,14 @@ namespace MESNET.Attendance.Application.Handlers;
 
 public static class CheckAttendanceLimitHandler
 {
-    public static AttendanceLimitExceeded? Handle(
+    // Marten 9 senkron veri erişimini kaldırdı — .FirstOrDefault() burada
+    // "As of Marten 9.0, only asynchronous data access is supported" fırlatıyordu ve
+    // AttendanceMarked dead letter'a düşüyordu, yani devamsızlık limiti hiç kontrol edilmiyordu (#73).
+    public static async Task<AttendanceLimitExceeded?> Handle(
         AttendanceMarked @event, IQuerySession session)
     {
-        var view = session.Query<AttendanceView>()
-            .FirstOrDefault(v => v.StudentId == @event.StudentId
+        var view = await session.Query<AttendanceView>()
+            .FirstOrDefaultAsync(v => v.StudentId == @event.StudentId
                 && v.BusinessId == @event.BusinessId);
 
         const int limit = 20;

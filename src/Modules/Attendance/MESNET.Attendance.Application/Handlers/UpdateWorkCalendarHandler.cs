@@ -10,10 +10,12 @@ namespace MESNET.Attendance.Application.Handlers;
 
 public static class UpdateWorkCalendarHandler
 {
-    public static (Guid, WorkCalendarUpdated) Handle(UpdateWorkCalendar command, IDocumentSession session)
+    // Marten 9 senkron veri erişimini kaldırdı — .FirstOrDefault() burada
+    // "As of Marten 9.0, only asynchronous data access is supported" fırlatıyordu (#73).
+    public static async Task<(Guid, WorkCalendarUpdated)> Handle(UpdateWorkCalendar command, IDocumentSession session)
     {
-        var calendar = session.Query<WorkCalendar>()
-            .FirstOrDefault(c => c.InstitutionId == command.InstitutionId && c.Year == command.Year);
+        var calendar = await session.Query<WorkCalendar>()
+            .FirstOrDefaultAsync(c => c.InstitutionId == command.InstitutionId && c.Year == command.Year);
 
         var restrictedDays = new List<CalendarDay>();
         foreach (var d in command.RestrictedDays)

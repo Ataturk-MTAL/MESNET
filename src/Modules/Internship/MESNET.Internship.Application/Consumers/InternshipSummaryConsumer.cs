@@ -6,7 +6,10 @@ using MESNET.Internship.Shared.Events;
 
 namespace MESNET.Internship.Application.Consumers;
 
-public static class InternshipSummaryUpdater
+// Sınıf adı Handler veya Consumer ile BİTMELİ — Wolverine tip keşfi konvansiyonu bu.
+// Eski adı `InternshipSummaryUpdater` idi; hiç keşfedilmiyordu, dolayısıyla buradaki Handle
+// metotları hiç çalışmıyordu. Tüketicisi olmayan olay dead letter üretmediği için hata sessizdi.
+public static class InternshipSummaryConsumer
 {
     public static void Handle(InternshipStarted e, IDocumentSession session)
     {

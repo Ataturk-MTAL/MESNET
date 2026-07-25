@@ -10,4 +10,6 @@ public sealed record BusinessUpdated(
     List<string>? Sectors = null,
     string? PhoneNumber = null,
     string? Email = null,
-    string? MasterInstructorName = null);
+    string? MasterInstructorName = null,
+    // Personel sayısı değişince staj ücreti oranı da değişebilir (20 altı %15, üstü %30) — #64.
+    int PersonnelCount = 0);

@@ -6,7 +6,11 @@ using MESNET.Payment.Shared.Events;
 
 namespace MESNET.Payment.Application.Consumers;
 
-public static class PaymentSummaryUpdater
+// Sınıf adı Handler veya Consumer ile BİTMELİ — Wolverine tip keşfi konvansiyonu bu.
+// Eski adı `PaymentSummaryUpdater` idi; hiç keşfedilmiyordu, dolayısıyla buradaki 8 Handle
+// metodunun hiçbiri çalışmıyordu ve PaymentSummary hiç oluşmuyordu. Hata sessizdi:
+// tüketicisi olmayan olay dead letter da üretmiyor.
+public static class PaymentSummaryConsumer
 {
     public static async Task Handle(SalaryCalculated @event, IDocumentSession session)
     {
@@ -16,6 +20,10 @@ public static class PaymentSummaryUpdater
         {
             Id = @event.SalaryPeriodId,
             StudentId = @event.StudentId,
+            // BusinessId/InstitutionId/ReceiptDueDate atanmadığı sürece özet kaydı boş Guid ve
+            // null tarihle yazılıyordu; işletme/kurum filtreleri ve son-gün indeksi ölüydü (#74).
+            BusinessId = @event.BusinessId,
+            InstitutionId = @event.InstitutionId,
             AcademicPeriodId = @event.AcademicPeriodId,
             Month = @event.Month,
             BaseWage = @event.BaseWage,
@@ -23,12 +31,29 @@ public static class PaymentSummaryUpdater
             NetAmount = @event.NetAmount,
             GovernmentContribution = @event.GovContribution,
             EmployerPayment = @event.NetAmount - @event.GovContribution,
+            ReceiptDueDate = @event.ReceiptDueDate,
             Phase = PaymentPhase.Calculated,
             LastUpdated = DateTime.UtcNow,
             StudentName = profile?.FullName ?? "",
             StudentNumber = profile?.StudentNumber ?? "",
             BranchCode = profile?.BranchCode ?? "",
         };
+        session.Store(summary);
+    }
+
+    // Ay içinde devamsızlık biriktikçe tutar güncellenir (#64). Faz değişmez —
+    // saga yalnız AwaitingReceipt'teyken yeniden hesaplar.
+    public static async Task Handle(SalaryRecalculated @event, IDocumentSession session)
+    {
+        var summary = await session.LoadAsync<PaymentSummary>(@event.SalaryPeriodId);
+        if (summary is null) return;
+
+        summary.BaseWage = @event.BaseWage;
+        summary.DeductionAmount = @event.Deduction;
+        summary.NetAmount = @event.NetAmount;
+        summary.GovernmentContribution = @event.GovContribution;
+        summary.EmployerPayment = @event.NetAmount - @event.GovContribution;
+        summary.LastUpdated = DateTime.UtcNow;
         session.Store(summary);
     }
 

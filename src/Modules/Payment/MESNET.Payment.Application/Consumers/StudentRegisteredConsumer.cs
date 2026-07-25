@@ -19,6 +19,10 @@ public static class StudentRegisteredConsumer
             FullName = @event.FullName,
             StudentNumber = @event.StudentNumber,
             BranchCode = @event.BranchCode,
+            // Olay ikisini de zaten taşıyordu ama atılıyordu; MESEM 12. sınıf taban ücret oranı
+            // (%50) ve MESEM devlet katkısı (tamamı) bu alanlar olmadan seçilemiyor (#64).
+            ClassYear = @event.ClassYear,
+            EducationTypeName = @event.EducationType,
         };
         session.Store(profile);
     }
