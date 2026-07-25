@@ -5,6 +5,16 @@ public class SalaryCalculationConfig
     public Guid Id { get; set; }
     public Guid InstitutionId { get; set; }
     public decimal MinimumWage { get; set; }
+
+    /// <summary>
+    /// 16 yaşından küçükler için belirlenen asgari ücret (#85). 3308 Madde 25 ve MEB Ortaöğretim
+    /// Kurumları Yönetmeliği (6)(a) "YAŞINA UYGUN asgari ücret" diyor. null ise ayrı bir tutar
+    /// belirlenmemiş demektir ve yaşa bakılmaksızın <see cref="MinimumWage"/> uygulanır.
+    /// </summary>
+    public decimal? MinimumWageUnder16 { get; set; }
+
+    /// <summary>Aday çırak ve çırak taban oranı — Madde 25: "yüzde otuzundan aşağı olamaz" (#85).</summary>
+    public decimal ApprenticeRate { get; set; } = 0.30m;
     public int PersonnelThreshold { get; set; } = 20;
     public decimal LargeBusinessRate { get; set; } = 0.30m;
     public decimal SmallBusinessRate { get; set; } = 0.15m;

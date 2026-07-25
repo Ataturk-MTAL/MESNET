@@ -211,6 +211,30 @@
             <q-icon name="phone" />
           </template>
         </q-input>
+        <q-input
+          v-model="form.birthDate"
+          label="Doğum Tarihi"
+          outlined
+          type="date"
+          hint="16 yaşından küçükler için yaşa uygun asgari ücret uygulanır (3308 md. 25)"
+        >
+          <template #prepend>
+            <q-icon name="cake" />
+          </template>
+        </q-input>
+        <q-select
+          v-model="form.category"
+          :options="studentCategoryOptions"
+          label="Öğrenci Kategorisi"
+          outlined
+          emit-value
+          map-options
+          hint="Aday çırak ve çırakta taban ücret, yaşa uygun asgari ücretin %30'udur"
+        >
+          <template #prepend>
+            <q-icon name="badge" />
+          </template>
+        </q-select>
 
         <q-separator />
         <div class="text-subtitle2 text-grey-7">
@@ -300,12 +324,21 @@ const form = reactive({
   studentNumber: '',
   phoneNumber: '',
   tcKimlikNo: '',
+  birthDate: '',
+  category: 'Student',
   guardianName: '',
   guardianPhone: '',
 })
 const errors = reactive<Record<string, string>>({})
 
 const educationTypeOptions = [...EDUCATION_TYPES]
+
+// Backend StudentCategory SmartEnum ile birebir: Name = İngilizce, Slug = Türkçe (#85)
+const studentCategoryOptions = [
+  { label: 'Öğrenci', value: 'Student' },
+  { label: 'Aday Çırak', value: 'CandidateApprentice' },
+  { label: 'Çırak', value: 'Apprentice' },
+]
 const specOptions = computed(() => branchOpts.getSpecializations(form.branchCode ?? ''))
 
 function onUserSelect(val: string | null) {
@@ -415,6 +448,8 @@ async function handleSave() {
         tcKimlikNo: form.tcKimlikNo || undefined,
         guardianName: form.guardianName || undefined,
         guardianPhone: form.guardianPhone || undefined,
+        birthDate: form.birthDate ? new Date(form.birthDate).toISOString() : undefined,
+        category: form.category,
       })
       entityOptionsStore.invalidateStudents()
       notify.success('Öğrenci başarıyla kaydedildi.')

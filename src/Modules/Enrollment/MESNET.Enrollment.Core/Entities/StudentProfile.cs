@@ -38,6 +38,13 @@ public class StudentProfile
     /// </summary>
     public bool HasJourneymanQualification { get; set; }
 
+    /// <summary>Öğrenci / Aday Çırak / Çırak — ücret tabanını belirler (#85).</summary>
+    [JsonConverter(typeof(SmartEnumNameConverter<StudentCategory, int>))]
+    public StudentCategory Category { get; set; } = StudentCategory.Student;
+
+    /// <summary>SmartEnum LINQ tuzağı: sorgular için düz string kopya.</summary>
+    public string CategoryName { get; set; } = StudentCategory.Student.Name;
+
     /// <summary>LINQ sorguları için düz string kopyası</summary>
     public string EducationTypeName { get; set; } = EducationType.Formal.Name;
 

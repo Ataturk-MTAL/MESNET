@@ -26,6 +26,7 @@ public static class UpdateMinimumWageHandler
             if (command.EffectiveFrom == currentConfig.EffectiveFrom)
             {
                 currentConfig.MinimumWage = command.NewMinimumWage;
+                currentConfig.MinimumWageUnder16 = command.NewMinimumWageUnder16;
                 currentConfig.UpdatedBy = command.UpdatedBy;
                 RefreshStatutoryRates(currentConfig);
                 session.Store(currentConfig);
@@ -46,6 +47,7 @@ public static class UpdateMinimumWageHandler
             Id = Guid.NewGuid(),
             InstitutionId = command.InstitutionId,
             MinimumWage = command.NewMinimumWage,
+            MinimumWageUnder16 = command.NewMinimumWageUnder16,
             EffectiveFrom = command.EffectiveFrom,
             UpdatedBy = command.UpdatedBy
         };
@@ -72,6 +74,7 @@ public static class UpdateMinimumWageHandler
         config.LargeBusinessRate = defaults.LargeBusinessRate;
         config.SmallBusinessRate = defaults.SmallBusinessRate;
         config.MEM12thGradeRate = defaults.MEM12thGradeRate;
+        config.ApprenticeRate = defaults.ApprenticeRate;
         config.GovContribSmallNonMEM = defaults.GovContribSmallNonMEM;
         config.GovContribLargeNonMEM = defaults.GovContribLargeNonMEM;
         config.GovContribMEM = defaults.GovContribMEM;

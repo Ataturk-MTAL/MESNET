@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Enums;
 using MESNET.Payment.Application.Commands;
 using MESNET.Payment.Application.Errors;
 using MESNET.Payment.Application.Messages;
@@ -164,8 +165,31 @@ public class PaymentSaga : Saga
             student?.ClassYear ?? 0,
             student?.HasJourneymanQualification ?? false,
             deductibleDays,
-            contractWage is { IsActive: true } ? contractWage.AgreedMonthlyWage : null);
+            contractWage is { IsActive: true } ? contractWage.AgreedMonthlyWage : null,
+            CalculateAge(student?.BirthDate, command.ReferenceDate),
+            IsApprenticeCategory(student?.CategoryName));
     }
+
+    /// <summary>
+    /// Öğrencinin hesap tarihindeki tam yaşı (#85). Doğum tarihi bilinmiyorsa null döner ve
+    /// yaşa bakılmaksızın genel asgari ücret uygulanır.
+    /// </summary>
+    private static int? CalculateAge(DateTime? birthDate, DateTime referenceDate)
+    {
+        if (birthDate is not { } birth) return null;
+
+        var age = referenceDate.Year - birth.Year;
+        if (referenceDate.Month < birth.Month
+            || (referenceDate.Month == birth.Month && referenceDate.Day < birth.Day))
+            age--;
+
+        return age < 0 ? null : age;
+    }
+
+    // SmartEnum Marten LINQ'te kullanılamadığı için read model düz string tutuyor.
+    private static bool IsApprenticeCategory(string? categoryName)
+        => StudentCategory.TryFromName(categoryName ?? "", ignoreCase: true, out var category)
+           && category.IsApprentice;
 
     /// <summary>
     /// Onaylanmış, ücret kesintisine tabi devamsızlık günü sayısı — mazeretsiz devamsızlık ve

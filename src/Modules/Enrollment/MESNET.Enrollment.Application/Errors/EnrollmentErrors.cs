@@ -34,6 +34,9 @@ public static class EnrollmentErrors
     public static Error InvalidEducationType(string value) =>
         new("Enrollment.InvalidEducationType", $"Geçersiz eğitim tipi: '{value}'. Geçerli değerler: Formal, Mesem");
 
+    public static Error InvalidStudentCategory(string value) =>
+        new("Enrollment.InvalidStudentCategory", $"Geçersiz öğrenci kategorisi: '{value}'. Geçerli değerler: Student, CandidateApprentice, Apprentice");
+
     public static Error CannotDeregisterActiveInternship(Guid studentId) =>
         new("Enrollment.CannotDeregisterActiveInternship", $"Aktif stajı olan öğrencinin kaydı silinemez. Önce staj feshedilmelidir: {studentId}");
 }

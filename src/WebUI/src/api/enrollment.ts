@@ -67,6 +67,10 @@ export interface RegisterStudentRequest {
   tcKimlikNo?: string
   guardianName?: string
   guardianPhone?: string
+  /** Yaşa uygun asgari ücret hesabı için (3308 md.25) — ISO tarih (#85) */
+  birthDate?: string
+  /** Student | CandidateApprentice | Apprentice — ücret tabanını belirler (#85) */
+  category?: string
 }
 
 export interface CreatePlacementRequest {

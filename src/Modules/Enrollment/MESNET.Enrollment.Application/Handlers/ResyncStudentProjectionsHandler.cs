@@ -27,7 +27,9 @@ public static class ResyncStudentProjectionsHandler
                 s.ClassYear,
                 s.EducationType.Name,
                 s.StudentNumber ?? "",
-                s.HasJourneymanQualification));
+                s.HasJourneymanQualification,
+                s.BirthDate,
+                s.Category.Name));
         }
 
         return new ResyncStudentProjectionsResult(students.Count);

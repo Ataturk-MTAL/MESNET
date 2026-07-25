@@ -24,6 +24,9 @@ public static class StudentRegisteredConsumer
             ClassYear = @event.ClassYear,
             EducationTypeName = @event.EducationType,
             HasJourneymanQualification = @event.HasJourneymanQualification,
+            // Yaşa uygun asgari ücret ve aday çırak/çırak taban oranı için (#85).
+            BirthDate = @event.BirthDate,
+            CategoryName = @event.Category,
         };
         session.Store(profile);
     }
