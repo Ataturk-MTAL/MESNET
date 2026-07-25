@@ -59,7 +59,7 @@ function onClick() {
       />
       <div
         v-else
-        :class="`text-h4 text-weight-bold text-${color} q-mt-sm`"
+        :class="`stat-value text-h4 text-weight-bold text-${color} q-mt-sm`"
       >
         {{ value }}
       </div>
@@ -87,7 +87,7 @@ function onClick() {
         />
         <div
           v-else
-          :class="`text-h4 text-weight-bold text-${color}`"
+          :class="`stat-value text-h4 text-weight-bold text-${color}`"
         >
           {{ value }}
         </div>
