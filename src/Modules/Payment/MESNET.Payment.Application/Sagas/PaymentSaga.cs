@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Common.Shared;
 using MESNET.Payment.Application.Commands;
 using MESNET.Payment.Application.Errors;
+using MESNET.Payment.Application.Messages;
 using MESNET.Payment.Application.Services;
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.Enums;
@@ -82,6 +83,21 @@ public class PaymentSaga : Saga
             new ReceiptUploadRequested(
                 command.SalaryPeriodId, command.StudentId, command.BusinessId, receiptDueDate)
         };
+
+        // Son ödeme gününde dekont hâlâ yoksa uyarı gitsin (#69). ReceiptOverdueConsumer
+        // tetiklendiğinde PaymentSummary'ye bakıp dekont gelmişse sessizce yutar —
+        // zamanlanmış mesaj sonradan iptal edilemiyor.
+        //
+        // Geçmişte kalan son ödeme günü için zamanlama YAPILMAZ: Wolverine geçmiş tarihli
+        // mesajı anında teslim eder, bu da geriye dönük seed edilen aylarda anlamsız
+        // bildirim yağmuruna yol açardı.
+        if (receiptDueDate > DateTime.UtcNow)
+        {
+            messages.Add(new ReceiptOverdue(
+                    command.SalaryPeriodId, command.StudentId, command.BusinessId,
+                    command.InstitutionId, command.Month, receiptDueDate)
+                .ScheduledAt(new DateTimeOffset(receiptDueDate, TimeSpan.Zero)));
+        }
 
         return (saga, messages);
     }
