@@ -1,4 +1,4 @@
-import { ref, watch, type Ref, type ComputedRef } from 'vue'
+import { ref, watch, onUnmounted, getCurrentInstance, type Ref, type ComputedRef } from 'vue'
 import type { QTableProps } from 'quasar'
 import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 
@@ -42,7 +42,14 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
+  // Sıra dışı yanıt koruması. Hızlı sayfa tıklaması, filtre değişiminin hemen ardından
+  // sayfa değişimi ya da debounce dolmadan yeni arama — birden fazla istek uçuşta olur ve
+  // eski/yavaş olanı sonra dönerse yeni sonucun üstüne bayat veri yazar. Her istek bir sıra
+  // numarası alır; yalnız en son başlatılan yazma hakkına sahiptir.
+  let latestRequestId = 0
+
   async function load() {
+    const requestId = ++latestRequestId
     loading.value = true
     try {
       const p = pagination.value
@@ -55,6 +62,7 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
         ...(search.value.trim() ? { search: search.value.trim() } : {}),
       }
       const { data } = await fetchFn(params)
+      if (requestId !== latestRequestId) return // daha yeni bir istek başladı, bu sonuç bayat
       rows.value = data.items
       pagination.value = {
         ...p,
@@ -65,7 +73,9 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
         descending: p.descending,
       }
     } finally {
-      loading.value = false
+      // Yükleniyor göstergesi yalnız en son istek bitince kapanır; yoksa erken dönen bayat
+      // istek, hâlâ süren yeni isteğin göstergesini söndürür.
+      if (requestId === latestRequestId) loading.value = false
     }
   }
 
@@ -90,6 +100,16 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
       pagination.value.page = 1
       load()
     }, 400)
+  }
+
+  // Bekleyen debounce zamanlayıcısı bileşen sökülürken iptal edilir: kullanıcı yazıp
+  // 400 ms dolmadan başka sayfaya geçerse, zamanlayıcı artık var olmayan bir bileşenin
+  // ref'leri üzerinde load() çağırırdı. getCurrentInstance kontrolü, composable'ın
+  // birim testlerinde bileşen dışında da çağrılabilmesi içindir.
+  if (getCurrentInstance()) {
+    onUnmounted(() => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+    })
   }
 
   // Filtreler değiştiğinde sayfa 1'e dön ve yeniden yükle

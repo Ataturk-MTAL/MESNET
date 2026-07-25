@@ -179,4 +179,39 @@ describe('useServerPagination', () => {
     // Assert — hata sonrası tablo sonsuza kadar "yükleniyor" kalmamalı
     expect(loading.value).toBe(false)
   })
+
+  it('geç dönen eski istek, yeni isteğin sonucunu ezmez', async () => {
+    // Arrange — 1. istek yavaş, 2. istek hızlı. Gerçek hayatta: hızlı sayfa tıklaması.
+    const resolvers: ((value: { data: PagedResponse<Row> }) => void)[] = []
+    const page = (items: Row[]): { data: PagedResponse<Row> } => ({
+      data: {
+        items,
+        totalCount: items.length,
+        page: 1,
+        pageSize: 20,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    })
+    const fetchFn = vi.fn(
+      () => new Promise<{ data: PagedResponse<Row> }>((resolve) => resolvers.push(resolve)),
+    )
+
+    const { rows, loading, load } = useServerPagination<Row>({
+      fetchFn: fetchFn as unknown as Parameters<typeof useServerPagination<Row>>[0]['fetchFn'],
+    })
+
+    // Act — iki istek uçuşta, sonra TERS sırada tamamlanıyor
+    const first = load()
+    const second = load()
+    resolvers[1]!(page([{ id: 'yeni' }])) // 2. istek önce döner
+    await second
+    resolvers[0]!(page([{ id: 'eski' }])) // 1. istek sonra döner
+    await first
+
+    // Assert — ekranda kalan, kullanıcının en son istediği veri olmalı
+    expect(rows.value).toEqual([{ id: 'yeni' }])
+    expect(loading.value).toBe(false)
+  })
 })
