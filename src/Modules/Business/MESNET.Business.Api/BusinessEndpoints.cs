@@ -25,7 +25,24 @@ public static class BusinessEndpoints
         group.MapPost("/{businessId:guid}/deactivate", PostDeactivate).RequireAuthorization(Permissions.Company.Manage);
         group.MapPost("/{businessId:guid}/activate", PostActivate).RequireAuthorization(Permissions.Company.Manage);
         group.MapPost("/{businessId:guid}/close", PostClose).RequireAuthorization(Permissions.Company.Manage);
+        group.MapPost("/resync-projections", PostResyncProjections).RequireAuthorization(Permissions.Company.Manage);
         return app;
+    }
+
+    /// <summary>
+    /// Tüm işletmeler için BusinessUpdated'ı yeniden yayınlar — diğer modüllerin denormalize
+    /// işletme read-model'lerini tazeler. Read-model'e yeni alan eklendiğinde mevcut kayıtlar
+    /// geriye dönük dolmadığı için gerekli (#77).
+    /// </summary>
+    private static async Task<IResult> PostResyncProjections(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ResyncBusinessProjectionsResult>(
+            new ResyncBusinessProjections());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.BusinessCount} işletme için read-model'ler yeniden yayınlandı.")
+            .Build());
     }
 
     private static async Task<IResult> Get(Guid businessId, IMessageBus bus)
