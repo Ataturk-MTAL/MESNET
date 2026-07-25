@@ -4,6 +4,15 @@
       İşletme Dağıtımı
     </div>
 
+    <!-- Klavye akışının durum duyurusu (#88). Görsel olarak gizli, ekran okuyucuya açık. -->
+    <div
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+    >
+      {{ kbAnnouncement }}
+    </div>
+
     <!-- Filtreler -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
       <div class="col-12 col-sm-3">
@@ -140,15 +149,27 @@
                     padding="q-pa-md"
                   >
                     <div class="business-card-list">
-                      <!-- Sürükle-bırak yüzeyi. Klavyeyle erişilebilir alternatif ayrı issue'da. -->
-                      <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -->
+                      <!-- Fare için sürükle-bırak, klavye için seç-taşı akışı (#88):
+                        Enter/Space seçer, ızgarada boş hücrede Enter bırakır, Escape iptal. -->
                       <div
                         v-for="biz in filteredUnassigned"
                         :key="biz.businessId"
                         class="business-card"
-                        :class="{ 'business-card--disabled': periodStore.isReadOnly }"
+                        :class="{
+                          'business-card--disabled': periodStore.isReadOnly,
+                          'business-card--selected': kbSelected?.businessId === biz.businessId
+                            && kbSelected?.fromDay === undefined,
+                        }"
+                        role="button"
+                        tabindex="0"
+                        :aria-disabled="periodStore.isReadOnly"
+                        :aria-pressed="kbSelected?.businessId === biz.businessId && kbSelected?.fromDay === undefined"
+                        :aria-label="`${biz.businessName}. Ders programına atamak için Enter'a basın.`"
                         :draggable="!periodStore.isReadOnly"
                         @dragstart="onBusinessDragStart($event, biz)"
+                        @keydown.enter.prevent="onCardKey(biz)"
+                        @keydown.space.prevent="onCardKey(biz)"
+                        @keydown.esc.prevent="kbCancel()"
                       >
                         <div class="row items-center no-wrap">
                           <q-icon
@@ -286,8 +307,11 @@
                     :period-count="periodCount"
                     :disabled="periodStore.isReadOnly"
                     :business-name-map="businessNameMap"
-                    @business-dropped="onBusinessDropped"
+                    :selected="kbSelected"
+                    @business-dropped="onKeyboardAwareDrop"
                     @business-removed="onBusinessRemoved"
+                    @business-selected="kbSelect"
+                    @selection-cancelled="kbCancel"
                   />
                 </q-card-section>
               </q-card>
@@ -913,6 +937,7 @@ import { useTeacherChangeFlow } from 'src/composables/useTeacherChangeFlow'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import AssignmentGrid from 'components/AssignmentGrid.vue'
+import { useKeyboardAssignment } from 'src/composables/useKeyboardAssignment'
 import BusinessClusterMap from 'components/BusinessClusterMap.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
@@ -1090,6 +1115,31 @@ const {
   teacherOverviewRows, teacherOverviewLoading, teacherName, loadTeacherOverview,
 } = teacherOverview
 
+// ── Klavye erişilebilir atama (#88) ──
+// Sürükle-bırak yalnız fareyle çalışıyordu; aynı işi Enter/Space + Tab ile yapılabilir kılar.
+const {
+  selected: kbSelected,
+  announcement: kbAnnouncement,
+  toggle: kbToggle,
+  select: kbSelect,
+  cancel: kbCancel,
+  completeDrop: kbCompleteDrop,
+} = useKeyboardAssignment()
+
+function onCardKey(biz: BusinessAssignmentDto) {
+  if (periodStore.isReadOnly) return
+  kbToggle({ businessId: biz.businessId, businessName: biz.businessName })
+}
+
+/**
+ * Izgaradan gelen bırakma. Fare yolunda seçim zaten yok; klavye yolunda seçimi temizler ve
+ * sonucu duyurur. Atama mantığı tek yerde (onBusinessDropped) kalır.
+ */
+function onKeyboardAwareDrop(payload: { businessId: string; day: string; periodNumber: number }) {
+  onBusinessDropped(payload)
+  if (kbSelected.value) kbCompleteDrop(payload.day, payload.periodNumber)
+}
+
 const {
   historyDialog, historyLoading, historyBusinessName, historyEntries,
   showHistory, historyIcon, historyColor, formatDate,
@@ -1184,6 +1234,27 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Ekran okuyucuya açık, görsel olarak gizli — aria-live duyuruları için (#88).
+   display:none veya visibility:hidden KULLANILMAZ; ikisi de içeriği erişilebilirlik
+   ağacından çıkarır ve duyuru hiç okunmaz. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Klavyeyle seçili kart — sürükle-bırakta fareyle "tutulmuş" hâlin karşılığı */
+.business-card--selected {
+  outline: 2px solid var(--q-primary);
+  outline-offset: 1px;
+}
+
 .sticky-panel {
   position: sticky;
   top: 60px;

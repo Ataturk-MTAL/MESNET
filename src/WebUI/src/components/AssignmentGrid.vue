@@ -53,7 +53,14 @@
               v-else-if="!getAssignedBusinessId(day.value, period)"
               :ref="(el) => registerDropZone(el as HTMLElement, day.value, period)"
               class="drop-zone"
-              :class="{ 'drop-zone--disabled': disabled }"
+              :class="{ 'drop-zone--disabled': disabled, 'drop-zone--target': !disabled && selected !== null }"
+              role="button"
+              tabindex="0"
+              :aria-disabled="disabled"
+              :aria-label="dropZoneLabel(day.label, period)"
+              @keydown.enter.prevent="onDropZoneKey(day.value, period)"
+              @keydown.space.prevent="onDropZoneKey(day.value, period)"
+              @keydown.esc.prevent="emit('selection-cancelled')"
             >
               <q-icon
                 name="add_circle_outline"
@@ -64,17 +71,25 @@
             </div>
 
             <!-- Boş + atanmış — İşletme chip -->
-            <!-- Sürükle-bırak yüzeyi. Klavyeyle erişilebilir alternatif (seç + hedefe taşı)
-              gerçek bir özellik işi, lint düzeltmesi değil — ayrı issue'da takip ediliyor. -->
-            <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -->
+            <!-- Fare için sürükle-bırak, klavye için seç-taşı akışı (#88): Enter/Space seçer,
+              hedef hücrede Enter bırakır, Escape iptal eder. -->
             <div
               v-else
               class="assigned-slot"
+              :class="{ 'assigned-slot--selected': isSelected(day.value, period) }"
+              role="button"
+              tabindex="0"
+              :aria-disabled="disabled"
+              :aria-pressed="isSelected(day.value, period)"
+              :aria-label="assignedSlotLabel(day.value, day.label, period)"
               :draggable="!disabled"
               :data-business-id="getAssignedBusinessId(day.value, period)"
               :data-from-day="day.value"
               :data-from-period="period"
               @dragstart="onDragStart($event, day.value, period)"
+              @keydown.enter.prevent="onAssignedKey(day.value, period)"
+              @keydown.space.prevent="onAssignedKey(day.value, period)"
+              @keydown.esc.prevent="emit('selection-cancelled')"
             >
               <div class="business-chip">
                 <q-icon
@@ -142,17 +157,22 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from 'vue'
 import type { DailyScheduleDto, PeriodSlotDto } from 'src/api/coordination'
+import type { AssignmentSelection } from 'src/composables/useKeyboardAssignment'
 
 const props = defineProps<{
   schedule: DailyScheduleDto[]
   periodCount: number
   disabled: boolean
   businessNameMap: Record<string, string>
+  /** Klavye akışında seçili olan işletme (#88); sayfa sahibi tutar. */
+  selected: AssignmentSelection | null
 }>()
 
 const emit = defineEmits<{
   (e: 'business-dropped', payload: { businessId: string; day: string; periodNumber: number }): void
   (e: 'business-removed', payload: { businessId: string; day: string; periodNumber: number }): void
+  (e: 'business-selected', payload: AssignmentSelection): void
+  (e: 'selection-cancelled'): void
 }>()
 
 const days = [
@@ -295,6 +315,50 @@ function registerDropZone(el: HTMLElement | null, day: string, period: number) {
   })
 }
 
+// ── Klavye erişilebilirliği (#88) ──
+
+function isSelected(day: string, period: number): boolean {
+  return props.selected?.fromDay === day && props.selected?.fromPeriod === period
+}
+
+function assignedSlotLabel(day: string, dayLabel: string, period: number): string {
+  return `${getBusinessName(day, period)}, ${dayLabel} ${period}. ders. Taşımak için Enter'a basın.`
+}
+
+function dropZoneLabel(dayLabel: string, period: number): string {
+  return props.selected
+    ? `Boş: ${dayLabel} ${period}. ders. ${props.selected.businessName} işletmesini buraya atamak için Enter'a basın.`
+    : `Boş: ${dayLabel} ${period}. ders. Önce bir işletme seçin.`
+}
+
+function onAssignedKey(day: string, period: number) {
+  if (props.disabled) return
+  const businessId = getAssignedBusinessId(day, period)
+  if (!businessId) return
+
+  emit('business-selected', {
+    businessId,
+    businessName: getBusinessName(day, period),
+    fromDay: day,
+    fromPeriod: period,
+  })
+}
+
+function onDropZoneKey(day: string, period: number) {
+  if (props.disabled || !props.selected) return
+
+  // Izgaradan alındıysa önce eski konumdan kaldır — sürükle-bırak yolundaki davranışın aynısı.
+  if (props.selected.fromDay !== undefined && props.selected.fromPeriod !== undefined) {
+    emit('business-removed', {
+      businessId: props.selected.businessId,
+      day: props.selected.fromDay,
+      periodNumber: props.selected.fromPeriod,
+    })
+  }
+
+  emit('business-dropped', { businessId: props.selected.businessId, day, periodNumber: period })
+}
+
 function onRemoveClick(day: string, period: number) {
   const businessId = getAssignedBusinessId(day, period)
   if (businessId) {
@@ -358,6 +422,17 @@ onBeforeUnmount(() => {
   justify-content: center;
   gap: 4px;
   opacity: 0.6;
+}
+
+/* Klavyeyle seçili chip ve seçim varken vurgulanan boş hücreler (#88) */
+.assigned-slot--selected {
+  outline: 2px solid var(--q-primary);
+  outline-offset: 1px;
+}
+
+.drop-zone--target {
+  border-style: dashed;
+  border-color: var(--q-primary);
 }
 
 .drop-zone {
