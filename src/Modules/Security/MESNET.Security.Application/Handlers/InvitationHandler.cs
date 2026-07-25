@@ -61,7 +61,7 @@ public static class ApproveInvitationHandler
 
         if (invitation.Status != InvitationStatus.PendingApproval)
             throw new DomainException(SecurityErrors.InvalidInvitationStatus(
-                command.InvitationId, invitation.Status.ToString(), InvitationStatus.PendingApproval.ToString()));
+                command.InvitationId, invitation.Status.Slug, InvitationStatus.PendingApproval.Slug));
 
         invitation.Status = InvitationStatus.Approved;
         invitation.ApprovedAt = DateTime.UtcNow;
@@ -89,7 +89,7 @@ public static class RejectInvitationHandler
 
         if (invitation.Status != InvitationStatus.PendingApproval)
             throw new DomainException(SecurityErrors.InvalidInvitationStatus(
-                command.InvitationId, invitation.Status.ToString(), InvitationStatus.PendingApproval.ToString()));
+                command.InvitationId, invitation.Status.Slug, InvitationStatus.PendingApproval.Slug));
 
         invitation.Status = InvitationStatus.Rejected;
         invitation.RejectedAt = DateTime.UtcNow;
