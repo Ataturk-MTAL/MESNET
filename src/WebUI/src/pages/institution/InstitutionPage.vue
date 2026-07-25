@@ -144,14 +144,19 @@
                         Web Sitesi
                       </q-item-label>
                       <q-item-label>
+                        <!-- href yalnız süzülmüş http(s) URL'i alır: serbest metin alanına
+                          yazılmış javascript:/data: adresi tıklayanın oturumunda çalışırdı.
+                          rel="noopener noreferrer" ters sekme ele geçirmesini kapatır. -->
                         <a
-                          v-if="institution.webUrl"
-                          :href="institution.webUrl"
+                          v-if="safeWebUrl"
+                          :href="safeWebUrl"
                           target="_blank"
+                          rel="noopener noreferrer"
                           class="text-primary"
                         >
                           {{ institution.webUrl }}
                         </a>
+                        <span v-else-if="institution.webUrl">{{ institution.webUrl }}</span>
                         <span v-else>—</span>
                       </q-item-label>
                     </q-item-section>
@@ -552,6 +557,7 @@ import {
 } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { Permissions } from 'utils/permissions'
+import { toSafeUrl } from 'utils/safeUrl'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
@@ -578,6 +584,9 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
 const institution = ref<InstitutionDto | null>(null)
+
+// Bağlantı olarak SADECE http(s) adres verilir; güvenli değilse metin olarak gösterilir.
+const safeWebUrl = computed(() => toSafeUrl(institution.value?.webUrl))
 const scheduleConfig = ref<ScheduleConfigDto | null>(null)
 const fieldCatalog = ref<FieldOfStudyDto[]>([])
 
