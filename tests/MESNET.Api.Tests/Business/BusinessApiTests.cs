@@ -151,6 +151,36 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
+    [Theory]
+    [InlineData("Sectors")]    // koleksiyon — PostgreSQL 22P02 malformed array literal veriyordu
+    [InlineData("Location")]   // karmaşık tip (value object)
+    [InlineData("Documents")]  // koleksiyon
+    [InlineData("Status")]     // SmartEnum — İngilizce Name'e göre yanıltıcı sıralama
+    [InlineData("YokBoyleBirAlan")]
+    public async Task Siralanamaz_alanla_siralama_istenince_500_donmez(string sortBy)
+    {
+        // Given — sıralanabilir skaler tipte OLMAYAN (veya hiç var olmayan) bir alan adı (#65)
+        // When — GET /api/businesses bu sortBy ile çağrılır
+        var response = await _fixture.Client.GetAsync(
+            $"/api/businesses/?page=1&pageSize=20&sortBy={sortBy}");
+
+        // Then — sessizce defaultSort'a düşmeli (200), sunucu hatası DEĞİL
+        response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Siralanabilir_alanla_siralama_calisir()
+    {
+        // Given — string tipte, sıralanabilir bir alan
+        // When — GET /api/businesses sortBy=Name ile çağrılır
+        var response = await _fixture.Client.GetAsync(
+            "/api/businesses/?page=1&pageSize=20&sortBy=Name&descending=true");
+
+        // Then — sıralama uygulanmalı ve liste dönmeli (200)
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
     [Fact]
     public async Task Sektor_listesi_basariyla_doner()
     {
