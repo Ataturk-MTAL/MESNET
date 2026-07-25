@@ -70,7 +70,6 @@
       aria-label="Konum seçme haritası — ok tuşlarıyla kaydırın, artı/eksi tuşlarıyla yakınlaştırın. Konum, yukarıdaki adres aramasıyla da seçilebilir."
     >
       <l-map
-        ref="mapRef"
         v-model:zoom="zoom"
         :center="center"
         :use-global-leaflet="false"
@@ -133,7 +132,6 @@ const DEFAULT_ZOOM = 6
 const SELECTED_ZOOM = 15
 
 const zoom = ref(props.modelValue ? SELECTED_ZOOM : DEFAULT_ZOOM)
-const mapRef = ref<InstanceType<typeof LMap> | null>(null)
 
 // Arama durumu
 const searchQuery = ref('')

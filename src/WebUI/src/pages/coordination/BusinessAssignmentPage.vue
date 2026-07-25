@@ -24,7 +24,6 @@
 
       <div class="col-12 col-sm-3">
         <TeacherSelector
-          ref="teacherSelectorRef"
           v-model="selectedTeacherId"
           :branch-code="branchFilter"
           :show-cross-branch="!authStore.isDepartmentHead && !!branchFilter"
@@ -951,7 +950,6 @@ import SearchInput from 'components/SearchInput.vue'
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
-const teacherSelectorRef = ref<InstanceType<typeof TeacherSelector> | null>(null)
 
 // ── Tab ──
 const activeTab = ref('assignment')
