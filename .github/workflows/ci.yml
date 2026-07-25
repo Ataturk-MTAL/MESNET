@@ -32,12 +32,9 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
           restore-keys: nuget-${{ runner.os }}-
 
+      # Test projesi artık MESNET.slnx içinde (#67) — ayrıca derlemeye gerek yok.
       - name: Çözümü derle (MESNET.slnx)
         run: dotnet build MESNET.slnx -c Release
-
-      # Test projesi solution'da değil — en azından DERLENDİĞİNİ doğrula (çalıştırma stack gerektirir)
-      - name: Test projesini derle
-        run: dotnet build tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj -c Release
 
   frontend:
     name: Frontend — type-check & build
@@ -74,3 +71,88 @@ jobs:
       # "build" scripti önce vue-tsc --noEmit (type-check) sonra vite build çalıştırır
       - name: Type-check & build
         run: pnpm build
+
+  # 233 black-box API testi (#67). Gerçek yığın gerektiriyor: PostgreSQL+PostGIS, RabbitMQ,
+  # Keycloak (realm import), MinIO. Konteynerler .github/compose.ci.yml ile ayağa kalkıyor,
+  # API arka planda çalıştırılıyor, sonra dotnet test koşuyor.
+  integration:
+    name: Entegrasyon testleri
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5 # node24
+
+      - name: .NET SDK kur (global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: NuGet cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Bağımlılık yığınını başlat
+        run: docker compose -f .github/compose.ci.yml up -d --wait --wait-timeout 300
+
+      - name: Keycloak realm'ini bekle
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/realms/mesnet/.well-known/openid-configuration > /dev/null; then
+              echo "Keycloak mesnet realm hazır ($i. deneme)"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Keycloak mesnet realm 300 sn içinde hazır olmadı"
+          docker compose -f .github/compose.ci.yml logs keycloak
+          exit 1
+
+      - name: API'yi derle
+        run: dotnet build src/MESNET.Presentation/MESNET.Presentation.csproj -c Release
+
+      - name: API'yi başlat
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://127.0.0.1:5270
+          # appsettings.Development.json'daki "localhost:9000" şemasız olduğu için Minio
+          # istemcisi boş authority ile kuruluyor ve uygulama açılışta patlıyor (#79).
+          MinioStorage__Endpoint: http://localhost:9000
+        run: |
+          nohup dotnet run --project src/MESNET.Presentation \
+            --no-launch-profile --no-build -c Release > /tmp/api.log 2>&1 &
+          echo $! > /tmp/api.pid
+
+      - name: API'nin ayağa kalkmasını bekle
+        run: |
+          for i in $(seq 1 60); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://127.0.0.1:5270/health)" = "200" ]; then
+              echo "API hazır ($i. deneme)"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "API 300 sn içinde /health 200 döndürmedi"
+          tail -100 /tmp/api.log
+          exit 1
+
+      - name: Testler
+        env:
+          API_BASE_URL: http://127.0.0.1:5270
+          KEYCLOAK_TOKEN_URL: http://localhost:8080/realms/mesnet/protocol/openid-connect/token
+        run: dotnet test tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj -c Release --logger 'console;verbosity=normal'
+
+      # Başarısızlıkta kök nedeni görmek için: 500'ler API log'unda, bağlantı hataları konteynerlerde.
+      - name: Başarısızlıkta log'lar
+        if: failure()
+        run: |
+          echo "───────── API log (son 200 satır) ─────────"
+          tail -200 /tmp/api.log || true
+          echo "───────── Konteyner log'ları ─────────"
+          docker compose -f .github/compose.ci.yml logs --tail 100 || true
+
+      - name: Yığını kapat
+        if: always()
+        run: docker compose -f .github/compose.ci.yml down -v || true

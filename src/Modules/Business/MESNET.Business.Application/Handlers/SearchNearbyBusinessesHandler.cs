@@ -31,6 +31,11 @@ public static class SearchNearbyBusinessesHandler
     {
         var ids = new List<Guid>();
 
+        // Raw ADO.NET, Marten'ın tembel tablo oluşturmasını atlar: yeni kurulan bir veritabanında
+        // Business dokümanına henüz Marten üzerinden dokunulmadıysa business.mt_doc_business YOK ve
+        // sorgu 42P01 ile düşüp HTTP 500 üretir. Şemayı açıkça garanti et (#67).
+        await store.Storage.Database.EnsureStorageExistsAsync(typeof(Core.Entities.Business), cancellationToken);
+
         var conn = store.Storage.Database.CreateConnection();
         await conn.OpenAsync(cancellationToken);
         await using (conn)
