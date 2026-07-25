@@ -31,7 +31,10 @@ public class PaymentSaga : Saga
     public bool DeputyApproved { get; set; }
 
     // ─── START: Attendance'dan maaş hesaplama tetiklenir ───
-    public static (PaymentSaga, SalaryCalculated, ReceiptUploadRequested) Start(
+    // Marten 9 senkron veri erişimini kaldırdı; .FirstOrDefault() burada
+    // "As of Marten 9.0, only asynchronous data access is supported" fırlatıyordu ve
+    // AttendanceMarked her seferinde dead letter'a düşüyordu — yani hiç saga oluşmuyordu (#73).
+    public static async Task<(PaymentSaga, SalaryCalculated, ReceiptUploadRequested)> Start(
         AttendanceMarked @event,
         IDocumentSession session)
     {
@@ -39,10 +42,10 @@ public class PaymentSaga : Saga
         var month = @event.Date.ToString("yyyy-MM");
 
         // SalaryCalculationConfig'den parametreleri al
-        var config = session.Query<SalaryCalculationConfig>()
+        var config = await session.Query<SalaryCalculationConfig>()
             .Where(c => c.InstitutionId == @event.InstitutionId)
             .Where(c => c.EffectiveFrom <= @event.Date && (c.EffectiveTo == null || c.EffectiveTo >= @event.Date))
-            .FirstOrDefault();
+            .FirstOrDefaultAsync();
 
         // 3308 Madde 25 formülü (placeholder — gerçek implementasyonda business size, MEM durumu, devamsızlık hesabı yapılacak)
         decimal baseWage = config?.MinimumWage ?? 6631.40m;
