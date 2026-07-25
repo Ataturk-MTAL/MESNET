@@ -110,6 +110,12 @@ jobs:
           docker compose -f .github/compose.ci.yml logs keycloak
           exit 1
 
+      # appsettings.Development.json artık git'te izlenmiyor (#66) — sample'dan üret,
+      # placeholder'ları aşağıdaki env override'ları dolduruyor.
+      - name: Development yapılandırmasını sample'dan üret
+        run: cp src/MESNET.Presentation/appsettings.Development.sample.json
+             src/MESNET.Presentation/appsettings.Development.json
+
       - name: API'yi derle
         run: dotnet build src/MESNET.Presentation/MESNET.Presentation.csproj -c Release
 
@@ -117,9 +123,14 @@ jobs:
         env:
           ASPNETCORE_ENVIRONMENT: Development
           ASPNETCORE_URLS: http://127.0.0.1:5270
-          # appsettings.Development.json'daki "localhost:9000" şemasız olduğu için Minio
-          # istemcisi boş authority ile kuruluyor ve uygulama açılışta patlıyor (#79).
-          MinioStorage__Endpoint: http://localhost:9000
+          # Sample'daki <PLACEHOLDER> değerleri yerine compose.ci.yml'deki dev kimlikleri (#66)
+          ConnectionStrings__mesnet: Host=localhost;Port=5432;Database=mesnet;Username=mesnet;Password=mesnet_dev
+          RabbitMQ__UserName: mesnet
+          RabbitMQ__Password: mesnet_dev
+          Keycloak__credentials__secret: dev-secret
+          MinioStorage__AccessKey: minioadmin
+          MinioStorage__SecretKey: minioadmin
+          MinioStorage__Endpoint: localhost:9000
         run: |
           nohup dotnet run --project src/MESNET.Presentation \
             --no-launch-profile --no-build -c Release > /tmp/api.log 2>&1 &

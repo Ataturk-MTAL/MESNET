@@ -39,6 +39,10 @@ appsettings.*.local.json
 .aspire/
 src/MESNET.AppHost/appsettings.json
 
+## Gerçek kimlik bilgileri içerir — yanındaki .sample.json'dan kopyalanır (#66)
+src/MESNET.Seeder/appsettings.json
+src/MESNET.Presentation/appsettings.Development.json
+
 ## OSRM data (200 MB+ — her geliştirici prepare-mersin.sh ile oluşturur)
 src/MESNET.AppHost/osrm/data/
 
