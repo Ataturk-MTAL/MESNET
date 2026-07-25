@@ -26,7 +26,8 @@ public static class ResyncStudentProjectionsHandler
                 s.BranchCode,
                 s.ClassYear,
                 s.EducationType.Name,
-                s.StudentNumber ?? ""));
+                s.StudentNumber ?? "",
+                s.HasJourneymanQualification));
         }
 
         return new ResyncStudentProjectionsResult(students.Count);

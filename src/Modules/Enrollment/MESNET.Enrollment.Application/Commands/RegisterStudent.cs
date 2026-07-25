@@ -16,4 +16,6 @@ public sealed record RegisterStudent(
     string? PhoneNumber = null,
     string? TcKimlikNo = null,
     string? GuardianName = null,
-    string? GuardianPhone = null);
+    string? GuardianPhone = null,
+    // 3308 Madde 25: %50 oranının şartı — kalfalık yeterliği (#83)
+    bool HasJourneymanQualification = false);

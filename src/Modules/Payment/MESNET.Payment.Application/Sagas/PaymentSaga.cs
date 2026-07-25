@@ -135,29 +135,34 @@ public class PaymentSaga : Saga
         var business = await session.LoadAsync<BusinessPaymentProfile>(command.BusinessId);
         var student = await session.LoadAsync<StudentPaymentProfile>(command.StudentId);
 
-        var unexcusedDays = await CountUnexcusedDaysAsync(session, command.StudentId, command.Month);
+        var deductibleDays = await CountDeductibleAbsenceDaysAsync(session, command.StudentId, command.Month);
 
         return SalaryCalculator.Calculate(
             config,
             business?.PersonnelCount ?? 0,
             student?.EducationTypeName ?? "",
             student?.ClassYear ?? 0,
-            unexcusedDays);
+            student?.HasJourneymanQualification ?? false,
+            deductibleDays);
     }
 
     /// <summary>
-    /// Onaylanmış mazeretsiz devamsızlık günü sayısı. <c>Pending</c> sayılmaz: işletmenin tek
+    /// Onaylanmış, ücret kesintisine tabi devamsızlık günü sayısı — mazeretsiz devamsızlık ve
+    /// ücretsiz izin (<c>AbsenceType.AffectsSalary</c>). <c>Pending</c> sayılmaz: işletmenin tek
     /// taraflı girişi öğretmen onayı olmadan öğrencinin ücretini kesemez.
     /// </summary>
-    private static Task<int> CountUnexcusedDaysAsync(IQuerySession session, Guid studentId, string month)
+    private static Task<int> CountDeductibleAbsenceDaysAsync(
+        IQuerySession session, Guid studentId, string month)
         => session.Query<StudentAbsenceView>()
             .Where(a => a.StudentId == studentId
                         && a.Month == month
-                        && a.AbsenceTypeName == UnexcusedAbsence
+                        && DeductibleAbsenceTypes.Contains(a.AbsenceTypeName)
                         && a.StatusName != PendingStatus)
             .CountAsync();
 
-    private const string UnexcusedAbsence = "Unexcused";
+    // AbsenceType.AffectsSalary ile aynı küme. SmartEnum Marten LINQ'te kullanılamadığı için
+    // düz string (bkz. CLAUDE.md — SmartEnum LINQ kuralları).
+    private static readonly string[] DeductibleAbsenceTypes = ["Unexcused", "UnpaidLeave"];
     private const string PendingStatus = "Pending";
 
     // ─── HANDLE: İşletme dekontu yükledi ───

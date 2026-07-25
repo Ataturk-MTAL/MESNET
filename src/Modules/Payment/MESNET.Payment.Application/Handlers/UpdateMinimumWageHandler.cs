@@ -27,6 +27,7 @@ public static class UpdateMinimumWageHandler
             {
                 currentConfig.MinimumWage = command.NewMinimumWage;
                 currentConfig.UpdatedBy = command.UpdatedBy;
+                RefreshStatutoryRates(currentConfig);
                 session.Store(currentConfig);
                 return;
             }
@@ -49,5 +50,30 @@ public static class UpdateMinimumWageHandler
             UpdatedBy = command.UpdatedBy
         };
         session.Store(newConfig);
+    }
+
+    /// <summary>
+    /// Kanunla belirlenmiş oranları koddaki güncel değerlere çeker.
+    /// </summary>
+    /// <remarks>
+    /// Bu oranlar kuruma özel tercih değil, 3308 Madde 25 ve Geçici Madde 12'de yazılı sabitler.
+    /// Kayıtlı document'ta eski değer kalırsa (ör. kırpılmış <c>0.3333</c> yerine tam <c>1/3</c>)
+    /// koddaki düzeltme mevcut veride etkisiz kalıyordu (#83). Mevzuat değişirse koddaki
+    /// varsayılan güncellenir ve asgari ücret güncellemesiyle birlikte yayılır.
+    ///
+    /// İşletmenin daha yüksek ücret ödemesi bu oranlarla değil, sözleşmedeki ücretle temsil
+    /// edilmelidir (Madde 25: ücret sözleşmeyle tespit edilir).
+    /// </remarks>
+    private static void RefreshStatutoryRates(SalaryCalculationConfig config)
+    {
+        var defaults = new SalaryCalculationConfig();
+
+        config.PersonnelThreshold = defaults.PersonnelThreshold;
+        config.LargeBusinessRate = defaults.LargeBusinessRate;
+        config.SmallBusinessRate = defaults.SmallBusinessRate;
+        config.MEM12thGradeRate = defaults.MEM12thGradeRate;
+        config.GovContribSmallNonMEM = defaults.GovContribSmallNonMEM;
+        config.GovContribLargeNonMEM = defaults.GovContribLargeNonMEM;
+        config.GovContribMEM = defaults.GovContribMEM;
     }
 }

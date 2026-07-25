@@ -246,6 +246,19 @@ Her devamsızlık kaydı, aktif `InternshipPlacement`'taki öğrenci-işletme e�
 | MEM 12. sınıf (kalfalık yeterliği) | %50 | Net Asgari Ücret × 0.50 |
 
 > **Not:** Bu oranlar yasal asgari değerlerdir. İşletmeler daha yüksek ücret ödeyebilir.
+> Madde 25'in ilk cümlesi ücretin **sözleşmeyle** tespit edileceğini söyler; yüzdeler yalnız
+> alt sınırdır. Sistem şu an tabanı ücret olarak hesaplıyor, sözleşmedeki daha yüksek ücreti
+> kaydetmiyor.
+
+> **%50 oranının şartı:** Kanun "**kalfalık yeterliğini kazanan** mesleki eğitim merkezi
+> 12'nci sınıf öğrencileri" diyor. Yeterliği olmayan MESEM 12. sınıf öğrencisi işletme
+> büyüklüğü oranına (%15/%30) tabidir. Bilgi eksikse düşük oran uygulanır.
+
+> **Personel sayısı tanımı** (3308 Madde 24, son fıkra): "görev ve çalışma statüsüne
+> bakılmaksızın işyerinde **1475 sayılı İş Kanununa tabi olarak çalıştırılan** personel sayısı".
+> Stajyer ve çıraklar bu sayıya dâhil değildir — 4857 Madde 4/f çırakları İş Kanunu kapsamı
+> dışında bırakır. Sayı 20 eşiğini geçtiğinde öğrenci ücreti ikiye katlandığı için tanım
+> kritiktir.
 
 ### 6.2 Devamsızlık Kesintisi
 
@@ -255,9 +268,26 @@ Her devamsızlık kaydı, aktif `InternshipPlacement`'taki öğrenci-işletme e�
 
 ```
 GünlükÜcret = AylıkTabanÜcret / 30
-KesintiBedeli = GünlükÜcret × MazeretsizDevamsızGünSayısı
+KesintiBedeli = GünlükÜcret × KesintiyeTabiGünSayısı
 ÖdenecekÜcret = AylıkTabanÜcret - KesintiBedeli
 ```
+
+**Kesintiye tabi devamsızlık türleri** (`AbsenceType.AffectsSalary`):
+
+| Tür | Kesinti |
+| --- | ------- |
+| Mazeretsiz (`Unexcused`) | **Kesilir** |
+| Ücretsiz İzin (`UnpaidLeave`) | **Kesilir** |
+| Mazeretli (`Excused`) | Kesilmez |
+| Sağlık Raporu (`HealthReport`) | Kesilmez |
+| Ücretli İzin (`PaidLeave`) | Kesilmez |
+
+> Ücretli izin, MEB Ortaöğretim Kurumları Yönetmeliği'nde işletmenin yükümlülüğü olarak
+> tanımlıdır: telafi eğitimi ve okuldaki sınav günleri için, ayrıca ara tatil/yarıyıl/yaz
+> tatilinde toplam bir ay.
+
+> Yalnız **onaylanmış** kayıtlar sayılır — işletmenin girdiği ve henüz öğretmence onaylanmamış
+> (`Pending`) devamsızlık öğrencinin ücretini kesmez.
 
 **Örnek:** 20+ personel işletmede, asgari ücret 22.104,67 TL ise:
 - Taban ücret = 22.104,67 × 0.30 = 6.631,40 TL
@@ -277,9 +307,20 @@ KesintiBedeli = GünlükÜcret × MazeretsizDevamsızGünSayısı
 **Hesaplama:**
 
 ```
-DevletKatkısı = ÖdenecekÜcret × DevletKatkısıOranı
-İşverenPayı = ÖdenecekÜcret - DevletKatkısı
+DevletKatkısı = AylıkTabanÜcret × DevletKatkısıOranı
+İşverenPayı   = ÖdenecekÜcret - DevletKatkısı
 ```
+
+> **Matrah taban ücrettir, ödenecek ücret değil.** Geçici Madde 12 katkıyı
+> "**ödenebilecek en az ücretin**" oranı olarak tanımlıyor — yani §6.1'deki yasal taban.
+> Devamsızlık kesintisi taban ücreti değil ödenecek ücreti düşürür; dolayısıyla kesinti
+> devlet katkısını azaltmaz, işveren payını azaltır.
+>
+> Oranlar tam kesirdir: `1/3` ve `2/3`. Yaklaşık değer (`0,3333` / `0,6667`) kullanılmaz.
+>
+> Kesintinin katkı matrahını düşürüp düşürmediği kanunda açık değil (Geçici Madde 12:
+> "usul ve esaslar Bakanlık ve Türkiye İş Kurumu tarafından belirlenir"). Uygulamada katkı,
+> fiilen ödenen ücretle sınırlandırılır — aksi halde işveren payı negatife düşerdi.
 
 **İstisnalar:**
 

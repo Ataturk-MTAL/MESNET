@@ -47,10 +47,14 @@ export interface CorrectAttendanceRequest {
   reason?: string
 }
 
+// Ücret kesintisi yalnız "Mazeretsiz" ve "Ücretsiz İzin" günlerinde yapılır
+// (3308 / MEB Ortaöğretim Kurumları Yönetmeliği — bkz. backend AbsenceType.AffectsSalary).
 export const ABSENCE_TYPES = [
   { label: 'Mazeretli', value: 'Excused' },
   { label: 'Mazeretsiz', value: 'Unexcused' },
   { label: 'Sağlık Raporu', value: 'HealthReport' },
+  { label: 'Ücretsiz İzin', value: 'UnpaidLeave' },
+  { label: 'Ücretli İzin', value: 'PaidLeave' },
 ] as const
 
 export const attendanceApi = {

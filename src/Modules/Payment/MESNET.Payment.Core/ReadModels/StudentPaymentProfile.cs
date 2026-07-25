@@ -19,4 +19,10 @@ public class StudentPaymentProfile
 
     /// <summary><c>Formal</c> (Örgün) veya <c>Mesem</c> (MESEM).</summary>
     public string EducationTypeName { get; set; } = "";
+
+    /// <summary>
+    /// Kalfalık yeterliğini kazandı mı — %50 oranının şartı (3308 Madde 25). Varsayılan false;
+    /// eksik veri fazla ödeme üretmesin diye düşük orana düşülür (#83).
+    /// </summary>
+    public bool HasJourneymanQualification { get; set; }
 }
