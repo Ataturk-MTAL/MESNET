@@ -24,6 +24,10 @@ public static class UpdateStudentProfileHandler
         if (command.StudentNumber is not null) student.StudentNumber = command.StudentNumber;
         if (command.PhoneNumber is not null) student.PhoneNumber = command.PhoneNumber;
         if (command.TcKimlikNo is not null) student.TcKimlikNo = command.TcKimlikNo;
+        // Kalfalık yeterliği ders yılı içinde kazanılabilir; değişince MESEM 12. sınıf taban
+        // ücret oranı %15/%30'dan %50'ye geçer (#83).
+        if (command.HasJourneymanQualification is not null)
+            student.HasJourneymanQualification = command.HasJourneymanQualification.Value;
 
         if (command.GuardianName is not null || command.GuardianPhone is not null)
         {

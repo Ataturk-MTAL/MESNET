@@ -23,6 +23,7 @@ public static class StudentRegisteredConsumer
             // (%50) ve MESEM devlet katkısı (tamamı) bu alanlar olmadan seçilemiyor (#64).
             ClassYear = @event.ClassYear,
             EducationTypeName = @event.EducationType,
+            HasJourneymanQualification = @event.HasJourneymanQualification,
         };
         session.Store(profile);
     }

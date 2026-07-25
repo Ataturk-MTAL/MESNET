@@ -29,7 +29,13 @@
               <q-input v-if="isEdit" v-model="form.website" label="Web Sitesi" outlined>
                 <template #prepend><q-icon name="language" /></template>
               </q-input>
-              <q-input v-model.number="form.personnelCount" label="Personel Sayısı" outlined type="number">
+              <q-input
+                v-model.number="form.personnelCount"
+                label="Personel Sayısı"
+                outlined
+                type="number"
+                hint="İş Kanununa tabi çalıştırılan personel sayısı — stajyer ve çıraklar dâhil edilmez. 20 ve üzeri işletmelerde öğrenci ücreti asgari ücretin %30'u, altında %15'idir."
+              >
                 <template #prepend><q-icon name="groups" /></template>
               </q-input>
               <q-select v-model="form.sectors" :options="sectorOptions" label="Sektörler" outlined multiple emit-value map-options use-chips>

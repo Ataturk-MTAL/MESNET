@@ -30,6 +30,14 @@ public class StudentProfile
     [JsonConverter(typeof(SmartEnumNameConverter<EducationType, int>))]
     public EducationType EducationType { get; set; } = EducationType.Formal;
 
+    /// <summary>
+    /// Kalfalık yeterliğini kazandı mı. 3308 Madde 25: asgari ücretin %50'si oranı yalnız
+    /// "kalfalık yeterliğini kazanan mesleki eğitim merkezi 12'nci sınıf öğrencileri" için
+    /// geçerlidir. Yeterliği olmayan MESEM öğrencisi işletme büyüklüğü oranına (%15/%30) tabidir.
+    /// Varsayılan false — eksik veri fazla ödeme üretmesin (#83).
+    /// </summary>
+    public bool HasJourneymanQualification { get; set; }
+
     /// <summary>LINQ sorguları için düz string kopyası</summary>
     public string EducationTypeName { get; set; } = EducationType.Formal.Name;
 
