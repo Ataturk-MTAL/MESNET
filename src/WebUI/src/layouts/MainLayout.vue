@@ -53,7 +53,7 @@
                 v-for="(n, i) in notificationStore.notifications.slice(0, 10)"
                 :key="n.id"
                 dense
-                :class="{ 'bg-blue-1': !n.read }"
+                :class="{ 'bg-info-soft': !n.read }"
               >
                 <q-item-section avatar>
                   <q-icon
@@ -140,7 +140,7 @@
                     </q-item-section>
                     <q-item-section side>
                       <q-badge
-                        :color="opt.active ? 'green-7' : 'grey-5'"
+                        :color="opt.active ? 'positive' : 'grey-5'"
                         :label="opt.active ? 'Aktif' : 'Kapalı'"
                       />
                     </q-item-section>

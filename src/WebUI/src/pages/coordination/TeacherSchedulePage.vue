@@ -56,7 +56,7 @@
                   Haftalık Program
                   <q-badge
                     v-if="hasExistingSchedule"
-                    color="green-7"
+                    color="positive"
                     class="q-ml-sm"
                   >
                     Kayıtlı
@@ -71,7 +71,7 @@
                   </q-badge>
                   <q-badge
                     v-if="viewingHistoryVersion !== null"
-                    color="orange-7"
+                    color="warning"
                     class="q-ml-sm"
                   >
                     Geçmiş: v{{ viewingHistoryVersion }}
@@ -156,7 +156,7 @@
                   <div class="text-caption text-grey-7">
                     {{ day.label }}
                   </div>
-                  <div class="text-h6 text-green-8">
+                  <div class="text-h6 text-positive-strong">
                     {{ freeSlotsPerDay(day.value) }}
                   </div>
                   <div class="text-caption text-grey-6">
@@ -215,12 +215,12 @@
                   :key="ver.version"
                   clickable
                   :active="viewingHistoryVersion === ver.version"
-                  active-class="bg-blue-1"
+                  active-class="bg-info-soft"
                   @click="viewVersion(ver)"
                 >
                   <q-item-section avatar>
                     <q-avatar
-                      :color="ver.version === scheduleHistory?.currentVersion ? 'green-7' : 'grey-5'"
+                      :color="ver.version === scheduleHistory?.currentVersion ? 'positive' : 'grey-5'"
                       text-color="white"
                       size="sm"
                       font-size="12px"
@@ -245,7 +245,7 @@
                     side
                   >
                     <q-badge
-                      color="green-7"
+                      color="positive"
                       label="Geçerli"
                     />
                   </q-item-section>

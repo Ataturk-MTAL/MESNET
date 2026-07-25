@@ -96,8 +96,8 @@
           <q-badge
             v-for="sec in row.sectors"
             :key="sec.name"
-            color="blue-grey-3"
-            text-color="dark"
+            color="neutral-soft"
+            text-color="neutral-strong"
             class="q-mr-xs q-mb-xs"
             :label="sec.slug"
           />
@@ -219,8 +219,8 @@
                 <q-badge
                   v-for="sec in biz.sectors"
                   :key="sec.name"
-                  color="blue-grey-3"
-                  text-color="dark"
+                  color="neutral-soft"
+                  text-color="neutral-strong"
                   class="q-mr-xs q-mb-xs"
                   :label="sec.slug"
                   style="font-size: 10px"
@@ -317,8 +317,8 @@
             <q-badge
               v-for="sec in selected.sectors"
               :key="sec.name"
-              color="blue-grey-3"
-              text-color="dark"
+              color="neutral-soft"
+              text-color="neutral-strong"
               class="q-mr-xs q-mb-xs"
               :label="sec.slug"
             />

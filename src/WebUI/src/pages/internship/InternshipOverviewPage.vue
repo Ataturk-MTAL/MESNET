@@ -35,7 +35,7 @@
           icon="done_all"
           :value="stats.completed"
           label="Tamamlandı"
-          color="purple"
+          color="secondary"
         />
       </div>
       <div class="col-12 col-sm-6 col-md">
@@ -109,7 +109,7 @@
           <template #body-cell-sourceSlug="{ row }">
             <q-td>
               <q-badge
-                color="blue-grey"
+                color="neutral"
                 :label="row.sourceSlug"
               />
             </q-td>
@@ -155,7 +155,7 @@
           hide-bottom
         >
           <template #body="{ row }">
-            <tr :class="row.totalAbsenceDays >= 30 ? 'bg-red-1' : 'bg-orange-1'">
+            <tr :class="row.totalAbsenceDays >= 30 ? 'bg-negative-soft' : 'bg-warning-soft'">
               <td class="text-left">
                 {{ row.studentName }}
               </td>
@@ -230,7 +230,7 @@
             label="Kaynak"
           >
             <q-badge
-              color="blue-grey"
+              color="neutral"
               :label="selected.sourceSlug"
             />
           </InfoItem>

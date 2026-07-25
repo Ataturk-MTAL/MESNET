@@ -41,7 +41,7 @@
         >
           <q-badge
             v-if="pendingChanges.length > 0"
-            color="red"
+            color="negative"
             floating
           >
             {{ pendingChanges.length }}
@@ -125,7 +125,7 @@
                   <div class="text-subtitle1 text-weight-medium q-mb-sm">
                     Atanmamış İşletmeler
                     <q-badge
-                      color="orange-7"
+                      color="warning"
                       class="q-ml-sm"
                     >
                       {{ unassignedBusinesses.length }}
@@ -174,7 +174,7 @@
                           <q-icon
                             name="business"
                             size="18px"
-                            color="orange-7"
+                            color="warning"
                             class="q-mr-sm"
                           />
                           <div class="col">
@@ -189,12 +189,12 @@
                         </div>
                         <div class="row q-mt-xs q-gutter-xs">
                           <q-badge
-                            :color="slotProgress(biz).current > 0 ? 'orange-7' : 'green-7'"
+                            :color="slotProgress(biz).current > 0 ? 'warning' : 'positive'"
                             :label="`${slotProgress(biz).current}/${slotProgress(biz).target} saat`"
                             dense
                           />
                           <q-badge
-                            color="blue-7"
+                            color="info"
                             :label="`${biz.activeStudentCount} öğrenci`"
                             dense
                           />
@@ -219,7 +219,7 @@
                       <div class="text-caption text-grey-7">
                         Ders Yükü Havuzu
                       </div>
-                      <div class="text-h5 text-green-8">
+                      <div class="text-h5 text-positive-strong">
                         {{ summary.totalWorkloadPool }}
                       </div>
                     </q-card-section>
@@ -236,7 +236,7 @@
                       </div>
                       <div
                         class="text-h5"
-                        :class="isOverLimit ? 'text-red-8' : 'text-blue-8'"
+                        :class="isOverLimit ? 'text-negative-strong' : 'text-info-strong'"
                       >
                         {{ summary.totalAssignedHours }}
                       </div>
@@ -252,7 +252,7 @@
                       <div class="text-caption text-grey-7">
                         Kalan Saat
                       </div>
-                      <div class="text-h5 text-orange-8">
+                      <div class="text-h5 text-warning-strong">
                         {{ summary.remainingHours }}
                       </div>
                     </q-card-section>
@@ -267,7 +267,7 @@
                       <div class="text-caption text-grey-7">
                         Atanmış / Toplam
                       </div>
-                      <div class="text-h5 text-purple-8">
+                      <div class="text-h5 text-secondary-strong">
                         {{ summary.assignedBusinessCount }} / {{ summary.assignedBusinessCount + summary.unassignedBusinessCount }}
                       </div>
                     </q-card-section>
@@ -335,7 +335,7 @@
                   <div class="text-subtitle1 text-weight-medium q-mb-sm">
                     Atanmış İşletmeler
                     <q-badge
-                      color="blue-7"
+                      color="info"
                       class="q-ml-sm"
                     >
                       {{ assignedToTeacher.length }}
@@ -352,7 +352,7 @@
                       <q-item-section avatar>
                         <q-icon
                           name="business"
-                          color="blue-7"
+                          color="info"
                         />
                       </q-item-section>
                       <q-item-section>
@@ -383,7 +383,7 @@
                             round
                             dense
                             icon="close"
-                            color="red-5"
+                            color="negative"
                             size="sm"
                             aria-label="Atamayı kaldır"
                             @click="removeAssignment(biz)"
@@ -495,7 +495,7 @@
                     <q-icon
                       v-if="!row.scheduleExists"
                       name="warning"
-                      color="orange-6"
+                      color="warning"
                       size="16px"
                     >
                       <q-tooltip>Ders programı girilmemiş</q-tooltip>
@@ -620,7 +620,7 @@
                   class="q-mx-sm"
                 />
                 <q-btn
-                  color="teal"
+                  color="secondary"
                   icon="route"
                   label="Mesafe Hesapla"
                   :loading="recalculating"
@@ -641,7 +641,7 @@
                   <q-icon
                     name="warning"
                     size="3em"
-                    color="orange-6"
+                    color="warning"
                     class="q-mb-sm"
                   />
                   <div>Kümeleme verisi yüklenemedi.</div>
@@ -777,7 +777,7 @@
                     <td class="text-center">
                       {{ biz.activeStudentCount }}
                     </td>
-                    <td class="text-center text-weight-medium text-green-8">
+                    <td class="text-center text-weight-medium text-positive-strong">
                       {{ biz.maxCoordinationHours }}
                     </td>
                     <td class="text-center">
@@ -800,9 +800,9 @@
               <!-- Özet + Kaydet -->
               <div class="row items-center q-mt-md">
                 <div class="text-body2">
-                  Havuz: <strong class="text-green-8">{{ hoursWorkloadPool }}</strong>
-                  &nbsp;|&nbsp; Σ Takdir: <strong :class="hoursOverLimit ? 'text-red-8' : 'text-blue-8'">{{ hoursTotalAssigned }}</strong>
-                  &nbsp;|&nbsp; Kalan: <strong class="text-orange-8">{{ hoursRemaining }}</strong>
+                  Havuz: <strong class="text-positive-strong">{{ hoursWorkloadPool }}</strong>
+                  &nbsp;|&nbsp; Σ Takdir: <strong :class="hoursOverLimit ? 'text-negative-strong' : 'text-info-strong'">{{ hoursTotalAssigned }}</strong>
+                  &nbsp;|&nbsp; Kalan: <strong class="text-warning-strong">{{ hoursRemaining }}</strong>
                   &nbsp;|&nbsp; Σ Maks: <strong class="text-grey-6">{{ hoursTotalMaxHours }}</strong>
                 </div>
                 <q-space />
@@ -816,7 +816,7 @@
                 >
                   <q-badge
                     v-if="changedHoursCount > 0"
-                    color="red"
+                    color="negative"
                     floating
                   >
                     {{ changedHoursCount }}
@@ -853,7 +853,7 @@
           <q-btn
             flat
             label="Değişiklikleri At"
-            color="red"
+            color="negative"
             @click="confirmDiscard"
           />
         </q-card-actions>

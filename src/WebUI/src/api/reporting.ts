@@ -133,9 +133,9 @@ export const DOCUMENT_STATUS_LABELS: Record<string, string> = {
 }
 
 export const DOCUMENT_STATUS_COLORS: Record<string, string> = {
-  Generated: 'blue',
-  Printed: 'orange',
-  SignedAndReturned: 'green',
+  Generated: 'info',
+  Printed: 'warning',
+  SignedAndReturned: 'positive',
   Archived: 'grey',
 }
 

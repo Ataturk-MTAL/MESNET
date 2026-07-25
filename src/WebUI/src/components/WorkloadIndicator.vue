@@ -17,8 +17,8 @@ const props = withDefaults(defineProps<{
 
 const color = computed(() => {
   if (props.assignedHours === 0) return 'grey-4'
-  if (props.assignedHours <= 4) return 'green-7'
-  if (props.assignedHours <= 8) return 'orange-7'
-  return 'red-7'
+  if (props.assignedHours <= 4) return 'positive'
+  if (props.assignedHours <= 8) return 'warning'
+  return 'negative'
 })
 </script>

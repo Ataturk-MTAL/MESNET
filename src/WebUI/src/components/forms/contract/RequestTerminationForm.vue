@@ -3,7 +3,7 @@
     v-model="open"
     title="Fesih Talebi Oluştur"
     icon="report"
-    color="deep-orange"
+    color="negative"
     save-label="Talebi Gönder"
     :saving="saving"
     :save-disabled="!form.reasonType || !form.reason || !form.requestedBy"

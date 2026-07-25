@@ -3,7 +3,7 @@
     v-model="open"
     title="Not Giriş Penceresi"
     icon="event_available"
-    color="teal"
+    color="primary"
     save-label="Pencereyi Aç"
     :saving="saving"
     :save-disabled="!form.startDate || !form.endDate"

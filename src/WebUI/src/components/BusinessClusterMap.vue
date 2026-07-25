@@ -18,7 +18,7 @@
       <q-chip
         v-if="selectedRoute"
         dense
-        color="blue-7"
+        color="info"
         text-color="white"
         icon="route"
         size="sm"
@@ -122,7 +122,7 @@
               </div>
               <div class="text-caption">
                 <span class="text-grey-6">Verilebilir Maks:</span>
-                <strong class="text-green-8">{{ biz.maxCoordinationHours }} saat</strong>
+                <strong class="text-positive-strong">{{ biz.maxCoordinationHours }} saat</strong>
               </div>
               <q-separator class="q-my-xs" />
               <div

@@ -71,9 +71,9 @@
               <q-icon
                 name="add_circle_outline"
                 size="16px"
-                color="green-4"
+                color="positive"
               />
-              <span class="text-caption text-green-6">Boş</span>
+              <span class="text-caption text-positive">Boş</span>
             </div>
 
             <!-- Boş + atanmış — İşletme chip -->
@@ -101,9 +101,9 @@
                 <q-icon
                   name="business"
                   size="14px"
-                  color="blue-7"
+                  color="info"
                 />
-                <span class="text-caption text-blue-9 ellipsis chip-label">
+                <span class="text-caption text-info-strong ellipsis chip-label">
                   {{ getBusinessName(day.value, period) }}
                 </span>
                 <q-btn
@@ -113,7 +113,7 @@
                   dense
                   icon="close"
                   size="8px"
-                  color="red-5"
+                  color="negative"
                   class="remove-btn"
                   :aria-label="`${getBusinessName(day.value, period)} atamasını kaldır`"
                   @click.stop="onRemoveClick(day.value, period)"
@@ -140,8 +140,8 @@
       </q-chip>
       <q-chip
         icon="event_available"
-        color="green-1"
-        text-color="green-8"
+        color="positive-soft"
+        text-color="positive-strong"
         dense
         size="sm"
       >
@@ -149,8 +149,8 @@
       </q-chip>
       <q-chip
         icon="business"
-        color="blue-1"
-        text-color="blue-8"
+        color="info-soft"
+        text-color="info-strong"
         dense
         size="sm"
       >

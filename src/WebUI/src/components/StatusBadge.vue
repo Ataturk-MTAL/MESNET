@@ -17,15 +17,15 @@ const props = defineProps<Props>()
 
 // Anlamsal renk paleti — aynı AŞAMADAKİ durumlar aynı tonu paylaşır, aşamalar arası ayrışır.
 // (Etiket metni renk-körü kullanıcı için ayırt ediciliği zaten sağlar; renk ikincil sinyaldir.)
-const PENDING = 'amber-8' //     bekleyen: onay/imza/başvuru bekliyor
-const ACTIVE = 'green-7' //      olumlu/aktif: aktif, onaylandı, doğrulandı, ödendi
-const SUCCESS = 'green-9' //     başarıyla tamamlandı (aktif yeşilden koyu — terminal başarı)
-const PROGRESS = 'teal-7' //     ara aşama: yerleştirildi, eşleştirildi
-const INFO = 'cyan-7' //         bilgilendirici ara durum: imzalandı, yüklendi, hesaplandı
-const WARNING = 'orange-8' //    uyarı: askıda, fesih talebi, süre doldu, itiraz
-const NEGATIVE = 'red-7' //      olumsuz: red, fesih, iptal
-const DONE = 'deep-purple-6' //  tamamlanmış: tamamlandı, transfer
-const NEUTRAL = 'blue-grey-6' // nötr: kayıtlı
+const PENDING = 'status-pending' //   bekleyen: onay/imza/başvuru bekliyor
+const ACTIVE = 'status-active' //     olumlu/aktif: aktif, onaylandı, doğrulandı, ödendi
+const SUCCESS = 'status-success' //   başarıyla tamamlandı (aktif yeşilden koyu — terminal başarı)
+const PROGRESS = 'status-progress' // ara aşama: yerleştirildi, eşleştirildi
+const INFO = 'status-info' //         bilgilendirici ara durum: imzalandı, yüklendi, hesaplandı
+const WARNING = 'status-warning' //   uyarı: askıda, fesih talebi, süre doldu, itiraz
+const NEGATIVE = 'status-negative' // olumsuz: red, fesih, iptal
+const DONE = 'status-done' //         tamamlanmış: tamamlandı, transfer
+const NEUTRAL = 'status-neutral' //   nötr: kayıtlı
 const DRAFT = 'grey-6' //        taslak/pasif
 const CLOSED = 'grey-9' //       kapatılmış
 

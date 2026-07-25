@@ -63,7 +63,7 @@
             <q-btn
               flat
               dense
-              color="orange-8"
+              color="warning"
               icon="sync"
               label="Öğrenci Sayılarını Güncelle"
               :loading="syncingCounts"
@@ -127,7 +127,7 @@
           </div>
         </div>
         <div class="text-body2 q-mb-md">
-          Şeflik Toplamı: <strong class="text-purple-8">{{ wlSupervisorTotal }}</strong> saat
+          Şeflik Toplamı: <strong class="text-secondary-strong">{{ wlSupervisorTotal }}</strong> saat
           <span class="text-caption text-grey-7">
             ({{ wlDeptHeadCount }} × {{ wlDeptHeadHours }} + {{ wlWorkshopHeadCount }} × {{ wlWorkshopHeadHours }})
           </span>
@@ -199,7 +199,7 @@
                   :disable="periodStore.isReadOnly"
                 />
               </td>
-              <td class="text-center text-weight-medium text-blue-8">
+              <td class="text-center text-weight-medium text-info-strong">
                 {{ estimateGroupCount(wlEducationType, cl.classYear, cl.studentCount) }}
               </td>
               <td class="text-center text-weight-medium">
@@ -212,13 +212,13 @@
         <!-- Toplamlar + Kaydet -->
         <div class="row items-center">
           <div class="text-body2">
-            Ders Yükü: <strong class="text-blue-8">{{ wlTeachingTotal }}</strong>
-            &nbsp;+&nbsp; Şeflik: <strong class="text-purple-8">{{ wlSupervisorTotal }}</strong>
-            &nbsp;=&nbsp; <strong class="text-teal-8 text-h6">HAVUZ: {{ wlPoolTotal }} saat</strong>
+            Ders Yükü: <strong class="text-info-strong">{{ wlTeachingTotal }}</strong>
+            &nbsp;+&nbsp; Şeflik: <strong class="text-secondary-strong">{{ wlSupervisorTotal }}</strong>
+            &nbsp;=&nbsp; <strong class="text-positive-strong text-h6">HAVUZ: {{ wlPoolTotal }} saat</strong>
           </div>
           <q-space />
           <q-btn
-            color="teal"
+            color="positive"
             icon="save"
             label="Yapılandırmayı Kaydet"
             :loading="workloadSaving"

@@ -11,7 +11,7 @@
       <div class="self-center full-width no-outline">
         <q-icon
           :name="icon"
-          color="blue-7"
+          color="info"
           class="q-mr-sm"
         />
         {{ displayLabel }}

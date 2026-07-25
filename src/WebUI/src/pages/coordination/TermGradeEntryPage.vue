@@ -51,7 +51,7 @@
           <q-td>
             <q-badge
               v-if="row.status"
-              :color="row.status === 'Submitted' ? 'green-7' : 'orange-7'"
+              :color="row.status === 'Submitted' ? 'positive' : 'warning'"
               :label="row.statusSlug ?? row.status"
             />
             <span
@@ -84,7 +84,7 @@
               size="sm"
               icon="send"
               label="Gönder"
-              color="green-8"
+              color="positive"
               :disable="!isWindowOpen"
               @click="confirmSubmit(row)"
             >
@@ -257,7 +257,7 @@ function confirmSubmit(row: StudentGradeRow) {
     title: 'Notu Gönder',
     message: `${row.studentName} için notları kesin göndermek istiyor musunuz? Gönderilen notlar düzenlenemez.`,
     cancel: { label: 'Vazgeç', flat: true },
-    ok: { label: 'Gönder', color: 'green-8', unelevated: true },
+    ok: { label: 'Gönder', color: 'positive', unelevated: true },
   }).onOk(() => {
     doSubmit(row).catch(() => {})
   })

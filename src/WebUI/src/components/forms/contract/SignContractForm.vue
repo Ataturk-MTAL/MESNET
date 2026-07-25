@@ -3,7 +3,7 @@
     v-model="open"
     title="Sözleşme İmzala"
     icon="draw"
-    color="teal"
+    color="positive"
     width="420px"
     save-label="İmzala"
     :saving="saving"
