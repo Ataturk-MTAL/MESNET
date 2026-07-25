@@ -10,13 +10,23 @@ public static class CoordinationSeeder
         if (!ctx.Has("Institution")) return;
         var institutionId = ctx.Get("Institution");
 
-        await SeedGuidanceVisits(api, ctx, institutionId);
-        await SeedBusinessEvaluation(api, ctx, institutionId);
-        await SeedSkillExam(api, ctx, institutionId);
-        await SeedActivityReport(api, ctx, institutionId);
+        // Koordinasyon kayıtlarının hepsi akademik döneme bağlı; gövdede academicPeriodId
+        // gönderilmediği için sunucu Guid.Empty görüyor ve 422 "Eğitim dönemi bulunamadı:
+        // 00000000-0000-0000-0000-000000000000" dönüyordu (#80).
+        if (!ctx.Has("AcademicPeriod"))
+        {
+            Console.WriteLine("  ⚠ Akademik dönem yok — koordinasyon kayıtları atlanıyor");
+            return;
+        }
+        var academicPeriodId = ctx.Get("AcademicPeriod");
+
+        await SeedGuidanceVisits(api, ctx, institutionId, academicPeriodId);
+        await SeedBusinessEvaluation(api, ctx, institutionId, academicPeriodId);
+        await SeedSkillExam(api, ctx, institutionId, academicPeriodId);
+        await SeedActivityReport(api, ctx, institutionId, academicPeriodId);
     }
 
-    private static async Task SeedGuidanceVisits(MesnetApiClient api, SeedContext ctx, Guid institutionId)
+    private static async Task SeedGuidanceVisits(MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId)
     {
         // Mevcut ziyaretleri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
         var existing = await api.GetAsync("/api/coordination/guidance-visits?pageSize=100");
@@ -53,6 +63,7 @@ public static class CoordinationSeeder
                     teacherId = ctx.Get("Teacher1"),
                     businessId = ctx.Get("Business1"),
                     institutionId,
+                    academicPeriodId,
                     visitDate = DateTime.UtcNow.AddDays(-10),
                     studentNotes = new[]
                     {
@@ -97,6 +108,7 @@ public static class CoordinationSeeder
                     teacherId = ctx.Get("Teacher3"),
                     businessId = ctx.Get("Business2"),
                     institutionId,
+                    academicPeriodId,
                     visitDate = DateTime.UtcNow.AddDays(-3),
                     studentNotes = new[]
                     {
@@ -119,7 +131,7 @@ public static class CoordinationSeeder
         }
     }
 
-    private static async Task SeedBusinessEvaluation(MesnetApiClient api, SeedContext ctx, Guid institutionId)
+    private static async Task SeedBusinessEvaluation(MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId)
     {
         if (!ctx.Has("Business1") || !ctx.Has("Teacher1")) return;
 
@@ -139,6 +151,7 @@ public static class CoordinationSeeder
         {
             businessId = ctx.Get("Business1"),
             institutionId,
+            academicPeriodId,
             evaluatorId = ctx.Get("Teacher1"),
             evaluationDate = DateTime.UtcNow.AddDays(-14),
             items = new[]
@@ -157,7 +170,7 @@ public static class CoordinationSeeder
         }
     }
 
-    private static async Task SeedSkillExam(MesnetApiClient api, SeedContext ctx, Guid institutionId)
+    private static async Task SeedSkillExam(MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId)
     {
         if (!ctx.Has("Student1") || !ctx.Has("Business1")) return;
 
@@ -178,6 +191,7 @@ public static class CoordinationSeeder
             studentId = ctx.Get("Student1"),
             businessId = ctx.Get("Business1"),
             institutionId,
+            academicPeriodId,
             academicYear = 2025,
             semester = "Spring",
             examDate = DateTime.UtcNow.AddDays(-7),
@@ -202,7 +216,7 @@ public static class CoordinationSeeder
         }
     }
 
-    private static async Task SeedActivityReport(MesnetApiClient api, SeedContext ctx, Guid institutionId)
+    private static async Task SeedActivityReport(MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId)
     {
         if (!ctx.Has("Student1") || !ctx.Has("Business1") || !ctx.Has("Teacher1")) return;
 
@@ -223,6 +237,7 @@ public static class CoordinationSeeder
             studentId = ctx.Get("Student1"),
             businessId = ctx.Get("Business1"),
             institutionId,
+            academicPeriodId,
             teacherId = ctx.Get("Teacher1"),
             year = 2025,
             month = 12,

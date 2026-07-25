@@ -210,8 +210,16 @@ public static class BusinessSeeder
             var bizId = ctx.Get(ctxKey);
             if (!existingByName.ContainsValue(bizId)) continue; // yeni oluşturulan, zaten sektörlü
 
+            // Başarısız çağrıdan sonra başarı satırı basma (#80) — hata satırının hemen
+            // ardından "güncellendi" yazması, 422'lerin gözden kaçmasının başlıca nedeniydi.
+            //
+            // Başarı ölçütü dönüş değeri DEĞİL: bu endpoint 200 ile birlikte `data: null`
+            // döndürüyor, yani PatchAsync başarıda da null verir. FailureCount farkına bak.
+            var failuresBefore = api.FailureCount;
             await api.PatchAsync($"/api/businesses/{bizId}", new { sectors });
-            Console.WriteLine($"  ↻ \"{ctxKey}\" sektörler güncellendi");
+            Console.WriteLine(api.FailureCount == failuresBefore
+                ? $"  ↻ \"{ctxKey}\" sektörler güncellendi"
+                : $"  ✗ \"{ctxKey}\" sektörler güncellenemedi");
         }
 
         // Herhangi bir yeni işletme oluşturulmuşsa, Enrollment modülünün event'i işlemesi için bekle

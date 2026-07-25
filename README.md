@@ -80,6 +80,22 @@ src/
 
 ## Başlangıç
 
+### Yapılandırma (ilk kurulumda ve `git pull` sonrasında)
+
+Gerçek kimlik bilgisi taşıyan üç yapılandırma dosyası git'te **izlenmiyor**; yanlarındaki
+`.sample.json` dosyasından kopyalanır ve placeholder'lar doldurulur:
+
+```bash
+cp src/MESNET.AppHost/appsettings.sample.json                   src/MESNET.AppHost/appsettings.json
+cp src/MESNET.Presentation/appsettings.Development.sample.json  src/MESNET.Presentation/appsettings.Development.json
+cp src/MESNET.Seeder/appsettings.sample.json                    src/MESNET.Seeder/appsettings.json
+```
+
+> **Dikkat:** Bu dosyalar takipten çıkarıldığı için (#66), değişikliği içeren commit'i ilk kez
+> çektiğinizde git **diskteki kopyanızı da siler**. `git pull` sonrası uygulama
+> "endpoint boş" ya da "credentials not initialized" gibi hatalarla açılmıyorsa, önce bu üç
+> dosyanın yerinde olduğunu kontrol edin.
+
 ### Backend
 
 ```bash

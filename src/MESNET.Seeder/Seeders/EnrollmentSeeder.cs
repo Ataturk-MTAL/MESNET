@@ -387,6 +387,12 @@ public static class EnrollmentSeeder
             ("Placement90", "MTT_Student30", "MTT_Biz10",  "Teacher6"),
         };
 
+        // Kalan kontenjanı önden oku (#80): kapasite bir domain kuralı, dolu işletmeye
+        // yerleştirme 422 "İşletme kapasitesi dolu" döndürüyor. Plan bazı işletmeler için
+        // kontenjandan fazla öğrenci içerdiğinden her koşuda 422 yağıyordu. Artık önden
+        // bakıp atlıyoruz — bu bir hata değil, planın sınırı.
+        var availableSlots = await GetAvailableSlotsAsync(api);
+
         var createdCount = 0;
         foreach (var p in placements)
         {
@@ -396,6 +402,13 @@ public static class EnrollmentSeeder
             if (placedStudents.Contains(studentId))
             {
                 Console.WriteLine($"  → {p.StudentKey} zaten yerleştirilmiş, atlandı");
+                continue;
+            }
+
+            var targetBusinessId = ctx.Get(p.BusinessKey);
+            if (availableSlots.TryGetValue(targetBusinessId, out var slots) && slots <= 0)
+            {
+                Console.WriteLine($"  → {p.StudentKey} → {p.BusinessKey} atlandı (kontenjan dolu)");
                 continue;
             }
 
@@ -414,12 +427,35 @@ public static class EnrollmentSeeder
             {
                 ctx.Set(p.Key, data.Value.GetProperty("id").GetGuid());
                 createdCount++;
+                if (availableSlots.ContainsKey(targetBusinessId))
+                    availableSlots[targetBusinessId]--;
                 Console.WriteLine($"  ✓ {p.StudentKey} → {p.BusinessKey} yerleştirildi");
             }
         }
 
         if (createdCount == 0)
             Console.WriteLine("  → Tüm yerleştirmeler zaten mevcut");
+    }
+
+    /// <summary>
+    /// İşletme id → kalan kontenjan haritası. Kapasite bilgisi taşımayan işletme haritaya
+    /// girmez; o durumda kontrol atlanır ve karar API'ye bırakılır.
+    /// </summary>
+    private static async Task<Dictionary<Guid, int>> GetAvailableSlotsAsync(MesnetApiClient api)
+    {
+        var slots = new Dictionary<Guid, int>();
+        var businesses = await api.GetListAsync("/api/businesses?pageSize=500");
+
+        foreach (var b in businesses)
+        {
+            if (!b.TryGetProperty("id", out var idEl) || !idEl.TryGetGuid(out var id)) continue;
+            if (!b.TryGetProperty("capacity", out var cap)
+                || cap.ValueKind != System.Text.Json.JsonValueKind.Object) continue;
+            if (cap.TryGetProperty("availableSlots", out var avail) && avail.TryGetInt32(out var n))
+                slots[id] = n;
+        }
+
+        return slots;
     }
 
     private static void AliasIfMissing(SeedContext ctx, string alias, string source)
