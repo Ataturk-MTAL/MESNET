@@ -1,7 +1,26 @@
 <template>
-  <FormDialog v-model="open" title="Reddetme Gerekçesi" icon="cancel" color="negative" width="400px" save-label="Reddet" :saving="saving" @save="handleSave">
-    <q-input v-model="form.reason" label="Gerekçe *" outlined type="textarea" rows="3" :error="!!errors.reason" :error-message="errors.reason">
-      <template #prepend><q-icon name="notes" /></template>
+  <FormDialog
+    v-model="open"
+    title="Reddetme Gerekçesi"
+    icon="cancel"
+    color="negative"
+    width="400px"
+    save-label="Reddet"
+    :saving="saving"
+    @save="handleSave"
+  >
+    <q-input
+      v-model="form.reason"
+      label="Gerekçe *"
+      outlined
+      type="textarea"
+      rows="3"
+      :error="!!errors.reason"
+      :error-message="errors.reason"
+    >
+      <template #prepend>
+        <q-icon name="notes" />
+      </template>
     </q-input>
   </FormDialog>
 </template>

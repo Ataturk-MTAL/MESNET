@@ -2,11 +2,25 @@
   <q-page padding>
     <PageHeader title="Öğrenciler">
       <PermissionGuard :permission="Permissions.Student.Manage">
-        <q-btn color="primary" icon="person_add" label="Yeni Öğrenci" @click="openAddDialog" />
+        <q-btn
+          color="primary"
+          icon="person_add"
+          label="Yeni Öğrenci"
+          @click="openAddDialog"
+        />
       </PermissionGuard>
     </PageHeader>
 
-    <AppTable :rows="students" :columns="columns" :loading="loading" :pagination="pagination" show-search :search="search" @request="onRequest" @search="onSearch">
+    <AppTable
+      :rows="students"
+      :columns="columns"
+      :loading="loading"
+      :pagination="pagination"
+      show-search
+      :search="search"
+      @request="onRequest"
+      @search="onSearch"
+    >
       <template #filters>
         <BranchSelector
           v-model="branchFilter"
@@ -33,25 +47,48 @@
       </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
-          <q-btn flat round dense icon="visibility" aria-label="Detayları görüntüle" @click="openDetail(row)" />
+          <q-btn
+            flat
+            round
+            dense
+            icon="visibility"
+            aria-label="Detayları görüntüle"
+            @click="openDetail(row)"
+          />
           <PermissionGuard :permission="Permissions.Student.Manage">
-            <q-btn flat round dense icon="edit" aria-label="Düzenle" color="grey-7" @click="openEditDialog(row)">
+            <q-btn
+              flat
+              round
+              dense
+              icon="edit"
+              aria-label="Düzenle"
+              color="grey-7"
+              @click="openEditDialog(row)"
+            >
               <q-tooltip>Düzenle</q-tooltip>
             </q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Internship.Approve">
             <q-btn
               v-if="row.status === 'Applied'"
-              flat round dense icon="place"
+              flat
+              round
+              dense
+              icon="place"
               color="primary"
               aria-label="Yerleştir"
               @click="openPlacement(row)"
-            ><q-tooltip>Yerleştir</q-tooltip></q-btn>
+            >
+              <q-tooltip>Yerleştir</q-tooltip>
+            </q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Student.Manage">
             <q-btn
               v-if="row.status !== 'ActiveInternship' && row.status !== 'Completed' && row.status !== 'Deregistered'"
-              flat round dense icon="person_remove"
+              flat
+              round
+              dense
+              icon="person_remove"
               color="negative"
               aria-label="Kayıt sil"
               @click="openDeregister(row)"
@@ -64,42 +101,126 @@
 
       <template #empty-action>
         <PermissionGuard :permission="Permissions.Student.Manage">
-          <q-btn color="primary" icon="person_add" label="İlk öğrenciyi ekle" unelevated @click="openAddDialog" />
+          <q-btn
+            color="primary"
+            icon="person_add"
+            label="İlk öğrenciyi ekle"
+            unelevated
+            @click="openAddDialog"
+          />
         </PermissionGuard>
       </template>
     </AppTable>
 
     <!-- Detay Panel — sağdan overlay -->
-    <DetailPanel v-model="detailOpen" :has-content="!!selected" :width="400">
-      <template #title>{{ selected?.fullName }}</template>
+    <DetailPanel
+      v-model="detailOpen"
+      :has-content="!!selected"
+      :width="400"
+    >
+      <template #title>
+        {{ selected?.fullName }}
+      </template>
       <template #toolbar-actions>
         <PermissionGuard :permission="Permissions.Student.Manage">
-          <q-btn flat round dense icon="edit" aria-label="Düzenle" @click="selected && openEditDialog(selected)">
+          <q-btn
+            flat
+            round
+            dense
+            icon="edit"
+            aria-label="Düzenle"
+            @click="selected && openEditDialog(selected)"
+          >
             <q-tooltip>Düzenle</q-tooltip>
           </q-btn>
         </PermissionGuard>
       </template>
       <template v-if="selected">
         <div class="q-gutter-sm">
-          <InfoItem icon="school" label="Alan" :value="`${selected.branchCode} — ${selected.branchName}`" />
-          <InfoItem v-if="selected.specializationName" icon="account_tree" label="Dal" :value="selected.specializationName" />
-          <InfoItem icon="class" label="Sınıf / Şube" :value="`${selected.classYear}. Sınıf${selected.section ? ` / ${selected.section}` : ''}`" />
-          <InfoItem v-if="selected.studentNumber" icon="pin" label="Öğrenci No" :value="selected.studentNumber" />
-          <InfoItem v-if="selected.tcKimlikNo" icon="fingerprint" label="T.C. Kimlik No" :value="selected.tcKimlikNo" />
-          <InfoItem icon="badge" label="Durum"><StatusBadge :slug="selected.statusSlug" /></InfoItem>
-          <InfoItem icon="event" label="Kayıt Tarihi" :value="formatDate(selected.registeredAt)" />
+          <InfoItem
+            icon="school"
+            label="Alan"
+            :value="`${selected.branchCode} — ${selected.branchName}`"
+          />
+          <InfoItem
+            v-if="selected.specializationName"
+            icon="account_tree"
+            label="Dal"
+            :value="selected.specializationName"
+          />
+          <InfoItem
+            icon="class"
+            label="Sınıf / Şube"
+            :value="`${selected.classYear}. Sınıf${selected.section ? ` / ${selected.section}` : ''}`"
+          />
+          <InfoItem
+            v-if="selected.studentNumber"
+            icon="pin"
+            label="Öğrenci No"
+            :value="selected.studentNumber"
+          />
+          <InfoItem
+            v-if="selected.tcKimlikNo"
+            icon="fingerprint"
+            label="T.C. Kimlik No"
+            :value="selected.tcKimlikNo"
+          />
+          <InfoItem
+            icon="badge"
+            label="Durum"
+          >
+            <StatusBadge :slug="selected.statusSlug" />
+          </InfoItem>
+          <InfoItem
+            icon="event"
+            label="Kayıt Tarihi"
+            :value="formatDate(selected.registeredAt)"
+          />
 
-          <q-separator v-if="selected.phoneNumber || selected.guardianName || selected.guardianPhone" spaced />
-          <div v-if="selected.phoneNumber || selected.guardianName || selected.guardianPhone" class="text-subtitle2 text-grey-7 q-px-md">İletişim</div>
-          <InfoItem v-if="selected.phoneNumber" icon="phone" label="Telefon" :value="selected.phoneNumber" />
-          <InfoItem v-if="selected.guardianName" icon="person" label="Veli" :value="selected.guardianName" />
-          <InfoItem v-if="selected.guardianPhone" icon="phone" label="Veli Telefon" :value="selected.guardianPhone" />
+          <q-separator
+            v-if="selected.phoneNumber || selected.guardianName || selected.guardianPhone"
+            spaced
+          />
+          <div
+            v-if="selected.phoneNumber || selected.guardianName || selected.guardianPhone"
+            class="text-subtitle2 text-grey-7 q-px-md"
+          >
+            İletişim
+          </div>
+          <InfoItem
+            v-if="selected.phoneNumber"
+            icon="phone"
+            label="Telefon"
+            :value="selected.phoneNumber"
+          />
+          <InfoItem
+            v-if="selected.guardianName"
+            icon="person"
+            label="Veli"
+            :value="selected.guardianName"
+          />
+          <InfoItem
+            v-if="selected.guardianPhone"
+            icon="phone"
+            label="Veli Telefon"
+            :value="selected.guardianPhone"
+          />
         </div>
       </template>
     </DetailPanel>
 
-    <PlaceStudentForm v-model="placementDialog" :student-id="selected?.id ?? ''" :student-name="selected?.fullName ?? ''" @saved="afterFormSaved" />
-    <DeregisterStudentForm v-model="deregisterDialog" :student-id="selected?.id ?? ''" :student-name="selected?.fullName ?? ''" @saved="afterFormSaved" />
+    <PlaceStudentForm
+      v-model="placementDialog"
+      :student-id="selected?.id ?? ''"
+      :student-name="selected?.fullName ?? ''"
+      @saved="afterFormSaved"
+    />
+    <DeregisterStudentForm
+      v-model="deregisterDialog"
+      :student-id="selected?.id ?? ''"
+      :student-name="selected?.fullName ?? ''"
+      @saved="afterFormSaved"
+    />
   </q-page>
 </template>
 
@@ -172,11 +293,11 @@ function openDetail(row: StudentProfileDto) {
 }
 
 function openEditDialog(row: StudentProfileDto) {
-  void router.push(`/enrollment/students/${row.id}/edit`)
+  router.push(`/enrollment/students/${row.id}/edit`).catch(() => {})
 }
 
 function openAddDialog() {
-  void router.push('/enrollment/students/new')
+  router.push('/enrollment/students/new').catch(() => {})
 }
 
 function openPlacement(row: StudentProfileDto) {

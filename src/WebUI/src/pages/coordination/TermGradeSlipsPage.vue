@@ -1,16 +1,36 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">Dönem Not Fişleri</div>
-      <q-btn flat dense icon="folder_open" label="Belgeler" :to="{ name: 'Documents' }" class="q-mr-sm">
+      <div class="text-h5 col">
+        Dönem Not Fişleri
+      </div>
+      <q-btn
+        flat
+        dense
+        icon="folder_open"
+        label="Belgeler"
+        :to="{ name: 'Documents' }"
+        class="q-mr-sm"
+      >
         <q-tooltip>Üretilen fişler Belgeler'de görünür (yazdır / imzala / arşivle)</q-tooltip>
       </q-btn>
-      <q-btn flat round dense icon="refresh" aria-label="Yenile" @click="load">
+      <q-btn
+        flat
+        round
+        dense
+        icon="refresh"
+        aria-label="Yenile"
+        @click="load"
+      >
         <q-tooltip>Yenile</q-tooltip>
       </q-btn>
     </div>
 
-    <AppNotice v-if="!activePeriod" type="info" message="Aktif akademik dönem bulunamadı." />
+    <AppNotice
+      v-if="!activePeriod"
+      type="info"
+      message="Aktif akademik dönem bulunamadı."
+    />
 
     <template v-else>
       <AppNotice
@@ -19,19 +39,36 @@
         class="q-mb-md"
       />
 
-      <div v-if="!loading && rows.length === 0" class="text-center q-pa-xl text-grey-6">
-        <q-icon name="grading" size="48px" class="q-mb-sm" />
+      <div
+        v-if="!loading && rows.length === 0"
+        class="text-center q-pa-xl text-grey-6"
+      >
+        <q-icon
+          name="grading"
+          size="48px"
+          class="q-mb-sm"
+        />
         <div>Bu dönemde işletmelerce gönderilmiş not bulunmuyor.</div>
       </div>
 
-      <AppTable v-else :rows="rows" :columns="columns" :loading="loading">
+      <AppTable
+        v-else
+        :rows="rows"
+        :columns="columns"
+        :loading="loading"
+      >
         <template #body-cell-average="{ row }">
           <q-td>{{ row.termAverage ?? '—' }}</q-td>
         </template>
         <template #body-cell-actions="{ row }">
           <q-td class="text-right">
             <q-btn
-              flat dense size="sm" icon="grading" label="Fiş Üret" color="primary"
+              flat
+              dense
+              size="sm"
+              icon="grading"
+              label="Fiş Üret"
+              color="primary"
               @click="openGenerate(row)"
             >
               <q-tooltip>Dönem not fişini üret (okul-payı puanları + imzalar)</q-tooltip>
@@ -51,35 +88,71 @@
       :save-disabled="!form.institutionName || !form.academicYear || !form.semester"
       @save="handleGenerate"
     >
-      <div class="text-subtitle2">{{ generateTarget?.studentName }}</div>
-      <div class="text-caption text-grey-7 q-mb-sm">{{ generateTarget?.branchName }}</div>
+      <div class="text-subtitle2">
+        {{ generateTarget?.studentName }}
+      </div>
+      <div class="text-caption text-grey-7 q-mb-sm">
+        {{ generateTarget?.branchName }}
+      </div>
 
-      <q-input v-model="form.institutionName" label="Okul/Kurum Adı *" outlined />
+      <q-input
+        v-model="form.institutionName"
+        label="Okul/Kurum Adı *"
+        outlined
+      />
       <div class="row q-col-gutter-md">
         <div class="col-6">
-          <q-input v-model="form.academicYear" label="Öğretim Yılı *" outlined />
+          <q-input
+            v-model="form.academicYear"
+            label="Öğretim Yılı *"
+            outlined
+          />
         </div>
         <div class="col-6">
-          <q-input v-model="form.semester" label="Dönem *" outlined />
+          <q-input
+            v-model="form.semester"
+            label="Dönem *"
+            outlined
+          />
         </div>
       </div>
 
-      <div class="text-caption text-grey-7 q-mt-sm">Okulda verilen puanlar (*) — opsiyonel</div>
+      <div class="text-caption text-grey-7 q-mt-sm">
+        Okulda verilen puanlar (*) — opsiyonel
+      </div>
       <div class="row q-col-gutter-md">
         <div class="col-6">
-          <q-input v-model.number="form.makeupTrainingScore" label="Telafi Eğitim Puanı" type="number" outlined />
+          <q-input
+            v-model.number="form.makeupTrainingScore"
+            label="Telafi Eğitim Puanı"
+            type="number"
+            outlined
+          />
         </div>
         <div class="col-6">
-          <q-input v-model.number="form.skillCompetitionScore" label="Beceri Yarışması Puanı" type="number" outlined />
+          <q-input
+            v-model.number="form.skillCompetitionScore"
+            label="Beceri Yarışması Puanı"
+            type="number"
+            outlined
+          />
         </div>
       </div>
 
       <div class="row q-col-gutter-md">
         <div class="col-6">
-          <q-input v-model="form.vicePrincipalName" label="Koor. Müdür Yardımcısı" outlined />
+          <q-input
+            v-model="form.vicePrincipalName"
+            label="Koor. Müdür Yardımcısı"
+            outlined
+          />
         </div>
         <div class="col-6">
-          <q-input v-model="form.principalName" label="Okul/Kurum Müdürü" outlined />
+          <q-input
+            v-model="form.principalName"
+            label="Okul/Kurum Müdürü"
+            outlined
+          />
         </div>
       </div>
     </FormDialog>

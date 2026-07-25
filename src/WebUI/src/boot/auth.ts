@@ -59,7 +59,7 @@ export async function bootAuth(): Promise<void> {
   // SSE bildirim bağlantısını aç (permission yüklendiyse)
   if (authStore.permissions.length > 0) {
     const notificationStore = useNotificationStore()
-    void notificationStore.connect()
+    notificationStore.connect().catch(() => {})
   }
 
   // 5 dakikada bir silent token refresh

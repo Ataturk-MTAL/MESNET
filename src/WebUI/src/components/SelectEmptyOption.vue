@@ -10,6 +10,8 @@ withDefaults(
 
 <template>
   <q-item>
-    <q-item-section class="text-grey">{{ text }}</q-item-section>
+    <q-item-section class="text-grey">
+      {{ text }}
+    </q-item-section>
   </q-item>
 </template>

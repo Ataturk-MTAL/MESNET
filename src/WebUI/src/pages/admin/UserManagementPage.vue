@@ -1,34 +1,75 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">Kullanıcı Yönetimi</div>
+    <div class="text-h5 text-weight-bold q-mb-lg">
+      Kullanıcı Yönetimi
+    </div>
 
-    <q-tabs v-model="tab" align="left" class="q-mb-md">
-      <q-tab name="users" label="Kullanıcılar" icon="group" />
+    <q-tabs
+      v-model="tab"
+      align="left"
+      class="q-mb-md"
+    >
+      <q-tab
+        name="users"
+        label="Kullanıcılar"
+        icon="group"
+      />
       <q-tab
         v-if="authStore.hasPermission(Permissions.UserManagement.Approve)"
-        name="invitations" label="Davetler" icon="mail"
+        name="invitations"
+        label="Davetler"
+        icon="mail"
       />
     </q-tabs>
 
-    <q-tab-panels v-model="tab" animated>
+    <q-tab-panels
+      v-model="tab"
+      animated
+    >
       <!-- KULLANICILAR -->
       <q-tab-panel name="users">
         <div class="row items-center q-mb-md">
-          <div class="col text-subtitle1 text-weight-medium">Kullanıcılar</div>
+          <div class="col text-subtitle1 text-weight-medium">
+            Kullanıcılar
+          </div>
           <div class="col-auto q-gutter-sm">
             <PermissionGuard :permission="Permissions.UserManagement.Create">
-              <q-btn outline color="primary" icon="sync" label="Senkronize Et" :loading="syncing" @click="syncUsers">
+              <q-btn
+                outline
+                color="primary"
+                icon="sync"
+                label="Senkronize Et"
+                :loading="syncing"
+                @click="syncUsers"
+              >
                 <q-tooltip>Keycloak'taki kullanıcıları içe aktar / güncelle</q-tooltip>
               </q-btn>
-              <q-btn color="primary" icon="person_add" label="Davet Gönder" @click="inviteDialog = true" />
+              <q-btn
+                color="primary"
+                icon="person_add"
+                label="Davet Gönder"
+                @click="inviteDialog = true"
+              />
             </PermissionGuard>
           </div>
         </div>
 
-        <AppTable :rows="users" :columns="userColumns" :loading="usersLoading" :pagination="usersPagination" show-search :search="usersSearch" @request="onUsersRequest" @search="onUsersSearch">
+        <AppTable
+          :rows="users"
+          :columns="userColumns"
+          :loading="usersLoading"
+          :pagination="usersPagination"
+          show-search
+          :search="usersSearch"
+          @request="onUsersRequest"
+          @search="onUsersSearch"
+        >
           <template #body-cell-isEnabled="{ row }">
             <q-td>
-              <q-badge :color="row.isEnabled ? 'positive' : 'grey'" :label="row.isEnabled ? 'Aktif' : 'Pasif'" />
+              <q-badge
+                :color="row.isEnabled ? 'positive' : 'grey'"
+                :label="row.isEnabled ? 'Aktif' : 'Pasif'"
+              />
             </q-td>
           </template>
           <template #body-cell-roles="{ row }">
@@ -40,20 +81,39 @@
                 :label="role"
                 class="q-mr-xs"
               />
-              <span v-if="row.roles.length > 2" class="text-caption text-grey">+{{ row.roles.length - 2 }}</span>
+              <span
+                v-if="row.roles.length > 2"
+                class="text-caption text-grey"
+              >+{{ row.roles.length - 2 }}</span>
             </q-td>
           </template>
           <template #body-cell-userActions="{ row }">
             <q-td class="text-right">
               <PermissionGuard :permission="Permissions.UserManagement.Update">
-                <q-btn flat round dense icon="edit" aria-label="Düzenle" @click="openEditUser(row)" />
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="edit"
+                  aria-label="Düzenle"
+                  @click="openEditUser(row)"
+                />
               </PermissionGuard>
               <PermissionGuard :permission="Permissions.UserManagement.RolesManage">
-                <q-btn flat round dense icon="manage_accounts" aria-label="Rolleri yönet" @click="openRoles(row)" />
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="manage_accounts"
+                  aria-label="Rolleri yönet"
+                  @click="openRoles(row)"
+                />
               </PermissionGuard>
               <PermissionGuard :permission="Permissions.UserManagement.Update">
                 <q-btn
-                  flat round dense
+                  flat
+                  round
+                  dense
                   :icon="row.isEnabled ? 'person_off' : 'person'"
                   :color="row.isEnabled ? 'negative' : 'positive'"
                   @click="toggleStatus(row)"
@@ -66,8 +126,19 @@
 
       <!-- DAVETLER -->
       <q-tab-panel name="invitations">
-        <div class="text-subtitle1 text-weight-medium q-mb-md">Bekleyen Davetler</div>
-        <AppTable :rows="invitations" :columns="invitationColumns" :loading="invsLoading" :pagination="invsPagination" show-search :search="invsSearch" @request="onInvsRequest" @search="onInvsSearch">
+        <div class="text-subtitle1 text-weight-medium q-mb-md">
+          Bekleyen Davetler
+        </div>
+        <AppTable
+          :rows="invitations"
+          :columns="invitationColumns"
+          :loading="invsLoading"
+          :pagination="invsPagination"
+          show-search
+          :search="invsSearch"
+          @request="onInvsRequest"
+          @search="onInvsSearch"
+        >
           <template #body-cell-status="{ row }">
             <q-td>
               <q-badge
@@ -81,20 +152,29 @@
               <PermissionGuard :permission="Permissions.UserManagement.Approve">
                 <q-btn
                   v-if="row.status === 'PendingApproval'"
-                  flat round dense icon="check"
+                  flat
+                  round
+                  dense
+                  icon="check"
                   color="positive"
                   @click="approveInvitation(row)"
                 />
                 <q-btn
                   v-if="row.status === 'PendingApproval'"
-                  flat round dense icon="close"
+                  flat
+                  round
+                  dense
+                  icon="close"
                   color="negative"
                   @click="rejectInvitation(row)"
                 />
               </PermissionGuard>
               <q-btn
                 v-if="row.status === 'Approved'"
-                flat round dense icon="send"
+                flat
+                round
+                dense
+                icon="send"
                 color="primary"
                 @click="resendInvitation(row)"
               />
@@ -105,25 +185,55 @@
     </q-tab-panels>
 
     <!-- Davet Gönder Dialog -->
-    <q-dialog v-model="inviteDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+    <q-dialog
+      v-model="inviteDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
       <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
         <q-toolbar class="bg-primary text-white">
-          <q-icon name="person_add" class="q-mr-sm" />
+          <q-icon
+            name="person_add"
+            class="q-mr-sm"
+          />
           <q-toolbar-title>Kullanıcı Davet Et</q-toolbar-title>
-          <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
+          <q-btn
+            v-close-popup
+            flat
+            round
+            dense
+            icon="close"
+            aria-label="Kapat"
+            color="white"
+          />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input v-model="inviteForm.email" label="E-posta" outlined type="email">
+          <q-input
+            v-model="inviteForm.email"
+            label="E-posta"
+            outlined
+            type="email"
+          >
             <template #prepend>
               <q-icon name="email" />
             </template>
           </q-input>
-          <q-input v-model="inviteForm.firstName" label="Ad" outlined>
+          <q-input
+            v-model="inviteForm.firstName"
+            label="Ad"
+            outlined
+          >
             <template #prepend>
               <q-icon name="person" />
             </template>
           </q-input>
-          <q-input v-model="inviteForm.lastName" label="Soyad" outlined>
+          <q-input
+            v-model="inviteForm.lastName"
+            label="Soyad"
+            outlined
+          >
             <template #prepend>
               <q-icon name="person" />
             </template>
@@ -132,7 +242,9 @@
             v-model="inviteForm.targetRole"
             :options="roleOptions"
             label="Hedef Rol"
-            outlined emit-value map-options
+            outlined
+            emit-value
+            map-options
           >
             <template #prepend>
               <q-icon name="manage_accounts" />
@@ -140,20 +252,51 @@
           </q-select>
         </q-card-section>
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="primary" label="Davet Gönder" :loading="saving" @click="sendInvitation" />
+        <q-card-actions
+          align="right"
+          class="q-pa-md"
+        >
+          <q-btn
+            v-close-popup
+            flat
+            label="İptal"
+            color="grey-7"
+          />
+          <q-btn
+            unelevated
+            color="primary"
+            label="Davet Gönder"
+            :loading="saving"
+            @click="sendInvitation"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Roller Dialog -->
-    <q-dialog v-model="rolesDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+    <q-dialog
+      v-model="rolesDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
       <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
         <q-toolbar class="bg-purple text-white">
-          <q-icon name="manage_accounts" class="q-mr-sm" />
+          <q-icon
+            name="manage_accounts"
+            class="q-mr-sm"
+          />
           <q-toolbar-title>Roller: {{ selectedUser?.fullName }}</q-toolbar-title>
-          <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
+          <q-btn
+            v-close-popup
+            flat
+            round
+            dense
+            icon="close"
+            aria-label="Kapat"
+            color="white"
+          />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
           <q-option-group
@@ -163,9 +306,23 @@
           />
         </q-card-section>
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="purple" label="Kaydet" :loading="saving" @click="saveRoles" />
+        <q-card-actions
+          align="right"
+          class="q-pa-md"
+        >
+          <q-btn
+            v-close-popup
+            flat
+            label="İptal"
+            color="grey-7"
+          />
+          <q-btn
+            unelevated
+            color="purple"
+            label="Kaydet"
+            :loading="saving"
+            @click="saveRoles"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>

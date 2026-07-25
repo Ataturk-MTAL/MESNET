@@ -2,18 +2,49 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
       <q-toolbar>
-        <q-btn flat dense round icon="menu" aria-label="Menüyü aç/kapat" @click="drawerOpen = !drawerOpen" />
+        <q-btn
+          flat
+          dense
+          round
+          icon="menu"
+          aria-label="Menüyü aç/kapat"
+          @click="drawerOpen = !drawerOpen"
+        />
         <q-toolbar-title>MESNET</q-toolbar-title>
         <q-space />
-        <span v-if="authStore.user" class="text-body2 q-mr-md">
+        <span
+          v-if="authStore.user"
+          class="text-body2 q-mr-md"
+        >
           {{ authStore.user.fullName }}
         </span>
-        <q-btn flat round dense icon="notifications" aria-label="Bildirimler" class="q-mr-xs">
-          <q-badge v-if="unreadCount > 0" color="negative" floating>{{ unreadCount }}</q-badge>
+        <q-btn
+          flat
+          round
+          dense
+          icon="notifications"
+          aria-label="Bildirimler"
+          class="q-mr-xs"
+        >
+          <q-badge
+            v-if="unreadCount > 0"
+            color="negative"
+            floating
+          >
+            {{ unreadCount }}
+          </q-badge>
           <q-tooltip>Bildirimler</q-tooltip>
-          <q-menu anchor="bottom right" self="top right" style="min-width: 320px; max-width: 400px" @hide="notificationStore.markAllRead()">
+          <q-menu
+            anchor="bottom right"
+            self="top right"
+            style="min-width: 320px; max-width: 400px"
+            @hide="notificationStore.markAllRead()"
+          >
             <q-list separator>
-              <q-item v-if="notificationStore.notifications.length === 0" dense>
+              <q-item
+                v-if="notificationStore.notifications.length === 0"
+                dense
+              >
                 <q-item-section class="text-grey text-caption text-center q-pa-md">
                   Bildirim yok
                 </q-item-section>
@@ -25,32 +56,71 @@
                 :class="{ 'bg-blue-1': !n.read }"
               >
                 <q-item-section avatar>
-                  <q-icon :name="moduleIcon(n.module)" color="primary" size="sm" />
+                  <q-icon
+                    :name="moduleIcon(n.module)"
+                    color="primary"
+                    size="sm"
+                  />
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="text-caption text-weight-medium">{{ eventLabel(n.eventType) }}</q-item-label>
-                  <q-item-label caption class="text-grey">{{ timeAgo(n.occurredAt) }}</q-item-label>
+                  <q-item-label class="text-caption text-weight-medium">
+                    {{ eventLabel(n.eventType) }}
+                  </q-item-label>
+                  <q-item-label
+                    caption
+                    class="text-grey"
+                  >
+                    {{ timeAgo(n.occurredAt) }}
+                  </q-item-label>
                 </q-item-section>
                 <q-item-section side>
-                  <q-btn flat round dense size="xs" icon="close" aria-label="Bildirimi kaldır" @click.stop="notificationStore.remove(i)" />
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    size="xs"
+                    icon="close"
+                    aria-label="Bildirimi kaldır"
+                    @click.stop="notificationStore.remove(i)"
+                  />
                 </q-item-section>
               </q-item>
-              <q-item v-if="notificationStore.notifications.length > 0" dense clickable @click="notificationStore.clear()">
-                <q-item-section class="text-center text-caption text-grey">Tümünü temizle</q-item-section>
+              <q-item
+                v-if="notificationStore.notifications.length > 0"
+                dense
+                clickable
+                @click="notificationStore.clear()"
+              >
+                <q-item-section class="text-center text-caption text-grey">
+                  Tümünü temizle
+                </q-item-section>
               </q-item>
             </q-list>
           </q-menu>
         </q-btn>
-        <q-btn flat round dense icon="logout" aria-label="Çıkış yap" @click="onLogout" />
+        <q-btn
+          flat
+          round
+          dense
+          icon="logout"
+          aria-label="Çıkış yap"
+          @click="onLogout"
+        />
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="drawerOpen" show-if-above bordered>
+    <q-drawer
+      v-model="drawerOpen"
+      show-if-above
+      bordered
+    >
       <q-scroll-area class="fit">
         <q-list padding>
-
           <!-- Dönem Seçici -->
-          <q-item v-if="periodStore.isLoaded && periodStore.periods.length > 0" class="q-mb-xs">
+          <q-item
+            v-if="periodStore.isLoaded && periodStore.periods.length > 0"
+            class="q-mb-xs"
+          >
             <q-item-section>
               <q-select
                 v-model="periodStore.selectedPeriodId"
@@ -97,7 +167,10 @@
             </q-item-section>
           </q-item>
 
-          <q-separator v-if="periodStore.isLoaded && periodStore.periods.length > 0" spaced />
+          <q-separator
+            v-if="periodStore.isLoaded && periodStore.periods.length > 0"
+            spaced
+          />
 
           <!-- Kapalı dönem uyarısı -->
           <AppNotice
@@ -113,12 +186,14 @@
             <q-item
               v-if="group.to"
               :key="group.key"
-              clickable
               v-ripple
+              clickable
               :to="group.to"
               :active="activeGroupKey === group.key"
             >
-              <q-item-section avatar><q-icon :name="group.icon" /></q-item-section>
+              <q-item-section avatar>
+                <q-icon :name="group.icon" />
+              </q-item-section>
               <q-item-section>{{ group.title }}</q-item-section>
             </q-item>
 
@@ -129,20 +204,25 @@
               :icon="group.icon"
               :label="group.title"
               :model-value="isExpanded(group.key)"
-              @update:model-value="toggleGroup(group.key)"
               :header-class="activeGroupKey === group.key ? 'text-primary' : ''"
               dense-toggle
+              @update:model-value="toggleGroup(group.key)"
             >
               <q-item
                 v-for="item in group.children"
                 :key="item.to.name"
-                clickable
                 v-ripple
+                clickable
                 :to="item.to"
                 :inset-level="1"
                 dense
               >
-                <q-item-section avatar><q-icon :name="item.icon" size="sm" /></q-item-section>
+                <q-item-section avatar>
+                  <q-icon
+                    :name="item.icon"
+                    size="sm"
+                  />
+                </q-item-section>
                 <q-item-section>{{ item.title }}</q-item-section>
               </q-item>
             </q-expansion-item>
@@ -150,18 +230,26 @@
 
           <q-separator spaced />
 
-          <q-item clickable v-ripple @click="aboutDialog = true">
-            <q-item-section avatar><q-icon name="info" /></q-item-section>
+          <q-item
+            v-ripple
+            clickable
+            @click="aboutDialog = true"
+          >
+            <q-item-section avatar>
+              <q-icon name="info" />
+            </q-item-section>
             <q-item-section>Hakkında</q-item-section>
           </q-item>
-
         </q-list>
       </q-scroll-area>
     </q-drawer>
 
     <q-page-container>
       <router-view v-slot="{ Component }">
-        <transition :name="transitionName" mode="out-in">
+        <transition
+          :name="transitionName"
+          mode="out-in"
+        >
           <component :is="Component" />
         </transition>
       </router-view>
@@ -174,8 +262,15 @@
       card-style="min-width: 400px; max-width: 500px"
     >
       <q-card-section class="text-center q-pt-md">
-        <q-icon name="school" color="primary" size="64px" class="q-mb-md" />
-        <div class="text-h5 text-weight-bold text-primary q-mb-xs">MESNET</div>
+        <q-icon
+          name="school"
+          color="primary"
+          size="64px"
+          class="q-mb-md"
+        />
+        <div class="text-h5 text-weight-bold text-primary q-mb-xs">
+          MESNET
+        </div>
         <div class="text-subtitle2 text-grey-8 q-mb-lg">
           Mesleki Eğitim Stajları Nitelikli, Eşgüdümlü Takip Sistemi
         </div>
@@ -183,9 +278,9 @@
         <q-separator class="q-my-md" />
 
         <div class="text-body2 q-mb-md">
-          Bu yazılım<br />
-          <strong>Toroslar Atatürk Mesleki ve Teknik Anadolu Lisesi</strong><br />
-          <strong>Elektrik-Elektronik Teknolojisi</strong> alan öğretmenleri<br />
+          Bu yazılım<br>
+          <strong>Toroslar Atatürk Mesleki ve Teknik Anadolu Lisesi</strong><br>
+          <strong>Elektrik-Elektronik Teknolojisi</strong> alan öğretmenleri<br>
           tarafından hazırlanmıştır.
         </div>
 
@@ -193,7 +288,11 @@
 
         <div class="row justify-center q-gutter-x-md text-caption text-grey-7">
           <div>
-            <q-icon name="tag" size="xs" class="q-mr-xs" />
+            <q-icon
+              name="tag"
+              size="xs"
+              class="q-mr-xs"
+            />
             Sürüm: <strong>{{ appVersion }}</strong>
           </div>
         </div>

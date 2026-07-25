@@ -1,13 +1,31 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg q-mx-auto" style="max-width: 760px">
-      <q-btn flat round dense icon="arrow_back" aria-label="Öğrencilere dön" class="q-mr-sm" @click="goBack">
+    <div
+      class="row items-center q-mb-lg q-mx-auto"
+      style="max-width: 760px"
+    >
+      <q-btn
+        flat
+        round
+        dense
+        icon="arrow_back"
+        aria-label="Öğrencilere dön"
+        class="q-mr-sm"
+        @click="goBack"
+      >
         <q-tooltip>Öğrencilere dön</q-tooltip>
       </q-btn>
-      <div class="text-h5 text-weight-bold col">{{ isEdit ? 'Öğrenci Düzenle' : 'Yeni Öğrenci' }}</div>
+      <div class="text-h5 text-weight-bold col">
+        {{ isEdit ? 'Öğrenci Düzenle' : 'Yeni Öğrenci' }}
+      </div>
     </div>
 
-    <q-card flat bordered style="max-width: 760px" class="relative-position q-mx-auto">
+    <q-card
+      flat
+      bordered
+      style="max-width: 760px"
+      class="relative-position q-mx-auto"
+    >
       <q-inner-loading :showing="loading" />
       <q-card-section class="q-gutter-md">
         <!-- Kullanıcı seçimi yalnız yeni kayıtta -->
@@ -29,23 +47,47 @@
           @filter="userOpts.filter"
           @update:model-value="onUserSelect"
         >
-          <template #prepend><q-icon name="person_search" /></template>
+          <template #prepend>
+            <q-icon name="person_search" />
+          </template>
           <template #option="{ itemProps, opt }">
             <q-item v-bind="itemProps">
               <q-item-section>
                 <q-item-label>{{ opt.label }}</q-item-label>
-                <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
+                <q-item-label
+                  v-if="opt.caption"
+                  caption
+                >
+                  {{ opt.caption }}
+                </q-item-label>
               </q-item-section>
             </q-item>
           </template>
-          <template #no-option><SelectEmptyOption /></template>
+          <template #no-option>
+            <SelectEmptyOption />
+          </template>
         </q-select>
 
-        <q-input v-model="form.fullName" label="Ad Soyad *" outlined :error="!!errors.fullName" :error-message="errors.fullName">
-          <template #prepend><q-icon name="badge" /></template>
+        <q-input
+          v-model="form.fullName"
+          label="Ad Soyad *"
+          outlined
+          :error="!!errors.fullName"
+          :error-message="errors.fullName"
+        >
+          <template #prepend>
+            <q-icon name="badge" />
+          </template>
         </q-input>
-        <q-input v-model="form.email" label="Kullanıcı Adı (E-posta)" outlined readonly>
-          <template #prepend><q-icon name="email" /></template>
+        <q-input
+          v-model="form.email"
+          label="Kullanıcı Adı (E-posta)"
+          outlined
+          readonly
+        >
+          <template #prepend>
+            <q-icon name="email" />
+          </template>
         </q-input>
 
         <q-select
@@ -64,8 +106,12 @@
           @filter="branchOpts.filter"
           @update:model-value="onBranchChange"
         >
-          <template #prepend><q-icon name="category" /></template>
-          <template #no-option><SelectEmptyOption /></template>
+          <template #prepend>
+            <q-icon name="category" />
+          </template>
+          <template #no-option>
+            <SelectEmptyOption />
+          </template>
         </q-select>
         <q-select
           v-if="specOptions.length > 0"
@@ -78,7 +124,9 @@
           option-label="label"
           option-value="value"
         >
-          <template #prepend><q-icon name="account_tree" /></template>
+          <template #prepend>
+            <q-icon name="account_tree" />
+          </template>
         </q-select>
         <q-select
           v-if="!isEdit"
@@ -93,45 +141,121 @@
           :error="!!errors.educationType"
           :error-message="errors.educationType"
         >
-          <template #prepend><q-icon name="school" /></template>
+          <template #prepend>
+            <q-icon name="school" />
+          </template>
         </q-select>
 
         <div class="row q-col-gutter-sm">
           <div class="col-6">
-            <q-input v-model.number="form.classYear" label="Sınıf (9-12)" outlined type="number" min="9" max="12" :error="!!errors.classYear" :error-message="errors.classYear">
-              <template #prepend><q-icon name="class" /></template>
+            <q-input
+              v-model.number="form.classYear"
+              label="Sınıf (9-12)"
+              outlined
+              type="number"
+              min="9"
+              max="12"
+              :error="!!errors.classYear"
+              :error-message="errors.classYear"
+            >
+              <template #prepend>
+                <q-icon name="class" />
+              </template>
             </q-input>
           </div>
           <div class="col-6">
-            <q-input v-model="form.section" label="Şube" outlined :error="!!errors.section" :error-message="errors.section">
-              <template #prepend><q-icon name="sort_by_alpha" /></template>
+            <q-input
+              v-model="form.section"
+              label="Şube"
+              outlined
+              :error="!!errors.section"
+              :error-message="errors.section"
+            >
+              <template #prepend>
+                <q-icon name="sort_by_alpha" />
+              </template>
             </q-input>
           </div>
         </div>
-        <q-input v-model="form.studentNumber" label="Öğrenci No" outlined :error="!!errors.studentNumber" :error-message="errors.studentNumber">
-          <template #prepend><q-icon name="pin" /></template>
+        <q-input
+          v-model="form.studentNumber"
+          label="Öğrenci No"
+          outlined
+          :error="!!errors.studentNumber"
+          :error-message="errors.studentNumber"
+        >
+          <template #prepend>
+            <q-icon name="pin" />
+          </template>
         </q-input>
-        <q-input v-model="form.tcKimlikNo" label="T.C. Kimlik No" outlined maxlength="11" :error="!!errors.tcKimlikNo" :error-message="errors.tcKimlikNo">
-          <template #prepend><q-icon name="fingerprint" /></template>
+        <q-input
+          v-model="form.tcKimlikNo"
+          label="T.C. Kimlik No"
+          outlined
+          maxlength="11"
+          :error="!!errors.tcKimlikNo"
+          :error-message="errors.tcKimlikNo"
+        >
+          <template #prepend>
+            <q-icon name="fingerprint" />
+          </template>
         </q-input>
-        <q-input v-model="form.phoneNumber" label="Telefon" outlined :error="!!errors.phoneNumber" :error-message="errors.phoneNumber">
-          <template #prepend><q-icon name="phone" /></template>
+        <q-input
+          v-model="form.phoneNumber"
+          label="Telefon"
+          outlined
+          :error="!!errors.phoneNumber"
+          :error-message="errors.phoneNumber"
+        >
+          <template #prepend>
+            <q-icon name="phone" />
+          </template>
         </q-input>
 
         <q-separator />
-        <div class="text-subtitle2 text-grey-7">Veli Bilgileri</div>
-        <q-input v-model="form.guardianName" label="Veli Adı" outlined>
-          <template #prepend><q-icon name="person" /></template>
+        <div class="text-subtitle2 text-grey-7">
+          Veli Bilgileri
+        </div>
+        <q-input
+          v-model="form.guardianName"
+          label="Veli Adı"
+          outlined
+        >
+          <template #prepend>
+            <q-icon name="person" />
+          </template>
         </q-input>
-        <q-input v-model="form.guardianPhone" label="Veli Telefon" outlined :error="!!errors.guardianPhone" :error-message="errors.guardianPhone">
-          <template #prepend><q-icon name="phone" /></template>
+        <q-input
+          v-model="form.guardianPhone"
+          label="Veli Telefon"
+          outlined
+          :error="!!errors.guardianPhone"
+          :error-message="errors.guardianPhone"
+        >
+          <template #prepend>
+            <q-icon name="phone" />
+          </template>
         </q-input>
       </q-card-section>
 
       <q-separator />
-      <q-card-actions align="right" class="q-pa-md">
-        <q-btn flat label="İptal" color="grey-7" @click="goBack" />
-        <q-btn unelevated color="primary" :label="isEdit ? 'Kaydet' : 'Ekle'" :loading="saving" @click="handleSave" />
+      <q-card-actions
+        align="right"
+        class="q-pa-md"
+      >
+        <q-btn
+          flat
+          label="İptal"
+          color="grey-7"
+          @click="goBack"
+        />
+        <q-btn
+          unelevated
+          color="primary"
+          :label="isEdit ? 'Kaydet' : 'Ekle'"
+          :loading="saving"
+          @click="handleSave"
+        />
       </q-card-actions>
     </q-card>
   </q-page>
@@ -239,7 +363,7 @@ async function loadStudent() {
 }
 
 function goBack() {
-  void router.push('/enrollment/students')
+  router.push('/enrollment/students').catch(() => {})
 }
 
 async function handleSave() {

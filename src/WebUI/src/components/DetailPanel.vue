@@ -1,12 +1,27 @@
 <template>
-  <q-drawer v-model="open" side="right" bordered :width="numericWidth" overlay>
+  <q-drawer
+    v-model="open"
+    side="right"
+    bordered
+    :width="numericWidth"
+    overlay
+  >
     <template v-if="hasContent">
       <q-toolbar>
         <q-toolbar-title class="text-subtitle1 text-weight-bold">
-          <slot name="title">{{ title }}</slot>
+          <slot name="title">
+            {{ title }}
+          </slot>
         </q-toolbar-title>
         <slot name="toolbar-actions" />
-        <q-btn flat round dense icon="close" aria-label="Kapat" @click="open = false" />
+        <q-btn
+          flat
+          round
+          dense
+          icon="close"
+          aria-label="Kapat"
+          @click="open = false"
+        />
       </q-toolbar>
       <q-separator />
       <q-scroll-area class="fit">

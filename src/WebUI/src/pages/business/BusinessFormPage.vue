@@ -1,33 +1,88 @@
 <template>
   <q-page padding>
-    <div class="q-mx-auto" style="max-width: 1100px">
+    <div
+      class="q-mx-auto"
+      style="max-width: 1100px"
+    >
       <div class="row items-center q-mb-lg">
-        <q-btn flat round dense icon="arrow_back" aria-label="İşletmelere dön" class="q-mr-sm" @click="goBack">
+        <q-btn
+          flat
+          round
+          dense
+          icon="arrow_back"
+          aria-label="İşletmelere dön"
+          class="q-mr-sm"
+          @click="goBack"
+        >
           <q-tooltip>İşletmelere dön</q-tooltip>
         </q-btn>
-        <div class="text-h5 text-weight-bold col">{{ isEdit ? 'İşletme Düzenle' : 'Yeni İşletme' }}</div>
+        <div class="text-h5 text-weight-bold col">
+          {{ isEdit ? 'İşletme Düzenle' : 'Yeni İşletme' }}
+        </div>
       </div>
 
-      <q-card flat bordered class="relative-position">
+      <q-card
+        flat
+        bordered
+        class="relative-position"
+      >
         <q-inner-loading :showing="loading" />
         <q-card-section>
           <div class="row q-col-gutter-md">
             <!-- Bilgi girişleri: solda (dar ekranda üstte) -->
             <div class="col-12 col-md-6 q-gutter-md">
-              <q-input v-model="form.name" label="İşletme Adı *" outlined :error="!!errors.name" :error-message="errors.name">
-                <template #prepend><q-icon name="business" /></template>
+              <q-input
+                v-model="form.name"
+                label="İşletme Adı *"
+                outlined
+                :error="!!errors.name"
+                :error-message="errors.name"
+              >
+                <template #prepend>
+                  <q-icon name="business" />
+                </template>
               </q-input>
-              <q-input v-model="form.address" label="Adres *" outlined :error="!!errors.address" :error-message="errors.address">
-                <template #prepend><q-icon name="location_on" /></template>
+              <q-input
+                v-model="form.address"
+                label="Adres *"
+                outlined
+                :error="!!errors.address"
+                :error-message="errors.address"
+              >
+                <template #prepend>
+                  <q-icon name="location_on" />
+                </template>
               </q-input>
-              <q-input v-model="form.phoneNumber" label="Telefon" outlined>
-                <template #prepend><q-icon name="phone" /></template>
+              <q-input
+                v-model="form.phoneNumber"
+                label="Telefon"
+                outlined
+              >
+                <template #prepend>
+                  <q-icon name="phone" />
+                </template>
               </q-input>
-              <q-input v-model="form.email" label="E-posta" outlined type="email" :error="!!errors.email" :error-message="errors.email">
-                <template #prepend><q-icon name="email" /></template>
+              <q-input
+                v-model="form.email"
+                label="E-posta"
+                outlined
+                type="email"
+                :error="!!errors.email"
+                :error-message="errors.email"
+              >
+                <template #prepend>
+                  <q-icon name="email" />
+                </template>
               </q-input>
-              <q-input v-if="isEdit" v-model="form.website" label="Web Sitesi" outlined>
-                <template #prepend><q-icon name="language" /></template>
+              <q-input
+                v-if="isEdit"
+                v-model="form.website"
+                label="Web Sitesi"
+                outlined
+              >
+                <template #prepend>
+                  <q-icon name="language" />
+                </template>
               </q-input>
               <q-input
                 v-model.number="form.personnelCount"
@@ -36,23 +91,48 @@
                 type="number"
                 hint="İş Kanununa tabi çalıştırılan personel sayısı — stajyer ve çıraklar dâhil edilmez. 20 ve üzeri işletmelerde öğrenci ücreti asgari ücretin %30'u, altında %15'idir."
               >
-                <template #prepend><q-icon name="groups" /></template>
+                <template #prepend>
+                  <q-icon name="groups" />
+                </template>
               </q-input>
-              <q-select v-model="form.sectors" :options="sectorOptions" label="Sektörler" outlined multiple emit-value map-options use-chips>
-                <template #prepend><q-icon name="category" /></template>
+              <q-select
+                v-model="form.sectors"
+                :options="sectorOptions"
+                label="Sektörler"
+                outlined
+                multiple
+                emit-value
+                map-options
+                use-chips
+              >
+                <template #prepend>
+                  <q-icon name="category" />
+                </template>
               </q-select>
             </div>
 
             <!-- Harita: sağda (dar ekranda altta) -->
             <div class="col-12 col-md-6">
-              <MapPicker :model-value="form.location" height="480px" @update:model-value="(v) => (form.location = v)" />
+              <MapPicker
+                :model-value="form.location"
+                height="480px"
+                @update:model-value="(v) => (form.location = v)"
+              />
             </div>
           </div>
         </q-card-section>
 
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" @click="goBack" />
+        <q-card-actions
+          align="right"
+          class="q-pa-md"
+        >
+          <q-btn
+            flat
+            label="İptal"
+            color="grey-7"
+            @click="goBack"
+          />
           <q-btn
             unelevated
             color="primary"
@@ -134,7 +214,7 @@ async function loadBusiness() {
 }
 
 function goBack() {
-  void router.push('/companies')
+  router.push('/companies').catch(() => {})
 }
 
 async function handleSave() {

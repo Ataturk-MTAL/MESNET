@@ -1,13 +1,26 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">Dönem Notu Girişi</div>
-      <q-btn flat round dense icon="refresh" aria-label="Yenile" @click="load">
+      <div class="text-h5 col">
+        Dönem Notu Girişi
+      </div>
+      <q-btn
+        flat
+        round
+        dense
+        icon="refresh"
+        aria-label="Yenile"
+        @click="load"
+      >
         <q-tooltip>Yenile</q-tooltip>
       </q-btn>
     </div>
 
-    <AppNotice v-if="!activePeriod" type="info" message="Aktif akademik dönem bulunamadı." />
+    <AppNotice
+      v-if="!activePeriod"
+      type="info"
+      message="Aktif akademik dönem bulunamadı."
+    />
 
     <template v-else>
       <AppNotice
@@ -16,12 +29,24 @@
         class="q-mb-md"
       />
 
-      <div v-if="!loading && rows.length === 0" class="text-center q-pa-xl text-grey-6">
-        <q-icon name="groups" size="48px" class="q-mb-sm" />
+      <div
+        v-if="!loading && rows.length === 0"
+        class="text-center q-pa-xl text-grey-6"
+      >
+        <q-icon
+          name="groups"
+          size="48px"
+          class="q-mb-sm"
+        />
         <div>Bu dönemde işletmenize yerleştirilmiş öğrenci bulunamadı.</div>
       </div>
 
-      <AppTable v-else :rows="rows" :columns="columns" :loading="loading">
+      <AppTable
+        v-else
+        :rows="rows"
+        :columns="columns"
+        :loading="loading"
+      >
         <template #body-cell-status="{ row }">
           <q-td>
             <q-badge
@@ -29,7 +54,10 @@
               :color="row.status === 'Submitted' ? 'green-7' : 'orange-7'"
               :label="row.statusSlug ?? row.status"
             />
-            <span v-else class="text-grey-5">Girilmedi</span>
+            <span
+              v-else
+              class="text-grey-5"
+            >Girilmedi</span>
           </q-td>
         </template>
         <template #body-cell-average="{ row }">
@@ -38,7 +66,12 @@
         <template #body-cell-actions="{ row }">
           <q-td class="text-right">
             <q-btn
-              flat dense size="sm" icon="edit_note" label="Not Gir" color="primary"
+              flat
+              dense
+              size="sm"
+              icon="edit_note"
+              label="Not Gir"
+              color="primary"
               :disable="!isWindowOpen || row.status === 'Submitted'"
               @click="openEntry(row)"
             >
@@ -46,7 +79,12 @@
             </q-btn>
             <q-btn
               v-if="row.gradeId && row.status === 'Draft'"
-              flat dense size="sm" icon="send" label="Gönder" color="green-8"
+              flat
+              dense
+              size="sm"
+              icon="send"
+              label="Gönder"
+              color="green-8"
               :disable="!isWindowOpen"
               @click="confirmSubmit(row)"
             >
@@ -66,13 +104,41 @@
       :saving="saving"
       @save="handleSave"
     >
-      <div class="text-subtitle2">{{ entryTarget?.studentName }}</div>
-      <div class="text-caption text-grey-7 q-mb-sm">{{ entryTarget?.branchName }}</div>
-      <q-input v-model="form.practice" label="Temrin notları" hint="Virgülle ayır: 85, 90, 88" outlined />
-      <q-input v-model="form.service" label="İş-Hizmet notları" hint="Virgülle ayır" outlined />
-      <q-input v-model="form.project" label="Proje notları" hint="Virgülle ayır" outlined />
-      <q-input v-model="form.experiment" label="Deney notları" hint="Virgülle ayır" outlined />
-      <q-input v-model="form.masterInstructor" label="Usta Öğretici Adı" outlined />
+      <div class="text-subtitle2">
+        {{ entryTarget?.studentName }}
+      </div>
+      <div class="text-caption text-grey-7 q-mb-sm">
+        {{ entryTarget?.branchName }}
+      </div>
+      <q-input
+        v-model="form.practice"
+        label="Temrin notları"
+        hint="Virgülle ayır: 85, 90, 88"
+        outlined
+      />
+      <q-input
+        v-model="form.service"
+        label="İş-Hizmet notları"
+        hint="Virgülle ayır"
+        outlined
+      />
+      <q-input
+        v-model="form.project"
+        label="Proje notları"
+        hint="Virgülle ayır"
+        outlined
+      />
+      <q-input
+        v-model="form.experiment"
+        label="Deney notları"
+        hint="Virgülle ayır"
+        outlined
+      />
+      <q-input
+        v-model="form.masterInstructor"
+        label="Usta Öğretici Adı"
+        outlined
+      />
     </FormDialog>
   </q-page>
 </template>
@@ -193,7 +259,7 @@ function confirmSubmit(row: StudentGradeRow) {
     cancel: { label: 'Vazgeç', flat: true },
     ok: { label: 'Gönder', color: 'green-8', unelevated: true },
   }).onOk(() => {
-    void doSubmit(row)
+    doSubmit(row).catch(() => {})
   })
 }
 

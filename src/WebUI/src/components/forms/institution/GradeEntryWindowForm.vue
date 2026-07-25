@@ -21,14 +21,24 @@
     </div>
     <div class="row q-col-gutter-md">
       <div class="col-6">
-        <q-input v-model="form.startDate" label="Başlangıç Tarihi *" outlined type="date">
+        <q-input
+          v-model="form.startDate"
+          label="Başlangıç Tarihi *"
+          outlined
+          type="date"
+        >
           <template #prepend>
             <q-icon name="calendar_today" />
           </template>
         </q-input>
       </div>
       <div class="col-6">
-        <q-input v-model="form.endDate" label="Bitiş Tarihi *" outlined type="date">
+        <q-input
+          v-model="form.endDate"
+          label="Bitiş Tarihi *"
+          outlined
+          type="date"
+        >
           <template #prepend>
             <q-icon name="event" />
           </template>

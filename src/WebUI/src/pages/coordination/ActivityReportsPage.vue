@@ -1,8 +1,16 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">Aylık Faaliyet Raporları</div>
+    <div class="text-h5 text-weight-bold q-mb-lg">
+      Aylık Faaliyet Raporları
+    </div>
 
-    <AppTable :rows="activityReports" :columns="reportColumns" :loading="loadingReports" :pagination="reportsPagination" @request="onReportsRequest">
+    <AppTable
+      :rows="activityReports"
+      :columns="reportColumns"
+      :loading="loadingReports"
+      :pagination="reportsPagination"
+      @request="onReportsRequest"
+    >
       <template #body-cell-status="{ row }">
         <q-td>
           <q-badge
@@ -16,12 +24,20 @@
           <PermissionGuard :permission="Permissions.Coordinator.Report">
             <q-btn
               v-if="row.status === 'Draft'"
-              flat round dense icon="send" color="primary"
+              flat
+              round
+              dense
+              icon="send"
+              color="primary"
               @click="submitReport(row)"
             />
             <q-btn
               v-if="row.status === 'Submitted'"
-              flat round dense icon="check" color="positive"
+              flat
+              round
+              dense
+              icon="check"
+              color="positive"
               @click="approveReport(row)"
             />
           </PermissionGuard>

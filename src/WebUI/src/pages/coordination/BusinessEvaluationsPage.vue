@@ -1,15 +1,28 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-lg">
-      <div class="col text-h5 text-weight-bold">İşletme Değerlendirmeleri</div>
+      <div class="col text-h5 text-weight-bold">
+        İşletme Değerlendirmeleri
+      </div>
       <div class="col-auto">
         <PermissionGuard :permission="Permissions.Coordinator.Visit">
-          <q-btn color="primary" icon="add" label="Değerlendirme Ekle" @click="openEvalDialog" />
+          <q-btn
+            color="primary"
+            icon="add"
+            label="Değerlendirme Ekle"
+            @click="openEvalDialog"
+          />
         </PermissionGuard>
       </div>
     </div>
 
-    <AppTable :rows="evaluations" :columns="evalColumns" :loading="loadingEvals" :pagination="evalsPagination" @request="onEvalsRequest">
+    <AppTable
+      :rows="evaluations"
+      :columns="evalColumns"
+      :loading="loadingEvals"
+      :pagination="evalsPagination"
+      @request="onEvalsRequest"
+    >
       <template #body-cell-result="{ row }">
         <q-td>
           <q-badge
@@ -24,12 +37,29 @@
     </AppTable>
 
     <!-- Değerlendirme Ekle Dialog -->
-    <q-dialog v-model="evalDialog" persistent :maximized="$q.screen.lt.sm" transition-show="slide-up" transition-hide="slide-down">
+    <q-dialog
+      v-model="evalDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
       <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
         <q-toolbar class="bg-teal text-white">
-          <q-icon name="rate_review" class="q-mr-sm" />
+          <q-icon
+            name="rate_review"
+            class="q-mr-sm"
+          />
           <q-toolbar-title>Değerlendirme Ekle</q-toolbar-title>
-          <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
+          <q-btn
+            v-close-popup
+            flat
+            round
+            dense
+            icon="close"
+            aria-label="Kapat"
+            color="white"
+          />
         </q-toolbar>
         <q-card-section class="q-pt-lg q-gutter-md">
           <q-select
@@ -53,7 +83,12 @@
               <q-item v-bind="itemProps">
                 <q-item-section>
                   <q-item-label>{{ opt.label }}</q-item-label>
-                  <q-item-label caption v-if="opt.caption">{{ opt.caption }}</q-item-label>
+                  <q-item-label
+                    v-if="opt.caption"
+                    caption
+                  >
+                    {{ opt.caption }}
+                  </q-item-label>
                 </q-item-section>
               </q-item>
             </template>
@@ -61,7 +96,12 @@
               <SelectEmptyOption />
             </template>
           </q-select>
-          <q-input v-model="evalForm.evaluationDate" label="Değerlendirme Tarihi" outlined type="date">
+          <q-input
+            v-model="evalForm.evaluationDate"
+            label="Değerlendirme Tarihi"
+            outlined
+            type="date"
+          >
             <template #prepend>
               <q-icon name="calendar_today" />
             </template>
@@ -70,22 +110,44 @@
             v-model="evalForm.result"
             :options="evalResultOptions"
             label="Sonuç"
-            outlined emit-value map-options
+            outlined
+            emit-value
+            map-options
           >
             <template #prepend>
               <q-icon name="fact_check" />
             </template>
           </q-select>
-          <q-input v-model="evalForm.notes" label="Notlar" outlined type="textarea" rows="2">
+          <q-input
+            v-model="evalForm.notes"
+            label="Notlar"
+            outlined
+            type="textarea"
+            rows="2"
+          >
             <template #prepend>
               <q-icon name="notes" />
             </template>
           </q-input>
         </q-card-section>
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
-          <q-btn unelevated color="teal" label="Kaydet" :loading="saving" @click="createEvaluation" />
+        <q-card-actions
+          align="right"
+          class="q-pa-md"
+        >
+          <q-btn
+            v-close-popup
+            flat
+            label="İptal"
+            color="grey-7"
+          />
+          <q-btn
+            unelevated
+            color="teal"
+            label="Kaydet"
+            :loading="saving"
+            @click="createEvaluation"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>

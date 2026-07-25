@@ -1,36 +1,99 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg q-mx-auto" style="max-width: 640px">
-      <q-btn flat round dense icon="arrow_back" aria-label="Kurum bilgilerine dön" class="q-mr-sm" @click="goBack">
+    <div
+      class="row items-center q-mb-lg q-mx-auto"
+      style="max-width: 640px"
+    >
+      <q-btn
+        flat
+        round
+        dense
+        icon="arrow_back"
+        aria-label="Kurum bilgilerine dön"
+        class="q-mr-sm"
+        @click="goBack"
+      >
         <q-tooltip>Kurum bilgilerine dön</q-tooltip>
       </q-btn>
-      <div class="text-h5 text-weight-bold col">Kurum Bilgilerini Düzenle</div>
+      <div class="text-h5 text-weight-bold col">
+        Kurum Bilgilerini Düzenle
+      </div>
     </div>
 
-    <q-card flat bordered style="max-width: 640px" class="relative-position q-mx-auto">
+    <q-card
+      flat
+      bordered
+      style="max-width: 640px"
+      class="relative-position q-mx-auto"
+    >
       <q-inner-loading :showing="loading" />
       <q-card-section class="q-gutter-md">
-        <q-input v-model="form.fullName" label="Kurum Adı" outlined>
-          <template #prepend><q-icon name="account_balance" /></template>
+        <q-input
+          v-model="form.fullName"
+          label="Kurum Adı"
+          outlined
+        >
+          <template #prepend>
+            <q-icon name="account_balance" />
+          </template>
         </q-input>
-        <q-input v-model="form.address" label="Adres" outlined>
-          <template #prepend><q-icon name="location_on" /></template>
+        <q-input
+          v-model="form.address"
+          label="Adres"
+          outlined
+        >
+          <template #prepend>
+            <q-icon name="location_on" />
+          </template>
         </q-input>
-        <q-input v-model="form.phoneNumber" label="Telefon" outlined>
-          <template #prepend><q-icon name="phone" /></template>
+        <q-input
+          v-model="form.phoneNumber"
+          label="Telefon"
+          outlined
+        >
+          <template #prepend>
+            <q-icon name="phone" />
+          </template>
         </q-input>
-        <q-input v-model="form.email" label="E-posta" outlined type="email">
-          <template #prepend><q-icon name="email" /></template>
+        <q-input
+          v-model="form.email"
+          label="E-posta"
+          outlined
+          type="email"
+        >
+          <template #prepend>
+            <q-icon name="email" />
+          </template>
         </q-input>
-        <q-input v-model="form.webUrl" label="Web Sitesi" outlined>
-          <template #prepend><q-icon name="language" /></template>
+        <q-input
+          v-model="form.webUrl"
+          label="Web Sitesi"
+          outlined
+        >
+          <template #prepend>
+            <q-icon name="language" />
+          </template>
         </q-input>
       </q-card-section>
 
       <q-separator />
-      <q-card-actions align="right" class="q-pa-md">
-        <q-btn flat label="İptal" color="grey-7" @click="goBack" />
-        <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="handleSave" />
+      <q-card-actions
+        align="right"
+        class="q-pa-md"
+      >
+        <q-btn
+          flat
+          label="İptal"
+          color="grey-7"
+          @click="goBack"
+        />
+        <q-btn
+          unelevated
+          color="primary"
+          label="Kaydet"
+          :loading="saving"
+          @click="handleSave"
+        />
       </q-card-actions>
     </q-card>
   </q-page>
@@ -60,7 +123,7 @@ const form = reactive({
 })
 
 function goBack() {
-  void router.push('/institution')
+  router.push('/institution').catch(() => {})
 }
 
 async function loadInstitution() {

@@ -1,5 +1,14 @@
 <template>
-  <FormDialog v-model="open" title="Personel Yetkilendir" icon="person_add" color="teal" save-label="Yetkilendir" :saving="saving" :save-disabled="!form.keycloakUserId || !form.role" @save="handleSave">
+  <FormDialog
+    v-model="open"
+    title="Personel Yetkilendir"
+    icon="person_add"
+    color="teal"
+    save-label="Yetkilendir"
+    :saving="saving"
+    :save-disabled="!form.keycloakUserId || !form.role"
+    @save="handleSave"
+  >
     <q-select
       v-model="form.keycloakUserId"
       :options="userOpts.options.value"
@@ -22,7 +31,12 @@
         <q-item v-bind="itemProps">
           <q-item-section>
             <q-item-label>{{ opt.label }}</q-item-label>
-            <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
+            <q-item-label
+              v-if="opt.caption"
+              caption
+            >
+              {{ opt.caption }}
+            </q-item-label>
           </q-item-section>
         </q-item>
       </template>
@@ -30,7 +44,12 @@
         <SelectEmptyOption />
       </template>
     </q-select>
-    <q-input v-model="form.fullName" label="Ad Soyad" outlined readonly>
+    <q-input
+      v-model="form.fullName"
+      label="Ad Soyad"
+      outlined
+      readonly
+    >
       <template #prepend>
         <q-icon name="badge" />
       </template>

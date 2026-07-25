@@ -1,13 +1,31 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg q-mx-auto" style="max-width: 640px">
-      <q-btn flat round dense icon="arrow_back" aria-label="Devamsızlık listesine dön" class="q-mr-sm" @click="goBack">
+    <div
+      class="row items-center q-mb-lg q-mx-auto"
+      style="max-width: 640px"
+    >
+      <q-btn
+        flat
+        round
+        dense
+        icon="arrow_back"
+        aria-label="Devamsızlık listesine dön"
+        class="q-mr-sm"
+        @click="goBack"
+      >
         <q-tooltip>Devamsızlık listesine dön</q-tooltip>
       </q-btn>
-      <div class="text-h5 text-weight-bold col">Devamsızlık Ekle</div>
+      <div class="text-h5 text-weight-bold col">
+        Devamsızlık Ekle
+      </div>
     </div>
 
-    <q-card flat bordered style="max-width: 640px" class="q-mx-auto">
+    <q-card
+      flat
+      bordered
+      style="max-width: 640px"
+      class="q-mx-auto"
+    >
       <q-card-section class="q-gutter-md">
         <q-select
           v-model="form.studentId"
@@ -23,16 +41,25 @@
           option-value="value"
           @filter="placementOpts.filter"
         >
-          <template #prepend><q-icon name="person" /></template>
+          <template #prepend>
+            <q-icon name="person" />
+          </template>
           <template #option="{ itemProps, opt }">
             <q-item v-bind="itemProps">
               <q-item-section>
                 <q-item-label>{{ opt.label }}</q-item-label>
-                <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
+                <q-item-label
+                  v-if="opt.caption"
+                  caption
+                >
+                  {{ opt.caption }}
+                </q-item-label>
               </q-item-section>
             </q-item>
           </template>
-          <template #no-option><SelectEmptyOption /></template>
+          <template #no-option>
+            <SelectEmptyOption />
+          </template>
         </q-select>
         <q-input
           :model-value="form.businessName"
@@ -41,7 +68,9 @@
           readonly
           :hint="form.businessId ? '' : 'Öğrenci seçildiğinde otomatik doldurulacaktır'"
         >
-          <template #prepend><q-icon name="business" /></template>
+          <template #prepend>
+            <q-icon name="business" />
+          </template>
         </q-input>
         <q-input
           v-model="form.date"
@@ -52,7 +81,9 @@
           :max="weekBounds.max"
           hint="Sadece geçerli hafta içi tarih seçilebilir"
         >
-          <template #prepend><q-icon name="calendar_today" /></template>
+          <template #prepend>
+            <q-icon name="calendar_today" />
+          </template>
         </q-input>
         <q-select
           v-model="form.absenceType"
@@ -62,17 +93,39 @@
           emit-value
           map-options
         >
-          <template #prepend><q-icon name="category" /></template>
+          <template #prepend>
+            <q-icon name="category" />
+          </template>
         </q-select>
-        <q-input v-model="form.reason" label="Gerekçe (opsiyonel)" outlined>
-          <template #prepend><q-icon name="notes" /></template>
+        <q-input
+          v-model="form.reason"
+          label="Gerekçe (opsiyonel)"
+          outlined
+        >
+          <template #prepend>
+            <q-icon name="notes" />
+          </template>
         </q-input>
       </q-card-section>
 
       <q-separator />
-      <q-card-actions align="right" class="q-pa-md">
-        <q-btn flat label="İptal" color="grey-7" @click="goBack" />
-        <q-btn unelevated color="primary" label="Kaydet" :loading="saving" @click="handleSave" />
+      <q-card-actions
+        align="right"
+        class="q-pa-md"
+      >
+        <q-btn
+          flat
+          label="İptal"
+          color="grey-7"
+          @click="goBack"
+        />
+        <q-btn
+          unelevated
+          color="primary"
+          label="Kaydet"
+          :loading="saving"
+          @click="handleSave"
+        />
       </q-card-actions>
     </q-card>
   </q-page>
@@ -133,7 +186,7 @@ watch(
 )
 
 function goBack() {
-  void router.push('/attendance')
+  router.push('/attendance').catch(() => {})
 }
 
 async function handleSave() {

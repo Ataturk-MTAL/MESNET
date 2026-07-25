@@ -48,30 +48,82 @@ const emit = defineEmits<{ retry: [] }>()
 </script>
 
 <template>
-  <div v-if="loading && skeleton" :class="padding">
-    <q-skeleton v-for="i in skeletonLines" :key="i" type="text" height="28px" class="q-mb-sm" />
+  <div
+    v-if="loading && skeleton"
+    :class="padding"
+  >
+    <q-skeleton
+      v-for="i in skeletonLines"
+      :key="i"
+      type="text"
+      height="28px"
+      class="q-mb-sm"
+    />
   </div>
 
-  <div v-else-if="loading" :class="`text-center ${padding}`">
-    <q-spinner-gears v-if="gears" color="primary" :size="spinnerSize" />
-    <q-spinner v-else color="primary" :size="spinnerSize" />
-    <div v-if="loadingText" class="text-caption text-grey-6 q-mt-sm">{{ loadingText }}</div>
+  <div
+    v-else-if="loading"
+    :class="`text-center ${padding}`"
+  >
+    <q-spinner-gears
+      v-if="gears"
+      color="primary"
+      :size="spinnerSize"
+    />
+    <q-spinner
+      v-else
+      color="primary"
+      :size="spinnerSize"
+    />
+    <div
+      v-if="loadingText"
+      class="text-caption text-grey-6 q-mt-sm"
+    >
+      {{ loadingText }}
+    </div>
   </div>
 
-  <div v-else-if="error" :class="`text-center ${padding} text-grey-6`">
+  <div
+    v-else-if="error"
+    :class="`text-center ${padding} text-grey-6`"
+  >
     <slot name="error">
-      <q-icon name="error_outline" size="2em" class="q-mb-sm" />
-      <div class="text-caption">{{ errorText }}</div>
-      <div v-if="retryable" class="q-mt-sm">
-        <q-btn flat dense color="primary" label="Tekrar dene" @click="emit('retry')" />
+      <q-icon
+        name="error_outline"
+        size="2em"
+        class="q-mb-sm"
+      />
+      <div class="text-caption">
+        {{ errorText }}
+      </div>
+      <div
+        v-if="retryable"
+        class="q-mt-sm"
+      >
+        <q-btn
+          flat
+          dense
+          color="primary"
+          label="Tekrar dene"
+          @click="emit('retry')"
+        />
       </div>
     </slot>
   </div>
 
-  <div v-else-if="empty" :class="`text-center ${padding} text-grey-6`">
+  <div
+    v-else-if="empty"
+    :class="`text-center ${padding} text-grey-6`"
+  >
     <slot name="empty">
-      <q-icon :name="emptyIcon" size="2em" class="q-mb-sm" />
-      <div class="text-caption">{{ emptyText }}</div>
+      <q-icon
+        :name="emptyIcon"
+        size="2em"
+        class="q-mb-sm"
+      />
+      <div class="text-caption">
+        {{ emptyText }}
+      </div>
     </slot>
   </div>
 
