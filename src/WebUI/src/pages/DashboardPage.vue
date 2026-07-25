@@ -36,7 +36,7 @@
           icon="business"
           :value="stats.businesses"
           label="Aktif İşletme"
-          color="teal"
+          color="secondary"
           :loading="stats.businessesLoading"
           to="/companies"
         />
@@ -50,7 +50,7 @@
           icon="description"
           :value="stats.activeContracts"
           label="Aktif Sözleşme"
-          color="green"
+          color="positive"
           :loading="stats.contractsLoading"
           to="/internship/contracts"
         />
@@ -61,7 +61,7 @@
           icon="pending_actions"
           :value="stats.pendingTotal"
           label="Bekleyen İşlem"
-          color="orange"
+          color="warning"
           :loading="stats.pendingLoading"
         />
       </div>
