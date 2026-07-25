@@ -19,6 +19,7 @@
     <!-- Cross-module event consumption -->
     <ProjectReference Include="../../Business/MESNET.Business.Shared/MESNET.Business.Shared.csproj" />
     <ProjectReference Include="../../Attendance/MESNET.Attendance.Shared/MESNET.Attendance.Shared.csproj" />
+    <ProjectReference Include="../../Contract/MESNET.Contract.Shared/MESNET.Contract.Shared.csproj" />
     <ProjectReference Include="../../Enrollment/MESNET.Enrollment.Shared/MESNET.Enrollment.Shared.csproj" />
     <ProjectReference Include="../../Institution/MESNET.Institution.Shared/MESNET.Institution.Shared.csproj" />
   </ItemGroup>

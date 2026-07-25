@@ -35,6 +35,8 @@ export interface InternshipContractDto {
   terminationReasonType: string | null
   terminationReasonTypeSlug: string | null
   documents: ContractDocumentDto[]
+  /** Sözleşmede taahhüt edilen aylık ücret; null ise yasal taban geçerli (#84) */
+  agreedMonthlyWage: number | null
   createdAt: string
 }
 
@@ -44,6 +46,8 @@ export interface CreateContractRequest {
   institutionId: string
   teacherId?: string
   startDate: string
+  /** İşletmenin taahhüt ettiği aylık ücret. Boş bırakılırsa yasal taban uygulanır (#84) */
+  agreedMonthlyWage?: number
 }
 
 export interface SignContractRequest {
