@@ -1,0 +1,58 @@
+# CI entegrasyon testleri için bağımlılık yığını (#67).
+#
+# GitHub Actions'ın `services:` bloğu konteynerin CMD'ini değiştiremiyor; Keycloak
+# `start-dev --import-realm`, MinIO ise `server /data` ile başlamak zorunda. Bu yüzden
+# compose kullanılıyor.
+#
+# Kimlik bilgileri src/MESNET.Presentation/appsettings.Development.json ile birebir aynı
+# tutuldu — böylece CI'da connection-string override'ı gerekmiyor. Bunlar tek kullanımlık
+# CI konteynerlerine ait dev değerleri, gerçek bir sır değil.
+services:
+  postgres:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_USER: mesnet
+      POSTGRES_PASSWORD: mesnet_dev
+      POSTGRES_DB: mesnet
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mesnet -d mesnet']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: mesnet
+      RABBITMQ_DEFAULT_PASS: mesnet_dev
+    ports:
+      - '5672:5672'
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ['start-dev', '--import-realm']
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: 'true'
+    volumes:
+      # Testler realm'deki admin kullanıcısı + mesnet-api client'ı (direct grant) ile token alır.
+      - ../src/MESNET.AppHost/keycloak/mesnet-realm.json:/opt/keycloak/data/import/mesnet-realm.json:ro
+    ports:
+      - '8080:8080'
+
+  minio:
+    image: minio/minio:latest
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - '9000:9000'

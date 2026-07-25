@@ -78,4 +78,7 @@
     <Project Path="src/Modules/Security/MESNET.Security.Persistence/MESNET.Security.Persistence.csproj"/>
     <Project Path="src/Modules/Security/MESNET.Security.Shared/MESNET.Security.Shared.csproj"/>
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj"/>
+  </Folder>
 </Solution>
