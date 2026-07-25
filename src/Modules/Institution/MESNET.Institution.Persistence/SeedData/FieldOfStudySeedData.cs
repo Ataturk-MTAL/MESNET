@@ -2,8 +2,8 @@ using System.Reflection;
 using System.Text.Json;
 using Marten;
 using Marten.Schema;
+using MESNET.Common.Shared.Enums;
 using MESNET.Institution.Core.Entities;
-using MESNET.Institution.Core.Enums;
 using MESNET.Institution.Core.ValueObjects;
 
 namespace MESNET.Institution.Persistence.SeedData;

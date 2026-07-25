@@ -1,4 +1,4 @@
-using MESNET.Institution.Core.Enums;
+using MESNET.Common.Shared.Enums;
 
 namespace MESNET.Institution.Application.Queries;
 
