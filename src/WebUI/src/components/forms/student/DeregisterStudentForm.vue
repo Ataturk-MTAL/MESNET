@@ -1,21 +1,31 @@
 <template>
-  <FormDialog v-model="open" title="Kayıt Sil" icon="person_remove" color="negative" width="400px" save-label="Kayıt Sil" :saving="saving" :save-disabled="!form.reason" @save="handleSave">
-        <div class="text-body2 q-mb-md">
-          <strong>{{ studentName }}</strong> adlı öğrencinin kaydını silmek istediğinize emin misiniz?
-          Bu işlem geri alınamaz.
-        </div>
-        <q-input
-          v-model="form.reason"
-          label="Sebep *"
-          outlined
-          type="textarea"
-          rows="2"
-          :rules="[v => !!v || 'Sebep belirtilmelidir']"
-        >
-          <template #prepend>
-            <q-icon name="notes" />
-          </template>
-        </q-input>
+  <FormDialog
+    v-model="open"
+    title="Kayıt Sil"
+    icon="person_remove"
+    color="negative"
+    width="400px"
+    save-label="Kayıt Sil"
+    :saving="saving"
+    :save-disabled="!form.reason"
+    @save="handleSave"
+  >
+    <div class="text-body2 q-mb-md">
+      <strong>{{ studentName }}</strong> adlı öğrencinin kaydını silmek istediğinize emin misiniz?
+      Bu işlem geri alınamaz.
+    </div>
+    <q-input
+      v-model="form.reason"
+      label="Sebep *"
+      outlined
+      type="textarea"
+      rows="2"
+      :rules="[v => !!v || 'Sebep belirtilmelidir']"
+    >
+      <template #prepend>
+        <q-icon name="notes" />
+      </template>
+    </q-input>
   </FormDialog>
 </template>
 

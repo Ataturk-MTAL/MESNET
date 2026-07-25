@@ -1,7 +1,10 @@
 <template>
   <div class="cluster-map-wrapper">
     <!-- Küme Özeti Chips -->
-    <div v-if="clusterSummary.length > 0" class="row q-gutter-xs q-mb-sm">
+    <div
+      v-if="clusterSummary.length > 0"
+      class="row q-gutter-xs q-mb-sm"
+    >
       <q-chip
         v-for="c in clusterSummary"
         :key="c.id ?? -1"
@@ -12,7 +15,14 @@
       >
         {{ c.id === null ? 'Tekil' : `Küme ${c.id + 1}` }}: {{ c.count }} işletme
       </q-chip>
-      <q-chip v-if="selectedRoute" dense color="blue-7" text-color="white" icon="route" size="sm">
+      <q-chip
+        v-if="selectedRoute"
+        dense
+        color="blue-7"
+        text-color="white"
+        icon="route"
+        size="sm"
+      >
         {{ selectedRoute.distanceKm.toFixed(1) }} km · {{ formatDuration(selectedRoute.durationSec) }}
       </q-chip>
       <q-btn
@@ -84,13 +94,23 @@
         >
           <l-popup>
             <div style="min-width: 180px">
-              <div class="text-weight-bold q-mb-xs">{{ biz.businessName }}</div>
-              <div v-if="biz.district" class="text-caption text-grey-7">{{ biz.district }}</div>
+              <div class="text-weight-bold q-mb-xs">
+                {{ biz.businessName }}
+              </div>
+              <div
+                v-if="biz.district"
+                class="text-caption text-grey-7"
+              >
+                {{ biz.district }}
+              </div>
               <q-separator class="q-my-xs" />
               <div class="text-caption">
                 <span class="text-grey-6">Alan:</span> {{ biz.branchName }}
               </div>
-              <div v-if="biz.distanceToSchoolKm != null" class="text-caption">
+              <div
+                v-if="biz.distanceToSchoolKm != null"
+                class="text-caption"
+              >
                 <span class="text-grey-6">Uzaklık:</span> {{ biz.distanceToSchoolKm.toFixed(1) }} km
               </div>
               <div class="text-caption">
@@ -101,11 +121,23 @@
                 <strong class="text-green-8">{{ biz.maxCoordinationHours }} saat</strong>
               </div>
               <q-separator class="q-my-xs" />
-              <div v-if="biz.isAssigned" class="text-caption text-positive">
-                <q-icon name="check_circle" size="12px" /> {{ biz.assignedTeacherName }}
+              <div
+                v-if="biz.isAssigned"
+                class="text-caption text-positive"
+              >
+                <q-icon
+                  name="check_circle"
+                  size="12px"
+                /> {{ biz.assignedTeacherName }}
               </div>
-              <div v-else class="text-caption text-negative">
-                <q-icon name="warning" size="12px" /> Atanmamış
+              <div
+                v-else
+                class="text-caption text-negative"
+              >
+                <q-icon
+                  name="warning"
+                  size="12px"
+                /> Atanmamış
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
                 {{ biz.clusterId === null ? 'Tekil nokta' : `Küme ${biz.clusterId + 1}` }}

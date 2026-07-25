@@ -2,12 +2,22 @@
   <q-page padding>
     <PageHeader title="Devamsızlık">
       <PermissionGuard :permission="Permissions.Attendance.Manage">
-        <q-btn :disable="periodStore.isReadOnly" color="primary" icon="add" label="Devamsızlık Ekle" @click="openAddDialog" />
+        <q-btn
+          :disable="periodStore.isReadOnly"
+          color="primary"
+          icon="add"
+          label="Devamsızlık Ekle"
+          @click="openAddDialog"
+        />
       </PermissionGuard>
     </PageHeader>
 
-    <AppNotice v-if="periodStore.isReadOnly" type="readonly" class="q-mb-md"
-      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir." />
+    <AppNotice
+      v-if="periodStore.isReadOnly"
+      type="readonly"
+      class="q-mb-md"
+      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir."
+    />
 
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md">
@@ -33,7 +43,12 @@
           <q-item v-bind="itemProps">
             <q-item-section>
               <q-item-label>{{ opt.label }}</q-item-label>
-              <q-item-label caption v-if="opt.caption">{{ opt.caption }}</q-item-label>
+              <q-item-label
+                v-if="opt.caption"
+                caption
+              >
+                {{ opt.caption }}
+              </q-item-label>
             </q-item-section>
           </q-item>
         </template>
@@ -45,7 +60,11 @@
         v-model="statusFilter"
         :options="statusOptions"
         label="Durum"
-        outlined dense emit-value map-options clearable
+        outlined
+        dense
+        emit-value
+        map-options
+        clearable
         style="min-width: 150px"
         @update:model-value="load"
       />
@@ -53,7 +72,11 @@
         v-model="monthFilter"
         :options="monthOptions"
         label="Ay"
-        outlined dense emit-value map-options clearable
+        outlined
+        dense
+        emit-value
+        map-options
+        clearable
         style="min-width: 130px"
         @update:model-value="load"
       />
@@ -61,7 +84,11 @@
         v-model="yearFilter"
         :options="yearOptions"
         label="Yıl"
-        outlined dense emit-value map-options clearable
+        outlined
+        dense
+        emit-value
+        map-options
+        clearable
         style="min-width: 100px"
         @update:model-value="load"
       />
@@ -74,11 +101,22 @@
       />
     </div>
 
-    <AppTable :rows="records" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
+    <AppTable
+      :rows="records"
+      :columns="columns"
+      :loading="loading"
+      :pagination="pagination"
+      @request="onRequest"
+    >
       <template #body-cell-student="{ row }">
         <q-td>
-          <div class="text-weight-medium">{{ studentMap[row.studentId]?.fullName ?? '—' }}</div>
-          <div v-if="studentMap[row.studentId]?.info" class="text-caption text-grey-6">
+          <div class="text-weight-medium">
+            {{ studentMap[row.studentId]?.fullName ?? '—' }}
+          </div>
+          <div
+            v-if="studentMap[row.studentId]?.info"
+            class="text-caption text-grey-6"
+          >
             {{ studentMap[row.studentId].info }}
           </div>
         </q-td>
@@ -100,36 +138,56 @@
           <PermissionGuard :permission="Permissions.Attendance.Approve">
             <q-btn
               v-if="row.status === 'Pending'"
-              flat round dense icon="thumb_up"
+              flat
+              round
+              dense
+              icon="thumb_up"
               color="primary"
               aria-label="Onayla"
               @click="approve(row)"
-            ><q-tooltip>Onayla</q-tooltip></q-btn>
+            >
+              <q-tooltip>Onayla</q-tooltip>
+            </q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Approve">
             <q-btn
               v-if="row.status === 'Recorded'"
-              flat round dense icon="check"
+              flat
+              round
+              dense
+              icon="check"
               color="positive"
               aria-label="Doğrula"
               @click="verify(row)"
-            ><q-tooltip>Doğrula</q-tooltip></q-btn>
+            >
+              <q-tooltip>Doğrula</q-tooltip>
+            </q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Manage">
             <q-btn
-              flat round dense icon="edit"
+              flat
+              round
+              dense
+              icon="edit"
               aria-label="Düzelt"
               @click="openCorrect(row)"
-            ><q-tooltip>Düzelt</q-tooltip></q-btn>
+            >
+              <q-tooltip>Düzelt</q-tooltip>
+            </q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Delete">
             <q-btn
               v-if="isWithinDeleteWindow(row.date)"
-              flat round dense icon="delete"
+              flat
+              round
+              dense
+              icon="delete"
               color="negative"
               aria-label="Sil"
               @click="confirmDelete(row)"
-            ><q-tooltip>Sil</q-tooltip></q-btn>
+            >
+              <q-tooltip>Sil</q-tooltip>
+            </q-btn>
           </PermissionGuard>
         </q-td>
       </template>
@@ -282,7 +340,7 @@ function confirmDelete(row: AttendanceRecordDto) {
 
 
 function openAddDialog() {
-  void router.push('/attendance/new')
+  router.push('/attendance/new').catch(() => {})
 }
 
 async function approve(row: AttendanceRecordDto) {

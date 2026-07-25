@@ -1,18 +1,35 @@
 <template>
-  <FormDialog v-model="open" title="Sözleşme İmzala" icon="draw" color="teal" width="420px" save-label="İmzala" :saving="saving" @save="handleSave">
-        <q-select
-          v-model="form.party"
-          :options="partyOptions"
-          label="İmzacı Taraf"
-          outlined
-          emit-value
-          map-options
-        >
-          <template #prepend><q-icon name="group" /></template>
-        </q-select>
-        <q-input v-model="form.signedBy" label="İmzalayan Adı" outlined>
-          <template #prepend><q-icon name="badge" /></template>
-        </q-input>
+  <FormDialog
+    v-model="open"
+    title="Sözleşme İmzala"
+    icon="draw"
+    color="teal"
+    width="420px"
+    save-label="İmzala"
+    :saving="saving"
+    @save="handleSave"
+  >
+    <q-select
+      v-model="form.party"
+      :options="partyOptions"
+      label="İmzacı Taraf"
+      outlined
+      emit-value
+      map-options
+    >
+      <template #prepend>
+        <q-icon name="group" />
+      </template>
+    </q-select>
+    <q-input
+      v-model="form.signedBy"
+      label="İmzalayan Adı"
+      outlined
+    >
+      <template #prepend>
+        <q-icon name="badge" />
+      </template>
+    </q-input>
   </FormDialog>
 </template>
 

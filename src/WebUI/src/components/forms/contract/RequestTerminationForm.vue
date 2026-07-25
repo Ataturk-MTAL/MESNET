@@ -1,37 +1,56 @@
 <template>
-  <FormDialog v-model="open" title="Fesih Talebi Oluştur" icon="report" color="deep-orange" save-label="Talebi Gönder" :saving="saving" :save-disabled="!form.reasonType || !form.reason || !form.requestedBy" @save="handleSave">
-        <AppNotice
-          type="warning"
-          icon="info"
-          dense
-          message="Talebiniz kurum yönetimine iletilecek. Onay/red kararı size bildirilir."
-        />
+  <FormDialog
+    v-model="open"
+    title="Fesih Talebi Oluştur"
+    icon="report"
+    color="deep-orange"
+    save-label="Talebi Gönder"
+    :saving="saving"
+    :save-disabled="!form.reasonType || !form.reason || !form.requestedBy"
+    @save="handleSave"
+  >
+    <AppNotice
+      type="warning"
+      icon="info"
+      dense
+      message="Talebiniz kurum yönetimine iletilecek. Onay/red kararı size bildirilir."
+    />
 
-        <q-select
-          v-model="form.reasonType"
-          :options="terminationReasonOptions"
-          label="Fesih Sebebi *"
-          outlined
-          emit-value
-          map-options
-        >
-          <template #prepend><q-icon name="category" /></template>
-        </q-select>
+    <q-select
+      v-model="form.reasonType"
+      :options="terminationReasonOptions"
+      label="Fesih Sebebi *"
+      outlined
+      emit-value
+      map-options
+    >
+      <template #prepend>
+        <q-icon name="category" />
+      </template>
+    </q-select>
 
-        <q-input
-          v-model="form.reason"
-          label="Açıklama *"
-          outlined
-          type="textarea"
-          :rows="3"
-          autogrow
-        >
-          <template #prepend><q-icon name="notes" /></template>
-        </q-input>
+    <q-input
+      v-model="form.reason"
+      label="Açıklama *"
+      outlined
+      type="textarea"
+      :rows="3"
+      autogrow
+    >
+      <template #prepend>
+        <q-icon name="notes" />
+      </template>
+    </q-input>
 
-        <q-input v-model="form.requestedBy" label="Talep Eden *" outlined>
-          <template #prepend><q-icon name="person" /></template>
-        </q-input>
+    <q-input
+      v-model="form.requestedBy"
+      label="Talep Eden *"
+      outlined
+    >
+      <template #prepend>
+        <q-icon name="person" />
+      </template>
+    </q-input>
   </FormDialog>
 </template>
 

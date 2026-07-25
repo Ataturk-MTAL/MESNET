@@ -2,43 +2,90 @@
   <q-page padding>
     <PageHeader title="Staj Takibi" />
 
-    <AppNotice v-if="periodStore.isReadOnly" type="readonly" class="q-mb-md"
-      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir." />
+    <AppNotice
+      v-if="periodStore.isReadOnly"
+      type="readonly"
+      class="q-mb-md"
+      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir."
+    />
 
     <!-- Özet Kartlar -->
     <div class="row q-col-gutter-md q-mb-lg">
       <div class="col-12 col-sm-6 col-md">
-        <StatCard orientation="vertical" icon="school" :value="stats.placed" label="Yerleştirildi" color="primary" />
+        <StatCard
+          orientation="vertical"
+          icon="school"
+          :value="stats.placed"
+          label="Yerleştirildi"
+          color="primary"
+        />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <StatCard orientation="vertical" icon="work" :value="stats.active" label="Aktif Staj" color="positive" />
+        <StatCard
+          orientation="vertical"
+          icon="work"
+          :value="stats.active"
+          label="Aktif Staj"
+          color="positive"
+        />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <StatCard orientation="vertical" icon="done_all" :value="stats.completed" label="Tamamlandı" color="purple" />
+        <StatCard
+          orientation="vertical"
+          icon="done_all"
+          :value="stats.completed"
+          label="Tamamlandı"
+          color="purple"
+        />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <StatCard orientation="vertical" icon="cancel" :value="stats.cancelled" label="Fesih Yapıldı" color="negative" />
+        <StatCard
+          orientation="vertical"
+          icon="cancel"
+          :value="stats.cancelled"
+          label="Fesih Yapıldı"
+          color="negative"
+        />
       </div>
       <div class="col-12 col-sm-6 col-md">
-        <StatCard orientation="vertical" icon="event_busy" :value="stats.failedToComplete" label="Tamamlayamadı" color="warning" />
+        <StatCard
+          orientation="vertical"
+          icon="event_busy"
+          :value="stats.failedToComplete"
+          label="Tamamlayamadı"
+          color="warning"
+        />
       </div>
     </div>
 
     <!-- Yerleştirme Listesi -->
-    <q-card flat bordered>
+    <q-card
+      flat
+      bordered
+    >
       <q-card-section>
-        <div class="text-subtitle1 text-weight-medium q-mb-md">Yerleştirmeler</div>
+        <div class="text-subtitle1 text-weight-medium q-mb-md">
+          Yerleştirmeler
+        </div>
 
         <div class="row q-col-gutter-sm q-mb-md items-end">
           <div class="col-12 col-sm-4">
-            <BranchSelector v-model="branchFilter" dense force-select />
+            <BranchSelector
+              v-model="branchFilter"
+              dense
+              force-select
+            />
           </div>
           <div class="col-12 col-sm-4">
             <q-select
               v-model="statusFilter"
               :options="statusOptions"
               label="Durum"
-              outlined dense emit-value map-options clearable
+              outlined
+              dense
+              emit-value
+              map-options
+              clearable
             />
           </div>
         </div>
@@ -60,11 +107,23 @@
             <q-td>{{ formatDate(row.placedAt) }}</q-td>
           </template>
           <template #body-cell-sourceSlug="{ row }">
-            <q-td><q-badge color="blue-grey" :label="row.sourceSlug" /></q-td>
+            <q-td>
+              <q-badge
+                color="blue-grey"
+                :label="row.sourceSlug"
+              />
+            </q-td>
           </template>
           <template #body-cell-actions="{ row }">
             <q-td class="text-right">
-              <q-btn flat round dense icon="visibility" aria-label="Detayları görüntüle" @click="openDetail(row)" />
+              <q-btn
+                flat
+                round
+                dense
+                icon="visibility"
+                aria-label="Detayları görüntüle"
+                @click="openDetail(row)"
+              />
             </q-td>
           </template>
         </AppTable>
@@ -72,9 +131,15 @@
     </q-card>
 
     <!-- Devamsızlık Durumu -->
-    <q-card flat bordered class="q-mt-md">
+    <q-card
+      flat
+      bordered
+      class="q-mt-md"
+    >
       <q-card-section>
-        <div class="text-subtitle1 text-weight-medium q-mb-md">Devamsızlık Durumu</div>
+        <div class="text-subtitle1 text-weight-medium q-mb-md">
+          Devamsızlık Durumu
+        </div>
         <div class="text-caption text-grey q-mb-sm">
           25 gün ve üzeri devamsız öğrenciler listelenir.
           30 günü aşan öğrenciler <span class="text-negative text-weight-medium">kırmızı</span> ile gösterilir.
@@ -91,17 +156,24 @@
         >
           <template #body="{ row }">
             <tr :class="row.totalAbsenceDays >= 30 ? 'bg-red-1' : 'bg-orange-1'">
-              <td class="text-left">{{ row.studentName }}</td>
-              <td class="text-left">{{ row.businessName }}</td>
+              <td class="text-left">
+                {{ row.studentName }}
+              </td>
+              <td class="text-left">
+                {{ row.businessName }}
+              </td>
               <td class="text-center">
                 <span :class="row.totalAbsenceDays >= 30 ? 'text-negative text-weight-bold' : 'text-warning text-weight-medium'">
                   {{ row.totalAbsenceDays }} gün
                 </span>
               </td>
               <td class="text-right">
-                <q-btn :disable="periodStore.isReadOnly"
+                <q-btn
                   v-if="canManage && row.totalAbsenceDays >= 30"
-                  flat dense size="sm"
+                  :disable="periodStore.isReadOnly"
+                  flat
+                  dense
+                  size="sm"
                   color="negative"
                   label="Tamamlayamadı İşaretle"
                   :loading="markingId === row.placementId"
@@ -115,19 +187,58 @@
     </q-card>
 
     <!-- Detay Panel -->
-    <DetailPanel v-model="detailOpen" :has-content="!!selected" :width="400">
-      <template #title>{{ selected?.studentName }}</template>
+    <DetailPanel
+      v-model="detailOpen"
+      :has-content="!!selected"
+      :width="400"
+    >
+      <template #title>
+        {{ selected?.studentName }}
+      </template>
       <template #toolbar-actions>
-        <StatusBadge :slug="selected?.statusSlug ?? ''" class="q-mr-sm" />
+        <StatusBadge
+          :slug="selected?.statusSlug ?? ''"
+          class="q-mr-sm"
+        />
       </template>
       <template v-if="selected">
         <div class="q-gutter-sm">
-          <InfoItem icon="person" label="Öğrenci" :value="selected.studentName" />
-          <InfoItem icon="business" label="İşletme" :value="selected.businessName" />
-          <InfoItem v-if="selected.teacherName" icon="school" label="Koordinatör Öğretmen" :value="selected.teacherName" />
-          <InfoItem icon="badge" label="Durum"><StatusBadge :slug="selected.statusSlug" /></InfoItem>
-          <InfoItem icon="source" label="Kaynak"><q-badge color="blue-grey" :label="selected.sourceSlug" /></InfoItem>
-          <InfoItem icon="event" label="Yerleştirme Tarihi" :value="formatDate(selected.placedAt)" />
+          <InfoItem
+            icon="person"
+            label="Öğrenci"
+            :value="selected.studentName"
+          />
+          <InfoItem
+            icon="business"
+            label="İşletme"
+            :value="selected.businessName"
+          />
+          <InfoItem
+            v-if="selected.teacherName"
+            icon="school"
+            label="Koordinatör Öğretmen"
+            :value="selected.teacherName"
+          />
+          <InfoItem
+            icon="badge"
+            label="Durum"
+          >
+            <StatusBadge :slug="selected.statusSlug" />
+          </InfoItem>
+          <InfoItem
+            icon="source"
+            label="Kaynak"
+          >
+            <q-badge
+              color="blue-grey"
+              :label="selected.sourceSlug"
+            />
+          </InfoItem>
+          <InfoItem
+            icon="event"
+            label="Yerleştirme Tarihi"
+            :value="formatDate(selected.placedAt)"
+          />
         </div>
       </template>
     </DetailPanel>

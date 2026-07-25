@@ -1,13 +1,23 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">Haftalık Ziyaretler</div>
+    <div class="text-h5 text-weight-bold q-mb-lg">
+      Haftalık Ziyaretler
+    </div>
 
     <!-- Filtreler -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
       <!-- Hafta seçici — takvimden tıkla, tüm hafta seçilir -->
       <div class="col-12 col-sm-auto">
-        <q-btn outline icon="event" :label="weekLabel" no-caps>
-          <q-popup-proxy transition-show="scale" transition-hide="scale">
+        <q-btn
+          outline
+          icon="event"
+          :label="weekLabel"
+          no-caps
+        >
+          <q-popup-proxy
+            transition-show="scale"
+            transition-hide="scale"
+          >
             <q-date
               :model-value="dateRangeModel"
               range
@@ -15,7 +25,12 @@
               @update:model-value="onDateSelect"
             >
               <div class="row items-center justify-end">
-                <q-btn v-close-popup label="Tamam" color="primary" flat />
+                <q-btn
+                  v-close-popup
+                  label="Tamam"
+                  color="primary"
+                  flat
+                />
               </div>
             </q-date>
           </q-popup-proxy>
@@ -36,7 +51,10 @@
       </div>
 
       <!-- Alan seçici (Scope=Branch) -->
-      <div v-if="scope === 'Branch'" class="col-12 col-sm-3">
+      <div
+        v-if="scope === 'Branch'"
+        class="col-12 col-sm-3"
+      >
         <BranchSelector
           v-model="scopeBranchCode"
         />
@@ -121,7 +139,11 @@
     </AppTable>
 
     <!-- Atama Detay Dialog -->
-    <DetailDialog v-model="detailDialogOpen" title="Ziyaret Atamaları" maximized>
+    <DetailDialog
+      v-model="detailDialogOpen"
+      title="Ziyaret Atamaları"
+      maximized
+    >
       <template #toolbar-actions>
         <q-btn
           color="primary"
@@ -148,11 +170,15 @@
           @search="onAssignmentSearch"
         >
           <template #body-cell-visitDate="{ row }">
-            <q-td class="text-center">{{ formatDateTR(row.visitDate) }}</q-td>
+            <q-td class="text-center">
+              {{ formatDateTR(row.visitDate) }}
+            </q-td>
           </template>
 
           <template #body-cell-day="{ row }">
-            <q-td class="text-center">{{ dayLabel(row.day) }}</q-td>
+            <q-td class="text-center">
+              {{ dayLabel(row.day) }}
+            </q-td>
           </template>
 
           <template #body-cell-actions="{ row }">
@@ -176,11 +202,16 @@
     </DetailDialog>
 
     <!-- Eksik Atama Ekle Dialog -->
-    <q-dialog v-model="addDialogOpen" persistent>
+    <q-dialog
+      v-model="addDialogOpen"
+      persistent
+    >
       <q-card style="min-width: 700px; max-width: 900px">
         <q-card-section class="row items-center">
           <div>
-            <div class="text-h6">Eksik Ziyaret Atamaları</div>
+            <div class="text-h6">
+              Eksik Ziyaret Atamaları
+            </div>
             <div class="text-caption text-grey-7">
               Koordinasyon atamalarında olup bu planda bulunmayan kayıtlar alan bazında listeleniyor.
             </div>
@@ -198,16 +229,34 @@
         </q-card-section>
 
         <q-card-section>
-          <q-linear-progress v-if="missingLoading" indeterminate color="primary" class="q-mb-md" />
+          <q-linear-progress
+            v-if="missingLoading"
+            indeterminate
+            color="primary"
+            class="q-mb-md"
+          />
 
-          <div v-if="!missingLoading && missingAssignments.length === 0" class="text-center text-grey-6 q-pa-lg">
+          <div
+            v-if="!missingLoading && missingAssignments.length === 0"
+            class="text-center text-grey-6 q-pa-lg"
+          >
             Tüm atamalar zaten planda mevcut — eklenecek eksik kayıt yok.
           </div>
 
-          <div v-for="group in missingGrouped" :key="group.branchCode">
+          <div
+            v-for="group in missingGrouped"
+            :key="group.branchCode"
+          >
             <div class="row items-center q-mb-xs q-mt-md">
-              <div class="text-subtitle2 text-weight-bold">{{ group.branchName }}</div>
-              <q-badge color="grey-6" class="q-ml-sm">{{ group.items.length }}</q-badge>
+              <div class="text-subtitle2 text-weight-bold">
+                {{ group.branchName }}
+              </div>
+              <q-badge
+                color="grey-6"
+                class="q-ml-sm"
+              >
+                {{ group.items.length }}
+              </q-badge>
               <q-space />
               <q-btn
                 dense
@@ -220,8 +269,16 @@
                 @click="addBranchMissing(group.branchCode)"
               />
             </div>
-            <q-list bordered separator class="rounded-borders q-mb-sm">
-              <q-item v-for="item in group.items" :key="`${item.businessId}-${item.day}`" dense>
+            <q-list
+              bordered
+              separator
+              class="rounded-borders q-mb-sm"
+            >
+              <q-item
+                v-for="item in group.items"
+                :key="`${item.businessId}-${item.day}`"
+                dense
+              >
                 <q-item-section>
                   <q-item-label>{{ item.businessName }}</q-item-label>
                   <q-item-label caption>
@@ -247,7 +304,11 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="Kapat" @click="addDialogOpen = false" />
+          <q-btn
+            flat
+            label="Kapat"
+            @click="addDialogOpen = false"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>

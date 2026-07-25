@@ -3,7 +3,12 @@
     <table class="full-width">
       <thead>
         <tr>
-          <th class="text-left text-caption text-grey-7" style="width: 60px">Saat</th>
+          <th
+            class="text-left text-caption text-grey-7"
+            style="width: 60px"
+          >
+            Saat
+          </th>
           <th
             v-for="day in days"
             :key="day.value"
@@ -14,8 +19,13 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="period in periodCount" :key="period">
-          <td class="text-center text-weight-medium text-grey-8">{{ period }}.</td>
+        <tr
+          v-for="period in periodCount"
+          :key="period"
+        >
+          <td class="text-center text-weight-medium text-grey-8">
+            {{ period }}.
+          </td>
           <td
             v-for="day in days"
             :key="day.value"
@@ -23,10 +33,16 @@
             :class="cellClass(day.value, period)"
             @click="onCellClick(day.value, period)"
           >
-            <div v-if="isOccupied(day.value, period)" class="text-caption text-grey-8">
+            <div
+              v-if="isOccupied(day.value, period)"
+              class="text-caption text-grey-8"
+            >
               Dolu
             </div>
-            <div v-else class="text-caption text-green-8">
+            <div
+              v-else
+              class="text-caption text-green-8"
+            >
               Boş
             </div>
           </td>
@@ -36,13 +52,28 @@
 
     <!-- Özet -->
     <div class="row q-mt-md q-gutter-md">
-      <q-chip icon="event_busy" color="grey-3" text-color="grey-8" dense>
+      <q-chip
+        icon="event_busy"
+        color="grey-3"
+        text-color="grey-8"
+        dense
+      >
         Dolu: {{ occupiedCount }}
       </q-chip>
-      <q-chip icon="event_available" color="green-1" text-color="green-8" dense>
+      <q-chip
+        icon="event_available"
+        color="green-1"
+        text-color="green-8"
+        dense
+      >
         Boş: {{ freeCount }}
       </q-chip>
-      <q-chip icon="calendar_today" color="blue-1" text-color="blue-8" dense>
+      <q-chip
+        icon="calendar_today"
+        color="blue-1"
+        text-color="blue-8"
+        dense
+      >
         Toplam: {{ totalSlots }}
       </q-chip>
     </div>

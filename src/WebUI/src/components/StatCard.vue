@@ -34,22 +34,66 @@ function onClick() {
 </script>
 
 <template>
-  <q-card flat bordered :class="['stat-card', to ? 'cursor-pointer' : '']" @click="onClick">
+  <q-card
+    flat
+    bordered
+    :class="['stat-card', to ? 'cursor-pointer' : '']"
+    @click="onClick"
+  >
     <!-- Dikey: ikon üstte, ortalı -->
-    <q-card-section v-if="orientation === 'vertical'" class="text-center">
-      <q-icon :name="icon" size="40px" :color="color" />
-      <q-skeleton v-if="loading" type="text" width="60px" class="q-mt-sm" style="margin-inline: auto" />
-      <div v-else :class="`text-h4 text-weight-bold text-${color} q-mt-sm`">{{ value }}</div>
-      <div class="text-caption text-grey">{{ label }}</div>
+    <q-card-section
+      v-if="orientation === 'vertical'"
+      class="text-center"
+    >
+      <q-icon
+        :name="icon"
+        size="40px"
+        :color="color"
+      />
+      <q-skeleton
+        v-if="loading"
+        type="text"
+        width="60px"
+        class="q-mt-sm"
+        style="margin-inline: auto"
+      />
+      <div
+        v-else
+        :class="`text-h4 text-weight-bold text-${color} q-mt-sm`"
+      >
+        {{ value }}
+      </div>
+      <div class="text-caption text-grey">
+        {{ label }}
+      </div>
     </q-card-section>
 
     <!-- Yatay: ikon solda -->
-    <q-card-section v-else class="row items-center no-wrap">
-      <q-icon :name="icon" size="40px" :color="color" class="q-mr-md" />
+    <q-card-section
+      v-else
+      class="row items-center no-wrap"
+    >
+      <q-icon
+        :name="icon"
+        size="40px"
+        :color="color"
+        class="q-mr-md"
+      />
       <div>
-        <q-skeleton v-if="loading" type="text" width="60px" />
-        <div v-else :class="`text-h4 text-weight-bold text-${color}`">{{ value }}</div>
-        <div class="text-caption text-grey">{{ label }}</div>
+        <q-skeleton
+          v-if="loading"
+          type="text"
+          width="60px"
+        />
+        <div
+          v-else
+          :class="`text-h4 text-weight-bold text-${color}`"
+        >
+          {{ value }}
+        </div>
+        <div class="text-caption text-grey">
+          {{ label }}
+        </div>
       </div>
     </q-card-section>
   </q-card>

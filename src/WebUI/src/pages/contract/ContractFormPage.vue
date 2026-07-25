@@ -1,13 +1,31 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg q-mx-auto" style="max-width: 640px">
-      <q-btn flat round dense icon="arrow_back" aria-label="Sözleşmelere dön" class="q-mr-sm" @click="goBack">
+    <div
+      class="row items-center q-mb-lg q-mx-auto"
+      style="max-width: 640px"
+    >
+      <q-btn
+        flat
+        round
+        dense
+        icon="arrow_back"
+        aria-label="Sözleşmelere dön"
+        class="q-mr-sm"
+        @click="goBack"
+      >
         <q-tooltip>Sözleşmelere dön</q-tooltip>
       </q-btn>
-      <div class="text-h5 text-weight-bold col">Yeni Sözleşme</div>
+      <div class="text-h5 text-weight-bold col">
+        Yeni Sözleşme
+      </div>
     </div>
 
-    <q-card flat bordered style="max-width: 640px" class="q-mx-auto">
+    <q-card
+      flat
+      bordered
+      style="max-width: 640px"
+      class="q-mx-auto"
+    >
       <q-card-section class="q-gutter-md">
         <q-select
           v-model="form.studentId"
@@ -23,16 +41,25 @@
           option-value="value"
           @filter="studentOpts.filter"
         >
-          <template #prepend><q-icon name="school" /></template>
+          <template #prepend>
+            <q-icon name="school" />
+          </template>
           <template #option="{ itemProps, opt }">
             <q-item v-bind="itemProps">
               <q-item-section>
                 <q-item-label>{{ opt.label }}</q-item-label>
-                <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
+                <q-item-label
+                  v-if="opt.caption"
+                  caption
+                >
+                  {{ opt.caption }}
+                </q-item-label>
               </q-item-section>
             </q-item>
           </template>
-          <template #no-option><SelectEmptyOption /></template>
+          <template #no-option>
+            <SelectEmptyOption />
+          </template>
         </q-select>
 
         <q-select
@@ -49,29 +76,62 @@
           option-value="value"
           @filter="businessOpts.filter"
         >
-          <template #prepend><q-icon name="business" /></template>
+          <template #prepend>
+            <q-icon name="business" />
+          </template>
           <template #option="{ itemProps, opt }">
             <q-item v-bind="itemProps">
               <q-item-section>
                 <q-item-label>{{ opt.label }}</q-item-label>
-                <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
+                <q-item-label
+                  v-if="opt.caption"
+                  caption
+                >
+                  {{ opt.caption }}
+                </q-item-label>
               </q-item-section>
             </q-item>
           </template>
-          <template #no-option><SelectEmptyOption /></template>
+          <template #no-option>
+            <SelectEmptyOption />
+          </template>
         </q-select>
 
-        <TeacherSelector v-model="form.teacherId" label="Koordinatör Öğretmen (opsiyonel)" />
+        <TeacherSelector
+          v-model="form.teacherId"
+          label="Koordinatör Öğretmen (opsiyonel)"
+        />
 
-        <q-input v-model="form.startDate" label="Başlangıç Tarihi *" outlined type="date">
-          <template #prepend><q-icon name="calendar_today" /></template>
+        <q-input
+          v-model="form.startDate"
+          label="Başlangıç Tarihi *"
+          outlined
+          type="date"
+        >
+          <template #prepend>
+            <q-icon name="calendar_today" />
+          </template>
         </q-input>
       </q-card-section>
 
       <q-separator />
-      <q-card-actions align="right" class="q-pa-md">
-        <q-btn flat label="İptal" color="grey-7" @click="goBack" />
-        <q-btn unelevated color="primary" label="Oluştur" :loading="saving" @click="handleSave" />
+      <q-card-actions
+        align="right"
+        class="q-pa-md"
+      >
+        <q-btn
+          flat
+          label="İptal"
+          color="grey-7"
+          @click="goBack"
+        />
+        <q-btn
+          unelevated
+          color="primary"
+          label="Oluştur"
+          :loading="saving"
+          @click="handleSave"
+        />
       </q-card-actions>
     </q-card>
   </q-page>
@@ -102,7 +162,7 @@ const form = reactive({
 })
 
 function goBack() {
-  void router.push('/internship/contracts')
+  router.push('/internship/contracts').catch(() => {})
 }
 
 async function handleSave() {

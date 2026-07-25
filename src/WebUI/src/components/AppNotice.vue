@@ -52,13 +52,27 @@ function dismiss() {
     :class="`${style.bg} ${style.text} rounded-borders`"
   >
     <template #avatar>
-      <q-icon :name="icon ?? style.icon" :color="style.iconColor" />
+      <q-icon
+        :name="icon ?? style.icon"
+        :color="style.iconColor"
+      />
     </template>
 
     <slot>{{ message }}</slot>
 
-    <template v-if="dismissible" #action>
-      <q-btn flat dense round icon="close" aria-label="Kapat" :color="style.iconColor" @click="dismiss" />
+    <template
+      v-if="dismissible"
+      #action
+    >
+      <q-btn
+        flat
+        dense
+        round
+        icon="close"
+        aria-label="Kapat"
+        :color="style.iconColor"
+        @click="dismiss"
+      />
     </template>
   </q-banner>
 </template>

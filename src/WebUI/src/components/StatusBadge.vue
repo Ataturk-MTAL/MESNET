@@ -1,5 +1,9 @@
 <template>
-  <q-badge :color="color" :label="slug" class="text-body2 q-px-sm q-py-xs" />
+  <q-badge
+    :color="color"
+    :label="slug"
+    class="text-body2 q-px-sm q-py-xs"
+  />
 </template>
 
 <script setup lang="ts">

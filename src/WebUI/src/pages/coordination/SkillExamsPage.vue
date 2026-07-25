@@ -1,8 +1,16 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">Beceri Sınavları</div>
+    <div class="text-h5 text-weight-bold q-mb-lg">
+      Beceri Sınavları
+    </div>
 
-    <AppTable :rows="exams" :columns="examColumns" :loading="loadingExams" :pagination="examsPagination" @request="onExamsRequest">
+    <AppTable
+      :rows="exams"
+      :columns="examColumns"
+      :loading="loadingExams"
+      :pagination="examsPagination"
+      @request="onExamsRequest"
+    >
       <template #body-cell-result="{ row }">
         <q-td>
           <q-badge

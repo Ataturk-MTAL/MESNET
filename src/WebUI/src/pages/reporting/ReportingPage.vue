@@ -1,7 +1,9 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-lg">
-      <div class="text-h5 text-weight-bold col">MEB Formları ve Dokümanlar</div>
+      <div class="text-h5 text-weight-bold col">
+        MEB Formları ve Dokümanlar
+      </div>
       <div class="q-gutter-sm">
         <q-btn
           v-if="canGenerate"
@@ -48,7 +50,11 @@
     </div>
 
     <!-- Filtreler -->
-    <q-card flat bordered class="q-mb-md">
+    <q-card
+      flat
+      bordered
+      class="q-mb-md"
+    >
       <q-card-section>
         <div class="row q-col-gutter-sm items-end">
           <div class="col-12 col-sm-6">
@@ -80,7 +86,10 @@
     </q-card>
 
     <!-- Doküman Tablosu -->
-    <q-card flat bordered>
+    <q-card
+      flat
+      bordered
+    >
       <q-table
         :rows="documents"
         :columns="columns"
@@ -90,17 +99,23 @@
         bordered
         selection="multiple"
         :selected="selected"
-        @update:selected="onSelectedUpdate"
         :rows-per-page-options="[10, 20, 50]"
         :pagination="pagination"
         no-data-label="Henüz doküman bulunmuyor"
         loading-label="Yükleniyor..."
+        @update:selected="onSelectedUpdate"
         @request="onRequest"
       >
         <template #no-data>
           <div class="full-width column flex-center q-py-lg text-grey-7">
-            <q-icon name="description" size="42px" class="q-mb-sm" />
-            <div class="q-mb-md">Henüz doküman bulunmuyor</div>
+            <q-icon
+              name="description"
+              size="42px"
+              class="q-mb-sm"
+            />
+            <div class="q-mb-md">
+              Henüz doküman bulunmuyor
+            </div>
             <q-btn
               v-if="canGenerate"
               color="primary"
@@ -113,13 +128,19 @@
         </template>
         <template #body-cell-formType="{ row }">
           <q-td>
-            <q-badge color="blue-grey" :label="formTypeLabel(row.formType)" />
+            <q-badge
+              color="blue-grey"
+              :label="formTypeLabel(row.formType)"
+            />
           </q-td>
         </template>
 
         <template #body-cell-status="{ row }">
           <q-td>
-            <q-badge :color="statusColor(row.status)" :label="statusLabel(row.status)" />
+            <q-badge
+              :color="statusColor(row.status)"
+              :label="statusLabel(row.status)"
+            />
           </q-td>
         </template>
 
@@ -135,10 +156,12 @@
               dense
               icon="download"
               color="primary"
-              title="PDF İndir"
+              aria-label="PDF İndir"
               :loading="downloading === row.id"
               @click="downloadPdf(row)"
-            />
+            >
+              <q-tooltip>PDF İndir</q-tooltip>
+            </q-btn>
             <q-btn
               v-if="row.status === 'Generated'"
               flat
@@ -146,9 +169,11 @@
               dense
               icon="print"
               color="orange"
-              title="Yazdırıldı Olarak İşaretle"
+              aria-label="Yazdırıldı Olarak İşaretle"
               @click="markPrinted(row.id)"
-            />
+            >
+              <q-tooltip>Yazdırıldı Olarak İşaretle</q-tooltip>
+            </q-btn>
             <q-btn
               v-if="row.status === 'Printed'"
               flat
@@ -156,9 +181,11 @@
               dense
               icon="assignment_turned_in"
               color="green"
-              title="İmzalanıp Teslim Edildi"
+              aria-label="İmzalanıp Teslim Edildi"
               @click="markSignedReturned(row.id)"
-            />
+            >
+              <q-tooltip>İmzalanıp Teslim Edildi</q-tooltip>
+            </q-btn>
             <q-btn
               v-if="row.status === 'SignedAndReturned'"
               flat
@@ -166,9 +193,11 @@
               dense
               icon="archive"
               color="grey"
-              title="Arşivle"
+              aria-label="Arşivle"
               @click="archiveDoc(row.id)"
-            />
+            >
+              <q-tooltip>Arşivle</q-tooltip>
+            </q-btn>
             <q-btn
               v-if="canGenerate"
               flat
@@ -176,19 +205,26 @@
               dense
               icon="delete"
               color="red"
-              title="Sil"
+              aria-label="Sil"
               @click="deleteDoc(row.id)"
-            />
+            >
+              <q-tooltip>Sil</q-tooltip>
+            </q-btn>
           </q-td>
         </template>
       </q-table>
     </q-card>
 
     <!-- Belge Oluştur Dialog -->
-    <q-dialog v-model="showGenerateDialog" persistent>
+    <q-dialog
+      v-model="showGenerateDialog"
+      persistent
+    >
       <q-card style="min-width: 420px">
         <q-card-section>
-          <div class="text-h6">Toplu Belge Oluştur</div>
+          <div class="text-h6">
+            Toplu Belge Oluştur
+          </div>
           <div class="text-caption text-grey-7">
             Seçili form tipi ve dönem için eksik belgeler otomatik oluşturulur.
             Zaten oluşturulmuş belgeler tekrar oluşturulmaz.
@@ -233,7 +269,12 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="İptal" color="grey" @click="showGenerateDialog = false" />
+          <q-btn
+            flat
+            label="İptal"
+            color="grey"
+            @click="showGenerateDialog = false"
+          />
           <q-btn
             v-if="batchForm.formType === 'MonthlyAttendanceReport'"
             flat
@@ -346,7 +387,7 @@ const columns = [
   { name: 'actions', label: 'İşlemler', field: 'id', align: 'center' as const },
 ]
 
-function onSelectedUpdate(val: readonly any[]) {
+function onSelectedUpdate(val: readonly unknown[]) {
   selected.value = val as GeneratedDocumentSummaryDto[]
 }
 
@@ -395,7 +436,7 @@ async function downloadPdf(doc: GeneratedDocumentSummaryDto) {
   downloading.value = doc.id
   try {
     const res = await reportingApi.getDocumentPdfUrl(doc.id)
-    const result = (res.data as any)?.data ?? res.data
+    const result = (res.data as { data?: { url?: string } })?.data ?? res.data
     if (result?.url) {
       window.open(result.url, '_blank')
     } else {
@@ -457,7 +498,8 @@ async function resyncForm3() {
   resyncing.value = true
   try {
     const res = await coordinationApi.resyncWeeklyVisitEvents({ institutionId, academicPeriodId: periodId })
-    const result = (res.data as any)?.data ?? res.data
+    type ResyncResult = { resyncedAssignments: number }
+    const result = ((res.data as { data?: ResyncResult })?.data ?? res.data) as ResyncResult
     notify.success(`${result.resyncedAssignments} ziyaret ataması yeniden işlendi. Form 3 verileri güncellendi.`)
   } catch (e) {
     notify.apiError(e, 'Yenileme sırasında bir hata oluştu.')

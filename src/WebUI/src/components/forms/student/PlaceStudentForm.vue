@@ -1,41 +1,59 @@
 <template>
-  <FormDialog v-model="open" title="Öğrenci Yerleştir" icon="place" color="teal" save-label="Yerleştir" :saving="saving" @save="handleSave">
-        <div v-if="studentName" class="text-subtitle2 q-mb-sm">Öğrenci: {{ studentName }}</div>
-        <q-select
-          v-model="form.businessId"
-          :options="businessOpts.options.value"
-          :loading="businessOpts.loading.value"
-          label="İşletme *"
-          outlined
-          use-input
-          input-debounce="0"
-          emit-value
-          map-options
-          option-label="label"
-          option-value="value"
-          :error="!!errors.businessId"
-          :error-message="errors.businessId"
-          @filter="businessOpts.filter"
-        >
-          <template #prepend>
-            <q-icon name="business" />
-          </template>
-          <template #option="{ itemProps, opt }">
-            <q-item v-bind="itemProps">
-              <q-item-section>
-                <q-item-label>{{ opt.label }}</q-item-label>
-                <q-item-label caption v-if="opt.caption">{{ opt.caption }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </template>
-          <template #no-option>
-            <SelectEmptyOption />
-          </template>
-        </q-select>
-        <TeacherSelector
-          v-model="form.teacherId"
-          label="Koordinatör Öğretmen (opsiyonel)"
-        />
+  <FormDialog
+    v-model="open"
+    title="Öğrenci Yerleştir"
+    icon="place"
+    color="teal"
+    save-label="Yerleştir"
+    :saving="saving"
+    @save="handleSave"
+  >
+    <div
+      v-if="studentName"
+      class="text-subtitle2 q-mb-sm"
+    >
+      Öğrenci: {{ studentName }}
+    </div>
+    <q-select
+      v-model="form.businessId"
+      :options="businessOpts.options.value"
+      :loading="businessOpts.loading.value"
+      label="İşletme *"
+      outlined
+      use-input
+      input-debounce="0"
+      emit-value
+      map-options
+      option-label="label"
+      option-value="value"
+      :error="!!errors.businessId"
+      :error-message="errors.businessId"
+      @filter="businessOpts.filter"
+    >
+      <template #prepend>
+        <q-icon name="business" />
+      </template>
+      <template #option="{ itemProps, opt }">
+        <q-item v-bind="itemProps">
+          <q-item-section>
+            <q-item-label>{{ opt.label }}</q-item-label>
+            <q-item-label
+              v-if="opt.caption"
+              caption
+            >
+              {{ opt.caption }}
+            </q-item-label>
+          </q-item-section>
+        </q-item>
+      </template>
+      <template #no-option>
+        <SelectEmptyOption />
+      </template>
+    </q-select>
+    <TeacherSelector
+      v-model="form.teacherId"
+      label="Koordinatör Öğretmen (opsiyonel)"
+    />
   </FormDialog>
 </template>
 

@@ -1,7 +1,10 @@
 <template>
   <div>
     <!-- Filtre + arama çubuğu (aynı satır: filtreler solda, arama sağda) -->
-    <div v-if="showSearch || $slots.filters" class="row items-center q-gutter-sm q-mb-md">
+    <div
+      v-if="showSearch || $slots.filters"
+      class="row items-center q-gutter-sm q-mb-md"
+    >
       <slot name="filters" />
       <q-space />
       <q-input
@@ -17,14 +20,24 @@
         <template #prepend>
           <q-icon name="search" />
         </template>
-        <template v-if="search" #append>
-          <q-icon name="close" class="cursor-pointer" @click="$emit('search', '')" />
+        <template
+          v-if="search"
+          #append
+        >
+          <q-icon
+            name="close"
+            class="cursor-pointer"
+            @click="$emit('search', '')"
+          />
         </template>
       </q-input>
     </div>
 
     <!-- İlk yükleme: spinner yerine içerik-şekilli skeleton satırlar (layout-shift'siz) -->
-    <div v-if="loading && rows.length === 0" class="q-mt-xs">
+    <div
+      v-if="loading && rows.length === 0"
+      class="q-mt-xs"
+    >
       <q-skeleton
         v-for="i in 6"
         :key="i"
@@ -49,22 +62,44 @@
       @update:pagination="onTablePaginationUpdate"
       @request="onTableRequest"
     >
-      <template v-for="(_, name) in $slots" #[name]="slotProps">
-        <slot :name="name" v-bind="slotProps ?? {}" />
+      <template
+        v-for="(_, name) in $slots"
+        #[name]="slotProps"
+      >
+        <slot
+          :name="name"
+          v-bind="slotProps ?? {}"
+        />
       </template>
 
-      <template v-if="loading" #loading>
+      <template
+        v-if="loading"
+        #loading
+      >
         <q-inner-loading showing>
-          <q-spinner-gears size="40px" color="primary" />
+          <q-spinner-gears
+            size="40px"
+            color="primary"
+          />
         </q-inner-loading>
       </template>
 
-      <template v-if="!loading && rows.length === 0" #no-data>
+      <template
+        v-if="!loading && rows.length === 0"
+        #no-data
+      >
         <div class="full-width column flex-center q-pa-xl text-grey-6">
-          <q-icon name="inbox" size="48px" class="q-mb-sm" />
+          <q-icon
+            name="inbox"
+            size="48px"
+            class="q-mb-sm"
+          />
           <span>{{ noDataLabel }}</span>
           <!-- Boş durumda eyleme yönlendirme (ör. 'İlk kaydı ekle') — sayfa #empty-action slot'uyla verir -->
-          <div v-if="$slots['empty-action']" class="q-mt-md">
+          <div
+            v-if="$slots['empty-action']"
+            class="q-mt-md"
+          >
             <slot name="empty-action" />
           </div>
         </div>

@@ -1,6 +1,8 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">Öğretmen Ders Programı</div>
+    <div class="text-h5 text-weight-bold q-mb-lg">
+      Öğretmen Ders Programı
+    </div>
 
     <!-- Filtreler -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
@@ -36,25 +38,49 @@
     />
 
     <!-- Ana İçerik: Grid + Geçmiş Panel -->
-    <div v-if="selectedTeacherId && periodCount > 0" class="row q-col-gutter-md">
+    <div
+      v-if="selectedTeacherId && periodCount > 0"
+      class="row q-col-gutter-md"
+    >
       <!-- Sol: Program Grid -->
       <div class="col-12 col-md-8">
-        <q-card flat bordered class="q-mb-md">
+        <q-card
+          flat
+          bordered
+          class="q-mb-md"
+        >
           <q-card-section>
             <div class="row items-center q-mb-md">
               <div class="col">
                 <div class="text-subtitle1 text-weight-medium">
                   Haftalık Program
-                  <q-badge v-if="hasExistingSchedule" color="green-7" class="q-ml-sm">
+                  <q-badge
+                    v-if="hasExistingSchedule"
+                    color="green-7"
+                    class="q-ml-sm"
+                  >
                     Kayıtlı
                     <q-tooltip>Versiyon {{ currentVersion }}</q-tooltip>
                   </q-badge>
-                  <q-badge v-else color="grey" class="q-ml-sm">Yeni</q-badge>
-                  <q-badge v-if="viewingHistoryVersion !== null" color="orange-7" class="q-ml-sm">
+                  <q-badge
+                    v-else
+                    color="grey"
+                    class="q-ml-sm"
+                  >
+                    Yeni
+                  </q-badge>
+                  <q-badge
+                    v-if="viewingHistoryVersion !== null"
+                    color="orange-7"
+                    class="q-ml-sm"
+                  >
                     Geçmiş: v{{ viewingHistoryVersion }}
                   </q-badge>
                 </div>
-                <div v-if="currentScheduleMeta" class="text-caption text-grey-6 q-mt-xs">
+                <div
+                  v-if="currentScheduleMeta"
+                  class="text-caption text-grey-6 q-mt-xs"
+                >
                   {{ currentScheduleMeta.academicYear }} - {{ currentScheduleMeta.semester }}
                   <span v-if="currentScheduleMeta.updatedAt">
                     &middot; Son güncelleme: {{ formatDate(currentScheduleMeta.updatedAt) }}
@@ -80,7 +106,12 @@
                   @click="editing = true"
                 />
                 <template v-if="editing">
-                  <q-btn flat color="grey-7" label="İptal" @click="cancelEditing" />
+                  <q-btn
+                    flat
+                    color="grey-7"
+                    label="İptal"
+                    @click="cancelEditing"
+                  />
                   <q-btn
                     color="primary"
                     icon="save"
@@ -102,15 +133,35 @@
         </q-card>
 
         <!-- Boş Saatler Özeti -->
-        <q-card v-if="hasExistingSchedule && !editing && viewingHistoryVersion === null" flat bordered>
+        <q-card
+          v-if="hasExistingSchedule && !editing && viewingHistoryVersion === null"
+          flat
+          bordered
+        >
           <q-card-section>
-            <div class="text-subtitle1 text-weight-medium q-mb-sm">Boş Saat Özeti</div>
+            <div class="text-subtitle1 text-weight-medium q-mb-sm">
+              Boş Saat Özeti
+            </div>
             <div class="row q-col-gutter-md">
-              <div v-for="day in dayLabels" :key="day.value" class="col-12 col-sm">
-                <q-card flat bordered class="text-center q-pa-sm">
-                  <div class="text-caption text-grey-7">{{ day.label }}</div>
-                  <div class="text-h6 text-green-8">{{ freeSlotsPerDay(day.value) }}</div>
-                  <div class="text-caption text-grey-6">boş saat</div>
+              <div
+                v-for="day in dayLabels"
+                :key="day.value"
+                class="col-12 col-sm"
+              >
+                <q-card
+                  flat
+                  bordered
+                  class="text-center q-pa-sm"
+                >
+                  <div class="text-caption text-grey-7">
+                    {{ day.label }}
+                  </div>
+                  <div class="text-h6 text-green-8">
+                    {{ freeSlotsPerDay(day.value) }}
+                  </div>
+                  <div class="text-caption text-grey-6">
+                    boş saat
+                  </div>
                 </q-card>
               </div>
             </div>
@@ -120,7 +171,10 @@
 
       <!-- Sağ: Değişiklik Geçmişi Paneli -->
       <div class="col-12 col-md-4">
-        <q-card flat bordered>
+        <q-card
+          flat
+          bordered
+        >
           <q-card-section>
             <div class="row items-center q-mb-sm">
               <div class="col text-subtitle1 text-weight-medium">
@@ -151,38 +205,50 @@
               padding="q-pa-md"
             >
               <!-- Versiyon Listesi -->
-              <q-list separator dense>
-              <q-item
-                v-for="ver in (scheduleHistory?.versions ?? []).slice().reverse()"
-                :key="ver.version"
-                clickable
-                :active="viewingHistoryVersion === ver.version"
-                active-class="bg-blue-1"
-                @click="viewVersion(ver)"
+              <q-list
+                separator
+                dense
               >
-                <q-item-section avatar>
-                  <q-avatar
-                    :color="ver.version === scheduleHistory?.currentVersion ? 'green-7' : 'grey-5'"
-                    text-color="white"
-                    size="sm"
-                    font-size="12px"
+                <q-item
+                  v-for="ver in (scheduleHistory?.versions ?? []).slice().reverse()"
+                  :key="ver.version"
+                  clickable
+                  :active="viewingHistoryVersion === ver.version"
+                  active-class="bg-blue-1"
+                  @click="viewVersion(ver)"
+                >
+                  <q-item-section avatar>
+                    <q-avatar
+                      :color="ver.version === scheduleHistory?.currentVersion ? 'green-7' : 'grey-5'"
+                      text-color="white"
+                      size="sm"
+                      font-size="12px"
+                    >
+                      v{{ ver.version }}
+                    </q-avatar>
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ ver.eventType }}</q-item-label>
+                    <q-item-label caption>
+                      {{ formatDateTime(ver.timestamp) }}
+                    </q-item-label>
+                    <q-item-label
+                      caption
+                      class="text-grey-6"
+                    >
+                      {{ ver.updatedBy }}
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section
+                    v-if="ver.version === scheduleHistory?.currentVersion"
+                    side
                   >
-                    v{{ ver.version }}
-                  </q-avatar>
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label>{{ ver.eventType }}</q-item-label>
-                  <q-item-label caption>
-                    {{ formatDateTime(ver.timestamp) }}
-                  </q-item-label>
-                  <q-item-label caption class="text-grey-6">
-                    {{ ver.updatedBy }}
-                  </q-item-label>
-                </q-item-section>
-                <q-item-section side v-if="ver.version === scheduleHistory?.currentVersion">
-                  <q-badge color="green-7" label="Geçerli" />
-                </q-item-section>
-              </q-item>
+                    <q-badge
+                      color="green-7"
+                      label="Geçerli"
+                    />
+                  </q-item-section>
+                </q-item>
               </q-list>
             </DataState>
           </q-card-section>

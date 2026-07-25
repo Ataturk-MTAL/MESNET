@@ -1,7 +1,11 @@
 <template>
   <div>
     <!-- Adres arama çubuğu -->
-    <div v-if="!readonly" class="q-mb-sm" style="position: relative">
+    <div
+      v-if="!readonly"
+      class="q-mb-sm"
+      style="position: relative"
+    >
       <q-input
         v-model="searchQuery"
         label="Adres veya işletme ara..."
@@ -15,7 +19,15 @@
           <q-icon name="search" />
         </template>
         <template #append>
-          <q-btn flat dense round icon="search" aria-label="Ara" :loading="searching" @click="searchAddress" />
+          <q-btn
+            flat
+            dense
+            round
+            icon="search"
+            aria-label="Ara"
+            :loading="searching"
+            @click="searchAddress"
+          />
         </template>
       </q-input>
       <q-list
@@ -28,15 +40,24 @@
         <q-item
           v-for="result in searchResults"
           :key="result.place_id"
-          clickable
           v-close-popup
+          clickable
           @click="selectResult(result)"
         >
           <q-item-section avatar>
-            <q-icon name="place" size="sm" color="primary" />
+            <q-icon
+              name="place"
+              size="sm"
+              color="primary"
+            />
           </q-item-section>
           <q-item-section>
-            <q-item-label lines="2" class="text-body2">{{ result.display_name }}</q-item-label>
+            <q-item-label
+              lines="2"
+              class="text-body2"
+            >
+              {{ result.display_name }}
+            </q-item-label>
           </q-item-section>
         </q-item>
       </q-list>
@@ -70,7 +91,10 @@
         />
       </l-map>
     </div>
-    <div v-if="modelValue" class="text-caption text-grey q-mt-xs">
+    <div
+      v-if="modelValue"
+      class="text-caption text-grey q-mt-xs"
+    >
       Enlem: {{ modelValue.latitude.toFixed(6) }}, Boylam: {{ modelValue.longitude.toFixed(6) }}
     </div>
   </div>

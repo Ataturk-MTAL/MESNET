@@ -1,9 +1,14 @@
 <template>
   <div class="assignment-grid">
-    <table class="full-width" aria-label="Ders programı ve işletme atama tablosu. Hücreler gün ve saate göre düzenlenmiştir; her hücre dolu (ders), boş veya atanmış işletme durumunu gösterir.">
+    <table
+      class="full-width"
+      aria-label="Ders programı ve işletme atama tablosu. Hücreler gün ve saate göre düzenlenmiştir; her hücre dolu (ders), boş veya atanmış işletme durumunu gösterir."
+    >
       <thead>
         <tr>
-          <th class="period-header text-caption text-grey-7">Saat</th>
+          <th class="period-header text-caption text-grey-7">
+            Saat
+          </th>
           <th
             v-for="day in days"
             :key="day.value"
@@ -14,8 +19,13 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="period in periodCount" :key="period">
-          <td class="period-label text-weight-medium text-grey-8">{{ period }}.</td>
+        <tr
+          v-for="period in periodCount"
+          :key="period"
+        >
+          <td class="period-label text-weight-medium text-grey-8">
+            {{ period }}.
+          </td>
           <td
             v-for="day in days"
             :key="day.value"
@@ -24,8 +34,15 @@
             :aria-label="cellLabel(day.label, day.value, period)"
           >
             <!-- Dolu hücre — sürükleme kabul etmez -->
-            <div v-if="isOccupied(day.value, period)" class="occupied-cell">
-              <q-icon name="menu_book" size="14px" color="grey-5" />
+            <div
+              v-if="isOccupied(day.value, period)"
+              class="occupied-cell"
+            >
+              <q-icon
+                name="menu_book"
+                size="14px"
+                color="grey-5"
+              />
               <span class="text-caption text-grey-6">
                 {{ getCourseName(day.value, period) || 'Ders' }}
               </span>
@@ -38,11 +55,18 @@
               class="drop-zone"
               :class="{ 'drop-zone--disabled': disabled }"
             >
-              <q-icon name="add_circle_outline" size="16px" color="green-4" />
+              <q-icon
+                name="add_circle_outline"
+                size="16px"
+                color="green-4"
+              />
               <span class="text-caption text-green-6">Boş</span>
             </div>
 
             <!-- Boş + atanmış — İşletme chip -->
+            <!-- Sürükle-bırak yüzeyi. Klavyeyle erişilebilir alternatif (seç + hedefe taşı)
+              gerçek bir özellik işi, lint düzeltmesi değil — ayrı issue'da takip ediliyor. -->
+            <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -->
             <div
               v-else
               class="assigned-slot"
@@ -53,7 +77,11 @@
               @dragstart="onDragStart($event, day.value, period)"
             >
               <div class="business-chip">
-                <q-icon name="business" size="14px" color="blue-7" />
+                <q-icon
+                  name="business"
+                  size="14px"
+                  color="blue-7"
+                />
                 <span class="text-caption text-blue-9 ellipsis chip-label">
                   {{ getBusinessName(day.value, period) }}
                 </span>
@@ -80,13 +108,31 @@
 
     <!-- Özet Chip'leri -->
     <div class="row q-mt-md q-gutter-sm">
-      <q-chip icon="menu_book" color="grey-2" text-color="grey-8" dense size="sm">
+      <q-chip
+        icon="menu_book"
+        color="grey-2"
+        text-color="grey-8"
+        dense
+        size="sm"
+      >
         Dolu: {{ occupiedCount }}
       </q-chip>
-      <q-chip icon="event_available" color="green-1" text-color="green-8" dense size="sm">
+      <q-chip
+        icon="event_available"
+        color="green-1"
+        text-color="green-8"
+        dense
+        size="sm"
+      >
         Boş: {{ freeCount }}
       </q-chip>
-      <q-chip icon="business" color="blue-1" text-color="blue-8" dense size="sm">
+      <q-chip
+        icon="business"
+        color="blue-1"
+        text-color="blue-8"
+        dense
+        size="sm"
+      >
         Atanmış: {{ assignedCount }}
       </q-chip>
     </div>

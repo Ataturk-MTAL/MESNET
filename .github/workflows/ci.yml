@@ -63,6 +63,14 @@ jobs:
       - name: Bağımlılıklar
         run: pnpm install --frozen-lockfile
 
+      # ESLint 9 flat config — CLAUDE.md frontend kurallarının otomatikleştirilebilenleri (#68)
+      - name: Lint
+        run: pnpm lint
+
+      # Vitest birim testleri (composable'lar)
+      - name: Testler
+        run: pnpm test:run
+
       # "build" scripti önce vue-tsc --noEmit (type-check) sonra vite build çalıştırır
       - name: Type-check & build
         run: pnpm build

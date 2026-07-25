@@ -1,6 +1,16 @@
 <template>
-  <FormDialog v-model="open" title="Ders Programı Ayarları" icon="schedule" color="orange" width="400px" :saving="saving" @save="handleSave">
-    <div class="text-subtitle2 q-mb-md">Günlük Ders Sayısı</div>
+  <FormDialog
+    v-model="open"
+    title="Ders Programı Ayarları"
+    icon="schedule"
+    color="orange"
+    width="400px"
+    :saving="saving"
+    @save="handleSave"
+  >
+    <div class="text-subtitle2 q-mb-md">
+      Günlük Ders Sayısı
+    </div>
     <q-slider
       v-model="dailyPeriodCount"
       :min="1"

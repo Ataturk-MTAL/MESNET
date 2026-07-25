@@ -1,11 +1,28 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-md">
-      <q-btn flat round dense icon="arrow_back" aria-label="Geri" :to="{ name: 'RoleManagement' }" class="q-mr-sm">
+      <q-btn
+        flat
+        round
+        dense
+        icon="arrow_back"
+        aria-label="Geri"
+        :to="{ name: 'RoleManagement' }"
+        class="q-mr-sm"
+      >
         <q-tooltip>Rollere dön</q-tooltip>
       </q-btn>
-      <div class="text-h5 col">Atanabilir Yetki Kapsamı</div>
-      <q-btn unelevated color="primary" icon="save" label="Kaydet" :loading="saving" @click="save" />
+      <div class="text-h5 col">
+        Atanabilir Yetki Kapsamı
+      </div>
+      <q-btn
+        unelevated
+        color="primary"
+        icon="save"
+        label="Kaydet"
+        :loading="saving"
+        @click="save"
+      />
     </div>
 
     <AppNotice
@@ -14,12 +31,23 @@
       message="Her role, bireysel (direct) olarak hangi yetki ALANLARININ atanabileceğini belirler. Örn. İşletme rolüne yalnız işletme/devamsızlık/iletişim alanları atanabilsin; kurum-yönetimi atanamasın. '*' = tüm yetkiler."
     />
 
-    <q-card v-if="data" flat bordered>
+    <q-card
+      v-if="data"
+      flat
+      bordered
+    >
       <q-list separator>
-        <q-item v-for="role in data.roles" :key="role">
+        <q-item
+          v-for="role in data.roles"
+          :key="role"
+        >
           <q-item-section style="max-width: 240px">
-            <q-item-label class="text-weight-medium">{{ roleLabel(role) }}</q-item-label>
-            <q-item-label caption>{{ role }}</q-item-label>
+            <q-item-label class="text-weight-medium">
+              {{ roleLabel(role) }}
+            </q-item-label>
+            <q-item-label caption>
+              {{ role }}
+            </q-item-label>
           </q-item-section>
           <q-item-section>
             <q-select

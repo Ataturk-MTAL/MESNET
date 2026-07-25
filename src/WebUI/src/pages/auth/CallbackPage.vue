@@ -2,7 +2,10 @@
   <!-- login-required modunda Keycloak bu sayfaya düşmez.
        Yanlışlıkla /auth/callback'e gelirse dashboard'a yönlendir. -->
   <q-page class="flex flex-center">
-    <q-spinner size="48px" color="primary" />
+    <q-spinner
+      size="48px"
+      color="primary"
+    />
   </q-page>
 </template>
 

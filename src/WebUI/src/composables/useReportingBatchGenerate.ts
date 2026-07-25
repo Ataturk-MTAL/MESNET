@@ -102,7 +102,9 @@ export function useReportingBatchGenerate(options: UseReportingBatchGenerateOpti
         academicYear: `${period.startYear} / ${period.endYear}`,
         institutionName: institutionName.value,
       })
-      const result = (res.data as any)?.data ?? res.data
+      // Axios interceptor gövdeyi normalde açıyor; sarılı geldiği durumu da karşıla.
+      type BatchResult = { generated: number; skipped: number }
+      const result = ((res.data as { data?: BatchResult })?.data ?? res.data) as BatchResult
       if (result.generated > 0) {
         notify.success(`${result.generated} yeni belge oluşturuldu, ${result.skipped} belge zaten mevcuttu.`)
       } else {

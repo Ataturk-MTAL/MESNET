@@ -1,25 +1,38 @@
 <template>
-  <FormDialog v-model="open" title="Sözleşmeyi Feshet" icon="gavel" color="negative" width="460px" save-label="Feshet" :saving="saving" @save="handleSave">
-        <q-select
-          v-model="form.reasonType"
-          :options="terminationReasonOptions"
-          label="Fesih Sebebi *"
-          outlined
-          emit-value
-          map-options
-        >
-          <template #prepend><q-icon name="category" /></template>
-        </q-select>
-        <q-input
-          v-model="form.reason"
-          label="Açıklama"
-          outlined
-          type="textarea"
-          :rows="3"
-          autogrow
-        >
-          <template #prepend><q-icon name="notes" /></template>
-        </q-input>
+  <FormDialog
+    v-model="open"
+    title="Sözleşmeyi Feshet"
+    icon="gavel"
+    color="negative"
+    width="460px"
+    save-label="Feshet"
+    :saving="saving"
+    @save="handleSave"
+  >
+    <q-select
+      v-model="form.reasonType"
+      :options="terminationReasonOptions"
+      label="Fesih Sebebi *"
+      outlined
+      emit-value
+      map-options
+    >
+      <template #prepend>
+        <q-icon name="category" />
+      </template>
+    </q-select>
+    <q-input
+      v-model="form.reason"
+      label="Açıklama"
+      outlined
+      type="textarea"
+      :rows="3"
+      autogrow
+    >
+      <template #prepend>
+        <q-icon name="notes" />
+      </template>
+    </q-input>
   </FormDialog>
 </template>
 

@@ -1,6 +1,8 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">Ders Yükü Havuzu</div>
+    <div class="text-h5 text-weight-bold q-mb-lg">
+      Ders Yükü Havuzu
+    </div>
 
     <!-- Alan Seçici -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
@@ -28,7 +30,11 @@
     />
 
     <!-- Alan Ders Yükü Yapılandırması -->
-    <q-card v-if="branchFilter" flat bordered>
+    <q-card
+      v-if="branchFilter"
+      flat
+      bordered
+    >
       <q-card-section>
         <div class="text-subtitle1 text-weight-medium q-mb-sm">
           Alan Ders Yükü Yapılandırması
@@ -70,7 +76,9 @@
         </div>
 
         <!-- Şeflik -->
-        <div class="text-body2 text-weight-medium q-mb-sm">Şeflik</div>
+        <div class="text-body2 text-weight-medium q-mb-sm">
+          Şeflik
+        </div>
         <div class="row q-col-gutter-md q-mb-md">
           <div class="col-6 col-sm-3">
             <q-input
@@ -126,20 +134,57 @@
         </div>
 
         <!-- Sınıf Bazlı Ders Yükü -->
-        <div class="text-body2 text-weight-medium q-mb-sm">Sınıf Bazlı Ders Yükü</div>
-        <q-markup-table flat bordered separator="cell" class="q-mb-md">
+        <div class="text-body2 text-weight-medium q-mb-sm">
+          Sınıf Bazlı Ders Yükü
+        </div>
+        <q-markup-table
+          flat
+          bordered
+          separator="cell"
+          class="q-mb-md"
+        >
           <thead>
             <tr class="bg-grey-2">
-              <th class="text-center" style="width: 80px">Sınıf</th>
-              <th class="text-center" style="width: 130px">Öğrenci Sayısı</th>
-              <th class="text-center" style="width: 130px">Haftalık Ders</th>
-              <th class="text-center" style="width: 80px">Grup</th>
-              <th class="text-center" style="width: 100px">Alt Toplam</th>
+              <th
+                class="text-center"
+                style="width: 80px"
+              >
+                Sınıf
+              </th>
+              <th
+                class="text-center"
+                style="width: 130px"
+              >
+                Öğrenci Sayısı
+              </th>
+              <th
+                class="text-center"
+                style="width: 130px"
+              >
+                Haftalık Ders
+              </th>
+              <th
+                class="text-center"
+                style="width: 80px"
+              >
+                Grup
+              </th>
+              <th
+                class="text-center"
+                style="width: 100px"
+              >
+                Alt Toplam
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(cl, idx) in wlClassLevels" :key="cl.classYear">
-              <td class="text-center text-weight-medium">{{ cl.classYear }}. Sınıf</td>
+            <tr
+              v-for="(cl, idx) in wlClassLevels"
+              :key="cl.classYear"
+            >
+              <td class="text-center text-weight-medium">
+                {{ cl.classYear }}. Sınıf
+              </td>
               <td class="text-center text-weight-medium">
                 {{ cl.studentCount }}
               </td>
