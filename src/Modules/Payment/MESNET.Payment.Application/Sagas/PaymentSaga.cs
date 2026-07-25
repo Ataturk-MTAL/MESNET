@@ -34,7 +34,12 @@ public class PaymentSaga : Saga
     // Marten 9 senkron veri erişimini kaldırdı; .FirstOrDefault() burada
     // "As of Marten 9.0, only asynchronous data access is supported" fırlatıyordu ve
     // AttendanceMarked her seferinde dead letter'a düşüyordu — yani hiç saga oluşmuyordu (#73).
-    public static async Task<(PaymentSaga, SalaryCalculated, ReceiptUploadRequested)> Start(
+    // Saga başlangıcı BİRDEN ÇOK cascading mesaj döndürüyorsa `OutgoingMessages` kullanılmalı.
+    // (PaymentSaga, SalaryCalculated, ReceiptUploadRequested) şeklindeki 3'lü tuple'da Wolverine
+    // yalnız 1. elemanı saga olarak alıyor, 2. ve 3. elemanları sessizce düşürüyordu — ne
+    // SalaryCalculated yayınlanıyor ne dead letter oluşuyordu, PaymentSummary hiç yaratılmıyordu.
+    // Async başlangıcın konvansiyondaki adı StartAsync.
+    public static async Task<(PaymentSaga, OutgoingMessages)> StartAsync(
         AttendanceMarked @event,
         IDocumentSession session)
     {
@@ -69,13 +74,16 @@ public class PaymentSaga : Saga
             ReceiptDueDate = new DateTime(@event.Date.Year, @event.Date.Month, 8, 23, 59, 59)
         };
 
-        var salaryCalculated = new SalaryCalculated(
-            salaryId, @event.StudentId, @event.AcademicPeriodId, month, netAmount, baseWage, deduction, govContrib);
+        var messages = new OutgoingMessages
+        {
+            new SalaryCalculated(
+                salaryId, @event.StudentId, @event.AcademicPeriodId, month,
+                netAmount, baseWage, deduction, govContrib),
+            new ReceiptUploadRequested(
+                salaryId, @event.StudentId, @event.BusinessId, saga.ReceiptDueDate)
+        };
 
-        var receiptUploadRequested = new ReceiptUploadRequested(
-            salaryId, @event.StudentId, @event.BusinessId, saga.ReceiptDueDate);
-
-        return (saga, salaryCalculated, receiptUploadRequested);
+        return (saga, messages);
     }
 
     // ─── HANDLE: İşletme dekontu yükledi ───

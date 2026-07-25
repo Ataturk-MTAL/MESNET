@@ -11,7 +11,7 @@ namespace MESNET.Payment.Application.Handlers;
 public static class ConfirmSalaryHandler
 {
     // Onay sırası ikinci kez burada doğrulanıyor. Tek koruma saga'da kalırsa, saga korelasyonu
-    // bozulduğunda sıra sessizce zorlanmaz hale gelir (bkz. #72) — PaymentSummaryUpdater olayı
+    // bozulduğunda sıra sessizce zorlanmaz hale gelir (bkz. #72) — PaymentSummaryConsumer olayı
     // yine de yazar ve arayüz normal görünür. Bu kontrol o sessiz başarısızlığı kapatır.
     public static async Task<SalaryConfirmedByStudent> Handle(ConfirmSalary command, IQuerySession session)
     {

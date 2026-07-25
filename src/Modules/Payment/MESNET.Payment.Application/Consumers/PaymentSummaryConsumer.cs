@@ -6,7 +6,11 @@ using MESNET.Payment.Shared.Events;
 
 namespace MESNET.Payment.Application.Consumers;
 
-public static class PaymentSummaryUpdater
+// Sınıf adı Handler veya Consumer ile BİTMELİ — Wolverine tip keşfi konvansiyonu bu.
+// Eski adı `PaymentSummaryUpdater` idi; hiç keşfedilmiyordu, dolayısıyla buradaki 8 Handle
+// metodunun hiçbiri çalışmıyordu ve PaymentSummary hiç oluşmuyordu. Hata sessizdi:
+// tüketicisi olmayan olay dead letter da üretmiyor.
+public static class PaymentSummaryConsumer
 {
     public static async Task Handle(SalaryCalculated @event, IDocumentSession session)
     {
