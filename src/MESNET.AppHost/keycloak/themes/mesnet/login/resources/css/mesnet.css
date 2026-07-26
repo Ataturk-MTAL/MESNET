@@ -281,7 +281,11 @@ input[type="submit"].btn-primary:active {
 .login-pf .alert,
 .login-pf .alert-error,
 .login-pf .alert-danger,
-.kc-feedback-text {
+.kc-credential-error {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  text-align: left !important;
   background-color: #FFEBEE !important;
   border: 1px solid #EF9A9A !important;
   color: var(--mesnet-error) !important;
@@ -289,6 +293,38 @@ input[type="submit"].btn-primary:active {
   padding: 12px 16px !important;
   font-size: 0.8125rem !important;
   margin-bottom: 1rem !important;
+}
+
+/*
+ * Uyarı kutusunun İÇİNDEKİ başlık düz metin kalmalı.
+ * kcAlertTitleClass = "pf-c-alert__title kc-feedback-text" — yani aynı sınıf hem uyarı
+ * başlığında hem alan hatasında geçiyor. Sıfırlanmazsa kutunun içine ikinci bir kutu
+ * çizilir.
+ */
+.login-pf .alert .kc-feedback-text,
+.kc-credential-error .kc-feedback-text {
+  background: none !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/*
+ * Alan seviyesi hata (parola sıfırlama, kayıt vb. ekranlarda gerçek alan hataları).
+ * BLOK olmalı: Keycloak bunu inline <span> olarak basıyor ve inline elemanda dikey
+ * padding satır kutusundan taşarak bir üstteki input'un ÜZERİNE biniyor.
+ */
+.kc-feedback-text {
+  display: block !important;
+  color: var(--mesnet-error) !important;
+  font-size: 0.8125rem !important;
+  margin-top: 0.375rem !important;
+}
+
+/* Hatalı alanların kenarlığı da kırmızıya döner — renk tek sinyal olmasın diye
+   uyarı metniyle birlikte çalışır. */
+#kc-content input[aria-invalid="true"] {
+  border-color: var(--mesnet-error) !important;
 }
 
 .login-pf .alert-warning {
