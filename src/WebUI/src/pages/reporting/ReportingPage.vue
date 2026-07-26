@@ -89,134 +89,123 @@
     </q-card>
 
     <!-- Doküman Tablosu -->
-    <q-card
-      flat
-      bordered
+    <!--
+      Ham q-table yerine AppTable: q-table `pagination` prop'unu yalnız bir
+      `@update:pagination` dinleyicisi varken canlı okur. Dinleyici yokken mount
+      anındaki kopya (rowsNumber: 0) donar ve "1-0 toplam 0" görünür. AppTable
+      server-side sözleşmesini (local pagination ref + @update:pagination + @request)
+      doğru kurar — projedeki diğer sayfalı listelerle aynı desen.
+    -->
+    <AppTable
+      :rows="documents"
+      :columns="columns"
+      row-key="id"
+      :loading="loading"
+      selection="multiple"
+      :selected="selected"
+      :pagination="pagination"
+      no-data-label="Henüz doküman bulunmuyor"
+      @update:selected="onSelectedUpdate"
+      @request="onRequest"
     >
-      <q-table
-        :rows="documents"
-        :columns="columns"
-        row-key="id"
-        :loading="loading"
-        flat
-        bordered
-        selection="multiple"
-        :selected="selected"
-        :rows-per-page-options="[10, 20, 50]"
-        :pagination="pagination"
-        no-data-label="Henüz doküman bulunmuyor"
-        loading-label="Yükleniyor..."
-        @update:selected="onSelectedUpdate"
-        @request="onRequest"
-      >
-        <template #no-data>
-          <div class="full-width column flex-center q-py-lg text-grey-7">
-            <q-icon
-              name="description"
-              size="42px"
-              class="q-mb-sm"
-            />
-            <div class="q-mb-md">
-              Henüz doküman bulunmuyor
-            </div>
-            <q-btn
-              v-if="canGenerate"
-              color="primary"
-              icon="note_add"
-              label="İlk belgeyi oluştur"
-              unelevated
-              @click="showGenerateDialog = true"
-            />
-          </div>
-        </template>
-        <template #body-cell-formType="{ row }">
-          <q-td>
-            <q-badge
-              color="neutral"
-              :label="formTypeLabel(row.formType)"
-            />
-          </q-td>
-        </template>
+      <template #empty-action>
+        <q-btn
+          v-if="canGenerate"
+          color="primary"
+          icon="note_add"
+          label="İlk belgeyi oluştur"
+          unelevated
+          @click="showGenerateDialog = true"
+        />
+      </template>
 
-        <template #body-cell-status="{ row }">
-          <q-td>
-            <q-badge
-              :color="statusColor(row.status)"
-              :label="statusLabel(row.status)"
-            />
-          </q-td>
-        </template>
+      <template #body-cell-formType="{ row }">
+        <q-td>
+          <q-badge
+            color="neutral"
+            :label="formTypeLabel(row.formType)"
+          />
+        </q-td>
+      </template>
 
-        <template #body-cell-generatedAt="{ row }">
-          <q-td>{{ formatDate(row.generatedAt) }}</q-td>
-        </template>
+      <template #body-cell-status="{ row }">
+        <q-td>
+          <q-badge
+            :color="statusColor(row.status)"
+            :label="statusLabel(row.status)"
+          />
+        </q-td>
+      </template>
 
-        <template #body-cell-actions="{ row }">
-          <q-td class="q-gutter-xs">
-            <q-btn
-              flat
-              round
-              dense
-              icon="download"
-              color="primary"
-              aria-label="PDF İndir"
-              :loading="downloading === row.id"
-              @click="downloadPdf(row)"
-            >
-              <q-tooltip>PDF İndir</q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="row.status === 'Generated'"
-              flat
-              round
-              dense
-              icon="print"
-              color="warning"
-              aria-label="Yazdırıldı Olarak İşaretle"
-              @click="markPrinted(row.id)"
-            >
-              <q-tooltip>Yazdırıldı Olarak İşaretle</q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="row.status === 'Printed'"
-              flat
-              round
-              dense
-              icon="assignment_turned_in"
-              color="positive"
-              aria-label="İmzalanıp Teslim Edildi"
-              @click="markSignedReturned(row.id)"
-            >
-              <q-tooltip>İmzalanıp Teslim Edildi</q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="row.status === 'SignedAndReturned'"
-              flat
-              round
-              dense
-              icon="archive"
-              color="grey"
-              aria-label="Arşivle"
-              @click="archiveDoc(row.id)"
-            >
-              <q-tooltip>Arşivle</q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="canGenerate"
-              flat
-              round
-              dense
-              icon="delete"
-              color="negative"
-              aria-label="Sil"
-              @click="deleteDoc(row.id)"
-            >
-              <q-tooltip>Sil</q-tooltip>
-            </q-btn>
-          </q-td>
-        </template>
-      </q-table>
-    </q-card>
+      <template #body-cell-generatedAt="{ row }">
+        <q-td>{{ formatDate(row.generatedAt) }}</q-td>
+      </template>
+
+      <template #body-cell-actions="{ row }">
+        <q-td class="q-gutter-xs">
+          <q-btn
+            flat
+            round
+            dense
+            icon="download"
+            color="primary"
+            aria-label="PDF İndir"
+            :loading="downloading === row.id"
+            @click="downloadPdf(row)"
+          >
+            <q-tooltip>PDF İndir</q-tooltip>
+          </q-btn>
+          <q-btn
+            v-if="row.status === 'Generated'"
+            flat
+            round
+            dense
+            icon="print"
+            color="warning"
+            aria-label="Yazdırıldı Olarak İşaretle"
+            @click="markPrinted(row.id)"
+          >
+            <q-tooltip>Yazdırıldı Olarak İşaretle</q-tooltip>
+          </q-btn>
+          <q-btn
+            v-if="row.status === 'Printed'"
+            flat
+            round
+            dense
+            icon="assignment_turned_in"
+            color="positive"
+            aria-label="İmzalanıp Teslim Edildi"
+            @click="markSignedReturned(row.id)"
+          >
+            <q-tooltip>İmzalanıp Teslim Edildi</q-tooltip>
+          </q-btn>
+          <q-btn
+            v-if="row.status === 'SignedAndReturned'"
+            flat
+            round
+            dense
+            icon="archive"
+            color="grey"
+            aria-label="Arşivle"
+            @click="archiveDoc(row.id)"
+          >
+            <q-tooltip>Arşivle</q-tooltip>
+          </q-btn>
+          <q-btn
+            v-if="canGenerate"
+            flat
+            round
+            dense
+            icon="delete"
+            color="negative"
+            aria-label="Sil"
+            @click="deleteDoc(row.id)"
+          >
+            <q-tooltip>Sil</q-tooltip>
+          </q-btn>
+        </q-td>
+      </template>
+    </AppTable>
 
     <!-- Belge Oluştur Dialog -->
     <q-dialog
@@ -302,6 +291,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import AppTable from 'components/AppTable.vue'
 import {
   reportingApi,
   downloadBlob,
