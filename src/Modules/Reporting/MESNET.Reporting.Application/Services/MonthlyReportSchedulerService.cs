@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Reporting.Application.Commands;
 using MESNET.Reporting.Application.Handlers;
@@ -85,7 +86,7 @@ public class MonthlyReportSchedulerService : BackgroundService
             var now = DateTime.UtcNow;
             var year = now.Year;
             var month = now.Month;
-            var academicYear = $"{year - 1} / {year}";
+            var academicYear = AcademicYear.Format(year - 1, year);
             var systemUser = new UserContext(Guid.Empty, "Sistem (Otomatik Rapor)");
 
             // Aktif placement'ı olan tüm kayıtları al

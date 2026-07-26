@@ -194,7 +194,9 @@ public static class DocumentQueryHandler
         ReturnedByName = doc.ReturnedByName,
         ArchivedAt = doc.ArchivedAt,
         ArchivedByName = doc.ArchivedByName,
-        AcademicYear = doc.AcademicYear,
+        // Eski kayıtlar "2025 / 2026" gibi karışık biçimlerde yazılmış olabilir; DB migration
+        // yerine okuma tarafında kanonikleştiriyoruz — liste tek biçim gösterir (#112).
+        AcademicYear = AcademicYear.Normalize(doc.AcademicYear),
         Description = doc.Description
     };
 }

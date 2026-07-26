@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
     <ProjectReference Include="../../src/Modules/Reporting/MESNET.Reporting.Core/MESNET.Reporting.Core.csproj" />
   </ItemGroup>
 

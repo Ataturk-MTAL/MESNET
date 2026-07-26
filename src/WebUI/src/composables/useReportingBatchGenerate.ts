@@ -68,7 +68,7 @@ export function useReportingBatchGenerate(options: UseReportingBatchGenerateOpti
         year: batchForm.year,
         month: batchForm.month,
         institutionName: institutionName.value ?? '',
-        academicYear: `${period.startYear} / ${period.endYear}`,
+        academicYear: `${period.startYear}-${period.endYear}`, // kanonik biçim "2025-2026" (#112)
       })
       const blob = new Blob([res.data as BlobPart], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
@@ -99,7 +99,7 @@ export function useReportingBatchGenerate(options: UseReportingBatchGenerateOpti
         month: batchForm.month,
         institutionId,
         academicPeriodId: periodId,
-        academicYear: `${period.startYear} / ${period.endYear}`,
+        academicYear: `${period.startYear}-${period.endYear}`, // kanonik biçim "2025-2026" (#112)
         institutionName: institutionName.value,
       })
       // Axios interceptor gövdeyi normalde açıyor; sarılı geldiği durumu da karşıla.
