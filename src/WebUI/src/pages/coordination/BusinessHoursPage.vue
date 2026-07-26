@@ -150,9 +150,36 @@
             İşletme Takdir Edilen Saatler
           </div>
 
-          <!-- Uyarı Banner'ları -->
+          <!-- Uyarı Banner'ları.
+            Sıra önemli: havuz tanımsızken aşım/eşik kıyası yapılamaz (#111), o yüzden
+            "havuz yok" uyarısı zincirin başında durur. -->
           <AppNotice
-            v-if="hoursOverLimit"
+            v-if="hoursPoolUndefined && !workloadLoading"
+            type="warning"
+            class="q-mb-md"
+          >
+            <div class="row items-center q-col-gutter-sm">
+              <div class="col">
+                {{ WORKLOAD_POOL_MISSING_MESSAGE }}
+                <span v-if="hoursTotalAssigned > 0">
+                  Şu an takdir edilen toplam: <strong>{{ hoursTotalAssigned }}</strong> saat.
+                </span>
+              </div>
+              <div class="col-auto">
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="warning"
+                  icon-right="arrow_forward"
+                  label="Ders Yükü Havuzuna Git"
+                  :to="{ name: 'WorkloadConfig' }"
+                />
+              </div>
+            </div>
+          </AppNotice>
+          <AppNotice
+            v-else-if="hoursOverLimit"
             type="error"
             class="q-mb-md"
           >
@@ -253,9 +280,9 @@
           <!-- Özet + Kaydet -->
           <div class="row items-center q-mt-md">
             <div class="text-body2">
-              Havuz: <strong class="text-positive-strong">{{ hoursWorkloadPool }}</strong>
-              &nbsp;|&nbsp; Σ Takdir: <strong :class="hoursOverLimit ? 'text-negative-strong' : 'text-info-strong'">{{ hoursTotalAssigned }}</strong>
-              &nbsp;|&nbsp; Kalan: <strong class="text-warning-strong">{{ hoursRemaining }}</strong>
+              Havuz: <strong :class="workloadPoolToneClass(hoursWorkloadPool)">{{ workloadPoolLabel(hoursWorkloadPool) }}</strong>
+              &nbsp;|&nbsp; Σ Takdir: <strong :class="hoursTotalAssignedClass">{{ hoursTotalAssigned }}</strong>
+              &nbsp;|&nbsp; Kalan: <strong :class="hoursRemainingClass">{{ hoursRemainingLabel }}</strong>
               &nbsp;|&nbsp; Σ Maks: <strong class="text-grey-6">{{ hoursTotalMaxHours }}</strong>
             </div>
             <q-space />
@@ -373,6 +400,11 @@ import { useClusterMap } from 'src/composables/useClusterMap'
 import { useAssignmentHistory } from 'src/composables/useAssignmentHistory'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import {
+  WORKLOAD_POOL_MISSING_MESSAGE,
+  workloadPoolLabel,
+  workloadPoolToneClass,
+} from 'src/utils/workloadPool'
 import BranchSelector from 'components/BranchSelector.vue'
 import BusinessClusterMap from 'components/BusinessClusterMap.vue'
 import AppNotice from 'components/AppNotice.vue'
@@ -401,9 +433,13 @@ const hours = useAssignedHours({
 
 const cluster = useClusterMap({ notify, loadData, branchFilter })
 
+const { workloadLoading } = workload
+
 const {
   editedHours, hoursSaving, hoursTotalMaxHours, hoursWorkloadPool,
-  hoursTotalAssigned, hoursRemaining, hoursOverLimit, hoursNearLimit,
+  hoursTotalAssigned, hoursTotalAssignedClass,
+  hoursRemainingLabel, hoursRemainingClass,
+  hoursPoolUndefined, hoursOverLimit, hoursNearLimit,
   changedHoursCount, saveHours,
 } = hours
 

@@ -65,6 +65,34 @@
       class="q-mb-md"
     />
 
+    <!-- Havuz hesaplanmamışken dağıtım bir üst sınırla kıyaslanamaz (#111):
+      "aşım" demek yanlış, sessiz kalmak da yanlış — eksik yapılandırma uyarısı. -->
+    <AppNotice
+      v-if="branchFilter && !loading && poolUndefined"
+      type="warning"
+      class="q-mb-md"
+    >
+      <div class="row items-center q-col-gutter-sm">
+        <div class="col">
+          {{ WORKLOAD_POOL_MISSING_MESSAGE }}
+          <span v-if="summary.totalAssignedHours > 0">
+            Şu an dağıtılan toplam: <strong>{{ summary.totalAssignedHours }}</strong> saat.
+          </span>
+        </div>
+        <div class="col-auto">
+          <q-btn
+            flat
+            dense
+            no-caps
+            color="warning"
+            icon-right="arrow_forward"
+            label="Ders Yükü Havuzuna Git"
+            :to="{ name: 'WorkloadConfig' }"
+          />
+        </div>
+      </div>
+    </AppNotice>
+
     <!-- Read-only Uyarı -->
     <AppNotice
       v-if="periodStore.isReadOnly"
@@ -214,8 +242,11 @@
                       <div class="text-caption text-grey-7">
                         Ders Yükü Havuzu
                       </div>
-                      <div class="text-h5 text-positive-strong">
-                        {{ summary.totalWorkloadPool }}
+                      <div
+                        class="text-h5"
+                        :class="workloadPoolToneClass(summary.totalWorkloadPool)"
+                      >
+                        {{ workloadPoolLabel(summary.totalWorkloadPool) }}
                       </div>
                     </q-card-section>
                   </q-card>
@@ -231,7 +262,7 @@
                       </div>
                       <div
                         class="text-h5"
-                        :class="isOverLimit ? 'text-negative-strong' : 'text-info-strong'"
+                        :class="assignedHoursToneClass(summary.totalWorkloadPool, summary.totalAssignedHours)"
                       >
                         {{ summary.totalAssignedHours }}
                       </div>
@@ -247,8 +278,11 @@
                       <div class="text-caption text-grey-7">
                         Kalan Saat
                       </div>
-                      <div class="text-h5 text-warning-strong">
-                        {{ summary.remainingHours }}
+                      <div
+                        class="text-h5"
+                        :class="remainingHoursToneClass(summary.totalWorkloadPool, summary.remainingHours)"
+                      >
+                        {{ remainingHoursLabel(summary.totalWorkloadPool, summary.remainingHours) }}
                       </div>
                     </q-card-section>
                   </q-card>
@@ -673,6 +707,15 @@ import { useTeacherScheduleLoader } from 'src/composables/useTeacherScheduleLoad
 import { useTeacherChangeFlow } from 'src/composables/useTeacherChangeFlow'
 import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import {
+  WORKLOAD_POOL_MISSING_MESSAGE,
+  isWorkloadPoolUndefined,
+  assignedHoursToneClass,
+  remainingHoursLabel,
+  remainingHoursToneClass,
+  workloadPoolLabel,
+  workloadPoolToneClass,
+} from 'src/utils/workloadPool'
 import AssignmentGrid from 'components/AssignmentGrid.vue'
 import { useKeyboardAssignment } from 'src/composables/useKeyboardAssignment'
 import BranchSelector from 'components/BranchSelector.vue'
@@ -723,6 +766,13 @@ const selectedTeacherName = computed(() => {
 const isOverLimit = computed(
   () => summary.value.totalWorkloadPool > 0 && summary.value.totalAssignedHours > summary.value.totalWorkloadPool,
 )
+
+/**
+ * Havuz hesaplanmamış (#111). `isOverLimit` burada bilinçli olarak false kalır —
+ * bilinmeyen havuza göre "aşıyor" denemez — ama özet kutuları ve uyarı bandı bu
+ * bayrağa bakarak sessiz kalmak yerine eksik yapılandırmayı söyler.
+ */
+const poolUndefined = computed(() => isWorkloadPoolUndefined(summary.value.totalWorkloadPool))
 
 const totalTeacherBusinessCount = computed(() =>
   summary.value.teacherWorkloads.reduce((sum: number, tw: TeacherWorkloadSummaryDto) => sum + tw.businessCount, 0),

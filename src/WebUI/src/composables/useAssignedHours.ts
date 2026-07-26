@@ -5,6 +5,12 @@ import {
   type BranchWorkloadConfigDto,
 } from 'src/api/coordination'
 import type { useNotify } from 'src/composables/useNotify'
+import {
+  isWorkloadPoolUndefined,
+  assignedHoursToneClass,
+  remainingHoursLabel,
+  remainingHoursToneClass,
+} from 'src/utils/workloadPool'
 
 export interface UseAssignedHoursOptions {
   assignments: Ref<BusinessAssignmentDto[]>
@@ -41,8 +47,29 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
 
   const hoursRemaining = computed(() => hoursWorkloadPool.value - hoursTotalAssigned.value)
 
+  /**
+   * Havuz hiç hesaplanmamış (#111). `hoursOverLimit` bu durumda bilinçli olarak false —
+   * havuz bilinmeden "aşıyor" demek yanlış olurdu — ama sessiz kalmak da yanlıştı:
+   * sayfa bu bayrağa bakıp ayrı bir "havuz tanımlanmamış" uyarısı gösterir.
+   */
+  const hoursPoolUndefined = computed(() => isWorkloadPoolUndefined(hoursWorkloadPool.value))
+
   const hoursOverLimit = computed(() =>
     hoursWorkloadPool.value > 0 && hoursTotalAssigned.value > hoursWorkloadPool.value,
+  )
+
+  /** Σ Takdir'in anlamsal rengi — havuz tanımsız + saat girilmişse uyarı tonu. */
+  const hoursTotalAssignedClass = computed(() =>
+    assignedHoursToneClass(hoursWorkloadPool.value, hoursTotalAssigned.value),
+  )
+
+  /** Kalan gösterimi — havuz tanımsızken sayı yerine "—". */
+  const hoursRemainingLabel = computed(() =>
+    remainingHoursLabel(hoursWorkloadPool.value, hoursRemaining.value),
+  )
+
+  const hoursRemainingClass = computed(() =>
+    remainingHoursToneClass(hoursWorkloadPool.value, hoursRemaining.value),
   )
 
   const hoursNearLimit = computed(() =>
@@ -97,7 +124,11 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
     hoursTotalMaxHours,
     hoursWorkloadPool,
     hoursTotalAssigned,
+    hoursTotalAssignedClass,
     hoursRemaining,
+    hoursRemainingLabel,
+    hoursRemainingClass,
+    hoursPoolUndefined,
     hoursOverLimit,
     hoursNearLimit,
     changedHoursCount,
