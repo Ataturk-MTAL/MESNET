@@ -1,4 +1,5 @@
 using FluentValidation;
+using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
 
 namespace MESNET.Security.Application.Validators;
@@ -13,5 +14,14 @@ public class CreateUserValidator : AbstractValidator<CreateUser>
         RuleFor(x => x.FirstName).NotEmpty().WithMessage("Ad belirtilmelidir.");
         RuleFor(x => x.LastName).NotEmpty().WithMessage("Soyad belirtilmelidir.");
         RuleFor(x => x.Roles).NotEmpty().WithMessage("En az bir rol belirtilmelidir.");
+
+        // Alan (branş) zorunluluğu permission'dan türetilir, rol adından DEĞİL (#126).
+        // Dağıtım iznine sahip ama kurum geneli muafiyeti olmayan kullanıcı (alan şefi) en az
+        // bir alanla kaydedilmelidir — aksi hâlde oluşturulduğu anda yazmaya kilitlenir.
+        // Muafiyeti olanda (müdür, müdür yardımcısı) alan İSTENMEZ ve boş bırakılabilir.
+        RuleFor(x => x.BranchCodes)
+            .Must(codes => codes is not null && codes.Any(c => !string.IsNullOrWhiteSpace(c)))
+            .When(x => BranchRequirement.IsRequiredForRoles(x.Roles))
+            .WithMessage("Bu yetkideki kullanıcı için en az bir alan (branş) seçilmelidir.");
     }
 }

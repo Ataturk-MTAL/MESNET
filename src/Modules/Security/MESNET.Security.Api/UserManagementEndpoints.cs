@@ -22,6 +22,8 @@ public static class UserManagementEndpoints
         group.MapPut("/{userAccountId:guid}", UpdateUser).RequireAuthorization(Permissions.UserManagement.Update);
         group.MapPost("/{userAccountId:guid}/roles", ChangeRoles).RequireAuthorization(Permissions.UserManagement.RolesManage);
         group.MapPost("/{userAccountId:guid}/permissions", ChangePermissions).RequireAuthorization(Permissions.UserManagement.RolesManage);
+        // Alan (branş) kapsamı bir YETKİ kapsamı kararıdır → roller/yetkiler ile aynı izin (#126)
+        group.MapPost("/{userAccountId:guid}/branches", ChangeBranches).RequireAuthorization(Permissions.UserManagement.RolesManage);
         group.MapPost("/{userAccountId:guid}/toggle-status", ToggleStatus).RequireAuthorization(Permissions.UserManagement.Update);
         group.MapDelete("/{userAccountId:guid}", DeleteUser).RequireAuthorization(Permissions.UserManagement.Delete);
         group.MapPost("/sync", SyncUsers).RequireAuthorization(Permissions.UserManagement.Create);
@@ -60,12 +62,12 @@ public static class UserManagementEndpoints
     }
 
     private static async Task<IResult> GetUsers(
-        Guid? institutionId, Guid? businessId, string? role, bool? isEnabled,
+        Guid? institutionId, Guid? businessId, string? role, bool? isEnabled, bool? missingBranchOnly,
         int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
         IMessageBus bus = default!)
     {
         var result = await bus.InvokeAsync<PagedResult<UserAccountDto>>(
-            new GetUserAccounts(institutionId, businessId, role, isEnabled)
+            new GetUserAccounts(institutionId, businessId, role, isEnabled, missingBranchOnly)
             { Page = page, PageSize = pageSize, SortBy = sortBy, Descending = descending, Search = search });
 
         return Results.Ok(ResponseBuilder.Success()
@@ -110,6 +112,16 @@ public static class UserManagementEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Kullanıcı yetkileri güncellendi.")
+            .Build());
+    }
+
+    private static async Task<IResult> ChangeBranches(
+        Guid userAccountId, ChangeUserBranches command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command with { UserAccountId = userAccountId });
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Kullanıcının alanları güncellendi.")
             .Build());
     }
 

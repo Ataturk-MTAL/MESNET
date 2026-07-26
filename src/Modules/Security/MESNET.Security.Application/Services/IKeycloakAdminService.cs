@@ -27,7 +27,15 @@ public interface IKeycloakAdminService
     Task<Result> SetUserAttributesAsync(
         string keycloakUserId, Dictionary<string, string> attributes, CancellationToken ct = default);
 
-    /// <summary>Realm'deki tüm kullanıcıları (rolleri + institution/business attribute'larıyla) döndürür.</summary>
+    /// <summary>
+    /// Çok değerli (multivalued) kullanıcı özniteliği yazar — ör. <c>branch_codes</c> (#126).
+    /// Boş liste özniteliği <b>siler</b>; öznitelik zorunlu değildir, hiç bulunmaması geçerlidir.
+    /// </summary>
+    Task<Result> SetUserAttributeValuesAsync(
+        string keycloakUserId, string attributeName, IReadOnlyList<string> values,
+        CancellationToken ct = default);
+
+    /// <summary>Realm'deki tüm kullanıcıları (rolleri + institution/business/branch attribute'larıyla) döndürür.</summary>
     Task<Result<List<KeycloakUserInfo>>> GetUsersAsync(CancellationToken ct = default);
 }
 
@@ -35,4 +43,5 @@ public interface IKeycloakAdminService
 public sealed record KeycloakUserInfo(
     string Id, string Username, string Email,
     string FirstName, string LastName, bool Enabled,
-    List<string> Roles, Guid? InstitutionId, Guid? BusinessId);
+    List<string> Roles, Guid? InstitutionId, Guid? BusinessId,
+    List<string> BranchCodes);

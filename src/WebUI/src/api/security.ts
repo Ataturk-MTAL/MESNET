@@ -16,6 +16,15 @@ export interface UserAccountDto {
   directPermissions: string[]
   createdAt: string
   updatedAt: string | null
+  /** Kullanıcının sorumlu olduğu alan (branş) kodları (#126). Boş olabilir. */
+  branchCodes: string[]
+  /**
+   * Bu kullanıcı için alan girilmesi zorunlu mu? Backend'de permission'dan türetilir.
+   * `false` ise boş `branchCodes` beklenen normal durumdur (müdür, müdür yardımcısı).
+   */
+  branchRequired: boolean
+  /** Alan zorunlu ama girilmemiş — "branş atanmamış" rozetiyle gösterilir. */
+  branchMissing: boolean
 }
 
 export interface InvitationDto {
@@ -59,6 +68,11 @@ export interface ChangePermissionsRequest {
   permissions: string[]
 }
 
+/** Alan (branş) kapsamı güncelleme (#126). Boş dizi kapsamı kaldırır — geçerli bir işlemdir. */
+export interface ChangeBranchesRequest {
+  branchCodes: string[]
+}
+
 export interface PermissionScopeData {
   roles: string[]
   allDomains: string[]
@@ -66,7 +80,14 @@ export interface PermissionScopeData {
 }
 
 export const securityApi = {
-  listUsers: (params?: { institutionId?: string; businessId?: string; role?: string; isEnabled?: boolean } & PaginationParams) =>
+  listUsers: (params?: {
+    institutionId?: string
+    businessId?: string
+    role?: string
+    isEnabled?: boolean
+    /** Yalnız alan beklenen ama girilmemiş kullanıcılar (#126) */
+    missingBranchOnly?: boolean
+  } & PaginationParams) =>
     api.get<PagedResponse<UserAccountDto>>('/security/users', { params }),
 
   getUser: (userAccountId: string) =>
@@ -80,6 +101,9 @@ export const securityApi = {
 
   changePermissions: (userAccountId: string, data: ChangePermissionsRequest) =>
     api.post(`/security/users/${userAccountId}/permissions`, data),
+
+  changeBranches: (userAccountId: string, data: ChangeBranchesRequest) =>
+    api.post(`/security/users/${userAccountId}/branches`, data),
 
   toggleStatus: (userAccountId: string) =>
     api.post(`/security/users/${userAccountId}/toggle-status`),

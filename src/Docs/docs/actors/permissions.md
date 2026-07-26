@@ -865,20 +865,53 @@ bir alan şefi birden çok alandan sorumlu olabiliyor.
 > branş kodu bulunmayan bir alan şefi hiçbir alana yazamaz. Bu, yöneticinin boş listesinden
 > farklı bir durumdur ve düzeltmesi Kurum → Personel ekranından branş kodunun girilmesidir.
 
-Claim iki kaynaktan gelebilir; **token her zaman önceliklidir**:
+#### Kaynak: kayıt sırasında girilir
 
-1. **Keycloak kullanıcı özniteliği** — `branch_codes` özniteliği + `mesnet-api` / `mesnet-web`
-   client'larındaki `branch_codes` protocol mapper'ı (`multivalued: true`)
-2. **Veritabanı yedeği (varsayılan çalışan yol)** — token'da claim yoksa
-   `PermissionClaimsTransformation`, kurum personel kaydından (`institution.mt_doc_institution`
-   → `staff[].branchCode`) okur ve claim olarak ekler. `institution_id` ile birebir aynı desen,
-   5 dakikalık `IMemoryCache` ile.
+**Alan bilgisi kullanıcı oluşturulurken girilir; sistem tahmin etmez veya sonradan türetmez.**
+`CreateUser.BranchCodes`, `InstitutionId` / `BusinessId` ile aynı desende **birinci sınıf
+alandır** — `Metadata` sözlüğünden okunmaz. Davet akışındaki `Metadata["BranchCode"]` yalnız
+taşıma biçimidir; davet tamamlanınca birinci sınıf alana yazılır, iki ayrı doğruluk kaynağı
+bırakılmaz.
+
+Değişiklik yolu: `POST /api/security/users/{id}/branches` (`ChangeUserBranches`).
+`user:roles:manage` izniyle korunur — alan kapsamı bir **yetki kapsamı** kararıdır, kimlik
+bilgisi değil; bu yüzden `UpdateUser` (ad/soyad/e-posta, `user:update`) ile birleştirilmez.
+Kapsam değişimi permission cache'ini geçersiz kılar.
+
+#### Claim çözümleme sırası
+
+1. **Token claim'i** — Keycloak `branch_codes` özniteliği (kayıt sırasında yazılır) +
+   `mesnet-api` / `mesnet-web` client'larındaki `branch_codes` protocol mapper'ı
+   (`multivalued: true`). Her zaman kazanır.
+2. **Kullanıcı kaydı** — `UserAccount.BranchCodes`. Keycloak özniteliği yazılamamışsa
+   (bkz. unmanaged-attribute tuzağı) kapsam yine de çalışır.
+3. **Personel kaydı yedeği (geçiş adımı)** — `institution.mt_doc_institution` →
+   `staff[].branchCode`. Yalnız #126 öncesinde oluşturulmuş kullanıcılar içindir,
+   **birincil yol değildir**. 5 dakikalık `IMemoryCache` ile.
+
+Üçü de boşsa claim eklenmez — bu bir hata değildir.
 
 > **Neden DB yedeği var:** Keycloak realm'inde "unmanaged attributes" kapalıysa kullanıcı
 > öznitelikleri yazılamaz ve claim boş gelir (`business_id` / `institution_id` ile daha önce
-> yaşandı). DB yedeği sayesinde kapsam kontrolü, Keycloak öznitelik kurulumundan bağımsız
-> olarak **ilk günden** çalışır ve tek seferlik dolgu (backfill) gerekmez.
-> Realm dosyasında ayrıca `unmanagedAttributePolicy: ENABLED` tanımlıdır.
+> yaşandı). Realm dosyasında bu yüzden `unmanagedAttributePolicy: ENABLED` tanımlıdır;
+> yedek yol ise kurulum eksikse bile sistemin kilitlenmemesini sağlar.
+
+#### Alan zorunluluğu ve dolgu
+
+Zorunluluk **permission'dan türetilir, rol adından değil** (`BranchRequirement`): kullanıcı
+`department:distribution:manage` iznine sahip ama `institution:distribution:all-branches`
+muafiyetine sahip değilse en az bir alan zorunludur (`CreateUserValidator`). Muafiyeti
+olanda alan istenmez.
+
+Mevcut kullanıcılar için **ikincil geçiş adımı**:
+`POST /api/institutions/staff/resync-branch-codes` — personel kayıtlarındaki alan bilgisini
+`StaffAuthorized` olayı olarak yeniden yayınlar; Security modülündeki `StaffBranchSyncConsumer`
+kullanıcı kaydının **boş** alan listesini doldurur. İdempotenttir.
+
+- Alanı olmayan personel (müdür, müdür yrd.) **atlanır** — eksik değil, normal
+- Kullanıcı kaydında zaten alan varsa **üzerine yazılmaz** — elle girilen kapsam korunur
+- Belirsiz kalanlar uydurulmaz; kullanıcı yönetimi ekranında **"Branş atanmamış"** rozetiyle
+  ve `?missingBranchOnly=true` filtresiyle listelenir, idare elle girer
 
 ### Muafiyet izni: `institution:distribution:all-branches`
 
@@ -947,3 +980,13 @@ yazamayacağı alanlar **listelenmez**; kapsam tek alansa seçici yerine salt ok
 Salt görüntüleme/filtre bağlamında (öğrenci listesi, devamsızlık, ödeme) tüm alanlar görünür.
 Karar `authStore.canManageAllBranches` / `authStore.writableBranchCodes` üzerinden verilir —
 rol adına bakılmaz.
+
+Kullanıcı yönetimi ekranında (`UserManagementPage`):
+
+- **Alan** sütunu kullanıcının alan kodlarını gösterir; boşsa nötr `—` (uyarı değil)
+- Alan beklenip girilmemişse **"Branş atanmamış"** uyarı rozeti çıkar
+- **Yalnız branş atanmamış kullanıcılar** filtresi (`missingBranchOnly`) idarenin bu
+  kullanıcıları bulmasını sağlar; rol değişimiyle branşsız kalanlar burada görünür
+- Satır aksiyonlarındaki 🎓 düğmesi alan kapsamını düzenler (çoklu seçim, kurum branş
+  kataloğundan)
+- Davet formunda alan çoklu seçimi vardır; zorunlu değildir

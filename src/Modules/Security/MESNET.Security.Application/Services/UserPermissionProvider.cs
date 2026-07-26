@@ -29,6 +29,7 @@ public sealed class UserPermissionProvider : IUserPermissionProvider
         return new UserPermissionInfo(
             account.IsEnabled,
             account.Roles.AsReadOnly(),
-            account.DirectPermissions.AsReadOnly());
+            account.DirectPermissions.AsReadOnly(),
+            account.BranchCodes.AsReadOnly());
     }
 }

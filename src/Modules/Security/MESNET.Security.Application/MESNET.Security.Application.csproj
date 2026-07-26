@@ -9,5 +9,7 @@
     <ProjectReference Include="../MESNET.Security.Core/MESNET.Security.Core.csproj" />
     <ProjectReference Include="../MESNET.Security.Shared/MESNET.Security.Shared.csproj" />
     <ProjectReference Include="../../../MESNET.Common.Infrastructure/MESNET.Common.Infrastructure.csproj" />
+    <!-- StaffAuthorized tüketimi (#126) — yalnız Shared katmanı, modül kuralına uygun -->
+    <ProjectReference Include="../../Institution/MESNET.Institution.Shared/MESNET.Institution.Shared.csproj" />
   </ItemGroup>
 </Project>

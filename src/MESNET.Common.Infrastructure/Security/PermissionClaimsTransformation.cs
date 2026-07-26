@@ -80,11 +80,6 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         // Token'da institution_id yoksa DB'den staff eşleşmesiyle bul ve claim olarak ekle
         await EnrichInstitutionClaimAsync(principal, sub);
 
-        // ── Alan (branş) kapsamı claim enrichment (#126) ──
-        // Token'da branch_codes yoksa personel kaydından bul ve claim olarak ekle.
-        // Bu yol, Keycloak "unmanaged attribute" kurulumuna bağımlı olmadan kapsamı çalıştırır.
-        await EnrichBranchCodesClaimAsync(principal, sub);
-
         var cacheKey = $"user-permissions:{sub}";
 
         if (!_cache.TryGetValue(cacheKey, out PermissionCacheEntry? entry))
@@ -96,6 +91,13 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
                 _cache.Set(cacheKey, entry, CacheDuration);
             }
         }
+
+        // ── Alan (branş) kapsamı claim enrichment (#126) ──
+        // Sıra: token claim → kullanıcı kaydındaki BranchCodes → personel kaydı yedeği.
+        // Kayıt sırasında girilen bilgi birincil kaynaktır; personel kaydı yalnız mevcut
+        // kullanıcılar için geçiş adımıdır. Hiçbiri yoksa claim eklenmez — bu geçerli bir
+        // durumdur (müdür/müdür yardımcısı hiçbir alana bağlı değildir).
+        await EnrichBranchCodesClaimAsync(principal, sub, entry?.BranchCodes);
 
         // Permission claim'lerini ekle
         var identity = principal.Identity as ClaimsIdentity;
@@ -160,7 +162,8 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
             var info = await provider.GetUserPermissionInfoAsync(keycloakUserId);
             if (info is null) return null;
 
-            return new PermissionCacheEntry(info.IsEnabled, info.Roles, info.DirectPermissions);
+            return new PermissionCacheEntry(
+                info.IsEnabled, info.Roles, info.DirectPermissions, info.BranchCodes);
         }
         catch (Exception ex)
         {
@@ -181,17 +184,39 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     }
 
     /// <summary>
-    /// Token'da <c>branch_codes</c> claim'i yoksa personel kaydından bulup claim olarak ekler (#126).
+    /// <c>branch_codes</c> claim'ini çözer (#126). Öncelik sırası:
     ///
-    /// <para>Token claim'i her zaman önceliklidir: Keycloak öznitelik mapper'ı kurulduğunda
-    /// bu DB yedeği kendiliğinden devre dışı kalır. Mapper kurulmadan da kapsam kontrolü
-    /// çalışır — bilinen <b>unmanaged-attribute</b> tuzağı sistemi kilitlemesin diye.</para>
+    /// <list type="number">
+    ///   <item><b>Token claim'i</b> — Keycloak <c>branch_codes</c> özniteliği; kullanıcı
+    ///         kaydında girilen değerden üretilir ve her zaman kazanır</item>
+    ///   <item><b>Kullanıcı kaydı</b> (<c>UserAccount.BranchCodes</c>) — kayıt sırasında
+    ///         girilen birincil bilgi; Keycloak özniteliği yazılamamışsa devreye girer</item>
+    ///   <item><b>Personel kaydı yedeği</b> — kurum personel belgesindeki
+    ///         <c>staff[].branchCode</c>; yalnız #126 öncesi oluşturulmuş kullanıcılar için
+    ///         geçiş adımıdır, birincil yol DEĞİLDİR</item>
+    /// </list>
+    ///
+    /// <para>Üçü de boşsa claim eklenmez. Bu bir hata değildir: müdür ve müdür yardımcısı
+    /// hiçbir alana bağlı değildir ve muafiyet izniyle çalışır.</para>
     /// </summary>
-    private async Task EnrichBranchCodesClaimAsync(ClaimsPrincipal principal, string keycloakUserId)
+    private async Task EnrichBranchCodesClaimAsync(
+        ClaimsPrincipal principal, string keycloakUserId, IReadOnlyList<string>? accountBranchCodes)
     {
         if (principal.HasClaim(c => c.Type == BranchCodeClaims.ClaimType))
             return;
 
+        if (principal.Identity is not ClaimsIdentity identity)
+            return;
+
+        // (2) Kullanıcı kaydı — kayıt sırasında girilen birincil bilgi
+        if (accountBranchCodes is { Count: > 0 })
+        {
+            foreach (var code in accountBranchCodes)
+                identity.AddClaim(new Claim(BranchCodeClaims.ClaimType, code));
+            return;
+        }
+
+        // (3) Personel kaydı yedeği — mevcut kullanıcılar için geçiş adımı
         var cacheKey = $"user-branch-codes:{keycloakUserId}";
 
         if (!_cache.TryGetValue(cacheKey, out string? joined))
@@ -202,9 +227,6 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         }
 
         if (string.IsNullOrEmpty(joined))
-            return;
-
-        if (principal.Identity is not ClaimsIdentity identity)
             return;
 
         foreach (var code in BranchCodeClaims.Parse(joined))
@@ -352,5 +374,6 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     private sealed record PermissionCacheEntry(
         bool IsEnabled,
         IReadOnlyList<string> Roles,
-        IReadOnlyList<string> DirectPermissions);
+        IReadOnlyList<string> DirectPermissions,
+        IReadOnlyList<string> BranchCodes);
 }
