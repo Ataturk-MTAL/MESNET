@@ -213,7 +213,7 @@
                         <div class="row q-mt-xs q-gutter-xs">
                           <q-badge
                             :color="slotProgress(biz).current > 0 ? 'warning' : 'positive'"
-                            :label="`${slotProgress(biz).current}/${slotProgress(biz).target} saat`"
+                            :label="slotProgressLabel(biz)"
                             dense
                           />
                           <q-badge
@@ -221,6 +221,16 @@
                             :label="`${biz.activeStudentCount} öğrenci`"
                             dense
                           />
+                          <!-- Fahri ziyaret: slot işgal eder, ek ders saatine sayılmaz (#115) -->
+                          <q-badge
+                            v-if="biz.isHonoraryVisit"
+                            color="neutral-soft"
+                            text-color="neutral-strong"
+                            :label="HONORARY_LABEL"
+                            dense
+                          >
+                            <q-tooltip>{{ HONORARY_HINT }}</q-tooltip>
+                          </q-badge>
                         </div>
                       </div>
                     </div>
@@ -265,6 +275,15 @@
                         :class="assignedHoursToneClass(summary.totalWorkloadPool, summary.totalAssignedHours)"
                       >
                         {{ summary.totalAssignedHours }}
+                      </div>
+                      <!-- Fahri ziyaretler havuza girmez; sayıyı sessiz bırakmak "eksik
+                        dağıtım" izlenimi verirdi (#115). -->
+                      <div
+                        v-if="summary.honoraryBusinessCount > 0"
+                        class="text-caption text-neutral-strong"
+                      >
+                        + {{ summary.honoraryBusinessCount }} fahri (havuz dışı)
+                        <q-tooltip>{{ HONORARY_HINT }}</q-tooltip>
                       </div>
                     </q-card-section>
                   </q-card>
@@ -385,11 +404,24 @@
                         />
                       </q-item-section>
                       <q-item-section>
-                        <q-item-label>{{ biz.businessName }}</q-item-label>
+                        <q-item-label>
+                          {{ biz.businessName }}
+                          <q-badge
+                            v-if="biz.isHonoraryVisit"
+                            color="neutral-soft"
+                            text-color="neutral-strong"
+                            class="q-ml-xs"
+                            :label="HONORARY_LABEL"
+                          >
+                            <q-tooltip>{{ HONORARY_HINT }}</q-tooltip>
+                          </q-badge>
+                        </q-item-label>
                         <q-item-label caption>
                           {{ dayLabel(biz.assignedDay) }}
                           <span v-if="biz.assignedPeriodNumber"> · {{ biz.assignedPeriodNumber }}. saat</span>
-                          · {{ biz.assignedHours }} saat
+                          <!-- Fahri satırda "0 saat" yazmak yanıltıcı: ziyaret var, ücret yok -->
+                          <span v-if="biz.isHonoraryVisit"> · ek ders saatine sayılmaz</span>
+                          <span v-else> · {{ biz.assignedHours }} saat</span>
                         </q-item-label>
                       </q-item-section>
                       <q-item-section side>
@@ -459,6 +491,21 @@
                           </a>
                         </q-td>
                       </template>
+                      <template #body-cell-honoraryVisitCount="{ row }">
+                        <q-td class="text-center">
+                          <span
+                            v-if="row.honoraryVisitCount > 0"
+                            class="text-neutral-strong"
+                          >
+                            {{ row.honoraryVisitCount }}
+                            <q-tooltip>{{ HONORARY_HINT }}</q-tooltip>
+                          </span>
+                          <span
+                            v-else
+                            class="text-grey-6"
+                          >—</span>
+                        </q-td>
+                      </template>
                       <template #bottom-row>
                         <q-tr class="text-weight-bold bg-grey-2">
                           <q-td>TOPLAM</q-td>
@@ -467,6 +514,9 @@
                           </q-td>
                           <q-td class="text-center">
                             {{ summary.totalAssignedHours }}
+                          </q-td>
+                          <q-td class="text-center">
+                            {{ summary.honoraryBusinessCount }}
                           </q-td>
                         </q-tr>
                       </template>
@@ -530,6 +580,25 @@
                       <q-tooltip>Ders programı girilmemiş</q-tooltip>
                     </q-icon>
                   </div>
+                </q-td>
+              </template>
+
+              <template #body-cell-honorary="{ row }">
+                <q-td class="text-center">
+                  <q-badge
+                    v-if="row.honoraryVisitCount > 0"
+                    color="neutral-soft"
+                    text-color="neutral-strong"
+                    :label="`${row.honoraryVisitCount} fahri`"
+                  >
+                    <q-tooltip>
+                      {{ HONORARY_HINT }}. Ders programında {{ row.honorarySlotCount }} slot işgal ediyor.
+                    </q-tooltip>
+                  </q-badge>
+                  <span
+                    v-else
+                    class="text-grey-6"
+                  >—</span>
                 </q-td>
               </template>
 
@@ -716,6 +785,7 @@ import {
   workloadPoolLabel,
   workloadPoolToneClass,
 } from 'src/utils/workloadPool'
+import { HONORARY_LABEL, HONORARY_HINT, isHonorary } from 'src/utils/coordinationHours'
 import AssignmentGrid from 'components/AssignmentGrid.vue'
 import { useKeyboardAssignment } from 'src/composables/useKeyboardAssignment'
 import BranchSelector from 'components/BranchSelector.vue'
@@ -749,6 +819,7 @@ const summary = ref<CoordinationSummaryDto>({
   totalMaxHours: 0,
   assignedBusinessCount: 0,
   unassignedBusinessCount: 0,
+  honoraryBusinessCount: 0,
   teacherWorkloads: [],
 })
 
@@ -799,11 +870,23 @@ function dayLabel(day: string | null): string {
   return day ? (dayLabels[day] ?? day) : '—'
 }
 
+/**
+ * Kart üzerindeki ilerleme etiketi. Fahri satırda birim "saat" değil "ziyaret" —
+ * fahri ziyaret slot işgal eder ama ek ders saati üretmez (#115).
+ */
+function slotProgressLabel(biz: BusinessAssignmentDto): string {
+  const { current, target } = slotProgress(biz)
+  return isHonorary(biz) ? `${current}/${target} ziyaret` : `${current}/${target} saat`
+}
+
 // ── Teacher Summary Columns ──
 const teacherSummaryColumns = [
   { name: 'teacherName', label: 'Öğretmen', field: 'teacherName', align: 'left' as const, sortable: true },
   { name: 'businessCount', label: 'İşletme Sayısı', field: 'businessCount', align: 'center' as const, sortable: true },
   { name: 'assignedHours', label: 'Atanan Saat', field: 'assignedHours', align: 'center' as const, sortable: true },
+  // Fahri ziyaret slot işgal eder ama "Atanan Saat"e girmez — ayrı sütun olmazsa
+  // öğretmen yükü olduğundan az görünür (#115).
+  { name: 'honoraryVisitCount', label: 'Fahri', field: 'honoraryVisitCount', align: 'center' as const, sortable: true },
 ]
 
 // ── API: Load Data ──

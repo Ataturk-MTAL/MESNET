@@ -5,6 +5,7 @@ import {
   type DailyScheduleDto,
 } from 'src/api/coordination'
 import type { useNotify } from 'src/composables/useNotify'
+import { billableTargetHours, slotTargetHours, isHonorary } from 'src/utils/coordinationHours'
 
 export interface PendingChange {
   type: 'assign' | 'unassign'
@@ -68,7 +69,8 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
     const result: BusinessAssignmentDto[] = []
 
     for (const biz of assignments.value) {
-      const targetHours = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
+      // Fahri ziyaret tek slot ister; tavana düşmez (#115)
+      const targetHours = slotTargetHours(biz)
       const backendSlots = biz.assignedSlots?.length ?? 0
 
       const pendingAssigns = pendingChanges.value.filter(
@@ -117,7 +119,7 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
   })
 
   function slotProgress(biz: BusinessAssignmentDto): { current: number; target: number } {
-    const target = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
+    const target = slotTargetHours(biz)
     const backendSlots = biz.assignedSlots?.length ?? 0
     const pendingAssigns = pendingChanges.value.filter(
       (c) => c.businessId === biz.businessId && c.type === 'assign',
@@ -151,7 +153,7 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
     )
     if (existing) return
 
-    const targetHours = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
+    const targetHours = slotTargetHours(biz)
     const backendSlots = biz.assignedSlots?.length ?? 0
     const pendingAssigns = pendingChanges.value.filter(
       (c) => c.businessId === biz.businessId && c.type === 'assign',
@@ -162,7 +164,10 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
     const currentSlots = backendSlots + pendingAssigns - pendingUnassigns
 
     if (currentSlots >= targetHours) {
-      notify.warning(`${biz.businessName}: Tüm saatler atanmış (${currentSlots}/${targetHours}).`)
+      const limitLabel = isHonorary(biz)
+        ? `Fahri ziyaret slotu dolu (${currentSlots}/${targetHours}).`
+        : `Tüm saatler atanmış (${currentSlots}/${targetHours}).`
+      notify.warning(`${biz.businessName}: ${limitLabel}`)
       return
     }
 
@@ -237,7 +242,8 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
         }
 
         if (change.type === 'assign') {
-          const hours = biz?.assignedHours || biz?.maxCoordinationHours || 0
+          // Fahri satırda 0 gider — tavanı göndermek atamayı ücretliye çevirirdi (#115)
+          const hours = biz ? billableTargetHours(biz) : 0
           await coordinationApi.assignBusiness({
             businessId: change.businessId,
             teacherId: selectedTeacherId.value!,

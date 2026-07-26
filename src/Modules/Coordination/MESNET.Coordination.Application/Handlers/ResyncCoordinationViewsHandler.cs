@@ -138,6 +138,7 @@ public static class ResyncCoordinationViewsHandler
         BusinessCoordinationView previous, BusinessCoordinationView target)
     {
         target.AssignedHours = previous.AssignedHours;
+        target.IsHonoraryVisit = previous.IsHonoraryVisit;
         target.AssignedTeacherId = previous.AssignedTeacherId;
         target.AssignedTeacherName = previous.AssignedTeacherName;
         target.AssignedDay = previous.AssignedDay;

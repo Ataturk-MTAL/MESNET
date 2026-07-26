@@ -149,7 +149,32 @@
               <!-- Takdir edilen saat girişi -->
               <template v-if="editable">
                 <q-separator class="q-my-xs" />
-                <div class="row items-center q-gutter-xs">
+                <q-toggle
+                  :model-value="isHonoraryVisit(biz.businessId)"
+                  dense
+                  size="sm"
+                  color="primary"
+                  :label="HONORARY_LABEL"
+                  :aria-label="`${biz.businessName} — fahri (ücretsiz) ziyaret`"
+                  @update:model-value="v => emit('update:honorary', biz.businessId, v)"
+                >
+                  <q-tooltip>{{ HONORARY_HINT }}</q-tooltip>
+                </q-toggle>
+                <!-- Fahri satırda saat girişi yok: değer tanım gereği 0 (#115) -->
+                <div
+                  v-if="isHonoraryVisit(biz.businessId)"
+                  class="text-caption q-mt-xs"
+                >
+                  <q-badge
+                    color="neutral-soft"
+                    text-color="neutral-strong"
+                    label="Fahri — 0 saat"
+                  />
+                </div>
+                <div
+                  v-else
+                  class="row items-center q-gutter-xs"
+                >
                   <q-input
                     :model-value="getPopupHours(biz.businessId)"
                     type="number"
@@ -174,6 +199,16 @@
                   >
                     <q-tooltip>Kaydet ve kapat</q-tooltip>
                   </q-btn>
+                </div>
+              </template>
+              <template v-else-if="isHonoraryVisit(biz.businessId)">
+                <div class="text-caption">
+                  <span class="text-grey-6">Takdir Edilen:</span>
+                  <q-badge
+                    color="neutral-soft"
+                    text-color="neutral-strong"
+                    label="Fahri — 0 saat"
+                  />
                 </div>
               </template>
               <template v-else-if="assignedHours[biz.businessId]">
@@ -210,6 +245,7 @@ import type { BusinessClusterDto } from 'src/api/coordination'
 import type { GeoLocation } from 'src/api/institution'
 import { SCHOOL_ICON_URL } from 'src/utils/mapConstants'
 import { clusterColor } from 'src/utils/clusterColors'
+import { HONORARY_LABEL, HONORARY_HINT } from 'src/utils/coordinationHours'
 
 interface RouteState {
   businessId: string
@@ -223,17 +259,31 @@ const props = withDefaults(defineProps<{
   schoolLocation: GeoLocation | null
   height?: string
   assignedHours?: Record<string, number>
+  /** İşletme → fahri (ücretsiz) ziyaret işareti; düzenleme sayfasının canlı state'i (#115) */
+  honoraryVisits?: Record<string, boolean>
   editable?: boolean
 }>(), {
   height: '500px',
   schoolLocation: null,
   assignedHours: () => ({}),
+  honoraryVisits: () => ({}),
   editable: false,
 })
 
 const emit = defineEmits<{
   'update:hours': [businessId: string, hours: number]
+  'update:honorary': [businessId: string, value: boolean]
 }>()
+
+/**
+ * Fahri işareti: önce sayfanın kaydedilmemiş state'i, yoksa sunucudan gelen değer.
+ * Sayfa haritayı kaydedilmemiş düzenlemelerle birlikte gösterir.
+ */
+function isHonoraryVisit(businessId: string): boolean {
+  const edited = props.honoraryVisits[businessId]
+  if (edited !== undefined) return edited
+  return props.businesses.find((b) => b.businessId === businessId)?.isHonoraryVisit === true
+}
 
 // ── Popup saat düzenleme ──
 const popupHoursInput = ref<Record<string, number>>({})

@@ -27,8 +27,10 @@ public static class AssignBusinessToTeacherHandler
                 CoordinationErrors.BusinessBranchNotFound(command.BusinessId, command.BranchCode));
         }
 
-        // Hedef saat: takdir edilen saat > 0 ise onu kullan, yoksa verilebilir saat
-        var targetHours = view.AssignedHours > 0 ? view.AssignedHours : view.MaxCoordinationHours;
+        // Hedef slot sayısı: takdir edilen saat > 0 ise o, yoksa verilebilir saat.
+        // Fahri ziyarette tavana DÜŞÜLMEZ — ücret doğurmadığı hâlde 8 saat tüketiyormuş
+        // gibi sayılıyordu (#115); fahri satır tek ziyaret slotu ister.
+        var targetHours = view.SlotTargetHours();
 
         // Mevcut slot sayısı kontrolü — tüm saatler atanmışsa hata
         if (view.AssignedSlots.Count >= targetHours)
@@ -49,11 +51,15 @@ public static class AssignBusinessToTeacherHandler
             }
         }
 
-        // Öğretmen başına azami koordinatörlük saati kontrolü
-        await ValidateTeacherHourLimit(session, command.TeacherId, command.InstitutionId, cancellationToken);
+        // Öğretmen başına azami koordinatörlük saati kontrolü. Fahri ziyaret ek ders
+        // saatine sayılmaz → kotayı tüketmez (#115).
+        await ValidateTeacherHourLimit(
+            session, command.TeacherId, command.InstitutionId,
+            countsTowardLimit: !view.IsHonoraryVisit, cancellationToken);
 
-        // Ders yükü havuzu kontrolü — ilk atamada takdir edilen saat varsa havuzu aşmasın
-        if (view.AssignedSlots.Count == 0 && command.AssignedHours > 0)
+        // Ders yükü havuzu kontrolü — ilk atamada takdir edilen saat varsa havuzu aşmasın.
+        // Fahri satır havuza girmez.
+        if (!view.IsHonoraryVisit && view.AssignedSlots.Count == 0 && command.AssignedHours > 0)
         {
             await ValidateWorkloadPool(session, view, command.AssignedHours, cancellationToken);
         }
@@ -64,8 +70,9 @@ public static class AssignBusinessToTeacherHandler
             view.AssignedTeacherId = command.TeacherId;
             view.AssignedTeacherName = command.TeacherName;
 
-            // Takdir edilen saat henüz girilmemişse, command'dan gelen değeri kullan
-            if (view.AssignedHours == 0 && command.AssignedHours > 0)
+            // Takdir edilen saat henüz girilmemişse, command'dan gelen değeri kullan.
+            // Fahri satırda ASLA saat yazılmaz — yoksa atama anında ücretliye dönerdi.
+            if (!view.IsHonoraryVisit && view.AssignedHours == 0 && command.AssignedHours > 0)
             {
                 view.AssignedHours = command.AssignedHours;
             }
@@ -102,9 +109,10 @@ public static class AssignBusinessToTeacherHandler
             command.AssignedDay,
             command.PeriodNumber,
             view.AssignedHours > 0 ? view.AssignedHours : null,
-            action == "Assigned"
+            (action == "Assigned"
                 ? $"{command.TeacherName} öğretmene atandı"
-                : $"{command.AssignedDay} {command.PeriodNumber}. saat eklendi"));
+                : $"{command.AssignedDay} {command.PeriodNumber}. saat eklendi")
+            + (view.IsHonoraryVisit ? " (fahri ziyaret — ek ders saatine sayılmaz)" : string.Empty)));
         view.LastModifiedAt = DateTime.UtcNow;
         view.LastModifiedBy = command.AssignedBy;
 
@@ -161,23 +169,35 @@ public static class AssignBusinessToTeacherHandler
         }
     }
 
+    /// <param name="countsTowardLimit">
+    /// Eklenecek slot ek ders kotasını tüketiyor mu? Fahri ziyarette hayır (#115) —
+    /// slot ders programında yerini alır ama ücret doğurmaz.
+    /// </param>
     private static async Task ValidateTeacherHourLimit(
         IDocumentSession session,
         Guid teacherId,
         Guid institutionId,
+        bool countsTowardLimit,
         CancellationToken cancellationToken)
     {
+        // Fahri slot kotayı tüketmediğinden kontrol edilecek bir artış yok; kontrol
+        // edilirse yalnızca önceden dolmuş kota yüzünden fahri atama engellenirdi.
+        if (!countsTowardLimit) return;
+
         var config = await session.Query<CoordinationConfig>()
             .FirstOrDefaultAsync(c => c.InstitutionId == institutionId, cancellationToken);
 
         if (config is null) return; // Config yoksa kontrol atlanır
 
-        // Öğretmenin tüm işletmelerdeki mevcut atanmış slot sayısını topla
+        // Öğretmenin tüm işletmelerdeki mevcut atanmış slot sayısını topla —
+        // fahri işletmelerin slotları ek ders saati üretmediği için sayılmaz.
         var teacherBusinesses = await session.Query<BusinessCoordinationView>()
             .Where(b => b.AssignedTeacherId == teacherId)
             .ToListAsync(cancellationToken);
 
-        var teacherTotalSlots = teacherBusinesses.Sum(b => b.AssignedSlots.Count);
+        var teacherTotalSlots = teacherBusinesses
+            .Where(b => !b.IsHonoraryVisit)
+            .Sum(b => b.AssignedSlots.Count);
 
         // +1 çünkü yeni slot eklenmek üzere
         var newTotal = teacherTotalSlots + 1;

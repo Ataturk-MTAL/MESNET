@@ -207,6 +207,11 @@ export interface BusinessAssignmentDto {
   isManualDistance: boolean
   maxCoordinationHours: number
   assignedHours: number
+  /**
+   * Fahri (ücretsiz) ziyaret (#115). true ise `assignedHours` her zaman 0'dır ve satır
+   * havuz/öğretmen kapasitesi toplamlarına girmez. false + 0 saat = "henüz takdir edilmedi".
+   */
+  isHonoraryVisit: boolean
   assignedTeacherId: string | null
   assignedTeacherName: string | null
   assignedDay: string | null
@@ -232,25 +237,32 @@ export interface AssignmentHistoryEntryDto {
 
 export interface CoordinationSummaryDto {
   totalWorkloadPool: number
+  /** Ücret doğuran toplam saat — fahri ziyaretler dahil DEĞİLDİR (#115) */
   totalAssignedHours: number
   remainingHours: number
   totalMaxHours: number
   assignedBusinessCount: number
   unassignedBusinessCount: number
+  /** Havuza girmeyen fahri ziyaret satırı sayısı */
+  honoraryBusinessCount: number
   teacherWorkloads: TeacherWorkloadSummaryDto[]
 }
 
 export interface TeacherWorkloadSummaryDto {
   teacherId: string
   teacherName: string
+  /** Ücret doğuran saat — fahri ziyaretler hariç (#115) */
   assignedHours: number
   businessCount: number
+  /** Fahri ziyaret edilen işletme sayısı — slot işgal eder, ek ders saatine sayılmaz */
+  honoraryVisitCount: number
 }
 
 export interface TeacherWorkloadDto {
   teacherId: string
   totalAssignedHours: number
   businessCount: number
+  honoraryVisitCount: number
   businesses: TeacherBusinessAssignmentDto[]
 }
 
@@ -259,6 +271,7 @@ export interface TeacherBusinessAssignmentDto {
   businessName: string
   assignedHours: number
   assignedDay: string | null
+  isHonoraryVisit: boolean
 }
 
 /**
@@ -293,6 +306,7 @@ export interface TeacherOverviewDto {
   teacherId: string
   totalAssignedHours: number
   businessCount: number
+  honoraryVisitCount: number
   scheduleExists: boolean
   freeSlotsByDay: Record<string, number>   // gün → boş slot sayısı
   totalSlotsByDay: Record<string, number>  // gün → toplam serbest slot
@@ -303,7 +317,12 @@ export interface TeacherSummaryRowDto {
   teacherId: string
   teacherName: string
   businessCount: number
+  /** Ücret doğuran saat — fahri ziyaretler hariç (#115) */
   assignedHours: number
+  /** Fahri ziyaret edilen işletme sayısı */
+  honoraryVisitCount: number
+  /** Fahri ziyaretlerin ders programında işgal ettiği slot sayısı */
+  honorarySlotCount: number
   scheduleExists: boolean
   freeSlotsByDay: Record<string, number>
   assignedSlotsByDay: Record<string, number>
@@ -325,6 +344,8 @@ export interface BusinessClusterDto {
   activeStudentCount: number
   distanceToSchoolKm: number | null
   maxCoordinationHours: number
+  /** Fahri (ücretsiz) ziyaret — saat takdiri yapılmaz (#115) */
+  isHonoraryVisit: boolean
 }
 
 export interface SetManualDistanceRequest {
@@ -524,7 +545,15 @@ export const coordinationApi = {
   unassignBusiness: (businessId: string, params: BranchRowParams) =>
     api.delete(`/coordination/teachers/assignments/${businessId}`, { params }),
 
-  updateAssignedHours: (businessId: string, data: { assignedHours: number }, params: BranchRowParams) =>
+  /**
+   * Takdir edilen saati günceller. `isHonoraryVisit: true` gönderildiğinde backend
+   * `assignedHours` değerini 0'a sabitler ve havuz/kapasite kısıtlarını uygulamaz (#115).
+   */
+  updateAssignedHours: (
+    businessId: string,
+    data: { assignedHours: number; isHonoraryVisit: boolean },
+    params: BranchRowParams,
+  ) =>
     api.patch(`/coordination/teachers/assignments/${businessId}/hours`, data, { params }),
 
   unassignBusinessSlot: (

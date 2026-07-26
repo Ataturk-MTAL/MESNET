@@ -11,6 +11,7 @@ import {
   remainingHoursLabel,
   remainingHoursToneClass,
 } from 'src/utils/workloadPool'
+import { billableTargetHours, isHonorary } from 'src/utils/coordinationHours'
 
 export interface UseAssignedHoursOptions {
   assignments: Ref<BusinessAssignmentDto[]>
@@ -26,13 +27,33 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
 
   const hoursSaving = ref(false)
   const editedHours = ref<Record<string, number>>({})
+  /** İşletme → fahri ziyaret işareti (#115). Saatten ayrı tutulur: "0 saat" ≠ "fahri". */
+  const editedHonorary = ref<Record<string, boolean>>({})
 
   function initEditedHours() {
-    const map: Record<string, number> = {}
+    const hoursMap: Record<string, number> = {}
+    const honoraryMap: Record<string, boolean> = {}
     for (const a of assignments.value) {
-      map[a.businessId] = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
+      // Fahri satırda giriş 0'dan başlar — tavana düşürmek fahri anlamını yok ederdi.
+      hoursMap[a.businessId] = billableTargetHours(a)
+      honoraryMap[a.businessId] = isHonorary(a)
     }
-    editedHours.value = map
+    editedHours.value = hoursMap
+    editedHonorary.value = honoraryMap
+  }
+
+  /**
+   * Fahri işaretini değiştirir. Fahri seçilince saat girişi 0'a düşer; işaret
+   * kaldırılınca kullanıcı bir saat girene kadar mesafe tavanı önerilir.
+   */
+  function setHonorary(businessId: string, value: boolean) {
+    editedHonorary.value[businessId] = value
+    if (value) {
+      editedHours.value[businessId] = 0
+      return
+    }
+    const biz = assignments.value.find((a) => a.businessId === businessId)
+    editedHours.value[businessId] = biz?.maxCoordinationHours ?? 0
   }
 
   /** Σ MaxCoordinationHours — işletmelerin mesafe bazlı max saatlerinin toplamı (ikincil referans) */
@@ -43,8 +64,20 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
   /** Ders yükü havuzu — birincil kısıt */
   const hoursWorkloadPool = computed(() => workloadConfig.value?.totalWorkloadPool ?? 0)
 
+  /**
+   * Σ Takdir — havuzdan düşen saat. Fahri işaretli satırlar ücret doğurmadığı için
+   * toplama girmez (#115).
+   */
   const hoursTotalAssigned = computed(() =>
-    Object.values(editedHours.value).reduce((sum, h) => sum + h, 0),
+    Object.entries(editedHours.value).reduce(
+      (sum, [businessId, h]) => (editedHonorary.value[businessId] ? sum : sum + h),
+      0,
+    ),
+  )
+
+  /** Fahri işaretli işletme sayısı — havuz dışında kalan satırlar. */
+  const honoraryCount = computed(
+    () => Object.values(editedHonorary.value).filter(Boolean).length,
   )
 
   const hoursRemaining = computed(() => hoursWorkloadPool.value - hoursTotalAssigned.value)
@@ -80,14 +113,18 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
     hoursTotalAssigned.value > hoursWorkloadPool.value * 0.9,
   )
 
-  const changedHoursCount = computed(() => {
-    let count = 0
-    for (const a of assignments.value) {
-      const current = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
-      if (editedHours.value[a.businessId] !== current) count++
-    }
-    return count
-  })
+  /** Satır kaydedilmeye değer mi — saat ya da fahri işareti değişmişse evet. */
+  function isRowChanged(a: BusinessAssignmentDto): boolean {
+    const editedIsHonorary = editedHonorary.value[a.businessId] ?? false
+    if (editedIsHonorary !== isHonorary(a)) return true
+    if (editedIsHonorary) return false // fahri satırda saat zaten 0'a sabit
+    const edited = editedHours.value[a.businessId]
+    return edited !== undefined && edited !== billableTargetHours(a)
+  }
+
+  const changedHoursCount = computed(
+    () => assignments.value.filter(isRowChanged).length,
+  )
 
   async function saveHours() {
     hoursSaving.value = true
@@ -95,14 +132,15 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
     const errors: string[] = []
 
     for (const a of assignments.value) {
-      const current = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
-      const edited = editedHours.value[a.businessId]
-      if (edited === undefined || edited === current) continue
+      if (!isRowChanged(a)) continue
+
+      const honorary = editedHonorary.value[a.businessId] ?? false
 
       try {
         await coordinationApi.updateAssignedHours(
           a.businessId,
-          { assignedHours: edited },
+          // Fahri satırda saat her zaman 0 gönderilir; backend de aynı kuralı uygular.
+          { assignedHours: honorary ? 0 : (editedHours.value[a.businessId] ?? 0), isHonoraryVisit: honorary },
           { branchCode: a.branchCode, academicPeriodId: academicPeriodId.value ?? '' },
         )
         successCount++
@@ -126,6 +164,9 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
 
   return {
     editedHours,
+    editedHonorary,
+    honoraryCount,
+    setHonorary,
     hoursSaving,
     hoursTotalMaxHours,
     hoursWorkloadPool,
