@@ -105,9 +105,14 @@ services:
       KC_DB_USERNAME: ${POSTGRES_USER}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
       KC_HOSTNAME: ${KEYCLOAK_HOSTNAME}
-      KC_PROXY: edge                        # Reverse proxy arkasında
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # Caddy TLS'i uçta sonlandırır, container'a düz HTTP gelir.
+      # `KC_PROXY: edge` Keycloak 26.0.0'da KALDIRILDI — yerine proxy-headers + http-enabled.
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      # 26.x bootstrap admin adları; KEYCLOAK_ADMIN/_PASSWORD eski (deprecated) adlar.
+      # .github/compose.ci.yml ile aynı anahtarlar kullanılır.
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     expose:
       - "8080"    # Yalnız iç ağ; dışarıya auth.${APP_DOMAIN} üzerinden Caddy açar
     depends_on:
