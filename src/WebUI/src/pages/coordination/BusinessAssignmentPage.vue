@@ -402,7 +402,7 @@
                             color="grey-7"
                             size="sm"
                             aria-label="Atama geçmişini göster"
-                            @click="showHistory(biz.businessId, biz.businessName)"
+                            @click="showHistory(biz.businessId, biz.businessName, biz.branchCode, periodStore.selectedPeriodId ?? '')"
                           >
                             <q-tooltip>Atama geçmişi</q-tooltip>
                           </q-btn>
@@ -852,6 +852,7 @@ const workload = useWorkloadConfig({ branchFilter, periodId, institutionId, noti
 const hours = useAssignedHours({
   assignments,
   workloadConfig: workload.workloadConfig,
+  academicPeriodId: periodId,
   notify,
   loadData,
 })
@@ -860,6 +861,7 @@ const dnd = useAssignmentDnD({
   rawSchedule,
   selectedTeacherId,
   selectedTeacherName,
+  academicPeriodId: periodId,
   notify,
   authStore,
   loadData,

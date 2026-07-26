@@ -4,4 +4,6 @@ public sealed record UpdateBusinessAssignedHours(
     Guid BusinessId,
     int AssignedHours,
     Guid InstitutionId,
-    string UpdatedBy);
+    string UpdatedBy,
+    string BranchCode = "",
+    Guid AcademicPeriodId = default);

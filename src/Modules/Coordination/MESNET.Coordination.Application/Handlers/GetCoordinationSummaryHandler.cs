@@ -13,8 +13,9 @@ public static class GetCoordinationSummaryHandler
         IQuerySession session,
         CancellationToken cancellationToken)
     {
+        // Temel satırlar (boş alan kodu) özete girmez — saat/atama muhasebesi alan bazlıdır (#114).
         IQueryable<BusinessCoordinationView> queryable = session.Query<BusinessCoordinationView>()
-            .Where(v => v.InstitutionId == query.InstitutionId);
+            .Where(v => v.InstitutionId == query.InstitutionId && v.BranchCode != "");
 
         if (!string.IsNullOrWhiteSpace(query.BranchCode))
             queryable = queryable.Where(v => v.BranchCode == query.BranchCode);

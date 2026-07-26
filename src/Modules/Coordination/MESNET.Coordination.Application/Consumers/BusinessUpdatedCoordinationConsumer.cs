@@ -9,6 +9,9 @@ namespace MESNET.Coordination.Application.Consumers;
 /// <summary>
 /// İşletme bilgileri güncellendiğinde coordination view'ı günceller (isim, adres, lokasyon).
 /// Lokasyon değiştiyse otomatik mesafe yeniden hesaplar (OSRM → Haversine fallback).
+///
+/// İşletme düzeyi bir olaydır: işletmenin <b>tüm alan satırları</b> + temel satırı güncellenir.
+/// Mesafe bir kez hesaplanıp tüm satırlara kopyalanır (tek OSRM çağrısı).
 /// </summary>
 public static class BusinessUpdatedCoordinationConsumer
 {
@@ -18,23 +21,35 @@ public static class BusinessUpdatedCoordinationConsumer
         IOsrmDistanceService osrmService,
         CancellationToken cancellationToken)
     {
-        var view = await session.LoadAsync<BusinessCoordinationView>(@event.BusinessId, cancellationToken);
-        if (view is null) return;
+        var rows = await session.Query<BusinessCoordinationView>()
+            .Where(v => v.BusinessId == @event.BusinessId || v.Id == @event.BusinessId)
+            .ToListAsync(cancellationToken);
 
-        var locationChanged = @event.Location != view.Location;
+        if (rows.Count == 0) return;
 
-        view.Name = @event.Name;
-        view.Address = @event.Address;
-        view.District = AddressHelper.ExtractDistrict(@event.Address);
-        view.Location = @event.Location;
+        // Mesafe referansı: temel satır varsa o, yoksa ilk satır — tek kez hesaplanır.
+        var reference = rows.FirstOrDefault(r => string.IsNullOrWhiteSpace(r.BranchCode)) ?? rows[0];
+        var locationChanged = @event.Location != reference.Location;
 
-        // Lokasyon değiştiyse ve manuel mesafe girilmemişse yeniden hesapla
-        if (locationChanged && !view.IsManualDistance && @event.Location is not null)
+        foreach (var row in rows)
         {
-            await DistanceHelper.CalculateAndSetDistanceAsync(
-                view, view.InstitutionId, session, osrmService, cancellationToken);
+            row.Name = @event.Name;
+            row.Address = @event.Address;
+            row.District = AddressHelper.ExtractDistrict(@event.Address);
+            row.Location = @event.Location;
         }
 
-        session.Store(view);
+        // Lokasyon değiştiyse ve manuel mesafe girilmemişse yeniden hesapla
+        if (locationChanged && !reference.IsManualDistance && @event.Location is not null)
+        {
+            await DistanceHelper.CalculateAndSetDistanceAsync(
+                reference, reference.InstitutionId, session, osrmService, cancellationToken);
+
+            foreach (var row in rows)
+                DistanceHelper.CopyDistanceTo(reference, row);
+        }
+
+        foreach (var row in rows)
+            session.Store(row);
     }
 }

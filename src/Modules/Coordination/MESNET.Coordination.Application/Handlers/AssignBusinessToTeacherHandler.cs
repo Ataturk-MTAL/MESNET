@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
+using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.Enums;
@@ -17,11 +18,14 @@ public static class AssignBusinessToTeacherHandler
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
-        var view = await session.LoadAsync<BusinessCoordinationView>(
-            command.BusinessId, cancellationToken);
+        var view = await CoordinationViewLookup.LoadBranchRowAsync(
+            session, command.BusinessId, command.BranchCode, command.AcademicPeriodId, cancellationToken);
 
         if (view is null)
-            throw new DomainException(CoordinationErrors.BusinessNotFound(command.BusinessId));
+        {
+            throw new DomainException(
+                CoordinationErrors.BusinessBranchNotFound(command.BusinessId, command.BranchCode));
+        }
 
         // Hedef saat: takdir edilen saat > 0 ise onu kullan, yoksa verilebilir saat
         var targetHours = view.AssignedHours > 0 ? view.AssignedHours : view.MaxCoordinationHours;
@@ -46,7 +50,7 @@ public static class AssignBusinessToTeacherHandler
         }
 
         // Öğretmen başına azami koordinatörlük saati kontrolü
-        await ValidateTeacherHourLimit(session, command.TeacherId, command.InstitutionId, view.Id, cancellationToken);
+        await ValidateTeacherHourLimit(session, command.TeacherId, command.InstitutionId, cancellationToken);
 
         // Ders yükü havuzu kontrolü — ilk atamada takdir edilen saat varsa havuzu aşmasın
         if (view.AssignedSlots.Count == 0 && command.AssignedHours > 0)
@@ -161,7 +165,6 @@ public static class AssignBusinessToTeacherHandler
         IDocumentSession session,
         Guid teacherId,
         Guid institutionId,
-        Guid currentBusinessId,
         CancellationToken cancellationToken)
     {
         var config = await session.Query<CoordinationConfig>()

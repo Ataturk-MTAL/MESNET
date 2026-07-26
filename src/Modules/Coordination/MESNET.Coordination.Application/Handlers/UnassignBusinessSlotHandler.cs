@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
+using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.ReadModels;
 using MESNET.Coordination.Shared.Events;
@@ -15,11 +16,14 @@ public static class UnassignBusinessSlotHandler
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
-        var view = await session.LoadAsync<BusinessCoordinationView>(
-            command.BusinessId, cancellationToken);
+        var view = await CoordinationViewLookup.LoadBranchRowAsync(
+            session, command.BusinessId, command.BranchCode, command.AcademicPeriodId, cancellationToken);
 
         if (view is null)
-            throw new DomainException(CoordinationErrors.BusinessNotFound(command.BusinessId));
+        {
+            throw new DomainException(
+                CoordinationErrors.BusinessBranchNotFound(command.BusinessId, command.BranchCode));
+        }
 
         if (!view.AssignedTeacherId.HasValue)
             throw new DomainException(CoordinationErrors.BusinessNotAssigned(command.BusinessId));
@@ -98,7 +102,7 @@ public static class UnassignBusinessSlotHandler
         var dailySchedule = schedule.WeeklySchedule.FirstOrDefault(d => d.Day == day);
         var slot = dailySchedule?.Periods.FirstOrDefault(p => p.PeriodNumber == slotPeriodNumber);
 
-        if (slot is not null && slot.AssignedBusinessId == view.Id)
+        if (slot is not null && slot.AssignedBusinessId == view.BusinessId)
         {
             slot.AssignedBusinessId = null;
 

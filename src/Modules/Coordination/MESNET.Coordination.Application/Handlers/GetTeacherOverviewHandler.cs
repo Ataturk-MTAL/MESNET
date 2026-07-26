@@ -31,7 +31,7 @@ public static class GetTeacherOverviewHandler
             .ToListAsync(cancellationToken);
 
         var businesses = views.Select(v => new TeacherBusinessAssignmentDto(
-            v.Id, v.Name, v.AssignedHours, v.AssignedDay)).ToList();
+            v.ResolveBusinessId(), v.Name, v.AssignedHours, v.AssignedDay)).ToList();
 
         // Ders programı → boş slot'lar
         var schedule = await session.Query<TeacherSchedule>()

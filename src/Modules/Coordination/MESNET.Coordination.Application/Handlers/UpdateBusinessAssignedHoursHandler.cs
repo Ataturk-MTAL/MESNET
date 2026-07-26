@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
+using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.ReadModels;
 
@@ -14,11 +15,14 @@ public static class UpdateBusinessAssignedHoursHandler
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
-        var view = await session.LoadAsync<BusinessCoordinationView>(
-            command.BusinessId, cancellationToken);
+        var view = await CoordinationViewLookup.LoadBranchRowAsync(
+            session, command.BusinessId, command.BranchCode, command.AcademicPeriodId, cancellationToken);
 
         if (view is null)
-            throw new DomainException(CoordinationErrors.BusinessNotFound(command.BusinessId));
+        {
+            throw new DomainException(
+                CoordinationErrors.BusinessBranchNotFound(command.BusinessId, command.BranchCode));
+        }
 
         if (command.AssignedHours <= 0)
             throw new DomainException(CoordinationErrors.InvalidAssignedHours(command.AssignedHours));

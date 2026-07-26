@@ -29,6 +29,7 @@ function setup(pool: number | null, maxHoursList: number[]) {
   const hours = useAssignedHours({
     assignments,
     workloadConfig,
+    academicPeriodId: ref<string | null>('period-1'),
     notify: notifyStub,
     loadData: () => Promise.resolve(),
   })

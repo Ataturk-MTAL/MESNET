@@ -18,7 +18,7 @@ public static class GetTeacherWorkloadHandler
             .ToListAsync(cancellationToken);
 
         var businesses = views.Select(v => new TeacherBusinessAssignmentDto(
-            v.Id,
+            v.ResolveBusinessId(),
             v.Name,
             v.AssignedHours,
             v.AssignedDay

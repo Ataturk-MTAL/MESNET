@@ -6,7 +6,8 @@ using MESNET.Coordination.Core.ReadModels;
 namespace MESNET.Coordination.Application.Consumers;
 
 /// <summary>
-/// İşletme yeniden aktif edildiğinde coordination view'ı yeniden oluşturur.
+/// İşletme yeniden aktif edildiğinde işletme düzeyi temel satırı yeniden oluşturur.
+/// Alan satırları öğrenci yerleştirmeleriyle (StudentPlaced) yeniden kurulur.
 /// </summary>
 public static class BusinessActivatedCoordinationConsumer
 {
@@ -15,12 +16,14 @@ public static class BusinessActivatedCoordinationConsumer
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
-        var existing = await session.LoadAsync<BusinessCoordinationView>(@event.BusinessId, cancellationToken);
+        var baseId = CoordinationViewId.Base(@event.BusinessId);
+        var existing = await session.LoadAsync<BusinessCoordinationView>(baseId, cancellationToken);
         if (existing is not null) return;
 
         session.Store(new BusinessCoordinationView
         {
-            Id = @event.BusinessId,
+            Id = baseId,
+            BusinessId = @event.BusinessId,
             Name = @event.Name,
             Address = @event.Address,
             District = AddressHelper.ExtractDistrict(@event.Address),

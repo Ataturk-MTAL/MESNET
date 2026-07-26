@@ -12,8 +12,10 @@ public static class ListBusinessesForAssignmentHandler
         IQuerySession session,
         CancellationToken cancellationToken)
     {
+        // İşletme düzeyi temel satırlar (boş alan kodu) dağıtım listesinde yer almaz —
+        // liste alan bazlıdır (#114).
         IQueryable<BusinessCoordinationView> queryable = session.Query<BusinessCoordinationView>()
-            .Where(v => v.InstitutionId == query.InstitutionId);
+            .Where(v => v.InstitutionId == query.InstitutionId && v.BranchCode != "");
 
         if (!string.IsNullOrWhiteSpace(query.BranchCode))
             queryable = queryable.Where(v => v.BranchCode == query.BranchCode);
@@ -32,7 +34,7 @@ public static class ListBusinessesForAssignmentHandler
         var views = await queryable.ToListAsync(cancellationToken);
 
         return views.Select(v => new BusinessAssignmentDto(
-            v.Id,
+            v.ResolveBusinessId(),
             v.Name,
             v.Address,
             v.District,

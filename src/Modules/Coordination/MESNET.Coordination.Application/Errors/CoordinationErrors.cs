@@ -110,6 +110,14 @@ public static class CoordinationErrors
         new("Coordination.BusinessNotFound",
             $"İşletme koordinasyon kaydı bulunamadı: {businessId}");
 
+    /// <summary>
+    /// Koordinasyon satırı alan bazlıdır (#114) — işletme kayıtlı olsa bile istenen
+    /// alan/dönem için satır olmayabilir.
+    /// </summary>
+    public static Error BusinessBranchNotFound(Guid businessId, string branchCode) =>
+        new("Coordination.BusinessBranchNotFound",
+            $"İşletmenin bu alandaki koordinasyon kaydı bulunamadı: İşletme={businessId}, Alan={(string.IsNullOrWhiteSpace(branchCode) ? "—" : branchCode)}");
+
     public static Error AssignedHoursExceedMax(int assigned, int max) =>
         new("Coordination.AssignedHoursExceedMax",
             $"Takdir edilen saat ({assigned}) verilebilir saati ({max}) aşamaz.");

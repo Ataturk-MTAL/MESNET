@@ -31,19 +31,24 @@ public static class RecalculateDistancesHandler
             .Where(v => v.InstitutionId == command.InstitutionId)
             .ToListAsync(cancellationToken);
 
-        // Manuel mesafe girilmişleri filtrele, lokasyonu olanları ayır
-        var autoViews = views.Where(v => !v.IsManualDistance && v.Location is not null).ToList();
+        // Manuel mesafe girilmişleri filtrele, lokasyonu olanları ayır.
+        // Mesafe işletme geneli bir değerdir: aynı işletmenin tüm alan satırları tek bir
+        // OSRM sorgusuyla hesaplanıp aynı değeri alır (#114).
+        var autoGroups = views
+            .Where(v => !v.IsManualDistance && v.Location is not null)
+            .GroupBy(v => v.ResolveBusinessId())
+            .ToList();
 
-        if (schoolLocation is null || autoViews.Count == 0) return;
+        if (schoolLocation is null || autoGroups.Count == 0) return;
 
         // OSRM batch API ile rota bazlı mesafe hesapla
-        var destinations = autoViews.Select(v => v.Location!).ToList();
+        var destinations = autoGroups.Select(g => g.First().Location!).ToList();
         var batchDistances = await osrmService.GetRouteDistancesBatchAsync(
             schoolLocation, destinations, cancellationToken);
 
-        for (var i = 0; i < autoViews.Count; i++)
+        for (var i = 0; i < autoGroups.Count; i++)
         {
-            var view = autoViews[i];
+            var group = autoGroups[i];
 
             double distance;
             if (batchDistances.TryGetValue(i, out var osrmDistance))
@@ -54,12 +59,18 @@ public static class RecalculateDistancesHandler
             else
             {
                 // Fallback: Haversine (kuş uçuşu)
-                distance = CoordinationCalculator.CalculateDistanceKm(schoolLocation, view.Location!);
+                distance = CoordinationCalculator.CalculateDistanceKm(
+                    schoolLocation, group.First().Location!);
             }
 
-            view.DistanceToSchoolKm = distance;
-            view.MaxCoordinationHours = CoordinationCalculator.CalculateMaxHours(distance, rules);
-            session.Store(view);
+            var maxHours = CoordinationCalculator.CalculateMaxHours(distance, rules);
+
+            foreach (var view in group)
+            {
+                view.DistanceToSchoolKm = distance;
+                view.MaxCoordinationHours = maxHours;
+                session.Store(view);
+            }
         }
     }
 }

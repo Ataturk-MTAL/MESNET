@@ -25,6 +25,7 @@ public static class GetAllTeachersOverviewHandler
             .Where(v =>
                 v.InstitutionId == query.InstitutionId &&
                 v.AcademicPeriodId == query.AcademicPeriodId &&
+                v.BranchCode != "" &&
                 v.AssignedTeacherId != null);
 
         if (!string.IsNullOrWhiteSpace(query.BranchCode))
