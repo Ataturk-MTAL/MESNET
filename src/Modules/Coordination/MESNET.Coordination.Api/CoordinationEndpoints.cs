@@ -36,6 +36,8 @@ public static class CoordinationEndpoints
         group.MapGet("/assignments", ListAssignments).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/assignments", PostAssignment).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapDelete("/assignments/{businessId:guid}", DeleteAssignment).RequireAuthorization(Permissions.DepartmentHead.Distribution);
+        // Toplu (atomik) saat kaydı — literal route, {businessId:guid} varyantından önce gelir (#117)
+        group.MapPatch("/assignments/branch-hours", PatchBranchAssignedHours).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPatch("/assignments/{businessId:guid}/hours", PatchAssignedHours).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapDelete("/assignments/{businessId:guid}/slot", DeleteAssignmentSlot).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/assignments/{businessId:guid}/distance", PostManualDistance).RequireAuthorization(Permissions.DepartmentHead.Distribution);
@@ -378,6 +380,30 @@ public static class CoordinationEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result)
+            .Build());
+    }
+
+    /// <summary>
+    /// Bir alanın saat dağıtımını tek çağrıda kaydeder (#117). Doğrulama tüm sete birden
+    /// uygulanır; kısıt kırılırsa hiçbir satır yazılmaz ve hata hangi işletmede hangi
+    /// kısıtın kırıldığını söyler (HTTP 422).
+    /// </summary>
+    private static async Task<IResult> PatchBranchAssignedHours(
+        UpdateBranchAssignedHours command,
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var userName = http.User.FindFirst("name")?.Value ?? "system";
+
+        await bus.InvokeAsync(command with
+        {
+            InstitutionId = instId,
+            UpdatedBy = userName,
+        });
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage($"{command.Items?.Count ?? 0} işletmenin takdir edilen saati güncellendi.")
             .Build());
     }
 

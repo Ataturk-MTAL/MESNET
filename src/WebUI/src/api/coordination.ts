@@ -284,6 +284,22 @@ export interface BranchRowParams {
   academicPeriodId: string
 }
 
+/** Toplu saat kaydında tek satır (#117). */
+export interface BranchAssignedHoursItem {
+  businessId: string
+  assignedHours: number
+  /** Fahri (ücretsiz) ziyaret (#115) — true ise `assignedHours` 0 kabul edilir. */
+  isHonoraryVisit: boolean
+}
+
+/**
+ * Bir alanın saat dağıtımının tamamı (#117). Backend tüm seti tek transaction'da
+ * doğrular: bir kısıt kırılırsa hiçbir satır yazılmaz, dolayısıyla kısmi başarı olamaz.
+ */
+export interface UpdateBranchAssignedHoursRequest extends BranchRowParams {
+  items: BranchAssignedHoursItem[]
+}
+
 export interface AssignBusinessRequest extends BranchRowParams {
   businessId: string
   teacherId: string
@@ -555,6 +571,17 @@ export const coordinationApi = {
     params: BranchRowParams,
   ) =>
     api.patch(`/coordination/teachers/assignments/${businessId}/hours`, data, { params }),
+
+  /**
+   * Bir alanın saat dağıtımını **tek çağrıda** kaydeder (#117).
+   *
+   * Satır başına ayrı çağrı yapıldığında havuz kontrolü her çağrıda ayrı işlediği için
+   * yeniden dağıtım çağrı sırasına bağlı olarak yarıda kalabiliyordu (havuz 40, A=20 B=10
+   * → A=10 B=20 dönüşümünde B önce giderse ara toplam havuzu aşıyordu). Bu uç tüm seti
+   * birlikte doğrular: geçerse hepsi, geçmezse hiçbiri yazılır.
+   */
+  updateBranchAssignedHours: (data: UpdateBranchAssignedHoursRequest) =>
+    api.patch('/coordination/teachers/assignments/branch-hours', data),
 
   unassignBusinessSlot: (
     businessId: string,
