@@ -17,7 +17,7 @@ public sealed class TermGradeSlipFormData
 
     // Okul / dönem bilgileri
     public required string InstitutionName { get; init; }   // Okul/Kurumun Adı
-    public required string AcademicYear { get; init; }      // Öğretim Yılı  ör. "2025 / 2026"
+    public required string AcademicYear { get; init; }      // Öğretim Yılı  ör. "2025-2026"
     public required string Semester { get; init; }          // Dönemi        ör. "2. Dönem"
     public string CourseName { get; init; } = "İşletmede Beceri Eğitimi"; // Ders
 

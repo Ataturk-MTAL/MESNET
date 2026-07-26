@@ -104,7 +104,8 @@ public static class GenerateMonthlyAttendanceReportHandler
             BusinessId = data.BusinessId,
             InstitutionId = data.InstitutionId,
             TeacherId = data.TeacherId,
-            AcademicYear = data.AcademicYear
+            // Tek kanonik biçim "2025-2026" (#112)
+            AcademicYear = AcademicYear.Normalize(data.AcademicYear)
         };
 
         var pdf = new MonthlyAttendanceReportDocument(data);
@@ -208,7 +209,8 @@ public static class GenerateMonthlyAttendanceReportHandler
             BusinessName = businessName,
             BusinessPhone = businessPhone,
             BusinessEmail = businessEmail,
-            AcademicYear = academicYear,
+            // Tek kanonik biçim "2025-2026" (#112)
+            AcademicYear = AcademicYear.Normalize(academicYear),
             Year = year,
             Month = month,
             DocumentDate = DateOnly.FromDateTime(DateTime.UtcNow),

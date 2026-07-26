@@ -102,10 +102,13 @@
       />
       <div class="row q-col-gutter-md">
         <div class="col-6">
+          <!-- Aktif akademik dönemden türetilir; elle düzenlenemez (#112) -->
           <q-input
             v-model="form.academicYear"
             label="Öğretim Yılı *"
             outlined
+            readonly
+            hint="Aktif akademik dönemden alınır"
           />
         </div>
         <div class="col-6">
@@ -192,6 +195,12 @@ const form = reactive({
 
 const activePeriod = computed(() => periodStore.activePeriod)
 
+// Eğitim yılı tek kanonik biçimde üretilir: "2025-2026" (#112).
+// Serbest metin girişi kapalı — kullanıcı elle "2025 / 2026" veya "2025" yazamasın.
+const academicYearLabel = computed(() =>
+  activePeriod.value ? `${activePeriod.value.startYear}-${activePeriod.value.endYear}` : '',
+)
+
 const columns: QTableProps['columns'] = [
   { name: 'studentName', label: 'Öğrenci', field: 'studentName', align: 'left', sortable: true },
   { name: 'branchName', label: 'Alan/Dal', field: 'branchName', align: 'left' },
@@ -218,7 +227,7 @@ function openGenerate(row: StudentGradeRow) {
   // okul-payı puanlar her öğrenciye özel — sıfırla; okul/imza bilgileri korunur
   form.makeupTrainingScore = null
   form.skillCompetitionScore = null
-  if (!form.academicYear) form.academicYear = String(periodStore.academicYear ?? '')
+  form.academicYear = academicYearLabel.value
   if (!form.semester) form.semester = String(periodStore.selectedSemesterLabel ?? '')
   generateDialog.value = true
 }
