@@ -166,6 +166,89 @@
             İşletme Takdir Edilen Saatler
           </div>
 
+          <!-- Otomatik dağıtım araç çubuğu (#118).
+            Öneri KAYDETMEZ: değerleri tabloya doldurur, karar koordinatörde kalır. -->
+          <div class="row items-center q-gutter-sm q-mb-md">
+            <q-btn
+              color="primary"
+              icon="auto_awesome"
+              label="Otomatik Dağıt"
+              :loading="suggesting"
+              :disable="!canAutoDistribute || periodStore.isReadOnly"
+              @click="autoDistribute"
+            >
+              <q-tooltip>
+                Havuzu ağırlığa (verilebilir maks. saat × öğrenci sayısı) göre dağıtır.
+                Kilitli satırlara dokunmaz. Öneri tabloya doldurulur, kaydedilmez.
+              </q-tooltip>
+            </q-btn>
+            <q-btn
+              flat
+              color="primary"
+              icon="undo"
+              label="Geri Al"
+              :disable="!canUndo || periodStore.isReadOnly"
+              @click="undoSuggestion"
+            >
+              <q-tooltip>Öneriyi uygulamadan önceki saatlere döner.</q-tooltip>
+            </q-btn>
+            <div
+              v-if="pinnedCount > 0"
+              class="text-caption text-neutral-strong"
+            >
+              {{ pinnedCount }} satır kilitli — yeniden dağıtımda korunur.
+            </div>
+          </div>
+
+          <!-- Tanılama şeridi — "havuz nereye gitti" sorusunun cevabı (#118). -->
+          <div
+            v-if="diagnostics"
+            class="text-body2 bg-neutral-soft text-neutral-strong q-pa-sm rounded-borders q-mb-md"
+          >
+            Havuz: <strong>{{ diagnostics.pool }}</strong>
+            &nbsp;|&nbsp; Öğretmen kapasitesi: <strong>{{ diagnostics.teacherCapacity }}</strong>
+            &nbsp;|&nbsp; Σ Maks: <strong>{{ diagnostics.sumOfMax }}</strong>
+            &nbsp;|&nbsp; Dağıtılan: <strong>{{ diagnostics.totalAllocated }}</strong>
+            &nbsp;|&nbsp; Fahri: <strong>{{ diagnostics.honoraryCount }}</strong> işletme
+            &nbsp;|&nbsp; Alan dışı önerilen: <strong>{{ diagnostics.outOfBranchHours }}</strong> saat
+          </div>
+
+          <!-- Sessiz kırpma yok: her eksik/aşım ayrı ayrı yazıyla söylenir. -->
+          <AppNotice
+            v-if="pinnedOverPool"
+            type="error"
+            class="q-mb-md"
+          >
+            Kilitli satırların toplamı ders yükü havuzunu <strong>{{ pinnedOverflowHours }}</strong>
+            saat aşıyor. Dağıtılacak saat kalmadı — bazı kilitleri açın ya da havuzu artırın.
+          </AppNotice>
+          <AppNotice
+            v-if="hasHonoraryFallback"
+            type="warning"
+            class="q-mb-md"
+          >
+            Havuz tüm işletmelere yetmedi:
+            <strong>{{ diagnostics?.honoraryCount }}</strong> işletme fahri ziyarete bırakıldı
+            (en düşük ağırlıktan başlanarak). Fahri satırlar 0 saatle ve fahri işaretiyle kaydedilir.
+          </AppNotice>
+          <AppNotice
+            v-if="hasOutOfBranchOverflow"
+            type="warning"
+            class="q-mb-md"
+          >
+            Alan öğretmenlerinin kalan kapasitesi
+            (<strong>{{ diagnostics?.teacherCapacity }}</strong> saat) havuzu karşılamıyor:
+            <strong>{{ diagnostics?.outOfBranchHours }}</strong> saat alan dışı öğretmene önerildi.
+          </AppNotice>
+          <AppNotice
+            v-if="hasUndistributedSurplus"
+            type="info"
+            class="q-mb-md"
+          >
+            Havuzun <strong>{{ diagnostics?.undistributed }}</strong> saati dağıtılamadı:
+            tüm işletmeler mesafe tavanına ulaştı.
+          </AppNotice>
+
           <!-- Uyarı Banner'ları.
             Sıra önemli: havuz tanımsızken aşım/eşik kıyası yapılamaz (#111), o yüzden
             "havuz yok" uyarısı zincirin başında durur. -->
@@ -250,6 +333,12 @@
                 >
                   Takdir Edilen
                 </th>
+                <th
+                  class="text-center"
+                  style="width: 80px"
+                >
+                  Kilit
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -268,6 +357,17 @@
                     :label="HONORARY_LABEL"
                   >
                     <q-tooltip>{{ HONORARY_HINT }}</q-tooltip>
+                  </q-badge>
+                  <!-- Kova rozeti — öneri sonrası satırın hangi kovaya düştüğü (#118).
+                    Ayrım hem renk (app.css anlamsal tonları) hem METİN ile taşınır. -->
+                  <q-badge
+                    v-if="bucketBadge(biz.businessId)"
+                    :color="bucketBadge(biz.businessId)!.color"
+                    :text-color="bucketBadge(biz.businessId)!.textColor"
+                    class="q-ml-xs"
+                    :label="bucketBadge(biz.businessId)!.label"
+                  >
+                    <q-tooltip>{{ bucketBadge(biz.businessId)!.hint }}</q-tooltip>
                   </q-badge>
                   <q-btn
                     flat
@@ -326,6 +426,30 @@
                     :disable="periodStore.isReadOnly"
                     :rules="[v => (v > 0 && v <= biz.maxCoordinationHours) || `1-${biz.maxCoordinationHours}`]"
                   />
+                </td>
+                <td class="text-center">
+                  <!-- Satır kilitleme (#118): kilitli satır yeniden dağıtımda korunur,
+                    algoritma kalan havuzu kalan satırlara dağıtır. -->
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    size="sm"
+                    :icon="isPinned(biz.businessId) ? 'lock' : 'lock_open'"
+                    :color="isPinned(biz.businessId) ? 'primary' : 'grey-6'"
+                    :disable="periodStore.isReadOnly"
+                    :aria-label="isPinned(biz.businessId)
+                      ? `${biz.businessName} — satır kilidini aç`
+                      : `${biz.businessName} — satırı kilitle`"
+                    :aria-pressed="isPinned(biz.businessId)"
+                    @click="togglePin(biz.businessId)"
+                  >
+                    <q-tooltip>
+                      {{ isPinned(biz.businessId)
+                        ? 'Kilitli — otomatik dağıtım bu satırı değiştirmez. Açmak için tıklayın.'
+                        : 'Satırı kilitle — otomatik dağıtımda bu saat korunur.' }}
+                    </q-tooltip>
+                  </q-btn>
                 </td>
               </tr>
             </tbody>
@@ -454,6 +578,7 @@ import { coordinationApi, type BusinessAssignmentDto } from 'src/api/coordinatio
 import { useNotify } from 'src/composables/useNotify'
 import { useWorkloadConfig } from 'src/composables/useWorkloadConfig'
 import { useAssignedHours } from 'src/composables/useAssignedHours'
+import { useHoursSuggestion } from 'src/composables/useHoursSuggestion'
 import { useClusterMap } from 'src/composables/useClusterMap'
 import { useAssignmentHistory } from 'src/composables/useAssignmentHistory'
 import { useAuthStore } from 'stores/auth'
@@ -464,6 +589,7 @@ import {
   workloadPoolToneClass,
 } from 'src/utils/workloadPool'
 import { HONORARY_LABEL, HONORARY_HINT } from 'src/utils/coordinationHours'
+import { bucketPresentation } from 'src/utils/allocationBuckets'
 import BranchSelector from 'components/BranchSelector.vue'
 import BusinessClusterMap from 'components/BusinessClusterMap.vue'
 import AppNotice from 'components/AppNotice.vue'
@@ -505,6 +631,31 @@ const {
   changedHoursCount, saveHours,
 } = hours
 
+const suggestion = useHoursSuggestion({
+  assignments,
+  editedHours,
+  editedHonorary,
+  branchCode: branchFilter,
+  academicPeriodId: periodId,
+  semester: computed(() => periodStore.selectedSemester),
+  poolUndefined: hoursPoolUndefined,
+  notify,
+})
+
+const {
+  suggesting, diagnostics, pinnedCount,
+  canAutoDistribute, canUndo,
+  hasHonoraryFallback, hasOutOfBranchOverflow, hasUndistributedSurplus,
+  pinnedOverPool, pinnedOverflowHours,
+  isPinned, togglePin, bucketOf,
+  autoDistribute, undoSuggestion, clearSuggestion,
+} = suggestion
+
+/** Satırın kova rozeti — öneri yokken null döner, rozet basılmaz. */
+function bucketBadge(businessId: string) {
+  return bucketPresentation(bucketOf(businessId))
+}
+
 const {
   clusterData, clusterLoading, clusterError,
   clusterEps, clusterMinPoints,
@@ -532,6 +683,9 @@ async function loadData() {
     })
     assignments.value = assignRes.data ?? []
     hours.initEditedHours()
+    // Sunucudan taze veri geldi: eski öneri (rozetler, tanılama, geri al) artık geçersiz.
+    // Kilitler korunur — koordinatörün niyeti veri yenilenmesiyle değişmez.
+    clearSuggestion()
   } catch (e) {
     notify.apiError(e, 'İşletme listesi yüklenirken hata oluştu.')
   } finally {
@@ -556,6 +710,8 @@ function onMapHonoraryUpdate(businessId: string, value: boolean) {
 
 async function onBranchChange() {
   if (!branchFilter.value) return
+  // Kilitler alana özgüdür — alan değişince öneri de kilitler de sıfırlanır.
+  suggestion.resetAll()
   await workload.loadWorkloadConfig()
   await loadData()
   await loadClusters()
