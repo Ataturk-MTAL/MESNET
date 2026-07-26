@@ -38,6 +38,8 @@ public static class CoordinationEndpoints
         group.MapDelete("/assignments/{businessId:guid}", DeleteAssignment).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         // Toplu (atomik) saat kaydı — literal route, {businessId:guid} varyantından önce gelir (#117)
         group.MapPatch("/assignments/branch-hours", PatchBranchAssignedHours).RequireAuthorization(Permissions.DepartmentHead.Distribution);
+        // Saat dağıtım ÖNERİSİ — salt okunur, hiçbir şey yazmaz (#116)
+        group.MapGet("/assignments/suggest-hours", GetSuggestedHours).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPatch("/assignments/{businessId:guid}/hours", PatchAssignedHours).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapDelete("/assignments/{businessId:guid}/slot", DeleteAssignmentSlot).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/assignments/{businessId:guid}/distance", PostManualDistance).RequireAuthorization(Permissions.DepartmentHead.Distribution);
@@ -404,6 +406,31 @@ public static class CoordinationEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage($"{command.Items?.Count ?? 0} işletmenin takdir edilen saati güncellendi.")
+            .Build());
+    }
+
+    /// <summary>
+    /// Havuzun işletmelere dağıtım <b>önerisini</b> döndürür (#116). Salt okunur:
+    /// hiçbir satır yazılmaz, kaydetme ayrı ve atomik adımdır (<c>PATCH .../branch-hours</c>).
+    ///
+    /// <para><paramref name="pinned"/> koordinatörün kilitlediği satırları
+    /// <c>"işletmeKimliği:saat,..."</c> biçiminde taşır; çözümü ve doğrulaması handler'ın
+    /// işidir (bkz. <c>PinnedHoursSelection</c>).</para>
+    /// </summary>
+    private static async Task<IResult> GetSuggestedHours(
+        string branchCode,
+        Guid academicPeriodId,
+        string semester,
+        string? pinned,
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var result = await bus.InvokeAsync<HoursSuggestionDto>(
+            new SuggestAssignedHours(instId, branchCode, academicPeriodId, semester, pinned));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
             .Build());
     }
 

@@ -220,3 +220,65 @@ public sealed record BusinessClusterDto(
     double? DistanceToSchoolKm,
     int MaxCoordinationHours,      // mesafe formülünden hesaplanan maks saat
     bool IsHonoraryVisit);         // fahri (ücretsiz) ziyaret — saat takdiri yapılmaz (#115)
+
+// ── Saat Dağıtım Önerisi (#116) ──
+
+/// <summary>
+/// Öneri satırı. Ekranda satır başına bir kova rozeti ve "neden bu kadar saat"
+/// açıklaması bu kayıttan üretilir.
+/// </summary>
+/// <param name="Weight">
+/// <c>w = MaxHours × StudentCount</c> — dağıtım sırasının tek satırlık gerekçesi.
+/// </param>
+/// <param name="SuggestedHours">Önerilen saat; fahri satırlarda 0.</param>
+/// <param name="IsPinned">Koordinatör bu satırı kilitledi — öneri değeri değiştirmedi.</param>
+/// <param name="Bucket">Kova adı (İngilizce, <c>AllocationBucket.Name</c>) — programatik ayrım.</param>
+/// <param name="BucketLabel">
+/// Kovanın Türkçe etiketi (<c>AllocationBucket.Slug</c>). Ayrım yalnız renkle değil
+/// metinle de taşınsın diye rozette basılır (renk körlüğü).
+/// </param>
+public sealed record HoursSuggestionLineDto(
+    Guid BusinessId,
+    string BusinessName,
+    string BranchCode,
+    int MaxHours,
+    int StudentCount,
+    long Weight,
+    int SuggestedHours,
+    bool IsPinned,
+    bool IsHonoraryVisit,
+    string Bucket,
+    string BucketLabel);
+
+/// <summary>
+/// Öneriyle birlikte dönen tanılama — "havuz nereye gitti" sorusunun ekrandaki cevabı.
+/// Hiçbir artık sessizce yutulmaz.
+/// </summary>
+/// <param name="Pool">Ders yükü havuzu (<c>P</c>).</param>
+/// <param name="TeacherCapacity">Alan öğretmenlerinin kalan kapasitesi (<c>C</c>).</param>
+/// <param name="SumOfMax">Σ max_i — tüm işletmeler tavanına çıksa gereken saat.</param>
+/// <param name="TotalAllocated">Σ önerilen saat (kilitli satırlar dahil).</param>
+/// <param name="Undistributed">
+/// <c>P − TotalAllocated</c>. Pozitif → dağıtılamayan havuz artığı;
+/// negatif → kilitli satırların toplamı havuzu aşıyor.
+/// </param>
+/// <param name="HonoraryCount">Fahri kovasındaki işletme sayısı.</param>
+/// <param name="OutOfBranchHours">Alan dışı öğretmene önerilen toplam saat.</param>
+/// <param name="IsPoolUndefined">Havuz hesaplanmamış (<c>P ≤ 0</c>) — öneri üretilmedi.</param>
+public sealed record HoursSuggestionDiagnosticsDto(
+    int Pool,
+    int TeacherCapacity,
+    int SumOfMax,
+    int TotalAllocated,
+    int Undistributed,
+    int HonoraryCount,
+    int OutOfBranchHours,
+    bool IsPoolUndefined);
+
+/// <summary>
+/// Saat dağıtım önerisinin tamamı. Satırlar ağırlık sırasındadır
+/// (ağırlık ↓, tavan ↓, alan kodu ↑, kimlik ↑) — deterministiktir.
+/// </summary>
+public sealed record HoursSuggestionDto(
+    List<HoursSuggestionLineDto> Lines,
+    HoursSuggestionDiagnosticsDto Diagnostics);

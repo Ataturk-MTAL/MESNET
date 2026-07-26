@@ -300,6 +300,63 @@ export interface UpdateBranchAssignedHoursRequest extends BranchRowParams {
   items: BranchAssignedHoursItem[]
 }
 
+// ── Saat Dağıtım Önerisi (#116) ──
+
+/**
+ * Öneri kovası. Üçü de aynı ağırlık (`w = maxHours × studentCount`) sıralamasını izler.
+ * `AllocationBucket.Name` değerleriyle birebir aynıdır.
+ */
+export type AllocationBucketName = 'InBranchPaid' | 'OutOfBranchSuggested' | 'Honorary'
+
+export interface HoursSuggestionLineDto {
+  businessId: string
+  businessName: string
+  branchCode: string
+  maxHours: number
+  studentCount: number
+  /** `w = maxHours × studentCount` — "neden bu işletmeye N saat" sorusunun cevabı */
+  weight: number
+  /** Önerilen saat; fahri satırlarda 0 */
+  suggestedHours: number
+  /** Koordinatör kilitledi — öneri bu satırı değiştirmedi */
+  isPinned: boolean
+  isHonoraryVisit: boolean
+  bucket: AllocationBucketName
+  /** Kovanın Türkçe etiketi — rozet metni (ayrım yalnız renkle taşınmaz) */
+  bucketLabel: string
+}
+
+/** "Havuz nereye gitti" sorusunun ekrandaki cevabı — hiçbir artık sessizce yutulmaz. */
+export interface HoursSuggestionDiagnosticsDto {
+  /** Ders yükü havuzu (P) */
+  pool: number
+  /** Alan öğretmenlerinin kalan kapasitesi (C) */
+  teacherCapacity: number
+  /** Σ max_i — tüm işletmeler tavanına çıksa gereken saat */
+  sumOfMax: number
+  /** Σ önerilen saat (kilitli satırlar dahil) */
+  totalAllocated: number
+  /** `pool − totalAllocated`. Pozitif → dağıtılamayan artık, negatif → kilitler havuzu aşıyor */
+  undistributed: number
+  honoraryCount: number
+  /** Alan dışı öğretmene önerilen toplam saat */
+  outOfBranchHours: number
+  /** Havuz hesaplanmamış (P ≤ 0) — öneri üretilmedi */
+  isPoolUndefined: boolean
+}
+
+export interface HoursSuggestionDto {
+  lines: HoursSuggestionLineDto[]
+  diagnostics: HoursSuggestionDiagnosticsDto
+}
+
+export interface SuggestAssignedHoursParams extends BranchRowParams {
+  /** Yarıyıl — öğretmen kapasitesi o yarıyılın ders programından hesaplanır */
+  semester: string
+  /** Kilitli satırlar: `"işletmeKimliği:saat,..."`. Boş/undefined → kilit yok. */
+  pinned?: string
+}
+
 export interface AssignBusinessRequest extends BranchRowParams {
   businessId: string
   teacherId: string
@@ -582,6 +639,15 @@ export const coordinationApi = {
    */
   updateBranchAssignedHours: (data: UpdateBranchAssignedHoursRequest) =>
     api.patch('/coordination/teachers/assignments/branch-hours', data),
+
+  /**
+   * Havuzun işletmelere dağıtım **önerisini** ister (#116).
+   *
+   * Salt okunur: hiçbir satır yazılmaz. Öneri tabloya doldurulur, kaydetme ayrı ve
+   * atomik adımdır (`updateBranchAssignedHours`) — karar koordinatörde kalır.
+   */
+  suggestAssignedHours: (params: SuggestAssignedHoursParams) =>
+    api.get<HoursSuggestionDto>('/coordination/teachers/assignments/suggest-hours', { params }),
 
   unassignBusinessSlot: (
     businessId: string,

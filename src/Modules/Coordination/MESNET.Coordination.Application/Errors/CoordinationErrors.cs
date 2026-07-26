@@ -181,6 +181,14 @@ public static class CoordinationErrors
         new("Coordination.BranchScopeRequired",
             "Toplu saat kaydı için alan kodu ve akademik dönem zorunludur.");
 
+    /// <summary>
+    /// Kilitli satır listesi çözülemedi (#116). Sessizce atlamak koordinatörün elle
+    /// girdiği saati yok ederdi; istek tümden reddedilir.
+    /// </summary>
+    public static Error InvalidPinnedHoursSelection(string reason) =>
+        new("Coordination.InvalidPinnedHoursSelection",
+            $"Kilitli satırlar okunamadı: {reason}");
+
     public static Error BranchWorkloadConfigNotFound(string branchCode) =>
         new("Coordination.BranchWorkloadConfigNotFound",
             $"Alan ders yükü yapılandırması bulunamadı: {branchCode}");
