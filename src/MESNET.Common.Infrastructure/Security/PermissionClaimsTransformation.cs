@@ -187,34 +187,52 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     /// <c>branch_codes</c> claim'ini çözer (#126). Öncelik sırası:
     ///
     /// <list type="number">
-    ///   <item><b>Token claim'i</b> — Keycloak <c>branch_codes</c> özniteliği; kullanıcı
-    ///         kaydında girilen değerden üretilir ve her zaman kazanır</item>
-    ///   <item><b>Kullanıcı kaydı</b> (<c>UserAccount.BranchCodes</c>) — kayıt sırasında
-    ///         girilen birincil bilgi; Keycloak özniteliği yazılamamışsa devreye girer</item>
+    ///   <item><b>Kullanıcı kaydı</b> (<c>UserAccount.BranchCodes</c>) — <b>OTORİTERDİR</b>.
+    ///         Doluysa token'dan gelen <c>branch_codes</c> claim'leri <b>atılır</b> ve yerine
+    ///         kayıttaki değerler konur</item>
+    ///   <item><b>Token claim'i</b> — yalnız kullanıcı kaydında alan YOKKEN kabul edilir
+    ///         (#126 öncesi oluşturulmuş, kaydı henüz doldurulmamış kullanıcılar)</item>
     ///   <item><b>Personel kaydı yedeği</b> — kurum personel belgesindeki
-    ///         <c>staff[].branchCode</c>; yalnız #126 öncesi oluşturulmuş kullanıcılar için
-    ///         geçiş adımıdır, birincil yol DEĞİLDİR</item>
+    ///         <c>staff[].branchCode</c>; geçiş adımıdır, birincil yol DEĞİLDİR</item>
     /// </list>
     ///
     /// <para>Üçü de boşsa claim eklenmez. Bu bir hata değildir: müdür ve müdür yardımcısı
     /// hiçbir alana bağlı değildir ve muafiyet izniyle çalışır.</para>
+    ///
+    /// <para><b>GÜVENLİK — bu sırayı TERS ÇEVİRMEYİN.</b> "Token zaten Keycloak'tan geliyor,
+    /// imzalı, güvenilir" düşüncesi burada YANLIŞTIR. <c>branch_codes</c> Keycloak'ta
+    /// <i>unmanaged</i> bir kullanıcı özniteliğidir; realm politikası yanlışlıkla
+    /// <c>ENABLED</c>'a çekilirse (ya da başka bir realm/ortam öyle kurulursa) kullanıcı
+    /// varsayılan <c>manage-account</c> rolüyle kendi Account konsolundan/REST API'sinden
+    /// <b>kendi özniteliğini yazabilir</b>. O durumda EET alan şefi kendine <c>MTT</c> ekleyip
+    /// #126'nın engellemek için var olduğu şeyi — başka alanın saat dağıtımını ezmeyi —
+    /// yapabilirdi. Token imzalı olması içeriğin <b>kullanıcı tarafından belirlenmediği</b>
+    /// anlamına gelmez.</para>
+    ///
+    /// <para>Realm tarafında politika <c>ADMIN_EDIT</c>'tir (kullanıcı ne görür ne yazar);
+    /// buradaki kontrol o yapılandırmaya <b>bağımlı olmayan</b> ikinci katmandır. İkisinden
+    /// biri kaldırılırsa açık geri gelir.</para>
     /// </summary>
     private async Task EnrichBranchCodesClaimAsync(
         ClaimsPrincipal principal, string keycloakUserId, IReadOnlyList<string>? accountBranchCodes)
     {
-        if (principal.HasClaim(c => c.Type == BranchCodeClaims.ClaimType))
-            return;
-
         if (principal.Identity is not ClaimsIdentity identity)
             return;
 
-        // (2) Kullanıcı kaydı — kayıt sırasında girilen birincil bilgi
+        // (1) Kullanıcı kaydı OTORİTERDİR — token'dan geleni ezer.
         if (accountBranchCodes is { Count: > 0 })
         {
+            RemoveBranchCodeClaims(principal);
+
             foreach (var code in accountBranchCodes)
                 identity.AddClaim(new Claim(BranchCodeClaims.ClaimType, code));
+
             return;
         }
+
+        // (2) Kayıtta alan yok → token claim'i varsa (eski kullanıcı) olduğu gibi bırakılır.
+        if (principal.HasClaim(c => c.Type == BranchCodeClaims.ClaimType))
+            return;
 
         // (3) Personel kaydı yedeği — mevcut kullanıcılar için geçiş adımı
         var cacheKey = $"user-branch-codes:{keycloakUserId}";
@@ -231,6 +249,40 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
 
         foreach (var code in BranchCodeClaims.Parse(joined))
             identity.AddClaim(new Claim(BranchCodeClaims.ClaimType, code));
+    }
+
+    /// <summary>
+    /// Token'dan gelen <c>branch_codes</c> claim'lerini siler (#126 güvenlik düzeltmesi).
+    ///
+    /// <para>Kullanıcı kaydındaki değer otoriter olduğu için, kullanıcının kendi
+    /// yazabileceği bir kaynaktan gelen değerlerin principal üzerinde kalmasına izin
+    /// verilmez — <c>ICurrentUserService.GetBranchCodes()</c> ve <c>/auth/me</c> aynı
+    /// claim'i okur.</para>
+    ///
+    /// <para><b>Tüm</b> identity'ler taranır, yalnız birincil olan değil:
+    /// <c>ClaimsPrincipal.FindAll</c> (ki <c>BranchCodeClaims.Read</c> onu kullanır) bütün
+    /// identity'lerdeki claim'leri görür. Yalnız <c>principal.Identity</c> temizlenseydi,
+    /// ikinci bir identity üzerinde taşınan değer okumada hayatta kalırdı.</para>
+    ///
+    /// <para><c>TryRemoveClaim</c> kullanılır: sahibi olmayan identity'den kaldırma
+    /// denemesinde <c>RemoveClaim</c> fırlatırdı.</para>
+    /// </summary>
+    private void RemoveBranchCodeClaims(ClaimsPrincipal principal)
+    {
+        foreach (var identity in principal.Identities)
+        {
+            var existing = identity.FindAll(BranchCodeClaims.ClaimType).ToList();
+
+            foreach (var claim in existing)
+            {
+                if (identity.TryRemoveClaim(claim))
+                    continue;
+
+                _logger.LogWarning(
+                    "Token'daki branch_codes claim'i kaldırılamadı: {ClaimValue}. " +
+                    "Kapsam kararı yine de kullanıcı kaydından verilir.", claim.Value);
+            }
+        }
     }
 
     private async Task<IReadOnlyList<string>> LookupBranchCodesAsync(string keycloakUserId)

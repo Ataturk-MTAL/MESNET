@@ -635,6 +635,16 @@ kontroldür ve iki kapsam da token claim'inden okunur, istekten ALINMAZ:
 - **Okuma açık, yazma kapalı:** alan şefi başka alanın dağıtımını görebilir, değiştiremez.
   Satır bazlı uçlarda kapsam istekten değil **çözümlenmiş satırdan** okunur
 - Alan zorunluluğu permission'dan türetilir (`BranchRequirement`), rol adından DEĞİL
+- **`UserAccount.BranchCodes` OTORİTERDİR, token claim'i değil.** Kayıt doluysa token'daki
+  `branch_codes` claim'leri silinir ve yerine kayıt konur. `branch_codes` Keycloak'ta
+  *unmanaged* özniteliktir; politika `ENABLED` olsaydı kullanıcı `manage-account` ile kendi
+  Account konsolundan kendine alan ekleyip kapsamı aşabilirdi. **Token'ın imzalı olması
+  içeriğin kullanıcı tarafından belirlenmediği anlamına gelmez** — bu sırayı ters çevirmeyin.
+  İkinci katman: realm'de `unmanagedAttributePolicy: ADMIN_EDIT`
+- **Kapsam muafiyeti izinleri bireysel (direct) ASLA atanamaz** —
+  `AssignablePermissionScope.NeverDirectlyAssignable` sabit listesi yapılandırmayı ezer.
+  Rol → domain haritası çalışma zamanında değiştirilebildiği için (`user:roles:manage`),
+  yalnız yapılandırmaya güvenmek yetmez
 
 Ayrıntı: `src/Docs/docs/actors/permissions.md` → "Alan (Branş) Kapsamı Kontrolü"
 

@@ -105,7 +105,7 @@
           <template #body-cell-branchCodes="{ row }">
             <q-td>
               <q-badge
-                v-if="row.branchMissing"
+                v-if="resolveBranchCellState(row) === 'missing'"
                 color="warning"
                 text-color="dark"
                 label="Branş atanmamış"
@@ -115,7 +115,7 @@
                   bağlı olmalıdır. Alan girilene kadar hiçbir alana yazamaz.
                 </q-tooltip>
               </q-badge>
-              <template v-else-if="row.branchCodes.length">
+              <template v-else-if="resolveBranchCellState(row) === 'assigned'">
                 <q-badge
                   v-for="code in row.branchCodes"
                   :key="code"
@@ -523,6 +523,7 @@ import AppNotice from 'components/AppNotice.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 import { useBranchOptions } from 'src/composables/useEntityOptions'
+import { resolveBranchCellState } from 'utils/branchAssignment'
 
 const $q = useQuasar()
 const notify = useNotify()

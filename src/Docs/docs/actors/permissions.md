@@ -884,23 +884,44 @@ Değişiklik yolu: `POST /api/security/users/{id}/branches` (`ChangeUserBranches
 bilgisi değil; bu yüzden `UpdateUser` (ad/soyad/e-posta, `user:update`) ile birleştirilmez.
 Kapsam değişimi permission cache'ini geçersiz kılar.
 
-#### Claim çözümleme sırası
+#### Claim çözümleme sırası — kullanıcı kaydı OTORİTERDİR
 
-1. **Token claim'i** — Keycloak `branch_codes` özniteliği (kayıt sırasında yazılır) +
-   `mesnet-api` / `mesnet-web` client'larındaki `branch_codes` protocol mapper'ı
-   (`multivalued: true`). Her zaman kazanır.
-2. **Kullanıcı kaydı** — `UserAccount.BranchCodes`. Keycloak özniteliği yazılamamışsa
-   (bkz. unmanaged-attribute tuzağı) kapsam yine de çalışır.
+1. **Kullanıcı kaydı** (`UserAccount.BranchCodes`) — **otoriterdir**. Doluysa token'dan gelen
+   `branch_codes` claim'leri **atılır** ve yerine kayıttaki değerler konur.
+2. **Token claim'i** — yalnız kullanıcı kaydında alan **yokken** kabul edilir (#126 öncesi
+   oluşturulmuş, kaydı henüz doldurulmamış kullanıcılar).
 3. **Personel kaydı yedeği (geçiş adımı)** — `institution.mt_doc_institution` →
-   `staff[].branchCode`. Yalnız #126 öncesinde oluşturulmuş kullanıcılar içindir,
-   **birincil yol değildir**. 5 dakikalık `IMemoryCache` ile.
+   `staff[].branchCode`. 5 dakikalık `IMemoryCache` ile.
 
 Üçü de boşsa claim eklenmez — bu bir hata değildir.
 
-> **Neden DB yedeği var:** Keycloak realm'inde "unmanaged attributes" kapalıysa kullanıcı
-> öznitelikleri yazılamaz ve claim boş gelir (`business_id` / `institution_id` ile daha önce
-> yaşandı). Realm dosyasında bu yüzden `unmanagedAttributePolicy: ENABLED` tanımlıdır;
-> yedek yol ise kurulum eksikse bile sistemin kilitlenmemesini sağlar.
+:::danger Bu sırayı ters çevirmeyin
+
+"Token zaten Keycloak'tan geliyor, imzalı, güvenilir" düşüncesi burada **yanlıştır**.
+`branch_codes` Keycloak'ta *unmanaged* bir kullanıcı özniteliğidir. Realm politikası
+`ENABLED` olsaydı kullanıcı, varsayılan `manage-account` rolüyle kendi Account
+konsolundan/REST API'sinden **kendi özniteliğini yazabilirdi**: EET alan şefi kendine `MTT`
+ekler, token'ında `branch_codes: [EET, MTT]` görünür ve #126'nın engellemek için var olduğu
+şeyi — başka alanın saat dağıtımını ezmeyi — yapardı.
+
+**Token'ın imzalı olması, içeriğin kullanıcı tarafından belirlenmediği anlamına gelmez.**
+:::
+
+Koruma **iki katmanlıdır** ve ikisi de gereklidir:
+
+| Katman | Nerede | Ne yapar |
+|---|---|---|
+| Realm politikası | `mesnet-realm.json` → `unmanagedAttributePolicy: ADMIN_EDIT` | Unmanaged öznitelikler yalnız **admin** bağlamında görünür/yazılır; kullanıcı ne görür ne yazar |
+| Otoriter kayıt | `PermissionClaimsTransformation` | Kullanıcı kaydı doluysa token claim'i **silinir**, yerine kayıt konur |
+
+`ADMIN_EDIT`, uygulamanın yazma yolunu **etkilemez**: `KeycloakAdminService`
+`client_credentials` servis hesabı token'ıyla `/admin/realms/{realm}/users/{id}` üzerinden
+yazar — admin bağlamıdır. Aynı politika `institution_id` / `business_id` / `student_id`
+için de aynı korumayı getirir.
+
+> **Neden DB yedeği yine de var:** Keycloak özniteliği hiç yazılamamışsa (kurulum eksik)
+> kapsam yine de çalışsın diye. Yedek yol sistemin kilitlenmemesini sağlar; güvenlik kararı
+> ise otoriter kayda dayanır, realm yapılandırmasına **bağımlı değildir**.
 
 #### Alan zorunluluğu ve dolgu
 
@@ -935,6 +956,21 @@ Bu muafiyet **rol adına değil permission'a** bağlıdır.
 > **alan şefine de** geçer ve kapsam kontrolü sessizce hiç çalışmaz. Bu yüzden izin
 > `institution:` öneki altındadır. Kilitleyen test:
 > `tests/MESNET.Coordination.UnitTests/BranchScopeExemptionMappingTests.cs`
+
+#### Muafiyet izni bireysel olarak ASLA atanamaz
+
+`AssignablePermissionScope.NeverDirectlyAssignable` sabit listesindedir; `CanAssign(...)`
+bu izinleri **yapılandırmadan bağımsız** olarak reddeder ve `ChangeUserPermissionsHandler`
+kontrolü yapılandırılabilir kapsam kontrolünden **önce** uygular.
+
+Gerekçe: rol → atanabilir domain haritası `PUT /api/security/permission-scopes` ile çalışma
+zamanında değiştirilebilir ve bu uç yalnız `user:roles:manage` ister — o izin müdür
+yardımcısında da vardır. Sabit liste olmasaydı müdür yardımcısı önce `DepartmentHead`'in
+listesine `institution:` ekler, sonra bir alan şefine muafiyet iznini vererek kapsam
+kontrolünü tümden kaldırabilirdi. **Kural mutlaktır; yapılandırma onu gevşetemez.**
+
+Bu izinler yalnız `RolePermissionMap` üzerinden, role bağlı olarak gelir. Benzer izinler
+ileride eklenirse **tek yer** bu listedir.
 
 ### Karar tablosu
 

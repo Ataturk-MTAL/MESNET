@@ -24,6 +24,15 @@ public static class SecurityErrors
             $"Bu yetkiler kullanıcının rolüne ({roles}) atanamaz: {permissions}. " +
             "Yetki, rolün kapsamı dışında olamaz (ör. işletme kullanıcısına kurum-yönetimi yetkisi verilemez).");
 
+    /// <summary>
+    /// Kapsam muafiyeti izni bireysel olarak atanmak istendi (#126).
+    /// Bu izinler yapılandırmadan bağımsız olarak reddedilir; yalnız rol üzerinden gelebilirler.
+    /// </summary>
+    public static Error PermissionNeverDirectlyAssignable(string permissions) =>
+        new("Security.PermissionNeverDirectlyAssignable",
+            $"Bu yetkiler hiçbir kullanıcıya bireysel olarak atanamaz: {permissions}. " +
+            "Veri kapsamını genişleten muafiyet izinleridir ve yalnız rol üzerinden verilebilir.");
+
     public static Error CannotDeleteSelf() =>
         new("Security.CannotDeleteSelf", "Kendi hesabınızı silemezsiniz.");
 

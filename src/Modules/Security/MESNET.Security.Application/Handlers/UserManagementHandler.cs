@@ -191,6 +191,16 @@ public static class ChangeUserPermissionsHandler
         if (account is null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
+        // Mutlak guardrail — kapsam muafiyeti izinleri hiçbir yapılandırmayla bireysel
+        // atanamaz (#126). Yapılandırılabilir kapsam kontrolünden ÖNCE gelir, çünkü
+        // yapılandırma (PUT /permission-scopes, user:roles:manage) bu kuralı gevşetememeli.
+        var neverAssignable = command.DirectPermissions
+            .Where(AssignablePermissionScope.NeverDirectlyAssignable.Contains)
+            .ToList();
+        if (neverAssignable.Count > 0)
+            throw new DomainException(SecurityErrors.PermissionNeverDirectlyAssignable(
+                string.Join(", ", neverAssignable)));
+
         // Guardrail — kullanıcının rol kapsamı dışındaki yetkiler direct olarak ATANAMAZ
         // (ör. işletme kullanıcısına kurum-yönetimi yetkisi verilemez). Kapsam YAPILANDIRILABILIR.
         var scope = await PermissionScopeHandler.LoadScopeAsync(session);

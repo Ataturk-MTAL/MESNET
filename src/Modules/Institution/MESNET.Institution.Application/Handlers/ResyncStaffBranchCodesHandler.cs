@@ -18,6 +18,9 @@ public static class ResyncStaffBranchCodesHandler
         IMessageBus bus,
         CancellationToken cancellationToken)
     {
+        // TODO(Faz 2): Kurum filtresi yok — tüm kurumların personeli taranıyor. Faz 1 tek
+        // kurumlu olduğu için pratik etkisi yoktur; çok kurumluya geçmeden önce komut
+        // InstitutionId almalı ve çağıran kullanıcının kurum kapsamıyla sınırlanmalıdır.
         var institutions = await session
             .Query<Core.Entities.Institution>()
             .ToListAsync(cancellationToken);

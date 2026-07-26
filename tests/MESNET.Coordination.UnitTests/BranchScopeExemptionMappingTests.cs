@@ -84,15 +84,84 @@ public sealed class BranchScopeExemptionMappingTests
             .ShouldBeFalse();
     }
 
+    /// <summary>
+    /// <b>Güvenlik regresyonu (#126 incelemesi — YÜKSEK).</b>
+    ///
+    /// <para>Açık: <c>ChangeUserPermissionsHandler</c> <see cref="AssignablePermissionScope.Defaults"/>
+    /// değil, <c>PUT /api/security/permission-scopes</c> ile çalışma zamanında değiştirilebilen
+    /// haritayı kullanıyor. O uç yalnız <c>user:roles:manage</c> ister ve bu izin müdür
+    /// yardımcısında da var. Yani müdür yardımcısı önce <c>DepartmentHead</c>'e
+    /// <c>institution:</c> domainini açar, sonra bir alan şefine muafiyet iznini vererek
+    /// kapsam kontrolünü tümden kaldırabilirdi.</para>
+    ///
+    /// <para>Kural artık mutlaktır: yapılandırma onu gevşetemez.</para>
+    /// </summary>
+    [Fact]
+    public void Yapilandirma_institution_domainini_acsa_bile_muafiyet_izni_atanamaz()
+    {
+        // Saldırganın kurabileceği en geniş yapılandırma
+        var tamperedScope = new Dictionary<string, string[]>
+        {
+            [MesnetRoles.DepartmentHead] = ["institution:", "department:", "coordinator:"],
+        };
+
+        AssignablePermissionScope.CanAssign(
+                tamperedScope,
+                [MesnetRoles.DepartmentHead],
+                Permissions.Institution.AllBranches)
+            .ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Yildiz_kapsami_bile_muafiyet_iznini_bireysel_atanabilir_yapmaz()
+    {
+        var wildcardScope = new Dictionary<string, string[]>
+        {
+            [MesnetRoles.DepartmentHead] = [AssignablePermissionScope.All],
+        };
+
+        AssignablePermissionScope.CanAssign(
+                wildcardScope,
+                [MesnetRoles.DepartmentHead],
+                Permissions.Institution.AllBranches)
+            .ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Muafiyet izni kurum geneli yetkili rollere de <b>bireysel</b> atanamaz — yalnız
+    /// <see cref="RolePermissionMap"/> üzerinden, role bağlı gelir. Bu, "*" kapsamı olan
+    /// <c>InstitutionManager</c> için de geçerlidir.
+    /// </summary>
     [Theory]
     [InlineData(MesnetRoles.InstitutionManager)]
     [InlineData(MesnetRoles.InstitutionStaff)]
-    public void Kurum_geneli_yetkili_rollere_bireysel_atama_mumkundur(string role)
+    public void Muafiyet_izni_hicbir_role_bireysel_atanamaz(string role)
     {
         AssignablePermissionScope.CanAssign(
                 AssignablePermissionScope.Defaults,
                 [role],
                 Permissions.Institution.AllBranches)
+            .ShouldBeFalse();
+
+        // ...ama rol üzerinden gelmeye devam eder — yetki kaybedilmedi
+        PermissionsOf(role).ShouldContain(Permissions.Institution.AllBranches);
+    }
+
+    [Fact]
+    public void Muafiyet_izni_mutlak_ret_listesindedir()
+    {
+        AssignablePermissionScope.NeverDirectlyAssignable
+            .ShouldContain(Permissions.Institution.AllBranches);
+    }
+
+    /// <summary>Sıradan izinler etkilenmez — ret listesi yalnız muafiyet izinlerini kapsar.</summary>
+    [Fact]
+    public void Siradan_izinler_bireysel_atanabilmeye_devam_eder()
+    {
+        AssignablePermissionScope.CanAssign(
+                AssignablePermissionScope.Defaults,
+                [MesnetRoles.DepartmentHead],
+                Permissions.DepartmentHead.Distribution)
             .ShouldBeTrue();
     }
 }
