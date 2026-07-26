@@ -936,6 +936,7 @@ const hours = useAssignedHours({
   assignments,
   workloadConfig: workload.workloadConfig,
   academicPeriodId: periodId,
+  branchCode: branchFilter,
   notify,
   loadData,
 })

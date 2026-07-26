@@ -18,12 +18,14 @@ export interface UseAssignedHoursOptions {
   workloadConfig: Ref<BranchWorkloadConfigDto | null>
   /** Seçili akademik dönem — koordinasyon satırı alan+dönem bazlıdır (#114) */
   academicPeriodId: Ref<string | null>
+  /** Seçili alan — toplu kayıt tek alanın dağıtımını kapsar (#117) */
+  branchCode: Ref<string | null>
   notify: ReturnType<typeof useNotify>
   loadData: () => Promise<void>
 }
 
 export function useAssignedHours(options: UseAssignedHoursOptions) {
-  const { assignments, workloadConfig, academicPeriodId, notify, loadData } = options
+  const { assignments, workloadConfig, academicPeriodId, branchCode, notify, loadData } = options
 
   const hoursSaving = ref(false)
   const editedHours = ref<Record<string, number>>({})
@@ -126,40 +128,47 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
     () => assignments.value.filter(isRowChanged).length,
   )
 
+  /**
+   * Değişen satırların tamamını **tek** çağrıyla kaydeder (#117).
+   *
+   * Önceden satır başına ayrı istek atılıyordu ve backend her istekte havuz kontrolünü
+   * baştan yapıyordu; yeniden dağıtımda (havuz 40, A=20 B=10 → A=10 B=20) B önce giderse
+   * ara toplam havuzu aşıyor ve istek reddediliyordu. Sonuç çağrı sırasına bağlıydı,
+   * kullanıcı "bir kısmı kaydedildi" durumunda kalıyordu. Artık ya hepsi ya hiçbiri —
+   * bu yüzden kısmi başarı/kısmi hata bildirimi de yok.
+   */
   async function saveHours() {
+    const changed = assignments.value.filter(isRowChanged)
+    if (changed.length === 0) return
+
+    const branch = branchCode.value ?? changed[0]?.branchCode ?? ''
+
     hoursSaving.value = true
-    let successCount = 0
-    const errors: string[] = []
-
-    for (const a of assignments.value) {
-      if (!isRowChanged(a)) continue
-
-      const honorary = editedHonorary.value[a.businessId] ?? false
-
-      try {
-        await coordinationApi.updateAssignedHours(
-          a.businessId,
+    try {
+      await coordinationApi.updateBranchAssignedHours({
+        branchCode: branch,
+        academicPeriodId: academicPeriodId.value ?? '',
+        items: changed.map((a) => {
+          const honorary = editedHonorary.value[a.businessId] ?? false
           // Fahri satırda saat her zaman 0 gönderilir; backend de aynı kuralı uygular.
-          { assignedHours: honorary ? 0 : (editedHours.value[a.businessId] ?? 0), isHonoraryVisit: honorary },
-          { branchCode: a.branchCode, academicPeriodId: academicPeriodId.value ?? '' },
-        )
-        successCount++
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'Bilinmeyen hata'
-        errors.push(`${a.businessName}: ${msg}`)
-      }
+          return {
+            businessId: a.businessId,
+            assignedHours: honorary ? 0 : (editedHours.value[a.businessId] ?? 0),
+            isHonoraryVisit: honorary,
+          }
+        }),
+      })
+    } catch (e: unknown) {
+      // 422 gövdesi hangi işletmede hangi kısıtın kırıldığını taşır — olduğu gibi göster.
+      notify.apiError(e, 'Saatler kaydedilemedi; hiçbir satır değişmedi.')
+      return
+    } finally {
+      hoursSaving.value = false
     }
 
-    hoursSaving.value = false
-
-    if (successCount > 0) {
-      notify.success(`${successCount} işletmenin takdir edilen saati güncellendi.`)
-      await loadData()
-      initEditedHours()
-    }
-    if (errors.length > 0) {
-      notify.warning(`Hatalar: ${errors.join(', ')}`)
-    }
+    notify.success(`${changed.length} işletmenin takdir edilen saati güncellendi.`)
+    await loadData()
+    initEditedHours()
   }
 
   return {

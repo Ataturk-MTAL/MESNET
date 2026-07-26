@@ -47,7 +47,7 @@ public static class UpdateBusinessAssignedHoursHandler
             await ValidateTeacherLimitAsync(session, view, newHours, cancellationToken);
         }
 
-        ApplyChange(view, command, newHours);
+        AssignedHoursMutation.Apply(view, newHours, command.IsHonoraryVisit, command.UpdatedBy);
         session.Store(view);
     }
 
@@ -127,43 +127,4 @@ public static class UpdateBusinessAssignedHoursHandler
         }
     }
 
-    private static void ApplyChange(
-        BusinessCoordinationView view,
-        UpdateBusinessAssignedHours command,
-        int newHours)
-    {
-        var oldHours = view.AssignedHours;
-        var wasHonorary = view.IsHonoraryVisit;
-
-        view.AssignedHours = newHours;
-        view.IsHonoraryVisit = command.IsHonoraryVisit;
-
-        view.History.Insert(0, new AssignmentHistoryEntry(
-            DateTime.UtcNow,
-            "HoursUpdated",
-            command.UpdatedBy,
-            view.AssignedTeacherName,
-            null,
-            null,
-            newHours,
-            DescribeChange(oldHours, wasHonorary, newHours, command.IsHonoraryVisit)));
-
-        view.LastModifiedAt = DateTime.UtcNow;
-        view.LastModifiedBy = command.UpdatedBy;
-    }
-
-    /// <summary>Geçmiş kaydı açıklaması — fahri geçişleri saat değişiminden ayrı okunur olsun.</summary>
-    private static string DescribeChange(int oldHours, bool wasHonorary, int newHours, bool isHonorary)
-    {
-        if (isHonorary && !wasHonorary)
-            return $"Fahri (ücretsiz) ziyaret olarak işaretlendi; takdir edilen saat {oldHours} → 0";
-
-        if (!isHonorary && wasHonorary)
-            return $"Fahri ziyaret işareti kaldırıldı; takdir edilen saat 0 → {newHours}";
-
-        if (isHonorary)
-            return "Fahri (ücretsiz) ziyaret olarak korundu; takdir edilen saat 0";
-
-        return $"Takdir edilen saat {oldHours} → {newHours} olarak değiştirildi";
-    }
 }

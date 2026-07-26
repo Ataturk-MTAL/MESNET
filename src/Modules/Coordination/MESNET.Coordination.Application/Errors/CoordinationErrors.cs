@@ -1,4 +1,5 @@
 using MESNET.Common.Shared;
+using MESNET.Coordination.Core.Services;
 
 namespace MESNET.Coordination.Application.Errors;
 
@@ -157,6 +158,28 @@ public static class CoordinationErrors
     public static Error WorkloadPoolExceeded(int totalAssigned, int pool) =>
         new("Coordination.WorkloadPoolExceeded",
             $"Toplam takdir edilen saat ({totalAssigned}) ders yükü havuzunu ({pool}) aşamaz.");
+
+    // ── Toplu (atomik) saat kaydı (#117) ──
+
+    /// <summary>
+    /// Politikanın döndürdüğü kısıt ihlalini HTTP 422'ye taşınacak hataya çevirir.
+    /// Kod tekil uç noktanınkiyle aynı ailededir (<c>Coordination.{Kind}</c>) — frontend
+    /// ayrı bir eşleme tablosu tutmaz. Metin hem kırılan kısıtı hem işletmeyi söyler.
+    /// </summary>
+    public static Error BranchHoursConstraintViolated(BranchHoursViolation violation) =>
+        new($"Coordination.{violation.Kind.Name}", violation.Describe());
+
+    public static Error EmptyBranchHoursBatch() =>
+        new("Coordination.EmptyBranchHoursBatch",
+            "Kaydedilecek işletme saati bulunamadı — istek en az bir satır içermelidir.");
+
+    public static Error DuplicateBranchHoursItem(Guid businessId) =>
+        new("Coordination.DuplicateBranchHoursItem",
+            $"Aynı işletme toplu istekte birden çok kez geçemez: {businessId}");
+
+    public static Error BranchScopeRequired() =>
+        new("Coordination.BranchScopeRequired",
+            "Toplu saat kaydı için alan kodu ve akademik dönem zorunludur.");
 
     public static Error BranchWorkloadConfigNotFound(string branchCode) =>
         new("Coordination.BranchWorkloadConfigNotFound",
