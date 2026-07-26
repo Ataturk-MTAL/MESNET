@@ -25,6 +25,8 @@ public static class BusinessEndpoints
         group.MapPost("/{businessId:guid}/deactivate", PostDeactivate).RequireAuthorization(Permissions.Company.Manage);
         group.MapPost("/{businessId:guid}/activate", PostActivate).RequireAuthorization(Permissions.Company.Manage);
         group.MapPost("/{businessId:guid}/close", PostClose).RequireAuthorization(Permissions.Company.Manage);
+        group.MapPut("/{businessId:guid}/branch-authorizations", PutBranchAuthorizations)
+            .RequireAuthorization(Permissions.Company.Manage);
         group.MapPost("/resync-projections", PostResyncProjections).RequireAuthorization(Permissions.Company.Manage);
         return app;
     }
@@ -108,6 +110,19 @@ public static class BusinessEndpoints
         await bus.InvokeAsync(new ActivateBusiness(businessId));
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme aktifleştirildi.")
+            .Build());
+    }
+
+    /// <summary>
+    /// İdare, belge incelemesi sonucunda işletmenin öğrenci alabileceği alanları işaretler (#119).
+    /// Gövdedeki liste NİHAİ listedir — gönderilmeyen mevcut yetkiler iptal edilir.
+    /// </summary>
+    private static async Task<IResult> PutBranchAuthorizations(
+        Guid businessId, AuthorizeBusinessForBranches command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command with { BusinessId = businessId });
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("İşletmenin alan yetkileri güncellendi.")
             .Build());
     }
 

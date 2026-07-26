@@ -329,6 +329,56 @@
           </InfoItem>
 
           <q-separator spaced />
+          <div class="row items-center">
+            <div class="text-subtitle2 text-weight-medium">
+              Öğrenci Alabildiği Alanlar
+            </div>
+            <q-space />
+            <PermissionGuard :permission="Permissions.Company.Manage">
+              <q-btn
+                flat
+                round
+                dense
+                icon="verified"
+                color="primary"
+                aria-label="Alan yetkilerini düzenle"
+                @click="branchAuthDialog = true"
+              >
+                <q-tooltip>Alan Yetkilerini Düzenle</q-tooltip>
+              </q-btn>
+            </PermissionGuard>
+          </div>
+          <div v-if="selected.activeBranchCodes.length > 0">
+            <q-badge
+              v-for="code in selected.activeBranchCodes"
+              :key="code"
+              color="primary"
+              class="q-mr-xs q-mb-xs"
+              :label="code"
+            />
+          </div>
+          <div
+            v-else
+            class="text-grey text-caption"
+          >
+            Yetkili alan yok — bu işletmeye hiçbir alandan öğrenci yerleştirilemez.
+          </div>
+          <div
+            v-if="revokedBranches.length > 0"
+            class="text-caption text-grey q-mt-xs"
+          >
+            Kaldırılan yetkiler:
+            <q-badge
+              v-for="code in revokedBranches"
+              :key="code"
+              color="neutral-soft"
+              text-color="neutral-strong"
+              class="q-mr-xs"
+              :label="code"
+            />
+          </div>
+
+          <q-separator spaced />
           <div class="text-subtitle2 text-weight-medium">
             Kapasite
           </div>
@@ -524,6 +574,11 @@
       :business-id="selected?.id ?? ''"
       @saved="afterFormSaved"
     />
+    <AuthorizeBranchesForm
+      v-model="branchAuthDialog"
+      :business="selected"
+      @saved="afterBranchesAuthorized"
+    />
   </q-page>
 </template>
 
@@ -547,6 +602,7 @@ import DetailPanel from 'components/DetailPanel.vue'
 import { useRouter } from 'vue-router'
 import RejectBusinessForm from 'components/forms/business/RejectBusinessForm.vue'
 import UploadBusinessDocForm from 'components/forms/business/UploadBusinessDocForm.vue'
+import AuthorizeBranchesForm from 'components/forms/business/AuthorizeBranchesForm.vue'
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -577,6 +633,7 @@ const selected = ref<BusinessDto | null>(null)
 const detailOpen = ref(false)
 const rejectDialog = ref(false)
 const docUploadDialog = ref(false)
+const branchAuthDialog = ref(false)
 const statusFilter = ref<string | null>(null)
 const sectorFilter = ref<string | null>(null)
 const allSectors = ref<SectorDto[]>([])
@@ -639,6 +696,29 @@ async function loadSectors() {
   }
 }
 
+
+/** İptal edilmiş (aktif olmayan) alan kodları — aktif yetkiye dönmüş olanlar hariç. */
+const revokedBranches = computed(() => {
+  const business = selected.value
+  if (!business) return []
+  const active = new Set(business.activeBranchCodes)
+  return [
+    ...new Set(
+      business.authorizedBranches
+        .filter((a) => !a.isActive && !active.has(a.branchCode))
+        .map((a) => a.branchCode),
+    ),
+  ]
+})
+
+/**
+ * Alan yetkisi değişince işletme seçim listesi cache'i bayatlar — yerleştirme ekranı
+ * yetkisiz işletmeyi göstermeye devam ederdi (#119).
+ */
+async function afterBranchesAuthorized() {
+  entityOptionsStore.invalidateBusinesses()
+  await afterFormSaved()
+}
 
 async function afterFormSaved() {
   await load()

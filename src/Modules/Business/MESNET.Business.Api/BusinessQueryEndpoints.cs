@@ -25,12 +25,12 @@ public static class BusinessQueryEndpoints
     }
 
     private static async Task<IResult> GetByStatus(
-        string? status, string? sector,
+        string? status, string? sector, string? branchCode,
         int page = 1, int pageSize = 20, string? sortBy = null, bool descending = false, string? search = null,
         IMessageBus bus = default!)
     {
         var result = await bus.InvokeAsync<PagedResult<BusinessDto>>(
-            new GetBusinessesByStatus(status, sector)
+            new GetBusinessesByStatus(status, sector, branchCode)
             {
                 Page = page, PageSize = pageSize,
                 SortBy = sortBy, Descending = descending, Search = search,

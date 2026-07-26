@@ -22,6 +22,8 @@ public static class BusinessMappingExtensions
         entity.Representatives.Select(r => r.ToDto()).ToList(),
         entity.Documents.Select(d => d.ToDto()).ToList(),
         entity.Sectors.Select(s => s.ToSectorDto()).ToList(),
+        entity.AuthorizedBranches.Select(a => a.ToDto()).ToList(),
+        entity.ActiveBranchCodes.ToList(),
         entity.CreatedAt,
         entity.ApprovedAt,
         entity.ClosedAt);
@@ -45,6 +47,14 @@ public static class BusinessMappingExtensions
         vo.OccupiedSlots,
         vo.AvailableSlots,
         vo.IsFull);
+
+    public static BranchAuthorizationDto ToDto(this Core.ValueObjects.BranchAuthorization vo) => new(
+        vo.BranchCode,
+        vo.BasedOnDocumentId,
+        vo.AuthorizedAt,
+        vo.AuthorizedBy,
+        vo.RevokedAt,
+        vo.IsActive);
 
     public static BusinessRepresentativeDto ToDto(this Core.ValueObjects.BusinessRepresentative vo) => new(
         vo.Id,

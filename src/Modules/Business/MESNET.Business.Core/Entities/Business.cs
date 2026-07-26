@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Ardalis.SmartEnum.SystemTextJson;
 using MESNET.Business.Core.Enums;
+using MESNET.Business.Core.Policies;
 using MESNET.Business.Core.ValueObjects;
 using MESNET.Common.Shared;
 
@@ -39,6 +40,30 @@ public class Business
     public string? SgkNumber { get; set; }
     public string? ActivityField { get; set; }
     public List<string> Sectors { get; set; } = [];
+
+    private List<BranchAuthorization> _authorizedBranches = [];
+
+    /// <summary>
+    /// İşletmenin öğrenci alabileceği alanlar — idarenin belge incelemesi sonucu verdiği yetkiler (#119).
+    /// Boş liste "hepsine açık" değil, KAPALI anlamına gelir.
+    /// </summary>
+    public List<BranchAuthorization> AuthorizedBranches
+    {
+        get => _authorizedBranches;
+        set
+        {
+            _authorizedBranches = value ?? [];
+            ActiveBranchCodes = BranchAuthorizationPolicy.ActiveCodes(_authorizedBranches);
+        }
+    }
+
+    /// <summary>
+    /// SmartEnum/nested-path LINQ tuzağı ile aynı gerekçe: aktif alan kodlarının düz string kopyası.
+    /// Marten sorguları (ör. yerleştirme ekranının alan filtresi) bu alan üzerinden çalışır.
+    /// Setter <see cref="AuthorizedBranches"/> tarafından otomatik senkron tutulur.
+    /// </summary>
+    public List<string> ActiveBranchCodes { get; private set; } = [];
+
     public MasterInstructorInfo? MasterInstructor { get; set; }
     public List<BusinessDocument> Documents { get; set; } = [];
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

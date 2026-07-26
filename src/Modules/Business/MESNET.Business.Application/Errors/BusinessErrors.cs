@@ -36,6 +36,17 @@ public static class BusinessErrors
     public static Error HasActiveStudents(Guid id) =>
         new("Business.HasActiveStudents", $"İşletmede aktif stajyerler var. Önce fesih yapılmalıdır: {id}");
 
+    public static Error BranchCodeRequired() =>
+        new("Business.BranchCodeRequired", "Alan kodu boş olamaz.");
+
+    public static Error BranchNotOffered(string branchCode) =>
+        new("Business.BranchNotOffered",
+            $"Kurumda açık olmayan alan için yetki verilemez: {branchCode}");
+
+    public static Error ClosedBusinessNotAuthorizable(Guid id) =>
+        new("Business.ClosedBusinessNotAuthorizable",
+            $"Kapatılmış işletmenin alan yetkileri düzenlenemez: {id}");
+
     public static Error HasAssignedTeacher(Guid id) =>
         new("Business.HasAssignedTeacher", $"İşletmeye atanmış öğretmen var. Önce atama kaldırılmalıdır: {id}");
 }

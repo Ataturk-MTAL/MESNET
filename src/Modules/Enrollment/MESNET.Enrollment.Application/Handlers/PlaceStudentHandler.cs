@@ -7,6 +7,7 @@ using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Core.ReadModels;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.Enums;
+using MESNET.Enrollment.Core.Policies;
 using MESNET.Enrollment.Shared.Events;
 
 namespace MESNET.Enrollment.Application.Handlers;
@@ -34,6 +35,13 @@ public static class PlaceStudentHandler
 
         if (business.AvailableCapacity <= 0)
             throw new DomainException(EnrollmentErrors.BusinessCapacityFull);
+
+        // İşletme yalnız idarece yetkilendirildiği alanlardan öğrenci alabilir (#119).
+        // Yetki iptali geçmiş yerleştirmeleri bozmaz — yalnız YENİ yerleştirme reddedilir.
+        var branchAuthorization = await session.LoadAsync<BusinessBranchAuthorizationView>(command.BusinessId);
+        if (!PlacementBranchPolicy.IsBusinessAuthorizedFor(branchAuthorization, student.BranchCode))
+            throw new DomainException(EnrollmentErrors.BusinessNotAuthorizedForBranch(
+                business.BusinessName, student.BranchName));
 
         var placement = new InternshipPlacement
         {

@@ -35,6 +35,20 @@ export interface SectorDto {
   slug: string
 }
 
+/** İşletmenin bir alandan öğrenci alma yetkisi — iptal edilenler de listelenir (#119). */
+export interface BranchAuthorizationDto {
+  branchCode: string
+  basedOnDocumentId: string | null
+  authorizedAt: string
+  authorizedBy: string
+  revokedAt: string | null
+  isActive: boolean
+}
+
+export interface AuthorizeBranchesRequest {
+  branches: { branchCode: string; basedOnDocumentId?: string | null }[]
+}
+
 export interface BusinessDto {
   id: string
   name: string
@@ -52,6 +66,9 @@ export interface BusinessDto {
   representatives: BusinessRepresentativeDto[]
   documents: BusinessDocumentDto[]
   sectors: SectorDto[]
+  authorizedBranches: BranchAuthorizationDto[]
+  /** Yalnız aktif (iptal edilmemiş) alan kodları — boş liste "öğrenci alamaz" demektir. */
+  activeBranchCodes: string[]
   createdAt: string
   approvedAt: string | null
   closedAt: string | null
@@ -84,7 +101,7 @@ export interface UpdateCapacityRequest {
 }
 
 export const businessApi = {
-  list: (params?: { status?: string; sector?: string } & PaginationParams) =>
+  list: (params?: { status?: string; sector?: string; branchCode?: string } & PaginationParams) =>
     api.get<PagedResponse<BusinessDto>>('/businesses', { params }),
 
   sectors: () => api.get<SectorDto[]>('/businesses/sectors'),
@@ -131,6 +148,10 @@ export const businessApi = {
 
   approveDocument: (businessId: string, documentId: string) =>
     api.post(`/businesses/${businessId}/documents/${documentId}/approve`),
+
+  /** Alan yetkilerini NİHAİ liste olarak yazar — gönderilmeyen mevcut yetkiler iptal edilir. */
+  authorizeBranches: (businessId: string, data: AuthorizeBranchesRequest) =>
+    api.put(`/businesses/${businessId}/branch-authorizations`, data),
 
   searchNearby: (latitude: number, longitude: number, radiusKm: number) =>
     api.get<BusinessDto[]>('/businesses/nearby', { params: { latitude, longitude, radiusKm } }),
