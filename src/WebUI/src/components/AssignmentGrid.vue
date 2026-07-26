@@ -73,7 +73,9 @@
                 size="16px"
                 color="positive"
               />
-              <span class="text-caption text-positive">Boş</span>
+              <!-- -strong ton şart: düz `text-positive` (#2e7d5b) .cell-free zemininde
+                   (#e2ede8) 4,17:1 veriyor — metin eşiği 4,5:1'in altında. -strong 5,38:1. -->
+              <span class="text-caption text-positive-strong">Boş</span>
             </div>
 
             <!-- Boş + atanmış — İşletme chip -->
