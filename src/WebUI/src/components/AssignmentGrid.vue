@@ -418,12 +418,15 @@ function onRemoveClick(day: string, period: number) {
   background: #f5f5f5;
 }
 
+/* Ham Material tonları yerine tema türevi (#104): tema değişince hücre zeminleri de kayar. */
 .cell-free {
-  background: #e8f5e9;
+  background: #e2ede8;
+  background: color-mix(in srgb, var(--q-positive) 14%, #fff);
 }
 
 .cell-assigned {
-  background: #e3f2fd;
+  background: #e8edf1;
+  background: color-mix(in srgb, var(--q-info) 12%, #fff);
 }
 
 .occupied-cell {
@@ -462,13 +465,16 @@ function onRemoveClick(day: string, period: number) {
 }
 
 .drop-zone:not(.drop-zone--disabled):hover {
-  border-color: #a5d6a7;
+  border-color: #a1c4b5;
+  border-color: color-mix(in srgb, var(--q-positive) 45%, #fff);
   opacity: 1;
 }
 
 .drop-zone--active {
-  border-color: #66bb6a !important;
-  background: #c8e6c9 !important;
+  border-color: #77aa94 !important;
+  border-color: color-mix(in srgb, var(--q-positive) 65%, #fff) !important;
+  background: #cbded6 !important;
+  background: color-mix(in srgb, var(--q-positive) 25%, #fff) !important;
   opacity: 1 !important;
 }
 
@@ -488,7 +494,8 @@ function onRemoveClick(day: string, period: number) {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: #bbdefb;
+  background: #d5dee5;
+  background: color-mix(in srgb, var(--q-info) 22%, #fff);
   border-radius: 6px;
   padding: 4px 8px;
   min-height: 32px;

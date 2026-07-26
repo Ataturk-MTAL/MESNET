@@ -1277,8 +1277,11 @@ onMounted(async () => {
 }
 
 .business-card {
-  background: #fff8e1;
-  border: 1px solid #ffe082;
+  /* Ham amber yerine tema türevi warning tonu (#104). */
+  background: #f5f0e6;
+  background: color-mix(in srgb, var(--q-warning) 10%, #fff);
+  border: 1px solid #dccba6;
+  border-color: color-mix(in srgb, var(--q-warning) 35%, #fff);
   border-radius: 8px;
   padding: 10px 12px;
   cursor: grab;
@@ -1291,7 +1294,8 @@ onMounted(async () => {
 
 .business-card:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  border-color: #ffb74d;
+  border-color: #c7ae73;
+  border-color: color-mix(in srgb, var(--q-warning) 55%, #fff);
   transform: translateY(-1px);
 }
 
