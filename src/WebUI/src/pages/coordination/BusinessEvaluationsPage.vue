@@ -45,7 +45,7 @@
       transition-hide="slide-down"
     >
       <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-teal text-white">
+        <q-toolbar class="bg-positive text-white">
           <q-icon
             name="rate_review"
             class="q-mr-sm"
@@ -143,7 +143,7 @@
           />
           <q-btn
             unelevated
-            color="teal"
+            color="positive"
             label="Kaydet"
             :loading="saving"
             @click="createEvaluation"

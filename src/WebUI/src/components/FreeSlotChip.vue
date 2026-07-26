@@ -3,7 +3,7 @@
     <!-- Atanmış slot sayısı -->
     <span
       v-if="assigned > 0"
-      :class="['bg-blue-2', 'text-blue-9', 'q-px-xs', 'rounded-borders', 'text-caption', 'text-weight-bold']"
+      :class="['bg-info-soft', 'text-info-strong', 'q-px-xs', 'rounded-borders', 'text-caption', 'text-weight-bold']"
       style="min-width: 20px; display: inline-block; text-align: center"
     >
       {{ assigned }}
@@ -32,14 +32,14 @@ const props = withDefaults(defineProps<{
 })
 
 const bgColor = computed(() => {
-  if (props.free === 0) return 'red-2'
-  if (props.free <= 1) return 'orange-2'
-  return 'green-2'
+  if (props.free === 0) return 'negative-soft'
+  if (props.free <= 1) return 'warning-soft'
+  return 'positive-soft'
 })
 
 const textColor = computed(() => {
-  if (props.free === 0) return 'red-9'
-  if (props.free <= 1) return 'orange-9'
-  return 'green-9'
+  if (props.free === 0) return 'negative-strong'
+  if (props.free <= 1) return 'warning-strong'
+  return 'positive-strong'
 })
 </script>

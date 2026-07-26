@@ -26,6 +26,15 @@ public static class BusinessMappingExtensions
         entity.ApprovedAt,
         entity.ClosedAt);
 
+    /// <summary>
+    /// Olaylarla dışa taşınan "İşletme Yetkilisi" adı — ilk yetkilendirilmiş temsilci (#99).
+    /// Temsilci yoksa null döner; tüketen modüller alanı opsiyonel olarak ele alır.
+    /// </summary>
+    public static string? PrimaryRepresentativeName(this Core.Entities.Business entity) =>
+        entity.Representatives
+            .OrderBy(r => r.AuthorizedAt)
+            .FirstOrDefault()?.FullName;
+
     public static SectorDto ToSectorDto(this string sectorName) =>
         BusinessSector.TryFromName(sectorName, true, out var sector)
             ? new SectorDto(sector.Name, sector.Slug)

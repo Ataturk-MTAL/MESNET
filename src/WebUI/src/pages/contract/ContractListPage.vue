@@ -68,14 +68,14 @@
         <q-td>
           <q-icon
             :name="row.institutionSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.institutionSignature.isSigned ? 'green-7' : 'grey-4'"
+            :color="row.institutionSignature.isSigned ? 'positive' : 'grey-4'"
             size="xs"
           >
             <q-tooltip>Kurum{{ row.institutionSignature.signedBy ? ': ' + row.institutionSignature.signedBy : '' }}</q-tooltip>
           </q-icon>
           <q-icon
             :name="row.businessSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.businessSignature.isSigned ? 'green-7' : 'grey-4'"
+            :color="row.businessSignature.isSigned ? 'positive' : 'grey-4'"
             size="xs"
             class="q-ml-xs"
           >
@@ -83,7 +83,7 @@
           </q-icon>
           <q-icon
             :name="row.studentSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.studentSignature.isSigned ? 'green-7' : 'grey-4'"
+            :color="row.studentSignature.isSigned ? 'positive' : 'grey-4'"
             size="xs"
             class="q-ml-xs"
           >
@@ -91,7 +91,7 @@
           </q-icon>
           <q-icon
             :name="row.parentSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.parentSignature.isSigned ? 'green-7' : 'grey-4'"
+            :color="row.parentSignature.isSigned ? 'positive' : 'grey-4'"
             size="xs"
             class="q-ml-xs"
           >
@@ -179,7 +179,7 @@
               >
                 <q-icon
                   :name="sig.dto.isSigned ? 'check_circle' : 'pending'"
-                  :color="sig.dto.isSigned ? 'green-7' : 'grey-4'"
+                  :color="sig.dto.isSigned ? 'positive' : 'grey-4'"
                   size="36px"
                 />
                 <div class="text-caption text-weight-medium q-mt-xs">
@@ -225,7 +225,7 @@
                 <q-item-section avatar>
                   <q-icon
                     name="picture_as_pdf"
-                    color="red-7"
+                    color="negative"
                   />
                 </q-item-section>
                 <q-item-section>
@@ -253,7 +253,7 @@
         <!-- Fesih talebi bekliyor banner -->
         <q-banner
           v-if="selected.status === 'TerminationRequested'"
-          class="q-mb-md text-white bg-deep-orange-9 rounded-borders"
+          class="q-mb-md text-white bg-warning rounded-borders"
           dense
         >
           <template #avatar>
@@ -271,7 +271,7 @@
         <!-- Feshedildi bilgisi -->
         <q-banner
           v-if="selected.terminationReason && selected.status === 'Terminated'"
-          class="q-mb-md text-white bg-deep-orange-7 rounded-borders"
+          class="q-mb-md text-white bg-negative rounded-borders"
           dense
         >
           <template #avatar>
@@ -302,7 +302,7 @@
             />
             <q-btn
               v-if="selected.status === 'AwaitingSignature'"
-              color="teal"
+              color="positive"
               icon="draw"
               label="İmzala"
               unelevated
@@ -311,7 +311,7 @@
             />
             <q-btn
               v-if="selected.status === 'AwaitingSignature'"
-              color="green"
+              color="positive"
               icon="play_arrow"
               label="Aktifleştir"
               unelevated
@@ -323,7 +323,7 @@
           <PermissionGuard :permission="Permissions.Internship.Manage">
             <q-btn
               v-if="selected.status === 'Active'"
-              color="orange"
+              color="warning"
               icon="pause"
               label="Askıya Al"
               unelevated
@@ -332,7 +332,7 @@
             />
             <q-btn
               v-if="selected.status === 'Suspended'"
-              color="green"
+              color="positive"
               icon="play_arrow"
               label="Devam Ettir"
               unelevated
@@ -350,7 +350,7 @@
             />
             <q-btn
               v-if="selected.status === 'Active'"
-              color="purple"
+              color="secondary"
               icon="done_all"
               label="Tamamla"
               unelevated
@@ -371,7 +371,7 @@
                 @click="terminateDialog = true"
               />
               <q-btn
-                color="teal"
+                color="positive"
                 icon="thumb_down"
                 label="Talebi Reddet"
                 unelevated
@@ -385,7 +385,7 @@
           <PermissionGuard :permission="Permissions.Company.Student">
             <q-btn
               v-if="selected.status === 'Active' || selected.status === 'Suspended'"
-              color="deep-orange"
+              color="negative"
               icon="report"
               label="Fesih Talebi Oluştur"
               outline
@@ -485,8 +485,8 @@
             >
               <q-item-section avatar>
                 <q-avatar
-                  color="red-1"
-                  text-color="red-8"
+                  color="negative-soft"
+                  text-color="negative-strong"
                   icon="picture_as_pdf"
                 />
               </q-item-section>

@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Business.Application.Commands;
+using MESNET.Business.Application.Extensions;
 using MESNET.Business.Shared.Events;
 using Wolverine;
 using BusinessEntity = MESNET.Business.Core.Entities.Business;
@@ -26,7 +27,8 @@ public static class ResyncBusinessProjectionsHandler
                 business.PhoneNumber,
                 business.Email,
                 business.MasterInstructor?.FullName,
-                business.PersonnelCount));
+                business.PersonnelCount,
+                business.PrimaryRepresentativeName()));
         }
 
         return new ResyncBusinessProjectionsResult(businesses.Count);

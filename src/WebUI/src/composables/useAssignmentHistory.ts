@@ -45,11 +45,11 @@ export function useAssignmentHistory(options: UseAssignmentHistoryOptions) {
 
   function historyColor(action: string): string {
     switch (action) {
-      case 'Assigned': return 'green'
-      case 'SlotAdded': return 'blue'
-      case 'SlotRemoved': return 'orange'
-      case 'Unassigned': return 'red'
-      case 'HoursUpdated': return 'teal'
+      case 'Assigned': return 'positive'
+      case 'SlotAdded': return 'info'
+      case 'SlotRemoved': return 'warning'
+      case 'Unassigned': return 'negative'
+      case 'HoursUpdated': return 'secondary'
       default: return 'grey'
     }
   }

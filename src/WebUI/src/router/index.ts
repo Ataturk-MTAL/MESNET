@@ -175,6 +175,14 @@ const router = createRouter({
         },
 
         // İşletme Dağıtımı
+        // İşletme Saat Ayarları — dağıtımın ön koşulu (saat takdiri + harita)
+        {
+          path: 'coordination/business-hours',
+          name: 'BusinessHours',
+          component: () => import('pages/coordination/BusinessHoursPage.vue'),
+          meta: { permissions: ['department:distribution:manage'] },
+        },
+
         {
           path: 'coordination/assignments',
           name: 'BusinessAssignment',

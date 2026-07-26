@@ -388,7 +388,7 @@
             <template #body-cell-roleSlug="{ row }">
               <q-td>
                 <q-badge
-                  color="blue-grey"
+                  color="neutral"
                   :label="row.roleSlug"
                 />
               </q-td>
@@ -440,7 +440,7 @@
             <template #body-cell-status="{ row }">
               <q-td>
                 <q-badge
-                  :color="row.status === 'Active' ? 'green-7' : 'grey-5'"
+                  :color="row.status === 'Active' ? 'positive' : 'grey-5'"
                   :label="row.statusSlug"
                 />
               </q-td>
@@ -458,7 +458,7 @@
               <q-td>
                 <q-badge
                   v-if="row.gradeEntryStartDate && row.gradeEntryEndDate"
-                  color="teal-7"
+                  color="positive"
                   :label="`${formatDate(row.gradeEntryStartDate)} – ${formatDate(row.gradeEntryEndDate)}`"
                 />
                 <span
@@ -477,7 +477,7 @@
                     size="sm"
                     icon="event_available"
                     label="Not Girişi"
-                    color="teal-8"
+                    color="positive"
                     @click="openGradeWindowDialog(row)"
                   >
                     <q-tooltip>Dönem sonu not giriş penceresini aç/güncelle</q-tooltip>
@@ -491,7 +491,7 @@
                     size="sm"
                     icon="lock"
                     label="Kapat"
-                    color="orange-8"
+                    color="warning"
                     @click="confirmClosePeriod(row)"
                   />
                 </PermissionGuard>
@@ -772,7 +772,7 @@ function confirmClosePeriod(period: AcademicPeriodDto) {
     title: 'Dönemi Kapat',
     message: `"${period.name}" dönemini kapatmak istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
     okLabel: 'Kapat',
-    okColor: 'orange-8',
+    okColor: 'warning',
     onOk: async () => {
       saving.value = true
       try {

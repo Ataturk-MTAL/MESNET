@@ -3,7 +3,7 @@
     v-model="open"
     title="Personel Yetkilendir"
     icon="person_add"
-    color="teal"
+    color="primary"
     save-label="Yetkilendir"
     :saving="saving"
     :save-disabled="!form.keycloakUserId || !form.role"

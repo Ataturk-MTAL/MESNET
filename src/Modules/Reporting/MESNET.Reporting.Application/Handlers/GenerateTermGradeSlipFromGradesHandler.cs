@@ -4,6 +4,7 @@ using MESNET.Reporting.Application.Commands;
 using MESNET.Reporting.Application.Errors;
 using MESNET.Reporting.Core.Models;
 using MESNET.Reporting.Core.ReadModels;
+using MESNET.Reporting.Core.Utilities;
 using Wolverine;
 
 namespace MESNET.Reporting.Application.Handlers;
@@ -27,6 +28,12 @@ public static class GenerateTermGradeSlipFromGradesHandler
             .Where(p => p.StudentId == command.StudentId && p.AcademicPeriodId == command.AcademicPeriodId)
             .FirstOrDefaultAsync(ct);
 
+        // İşletme iletişim/yetkili bilgisi — Business olaylarından beslenen yerel read-model (#99).
+        // Placement'taki kopya, işletme olayı yerleştirmeden önce geldiyse boş kalabildiği için asıl kaynak budur.
+        var businessContact = await session.LoadAsync<BusinessContactReportView>(grades.BusinessId, ct);
+
+        var termAverage = ComputeAverage(grades, command.MakeupTrainingScore, command.SkillCompetitionScore);
+
         var data = new TermGradeSlipFormData
         {
             StudentId = command.StudentId,
@@ -36,9 +43,9 @@ public static class GenerateTermGradeSlipFromGradesHandler
             InstitutionName = command.InstitutionName,
             AcademicYear = command.AcademicYear,
             Semester = command.Semester,
-            BusinessName = placement?.BusinessName ?? string.Empty,
-            BusinessPhone = placement?.BusinessPhone,
-            BusinessEmail = placement?.BusinessEmail,
+            BusinessName = businessContact?.BusinessName ?? placement?.BusinessName ?? string.Empty,
+            BusinessPhone = businessContact?.PhoneNumber ?? placement?.BusinessPhone,
+            BusinessEmail = businessContact?.Email ?? placement?.BusinessEmail,
             StudentNumber = placement?.StudentNumber ?? string.Empty,
             StudentFullName = placement?.StudentName ?? string.Empty,
             BranchName = placement?.BranchName ?? string.Empty,
@@ -48,15 +55,30 @@ public static class GenerateTermGradeSlipFromGradesHandler
             ExperimentGrades = grades.ExperimentGrades,
             MakeupTrainingScore = command.MakeupTrainingScore,
             SkillCompetitionScore = command.SkillCompetitionScore,
-            TermAverage = ComputeAverage(grades, command.MakeupTrainingScore, command.SkillCompetitionScore),
-            MasterInstructorName = grades.MasterInstructorName,
-            BusinessOfficialName = placement?.BusinessContactName,
+            TermAverage = termAverage,
+            TermAverageInWords = FormatAverageInWords(termAverage),
+            MasterInstructorName = grades.MasterInstructorName ?? businessContact?.MasterInstructorName,
+            BusinessOfficialName = businessContact?.RepresentativeName,
             VicePrincipalName = command.VicePrincipalName,
             PrincipalName = command.PrincipalName,
         };
 
         // Mevcut üretim/depolama (MinIO + GeneratedDocument) yolunu yeniden kullan (aynı modül)
         return await bus.InvokeAsync<Guid>(new GenerateTermGradeSlipDocument(data, command.User));
+    }
+
+    /// <summary>
+    /// "Ort. (Yazı ile)" hücresi — KARAR (#99): yalnız tam sayı kısmı yazılır, ondalık atılır.
+    /// Bozuk veriyle (0–999 dışı ortalama) belge üretimi patlamasın; hücre boş bırakılır.
+    /// </summary>
+    private static string? FormatAverageInWords(decimal? average)
+    {
+        if (!average.HasValue) return null;
+
+        var wholePart = (int)Math.Floor(average.Value);
+        return wholePart is >= TurkishNumberWords.MinSupportedValue and <= TurkishNumberWords.MaxSupportedValue
+            ? TurkishNumberWords.ToWords(wholePart)
+            : null;
     }
 
     // Otomatik dönem ortalaması — 4 işletme kategorisi + okul-payı (*) puanlar dahil

@@ -41,7 +41,7 @@
             </div>
             <div
               v-else
-              class="text-caption text-green-8"
+              class="text-caption text-positive-strong"
             >
               Boş
             </div>
@@ -62,16 +62,16 @@
       </q-chip>
       <q-chip
         icon="event_available"
-        color="green-1"
-        text-color="green-8"
+        color="positive-soft"
+        text-color="positive-strong"
         dense
       >
         Boş: {{ freeCount }}
       </q-chip>
       <q-chip
         icon="calendar_today"
-        color="blue-1"
-        text-color="blue-8"
+        color="info-soft"
+        text-color="info-strong"
         dense
       >
         Toplam: {{ totalSlots }}
@@ -115,7 +115,7 @@ function isOccupied(dayValue: string, periodNumber: number): boolean {
 function cellClass(dayValue: string, periodNumber: number): string {
   const occupied = isOccupied(dayValue, periodNumber)
   const base = props.editing ? 'cursor-pointer ' : ''
-  return base + (occupied ? 'bg-grey-2' : 'bg-green-1')
+  return base + (occupied ? 'bg-grey-2' : 'bg-positive-soft')
 }
 
 function onCellClick(dayValue: string, periodNumber: number) {

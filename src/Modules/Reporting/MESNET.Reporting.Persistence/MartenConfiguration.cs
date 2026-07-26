@@ -45,6 +45,10 @@ public class ReportingMartenConfig : IConfigureMarten
             .Index(x => new { x.InstitutionId, x.AcademicPeriodId, x.BusinessId },
                 x => x.Name = "idx_plc_rpt_inst_period_biz");
 
+        // BusinessContactReportView — işletme iletişim + yetkili bilgisi (Form 8 kaynağı, #99).
+        // Id = BusinessId olduğundan ek index gerekmiyor; erişim daima LoadAsync ile.
+        options.Schema.For<BusinessContactReportView>().DatabaseSchemaName("reporting");
+
         // StudentTermGradeView — işletmenin gönderdiği dönem notları (Form 8 / Dönem Not Fişi kaynağı)
         options.Schema.For<StudentTermGradeView>().DatabaseSchemaName("reporting");
         options.Schema.For<StudentTermGradeView>()

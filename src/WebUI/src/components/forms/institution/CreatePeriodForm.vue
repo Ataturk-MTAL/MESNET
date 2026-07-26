@@ -3,7 +3,7 @@
     v-model="open"
     title="Yeni Akademik Dönem"
     icon="date_range"
-    color="indigo"
+    color="primary"
     save-label="Oluştur"
     :saving="saving"
     :save-disabled="!form.name || !form.startYear || !form.endYear || !form.startDate || !form.endDate"

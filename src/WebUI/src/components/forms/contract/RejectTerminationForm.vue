@@ -3,7 +3,7 @@
     v-model="open"
     title="Fesih Talebini Reddet"
     icon="thumb_down"
-    color="teal"
+    color="positive"
     width="440px"
     save-label="Talebi Reddet"
     :saving="saving"

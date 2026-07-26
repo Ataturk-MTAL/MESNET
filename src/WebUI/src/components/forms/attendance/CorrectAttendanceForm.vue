@@ -3,7 +3,7 @@
     v-model="open"
     title="Devamsızlık Düzelt"
     icon="edit_calendar"
-    color="orange"
+    color="warning"
     width="400px"
     save-label="Düzelt"
     :saving="saving"

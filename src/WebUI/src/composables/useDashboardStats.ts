@@ -2,6 +2,7 @@ import { ref, reactive, computed } from 'vue'
 import type { EChartsOption } from 'echarts'
 import type { useAuthStore } from 'stores/auth'
 import { Permissions } from 'utils/permissions'
+import { statusTone, NEUTRAL_GREY } from 'utils/themeColors'
 import { enrollmentApi } from 'src/api/enrollment'
 import { businessApi } from 'src/api/business'
 import { contractApi } from 'src/api/contract'
@@ -23,12 +24,15 @@ const STUDENT_STATUS_LABELS: Record<string, string> = {
   Completed: 'Tamamladı',
 }
 
-const STUDENT_STATUS_COLORS: Record<string, string> = {
-  Registered: '#9E9E9E',
-  Applied: '#2196F3',
-  Placed: '#9C27B0',
-  ActiveInternship: '#4CAF50',
-  Completed: '#009688',
+// Grafik renkleri tema değişkeninden türer (#104) ve StatusBadge tonlarıyla eşleşir —
+// aynı durum listede ve grafikte aynı renkte görünsün. Fonksiyon olarak çağrılıyor,
+// çünkü modül yüklenirken CSS henüz uygulanmamış olabilir.
+const STUDENT_STATUS_COLORS: Record<string, () => string> = {
+  Registered: () => NEUTRAL_GREY,
+  Applied: statusTone.pending,
+  Placed: statusTone.progress,
+  ActiveInternship: statusTone.active,
+  Completed: statusTone.success,
 }
 
 const CONTRACT_STATUS_LABELS: Record<string, string> = {
@@ -40,13 +44,13 @@ const CONTRACT_STATUS_LABELS: Record<string, string> = {
   Completed: 'Tamamlandı',
 }
 
-const CONTRACT_STATUS_COLORS: Record<string, string> = {
-  Draft: '#9E9E9E',
-  AwaitingSignature: '#FF9800',
-  Active: '#4CAF50',
-  Suspended: '#FF5722',
-  Terminated: '#F44336',
-  Completed: '#009688',
+const CONTRACT_STATUS_COLORS: Record<string, () => string> = {
+  Draft: () => NEUTRAL_GREY,
+  AwaitingSignature: statusTone.pending,
+  Active: statusTone.active,
+  Suspended: statusTone.warning,
+  Terminated: statusTone.negative,
+  Completed: statusTone.success,
 }
 
 export function useDashboardStats(options: UseDashboardStatsOptions) {
@@ -85,7 +89,7 @@ export function useDashboardStats(options: UseDashboardStatsOptions) {
     const data = Object.entries(grouped).map(([status, count]) => ({
       name: STUDENT_STATUS_LABELS[status] ?? status,
       value: count,
-      itemStyle: { color: STUDENT_STATUS_COLORS[status] ?? '#607D8B' },
+      itemStyle: { color: (STUDENT_STATUS_COLORS[status] ?? (() => NEUTRAL_GREY))() },
     }))
 
     if (data.length === 0) return
@@ -120,7 +124,7 @@ export function useDashboardStats(options: UseDashboardStatsOptions) {
       if (grouped[status]) {
         categories.push(CONTRACT_STATUS_LABELS[status] ?? status)
         values.push(grouped[status])
-        colors.push(CONTRACT_STATUS_COLORS[status] ?? '#607D8B')
+        colors.push((CONTRACT_STATUS_COLORS[status] ?? (() => NEUTRAL_GREY))())
       }
     }
 

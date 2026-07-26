@@ -55,8 +55,8 @@
               v-for="perm in role.permissions"
               :key="perm"
               dense
-              color="blue-grey-1"
-              text-color="blue-grey-9"
+              color="neutral-soft"
+              text-color="neutral-strong"
               class="q-ma-xs"
               size="sm"
             >

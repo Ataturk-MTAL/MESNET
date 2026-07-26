@@ -3,7 +3,7 @@
     v-model="open"
     title="Öğrenci Yerleştir"
     icon="place"
-    color="teal"
+    color="positive"
     save-label="Yerleştir"
     :saving="saving"
     @save="handleSave"

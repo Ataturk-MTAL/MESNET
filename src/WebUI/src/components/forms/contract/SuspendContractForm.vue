@@ -3,7 +3,7 @@
     v-model="open"
     title="Sözleşmeyi Askıya Al"
     icon="pause_circle"
-    color="orange"
+    color="warning"
     width="420px"
     save-label="Askıya Al"
     :saving="saving"

@@ -77,8 +77,11 @@ const menuDefinition: NavGroup[] = [
     permissions: [],
     children: [
       { title: 'Ders Programı', icon: 'calendar_month', to: { name: 'TeacherSchedule' }, permissions: ['coordinator:schedule:manage'] },
-      { title: 'İşletme Dağıtımı', icon: 'assignment_ind', to: { name: 'BusinessAssignment' }, permissions: ['department:distribution:manage'] },
+      // Sıra iş akışını yansıtır: havuz hesaplanır -> saat takdir edilir -> dağıtım yapılır.
+      // Saat takdiri dağıtımın ön koşulu; dağıtılabilir saatin üst sınırı havuzdan gelir.
       { title: 'Ders Yükü Havuzu', icon: 'calculate', to: { name: 'WorkloadConfig' }, permissions: ['department:distribution:manage'] },
+      { title: 'İşletme Saat Ayarları', icon: 'schedule', to: { name: 'BusinessHours' }, permissions: ['department:distribution:manage'] },
+      { title: 'İşletme Dağıtımı', icon: 'assignment_ind', to: { name: 'BusinessAssignment' }, permissions: ['department:distribution:manage'] },
       { title: 'Haftalık Ziyaretler', icon: 'event_note', to: { name: 'WeeklyVisits' }, permissions: ['department:weekly-visit:manage'] },
       { title: 'Değerlendirmeler', icon: 'rate_review', to: { name: 'BusinessEvaluations' }, permissions: ['coordinator:visit:manage'] },
       { title: 'Beceri Sınavları', icon: 'quiz', to: { name: 'SkillExams' }, permissions: ['coordinator:visit:manage'] },

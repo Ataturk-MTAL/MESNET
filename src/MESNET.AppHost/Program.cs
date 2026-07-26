@@ -34,7 +34,10 @@ var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitmqUser, password:
 // Keycloak proxy AÇIK kalır: çift http(8080)/https(8443) portu nedeniyle proxy kapatılınca
 // host:8080 yanlışlıkla HTTPS'e (8443) bağlanıyor → ERR_EMPTY_RESPONSE. Proxy'de 8080→8080 HTTP doğru.
 var keycloak = builder.AddKeycloak("keycloak", port: 8080, adminPassword: keycloakPassword)
-    .WithImageTag("26.6")  // latest keycloak; HTTP/HTTPS sorunu image değil Aspire.Hosting.Keycloak sürümünden
+    // Dev, CI ve docker-compose AYNI Keycloak sürümünde tutulur — sürüm sapması, birinde
+    // görünmeyen hatayı diğerinde doğurur. Önceden dev 26.6, CI ve compose 26.0 idi.
+    // Not: HTTP/HTTPS sorunu image değil Aspire.Hosting.Keycloak sürümünden geliyor.
+    .WithImageTag("26.7.0")
     .WithRealmImport("./keycloak")
     .WithBindMount("./keycloak/themes/mesnet", "/opt/keycloak/themes/mesnet")
     .WithDataVolume()

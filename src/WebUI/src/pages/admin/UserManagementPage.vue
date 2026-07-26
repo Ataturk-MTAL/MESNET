@@ -77,7 +77,7 @@
               <q-badge
                 v-for="role in row.roles.slice(0, 2)"
                 :key="role"
-                color="blue-grey"
+                color="neutral"
                 :label="role"
                 class="q-mr-xs"
               />
@@ -145,7 +145,7 @@
           <template #body-cell-status="{ row }">
             <q-td>
               <q-badge
-                :color="row.status === 'Approved' ? 'positive' : row.status === 'PendingApproval' ? 'orange' : row.status === 'Rejected' ? 'negative' : 'grey'"
+                :color="row.status === 'Approved' ? 'positive' : row.status === 'PendingApproval' ? 'warning' : row.status === 'Rejected' ? 'negative' : 'grey'"
                 :label="row.status === 'PendingApproval' ? 'Onay Bekliyor' : row.status === 'Approved' ? 'Onaylandı' : row.status === 'Rejected' ? 'Reddedildi' : row.status === 'Completed' ? 'Tamamlandı' : 'Süresi Doldu'"
               />
             </q-td>
@@ -294,7 +294,7 @@
       transition-hide="slide-down"
     >
       <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-purple text-white">
+        <q-toolbar class="bg-secondary text-white">
           <q-icon
             name="manage_accounts"
             class="q-mr-sm"
@@ -330,7 +330,7 @@
           />
           <q-btn
             unelevated
-            color="purple"
+            color="secondary"
             label="Kaydet"
             :loading="saving"
             @click="saveRoles"

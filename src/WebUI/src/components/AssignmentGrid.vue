@@ -71,9 +71,11 @@
               <q-icon
                 name="add_circle_outline"
                 size="16px"
-                color="green-4"
+                color="positive"
               />
-              <span class="text-caption text-green-6">Boş</span>
+              <!-- -strong ton şart: düz `text-positive` (#2e7d5b) .cell-free zemininde
+                   (#e2ede8) 4,17:1 veriyor — metin eşiği 4,5:1'in altında. -strong 5,38:1. -->
+              <span class="text-caption text-positive-strong">Boş</span>
             </div>
 
             <!-- Boş + atanmış — İşletme chip -->
@@ -101,9 +103,9 @@
                 <q-icon
                   name="business"
                   size="14px"
-                  color="blue-7"
+                  color="info"
                 />
-                <span class="text-caption text-blue-9 ellipsis chip-label">
+                <span class="text-caption text-info-strong ellipsis chip-label">
                   {{ getBusinessName(day.value, period) }}
                 </span>
                 <q-btn
@@ -113,7 +115,7 @@
                   dense
                   icon="close"
                   size="8px"
-                  color="red-5"
+                  color="negative"
                   class="remove-btn"
                   :aria-label="`${getBusinessName(day.value, period)} atamasını kaldır`"
                   @click.stop="onRemoveClick(day.value, period)"
@@ -140,8 +142,8 @@
       </q-chip>
       <q-chip
         icon="event_available"
-        color="green-1"
-        text-color="green-8"
+        color="positive-soft"
+        text-color="positive-strong"
         dense
         size="sm"
       >
@@ -149,8 +151,8 @@
       </q-chip>
       <q-chip
         icon="business"
-        color="blue-1"
-        text-color="blue-8"
+        color="info-soft"
+        text-color="info-strong"
         dense
         size="sm"
       >
@@ -418,12 +420,15 @@ function onRemoveClick(day: string, period: number) {
   background: #f5f5f5;
 }
 
+/* Ham Material tonları yerine tema türevi (#104): tema değişince hücre zeminleri de kayar. */
 .cell-free {
-  background: #e8f5e9;
+  background: #e2ede8;
+  background: color-mix(in srgb, var(--q-positive) 14%, #fff);
 }
 
 .cell-assigned {
-  background: #e3f2fd;
+  background: #e8edf1;
+  background: color-mix(in srgb, var(--q-info) 12%, #fff);
 }
 
 .occupied-cell {
@@ -462,13 +467,16 @@ function onRemoveClick(day: string, period: number) {
 }
 
 .drop-zone:not(.drop-zone--disabled):hover {
-  border-color: #a5d6a7;
+  border-color: #a1c4b5;
+  border-color: color-mix(in srgb, var(--q-positive) 45%, #fff);
   opacity: 1;
 }
 
 .drop-zone--active {
-  border-color: #66bb6a !important;
-  background: #c8e6c9 !important;
+  border-color: #77aa94 !important;
+  border-color: color-mix(in srgb, var(--q-positive) 65%, #fff) !important;
+  background: #cbded6 !important;
+  background: color-mix(in srgb, var(--q-positive) 25%, #fff) !important;
   opacity: 1 !important;
 }
 
@@ -488,7 +496,8 @@ function onRemoveClick(day: string, period: number) {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: #bbdefb;
+  background: #d5dee5;
+  background: color-mix(in srgb, var(--q-info) 22%, #fff);
   border-radius: 6px;
   padding: 4px 8px;
   min-height: 32px;

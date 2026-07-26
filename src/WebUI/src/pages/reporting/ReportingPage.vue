@@ -14,7 +14,7 @@
         />
         <q-btn
           v-if="canGenerate"
-          color="orange"
+          color="warning"
           icon="sync"
           label="Form 3 Verilerini Yenile"
           :loading="resyncing"
@@ -23,7 +23,7 @@
         />
         <q-btn
           v-if="canGenerate && selected.length > 0"
-          color="red"
+          color="negative"
           icon="delete_sweep"
           :label="`Seçilenleri Sil (${selected.length})`"
           :loading="deleting"
@@ -32,7 +32,7 @@
         />
         <q-btn
           v-if="selected.length > 0"
-          color="deep-purple"
+          color="secondary"
           icon="archive"
           :label="`Seçilenleri ZIP İndir (${selected.length})`"
           :loading="zipping"
@@ -132,7 +132,7 @@
         <template #body-cell-formType="{ row }">
           <q-td>
             <q-badge
-              color="blue-grey"
+              color="neutral"
               :label="formTypeLabel(row.formType)"
             />
           </q-td>
@@ -171,7 +171,7 @@
               round
               dense
               icon="print"
-              color="orange"
+              color="warning"
               aria-label="Yazdırıldı Olarak İşaretle"
               @click="markPrinted(row.id)"
             >
@@ -183,7 +183,7 @@
               round
               dense
               icon="assignment_turned_in"
-              color="green"
+              color="positive"
               aria-label="İmzalanıp Teslim Edildi"
               @click="markSignedReturned(row.id)"
             >
@@ -207,7 +207,7 @@
               round
               dense
               icon="delete"
-              color="red"
+              color="negative"
               aria-label="Sil"
               @click="deleteDoc(row.id)"
             >
@@ -283,13 +283,13 @@
             flat
             icon="preview"
             label="Önizle"
-            color="blue"
+            color="info"
             :loading="previewing"
             @click="previewBatchMonthlyAttendance"
           />
           <q-btn
             label="Oluştur"
-            color="teal"
+            color="positive"
             :loading="generating"
             :disable="!batchForm.formType"
             @click="generateBatch"

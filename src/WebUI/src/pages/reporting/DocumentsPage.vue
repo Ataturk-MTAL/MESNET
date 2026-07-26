@@ -47,7 +47,7 @@
             <q-icon
               name="description"
               size="48px"
-              color="teal"
+              color="positive"
             />
             <div class="text-subtitle1 q-mt-sm">
               Sözleşme Belgeleri
@@ -70,7 +70,7 @@
             <q-icon
               name="bar_chart"
               size="48px"
-              color="purple"
+              color="secondary"
             />
             <div class="text-subtitle1 q-mt-sm">
               Raporlar

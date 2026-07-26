@@ -3,7 +3,7 @@
     v-model="open"
     title="Ders Programı Ayarları"
     icon="schedule"
-    color="orange"
+    color="primary"
     width="400px"
     :saving="saving"
     @save="handleSave"

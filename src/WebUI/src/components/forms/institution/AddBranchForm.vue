@@ -3,7 +3,7 @@
     v-model="open"
     title="Alan Ekle"
     icon="add_circle"
-    color="green"
+    color="primary"
     save-label="Aktifleştir"
     :saving="saving"
     :save-disabled="!form.fieldCode"

@@ -249,11 +249,11 @@ const { MODULE_ICONS, recentNotifications, eventLabel, timeAgo } = useDashboardA
 const quickLinks = computed(() => {
   const links = [
     { label: 'Öğrenciler', icon: 'school', color: 'primary', route: '/enrollment/students', permission: Permissions.Student.View },
-    { label: 'Sözleşmeler', icon: 'description', color: 'green', route: '/internship/contracts', permission: Permissions.Internship.Contract },
-    { label: 'Devamsızlık', icon: 'event_available', color: 'orange', route: '/attendance', permission: Permissions.Attendance.View },
-    { label: 'Maaş / Dekont', icon: 'payments', color: 'purple', route: '/salary', permission: Permissions.Salary.View },
-    { label: 'Koordinasyon', icon: 'supervisor_account', color: 'indigo', route: '/coordination', permission: Permissions.Coordinator.Visit },
-    { label: 'Raporlar', icon: 'bar_chart', color: 'blue-grey', route: '/reporting', permission: Permissions.Internship.Report },
+    { label: 'Sözleşmeler', icon: 'description', color: 'secondary', route: '/internship/contracts', permission: Permissions.Internship.Contract },
+    { label: 'Devamsızlık', icon: 'event_available', color: 'info', route: '/attendance', permission: Permissions.Attendance.View },
+    { label: 'Maaş / Dekont', icon: 'payments', color: 'primary', route: '/salary', permission: Permissions.Salary.View },
+    { label: 'Koordinasyon', icon: 'supervisor_account', color: 'secondary', route: '/coordination', permission: Permissions.Coordinator.Visit },
+    { label: 'Raporlar', icon: 'bar_chart', color: 'info', route: '/reporting', permission: Permissions.Internship.Report },
   ]
   return links.filter((l) => authStore.hasPermission(l.permission))
 })
