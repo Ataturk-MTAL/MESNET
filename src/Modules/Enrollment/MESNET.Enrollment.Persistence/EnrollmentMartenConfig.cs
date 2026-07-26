@@ -25,6 +25,8 @@ public class EnrollmentMartenConfig : IConfigureMarten
         options.Schema.For<BusinessProfileView>().DatabaseSchemaName("enrollment");
         options.Schema.For<BusinessProfileView>().Index(x => x.IsActive);
 
+        options.Schema.For<BusinessBranchAuthorizationView>().DatabaseSchemaName("enrollment");
+
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("enrollment");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
     }

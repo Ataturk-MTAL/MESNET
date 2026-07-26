@@ -25,6 +25,11 @@ public static class EnrollmentErrors
     public static Error BusinessCapacityFull =>
         new("Enrollment.BusinessCapacityFull", "İşletme kapasitesi dolu, yerleştirme yapılamaz.");
 
+    public static Error BusinessNotAuthorizedForBranch(string businessName, string branchName) =>
+        new("Enrollment.BusinessNotAuthorizedForBranch",
+            $"'{businessName}' işletmesi '{branchName}' alanından öğrenci almak için yetkili değil. " +
+            "Yerleştirme yapılamaz; önce idarenin belge incelemesiyle alan yetkisi vermesi gerekir.");
+
     public static Error AcademicPeriodNotFound(Guid id) =>
         new("Enrollment.AcademicPeriodNotFound", $"Eğitim dönemi bulunamadı: {id}");
 

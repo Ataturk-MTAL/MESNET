@@ -234,6 +234,89 @@ public static class BusinessSeeder
             Console.WriteLine("  … Enrollment event consumer bekleniyor (5s)...");
             await Task.Delay(TimeSpan.FromSeconds(5));
         }
+
+        await AuthorizeBranchesAsync(api);
+    }
+
+    /// <summary>
+    /// Sektörden alan yetkisi türetir (#119). Alan yetkisi olmayan işletmeye öğrenci
+    /// yerleştirilemediği için demo verisi bu adım olmadan kural dışı kalırdı.
+    /// </summary>
+    private static readonly Dictionary<string, string> SectorToBranch = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ElectricalAndElectronics"] = "EET",
+        ["Energy"] = "EET",
+        ["InformationTechnology"] = "BT",
+        ["Machinery"] = "MTT",
+        ["Metal"] = "MTT",
+        ["Automotive"] = "MTT",
+    };
+
+    private static async Task AuthorizeBranchesAsync(MesnetApiClient api)
+    {
+        var businesses = await api.GetListAsync("/api/businesses?pageSize=500");
+        var authorizedCount = 0;
+
+        foreach (var b in businesses)
+        {
+            if (!b.TryGetProperty("id", out var idEl) || !idEl.TryGetGuid(out var id)) continue;
+
+            var branchCodes = ReadSectorBranchCodes(b);
+            if (branchCodes.Count == 0) continue;
+
+            // Zaten aynı yetkilere sahipse tekrar yazma — seeder idempotent kalsın.
+            if (HasSameActiveBranches(b, branchCodes)) continue;
+
+            var failuresBefore = api.FailureCount;
+            await api.PutAsync($"/api/businesses/{id}/branch-authorizations", new
+            {
+                branches = branchCodes.Select(c => new { branchCode = c }).ToArray()
+            });
+
+            if (api.FailureCount == failuresBefore) authorizedCount++;
+        }
+
+        Console.WriteLine(authorizedCount > 0
+            ? $"  ✓ {authorizedCount} işletmeye alan yetkisi verildi"
+            : "  → Alan yetkileri zaten güncel");
+
+        if (authorizedCount > 0)
+        {
+            Console.WriteLine("  … Alan yetkisi consumer'ı bekleniyor (5s)...");
+            await Task.Delay(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    private static List<string> ReadSectorBranchCodes(System.Text.Json.JsonElement business)
+    {
+        if (!business.TryGetProperty("sectors", out var sectors)
+            || sectors.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return [];
+
+        return sectors.EnumerateArray()
+            .Select(s => s.TryGetProperty("name", out var n) ? n.GetString() : null)
+            .Where(name => name is not null && SectorToBranch.ContainsKey(name))
+            .Select(name => SectorToBranch[name!])
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static bool HasSameActiveBranches(System.Text.Json.JsonElement business, List<string> expected)
+    {
+        if (!business.TryGetProperty("activeBranchCodes", out var codes)
+            || codes.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return false;
+
+        var current = codes.EnumerateArray()
+            .Select(c => c.GetString())
+            .Where(c => c is not null)
+            .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return current.Count == expected.Count
+            && current.Zip(expected).All(pair =>
+                string.Equals(pair.First, pair.Second, StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task SeedBusiness(

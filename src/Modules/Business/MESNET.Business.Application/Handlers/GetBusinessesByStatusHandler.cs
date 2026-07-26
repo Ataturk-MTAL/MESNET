@@ -21,6 +21,13 @@ public static class GetBusinessesByStatusHandler
         if (query.Sector is not null && BusinessSector.TryFromName(query.Sector, true, out var sector))
             queryable = queryable.Where(b => b.Sectors.Any(s => s == sector.Name));
 
+        // Alan yetkisi filtresi — aktif kodların düz string kopyası üzerinden (#119).
+        if (!string.IsNullOrWhiteSpace(query.BranchCode))
+        {
+            var branchCode = query.BranchCode.Trim();
+            queryable = queryable.Where(b => b.ActiveBranchCodes.Any(c => c == branchCode));
+        }
+
         queryable = queryable.ApplySearch(query.Search, b => b.Name, b => b.Address);
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: b => b.Name);
 

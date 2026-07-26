@@ -47,9 +47,16 @@
         </q-item>
       </template>
       <template #no-option>
-        <SelectEmptyOption />
+        <SelectEmptyOption :text="emptyBusinessText" />
       </template>
     </q-select>
+    <div
+      v-if="studentBranchCode && businessOpts.allOptions.value.length === 0 && !businessOpts.loading.value"
+      class="text-caption text-grey q-mt-sm"
+    >
+      Bu alandan öğrenci almaya yetkili işletme yok. İdare, işletmenin belgelerini inceleyip
+      alan yetkisi verdikten sonra yerleştirme yapılabilir.
+    </div>
     <TeacherSelector
       v-model="form.teacherId"
       label="Koordinatör Öğretmen (opsiyonel)"
@@ -58,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { enrollmentApi } from 'src/api/enrollment'
 import { placementSchema } from 'src/schemas/student'
 import { useNotify } from 'src/composables/useNotify'
@@ -73,13 +80,22 @@ const open = defineModel<boolean>({ required: true })
 const props = defineProps<{
   studentId: string
   studentName: string
+  /** Öğrencinin alan kodu — yalnız bu alandan öğrenci almaya yetkili işletmeler listelenir (#119). */
+  studentBranchCode?: string
 }>()
 
 const emit = defineEmits<{ saved: [] }>()
 
 const notify = useNotify()
 const saving = ref(false)
-const businessOpts = useBusinessOptions()
+const studentBranchCode = computed(() => props.studentBranchCode ?? null)
+const businessOpts = useBusinessOptions({ branchCode: studentBranchCode })
+
+const emptyBusinessText = computed(() =>
+  studentBranchCode.value
+    ? `'${studentBranchCode.value}' alanından öğrenci almaya yetkili işletme bulunamadı`
+    : 'Sonuç bulunamadı',
+)
 
 const form = reactive({ businessId: '', teacherId: '' })
 const errors = reactive<Record<string, string>>({})

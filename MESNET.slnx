@@ -81,5 +81,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj"/>
     <Project Path="tests/MESNET.Reporting.UnitTests/MESNET.Reporting.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Business.UnitTests/MESNET.Business.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Enrollment.UnitTests/MESNET.Enrollment.UnitTests.csproj"/>
   </Folder>
 </Solution>

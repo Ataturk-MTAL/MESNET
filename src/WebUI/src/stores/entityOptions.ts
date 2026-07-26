@@ -4,7 +4,7 @@ import { enrollmentApi } from 'src/api/enrollment'
 import { businessApi } from 'src/api/business'
 import { securityApi } from 'src/api/security'
 import type { PagedResponse } from 'src/types/pagination'
-import type { SelectOption } from 'src/composables/useEntityOptions'
+import type { BusinessOption, SelectOption } from 'src/composables/useEntityOptions'
 
 /**
  * Seçim listeleri için merkezi cache (öğrenci / işletme / Keycloak kullanıcı).
@@ -61,7 +61,7 @@ export const useEntityOptionsStore = defineStore('entityOptions', () => {
   }
 
   // ── İşletmeler (onaylı) ──
-  const businesses = ref<SelectOption[]>([])
+  const businesses = ref<BusinessOption[]>([])
   const businessesLoading = ref(false)
   const businessesLoaded = ref(false)
 
@@ -72,10 +72,12 @@ export const useEntityOptionsStore = defineStore('entityOptions', () => {
       const items = await fetchAllItems((page, pageSize) =>
         businessApi.list({ status: 'Approved', page, pageSize }),
       )
-      businesses.value = items.map((b: { name: string; id: string; address: string }) => ({
+      businesses.value = items.map((b) => ({
         label: b.name,
         value: b.id,
         caption: b.address,
+        // Alan yetkisi (#119): yerleştirme ekranı öğrencinin alanına yetkisiz işletmeyi gizler.
+        authorizedBranches: b.activeBranchCodes ?? [],
       }))
       businessesLoaded.value = true
     } finally {

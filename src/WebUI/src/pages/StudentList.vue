@@ -213,6 +213,7 @@
       v-model="placementDialog"
       :student-id="selected?.id ?? ''"
       :student-name="selected?.fullName ?? ''"
+      :student-branch-code="selected?.branchCode ?? ''"
       @saved="afterFormSaved"
     />
     <DeregisterStudentForm
