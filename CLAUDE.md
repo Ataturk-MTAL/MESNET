@@ -593,3 +593,33 @@ Tam kural: `VERSIONING.md`. Özet: SemVer `vMAJOR.MINOR.PATCH` + **minör parite
 (`v0.2.0`, `v0.4.0`). Akış: geliştirme `dev`'de → `dev → main` **PR ile** birleşir → tag
 `vX.Y.Z` **main**'de açılır → GitHub Release (tek minörde `--prerelease`). Tag push'u, imajları
 (API/WebUI/nginx/Docs) GHCR'ye **private** push eden CI'ı tetikler (public yayınlanmaz).
+
+## Yetkilendirme (KESİN KURAL)
+
+**Tüm yetkilendirme permission bazlıdır, rol bazlı DEĞİLDİR.** Roller yalnızca bir
+permission demetine verilen isimdir; erişim kararı her zaman permission'a bakar.
+
+- Uç noktalar `RequireAuthorization(Permissions.X.Y)` ile korunur — `RequireRole` KULLANILMAZ
+- Handler içinde karar gerekiyorsa `ICurrentUserService.HasPermission(...)` kullanılır
+- Frontend'de buton/menü görünürlüğü permission'a bakar, rol adına değil
+- Rol → permission eşleşmesi tek yerde: `src/MESNET.Common.Shared/Security/RolePermissionMap.cs`
+  (wildcard destekli, ör. `department:*`). Kaynak doküman: `src/Docs/docs/actors/permissions.md`
+- Yeni bir yetki gerektiğinde **yeni permission** tanımlanır ve ilgili rollerin listesine
+  eklenir; koda rol adı gömülmez
+
+**Aynı permission'a sahip roller aynı işi yapabilir.** Örnek: işletme koordinatörlük saati
+takdiri `department:distribution:manage` ister; bu izin `InstitutionManager` (okul müdürü),
+`InstitutionStaff` (müdür yardımcısı) ve `DepartmentHead` (alan şefi) rollerinin hepsinde
+`department:*` ile bulunur — üçü de tam yetkilidir.
+
+**Permission erişimi açar, KAPSAMI belirlemez.** "Hangi kurumun/alanın verisi" sorusu ayrı bir
+kontroldür: kurum kapsamı `institution_id` token claim'inden okunur, istekten alınmaz. Alan
+(branş) kapsamı için bugün bir mekanizma YOKTUR — bilinen açık.
+
+### Bu kuralın bilinen istisnaları (teknik borç)
+
+Aşağıdaki üç nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
+
+- `src/Modules/Attendance/MESNET.Attendance.Application/Handlers/MarkAttendanceHandler.cs:55`
+- `src/Modules/Enrollment/MESNET.Enrollment.Application/Handlers/PlacementQueryScope.cs:23-34`
+- `src/WebUI/src/stores/auth.ts:47`

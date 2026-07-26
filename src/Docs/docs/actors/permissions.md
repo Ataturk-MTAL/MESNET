@@ -7,6 +7,52 @@ title: İzin Matrisi
 > **Not:** Blockchain, NFT ve Tenant ile ilgili tüm izinler, roller ve policy'ler Phase 2 kapsamındadır.
 > Phase 1'de bu izinler implementasyona alınmayacaktır.
 
+## Yetkilendirme İlkesi (mimari karar)
+
+**Tüm yetkilendirme permission bazlıdır, rol bazlı değildir.** Rol, bir permission demetine
+verilen isimden ibarettir; erişim kararı her zaman permission'a bakar.
+
+**Gerekçe:** MEB okullarında aynı işi birden çok unvan yapabiliyor — işletme koordinatörlük
+saatini okul müdürü de, yetkili müdür yardımcısı da, alan şefi de takdir edebilir. Rol adına
+göre yazılmış bir kontrol her yeni unvanda koda dokunmayı gerektirir; permission'a göre
+yazılmış kontrol yalnız rol→permission haritasına satır eklemeyi gerektirir.
+
+**Sonuçları:**
+
+- Uç noktalar `RequireAuthorization(Permissions.X.Y)` ile korunur; `RequireRole` kullanılmaz
+- Handler içi kararlarda `ICurrentUserService.HasPermission(...)` kullanılır
+- Frontend'de buton/menü görünürlüğü permission'a bakar, rol adına değil
+- Rol → permission eşleşmesi tek yerde tutulur: `src/MESNET.Common.Shared/Security/RolePermissionMap.cs`
+  (wildcard destekli, ör. `department:*` → `department:` ile başlayan tüm izinler)
+- Yeni yetki gerektiğinde yeni permission tanımlanır ve ilgili rollerin listesine eklenir;
+  koda rol adı gömülmez
+
+**Aynı permission'a sahip roller aynı işi yapar.** İşletme koordinatörlük saati takdiri
+`department:distribution:manage` ister; bu izin üç rolde de `department:*` ile bulunur:
+
+| Rol | Karşılığı | `department:*` |
+|---|---|---|
+| `InstitutionManager` | Okul müdürü | ✅ |
+| `InstitutionStaff` | Müdür yardımcısı | ✅ |
+| `DepartmentHead` | Alan şefi | ✅ |
+
+### Permission erişimi açar, kapsamı belirlemez
+
+"Hangi kurumun/alanın verisi" sorusu ayrı bir kontroldür ve permission ile karıştırılmamalıdır.
+
+- **Kurum kapsamı:** `institution_id` token claim'inden okunur, istekten alınmaz
+- **Alan (branş) kapsamı:** bugün **mekanizma yoktur**. `ICurrentUserService` alan bilgisi
+  taşımıyor ve koordinasyon uçları `branchCode`'u sorgu parametresinden alıyor; bir alan şefi
+  başka alanın saat dağıtımını değiştirebilir. Bilinen açık.
+
+### Bu ilkenin bilinen istisnaları (teknik borç)
+
+Aşağıdaki üç nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
+
+- `src/Modules/Attendance/MESNET.Attendance.Application/Handlers/MarkAttendanceHandler.cs:55`
+- `src/Modules/Enrollment/MESNET.Enrollment.Application/Handlers/PlacementQueryScope.cs:23-34`
+- `src/WebUI/src/stores/auth.ts:47`
+
 ## Ana Roller ve İzinler
 
 ### Temel Roller
