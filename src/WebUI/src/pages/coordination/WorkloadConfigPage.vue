@@ -7,8 +7,10 @@
     <!-- Alan Seçici -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
       <div class="col-12 col-sm-3">
+        <!-- Yazma bağlamı (#126): ders yükü havuzu kaydedilen sayfa — yetkisiz alan listelenmez -->
         <BranchSelector
           v-model="branchFilter"
+          write-context
           @update:model-value="onBranchChange"
         />
       </div>
@@ -267,9 +269,13 @@ function onBranchChange() {
 }
 
 onMounted(() => {
-  // Alan Şefi ise BranchSelector otomatik seçer, onMounted'da yükleme yapılır
-  if (authStore.isDepartmentHead && authStore.user?.branchCode) {
-    branchFilter.value = authStore.user.branchCode
+  // Yazma kapsamı tek alansa BranchSelector otomatik seçer; veriyi burada yükleriz (#126)
+  const scopedBranch = authStore.writableBranchCodes?.length === 1
+    ? authStore.writableBranchCodes[0]
+    : null
+
+  if (scopedBranch) {
+    branchFilter.value = scopedBranch
     loadWorkloadConfig().catch(() => {})
   }
 })

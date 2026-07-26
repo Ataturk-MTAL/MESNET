@@ -19,6 +19,15 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Modules/Coordination/MESNET.Coordination.Core/MESNET.Coordination.Core.csproj" />
+    <!-- Alan kapsamı kontrolü (#126): BranchScopeGuard + handler imzası regresyon testleri -->
+    <ProjectReference Include="../../src/Modules/Coordination/MESNET.Coordination.Application/MESNET.Coordination.Application.csproj" />
+    <!--
+      Application referansı MESNET.Business(.Shared) namespace'ini de getirir; mevcut testlerdeki
+      `Business(...)` yardımcı metodu ile çakışır (CS0118). Extern alias ile bu assembly global
+      namespace'ten çıkarılır — testlerin hiçbirinde Business.Shared tipleri kullanılmıyor.
+    -->
+    <ProjectReference Include="../../src/Modules/Business/MESNET.Business.Shared/MESNET.Business.Shared.csproj"
+                      Aliases="businessshared" />
   </ItemGroup>
 
 </Project>

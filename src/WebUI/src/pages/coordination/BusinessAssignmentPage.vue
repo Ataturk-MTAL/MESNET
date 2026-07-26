@@ -16,8 +16,10 @@
     <!-- Filtreler -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
       <div class="col-12 col-sm-3">
+        <!-- Yazma bağlamı (#126): atama/saat değişikliği yapılan sayfa — yetkisiz alan listelenmez -->
         <BranchSelector
           v-model="branchFilter"
+          write-context
           @update:model-value="onBranchChange"
         />
       </div>
@@ -26,7 +28,7 @@
         <TeacherSelector
           v-model="selectedTeacherId"
           :branch-code="branchFilter"
-          :show-cross-branch="!authStore.isDepartmentHead && !!branchFilter"
+          :show-cross-branch="authStore.canManageAllBranches && !!branchFilter"
           @update:model-value="onTeacherChange"
         />
       </div>
@@ -1061,10 +1063,15 @@ watch(
 onMounted(async () => {
   const instId = authStore.user?.institutionId ?? undefined
 
-  if (authStore.isDepartmentHead && authStore.user?.branchCode) {
-    branchFilter.value = authStore.user.branchCode
+  // Kapsam tek alansa otomatik seç (#126) — karar rol adına değil, yazma kapsamına bakar.
+  const scopedBranch = authStore.writableBranchCodes?.length === 1
+    ? authStore.writableBranchCodes[0]
+    : null
+
+  if (scopedBranch) {
+    branchFilter.value = scopedBranch
     await Promise.all([
-      teacherOpts.reload({ institutionId: instId, branchCode: authStore.user.branchCode }),
+      teacherOpts.reload({ institutionId: instId, branchCode: scopedBranch }),
       loadScheduleConfig(),
     ])
     await loadData()

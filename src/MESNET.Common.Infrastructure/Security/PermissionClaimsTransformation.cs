@@ -37,6 +37,23 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         LIMIT 1
         """;
 
+    /// <summary>
+    /// Personel kaydındaki alan (branş) kodlarını keycloakId ile bulan raw SQL (#126).
+    /// Kullanıcı birden çok alandan sorumlu olabilir → satır kümesi döner.
+    ///
+    /// <para>Branş kodu olmayan personel (okul müdürü, müdür yardımcısı) hiç satır üretmez —
+    /// bu beklenen normal durumdur, eksik veri değildir. Sorgu asla kod uydurmaz.</para>
+    ///
+    /// <para>Institution modülüne proje referansı kullanmaz — schema izolasyonuna uyar.</para>
+    /// </summary>
+    private const string BranchCodesLookupSql = """
+        SELECT DISTINCT s->>'branchCode' AS branch_code
+        FROM institution.mt_doc_institution,
+             LATERAL jsonb_array_elements(data->'staff') AS s
+        WHERE s->>'keycloakId' = @keycloakId
+          AND COALESCE(s->>'branchCode', '') <> ''
+        """;
+
     public PermissionClaimsTransformation(
         IServiceProvider serviceProvider,
         IMemoryCache cache,
@@ -62,6 +79,11 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         // ── Institution claim enrichment ──
         // Token'da institution_id yoksa DB'den staff eşleşmesiyle bul ve claim olarak ekle
         await EnrichInstitutionClaimAsync(principal, sub);
+
+        // ── Alan (branş) kapsamı claim enrichment (#126) ──
+        // Token'da branch_codes yoksa personel kaydından bul ve claim olarak ekle.
+        // Bu yol, Keycloak "unmanaged attribute" kurulumuna bağımlı olmadan kapsamı çalıştırır.
+        await EnrichBranchCodesClaimAsync(principal, sub);
 
         var cacheKey = $"user-permissions:{sub}";
 
@@ -155,6 +177,82 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     {
         cache.Remove($"user-permissions:{keycloakUserId}");
         cache.Remove($"user-institution:{keycloakUserId}");
+        cache.Remove($"user-branch-codes:{keycloakUserId}");
+    }
+
+    /// <summary>
+    /// Token'da <c>branch_codes</c> claim'i yoksa personel kaydından bulup claim olarak ekler (#126).
+    ///
+    /// <para>Token claim'i her zaman önceliklidir: Keycloak öznitelik mapper'ı kurulduğunda
+    /// bu DB yedeği kendiliğinden devre dışı kalır. Mapper kurulmadan da kapsam kontrolü
+    /// çalışır — bilinen <b>unmanaged-attribute</b> tuzağı sistemi kilitlemesin diye.</para>
+    /// </summary>
+    private async Task EnrichBranchCodesClaimAsync(ClaimsPrincipal principal, string keycloakUserId)
+    {
+        if (principal.HasClaim(c => c.Type == BranchCodeClaims.ClaimType))
+            return;
+
+        var cacheKey = $"user-branch-codes:{keycloakUserId}";
+
+        if (!_cache.TryGetValue(cacheKey, out string? joined))
+        {
+            var codes = await LookupBranchCodesAsync(keycloakUserId);
+            joined = string.Join(',', codes);
+            _cache.Set(cacheKey, joined, CacheDuration);
+        }
+
+        if (string.IsNullOrEmpty(joined))
+            return;
+
+        if (principal.Identity is not ClaimsIdentity identity)
+            return;
+
+        foreach (var code in BranchCodeClaims.Parse(joined))
+            identity.AddClaim(new Claim(BranchCodeClaims.ClaimType, code));
+    }
+
+    private async Task<IReadOnlyList<string>> LookupBranchCodesAsync(string keycloakUserId)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var store = scope.ServiceProvider.GetService<Marten.IDocumentStore>();
+            if (store is null)
+                return [];
+
+            var conn = store.Storage.Database.CreateConnection();
+            await conn.OpenAsync();
+            await using (conn)
+            {
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = BranchCodesLookupSql;
+                cmd.Parameters.Add(new NpgsqlParameter("keycloakId", keycloakUserId));
+
+                var codes = new List<string>();
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    if (!reader.IsDBNull(0))
+                        codes.Add(reader.GetString(0));
+                }
+
+                if (codes.Count > 0)
+                {
+                    _logger.LogDebug(
+                        "branch_codes claim eklendi (DB fallback): {KeycloakUserId} → {BranchCodes}",
+                        keycloakUserId, string.Join(", ", codes));
+                }
+
+                return codes;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "branch_codes claim lookup hatası: {KeycloakUserId}", keycloakUserId);
+        }
+
+        return [];
     }
 
     /// <summary>

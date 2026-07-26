@@ -1,5 +1,7 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Coordination.Application.Commands;
+using MESNET.Coordination.Application.Security;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.ReadModels;
 using MESNET.Coordination.Core.Services;
@@ -11,8 +13,13 @@ public static class UpsertBranchWorkloadConfigHandler
     public static async Task Handle(
         UpsertBranchWorkloadConfig command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
+        // Alan ders yükü havuzu, o alanın tüm saat dağıtımının tavanını belirler —
+        // yazma kapsamı alan şefinin kendi alanıyla sınırlıdır (#126).
+        BranchScopeGuard.EnsureCanWrite(currentUser, command.BranchCode);
+
         // Öğrenci sayılarını BranchStudentCountView'dan al
         var countViewId = BranchStudentCountView.CreateId(
             command.InstitutionId, command.AcademicPeriodId, command.BranchCode, command.EducationType);

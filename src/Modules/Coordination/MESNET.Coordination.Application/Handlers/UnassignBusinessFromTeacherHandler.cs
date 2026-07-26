@@ -1,8 +1,10 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Application.Helpers;
+using MESNET.Coordination.Application.Security;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.ReadModels;
 using MESNET.Coordination.Shared.Events;
@@ -14,6 +16,7 @@ public static class UnassignBusinessFromTeacherHandler
     public static async Task<BusinessUnassignedFromTeacher> Handle(
         UnassignBusinessFromTeacher command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
         var view = await CoordinationViewLookup.LoadBranchRowAsync(
@@ -24,6 +27,9 @@ public static class UnassignBusinessFromTeacherHandler
             throw new DomainException(
                 CoordinationErrors.BusinessBranchNotFound(command.BusinessId, command.BranchCode));
         }
+
+        // Kapsam çözümlenmiş satırdan okunur (#126) — bkz. BranchScopeGuard.
+        BranchScopeGuard.EnsureCanWrite(currentUser, view.BranchCode);
 
         if (!view.AssignedTeacherId.HasValue)
             throw new DomainException(CoordinationErrors.BusinessNotAssigned(command.BusinessId));

@@ -127,6 +127,10 @@ public static class Permissions
         public const string Delete = "institution:delete";
         public const string Staff = "institution:staff:manage";
         public const string Report = "institution:report:view";
+        // Kurum genelinde tüm alanların koordinasyon verisine yazma muafiyeti (#126).
+        // "department:" öneki KULLANILMAZ — DepartmentHead'in department:* wildcard'ı
+        // muafiyeti ona da verirdi ve kapsam kontrolü hiç çalışmazdı.
+        public const string AllBranches = "institution:distribution:all-branches";
     }
 
     // Öğrenci İzinleri
@@ -837,3 +841,109 @@ public static class StudentEndpoints
 - OpenID Connect protokolü
 - Role ve permission mapper'lar
 - Token scope yapılandırması
+
+## Alan (Branş) Kapsamı Kontrolü
+
+**Permission erişimi açar, kapsamı belirlemez.** "Hangi kurumun/alanın verisi" sorusu ayrı bir
+kontroldür:
+
+- **Kurum kapsamı:** `institution_id` token claim'inden okunur, istekten alınmaz
+- **Alan (branş) kapsamı:** `branch_codes` token claim'inden okunur (#126)
+
+### Claim: `branch_codes`
+
+Kullanıcının sorumlu olduğu alan kodlarının **listesi**. Liste olmasının nedeni: küçük okullarda
+bir alan şefi birden çok alandan sorumlu olabiliyor.
+
+> **Boş `branch_codes` bir hata değildir.** Herkesin branş kodu olmak zorunda değildir; okul
+> müdürü ve müdür yardımcısı hiçbir alana bağlı değildir ve bu **doğru durumdur**, veri
+> eksikliği değil. Claim yoksa/boşsa doğrulama hatası üretilmez, uyarı gösterilmez, "eksik
+> veri" olarak işaretlenmez. Keycloak tarafında da `branch_codes` **zorunlu alan değildir**
+> (unmanaged, opsiyonel öznitelik).
+>
+> Boş liste yalnız **muafiyeti olmayan** kullanıcı için kısıtlayıcıdır: personel kaydında
+> branş kodu bulunmayan bir alan şefi hiçbir alana yazamaz. Bu, yöneticinin boş listesinden
+> farklı bir durumdur ve düzeltmesi Kurum → Personel ekranından branş kodunun girilmesidir.
+
+Claim iki kaynaktan gelebilir; **token her zaman önceliklidir**:
+
+1. **Keycloak kullanıcı özniteliği** — `branch_codes` özniteliği + `mesnet-api` / `mesnet-web`
+   client'larındaki `branch_codes` protocol mapper'ı (`multivalued: true`)
+2. **Veritabanı yedeği (varsayılan çalışan yol)** — token'da claim yoksa
+   `PermissionClaimsTransformation`, kurum personel kaydından (`institution.mt_doc_institution`
+   → `staff[].branchCode`) okur ve claim olarak ekler. `institution_id` ile birebir aynı desen,
+   5 dakikalık `IMemoryCache` ile.
+
+> **Neden DB yedeği var:** Keycloak realm'inde "unmanaged attributes" kapalıysa kullanıcı
+> öznitelikleri yazılamaz ve claim boş gelir (`business_id` / `institution_id` ile daha önce
+> yaşandı). DB yedeği sayesinde kapsam kontrolü, Keycloak öznitelik kurulumundan bağımsız
+> olarak **ilk günden** çalışır ve tek seferlik dolgu (backfill) gerekmez.
+> Realm dosyasında ayrıca `unmanagedAttributePolicy: ENABLED` tanımlıdır.
+
+### Muafiyet izni: `institution:distribution:all-branches`
+
+Kurum geneli yetkili roller (okul müdürü, müdür yardımcısı) tüm alanları yönetebilmelidir.
+Bu muafiyet **rol adına değil permission'a** bağlıdır.
+
+| Rol | `department:*` | `institution:distribution:all-branches` | Sonuç |
+|---|---|---|---|
+| `InstitutionManager` | ✅ | ✅ (`institution:*` ile) | Tüm alanlara yazar |
+| `InstitutionStaff` | ✅ | ✅ (açık kayıt) | Tüm alanlara yazar |
+| `DepartmentHead` | ✅ | ❌ | Yalnız kendi alan(lar)ına yazar |
+
+> **İsimlendirme tuzağı (dikkat):** Muafiyet izni `department:distribution:all` olarak
+> adlandırılamaz. Üç rolün de `department:*` wildcard'ı vardır; o önekteki her yeni izin
+> **alan şefine de** geçer ve kapsam kontrolü sessizce hiç çalışmaz. Bu yüzden izin
+> `institution:` öneki altındadır. Kilitleyen test:
+> `tests/MESNET.Coordination.UnitTests/BranchScopeExemptionMappingTests.cs`
+
+### Karar tablosu
+
+Saf mantık `MESNET.Common.Shared/Security/BranchScopePolicy.cs` içindedir.
+**Karar sırası: önce muafiyet, sonra liste.** Muafiyet varsa alan listesine hiç bakılmaz —
+liste önce kontrol edilseydi, branşı olmayan yöneticiler kilitlenirdi.
+
+| Muafiyet izni | İstenen alan | Kullanıcının alanları | Yazabilir mi |
+|---|---|---|---|
+| var | herhangi | **boş** (müdür/müdür yrd. — normal) | ✅ |
+| var | herhangi | herhangi | ✅ |
+| yok | `EET` | `[EET]` | ✅ |
+| yok | `EET` | `[EET, MTT]` | ✅ |
+| yok | `MTT` | `[EET]` | ❌ |
+| yok | `EET` | `[]` (branşı girilmemiş alan şefi) | ❌ |
+| yok | boş / null | herhangi | ❌ |
+
+İhlalde `DomainException(Coordination.BranchScopeDenied)` → HTTP 422.
+
+### Okuma açık, yazma kapalı
+
+Kontrol **yalnız yazma uçlarındadır**. Alan şefi başka alanın saat dağıtımını görebilir
+(koordinasyon bütününü görmek işe yarar), değiştiremez.
+
+**Kısıtlanan (yazma) uçları:**
+
+| Uç | Handler |
+|---|---|
+| `PATCH /api/coordination/teachers/assignments/branch-hours` | `UpdateBranchAssignedHoursHandler` |
+| `PATCH /api/coordination/teachers/assignments/{businessId}/hours` | `UpdateBusinessAssignedHoursHandler` |
+| `POST /api/coordination/teachers/assignments` | `AssignBusinessToTeacherHandler` |
+| `DELETE /api/coordination/teachers/assignments/{businessId}` | `UnassignBusinessFromTeacherHandler` |
+| `DELETE /api/coordination/teachers/assignments/{businessId}/slot` | `UnassignBusinessSlotHandler` |
+| `PUT /api/coordination/teachers/branch-workload/{branchCode}` | `UpsertBranchWorkloadConfigHandler` |
+
+**Kısıtlanmayan (okuma) uçları:** `GET /assignments`, `GET /summary`, `GET /overview-all`,
+`GET /business-clusters`, `GET /assignments/suggest-hours`, `GET /branch-workload/{branchCode}`,
+`GET /assignments/{businessId}/history`.
+
+> **Kapsam istekten değil, çözümlenmiş satırdan okunur.** Satır bazlı uçlarda kontrol,
+> istekteki `branchCode` parametresine değil yüklenen `BusinessCoordinationView.BranchCode`
+> değerine bakar — parametre boş bırakılıp eski tek-satır yedeğine düşülerek kontrol
+> atlatılamasın diye.
+
+### Frontend
+
+`BranchSelector` bileşeni `write-context` prop'u ile çalışır: yazma bağlamında kullanıcının
+yazamayacağı alanlar **listelenmez**; kapsam tek alansa seçici yerine salt okunur alan gösterilir.
+Salt görüntüleme/filtre bağlamında (öğrenci listesi, devamsızlık, ödeme) tüm alanlar görünür.
+Karar `authStore.canManageAllBranches` / `authStore.writableBranchCodes` üzerinden verilir —
+rol adına bakılmaz.

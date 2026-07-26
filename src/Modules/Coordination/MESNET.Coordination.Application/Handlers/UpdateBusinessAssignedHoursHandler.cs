@@ -1,8 +1,10 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Application.Helpers;
+using MESNET.Coordination.Application.Security;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.ReadModels;
 
@@ -13,6 +15,7 @@ public static class UpdateBusinessAssignedHoursHandler
     public static async Task Handle(
         UpdateBusinessAssignedHours command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
         var view = await CoordinationViewLookup.LoadBranchRowAsync(
@@ -23,6 +26,10 @@ public static class UpdateBusinessAssignedHoursHandler
             throw new DomainException(
                 CoordinationErrors.BusinessBranchNotFound(command.BusinessId, command.BranchCode));
         }
+
+        // Kapsam, istekten değil ÇÖZÜMLENMİŞ satırdan okunur (#126): branchCode boş
+        // bırakılıp eski tek-satır yedeğine düşülerek kontrol atlatılamasın.
+        BranchScopeGuard.EnsureCanWrite(currentUser, view.BranchCode);
 
         // Fahri ziyaret ücret doğurmaz → saat her zaman 0'a sabitlenir (#115). Kullanıcı
         // fahri işaretlerken girdide eski saat kalmış olabilir; komutu reddetmek yerine

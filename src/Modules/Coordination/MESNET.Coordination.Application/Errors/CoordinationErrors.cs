@@ -177,6 +177,19 @@ public static class CoordinationErrors
         new("Coordination.DuplicateBranchHoursItem",
             $"Aynı işletme toplu istekte birden çok kez geçemez: {businessId}");
 
+    /// <summary>
+    /// Kullanıcı bu alanın verisine yazmaya yetkili değil (#126).
+    ///
+    /// <para>Permission erişimi açar, kapsamı belirlemez: alan şefi koordinasyonu yönetebilir
+    /// ama yalnız <b>kendi</b> alan(lar)ında. Kurum geneli muafiyeti olan (müdür / müdür
+    /// yardımcısı) bu hataya düşmez.</para>
+    /// </summary>
+    public static Error BranchScopeDenied(string requestedBranchCode, IReadOnlyList<string> userBranchCodes) =>
+        new("Coordination.BranchScopeDenied",
+            userBranchCodes.Count == 0
+                ? $"'{requestedBranchCode}' alanına yazma yetkiniz yok: hesabınızda sorumlu olduğunuz alan tanımlı değil."
+                : $"'{requestedBranchCode}' alanına yazma yetkiniz yok. Sorumlu olduğunuz alanlar: {string.Join(", ", userBranchCodes)}");
+
     public static Error BranchScopeRequired() =>
         new("Coordination.BranchScopeRequired",
             "Toplu saat kaydı için alan kodu ve akademik dönem zorunludur.");
