@@ -1,6 +1,7 @@
 using Marten;
 using MESNET.Business.Application.Commands;
 using MESNET.Business.Application.Errors;
+using MESNET.Business.Application.Extensions;
 using MESNET.Business.Shared.Events;
 using MESNET.Common.Shared;
 
@@ -26,6 +27,7 @@ public static class UpdateBusinessInfoHandler
         session.Store(business);
 
         return new BusinessUpdated(business.Id, business.Name, business.Address, business.Location, business.Sectors,
-            business.PhoneNumber, business.Email, business.MasterInstructor?.FullName, business.PersonnelCount);
+            business.PhoneNumber, business.Email, business.MasterInstructor?.FullName, business.PersonnelCount,
+            business.PrimaryRepresentativeName());
     }
 }

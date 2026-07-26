@@ -222,6 +222,12 @@ public static class BusinessSeeder
                 : $"  ✗ \"{ctxKey}\" sektörler güncellenemedi");
         }
 
+        // Read-model'lere yeni alan eklendiğinde (ör. Reporting.BusinessContactReportView —
+        // tel/e-posta/işletme yetkilisi, #99) mevcut işletmeler geriye dönük dolmaz.
+        // BusinessUpdated'ı tüm işletmeler için yeniden yayınla.
+        await api.PostAsync("/api/businesses/resync-projections");
+        Console.WriteLine("  ✓ İşletme read-model'leri yeniden yayınlandı");
+
         // Herhangi bir yeni işletme oluşturulmuşsa, Enrollment modülünün event'i işlemesi için bekle
         if (createdCount > 0)
         {

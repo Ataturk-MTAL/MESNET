@@ -17,4 +17,7 @@ public sealed record BusinessRegistered(
     string? MasterInstructorName = null,
     // 3308 Madde 25: staj ücreti işletmenin personel sayısına göre değişiyor (20 altı/üstü).
     // Payment modülü bu bilgiyi başka modülün şemasından okuyamaz, olayla taşınmalı (#64).
-    int PersonnelCount = 0);
+    int PersonnelCount = 0,
+    // İşletme Yetkilisi (BusinessRepresentative.FullName) — Dönem Not Fişi'nin (Form 8) imza
+    // bloğunda basılır. Reporting başka modülün şemasını okuyamaz, olayla taşınmalı (#99).
+    string? RepresentativeName = null);

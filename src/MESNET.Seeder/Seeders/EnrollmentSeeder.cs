@@ -76,6 +76,7 @@ public static class EnrollmentSeeder
         // Mevcut öğrencileri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
         var existing = await api.GetAsync($"/api/students?institutionId={institutionId}&pageSize=200");
         var existingByName = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+        var missingNumberByName = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (existing is { } pagedResult
             && pagedResult.TryGetProperty("items", out var itemsEl)
             && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
@@ -85,6 +86,13 @@ public static class EnrollmentSeeder
                 var name = item.GetProperty("fullName").GetString() ?? "";
                 var id = item.GetProperty("id").GetGuid();
                 existingByName[name] = id;
+
+                // Numara alanı sonradan eklendi (#99) — eski kayıtlar boş; geriye dönük doldurulur.
+                if (!item.TryGetProperty("studentNumber", out var numberEl)
+                    || string.IsNullOrWhiteSpace(numberEl.GetString()))
+                {
+                    missingNumberByName.Add(name);
+                }
             }
         }
 
@@ -92,12 +100,20 @@ public static class EnrollmentSeeder
         // Norm Kadro Yönetmeliği Madde 22: 12. sınıf 20 öğrenci → 2 grup
         var students = GenerateStudents();
         var createdCount = 0;
+        var backfilledCount = 0;
 
         foreach (var s in students)
         {
             if (existingByName.TryGetValue(s.Name, out var existingId))
             {
                 ctx.Set(s.Key, existingId);
+
+                if (missingNumberByName.Contains(s.Name))
+                {
+                    await api.PatchAsync($"/api/students/{existingId}", new { studentNumber = s.StudentNumber });
+                    backfilledCount++;
+                }
+
                 continue;
             }
 
@@ -111,7 +127,8 @@ public static class EnrollmentSeeder
                 branchName = s.BranchName,
                 classYear = s.ClassYear,
                 section = s.Section,
-                educationType = s.EducationType
+                educationType = s.EducationType,
+                studentNumber = s.StudentNumber
             });
             if (data is not null)
             {
@@ -126,6 +143,17 @@ public static class EnrollmentSeeder
             Console.WriteLine($"  ✓ Toplam {createdCount} yeni öğrenci oluşturuldu (3 alan × 40 = 120 hedef)");
         else
             Console.WriteLine("  → Tüm öğrenciler zaten mevcut");
+
+        if (backfilledCount > 0)
+        {
+            Console.WriteLine($"  ✓ {backfilledCount} öğrenciye numara geriye dönük yazıldı");
+
+            // PATCH yalnız Enrollment entity'sini günceller; diğer modüllerin denormalize
+            // read-model'leri (ör. Reporting.StudentPlacementReportView) StudentRegistered'ı
+            // yeniden yayınlamadan tazelenmez (#99).
+            await api.PostAsync("/api/students/resync-projections");
+            Console.WriteLine("  ✓ Öğrenci read-model'leri yeniden yayınlandı");
+        }
     }
 
     private static List<StudentData> GenerateStudents()
@@ -145,21 +173,8 @@ public static class EnrollmentSeeder
             "Tarık Başaran", "Umut Güler", "Veli Şen", "Yasin Karaca", "Zafer Yıldız",
             "Alper Bozkurt", "Bülent Saygılı", "Cenk Türkmen", "Doğan Pınar", "Erol Çınar"
         };
-        for (var i = 0; i < 40; i++)
-        {
-            var section = i < 20 ? "A" : "B";
-            var seqNum = i + 1;
-            students.Add(new StudentData(
-                $"EET_Student{seqNum}",
-                $"41000000-0000-0000-0000-{kcIdCounter++:D12}",
-                eetNames[i],
-                "EET",
-                "Elektrik-Elektronik Teknolojisi",
-                12,
-                section,
-                "Formal"
-            ));
-        }
+        AddBranchStudents(students, ref kcIdCounter, branchOrdinal: 1,
+            "EET", "Elektrik-Elektronik Teknolojisi", eetNames);
 
         // BT — Bilişim Teknolojileri: 40 öğrenci (12/A: 20, 12/B: 20)
         var btNames = new[]
@@ -173,21 +188,8 @@ public static class EnrollmentSeeder
             "Ela Avcı", "Ferit Başaran", "Gül Güler", "Harun Şen", "İlayda Karaca",
             "Koray Yıldız", "Leman Bozkurt", "Mete Saygılı", "Naz Türkmen", "Oktay Pınar"
         };
-        for (var i = 0; i < 40; i++)
-        {
-            var section = i < 20 ? "A" : "B";
-            var seqNum = i + 1;
-            students.Add(new StudentData(
-                $"BT_Student{seqNum}",
-                $"41000000-0000-0000-0000-{kcIdCounter++:D12}",
-                btNames[i],
-                "BT",
-                "Bilişim Teknolojileri",
-                12,
-                section,
-                "Formal"
-            ));
-        }
+        AddBranchStudents(students, ref kcIdCounter, branchOrdinal: 2,
+            "BT", "Bilişim Teknolojileri", btNames);
 
         // MTT — Makine ve Tasarım Teknolojisi: 40 öğrenci (12/A: 20, 12/B: 20)
         var mttNames = new[]
@@ -201,23 +203,45 @@ public static class EnrollmentSeeder
             "Nazım Şen", "Orçun Karaca", "Polat Yıldız", "Raşit Bozkurt", "Sedat Saygılı",
             "Taylan Türkmen", "Uğurcan Pınar", "Veysel Çınar", "Yalçın Aktaş", "Zeki Erdoğan"
         };
-        for (var i = 0; i < 40; i++)
-        {
-            var section = i < 20 ? "A" : "B";
-            var seqNum = i + 1;
-            students.Add(new StudentData(
-                $"MTT_Student{seqNum}",
-                $"41000000-0000-0000-0000-{kcIdCounter++:D12}",
-                mttNames[i],
-                "MTT",
-                "Makine ve Tasarım Teknolojisi",
-                12,
-                section,
-                "Formal"
-            ));
-        }
+        AddBranchStudents(students, ref kcIdCounter, branchOrdinal: 3,
+            "MTT", "Makine ve Tasarım Teknolojisi", mttNames);
 
         return students;
+    }
+
+    /// <summary>12. sınıf şube mevcudu — Norm Kadro Yönetmeliği md. 22.</summary>
+    private const int SectionSize = 20;
+
+    private const int ClassYear = 12;
+
+    /// <summary>
+    /// Bir alanın öğrencilerini şubelere bölerek ekler ve okul numarası üretir.
+    /// Numara biçimi: {alan}{şube}{şube-içi sıra:00} → EET 12/A 1. öğrenci = "1101",
+    /// EET 12/B 1. öğrenci = "1201", BT 12/A 1. öğrenci = "2101". Sınıf/şube ile tutarlı ve tekildir (#99).
+    /// </summary>
+    private static void AddBranchStudents(
+        List<StudentData> students, ref int kcIdCounter,
+        int branchOrdinal, string branchCode, string branchName, string[] names)
+    {
+        for (var i = 0; i < names.Length; i++)
+        {
+            var sectionIndex = i / SectionSize;               // 0 → A, 1 → B
+            var section = ((char)('A' + sectionIndex)).ToString();
+            var seqInSection = i % SectionSize + 1;
+            var studentNumber = $"{branchOrdinal}{sectionIndex + 1}{seqInSection:D2}";
+
+            students.Add(new StudentData(
+                $"{branchCode}_Student{i + 1}",
+                $"41000000-0000-0000-0000-{kcIdCounter++:D12}",
+                names[i],
+                branchCode,
+                branchName,
+                ClassYear,
+                section,
+                "Formal",
+                studentNumber
+            ));
+        }
     }
 
     private static async Task SeedPlacements(MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId)
@@ -472,5 +496,6 @@ public static class EnrollmentSeeder
         string BranchName,
         int ClassYear,
         string Section,
-        string EducationType);
+        string EducationType,
+        string StudentNumber);
 }

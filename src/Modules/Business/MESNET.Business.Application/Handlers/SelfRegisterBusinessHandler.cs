@@ -48,7 +48,8 @@ public static class SelfRegisterBusinessHandler
         await session.SaveChangesAsync();
 
         await bus.PublishAsync(new BusinessRegistered(business.Id, business.TenantId, business.Name, business.Address, business.Location, business.Source.Name, business.Capacity.TotalSlots, business.Sectors,
-            business.PhoneNumber, business.Email, business.MasterInstructor?.FullName, business.PersonnelCount));
+            business.PhoneNumber, business.Email, business.MasterInstructor?.FullName, business.PersonnelCount,
+            business.PrimaryRepresentativeName()));
         await bus.PublishAsync(new BusinessCapacityChanged(business.Id, business.Capacity.TotalSlots, business.Capacity.OccupiedSlots));
         await bus.PublishAsync(new BusinessApprovalRequested(business.Id, business.Name));
 
