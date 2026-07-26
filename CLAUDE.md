@@ -613,13 +613,38 @@ takdiri `department:distribution:manage` ister; bu izin `InstitutionManager` (ok
 `department:*` ile bulunur — üçü de tam yetkilidir.
 
 **Permission erişimi açar, KAPSAMI belirlemez.** "Hangi kurumun/alanın verisi" sorusu ayrı bir
-kontroldür: kurum kapsamı `institution_id` token claim'inden okunur, istekten alınmaz. Alan
-(branş) kapsamı için bugün bir mekanizma YOKTUR — bilinen açık.
+kontroldür ve iki kapsam da token claim'inden okunur, istekten ALINMAZ:
+
+- **Kurum kapsamı:** `institution_id` claim'i
+- **Alan (branş) kapsamı:** `branch_codes` claim'i — liste (#126)
+
+### Alan (branş) kapsamı kuralları (#126)
+
+- Alan bilgisi **kayıt sırasında** girilir (`CreateUser.BranchCodes`), sistem türetmez.
+  Değişiklik: `ChangeUserBranches` (`POST /api/security/users/{id}/branches`)
+- Kapsam kararı saf `BranchScopePolicy.CanWrite(...)` içindedir; koordinasyon **yazma**
+  handler'ları `BranchScopeGuard.EnsureCanWrite(...)` çağırır → ihlalde `DomainException` (422)
+- **Karar sırası: önce muafiyet, sonra liste.** Muafiyet izni
+  `institution:distribution:all-branches` varsa alan listesine HİÇ bakılmaz
+- **Boş `branch_codes` hata değildir.** Okul müdürü ve müdür yardımcısı hiçbir alana bağlı
+  değildir; doğrulama hatası üretilmez, uyarı gösterilmez. Yalnız muafiyeti olmayan
+  kullanıcıyı (branşı girilmemiş alan şefi) kısıtlar
+- **Muafiyet izni `department:` önekiyle adlandırılamaz** — üç rolün de `department:*`
+  wildcard'ı vardır, o önekteki izin alan şefine de geçer ve kontrol sessizce hiç çalışmaz.
+  Kilitleyen test: `tests/MESNET.Coordination.UnitTests/BranchScopeExemptionMappingTests.cs`
+- **Okuma açık, yazma kapalı:** alan şefi başka alanın dağıtımını görebilir, değiştiremez.
+  Satır bazlı uçlarda kapsam istekten değil **çözümlenmiş satırdan** okunur
+- Alan zorunluluğu permission'dan türetilir (`BranchRequirement`), rol adından DEĞİL
+
+Ayrıntı: `src/Docs/docs/actors/permissions.md` → "Alan (Branş) Kapsamı Kontrolü"
 
 ### Bu kuralın bilinen istisnaları (teknik borç)
 
-Aşağıdaki üç nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
+Aşağıdaki iki nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
 
 - `src/Modules/Attendance/MESNET.Attendance.Application/Handlers/MarkAttendanceHandler.cs:55`
 - `src/Modules/Enrollment/MESNET.Enrollment.Application/Handlers/PlacementQueryScope.cs:23-34`
-- `src/WebUI/src/stores/auth.ts:47`
+
+(`src/WebUI/src/stores/auth.ts` kapsam kararı artık `canManageAllBranches` /
+`writableBranchCodes` ile permission bazlıdır; `isDepartmentHead` yalnız kapsam DIŞI
+görünürlük için kalmıştır.)

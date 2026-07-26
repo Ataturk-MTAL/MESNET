@@ -36,22 +36,28 @@ yazılmış kontrol yalnız rol→permission haritasına satır eklemeyi gerekti
 | `InstitutionStaff` | Müdür yardımcısı | ✅ |
 | `DepartmentHead` | Alan şefi | ✅ |
 
+Üçü de **yetkilidir**; farkı yaratan **kapsamdır** — alan şefi yalnız kendi alan(lar)ına
+yazabilir (#126).
+
 ### Permission erişimi açar, kapsamı belirlemez
 
 "Hangi kurumun/alanın verisi" sorusu ayrı bir kontroldür ve permission ile karıştırılmamalıdır.
 
 - **Kurum kapsamı:** `institution_id` token claim'inden okunur, istekten alınmaz
-- **Alan (branş) kapsamı:** bugün **mekanizma yoktur**. `ICurrentUserService` alan bilgisi
-  taşımıyor ve koordinasyon uçları `branchCode`'u sorgu parametresinden alıyor; bir alan şefi
-  başka alanın saat dağıtımını değiştirebilir. Bilinen açık.
+- **Alan (branş) kapsamı:** `branch_codes` token claim'inden okunur (#126).
+  `ICurrentUserService.GetBranchCodes()` taşır; koordinasyon **yazma** handler'ları
+  `BranchScopeGuard` ile kontrol eder. Ayrıntı: [Alan (Branş) Kapsamı Kontrolü](#alan-branş-kapsamı-kontrolü)
 
 ### Bu ilkenin bilinen istisnaları (teknik borç)
 
-Aşağıdaki üç nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
+Aşağıdaki iki nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
 
 - `src/Modules/Attendance/MESNET.Attendance.Application/Handlers/MarkAttendanceHandler.cs:55`
 - `src/Modules/Enrollment/MESNET.Enrollment.Application/Handlers/PlacementQueryScope.cs:23-34`
-- `src/WebUI/src/stores/auth.ts:47`
+
+`src/WebUI/src/stores/auth.ts` kapsam kararı #126 ile permission bazlına geçti
+(`canManageAllBranches` / `writableBranchCodes`); `isDepartmentHead` yalnız kapsam dışı
+görünürlük için kalmıştır.
 
 ## Ana Roller ve İzinler
 
