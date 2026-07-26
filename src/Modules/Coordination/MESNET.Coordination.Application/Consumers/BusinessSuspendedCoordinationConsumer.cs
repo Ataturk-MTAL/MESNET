@@ -1,11 +1,11 @@
 using Marten;
 using MESNET.Business.Shared.Events;
-using MESNET.Coordination.Core.ReadModels;
+using MESNET.Coordination.Application.Helpers;
 
 namespace MESNET.Coordination.Application.Consumers;
 
 /// <summary>
-/// İşletme suspend edildiğinde coordination view'ı siler.
+/// İşletme suspend edildiğinde coordination view satırlarını siler (tüm alanlar + temel satır).
 /// Bu noktada aktif öğrenci ve öğretmen ataması olmadığı garanti edilmiştir (handler validation).
 /// </summary>
 public static class BusinessSuspendedCoordinationConsumer
@@ -14,6 +14,6 @@ public static class BusinessSuspendedCoordinationConsumer
         BusinessSuspended @event,
         IDocumentSession session)
     {
-        session.Delete<BusinessCoordinationView>(@event.BusinessId);
+        CoordinationViewCleanup.DeleteAllRows(session, @event.BusinessId);
     }
 }

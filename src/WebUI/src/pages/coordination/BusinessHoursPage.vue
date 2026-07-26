@@ -87,6 +87,20 @@
               :disable="periodStore.isReadOnly"
               @click="recalculateDistances"
             />
+            <q-btn
+              color="secondary"
+              outline
+              icon="sync"
+              label="Kayıtları Yenile"
+              :loading="resyncing"
+              :disable="periodStore.isReadOnly"
+              @click="resyncCoordinationViews"
+            >
+              <q-tooltip>
+                Koordinasyon kayıtlarını alan bazlı modele göre yeniden kurar; eski
+                tek-alanlı kayıtları temizler ve öğrenci sayaçlarını yeniden hesaplar.
+              </q-tooltip>
+            </q-btn>
           </div>
 
           <DataState
@@ -246,7 +260,7 @@
                     size="xs"
                     class="q-ml-xs"
                     aria-label="Atama geçmişini göster"
-                    @click="showHistory(biz.businessId, biz.businessName)"
+                    @click="showHistory(biz.businessId, biz.businessName, biz.branchCode, periodStore.selectedPeriodId ?? '')"
                   >
                     <q-tooltip>Atama geçmişi</q-tooltip>
                   </q-btn>
@@ -427,6 +441,7 @@ const workload = useWorkloadConfig({ branchFilter, periodId, institutionId, noti
 const hours = useAssignedHours({
   assignments,
   workloadConfig: workload.workloadConfig,
+  academicPeriodId: periodId,
   notify,
   loadData,
 })
@@ -446,8 +461,8 @@ const {
 const {
   clusterData, clusterLoading, clusterError,
   clusterEps, clusterMinPoints,
-  recalculating,
-  loadClusters, recalculateDistances,
+  recalculating, resyncing,
+  loadClusters, recalculateDistances, resyncCoordinationViews,
 } = cluster
 
 const {

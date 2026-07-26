@@ -8,9 +8,12 @@ using MESNET.Coordination.Core.ReadModels;
 namespace MESNET.Coordination.Application.Consumers;
 
 /// <summary>
-/// İşletme kaydedildiğinde (kurum tarafından, doğrudan Active) coordination view oluşturur.
-/// Self-register işletmeler PendingApproval ile başlar — onlar BusinessApproved'da eklenir.
+/// İşletme kaydedildiğinde (kurum tarafından, doğrudan Active) işletme düzeyi <b>temel satırı</b>
+/// oluşturur. Self-register işletmeler PendingApproval ile başlar — onlar BusinessApproved'da eklenir.
 /// Lokasyon varsa otomatik mesafe hesaplar (OSRM → Haversine fallback).
+///
+/// Alan (branş) satırları burada oluşturulmaz; ilk öğrenci yerleştiğinde
+/// <see cref="StudentPlacedConsumer"/> temel satırdan türeterek oluşturur.
 /// </summary>
 public static class BusinessRegisteredCoordinationConsumer
 {
@@ -24,12 +27,14 @@ public static class BusinessRegisteredCoordinationConsumer
         if (@event.Source == "SelfRegistered") // RegistrationSource.SelfRegistered.Name
             return;
 
-        var existing = await session.LoadAsync<BusinessCoordinationView>(@event.BusinessId, cancellationToken);
+        var baseId = CoordinationViewId.Base(@event.BusinessId);
+        var existing = await session.LoadAsync<BusinessCoordinationView>(baseId, cancellationToken);
         if (existing is not null) return;
 
         var view = new BusinessCoordinationView
         {
-            Id = @event.BusinessId,
+            Id = baseId,
+            BusinessId = @event.BusinessId,
             Name = @event.Name,
             Address = @event.Address,
             District = AddressHelper.ExtractDistrict(@event.Address),

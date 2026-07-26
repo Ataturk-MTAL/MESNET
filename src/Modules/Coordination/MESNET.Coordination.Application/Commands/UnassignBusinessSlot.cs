@@ -5,4 +5,6 @@ public sealed record UnassignBusinessSlot(
     string Day,
     int PeriodNumber,
     Guid InstitutionId,
-    string UnassignedBy);
+    string UnassignedBy,
+    string BranchCode = "",
+    Guid AcademicPeriodId = default);

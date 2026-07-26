@@ -80,6 +80,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj"/>
+    <Project Path="tests/MESNET.Coordination.UnitTests/MESNET.Coordination.UnitTests.csproj"/>
     <Project Path="tests/MESNET.Reporting.UnitTests/MESNET.Reporting.UnitTests.csproj"/>
   </Folder>
 </Solution>

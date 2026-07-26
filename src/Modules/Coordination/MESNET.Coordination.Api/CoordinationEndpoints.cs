@@ -44,6 +44,7 @@ public static class CoordinationEndpoints
         group.MapGet("/overview-all", GetAllTeachersOverview).RequireAuthorization(Permissions.DepartmentHead.Workload);
         group.MapGet("/business-clusters", GetBusinessClusters).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/recalculate-distances", PostRecalculateDistances).RequireAuthorization(Permissions.DepartmentHead.Distribution);
+        group.MapPost("/resync-views", PostResyncViews).RequireAuthorization(Permissions.DepartmentHead.Distribution);
 
         // Branch workload config
         group.MapGet("/branch-workload/{branchCode}", GetBranchWorkload).RequireAuthorization(Permissions.DepartmentHead.Distribution);
@@ -213,14 +214,23 @@ public static class CoordinationEndpoints
             .Build());
     }
 
+    /// <summary>
+    /// Koordinasyon satırı alan bazlıdır (#114): <c>branchCode</c> + <c>academicPeriodId</c>
+    /// hedef satırı belirler. Aynı işletmeye iki alandan atama yapılabildiği için
+    /// yalnız <c>businessId</c> yeterli değildir.
+    /// </summary>
     private static async Task<IResult> DeleteAssignment(
         Guid businessId,
+        string? branchCode,
+        Guid? academicPeriodId,
         IMessageBus bus,
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
         var userName = http.User.FindFirst("name")?.Value ?? "system";
-        await bus.InvokeAsync(new UnassignBusinessFromTeacher(businessId, instId, userName));
+        await bus.InvokeAsync(new UnassignBusinessFromTeacher(
+            businessId, instId, userName,
+            branchCode ?? string.Empty, academicPeriodId ?? Guid.Empty));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme ataması kaldırıldı.")
@@ -247,12 +257,16 @@ public static class CoordinationEndpoints
 
     private static async Task<IResult> GetAssignmentHistory(
         Guid businessId,
+        string? branchCode,
+        Guid? academicPeriodId,
         IMessageBus bus,
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
         var result = await bus.InvokeAsync<List<AssignmentHistoryEntryDto>>(
-            new GetAssignmentHistory(businessId, instId));
+            new GetAssignmentHistory(
+                businessId, instId,
+                branchCode ?? string.Empty, academicPeriodId ?? Guid.Empty));
 
         return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
@@ -295,6 +309,27 @@ public static class CoordinationEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Mesafeler yeniden hesaplandı.")
+            .Build());
+    }
+
+    /// <summary>
+    /// Koordinasyon işletme satırlarını çok-alanlı modele göre yeniden kurar (#114).
+    /// Eski tek-satır kayıtlarını temizler; alan/dönem satırlarını ve öğrenci sayaçlarını
+    /// yeniden üretir. Tekrar çalıştırmak güvenlidir (idempotent).
+    /// </summary>
+    private static async Task<IResult> PostResyncViews(
+        IMessageBus bus,
+        HttpContext http)
+    {
+        var instId = GetInstitutionId(http);
+        var result = await bus.InvokeAsync<ResyncCoordinationViewsResult>(
+            new ResyncCoordinationViews(instId));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage(
+                $"{result.BranchRows} alan satırı yeniden kuruldu, " +
+                $"{result.RemovedLegacyRows} eski kayıt temizlendi.")
             .Build());
     }
 
@@ -348,6 +383,8 @@ public static class CoordinationEndpoints
 
     private static async Task<IResult> PatchAssignedHours(
         Guid businessId,
+        string? branchCode,
+        Guid? academicPeriodId,
         UpdateBusinessAssignedHours command,
         IMessageBus bus,
         HttpContext http)
@@ -358,7 +395,9 @@ public static class CoordinationEndpoints
         {
             BusinessId = businessId,
             InstitutionId = instId,
-            UpdatedBy = userName
+            UpdatedBy = userName,
+            BranchCode = branchCode ?? command.BranchCode,
+            AcademicPeriodId = academicPeriodId ?? command.AcademicPeriodId,
         });
 
         return Results.Ok(ResponseBuilder.Success()
@@ -370,12 +409,16 @@ public static class CoordinationEndpoints
         Guid businessId,
         string day,
         int periodNumber,
+        string? branchCode,
+        Guid? academicPeriodId,
         IMessageBus bus,
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
         var userName = http.User.FindFirst("name")?.Value ?? "system";
-        await bus.InvokeAsync(new UnassignBusinessSlot(businessId, day, periodNumber, instId, userName));
+        await bus.InvokeAsync(new UnassignBusinessSlot(
+            businessId, day, periodNumber, instId, userName,
+            branchCode ?? string.Empty, academicPeriodId ?? Guid.Empty));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme slot ataması kaldırıldı.")

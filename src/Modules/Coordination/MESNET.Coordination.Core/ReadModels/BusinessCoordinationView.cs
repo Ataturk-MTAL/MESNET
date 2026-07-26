@@ -5,10 +5,24 @@ namespace MESNET.Coordination.Core.ReadModels;
 /// <summary>
 /// İşletme-öğretmen atama ekranı için denormalize view.
 /// Coordination modülü kendi schema'sında tutar.
+///
+/// <para><b>Kimlik:</b> satır başına <c>(BusinessId, BranchCode, AcademicPeriodId)</c> üçlüsü —
+/// <see cref="Id"/> bu üçlüden <see cref="CoordinationViewId"/> ile deterministik üretilir.
+/// Aynı işletmeye iki farklı alandan öğrenci yerleştiğinde <b>iki ayrı satır</b> oluşur; her alan
+/// kendi öğrenci sayısını, takdir saatini ve öğretmen atamasını taşır.</para>
+///
+/// <para><b>Temel satır:</b> <see cref="BranchCode"/> boş olan satır işletme düzeyi ortak
+/// bilgileri (ad, adres, konum, mesafe, azami saat) tutar. Listelerde/haritada gösterilmez;
+/// alan satırları oluşturulurken kaynak olarak kullanılır.</para>
 /// </summary>
 public sealed class BusinessCoordinationView
 {
+    /// <summary>Deterministik satır kimliği — <see cref="CoordinationViewId.For"/> ile üretilir.</summary>
     public Guid Id { get; init; }
+
+    /// <summary>İşletmenin kimliği (Business modülü). Birden çok satır aynı değeri paylaşabilir.</summary>
+    public Guid BusinessId { get; set; }
+
     public string Name { get; set; } = string.Empty;
     public string? Address { get; set; }
     public string? District { get; set; }
@@ -60,6 +74,13 @@ public sealed class BusinessCoordinationView
 
     /// <summary>Atama değişiklik geçmişi (en yeni en üstte)</summary>
     public List<AssignmentHistoryEntry> History { get; set; } = [];
+
+    /// <summary>
+    /// İşletme kimliğini güvenle döndürür. Çok-alanlı modele geçmeden önce yazılmış
+    /// kayıtlarda <see cref="BusinessId"/> alanı yoktur; o kayıtlarda <see cref="Id"/>
+    /// işletme kimliğinin ta kendisidir. Metot olduğu için JSON'a serialize edilmez.
+    /// </summary>
+    public Guid ResolveBusinessId() => BusinessId != Guid.Empty ? BusinessId : Id;
 }
 
 /// <summary>

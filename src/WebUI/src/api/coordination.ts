@@ -261,7 +261,17 @@ export interface TeacherBusinessAssignmentDto {
   assignedDay: string | null
 }
 
-export interface AssignBusinessRequest {
+/**
+ * Koordinasyon satırı alan bazlıdır (#114): aynı işletmeye iki farklı alandan
+ * bağımsız atama yapılabildiği için hedef satır
+ * `(businessId, branchCode, academicPeriodId)` üçlüsüyle belirlenir.
+ */
+export interface BranchRowParams {
+  branchCode: string
+  academicPeriodId: string
+}
+
+export interface AssignBusinessRequest extends BranchRowParams {
   businessId: string
   teacherId: string
   teacherName: string
@@ -269,6 +279,12 @@ export interface AssignBusinessRequest {
   assignedDay: string
   periodNumber?: number
   assignedBy: string
+}
+
+export interface ResyncCoordinationViewsResult {
+  baseRows: number
+  branchRows: number
+  removedLegacyRows: number
 }
 
 // ── Teacher Overview DTOs ──
@@ -505,22 +521,38 @@ export const coordinationApi = {
   getTeacherWorkload: (teacherId: string) =>
     api.get<TeacherWorkloadDto>(`/coordination/teachers/${teacherId}/workload`),
 
-  unassignBusiness: (businessId: string) =>
-    api.delete(`/coordination/teachers/assignments/${businessId}`),
+  unassignBusiness: (businessId: string, params: BranchRowParams) =>
+    api.delete(`/coordination/teachers/assignments/${businessId}`, { params }),
 
-  updateAssignedHours: (businessId: string, data: { assignedHours: number }) =>
-    api.patch(`/coordination/teachers/assignments/${businessId}/hours`, data),
+  updateAssignedHours: (businessId: string, data: { assignedHours: number }, params: BranchRowParams) =>
+    api.patch(`/coordination/teachers/assignments/${businessId}/hours`, data, { params }),
 
-  unassignBusinessSlot: (businessId: string, day: string, periodNumber: number) =>
+  unassignBusinessSlot: (
+    businessId: string,
+    day: string,
+    periodNumber: number,
+    params: BranchRowParams,
+  ) =>
     api.delete(`/coordination/teachers/assignments/${businessId}/slot`, {
-      params: { day, periodNumber },
+      params: { day, periodNumber, ...params },
     }),
 
-  getAssignmentHistory: (businessId: string) =>
-    api.get<AssignmentHistoryEntryDto[]>(`/coordination/teachers/assignments/${businessId}/history`),
+  getAssignmentHistory: (businessId: string, params: BranchRowParams) =>
+    api.get<AssignmentHistoryEntryDto[]>(
+      `/coordination/teachers/assignments/${businessId}/history`,
+      { params },
+    ),
 
   recalculateDistances: () =>
     api.post('/coordination/teachers/recalculate-distances'),
+
+  /**
+   * Koordinasyon satırlarını çok-alanlı modele göre yeniden kurar (#114).
+   * Eski tek-satır kayıtlarını temizler; alan/dönem satırlarını ve öğrenci
+   * sayaçlarını yeniden üretir. Tekrar çalıştırmak güvenlidir.
+   */
+  resyncCoordinationViews: () =>
+    api.post<ResyncCoordinationViewsResult>('/coordination/teachers/resync-views'),
 
   // ── Teacher Overview ──
 

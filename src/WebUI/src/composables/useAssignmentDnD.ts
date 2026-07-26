@@ -19,6 +19,8 @@ export interface UseAssignmentDnDOptions {
   rawSchedule: Ref<DailyScheduleDto[]>
   selectedTeacherId: Ref<string | null>
   selectedTeacherName: ComputedRef<string>
+  /** Seçili akademik dönem — koordinasyon satırı alan+dönem bazlıdır (#114) */
+  academicPeriodId: Ref<string | null>
   notify: ReturnType<typeof useNotify>
   authStore: { user: { fullName?: string } | null }
   loadData: () => Promise<void>
@@ -27,7 +29,7 @@ export interface UseAssignmentDnDOptions {
 
 export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
   const {
-    assignments, rawSchedule, selectedTeacherId, selectedTeacherName,
+    assignments, rawSchedule, selectedTeacherId, selectedTeacherName, academicPeriodId,
     notify, authStore, loadData, loadTeacherSchedule,
   } = options
 
@@ -227,8 +229,14 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
 
     for (const change of [...pendingChanges.value]) {
       try {
+        // Hedef satır alan bazlıdır — alan kodu listedeki işletme satırından okunur (#114)
+        const biz = assignments.value.find((a) => a.businessId === change.businessId)
+        const branchRow = {
+          branchCode: biz?.branchCode ?? '',
+          academicPeriodId: academicPeriodId.value ?? '',
+        }
+
         if (change.type === 'assign') {
-          const biz = assignments.value.find((a) => a.businessId === change.businessId)
           const hours = biz?.assignedHours || biz?.maxCoordinationHours || 0
           await coordinationApi.assignBusiness({
             businessId: change.businessId,
@@ -238,10 +246,11 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
             assignedDay: change.day,
             periodNumber: change.periodNumber,
             assignedBy: authStore.user?.fullName ?? '',
+            ...branchRow,
           })
         } else {
           await coordinationApi.unassignBusinessSlot(
-            change.businessId, change.day, change.periodNumber,
+            change.businessId, change.day, change.periodNumber, branchRow,
           )
         }
         successCount++

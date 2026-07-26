@@ -1,5 +1,9 @@
 namespace MESNET.Coordination.Application.Commands;
 
+/// <summary>
+/// Koordinatörlük ataması alan bazlıdır — hedef satır
+/// <c>(BusinessId, BranchCode, AcademicPeriodId)</c> üçlüsüyle belirlenir (#114).
+/// </summary>
 public sealed record AssignBusinessToTeacher(
     Guid BusinessId,
     Guid TeacherId,
@@ -8,4 +12,6 @@ public sealed record AssignBusinessToTeacher(
     string AssignedDay,
     int? PeriodNumber,
     Guid InstitutionId,
-    string AssignedBy);
+    string AssignedBy,
+    string BranchCode = "",
+    Guid AcademicPeriodId = default);

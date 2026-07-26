@@ -13,6 +13,10 @@ public static class GetBusinessClustersHandler
     ///   eps_degrees = eps_meters / (111320 * cos(radians(avg_lat)))
     /// avg_lat: tüm işletmelerin ortalama enlemi (CTE ile hesaplanır).
     /// BranchCode filtresi opsiyonel — NULL geçilirse tüm alanlar döner.
+    ///
+    /// Satırlar alan bazlıdır (#114): işletme düzeyi temel satır (boş alan kodu) haritaya
+    /// girmez, işletme kimliği <c>businessId</c> alanından okunur (eski kayıtlarda alan yoksa
+    /// <c>id</c>'ye düşülür).
     /// </summary>
     private const string ClusterSql = """
         WITH avg_lat AS (
@@ -21,10 +25,11 @@ public static class GetBusinessClustersHandler
             WHERE (data->>'institutionId')::uuid = @institutionId
               AND data->'location' IS NOT NULL
               AND data->'location'->>'latitude' IS NOT NULL
+              AND COALESCE(data->>'branchCode', '') <> ''
               AND (@branchCode::text IS NULL OR data->>'branchCode' = @branchCode::text)
         )
         SELECT
-            (data->>'id')::uuid                                        AS business_id,
+            COALESCE(data->>'businessId', data->>'id')::uuid            AS business_id,
             data->>'name'                                              AS business_name,
             (data->'location'->>'latitude')::float8                   AS latitude,
             (data->'location'->>'longitude')::float8                  AS longitude,
@@ -52,6 +57,7 @@ public static class GetBusinessClustersHandler
           AND data->'location' IS NOT NULL
           AND data->'location'->>'latitude' IS NOT NULL
           AND data->'location'->>'longitude' IS NOT NULL
+          AND COALESCE(data->>'branchCode', '') <> ''
           AND (@branchCode IS NULL OR data->>'branchCode' = @branchCode)
         ORDER BY cluster_id NULLS LAST, business_name
         """;

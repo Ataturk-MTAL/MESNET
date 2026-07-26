@@ -49,6 +49,7 @@ public static class GenerateWeeklyVisitsHandler
         IQueryable<BusinessCoordinationView> viewQuery = session.Query<BusinessCoordinationView>()
             .Where(v => v.InstitutionId == command.InstitutionId
                      && v.AcademicPeriodId == command.AcademicPeriodId
+                     && v.BranchCode != ""
                      && v.AssignedTeacherId != null);
 
         if (command.Scope == "Teacher" && command.TeacherId.HasValue)
@@ -94,7 +95,7 @@ public static class GenerateWeeklyVisitsHandler
                     AcademicPeriodId = command.AcademicPeriodId,
                     TeacherId = view.AssignedTeacherId!.Value,
                     TeacherName = view.AssignedTeacherName ?? "—",
-                    BusinessId = view.Id,
+                    BusinessId = view.ResolveBusinessId(),
                     BusinessName = view.Name,
                     BranchCode = view.BranchCode,
                     BranchName = view.BranchName,
@@ -137,7 +138,11 @@ public static class GenerateWeeklyVisitsHandler
         await session.SaveChangesAsync(ct);
 
         // Reporting modülü Form 3 (Günlük Rehberlik Formu) otomatik üretecek
-        var addressLookup = views.ToDictionary(v => v.Id, v => v.Address);
+        // Aynı işletme birden çok alan satırıyla gelebilir — adres işletme düzeyi bilgidir,
+        // ilk satırdaki değer yeterlidir (#114).
+        var addressLookup = views
+            .GroupBy(v => v.ResolveBusinessId())
+            .ToDictionary(g => g.Key, g => g.First().Address);
         var @event = new WeeklyVisitsGenerated(
             plan.Id,
             command.InstitutionId,

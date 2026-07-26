@@ -17,13 +17,25 @@ export function useAssignmentHistory(options: UseAssignmentHistoryOptions) {
   const historyBusinessName = ref('')
   const historyEntries = ref<AssignmentHistoryEntryDto[]>([])
 
-  async function showHistory(businessId: string, businessName: string) {
+  /**
+   * Geçmiş alan bazlıdır (#114): aynı işletmenin farklı alanlardaki atama geçmişleri
+   * ayrı satırlarda tutulur, bu yüzden alan kodu ve dönem birlikte gönderilir.
+   */
+  async function showHistory(
+    businessId: string,
+    businessName: string,
+    branchCode: string,
+    academicPeriodId: string,
+  ) {
     historyBusinessName.value = businessName
     historyEntries.value = []
     historyDialog.value = true
     historyLoading.value = true
     try {
-      const { data } = await coordinationApi.getAssignmentHistory(businessId)
+      const { data } = await coordinationApi.getAssignmentHistory(businessId, {
+        branchCode,
+        academicPeriodId,
+      })
       historyEntries.value = data ?? []
     } catch (e) {
       notify.apiError(e, 'Geçmiş yüklenirken hata oluştu.')

@@ -15,12 +15,14 @@ import {
 export interface UseAssignedHoursOptions {
   assignments: Ref<BusinessAssignmentDto[]>
   workloadConfig: Ref<BranchWorkloadConfigDto | null>
+  /** Seçili akademik dönem — koordinasyon satırı alan+dönem bazlıdır (#114) */
+  academicPeriodId: Ref<string | null>
   notify: ReturnType<typeof useNotify>
   loadData: () => Promise<void>
 }
 
 export function useAssignedHours(options: UseAssignedHoursOptions) {
-  const { assignments, workloadConfig, notify, loadData } = options
+  const { assignments, workloadConfig, academicPeriodId, notify, loadData } = options
 
   const hoursSaving = ref(false)
   const editedHours = ref<Record<string, number>>({})
@@ -98,7 +100,11 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
       if (edited === undefined || edited === current) continue
 
       try {
-        await coordinationApi.updateAssignedHours(a.businessId, { assignedHours: edited })
+        await coordinationApi.updateAssignedHours(
+          a.businessId,
+          { assignedHours: edited },
+          { branchCode: a.branchCode, academicPeriodId: academicPeriodId.value ?? '' },
+        )
         successCount++
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'Bilinmeyen hata'
