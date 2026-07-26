@@ -42,6 +42,8 @@ public static class GetBusinessClustersHandler
             COALESCE((data->>'activeStudentCount')::int, 0)            AS active_student_count,
             (data->>'distanceToSchoolKm')::float8                     AS distance_km,
             COALESCE((data->>'maxCoordinationHours')::int, 0)          AS max_coordination_hours,
+            -- Alan #115 öncesi kayıtların JSON'unda yok → COALESCE ile false (fahri değil)
+            COALESCE((data->>'isHonoraryVisit')::boolean, false)        AS is_honorary_visit,
             ST_ClusterDBSCAN(
                 ST_SetSRID(
                     ST_MakePoint(
@@ -117,7 +119,8 @@ public static class GetBusinessClustersHandler
                     DistanceToSchoolKm: reader.IsDBNull(reader.GetOrdinal("distance_km"))
                         ? null
                         : reader.GetDouble(reader.GetOrdinal("distance_km")),
-                    MaxCoordinationHours: reader.GetInt32(reader.GetOrdinal("max_coordination_hours"))
+                    MaxCoordinationHours: reader.GetInt32(reader.GetOrdinal("max_coordination_hours")),
+                    IsHonoraryVisit: reader.GetBoolean(reader.GetOrdinal("is_honorary_visit"))
                 ));
             }
         }

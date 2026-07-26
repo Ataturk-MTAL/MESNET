@@ -26,7 +26,10 @@ public static class GetCoordinationSummaryHandler
         var views = await queryable.ToListAsync(cancellationToken);
 
         var totalMaxHours = views.Sum(v => v.MaxCoordinationHours);
-        var totalAssigned = views.Sum(v => v.AssignedHours);
+        // Havuz muhasebesi yalnız ücret doğuran saatler üzerinden yapılır — fahri
+        // ziyaretler dağıtılan saate girmez (#115).
+        var totalAssigned = views.Sum(v => v.BillableHours());
+        var honoraryCount = views.Count(v => v.IsHonoraryVisit);
         var assignedCount = views.Count(v => v.AssignedTeacherId is not null);
         var unassignedCount = views.Count(v => v.AssignedTeacherId is null);
 
@@ -51,8 +54,9 @@ public static class GetCoordinationSummaryHandler
             .Select(g => new TeacherWorkloadSummaryDto(
                 g.Key,
                 g.First().AssignedTeacherName ?? "",
-                g.Sum(v => v.AssignedHours),
-                g.Count()
+                g.Sum(v => v.BillableHours()),
+                g.Count(),
+                g.Count(v => v.IsHonoraryVisit)
             ))
             .OrderByDescending(t => t.AssignedHours)
             .ToList();
@@ -64,6 +68,7 @@ public static class GetCoordinationSummaryHandler
             totalMaxHours,
             assignedCount,
             unassignedCount,
+            honoraryCount,
             teacherWorkloads
         );
     }

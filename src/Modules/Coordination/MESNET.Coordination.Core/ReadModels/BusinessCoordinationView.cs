@@ -40,6 +40,27 @@ public sealed class BusinessCoordinationView
     /// <summary>Takdir edilen (atanan) saat</summary>
     public int AssignedHours { get; set; }
 
+    /// <summary>
+    /// Fahri (ücretsiz) ziyaret — öğretmen gider, ek ders ücreti doğmaz (#115).
+    ///
+    /// <para>Havuz tüm işletmelere yetmediğinde bazı işletmeler fahri ziyarete bırakılır.
+    /// Bu bayrak olmadan "0 saat" ile "henüz takdir edilmedi" ayırt edilemiyor, 0 saat
+    /// sessizce <see cref="MaxCoordinationHours"/> tavanına dönüşüyordu.</para>
+    ///
+    /// <list type="table">
+    ///   <item><term>Henüz takdir edilmedi</term><description>AssignedHours = 0, IsHonoraryVisit = false</description></item>
+    ///   <item><term>Fahri ziyaret</term><description>AssignedHours = 0, IsHonoraryVisit = true</description></item>
+    ///   <item><term>Ücretli</term><description>AssignedHours &gt; 0, IsHonoraryVisit = false</description></item>
+    /// </list>
+    ///
+    /// <para>Marten JSONB olduğu için migration yok; alanı taşımayan eski kayıtlar
+    /// <c>false</c> olarak okunur. <b>Dikkat:</b> alan eski satırların JSON'unda hiç
+    /// bulunmadığından Marten LINQ'inde <c>!v.IsHonoraryVisit</c> filtresi kullanılmaz —
+    /// PostgreSQL'de <c>NOT NULL</c> üç değerli mantıkta NULL döner ve o satırlar sessizce
+    /// sonuç kümesinden düşer. Filtreleme her zaman bellekte yapılır.</para>
+    /// </summary>
+    public bool IsHonoraryVisit { get; set; }
+
     public Guid? AssignedTeacherId { get; set; }
     public string? AssignedTeacherName { get; set; }
 
@@ -81,6 +102,33 @@ public sealed class BusinessCoordinationView
     /// işletme kimliğinin ta kendisidir. Metot olduğu için JSON'a serialize edilmez.
     /// </summary>
     public Guid ResolveBusinessId() => BusinessId != Guid.Empty ? BusinessId : Id;
+
+    /// <summary>
+    /// Fahri ziyaretin öğretmen ders programında işgal ettiği slot sayısı. Ziyaret yine
+    /// yapılır — ücret doğurmaması slot işgal etmediği anlamına gelmez (#115).
+    /// </summary>
+    public const int HonoraryVisitSlots = 1;
+
+    /// <summary>
+    /// Ek ders ücreti doğuran saat. Fahri ziyarette her zaman 0.
+    /// Havuz ve öğretmen kapasitesi toplamları bu değerle yapılır.
+    /// </summary>
+    public int BillableHours() => IsHonoraryVisit ? 0 : AssignedHours;
+
+    /// <summary>
+    /// Ücret doğuran hedef saat: takdir edilmişse o, edilmemişse mesafe tavanı.
+    /// Fahri satırda tavana düşmez — <b>0</b> döner; issue #115'in düzelttiği asıl kusur
+    /// buydu: fahri işletme öğretmene atanırken 8 saat tüketiyormuş gibi sayılıyordu.
+    /// </summary>
+    public int BillableTargetHours() =>
+        IsHonoraryVisit ? 0 : (AssignedHours > 0 ? AssignedHours : MaxCoordinationHours);
+
+    /// <summary>
+    /// Ders programında doldurulması beklenen slot sayısı. Fahri ziyaret ücret doğurmaz
+    /// ama takvimde yerini alır → <see cref="HonoraryVisitSlots"/> kadar slot.
+    /// </summary>
+    public int SlotTargetHours() =>
+        IsHonoraryVisit ? HonoraryVisitSlots : BillableTargetHours();
 }
 
 /// <summary>

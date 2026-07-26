@@ -24,16 +24,46 @@ public static class UpdateBusinessAssignedHoursHandler
                 CoordinationErrors.BusinessBranchNotFound(command.BusinessId, command.BranchCode));
         }
 
-        if (command.AssignedHours <= 0)
-            throw new DomainException(CoordinationErrors.InvalidAssignedHours(command.AssignedHours));
+        // Fahri ziyaret ücret doğurmaz → saat her zaman 0'a sabitlenir (#115). Kullanıcı
+        // fahri işaretlerken girdide eski saat kalmış olabilir; komutu reddetmek yerine
+        // sıfırlıyoruz, istenen sonuç zaten "0 saat".
+        var newHours = command.IsHonoraryVisit ? 0 : command.AssignedHours;
 
-        if (command.AssignedHours > view.MaxCoordinationHours)
+        if (!command.IsHonoraryVisit)
         {
-            throw new DomainException(
-                CoordinationErrors.AssignedHoursExceedMax(command.AssignedHours, view.MaxCoordinationHours));
+            if (command.AssignedHours <= 0)
+                throw new DomainException(CoordinationErrors.InvalidAssignedHours(command.AssignedHours));
+
+            if (command.AssignedHours > view.MaxCoordinationHours)
+            {
+                throw new DomainException(
+                    CoordinationErrors.AssignedHoursExceedMax(command.AssignedHours, view.MaxCoordinationHours));
+            }
+
+            // Havuz ve öğretmen kapasitesi kısıtları yalnız ücretli satır için anlamlı —
+            // fahri satır her iki toplama da 0 katkı yapar, kontrol edilirse yalnızca
+            // başkalarının aşımı yüzünden haksız yere reddedilir.
+            await ValidateWorkloadPoolAsync(session, view, newHours, cancellationToken);
+            await ValidateTeacherLimitAsync(session, view, newHours, cancellationToken);
         }
 
-        // Havuz kısıtı: alandaki toplam takdir edilen saat ≤ TotalWorkloadPool
+        ApplyChange(view, command, newHours);
+        session.Store(view);
+    }
+
+    /// <summary>
+    /// Havuz kısıtı: alandaki toplam takdir edilen saat ≤ TotalWorkloadPool.
+    /// Fahri satırlar <see cref="BusinessCoordinationView.AssignedHours"/> = 0 ile saklandığı
+    /// için toplama kendiliğinden girmez (#115). Bayrağa göre SQL filtresi konmaz: alan eski
+    /// kayıtların JSON'unda yok, <c>NOT NULL</c> üç değerli mantıkta NULL döner ve o satırlar
+    /// toplamdan sessizce düşerdi.
+    /// </summary>
+    private static async Task ValidateWorkloadPoolAsync(
+        IDocumentSession session,
+        BusinessCoordinationView view,
+        int newHours,
+        CancellationToken cancellationToken)
+    {
         var workloadConfig = await session.Query<BranchWorkloadConfig>()
             .FirstOrDefaultAsync(c =>
                 c.InstitutionId == view.InstitutionId &&
@@ -41,59 +71,73 @@ public static class UpdateBusinessAssignedHoursHandler
                 c.AcademicPeriodId == view.AcademicPeriodId,
                 cancellationToken);
 
-        if (workloadConfig is not null)
+        if (workloadConfig is null) return;
+
+        var otherAssigned = await session.Query<BusinessCoordinationView>()
+            .Where(b =>
+                b.InstitutionId == view.InstitutionId &&
+                b.BranchCode == view.BranchCode &&
+                b.AcademicPeriodId == view.AcademicPeriodId &&
+                b.Id != view.Id)
+            .SumAsync(b => b.AssignedHours, cancellationToken);
+
+        var totalAssigned = otherAssigned + newHours;
+
+        if (totalAssigned > workloadConfig.TotalWorkloadPool)
         {
-            var otherAssigned = await session.Query<BusinessCoordinationView>()
-                .Where(b =>
-                    b.InstitutionId == view.InstitutionId &&
-                    b.BranchCode == view.BranchCode &&
-                    b.AcademicPeriodId == view.AcademicPeriodId &&
-                    b.Id != view.Id)
-                .SumAsync(b => b.AssignedHours, cancellationToken);
-
-            var totalAssigned = otherAssigned + command.AssignedHours;
-
-            if (totalAssigned > workloadConfig.TotalWorkloadPool)
-            {
-                throw new DomainException(
-                    CoordinationErrors.WorkloadPoolExceeded(totalAssigned, workloadConfig.TotalWorkloadPool));
-            }
+            throw new DomainException(
+                CoordinationErrors.WorkloadPoolExceeded(totalAssigned, workloadConfig.TotalWorkloadPool));
         }
+    }
 
-        // Öğretmen başına azami saat kontrolü (öğretmen atanmışsa)
-        if (view.AssignedTeacherId.HasValue)
+    /// <summary>
+    /// Öğretmen başına azami ek ders saati kontrolü (öğretmen atanmışsa).
+    /// Diğer işletmelerin katkısı <see cref="BusinessCoordinationView.BillableTargetHours"/>
+    /// ile hesaplanır: fahri satır 0, takdir edilmemiş satır mesafe tavanı (#115).
+    /// </summary>
+    private static async Task ValidateTeacherLimitAsync(
+        IDocumentSession session,
+        BusinessCoordinationView view,
+        int newHours,
+        CancellationToken cancellationToken)
+    {
+        if (!view.AssignedTeacherId.HasValue) return;
+
+        var config = await session.Query<CoordinationConfig>()
+            .FirstOrDefaultAsync(c => c.InstitutionId == view.InstitutionId, cancellationToken);
+
+        if (config is null) return;
+
+        // Select projection yerine tam belge: yeni `isHonoraryVisit` alanı eski kayıtların
+        // JSON'unda yok, anonim tip projeksiyonunda NULL → bool dönüşümü patlardı.
+        var otherBusinesses = await session.Query<BusinessCoordinationView>()
+            .Where(b =>
+                b.AssignedTeacherId == view.AssignedTeacherId &&
+                b.Id != view.Id)
+            .ToListAsync(cancellationToken);
+
+        var otherTeacherHours = otherBusinesses.Sum(b => b.BillableTargetHours());
+        var teacherTotal = otherTeacherHours + newHours;
+
+        if (teacherTotal > config.MaxWeeklyExtraHours)
         {
-            var config = await session.Query<CoordinationConfig>()
-                .FirstOrDefaultAsync(c => c.InstitutionId == view.InstitutionId, cancellationToken);
-
-            if (config is not null)
-            {
-                // Öğretmenin diğer işletmelerindeki takdir edilen saatleri topla
-                var otherBusinesses = await session.Query<BusinessCoordinationView>()
-                    .Where(b =>
-                        b.AssignedTeacherId == view.AssignedTeacherId &&
-                        b.Id != view.Id)
-                    .Select(b => new { b.AssignedHours, b.MaxCoordinationHours })
-                    .ToListAsync(cancellationToken);
-
-                var otherTeacherHours = otherBusinesses
-                    .Sum(b => b.AssignedHours > 0 ? b.AssignedHours : b.MaxCoordinationHours);
-
-                var teacherTotal = otherTeacherHours + command.AssignedHours;
-
-                if (teacherTotal > config.MaxWeeklyExtraHours)
-                {
-                    throw new DomainException(
-                        CoordinationErrors.TeacherHoursExceedMax(
-                            view.AssignedTeacherId.Value, teacherTotal, config.MaxWeeklyExtraHours));
-                }
-            }
+            throw new DomainException(
+                CoordinationErrors.TeacherHoursExceedMax(
+                    view.AssignedTeacherId.Value, teacherTotal, config.MaxWeeklyExtraHours));
         }
+    }
 
+    private static void ApplyChange(
+        BusinessCoordinationView view,
+        UpdateBusinessAssignedHours command,
+        int newHours)
+    {
         var oldHours = view.AssignedHours;
-        view.AssignedHours = command.AssignedHours;
+        var wasHonorary = view.IsHonoraryVisit;
 
-        // Audit trail
+        view.AssignedHours = newHours;
+        view.IsHonoraryVisit = command.IsHonoraryVisit;
+
         view.History.Insert(0, new AssignmentHistoryEntry(
             DateTime.UtcNow,
             "HoursUpdated",
@@ -101,11 +145,25 @@ public static class UpdateBusinessAssignedHoursHandler
             view.AssignedTeacherName,
             null,
             null,
-            command.AssignedHours,
-            $"Takdir edilen saat {oldHours} → {command.AssignedHours} olarak değiştirildi"));
+            newHours,
+            DescribeChange(oldHours, wasHonorary, newHours, command.IsHonoraryVisit)));
+
         view.LastModifiedAt = DateTime.UtcNow;
         view.LastModifiedBy = command.UpdatedBy;
+    }
 
-        session.Store(view);
+    /// <summary>Geçmiş kaydı açıklaması — fahri geçişleri saat değişiminden ayrı okunur olsun.</summary>
+    private static string DescribeChange(int oldHours, bool wasHonorary, int newHours, bool isHonorary)
+    {
+        if (isHonorary && !wasHonorary)
+            return $"Fahri (ücretsiz) ziyaret olarak işaretlendi; takdir edilen saat {oldHours} → 0";
+
+        if (!isHonorary && wasHonorary)
+            return $"Fahri ziyaret işareti kaldırıldı; takdir edilen saat 0 → {newHours}";
+
+        if (isHonorary)
+            return "Fahri (ücretsiz) ziyaret olarak korundu; takdir edilen saat 0";
+
+        return $"Takdir edilen saat {oldHours} → {newHours} olarak değiştirildi";
     }
 }

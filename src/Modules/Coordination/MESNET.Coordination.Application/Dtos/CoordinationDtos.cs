@@ -60,6 +60,10 @@ public sealed record ScheduleHistoryDto(
 
 // ── Business Assignment ──
 
+/// <param name="IsHonoraryVisit">
+/// Fahri (ücretsiz) ziyaret (#115). True ise <paramref name="AssignedHours"/> her zaman 0'dır
+/// ve satır havuz/öğretmen kapasitesi toplamlarına girmez. False + 0 saat = "henüz takdir edilmedi".
+/// </param>
 public sealed record BusinessAssignmentDto(
     Guid BusinessId,
     string BusinessName,
@@ -69,6 +73,7 @@ public sealed record BusinessAssignmentDto(
     bool IsManualDistance,
     int MaxCoordinationHours,
     int AssignedHours,
+    bool IsHonoraryVisit,
     Guid? AssignedTeacherId,
     string? AssignedTeacherName,
     string? AssignedDay,
@@ -92,6 +97,10 @@ public sealed record AssignmentHistoryEntryDto(
 
 public sealed record AssignedSlotInfoDto(string Day, int PeriodNumber);
 
+/// <param name="TotalAssignedHours">
+/// Ücret doğuran toplam saat — fahri ziyaretler dahil DEĞİLDİR (#115).
+/// </param>
+/// <param name="HonoraryBusinessCount">Havuza girmeyen fahri ziyaret satırı sayısı.</param>
 public sealed record CoordinationSummaryDto(
     int TotalWorkloadPool,
     int TotalAssignedHours,
@@ -99,25 +108,34 @@ public sealed record CoordinationSummaryDto(
     int TotalMaxHours,
     int AssignedBusinessCount,
     int UnassignedBusinessCount,
+    int HonoraryBusinessCount,
     List<TeacherWorkloadSummaryDto> TeacherWorkloads);
 
+/// <param name="AssignedHours">Ücret doğuran saat — fahri ziyaretler hariç.</param>
+/// <param name="HonoraryVisitCount">
+/// Öğretmenin fahri ziyaret ettiği işletme sayısı. Ders programında slot işgal eder,
+/// ek ders saatine sayılmaz — ayrı gösterilmezse öğretmen yükü olduğundan az görünür.
+/// </param>
 public sealed record TeacherWorkloadSummaryDto(
     Guid TeacherId,
     string TeacherName,
     int AssignedHours,
-    int BusinessCount);
+    int BusinessCount,
+    int HonoraryVisitCount);
 
 public sealed record TeacherWorkloadDto(
     Guid TeacherId,
     int TotalAssignedHours,
     int BusinessCount,
+    int HonoraryVisitCount,
     List<TeacherBusinessAssignmentDto> Businesses);
 
 public sealed record TeacherBusinessAssignmentDto(
     Guid BusinessId,
     string BusinessName,
     int AssignedHours,
-    string? AssignedDay);
+    string? AssignedDay,
+    bool IsHonoraryVisit);
 
 // ── Teacher Overview ──
 
@@ -128,6 +146,7 @@ public sealed record TeacherOverviewDto(
     Guid TeacherId,
     int TotalAssignedHours,
     int BusinessCount,
+    int HonoraryVisitCount,
     bool ScheduleExists,
     Dictionary<string, int> FreeSlotsByDay,      // gün → boş slot sayısı
     Dictionary<string, int> TotalSlotsByDay,     // gün → toplam serbest slot
@@ -136,11 +155,19 @@ public sealed record TeacherOverviewDto(
 /// <summary>
 /// Tüm öğretmenlerin tek satır özeti (öğretmen sekmesi tablosu için)
 /// </summary>
+/// <param name="AssignedHours">Ücret doğuran saat — fahri ziyaretler hariç (#115).</param>
+/// <param name="HonoraryVisitCount">Fahri ziyaret edilen işletme sayısı.</param>
+/// <param name="HonorarySlotCount">
+/// Fahri ziyaretlerin ders programında işgal ettiği slot sayısı. "Atanan Saat" ile
+/// programdaki dolu slot sayısı arasındaki farkı bu değer açıklar.
+/// </param>
 public sealed record TeacherSummaryRowDto(
     Guid TeacherId,
     string TeacherName,
     int BusinessCount,
     int AssignedHours,
+    int HonoraryVisitCount,
+    int HonorarySlotCount,
     bool ScheduleExists,
     Dictionary<string, int> FreeSlotsByDay,       // gün → boş slot sayısı
     Dictionary<string, int> AssignedSlotsByDay);   // gün → atanmış koordinatörlük slot sayısı
@@ -191,4 +218,5 @@ public sealed record BusinessClusterDto(
     bool IsAssigned,
     int ActiveStudentCount,
     double? DistanceToSchoolKm,
-    int MaxCoordinationHours);     // mesafe formülünden hesaplanan maks saat
+    int MaxCoordinationHours,      // mesafe formülünden hesaplanan maks saat
+    bool IsHonoraryVisit);         // fahri (ücretsiz) ziyaret — saat takdiri yapılmaz (#115)

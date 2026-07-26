@@ -42,6 +42,7 @@ public static class ListBusinessesForAssignmentHandler
             v.IsManualDistance,
             v.MaxCoordinationHours,
             v.AssignedHours,
+            v.IsHonoraryVisit,
             v.AssignedTeacherId,
             v.AssignedTeacherName,
             v.AssignedDay,

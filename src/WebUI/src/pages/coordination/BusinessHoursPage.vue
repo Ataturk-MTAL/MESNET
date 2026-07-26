@@ -146,9 +146,11 @@
               :businesses="clusterData"
               :school-location="null"
               :assigned-hours="editedHours"
+              :honorary-visits="editedHonorary"
               :editable="!periodStore.isReadOnly"
               height="500px"
               @update:hours="onMapHoursUpdate"
+              @update:honorary="onMapHonoraryUpdate"
             />
           </DataState>
         </q-card-section>
@@ -238,6 +240,12 @@
                 </th>
                 <th
                   class="text-center"
+                  style="width: 90px"
+                >
+                  Fahri
+                </th>
+                <th
+                  class="text-center"
                   style="width: 140px"
                 >
                   Takdir Edilen
@@ -251,6 +259,16 @@
               >
                 <td class="text-left">
                   {{ biz.businessName }}
+                  <!-- Kayıtlı fahri işareti — ayrım metinle de taşınır, yalnız renkle değil -->
+                  <q-badge
+                    v-if="biz.isHonoraryVisit"
+                    color="neutral-soft"
+                    text-color="neutral-strong"
+                    class="q-ml-xs"
+                    :label="HONORARY_LABEL"
+                  >
+                    <q-tooltip>{{ HONORARY_HINT }}</q-tooltip>
+                  </q-badge>
                   <q-btn
                     flat
                     round
@@ -275,7 +293,29 @@
                   {{ biz.maxCoordinationHours }}
                 </td>
                 <td class="text-center">
+                  <q-toggle
+                    :model-value="editedHonorary[biz.businessId] ?? false"
+                    dense
+                    color="primary"
+                    :disable="periodStore.isReadOnly"
+                    :aria-label="`${biz.businessName} — fahri (ücretsiz) ziyaret`"
+                    @update:model-value="v => setHonorary(biz.businessId, v)"
+                  >
+                    <q-tooltip>{{ HONORARY_HINT }}</q-tooltip>
+                  </q-toggle>
+                </td>
+                <td class="text-center">
+                  <!-- Fahri satırda saat girişi yok: değer tanım gereği 0 (#115) -->
+                  <q-badge
+                    v-if="editedHonorary[biz.businessId]"
+                    color="neutral-soft"
+                    text-color="neutral-strong"
+                    label="Fahri — 0 saat"
+                  >
+                    <q-tooltip>{{ HONORARY_HINT }}</q-tooltip>
+                  </q-badge>
                   <q-input
+                    v-else
                     v-model.number="editedHours[biz.businessId]"
                     type="number"
                     dense
@@ -298,6 +338,10 @@
               &nbsp;|&nbsp; Σ Takdir: <strong :class="hoursTotalAssignedClass">{{ hoursTotalAssigned }}</strong>
               &nbsp;|&nbsp; Kalan: <strong :class="hoursRemainingClass">{{ hoursRemainingLabel }}</strong>
               &nbsp;|&nbsp; Σ Maks: <strong class="text-grey-6">{{ hoursTotalMaxHours }}</strong>
+              <span v-if="honoraryCount > 0">
+                &nbsp;|&nbsp; Fahri: <strong class="text-neutral-strong">{{ honoraryCount }}</strong> işletme
+                <q-tooltip>Fahri ziyaretler havuz toplamına girmez — ek ders ücreti doğurmaz.</q-tooltip>
+              </span>
             </div>
             <q-space />
             <q-btn
@@ -419,6 +463,7 @@ import {
   workloadPoolLabel,
   workloadPoolToneClass,
 } from 'src/utils/workloadPool'
+import { HONORARY_LABEL, HONORARY_HINT } from 'src/utils/coordinationHours'
 import BranchSelector from 'components/BranchSelector.vue'
 import BusinessClusterMap from 'components/BusinessClusterMap.vue'
 import AppNotice from 'components/AppNotice.vue'
@@ -451,7 +496,8 @@ const cluster = useClusterMap({ notify, loadData, branchFilter })
 const { workloadLoading } = workload
 
 const {
-  editedHours, hoursSaving, hoursTotalMaxHours, hoursWorkloadPool,
+  editedHours, editedHonorary, honoraryCount, setHonorary,
+  hoursSaving, hoursTotalMaxHours, hoursWorkloadPool,
   hoursTotalAssigned, hoursTotalAssignedClass,
   hoursRemainingLabel, hoursRemainingClass,
   hoursPoolUndefined, hoursOverLimit, hoursNearLimit,
@@ -492,9 +538,19 @@ async function loadData() {
   }
 }
 
-/** Haritadan saat düzenleme — tablodaki alanla aynı state'i yazar. */
+/**
+ * Haritadan saat düzenleme — tablodaki alanla aynı state'i yazar.
+ * Fahri satır fahri kalır: saat girişi sessizce yok sayılmaz, işaret kaldırılır ve
+ * girilen saat uygulanır (kullanıcı saat girdiyse ücretli yapmak istiyordur).
+ */
 function onMapHoursUpdate(businessId: string, hoursValue: number) {
+  if (editedHonorary.value[businessId]) setHonorary(businessId, false)
   editedHours.value[businessId] = hoursValue
+}
+
+/** Haritadan fahri işaretleme — tablodaki toggle ile aynı state'i yazar. */
+function onMapHonoraryUpdate(businessId: string, value: boolean) {
+  setHonorary(businessId, value)
 }
 
 async function onBranchChange() {
