@@ -122,19 +122,12 @@
               </div>
             </template>
 
-            <!-- Küme Özeti Chip'leri -->
-            <div class="row q-gutter-xs q-mb-md flex-wrap">
-              <q-chip
-                v-for="(count, clusterId) in clusterCounts"
-                :key="clusterId"
-                :style="{ backgroundColor: clusterColor(Number(clusterId)), color: '#fff' }"
-                dense
-                class="text-weight-medium"
-              >
-                {{ clusterId === 'null' ? 'Tek başına' : `Küme ${clusterId}` }}: {{ count }}
-              </q-chip>
-            </div>
-
+            <!--
+              Küme özeti burada TEKRARLANMAZ (#110): BusinessClusterMap kendi özet
+              çiplerini marker'larla AYNI paletten üretiyor. Sayfa ikinci bir özet
+              basınca aynı küme iki farklı renkte ve iki farklı numara tabanıyla
+              (0 vs 1) görünüyordu.
+            -->
             <BusinessClusterMap
               :businesses="clusterData"
               :school-location="null"
@@ -416,8 +409,8 @@ const {
 
 const {
   clusterData, clusterLoading, clusterError,
-  clusterEps, clusterMinPoints, clusterCounts,
-  recalculating, clusterColor,
+  clusterEps, clusterMinPoints,
+  recalculating,
   loadClusters, recalculateDistances,
 } = cluster
 

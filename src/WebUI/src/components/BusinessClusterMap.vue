@@ -209,6 +209,7 @@ import { LMap, LTileLayer, LMarker, LIcon, LPopup, LCircleMarker, LPolyline } fr
 import type { BusinessClusterDto } from 'src/api/coordination'
 import type { GeoLocation } from 'src/api/institution'
 import { SCHOOL_ICON_URL } from 'src/utils/mapConstants'
+import { clusterColor } from 'src/utils/clusterColors'
 
 interface RouteState {
   businessId: string
@@ -256,21 +257,9 @@ function savePopupHours(businessId: string) {
   }
 }
 
-// ── Renk Paleti ──
-const CLUSTER_PALETTE = [
-  '#1E88E5', '#43A047', '#FB8C00', '#E53935', '#8E24AA',
-  '#00ACC1', '#F4511E', '#6D4C41', '#00897B', '#C0CA33',
-  '#3949AB', '#D81B60', '#039BE5', '#7CB342', '#FFB300',
-  '#5E35B1', '#0097A7', '#2E7D32', '#BF360C', '#4527A0',
-]
-const NOISE_COLOR = '#9E9E9E'
-
-function clusterColor(clusterId: number | null): string {
-  if (clusterId === null) return NOISE_COLOR
-  return CLUSTER_PALETTE[clusterId % CLUSTER_PALETTE.length] ?? NOISE_COLOR
-}
-
 // ── Küme Özeti ──
+// Renk paleti `utils/clusterColors.ts`'te: özet çipleri ile marker'lar aynı
+// kaynaktan boyanır, küme özetini de yalnız bu bileşen basar (#110).
 const clusterSummary = computed(() => {
   const map = new Map<number | null, number>()
   for (const b of props.businesses) {
