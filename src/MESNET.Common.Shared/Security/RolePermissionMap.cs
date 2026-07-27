@@ -26,12 +26,18 @@ public static class RolePermissionMap
             // güvenlik kararı olduğu için açıkça yazılır.
             Permissions.Institution.AllBranches
         ],
-        [MesnetRoles.InstitutionStaff] =
+        // Müdür yardımcısı (#129). Kaynak: actors.md → "Müdür Yardımcısı" —
+        // staj işlemleri koordinasyonu, evrak takibi ve onayı, öğretmen görevlendirmeleri,
+        // dekont ve maaş süreçleri yönetimi.
+        // Bu demet #129 öncesinde InstitutionStaff'ta duruyordu; gerçekte müdür yardımcısının
+        // demetiydi (yorumları da öyle diyordu). Ayrı role taşındı, InstitutionStaff daraltıldı.
+        [MesnetRoles.DeputyDirector] =
         [
-            "user:*",
-            "department:*",                        // işletme dağıtımı yönetimi
+            "user:*",                              // davet onayı, kullanıcı/rol yönetimi
+            "department:*",                        // öğretmen görevlendirme + işletme dağıtımı
             // Müdür yardımcısı tüm alanların dağıtımını yönetebilir (#126).
             // DepartmentHead bu izni ALMAZ — alan kapsamı kontrolü ona uygulanır.
+            // InstitutionStaff da ALMAZ (#129) — koordinasyon dağıtımı onun görevi değil.
             Permissions.Institution.AllBranches,
             Permissions.Institution.View,
             Permissions.Student.View,
@@ -41,18 +47,44 @@ public static class RolePermissionMap
             Permissions.Internship.Approve,    // fesih onay zinciri (veli ıslak imzası + kendi adımı)
             Permissions.Internship.Contract,   // sözleşme yönetimi
             Permissions.Salary.View,
+            Permissions.Salary.Calculate,
             Permissions.Salary.Approve,        // dekont onay zinciri
             Permissions.Salary.Parameter,      // asgari ücret güncelleme
             Permissions.Attendance.View,
             Permissions.Attendance.Manage,
+            Permissions.Attendance.Report,
             Permissions.Attendance.Approve,
             Permissions.Document.View,
             Permissions.Document.Upload,
+            Permissions.Document.Verify,
             Permissions.Document.Track,
-            Permissions.Document.Approve,
+            Permissions.Document.Approve,      // evrak onayı
             Permissions.Company.View,
             Permissions.Company.Manage,
             Permissions.Company.Document,
+            Permissions.Communication.ViewMessages,
+            Permissions.Communication.SendMessage
+        ],
+        // Kurum yetkilendirdiği personel (#129). Kaynak: actors.md → "Kurum Yetkilendirdiği
+        // Personel" — öğrenci kayıt işlemleri, belge doğrulama, devamsızlık takibi,
+        // maaş hesaplamaları. Yürütür ama ONAYLAMAZ ve kullanıcı/koordinasyon yönetmez:
+        // "user:*", "department:*", *.Approve ve kapsam muafiyeti DeputyDirector'dedir.
+        [MesnetRoles.InstitutionStaff] =
+        [
+            Permissions.Institution.View,
+            Permissions.Student.View,
+            Permissions.Student.Manage,        // öğrenci kayıt işlemleri
+            Permissions.Internship.View,       // öğrenci/devamsızlık işi staj bağlamında yürür
+            Permissions.Salary.View,
+            Permissions.Salary.Calculate,      // maaş hesaplamaları (onay müdür yardımcısında)
+            Permissions.Attendance.View,
+            Permissions.Attendance.Manage,     // devamsızlık takibi
+            Permissions.Attendance.Report,
+            Permissions.Document.View,
+            Permissions.Document.Upload,
+            Permissions.Document.Verify,       // belge doğrulama
+            Permissions.Document.Track,
+            Permissions.Company.View,
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage
         ],
@@ -116,6 +148,15 @@ public static class RolePermissionMap
             Permissions.Attendance.Manage,
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage
+        ],
+        // Usta öğretici (#129) — işletme içinde DAR yetkili. CompanyManager'ın geniş demetini
+        // ALMAZ: öğrenci talebi, dekont yükleme ve işletme belge yönetimi onda kalır.
+        [MesnetRoles.MasterTrainer] =
+        [
+            Permissions.Company.Attendance,    // devam takibi
+            Permissions.Company.EnterGrade,    // dönem notu girişi
+            Permissions.Student.View,          // kendi öğrencileri
+            "communication:*"
         ]
     };
 

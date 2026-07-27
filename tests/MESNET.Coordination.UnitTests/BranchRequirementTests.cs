@@ -26,7 +26,7 @@ public sealed class BranchRequirementTests
     /// </summary>
     [Theory]
     [InlineData(MesnetRoles.InstitutionManager)]
-    [InlineData(MesnetRoles.InstitutionStaff)]
+    [InlineData(MesnetRoles.DeputyDirector)]
     public void Kurum_geneli_yetkili_roller_icin_alan_zorunlu_degildir(string role)
     {
         BranchRequirement.IsRequiredForRoles([role]).ShouldBeFalse();
@@ -36,6 +36,10 @@ public sealed class BranchRequirementTests
     [InlineData(MesnetRoles.Teacher)]
     [InlineData(MesnetRoles.Student)]
     [InlineData(MesnetRoles.CompanyManager)]
+    [InlineData(MesnetRoles.MasterTrainer)]
+    // Kurum personeli #129 ile dağıtım iznini kaybetti; alan bazlı koordinasyona hiç
+    // yazmadığı için alan istenmez (muafiyet yoluyla değil).
+    [InlineData(MesnetRoles.InstitutionStaff)]
     public void Dagitim_yetkisi_olmayan_roller_icin_alan_zorunlu_degildir(string role)
     {
         BranchRequirement.IsRequiredForRoles([role]).ShouldBeFalse();
@@ -49,7 +53,7 @@ public sealed class BranchRequirementTests
     public void Muafiyetli_rol_eklendiginde_zorunluluk_kalkar()
     {
         BranchRequirement
-            .IsRequiredForRoles([MesnetRoles.DepartmentHead, MesnetRoles.InstitutionStaff])
+            .IsRequiredForRoles([MesnetRoles.DepartmentHead, MesnetRoles.DeputyDirector])
             .ShouldBeFalse();
     }
 

@@ -80,7 +80,7 @@ public sealed class BranchScopeGuardTests
     /// </summary>
     [Theory]
     [InlineData(MesnetRoles.InstitutionManager)]
-    [InlineData(MesnetRoles.InstitutionStaff)]
+    [InlineData(MesnetRoles.DeputyDirector)]
     public void Muafiyetli_yonetici_branch_codes_TAMAMEN_BOSKEN_her_alana_yazabilir(string role)
     {
         var user = WithRole(role); // hiç alan kodu yok — beklenen normal durum
