@@ -11,15 +11,33 @@ public static class CoordinationCalculator
     /// <summary>
     /// Mesafeye göre verilebilecek maksimum koordinatörlük saatini hesaplar.
     /// Mevzuat: ≤1km→2s, ≤3km→4s, ≤5km→6s, >5km→8s
+    ///
+    /// <para>Tablonun saklanma sırası anlamsızdır — burada bir kez sıralanır ve hem eşleşme
+    /// hem fallback <b>sıralanmış</b> liste üzerinden yürür. Fallback yalnız catch-all
+    /// (<c>double.MaxValue</c>) kuralı olmayan bir tabloda devreye girer; yapılandırma ucu
+    /// böyle bir tabloyu reddeder (#134), bu dal savunma amaçlıdır.</para>
     /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="rules"/> null ise.</exception>
+    /// <exception cref="ArgumentException"><paramref name="rules"/> boş ise — saat hesabı tanımsızdır.</exception>
     public static int CalculateMaxHours(double distanceKm, List<DistanceHourRule> rules)
     {
-        foreach (var rule in rules.OrderBy(r => r.MaxDistanceKm))
+        ArgumentNullException.ThrowIfNull(rules);
+
+        if (rules.Count == 0)
+        {
+            throw new ArgumentException(
+                "Mesafe-saat tablosu boş — verilebilecek koordinatörlük saati hesaplanamaz.",
+                nameof(rules));
+        }
+
+        var ordered = rules.OrderBy(r => r.MaxDistanceKm).ToList();
+
+        foreach (var rule in ordered)
         {
             if (distanceKm <= rule.MaxDistanceKm) return rule.Hours;
         }
 
-        return rules.Last().Hours;
+        return ordered[^1].Hours;
     }
 
     /// <summary>
