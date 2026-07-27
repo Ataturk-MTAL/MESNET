@@ -79,11 +79,24 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 /**
+ * Saat alanları backend'de `int`. Ondalıklı bir değer gönderilirse System.Text.Json onu
+ * `int`'e dönüştüremez ve istek handler'a hiç ulaşmaz — kullanıcı `CoordinationConfigPolicy`
+ * kaynaklı Türkçe 422 yerine ham bir 400 görür. Bu yüzden tam sayı kontrolü istemcide yapılır;
+ * backend'de karşılığı ayrı bir kural değil, `int` tipinin kendisidir.
+ */
+function isIntegerNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value)
+}
+
+/**
  * Yapılandırmayı doğrular ve Türkçe hata mesajlarını döndürür. Boş dizi = geçerli.
  *
  * Kural kümesi backend ile aynıdır:
  * en az bir kural / her mesafe > 0 / her saat 1-40 / mesafeler benzersiz /
  * tam olarak bir "üzeri" kuralı / azami haftalık ek ders saati 1-40.
+ *
+ * Tek fark tam sayı kontrolüdür: backend'de ayrı bir kural değil, `int` tipinin kendisidir
+ * (bkz. `isIntegerNumber`).
  */
 export function validateCoordinationConfig(draft: CoordinationConfigDraft): string[] {
   const errors: string[] = []
@@ -109,6 +122,8 @@ export function validateCoordinationConfig(draft: CoordinationConfigDraft): stri
       errors.push(
         `${rowNo}. satır: saat ${MIN_RULE_HOURS} ile ${MAX_RULE_HOURS} arasında olmalıdır.`,
       )
+    } else if (!isIntegerNumber(rule.hours)) {
+      errors.push(`${rowNo}. satır: saat tam sayı olmalıdır.`)
     }
   })
 
@@ -140,6 +155,8 @@ export function validateCoordinationConfig(draft: CoordinationConfigDraft): stri
     errors.push(
       `Azami haftalık ek ders saati ${MIN_WEEKLY_EXTRA_HOURS} ile ${MAX_WEEKLY_EXTRA_HOURS} arasında olmalıdır.`,
     )
+  } else if (!isIntegerNumber(draft.maxWeeklyExtraHours)) {
+    errors.push('Azami haftalık ek ders saati tam sayı olmalıdır.')
   }
 
   return errors

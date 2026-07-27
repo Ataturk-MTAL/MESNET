@@ -199,3 +199,54 @@ describe('validateCoordinationConfig — azami haftalık ek ders saati', () => {
     expect(errors.some((e) => e.includes('Azami haftalık ek ders saati'))).toBe(true)
   })
 })
+
+/**
+ * Saat alanları backend'de `int`. Ondalıklı değer System.Text.Json tarafından reddedilir ve
+ * istek handler'a hiç ulaşmaz — kullanıcı Türkçe 422 yerine ham 400 görür. Bu yüzden tam sayı
+ * kuralı yalnız istemcide vardır; backend'deki karşılığı `int` tipinin kendisidir.
+ */
+describe('validateCoordinationConfig — tam sayı kuralı', () => {
+  it('ondalıklı kural saatini reddeder', () => {
+    // Arrange
+    const draft = makeDraft({
+      distanceHourRules: [{ maxDistanceKm: 1, hours: 2.5 }, { ...CATCH_ALL }],
+    })
+
+    // Act
+    const errors = validateCoordinationConfig(draft)
+
+    // Assert
+    expect(errors).toContain('1. satır: saat tam sayı olmalıdır.')
+  })
+
+  it('ondalıklı azami haftalık ek ders saatini reddeder', () => {
+    // Arrange & Act
+    const errors = validateCoordinationConfig(makeDraft({ maxWeeklyExtraHours: 20.5 }))
+
+    // Assert
+    expect(errors).toContain('Azami haftalık ek ders saati tam sayı olmalıdır.')
+  })
+
+  it('aralık dışı ondalıklı saat için tek hata bildirir — aralık hatası tam sayı hatasını bastırır', () => {
+    // Arrange
+    const draft = makeDraft({
+      distanceHourRules: [{ maxDistanceKm: 1, hours: 40.5 }, { ...CATCH_ALL }],
+    })
+
+    // Act
+    const errors = validateCoordinationConfig(draft)
+
+    // Assert
+    expect(errors.filter((e) => e.startsWith('1. satır: saat'))).toHaveLength(1)
+  })
+
+  it('ondalıklı mesafeyi kabul eder — backend tarafı double', () => {
+    // Arrange
+    const draft = makeDraft({
+      distanceHourRules: [{ maxDistanceKm: 1.5, hours: 2 }, { ...CATCH_ALL }],
+    })
+
+    // Act & Assert
+    expect(validateCoordinationConfig(draft)).toEqual([])
+  })
+})
