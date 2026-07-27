@@ -41,6 +41,12 @@ public static class CreateUserHandler
         if (attributes.Count > 0)
             await keycloak.SetUserAttributesAsync(keycloakUserId, attributes);
 
+        // Alan (branş) kapsamı kayıt sırasında sabitlenir (#126). Boş liste geçerlidir —
+        // müdür/müdür yardımcısı hiçbir alana bağlı değildir; öznitelik hiç yazılmaz.
+        var branchCodes = NormalizeBranchCodes(command.BranchCodes);
+        if (branchCodes.Count > 0)
+            await keycloak.SetUserAttributeValuesAsync(keycloakUserId, BranchCodeClaims.ClaimType, branchCodes);
+
         var account = new UserAccount
         {
             Id = Guid.NewGuid(),
@@ -51,7 +57,8 @@ public static class CreateUserHandler
             LastName = command.LastName,
             Roles = command.Roles,
             InstitutionId = command.InstitutionId,
-            BusinessId = command.BusinessId
+            BusinessId = command.BusinessId,
+            BranchCodes = branchCodes
         };
 
         session.Store(account);
@@ -62,6 +69,52 @@ public static class CreateUserHandler
             command.Metadata ?? []);
 
         return (account.Id, @event);
+    }
+
+    /// <summary>Boş/yinelenen kodları eler. Sonuç boş olabilir — bu bir hata değildir.</summary>
+    internal static List<string> NormalizeBranchCodes(IEnumerable<string>? codes) =>
+        (codes ?? [])
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+}
+
+/// <summary>
+/// Kullanıcının alan (branş) kapsamını değiştirir (#126).
+///
+/// <para>Kayıt sırasında girilen bilgi sonradan değişebilir: kullanıcı alan şefi yapılabilir,
+/// başka alana geçebilir ya da ikinci bir alandan sorumlu olabilir. Kapsam değişimi permission
+/// cache'ini geçersiz kılar — aksi hâlde eski kapsam 5 dakika daha geçerli kalırdı.</para>
+/// </summary>
+public static class ChangeUserBranchesHandler
+{
+    public static async Task<UserBranchesChanged> Handle(
+        ChangeUserBranches command, IKeycloakAdminService keycloak,
+        IDocumentSession session, IMemoryCache cache)
+    {
+        var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
+        if (account is null)
+            throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
+
+        var previous = account.BranchCodes.ToList();
+        var branchCodes = CreateUserHandler.NormalizeBranchCodes(command.BranchCodes);
+
+        // Boş liste özniteliği siler — kapsamı kaldırmak geçerli bir işlemdir
+        // (ör. alan şefliğinden müdür yardımcılığına geçen kullanıcı).
+        var kcResult = await keycloak.SetUserAttributeValuesAsync(
+            account.KeycloakUserId, BranchCodeClaims.ClaimType, branchCodes);
+
+        if (kcResult.IsFailure)
+            throw new DomainException(kcResult.Error);
+
+        account.BranchCodes = branchCodes;
+        account.UpdatedAt = DateTime.UtcNow;
+        session.Store(account);
+
+        PermissionClaimsTransformation.InvalidateCache(cache, account.KeycloakUserId);
+
+        return new UserBranchesChanged(account.Id, account.KeycloakUserId, previous, branchCodes);
     }
 }
 
@@ -137,6 +190,16 @@ public static class ChangeUserPermissionsHandler
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
         if (account is null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
+
+        // Mutlak guardrail — kapsam muafiyeti izinleri hiçbir yapılandırmayla bireysel
+        // atanamaz (#126). Yapılandırılabilir kapsam kontrolünden ÖNCE gelir, çünkü
+        // yapılandırma (PUT /permission-scopes, user:roles:manage) bu kuralı gevşetememeli.
+        var neverAssignable = command.DirectPermissions
+            .Where(AssignablePermissionScope.NeverDirectlyAssignable.Contains)
+            .ToList();
+        if (neverAssignable.Count > 0)
+            throw new DomainException(SecurityErrors.PermissionNeverDirectlyAssignable(
+                string.Join(", ", neverAssignable)));
 
         // Guardrail — kullanıcının rol kapsamı dışındaki yetkiler direct olarak ATANAMAZ
         // (ör. işletme kullanıcısına kurum-yönetimi yetkisi verilemez). Kapsam YAPILANDIRILABILIR.
@@ -242,6 +305,9 @@ public static class SyncUsersFromKeycloakHandler
                 account.Roles = ku.Roles;
                 if (ku.InstitutionId.HasValue) account.InstitutionId = ku.InstitutionId;
                 if (ku.BusinessId.HasValue) account.BusinessId = ku.BusinessId;
+                // Branş yalnız Keycloak'ta VARSA tazelenir; yoksa lokal kayıt korunur.
+                // Boş öznitelik "branşı sil" anlamına gelmez — sync uydurmaz da, silmez de (#126).
+                if (ku.BranchCodes.Count > 0) account.BranchCodes = ku.BranchCodes;
                 account.UpdatedAt = DateTime.UtcNow;
                 session.Store(account);
                 updated++;
@@ -259,7 +325,8 @@ public static class SyncUsersFromKeycloakHandler
                     IsEnabled = ku.Enabled,
                     Roles = ku.Roles,
                     InstitutionId = ku.InstitutionId,
-                    BusinessId = ku.BusinessId
+                    BusinessId = ku.BusinessId,
+                    BranchCodes = ku.BranchCodes
                 });
                 created++;
             }

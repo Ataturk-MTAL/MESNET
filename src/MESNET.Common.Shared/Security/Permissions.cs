@@ -30,6 +30,22 @@ public static class Permissions
 
         /// <summary>Dönem sonu not giriş penceresini açma/kapatma (rolden bağımsız — yetkili olan herkes).</summary>
         public const string ManageGradeWindow = "institution:grade-window:manage";
+
+        /// <summary>
+        /// Kurum genelinde <b>tüm alanların</b> koordinasyon verisine yazma muafiyeti (#126).
+        ///
+        /// <para>Bu izin erişim değil <b>kapsam</b> açar: sahibi, kendi alan(lar)ına bakılmaksızın
+        /// her alanın saat dağıtımını / atamasını değiştirebilir. Okul müdürü ve müdür yardımcısı
+        /// alır; alan şefi ALMAZ.</para>
+        ///
+        /// <para><b>Ad neden <c>department:</c> ile başlamıyor:</b> <c>DepartmentHead</c> rolü
+        /// <c>department:*</c> wildcard'ını taşır. İzin <c>department:distribution:all</c> olarak
+        /// adlandırılsaydı wildcard onu da kapsar, muafiyet alan şefine de geçer ve kapsam
+        /// kontrolü sessizce hiç çalışmazdı. <c>institution:</c> öneki muafiyeti kurum geneli
+        /// yetkiye bağlar: <c>InstitutionManager</c> zaten <c>institution:*</c> ile alır,
+        /// <c>InstitutionStaff</c>'a açıkça verilir, <c>DepartmentHead</c>'e hiçbir yoldan geçmez.</para>
+        /// </summary>
+        public const string AllBranches = "institution:distribution:all-branches";
     }
 
     /// <summary>

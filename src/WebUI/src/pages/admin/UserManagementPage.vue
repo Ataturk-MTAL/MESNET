@@ -54,6 +54,17 @@
           </div>
         </div>
 
+        <!--
+          Rol değişimiyle alan şefi yapılıp branşsız kalan kullanıcıları idarenin görmesi
+          için filtre (#126). Muafiyeti olan yöneticiler bu listeye asla girmez.
+        -->
+        <q-toggle
+          v-model="missingBranchOnly"
+          label="Yalnız branş atanmamış kullanıcılar"
+          class="q-mb-sm"
+          @update:model-value="loadUsers().catch(() => {})"
+        />
+
         <AppTable
           :rows="users"
           :columns="userColumns"
@@ -87,6 +98,38 @@
               >+{{ row.roles.length - 2 }}</span>
             </q-td>
           </template>
+          <!--
+            Alan (branş) sütunu (#126). Boş liste yöneticide NORMALDİR — uyarı gösterilmez.
+            Yalnız alan beklenip girilmemişse (branchMissing) uyarı rozeti çıkar.
+          -->
+          <template #body-cell-branchCodes="{ row }">
+            <q-td>
+              <q-badge
+                v-if="resolveBranchCellState(row) === 'missing'"
+                color="warning"
+                text-color="dark"
+                label="Branş atanmamış"
+              >
+                <q-tooltip>
+                  Bu kullanıcı alan bazlı koordinasyon verisine yazabilmek için en az bir alana
+                  bağlı olmalıdır. Alan girilene kadar hiçbir alana yazamaz.
+                </q-tooltip>
+              </q-badge>
+              <template v-else-if="resolveBranchCellState(row) === 'assigned'">
+                <q-badge
+                  v-for="code in row.branchCodes"
+                  :key="code"
+                  color="neutral"
+                  :label="code"
+                  class="q-mr-xs"
+                />
+              </template>
+              <span
+                v-else
+                class="text-caption text-grey"
+              >—</span>
+            </q-td>
+          </template>
           <template #body-cell-userActions="{ row }">
             <q-td class="text-right">
               <PermissionGuard :permission="Permissions.UserManagement.Update">
@@ -107,7 +150,20 @@
                   icon="manage_accounts"
                   aria-label="Rolleri yönet"
                   @click="openRoles(row)"
-                />
+                >
+                  <q-tooltip>Rolleri yönet</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="school"
+                  :color="row.branchMissing ? 'warning' : undefined"
+                  aria-label="Alanları yönet"
+                  @click="openBranches(row)"
+                >
+                  <q-tooltip>Alanları (branş) yönet</q-tooltip>
+                </q-btn>
               </PermissionGuard>
               <PermissionGuard :permission="Permissions.UserManagement.Update">
                 <q-btn
@@ -262,6 +318,35 @@
               <q-icon name="manage_accounts" />
             </template>
           </q-select>
+          <!--
+            Alan (branş) kayıt sırasında girilir (#126). Zorunlu değildir — yöneticiler
+            hiçbir alana bağlı değildir. Davet tamamlandığında bu değer kullanıcı kaydının
+            birinci sınıf alanına ve `branch_codes` claim'ine akar.
+          -->
+          <q-select
+            v-model="inviteForm.branchCodes"
+            :options="branchOpts.options.value"
+            :loading="branchOpts.loading.value"
+            label="Alanlar (branş)"
+            hint="Alan şefi / koordinatör için gereklidir; yöneticide boş bırakılabilir."
+            outlined
+            multiple
+            use-chips
+            use-input
+            input-debounce="0"
+            emit-value
+            map-options
+            option-label="label"
+            option-value="value"
+            @filter="branchOpts.filter"
+          >
+            <template #prepend>
+              <q-icon name="school" />
+            </template>
+            <template #no-option>
+              <SelectEmptyOption />
+            </template>
+          </q-select>
         </q-card-section>
         <q-separator />
         <q-card-actions
@@ -338,6 +423,88 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Alanlar (branş) Dialog — kapsam kararı, roller/yetkiler ile aynı izin seviyesi (#126) -->
+    <q-dialog
+      v-model="branchesDialog"
+      persistent
+      :maximized="$q.screen.lt.sm"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
+        <q-toolbar class="bg-secondary text-white">
+          <q-icon
+            name="school"
+            class="q-mr-sm"
+          />
+          <q-toolbar-title>Alanlar: {{ selectedUser?.fullName }}</q-toolbar-title>
+          <q-btn
+            v-close-popup
+            flat
+            round
+            dense
+            icon="close"
+            aria-label="Kapat"
+            color="white"
+          />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <AppNotice
+            v-if="selectedUser?.branchRequired"
+            type="info"
+            message="Bu kullanıcı alan bazlı koordinasyon verisine yazabiliyor; en az bir alan seçilmelidir."
+          />
+          <AppNotice
+            v-else
+            type="info"
+            message="Bu kullanıcı kurum genelinde yetkilidir; alan seçimi zorunlu değildir ve boş bırakılabilir."
+          />
+          <q-select
+            v-model="selectedBranches"
+            :options="branchOpts.options.value"
+            :loading="branchOpts.loading.value"
+            label="Alanlar"
+            outlined
+            multiple
+            use-chips
+            use-input
+            input-debounce="0"
+            emit-value
+            map-options
+            option-label="label"
+            option-value="value"
+            @filter="branchOpts.filter"
+          >
+            <template #prepend>
+              <q-icon name="school" />
+            </template>
+            <template #no-option>
+              <SelectEmptyOption />
+            </template>
+          </q-select>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions
+          align="right"
+          class="q-pa-md"
+        >
+          <q-btn
+            v-close-popup
+            flat
+            label="İptal"
+            color="grey-7"
+          />
+          <q-btn
+            unelevated
+            color="secondary"
+            label="Kaydet"
+            :loading="saving"
+            @click="saveBranches"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -352,7 +519,11 @@ import { Permissions } from 'utils/permissions'
 import { useAuthStore } from 'stores/auth'
 import { useEntityOptionsStore } from 'stores/entityOptions'
 import AppTable from 'components/AppTable.vue'
+import AppNotice from 'components/AppNotice.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
+import SelectEmptyOption from 'components/SelectEmptyOption.vue'
+import { useBranchOptions } from 'src/composables/useEntityOptions'
+import { resolveBranchCellState } from 'utils/branchAssignment'
 
 const $q = useQuasar()
 const notify = useNotify()
@@ -368,8 +539,17 @@ const inviteDialog = ref(false)
 const rolesDialog = ref(false)
 const selectedRoles = ref<string[]>([])
 
+// ── Alan (branş) kapsamı (#126) ──
+const branchesDialog = ref(false)
+const selectedBranches = ref<string[]>([])
+const missingBranchOnly = ref(false)
+const branchOpts = useBranchOptions()
+
 // ── Server-side pagination: Users ──
-const userFilters = computed(() => ({}))
+// Boş liste yöneticide normaldir; filtre yalnız "beklenip girilmemiş" olanları getirir.
+const userFilters = computed(() =>
+  missingBranchOnly.value ? { missingBranchOnly: true } : {},
+)
 const { rows: users, loading: usersLoading, pagination: usersPagination, search: usersSearch, onRequest: onUsersRequest, onSearch: onUsersSearch, load: loadUsers } =
   useServerPagination<UserAccountDto>({
     fetchFn: (params) => securityApi.listUsers(params),
@@ -399,12 +579,14 @@ const roleOptions = [
 
 const inviteForm = reactive({
   email: '', firstName: '', lastName: '', targetRole: '',
+  branchCodes: [] as string[],
 })
 
 const userColumns: QTableProps['columns'] = [
   { name: 'fullName', label: 'Ad Soyad', field: 'fullName', align: 'left', sortable: true },
   { name: 'email', label: 'E-posta', field: 'email', align: 'left' },
   { name: 'roles', label: 'Roller', field: 'roles', align: 'left' },
+  { name: 'branchCodes', label: 'Alan', field: 'branchCodes', align: 'left' },
   { name: 'isEnabled', label: 'Durum', field: 'isEnabled', align: 'center' },
   { name: 'userActions', label: '', field: 'id', align: 'right' },
 ]
@@ -447,9 +629,34 @@ async function saveRoles() {
     await securityApi.changeRoles(selectedUser.value.id, { roles: selectedRoles.value })
     notify.success('Roller güncellendi.')
     rolesDialog.value = false
+    // Rol değişimi alan zorunluluğunu değiştirebilir — liste tazelenince
+    // branşsız kalan kullanıcı "Branş atanmamış" rozetiyle görünür hâle gelir (#126).
     await loadUsers()
   } catch (e) {
     notify.apiError(e, 'Roller güncellenirken bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
+}
+
+function openBranches(row: UserAccountDto) {
+  selectedUser.value = row
+  selectedBranches.value = [...row.branchCodes]
+  branchesDialog.value = true
+  branchOpts.load().catch(() => {})
+}
+
+async function saveBranches() {
+  if (!selectedUser.value) return
+  saving.value = true
+  try {
+    // Boş dizi kapsamı kaldırır — alan şefliğinden yöneticiliğe geçişte geçerli işlemdir.
+    await securityApi.changeBranches(selectedUser.value.id, { branchCodes: selectedBranches.value })
+    notify.success('Kullanıcının alanları güncellendi.')
+    branchesDialog.value = false
+    await loadUsers()
+  } catch (e) {
+    notify.apiError(e, 'Alanlar güncellenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }
@@ -463,6 +670,11 @@ async function sendInvitation() {
       firstName: inviteForm.firstName,
       lastName: inviteForm.lastName,
       targetRole: inviteForm.targetRole,
+      // Davet metadata'sı yalnız TAŞIMA biçimidir; davet tamamlanınca backend bunu
+      // kullanıcı kaydının birinci sınıf BranchCodes alanına yazar (#126).
+      ...(inviteForm.branchCodes.length
+        ? { metadata: { BranchCode: inviteForm.branchCodes.join(',') } }
+        : {}),
     })
     entityOptionsStore.invalidateKeycloakUsers()
     notify.success('Davet gönderildi.')
@@ -471,6 +683,7 @@ async function sendInvitation() {
     inviteForm.firstName = ''
     inviteForm.lastName = ''
     inviteForm.targetRole = ''
+    inviteForm.branchCodes = []
     await loadInvitations()
   } catch (e) {
     notify.apiError(e, 'Davet gönderilirken bir hata oluştu.')
@@ -534,4 +747,6 @@ async function syncUsers() {
 // Initial load
 loadUsers()
 loadInvitations()
+// Alan kataloğu — davet ve alan yönetimi dialoglarında kullanılır (#126)
+branchOpts.load().catch(() => {})
 </script>

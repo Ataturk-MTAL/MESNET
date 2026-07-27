@@ -12,7 +12,18 @@ interface KeycloakTokenParsed {
   family_name?: string
   realm_access?: { roles: string[] }
   institution_id?: string
+  /** Kullanıcının sorumlu olduğu alan (branş) kodları (#126) — multivalued claim */
+  branch_codes?: string[] | string
 }
+
+/**
+ * Kurum genelinde tüm alanların koordinasyon verisine yazma muafiyeti (#126).
+ * Backend `Permissions.Institution.AllBranches` ile birebir aynı olmalıdır.
+ *
+ * Adı bilerek `department:` ile başlamaz: alan şefi `department:*` wildcard'ını taşır,
+ * o önekte tanımlansaydı muafiyet alan şefine de geçer ve kapsam kontrolü hiç çalışmazdı.
+ */
+export const ALL_BRANCHES_PERMISSION = 'institution:distribution:all-branches'
 
 export interface AuthUser {
   id: string
@@ -23,7 +34,25 @@ export interface AuthUser {
   fullName: string
   roles: string[]
   institutionId: string | null
+  /** @deprecated Tek alan varsayımı — yerine `branchCodes` kullanın (#126). */
   branchCode: string | null
+  /** Kullanıcının sorumlu olduğu alan kodları; bir kişi birden çok alandan sorumlu olabilir (#126). */
+  branchCodes: string[]
+}
+
+/**
+ * `branch_codes` claim'i mapper yapılandırmasına göre dizi ya da virgüllü metin gelebilir;
+ * her iki biçimi de tek tipe indirger (#126).
+ */
+function normalizeBranchCodes(raw: string[] | string | null | undefined): string[] {
+  if (Array.isArray(raw)) return raw.map((c) => c.trim()).filter(Boolean)
+  if (typeof raw === 'string') {
+    return raw
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean)
+  }
+  return []
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -64,6 +93,29 @@ export const useAuthStore = defineStore('auth', () => {
     return perms.every((perm) => hasPermission(perm))
   }
 
+  /**
+   * Kurum geneli alan muafiyeti (#126) — rol adına DEĞİL permission'a bakar.
+   * Müdür ve müdür yardımcısı taşır; alan şefi taşımaz.
+   */
+  const canManageAllBranches = computed(() => hasPermission(ALL_BRANCHES_PERMISSION))
+
+  /**
+   * Kullanıcının **yazabileceği** alan kodları (#126).
+   * Muafiyeti varsa `null` döner — "kısıt yok" demektir; boş dizi ile karıştırılmamalıdır
+   * (boş dizi "hiçbir alana yazamaz" demektir).
+   */
+  const writableBranchCodes = computed<string[] | null>(() =>
+    canManageAllBranches.value ? null : (user.value?.branchCodes ?? []),
+  )
+
+  /** Verilen alana yazma yetkisi var mı? Backend `BranchScopePolicy` ile aynı karar. */
+  function canWriteBranch(branchCode: string | null | undefined): boolean {
+    const scope = writableBranchCodes.value
+    if (scope === null) return true
+    if (!branchCode) return false
+    return scope.some((c) => c.toLocaleLowerCase('tr') === branchCode.toLocaleLowerCase('tr'))
+  }
+
   // Actions
   function setFromKeycloak(keycloak: Keycloak): void {
     const parsed = keycloak.tokenParsed as KeycloakTokenParsed | undefined
@@ -90,6 +142,8 @@ export const useAuthStore = defineStore('auth', () => {
       roles: realmRoles,
       institutionId: parsed.institution_id ?? null,
       branchCode: null,
+      // Token'da claim varsa hemen kullan; yoksa loadPermissions() backend'den doldurur (#126)
+      branchCodes: normalizeBranchCodes(parsed.branch_codes),
     }
 
     // Permission'lar henüz yüklenmedi — loadPermissions() ile backend'den alınacak
@@ -117,6 +171,7 @@ export const useAuthStore = defineStore('auth', () => {
             ...user.value,
             ...(data?.institutionId ? { institutionId: data.institutionId } : {}),
             branchCode: data?.branchCode ?? null,
+            branchCodes: normalizeBranchCodes(data?.branchCodes),
           }
         }
         return // başarılı — çık
@@ -172,6 +227,9 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken,
     isManager,
     isDepartmentHead,
+    canManageAllBranches,
+    writableBranchCodes,
+    canWriteBranch,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,

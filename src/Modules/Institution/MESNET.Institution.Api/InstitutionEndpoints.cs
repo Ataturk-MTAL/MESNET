@@ -24,8 +24,28 @@ public static class InstitutionEndpoints
         group.MapPost("/{institutionId:guid}/staff", PostStaff).RequireAuthorization(Permissions.Institution.Staff);
         group.MapPut("/{institutionId:guid}/schedule-config", PutScheduleConfig).RequireAuthorization(Permissions.Institution.Manage);
         group.MapGet("/{institutionId:guid}/schedule-config", GetScheduleConfig).RequireAuthorization(Permissions.Institution.View);
+        // Mevcut kullanıcıların alan kapsamı için tek seferlik geçiş adımı (#126) — idempotent
+        group.MapPost("/staff/resync-branch-codes", PostResyncStaffBranchCodes).RequireAuthorization(Permissions.Institution.Staff);
 
         return app;
+    }
+
+    /// <summary>
+    /// Personel kayıtlarındaki alan bilgisini yeniden yayınlar; Security modülü tüketip
+    /// kullanıcı kapsamını doldurur (#126). Alanı olmayan personel atlanır — bu beklenen
+    /// durumdur, eksik değildir.
+    /// </summary>
+    private static async Task<IResult> PostResyncStaffBranchCodes(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ResyncStaffBranchCodesResult>(new ResyncStaffBranchCodes());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage(
+                $"{result.TotalStaff} personel incelendi, {result.Published} kayıt için alan bilgisi yayınlandı " +
+                $"({result.SkippedNoBranch} personelin alanı yok — normal, " +
+                $"{result.SkippedNoKeycloakId} personel eşleştirilemedi).")
+            .Build());
     }
 
     private static async Task<IResult> GetAll(IMessageBus bus)

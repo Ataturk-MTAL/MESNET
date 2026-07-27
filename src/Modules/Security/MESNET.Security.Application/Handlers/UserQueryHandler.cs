@@ -2,18 +2,29 @@ using Marten;
 using MESNET.Common.Infrastructure.Pagination;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Pagination;
+using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Errors;
 using MESNET.Security.Core.Entities;
 
 namespace MESNET.Security.Application.Handlers;
 
+/// <param name="BranchCodes">Kullanıcının sorumlu olduğu alan kodları (#126). Boş olabilir.</param>
+/// <param name="BranchRequired">
+/// Bu kullanıcı için alan girilmesi zorunlu mu? Permission'dan türetilir, rol adından değil.
+/// <c>false</c> ise boş <paramref name="BranchCodes"/> beklenen normal durumdur (müdür, müdür yrd.).
+/// </param>
+/// <param name="BranchMissing">
+/// Alan zorunlu ama girilmemiş — arayüzde "branş atanmamış" rozetiyle gösterilir.
+/// Bu kullanıcı hiçbir alana yazamaz; idare elle alan girmelidir.
+/// </param>
 public sealed record UserAccountDto(
     Guid Id, string KeycloakUserId, string Username, string Email,
     string FirstName, string LastName, string FullName,
     bool IsEnabled, Guid? InstitutionId, Guid? BusinessId,
     List<string> Roles, List<string> DirectPermissions,
-    DateTime CreatedAt, DateTime? UpdatedAt);
+    DateTime CreatedAt, DateTime? UpdatedAt,
+    List<string> BranchCodes, bool BranchRequired, bool BranchMissing);
 
 public static class GetUserAccountsHandler
 {
@@ -37,12 +48,46 @@ public static class GetUserAccountsHandler
         queryable = queryable.ApplySearch(query.Search, u => u.FullName, u => u.Email);
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: u => u.FullName);
 
-        return await queryable.ToPagedResultAsync(query, a => new UserAccountDto(
+        // "Branş atanmamış" filtresi (#126): karar permission'dan türetilir ve rol listesine
+        // bağlıdır — SQL'e çevrilemez, bu yüzden in-memory uygulanır. Sayfalama bu yüzden
+        // filtre uygulandığında bellek üzerinden yapılır.
+        if (query.MissingBranchOnly == true)
+        {
+            var all = await queryable.ToListAsync();
+            var missing = all.Where(IsBranchMissing).ToList();
+
+            var items = missing
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .Select(ToDto)
+                .ToList();
+
+            return new PagedResult<UserAccountDto>
+            {
+                Items = items,
+                TotalCount = missing.Count,
+                Page = query.Page,
+                PageSize = query.PageSize
+            };
+        }
+
+        return await queryable.ToPagedResultAsync(query, ToDto);
+    }
+
+    internal static bool IsBranchMissing(UserAccount a) =>
+        BranchRequirement.IsRequiredForRoles(a.Roles) && a.BranchCodes.Count == 0;
+
+    internal static UserAccountDto ToDto(UserAccount a)
+    {
+        var required = BranchRequirement.IsRequiredForRoles(a.Roles);
+
+        return new UserAccountDto(
             a.Id, a.KeycloakUserId, a.Username, a.Email,
             a.FirstName, a.LastName, a.FullName,
             a.IsEnabled, a.InstitutionId, a.BusinessId,
             a.Roles, a.DirectPermissions,
-            a.CreatedAt, a.UpdatedAt));
+            a.CreatedAt, a.UpdatedAt,
+            a.BranchCodes, required, required && a.BranchCodes.Count == 0);
     }
 }
 
@@ -55,11 +100,6 @@ public static class GetUserAccountHandler
         if (account is null)
             throw new DomainException(SecurityErrors.UserNotFound(query.UserAccountId));
 
-        return new UserAccountDto(
-            account.Id, account.KeycloakUserId, account.Username, account.Email,
-            account.FirstName, account.LastName, account.FullName,
-            account.IsEnabled, account.InstitutionId, account.BusinessId,
-            account.Roles, account.DirectPermissions,
-            account.CreatedAt, account.UpdatedAt);
+        return GetUserAccountsHandler.ToDto(account);
     }
 }

@@ -28,6 +28,13 @@ public sealed record UserPermissionsChanged(
     string KeycloakUserId,
     IReadOnlyList<string> DirectPermissions);
 
+/// <summary>Kullanıcının alan (branş) kapsamı değişti (#126). Boş liste geçerli bir sonuçtur.</summary>
+public sealed record UserBranchesChanged(
+    Guid UserAccountId,
+    string KeycloakUserId,
+    IReadOnlyList<string> PreviousBranchCodes,
+    IReadOnlyList<string> NewBranchCodes);
+
 public sealed record UserActivated(
     Guid UserAccountId,
     string KeycloakUserId);

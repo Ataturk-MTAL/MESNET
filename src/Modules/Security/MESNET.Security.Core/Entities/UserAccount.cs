@@ -19,6 +19,13 @@ public class UserAccount
     public Guid? StudentId { get; set; }
     public List<string> Roles { get; set; } = [];
     public List<string> DirectPermissions { get; set; } = [];
+
+    /// <summary>
+    /// Kullanıcının sorumlu olduğu alan (branş) kodları (#126).
+    /// <b>Kayıt sırasında girilir</b>, sistem tarafından türetilmez — `branch_codes` claim'inin
+    /// kaynağıdır. Boş olması hata değildir: müdür/müdür yardımcısı hiçbir alana bağlı değildir.
+    /// </summary>
+    public List<string> BranchCodes { get; set; } = [];
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }

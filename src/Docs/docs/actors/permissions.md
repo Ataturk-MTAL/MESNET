@@ -36,22 +36,28 @@ yazılmış kontrol yalnız rol→permission haritasına satır eklemeyi gerekti
 | `InstitutionStaff` | Müdür yardımcısı | ✅ |
 | `DepartmentHead` | Alan şefi | ✅ |
 
+Üçü de **yetkilidir**; farkı yaratan **kapsamdır** — alan şefi yalnız kendi alan(lar)ına
+yazabilir (#126).
+
 ### Permission erişimi açar, kapsamı belirlemez
 
 "Hangi kurumun/alanın verisi" sorusu ayrı bir kontroldür ve permission ile karıştırılmamalıdır.
 
 - **Kurum kapsamı:** `institution_id` token claim'inden okunur, istekten alınmaz
-- **Alan (branş) kapsamı:** bugün **mekanizma yoktur**. `ICurrentUserService` alan bilgisi
-  taşımıyor ve koordinasyon uçları `branchCode`'u sorgu parametresinden alıyor; bir alan şefi
-  başka alanın saat dağıtımını değiştirebilir. Bilinen açık.
+- **Alan (branş) kapsamı:** `branch_codes` token claim'inden okunur (#126).
+  `ICurrentUserService.GetBranchCodes()` taşır; koordinasyon **yazma** handler'ları
+  `BranchScopeGuard` ile kontrol eder. Ayrıntı: [Alan (Branş) Kapsamı Kontrolü](#alan-branş-kapsamı-kontrolü)
 
 ### Bu ilkenin bilinen istisnaları (teknik borç)
 
-Aşağıdaki üç nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
+Aşağıdaki iki nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
 
 - `src/Modules/Attendance/MESNET.Attendance.Application/Handlers/MarkAttendanceHandler.cs:55`
 - `src/Modules/Enrollment/MESNET.Enrollment.Application/Handlers/PlacementQueryScope.cs:23-34`
-- `src/WebUI/src/stores/auth.ts:47`
+
+`src/WebUI/src/stores/auth.ts` kapsam kararı #126 ile permission bazlına geçti
+(`canManageAllBranches` / `writableBranchCodes`); `isDepartmentHead` yalnız kapsam dışı
+görünürlük için kalmıştır.
 
 ## Ana Roller ve İzinler
 
@@ -127,6 +133,10 @@ public static class Permissions
         public const string Delete = "institution:delete";
         public const string Staff = "institution:staff:manage";
         public const string Report = "institution:report:view";
+        // Kurum genelinde tüm alanların koordinasyon verisine yazma muafiyeti (#126).
+        // "department:" öneki KULLANILMAZ — DepartmentHead'in department:* wildcard'ı
+        // muafiyeti ona da verirdi ve kapsam kontrolü hiç çalışmazdı.
+        public const string AllBranches = "institution:distribution:all-branches";
     }
 
     // Öğrenci İzinleri
@@ -837,3 +847,188 @@ public static class StudentEndpoints
 - OpenID Connect protokolü
 - Role ve permission mapper'lar
 - Token scope yapılandırması
+
+## Alan (Branş) Kapsamı Kontrolü
+
+**Permission erişimi açar, kapsamı belirlemez.** "Hangi kurumun/alanın verisi" sorusu ayrı bir
+kontroldür:
+
+- **Kurum kapsamı:** `institution_id` token claim'inden okunur, istekten alınmaz
+- **Alan (branş) kapsamı:** `branch_codes` token claim'inden okunur (#126)
+
+### Claim: `branch_codes`
+
+Kullanıcının sorumlu olduğu alan kodlarının **listesi**. Liste olmasının nedeni: küçük okullarda
+bir alan şefi birden çok alandan sorumlu olabiliyor.
+
+> **Boş `branch_codes` bir hata değildir.** Herkesin branş kodu olmak zorunda değildir; okul
+> müdürü ve müdür yardımcısı hiçbir alana bağlı değildir ve bu **doğru durumdur**, veri
+> eksikliği değil. Claim yoksa/boşsa doğrulama hatası üretilmez, uyarı gösterilmez, "eksik
+> veri" olarak işaretlenmez. Keycloak tarafında da `branch_codes` **zorunlu alan değildir**
+> (unmanaged, opsiyonel öznitelik).
+>
+> Boş liste yalnız **muafiyeti olmayan** kullanıcı için kısıtlayıcıdır: personel kaydında
+> branş kodu bulunmayan bir alan şefi hiçbir alana yazamaz. Bu, yöneticinin boş listesinden
+> farklı bir durumdur ve düzeltmesi Kurum → Personel ekranından branş kodunun girilmesidir.
+
+#### Kaynak: kayıt sırasında girilir
+
+**Alan bilgisi kullanıcı oluşturulurken girilir; sistem tahmin etmez veya sonradan türetmez.**
+`CreateUser.BranchCodes`, `InstitutionId` / `BusinessId` ile aynı desende **birinci sınıf
+alandır** — `Metadata` sözlüğünden okunmaz. Davet akışındaki `Metadata["BranchCode"]` yalnız
+taşıma biçimidir; davet tamamlanınca birinci sınıf alana yazılır, iki ayrı doğruluk kaynağı
+bırakılmaz.
+
+Değişiklik yolu: `POST /api/security/users/{id}/branches` (`ChangeUserBranches`).
+`user:roles:manage` izniyle korunur — alan kapsamı bir **yetki kapsamı** kararıdır, kimlik
+bilgisi değil; bu yüzden `UpdateUser` (ad/soyad/e-posta, `user:update`) ile birleştirilmez.
+Kapsam değişimi permission cache'ini geçersiz kılar.
+
+#### Claim çözümleme sırası — kullanıcı kaydı OTORİTERDİR
+
+1. **Kullanıcı kaydı** (`UserAccount.BranchCodes`) — **otoriterdir**. Doluysa token'dan gelen
+   `branch_codes` claim'leri **atılır** ve yerine kayıttaki değerler konur.
+2. **Token claim'i** — yalnız kullanıcı kaydında alan **yokken** kabul edilir (#126 öncesi
+   oluşturulmuş, kaydı henüz doldurulmamış kullanıcılar).
+3. **Personel kaydı yedeği (geçiş adımı)** — `institution.mt_doc_institution` →
+   `staff[].branchCode`. 5 dakikalık `IMemoryCache` ile.
+
+Üçü de boşsa claim eklenmez — bu bir hata değildir.
+
+:::danger Bu sırayı ters çevirmeyin
+
+"Token zaten Keycloak'tan geliyor, imzalı, güvenilir" düşüncesi burada **yanlıştır**.
+`branch_codes` Keycloak'ta *unmanaged* bir kullanıcı özniteliğidir. Realm politikası
+`ENABLED` olsaydı kullanıcı, varsayılan `manage-account` rolüyle kendi Account
+konsolundan/REST API'sinden **kendi özniteliğini yazabilirdi**: EET alan şefi kendine `MTT`
+ekler, token'ında `branch_codes: [EET, MTT]` görünür ve #126'nın engellemek için var olduğu
+şeyi — başka alanın saat dağıtımını ezmeyi — yapardı.
+
+**Token'ın imzalı olması, içeriğin kullanıcı tarafından belirlenmediği anlamına gelmez.**
+:::
+
+Koruma **iki katmanlıdır** ve ikisi de gereklidir:
+
+| Katman | Nerede | Ne yapar |
+|---|---|---|
+| Realm politikası | `mesnet-realm.json` → `unmanagedAttributePolicy: ADMIN_EDIT` | Unmanaged öznitelikler yalnız **admin** bağlamında görünür/yazılır; kullanıcı ne görür ne yazar |
+| Otoriter kayıt | `PermissionClaimsTransformation` | Kullanıcı kaydı doluysa token claim'i **silinir**, yerine kayıt konur |
+
+`ADMIN_EDIT`, uygulamanın yazma yolunu **etkilemez**: `KeycloakAdminService`
+`client_credentials` servis hesabı token'ıyla `/admin/realms/{realm}/users/{id}` üzerinden
+yazar — admin bağlamıdır. Aynı politika `institution_id` / `business_id` / `student_id`
+için de aynı korumayı getirir.
+
+> **Neden DB yedeği yine de var:** Keycloak özniteliği hiç yazılamamışsa (kurulum eksik)
+> kapsam yine de çalışsın diye. Yedek yol sistemin kilitlenmemesini sağlar; güvenlik kararı
+> ise otoriter kayda dayanır, realm yapılandırmasına **bağımlı değildir**.
+
+#### Alan zorunluluğu ve dolgu
+
+Zorunluluk **permission'dan türetilir, rol adından değil** (`BranchRequirement`): kullanıcı
+`department:distribution:manage` iznine sahip ama `institution:distribution:all-branches`
+muafiyetine sahip değilse en az bir alan zorunludur (`CreateUserValidator`). Muafiyeti
+olanda alan istenmez.
+
+Mevcut kullanıcılar için **ikincil geçiş adımı**:
+`POST /api/institutions/staff/resync-branch-codes` — personel kayıtlarındaki alan bilgisini
+`StaffAuthorized` olayı olarak yeniden yayınlar; Security modülündeki `StaffBranchSyncConsumer`
+kullanıcı kaydının **boş** alan listesini doldurur. İdempotenttir.
+
+- Alanı olmayan personel (müdür, müdür yrd.) **atlanır** — eksik değil, normal
+- Kullanıcı kaydında zaten alan varsa **üzerine yazılmaz** — elle girilen kapsam korunur
+- Belirsiz kalanlar uydurulmaz; kullanıcı yönetimi ekranında **"Branş atanmamış"** rozetiyle
+  ve `?missingBranchOnly=true` filtresiyle listelenir, idare elle girer
+
+### Muafiyet izni: `institution:distribution:all-branches`
+
+Kurum geneli yetkili roller (okul müdürü, müdür yardımcısı) tüm alanları yönetebilmelidir.
+Bu muafiyet **rol adına değil permission'a** bağlıdır.
+
+| Rol | `department:*` | `institution:distribution:all-branches` | Sonuç |
+|---|---|---|---|
+| `InstitutionManager` | ✅ | ✅ (`institution:*` ile) | Tüm alanlara yazar |
+| `InstitutionStaff` | ✅ | ✅ (açık kayıt) | Tüm alanlara yazar |
+| `DepartmentHead` | ✅ | ❌ | Yalnız kendi alan(lar)ına yazar |
+
+> **İsimlendirme tuzağı (dikkat):** Muafiyet izni `department:distribution:all` olarak
+> adlandırılamaz. Üç rolün de `department:*` wildcard'ı vardır; o önekteki her yeni izin
+> **alan şefine de** geçer ve kapsam kontrolü sessizce hiç çalışmaz. Bu yüzden izin
+> `institution:` öneki altındadır. Kilitleyen test:
+> `tests/MESNET.Coordination.UnitTests/BranchScopeExemptionMappingTests.cs`
+
+#### Muafiyet izni bireysel olarak ASLA atanamaz
+
+`AssignablePermissionScope.NeverDirectlyAssignable` sabit listesindedir; `CanAssign(...)`
+bu izinleri **yapılandırmadan bağımsız** olarak reddeder ve `ChangeUserPermissionsHandler`
+kontrolü yapılandırılabilir kapsam kontrolünden **önce** uygular.
+
+Gerekçe: rol → atanabilir domain haritası `PUT /api/security/permission-scopes` ile çalışma
+zamanında değiştirilebilir ve bu uç yalnız `user:roles:manage` ister — o izin müdür
+yardımcısında da vardır. Sabit liste olmasaydı müdür yardımcısı önce `DepartmentHead`'in
+listesine `institution:` ekler, sonra bir alan şefine muafiyet iznini vererek kapsam
+kontrolünü tümden kaldırabilirdi. **Kural mutlaktır; yapılandırma onu gevşetemez.**
+
+Bu izinler yalnız `RolePermissionMap` üzerinden, role bağlı olarak gelir. Benzer izinler
+ileride eklenirse **tek yer** bu listedir.
+
+### Karar tablosu
+
+Saf mantık `MESNET.Common.Shared/Security/BranchScopePolicy.cs` içindedir.
+**Karar sırası: önce muafiyet, sonra liste.** Muafiyet varsa alan listesine hiç bakılmaz —
+liste önce kontrol edilseydi, branşı olmayan yöneticiler kilitlenirdi.
+
+| Muafiyet izni | İstenen alan | Kullanıcının alanları | Yazabilir mi |
+|---|---|---|---|
+| var | herhangi | **boş** (müdür/müdür yrd. — normal) | ✅ |
+| var | herhangi | herhangi | ✅ |
+| yok | `EET` | `[EET]` | ✅ |
+| yok | `EET` | `[EET, MTT]` | ✅ |
+| yok | `MTT` | `[EET]` | ❌ |
+| yok | `EET` | `[]` (branşı girilmemiş alan şefi) | ❌ |
+| yok | boş / null | herhangi | ❌ |
+
+İhlalde `DomainException(Coordination.BranchScopeDenied)` → HTTP 422.
+
+### Okuma açık, yazma kapalı
+
+Kontrol **yalnız yazma uçlarındadır**. Alan şefi başka alanın saat dağıtımını görebilir
+(koordinasyon bütününü görmek işe yarar), değiştiremez.
+
+**Kısıtlanan (yazma) uçları:**
+
+| Uç | Handler |
+|---|---|
+| `PATCH /api/coordination/teachers/assignments/branch-hours` | `UpdateBranchAssignedHoursHandler` |
+| `PATCH /api/coordination/teachers/assignments/{businessId}/hours` | `UpdateBusinessAssignedHoursHandler` |
+| `POST /api/coordination/teachers/assignments` | `AssignBusinessToTeacherHandler` |
+| `DELETE /api/coordination/teachers/assignments/{businessId}` | `UnassignBusinessFromTeacherHandler` |
+| `DELETE /api/coordination/teachers/assignments/{businessId}/slot` | `UnassignBusinessSlotHandler` |
+| `PUT /api/coordination/teachers/branch-workload/{branchCode}` | `UpsertBranchWorkloadConfigHandler` |
+
+**Kısıtlanmayan (okuma) uçları:** `GET /assignments`, `GET /summary`, `GET /overview-all`,
+`GET /business-clusters`, `GET /assignments/suggest-hours`, `GET /branch-workload/{branchCode}`,
+`GET /assignments/{businessId}/history`.
+
+> **Kapsam istekten değil, çözümlenmiş satırdan okunur.** Satır bazlı uçlarda kontrol,
+> istekteki `branchCode` parametresine değil yüklenen `BusinessCoordinationView.BranchCode`
+> değerine bakar — parametre boş bırakılıp eski tek-satır yedeğine düşülerek kontrol
+> atlatılamasın diye.
+
+### Frontend
+
+`BranchSelector` bileşeni `write-context` prop'u ile çalışır: yazma bağlamında kullanıcının
+yazamayacağı alanlar **listelenmez**; kapsam tek alansa seçici yerine salt okunur alan gösterilir.
+Salt görüntüleme/filtre bağlamında (öğrenci listesi, devamsızlık, ödeme) tüm alanlar görünür.
+Karar `authStore.canManageAllBranches` / `authStore.writableBranchCodes` üzerinden verilir —
+rol adına bakılmaz.
+
+Kullanıcı yönetimi ekranında (`UserManagementPage`):
+
+- **Alan** sütunu kullanıcının alan kodlarını gösterir; boşsa nötr `—` (uyarı değil)
+- Alan beklenip girilmemişse **"Branş atanmamış"** uyarı rozeti çıkar
+- **Yalnız branş atanmamış kullanıcılar** filtresi (`missingBranchOnly`) idarenin bu
+  kullanıcıları bulmasını sağlar; rol değişimiyle branşsız kalanlar burada görünür
+- Satır aksiyonlarındaki 🎓 düğmesi alan kapsamını düzenler (çoklu seçim, kurum branş
+  kataloğundan)
+- Davet formunda alan çoklu seçimi vardır; zorunlu değildir

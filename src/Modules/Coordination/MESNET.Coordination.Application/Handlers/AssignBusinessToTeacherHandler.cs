@@ -1,8 +1,10 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Application.Helpers;
+using MESNET.Coordination.Application.Security;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.Enums;
@@ -16,6 +18,7 @@ public static class AssignBusinessToTeacherHandler
     public static async Task<Coordination.Shared.Events.BusinessAssignedToTeacher> Handle(
         AssignBusinessToTeacher command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
         var view = await CoordinationViewLookup.LoadBranchRowAsync(
@@ -26,6 +29,9 @@ public static class AssignBusinessToTeacherHandler
             throw new DomainException(
                 CoordinationErrors.BusinessBranchNotFound(command.BusinessId, command.BranchCode));
         }
+
+        // Kapsam çözümlenmiş satırdan okunur (#126) — bkz. BranchScopeGuard.
+        BranchScopeGuard.EnsureCanWrite(currentUser, view.BranchCode);
 
         // Hedef slot sayısı: takdir edilen saat > 0 ise o, yoksa verilebilir saat.
         // Fahri ziyarette tavana DÜŞÜLMEZ — ücret doğurmadığı hâlde 8 saat tüketiyormuş

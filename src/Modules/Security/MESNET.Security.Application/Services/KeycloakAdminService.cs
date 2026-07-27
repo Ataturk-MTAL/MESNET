@@ -247,8 +247,40 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
     }
 
     // ── Attribute ─────────────────────────────────────────────────────────────────────
-    public async Task<Result> SetUserAttributesAsync(
+    public Task<Result> SetUserAttributesAsync(
         string keycloakUserId, Dictionary<string, string> attributes, CancellationToken ct = default)
+    {
+        var multivalued = attributes.ToDictionary(
+            kv => kv.Key,
+            kv => (IReadOnlyList<string>)new[] { kv.Value });
+
+        return MergeUserAttributesAsync(keycloakUserId, multivalued, ct);
+    }
+
+    public Task<Result> SetUserAttributeValuesAsync(
+        string keycloakUserId, string attributeName, IReadOnlyList<string> values,
+        CancellationToken ct = default)
+    {
+        var cleaned = values
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Select(v => v.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return MergeUserAttributesAsync(
+            keycloakUserId,
+            new Dictionary<string, IReadOnlyList<string>> { [attributeName] = cleaned },
+            ct);
+    }
+
+    /// <summary>
+    /// Mevcut öznitelikleri koruyarak verilenleri üzerine yazar.
+    /// Boş değer listesi özniteliği siler — "hiç yok" geçerli bir durumdur (#126).
+    /// </summary>
+    private async Task<Result> MergeUserAttributesAsync(
+        string keycloakUserId,
+        Dictionary<string, IReadOnlyList<string>> attributes,
+        CancellationToken ct)
     {
         try
         {
@@ -270,8 +302,14 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
                         : [];
                 }
             }
-            foreach (var (key, value) in attributes)
-                merged[key] = [value];
+            foreach (var (key, values) in attributes)
+            {
+                // Boş liste → özniteliği kaldır. branch_codes zorunlu alan DEĞİLDİR.
+                if (values.Count == 0)
+                    merged.Remove(key);
+                else
+                    merged[key] = [.. values];
+            }
 
             var payload = new Dictionary<string, object?> { ["attributes"] = merged };
             using var putResp = await SendAdminAsync(HttpMethod.Put, $"/users/{keycloakUserId}", payload, ct);
@@ -329,7 +367,8 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
                     !u.TryGetProperty("enabled", out var enEl) || enEl.GetBoolean(),
                     roles,
                     ParseGuidJsonAttr(u, "institution_id"),
-                    ParseGuidJsonAttr(u, "business_id")));
+                    ParseGuidJsonAttr(u, "business_id"),
+                    ParseStringListAttr(u, "branch_codes")));
             }
 
             return Result<List<KeycloakUserInfo>>.Success(result);
@@ -340,6 +379,27 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
             return Result<List<KeycloakUserInfo>>.Failure(
                 Errors.SecurityErrors.KeycloakOperationFailed(ex.Message));
         }
+    }
+
+    /// <summary>
+    /// Çok değerli metin özniteliğini okur — ör. <c>branch_codes: ["EET","MTT"]</c> (#126).
+    /// Öznitelik yoksa boş liste döner; bu bir eksiklik değil, geçerli durumdur.
+    /// Tek değer virgüllü metin olarak yazılmışsa ("EET,MTT") o da ayrıştırılır.
+    /// </summary>
+    private static List<string> ParseStringListAttr(JsonElement user, string key)
+    {
+        if (!user.TryGetProperty("attributes", out var attrs)
+            || attrs.ValueKind != JsonValueKind.Object
+            || !attrs.TryGetProperty(key, out var arr)
+            || arr.ValueKind != JsonValueKind.Array)
+            return [];
+
+        return arr.EnumerateArray()
+            .Select(e => e.GetString())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .SelectMany(s => s!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     // Keycloak UserRepresentation.attributes → { "institution_id": ["<guid>"] } biçimindedir.

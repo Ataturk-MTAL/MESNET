@@ -21,12 +21,18 @@ public static class RolePermissionMap
             "user:*",
             "coordinator:*",
             "department:*",
-            "company:*"
+            "company:*",
+            // Kurum geneli alan muafiyeti (#126) — "institution:*" zaten kapsar,
+            // güvenlik kararı olduğu için açıkça yazılır.
+            Permissions.Institution.AllBranches
         ],
         [MesnetRoles.InstitutionStaff] =
         [
             "user:*",
             "department:*",                        // işletme dağıtımı yönetimi
+            // Müdür yardımcısı tüm alanların dağıtımını yönetebilir (#126).
+            // DepartmentHead bu izni ALMAZ — alan kapsamı kontrolü ona uygulanır.
+            Permissions.Institution.AllBranches,
             Permissions.Institution.View,
             Permissions.Student.View,
             Permissions.Student.Manage,

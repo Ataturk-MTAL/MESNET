@@ -9,4 +9,11 @@ public interface ICurrentUserService
     string GetFullName();
     bool HasPermission(string permission);
     bool IsInRole(string role);
+
+    /// <summary>
+    /// Kullanıcının sorumlu olduğu alan (branş) kodları — <c>branch_codes</c> claim'i (#126).
+    /// Kapsam kararı için kullanılır; erişim kararı için değil (o permission'ın işidir).
+    /// Bilgi yoksa boş liste döner — boş liste "hiçbir alana yazamaz" demektir.
+    /// </summary>
+    IReadOnlyList<string> GetBranchCodes();
 }

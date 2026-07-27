@@ -1,8 +1,10 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Application.Helpers;
+using MESNET.Coordination.Application.Security;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.ReadModels;
 using MESNET.Coordination.Core.Services;
@@ -23,9 +25,13 @@ public static class UpdateBranchAssignedHoursHandler
     public static async Task Handle(
         UpdateBranchAssignedHours command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
         ValidateShape(command);
+
+        // Kapsam kontrolü kısıt doğrulamasından ÖNCE: yetkisiz istek hiçbir satır okumadan reddedilir (#126).
+        BranchScopeGuard.EnsureCanWrite(currentUser, command.BranchCode);
 
         var branchRows = await LoadBranchRowsAsync(session, command, cancellationToken);
         var targets = await ResolveTargetsAsync(session, command, branchRows, cancellationToken);

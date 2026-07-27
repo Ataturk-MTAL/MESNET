@@ -11,8 +11,10 @@
     <!-- Alan Seçici -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
       <div class="col-12 col-sm-3">
+        <!-- Yazma bağlamı (#126): saat dağıtımı kaydedilen sayfa — yetkisiz alan listelenmez -->
         <BranchSelector
           v-model="branchFilter"
+          write-context
           @update:model-value="onBranchChange"
         />
       </div>

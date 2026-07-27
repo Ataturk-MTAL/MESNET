@@ -1,6 +1,7 @@
 using Marten;
 using MESNET.Common.Infrastructure.Email;
 using MESNET.Common.Infrastructure.Pagination;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Pagination;
 using MESNET.Security.Application.Commands;
@@ -139,6 +140,19 @@ public static class CompleteInvitationHandler
         if (attributes.Count > 0)
             await keycloak.SetUserAttributesAsync(keycloakUserId, attributes);
 
+        // Davet metadata'sındaki BranchCode birinci sınıf alana bağlanır (#126) —
+        // iki ayrı doğruluk kaynağı bırakılmaz. Metadata yalnız taşıma biçimidir.
+        var branchCodes = CreateUserHandler.NormalizeBranchCodes(
+            invitation.Metadata.TryGetValue("BranchCode", out var rawBranch)
+                ? rawBranch.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                : []);
+
+        if (branchCodes.Count > 0)
+        {
+            await keycloak.SetUserAttributeValuesAsync(
+                keycloakUserId, BranchCodeClaims.ClaimType, branchCodes);
+        }
+
         var account = new UserAccount
         {
             Id = Guid.NewGuid(),
@@ -149,7 +163,8 @@ public static class CompleteInvitationHandler
             LastName = invitation.LastName,
             Roles = [invitation.TargetRole],
             InstitutionId = invitation.InstitutionId,
-            BusinessId = invitation.BusinessId
+            BusinessId = invitation.BusinessId,
+            BranchCodes = branchCodes
         };
         session.Store(account);
 
