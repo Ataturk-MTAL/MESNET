@@ -198,6 +198,16 @@ const router = createRouter({
           meta: { permissions: ['department:distribution:manage'] },
         },
 
+        // Kurum Koordinasyon Yapılandırması (#134)
+        // Görme yetkisi burada; DEĞİŞTİRME ayrı bir izindir
+        // (`institution:coordination-config:manage`) ve sayfa içinde kontrol edilir (#130).
+        {
+          path: 'coordination/config',
+          name: 'CoordinationConfig',
+          component: () => import('pages/coordination/CoordinationConfigPage.vue'),
+          meta: { permissions: ['department:distribution:manage'] },
+        },
+
         // Haftalık Ziyaretler
         {
           path: 'coordination/weekly-visits',

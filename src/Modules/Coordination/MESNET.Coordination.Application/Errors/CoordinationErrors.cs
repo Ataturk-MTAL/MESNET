@@ -1,4 +1,6 @@
+using System.Globalization;
 using MESNET.Common.Shared;
+using MESNET.Coordination.Core.Enums;
 using MESNET.Coordination.Core.Services;
 
 namespace MESNET.Coordination.Application.Errors;
@@ -209,6 +211,70 @@ public static class CoordinationErrors
     public static Error TeacherHoursExceedMax(Guid teacherId, int totalHours, int maxHours) =>
         new("Coordination.TeacherHoursExceedMax",
             $"Öğretmenin toplam koordinatörlük saati ({totalHours}) azami limiti ({maxHours}) aşıyor. Öğretmen: {teacherId}");
+
+    // ── Kurum koordinasyon yapılandırması (#134) ──
+
+    /// <summary>
+    /// Politikanın döndürdüğü yapılandırma ihlalini HTTP 422'ye taşınacak hataya çevirir.
+    /// Kod ailesi <c>Coordination.{Kind}</c>'dir — frontend tek eşleme tablosu tutar.
+    /// </summary>
+    public static Error CoordinationConfigInvalid(CoordinationConfigViolation violation)
+    {
+        var kind = violation.Kind;
+
+        if (kind == CoordinationConfigViolationKind.EmptyDistanceHourRules)
+            return EmptyDistanceHourRules();
+
+        if (kind == CoordinationConfigViolationKind.InvalidDistanceHourRuleDistance)
+            return InvalidDistanceHourRuleDistance(violation.DistanceKm ?? 0);
+
+        if (kind == CoordinationConfigViolationKind.InvalidDistanceHourRuleHours)
+            return InvalidDistanceHourRuleHours(violation.DistanceKm ?? 0, violation.Hours ?? 0);
+
+        if (kind == CoordinationConfigViolationKind.DuplicateDistanceHourRule)
+            return DuplicateDistanceHourRule(violation.DistanceKm ?? 0);
+
+        if (kind == CoordinationConfigViolationKind.MissingUnlimitedDistanceHourRule)
+            return MissingUnlimitedDistanceHourRule();
+
+        return InvalidMaxWeeklyExtraHours(violation.Hours ?? 0);
+    }
+
+    public static Error EmptyDistanceHourRules() =>
+        new("Coordination.EmptyDistanceHourRules",
+            "Mesafe-saat tablosu boş olamaz — en az bir kural tanımlanmalıdır.");
+
+    public static Error InvalidDistanceHourRuleDistance(double maxDistanceKm) =>
+        new("Coordination.InvalidDistanceHourRuleDistance",
+            $"Geçersiz mesafe sınırı: {FormatDistance(maxDistanceKm)} km. Mesafe sınırı 0'dan büyük olmalıdır.");
+
+    public static Error InvalidDistanceHourRuleHours(double maxDistanceKm, int hours) =>
+        new("Coordination.InvalidDistanceHourRuleHours",
+            $"{FormatDistance(maxDistanceKm)} km kuralının saati geçersiz: {hours}. " +
+            $"Saat {CoordinationConfigPolicy.MinHours} ile {CoordinationConfigPolicy.MaxHours} arasında olmalıdır.");
+
+    public static Error DuplicateDistanceHourRule(double maxDistanceKm) =>
+        new("Coordination.DuplicateDistanceHourRule",
+            $"Aynı mesafe sınırı tabloda birden çok kez tanımlanamaz: {FormatDistance(maxDistanceKm)} km.");
+
+    public static Error MissingUnlimitedDistanceHourRule() =>
+        new("Coordination.MissingUnlimitedDistanceHourRule",
+            "Mesafe-saat tablosunda \"üzeri (sınırsız)\" kuralı bulunmak zorundadır — " +
+            "aksi hâlde en uzak işletmeler için verilebilecek saat tanımsız kalır.");
+
+    public static Error InvalidMaxWeeklyExtraHours(int hours) =>
+        new("Coordination.InvalidMaxWeeklyExtraHours",
+            $"Geçersiz azami haftalık ek ders saati: {hours}. " +
+            $"Değer {CoordinationConfigPolicy.MinHours} ile {CoordinationConfigPolicy.MaxHours} arasında olmalıdır.");
+
+    /// <summary>
+    /// Catch-all kuralın sınırı <c>double.MaxValue</c>'dur; kullanıcıya 1,79E+308 değil
+    /// "sınırsız" gösterilir.
+    /// </summary>
+    private static string FormatDistance(double maxDistanceKm) =>
+        double.IsPositiveInfinity(maxDistanceKm) || maxDistanceKm >= double.MaxValue
+            ? "sınırsız"
+            : maxDistanceKm.ToString("0.##", CultureInfo.InvariantCulture);
 
     // WeeklyVisit
     public static Error WeeklyVisitPlanNotFound(Guid planId) =>

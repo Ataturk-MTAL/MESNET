@@ -1,9 +1,19 @@
 using Marten;
+using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
+using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Core.Entities;
+using MESNET.Coordination.Core.Services;
 
 namespace MESNET.Coordination.Application.Handlers;
 
+/// <summary>
+/// Kurum koordinasyon yapılandırmasını oluşturur veya günceller.
+///
+/// <para>Yalnız <c>null</c> olmayan alanlar yazılır — kısmi güncelleme bilinçlidir.
+/// Yazılacak alanlar önce <see cref="CoordinationConfigPolicy"/> ile doğrulanır (#134);
+/// ihlalde hiçbir alan yazılmaz.</para>
+/// </summary>
 public static class UpsertCoordinationConfigHandler
 {
     public static async Task Handle(
@@ -11,6 +21,12 @@ public static class UpsertCoordinationConfigHandler
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
+        var violation = CoordinationConfigPolicy.Validate(
+            command.DistanceHourRules, command.MaxWeeklyExtraHours);
+
+        if (violation is not null)
+            throw new DomainException(CoordinationErrors.CoordinationConfigInvalid(violation));
+
         var existing = await session.Query<CoordinationConfig>()
             .FirstOrDefaultAsync(c => c.InstitutionId == command.InstitutionId, cancellationToken);
 
