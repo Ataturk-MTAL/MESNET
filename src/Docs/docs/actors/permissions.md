@@ -137,14 +137,15 @@ Kaynak: actors.md → "Müdür Yardımcısı" (staj işlemleri koordinasyonu, ev
 | `user:*` | Davet onay zinciri müdür yardımcısındadır; kullanıcı ve rol yönetimi yapar |
 | `department:*` | Öğretmen görevlendirmeleri + işletme dağıtımı |
 | `institution:distribution:all-branches` | Kurum geneli koordinasyon — tek alanla sınırlı değildir (#126) |
+| `institution:coordination-config:manage` | Kurum geneli koordinasyon yapılandırması — mevzuat türevi, kurum düzeyi ayar (#130) |
 | `internship:*` (view/manage/approve/contract) | Staj işlemleri koordinasyonu ve fesih onay zinciri |
 | `document:approve`, `document:verify`, `document:track` | Evrak takibi **ve onayı** |
 | `salary:approve`, `salary:parameter:manage` | Dekont onay zinciri, asgari ücret parametresi |
 | `attendance:approve` | Devamsızlık onayı |
 
-`InstitutionStaff` ile farkı: personelde `user:*`, `department:*`, kapsam muafiyeti ve
-`*:approve` izinlerinin **hiçbiri yoktur**; personel kaydı girer ve hesaplar, kararı müdür
-yardımcısı verir.
+`InstitutionStaff` ile farkı: personelde `user:*`, `department:*`, kapsam muafiyeti, kurum
+geneli koordinasyon yapılandırması ve `*:approve` izinlerinin **hiçbiri yoktur**; personel
+kaydı girer ve hesaplar, kararı müdür yardımcısı verir.
 
 #### `MasterTrainer` izin demetinin gerekçesi
 
@@ -188,6 +189,10 @@ public static class Permissions
         // "department:" öneki KULLANILMAZ — DepartmentHead'in department:* wildcard'ı
         // muafiyeti ona da verirdi ve kapsam kontrolü hiç çalışmazdı.
         public const string AllBranches = "institution:distribution:all-branches";
+        // Kurum geneli koordinasyon yapılandırmasını DEĞİŞTİRME yetkisi (#130):
+        // mesafe-saat kuralları, büyükşehir sınırı, azami haftalık ek ders saati.
+        // Aynı wildcard kuralı geçerli — "department:" öneki KULLANILMAZ.
+        public const string CoordinationConfigManage = "institution:coordination-config:manage";
     }
 
     // Öğrenci İzinleri
@@ -1088,3 +1093,73 @@ Kullanıcı yönetimi ekranında (`UserManagementPage`):
 - Satır aksiyonlarındaki 🎓 düğmesi alan kapsamını düzenler (çoklu seçim, kurum branş
   kataloğundan)
 - Davet formunda alan çoklu seçimi vardır; zorunlu değildir
+
+## Kurum Geneli Koordinasyon Yapılandırması (#130)
+
+`CoordinationConfig` alan bazlı **değildir**: kurum düzeyi ve mevzuat türevi üç ayar tutar.
+
+| Ayar | Anlamı |
+|---|---|
+| `DistanceHourRules` | Mesafe-saat eşleme tablosu (MEB mevzuatı): `≤1km→2s`, `≤3km→4s`, `≤5km→6s`, `>5km→8s` |
+| `IsMetropolitan` | Okul büyükşehir belediyesi sınırları içinde mi |
+| `MaxWeeklyExtraHours` | Öğretmen başına azami haftalık ek ders saati (varsayılan 20) |
+
+### Neden ayrı bir izin gerekti
+
+#126 koordinasyon **yazma** uçlarına alan kapsamı kontrolü getirdi, ama bu uç kapsanamadı —
+yapılandırmanın alanı yoktur. Yazma da `department:distribution:manage` istediği sürece alan
+şefi, doğrudan yazamadığı diğer alanları **kurum geneli parametreyi değiştirerek dolaylı**
+etkileyebiliyordu:
+
+- `MaxWeeklyExtraHours` düşürülürse diğer alanların mevcut atamaları limit üstüne çıkar ve o
+  alanların koordinatörleri yeni atama yapamaz
+- `DistanceHourRules` değişirse tüm alanların `MaxCoordinationHours` tavanları ve dolayısıyla
+  #116 otomatik dağıtım önerileri kayar
+
+### Neden muafiyet izni kullanılmadı
+
+`institution:distribution:all-branches` "tüm **alanlara** yazabilir" demektir. Kurum geneli
+yapılandırma ise alan kavramıyla hiç ilgili değildir; muafiyeti buraya uydurmak anlamını
+bulanıklaştırırdı. Bu yüzden ayrı ve kesin bir izin tanımlandı:
+`institution:coordination-config:manage`.
+
+### Rol dağılımı
+
+| Rol | `department:*` | `institution:coordination-config:manage` | Sonuç |
+|---|---|---|---|
+| `InstitutionManager` | ✅ | ✅ (`institution:*` ile) | Yapılandırmayı değiştirir |
+| `DeputyDirector` | ✅ | ✅ (açık kayıt) | Yapılandırmayı değiştirir |
+| `DepartmentHead` | ✅ | ❌ | Yalnız **görür** |
+| `InstitutionStaff` | ❌ | ❌ | Yalnız **görür** (dağıtım izni de yok → uca hiç erişemez) |
+
+> **Aynı wildcard tuzağı (#126 ile bire bir):** izin `department:` önekiyle adlandırılamaz.
+> `DepartmentHead` `department:*` taşır; o önekteki her yeni izin alan şefine de geçer ve
+> kısıt sessizce hiç çalışmaz. Kilitleyen test:
+> `tests/MESNET.Coordination.UnitTests/CoordinationConfigPermissionTests.cs`
+
+### Okuma açık, yazma kapalı
+
+| Uç | İzin | Gerekçe |
+|---|---|---|
+| `GET /api/coordination/teachers/config` | `department:distribution:manage` | Alan şefi hangi kurallara göre çalıştığını **görmelidir** |
+| `POST /api/coordination/teachers/config` | `institution:coordination-config:manage` | Kurum düzeyi karar |
+
+Bu ayrım #126'nın "okuma açık, yazma kapalı" kararıyla aynıdır. Uç kayıtlarını
+`tests/MESNET.Coordination.UnitTests/CoordinationEndpointAuthorizationTests.cs` endpoint
+metadata'sından okuyarak kilitler — okumayı da kısıtlayan biri kırmızı test görür.
+
+### Bireysel (direct) atama
+
+Bu izin bir **erişim** iznidir, kapsam muafiyeti değil — bu yüzden
+`AssignablePermissionScope.NeverDirectlyAssignable` listesinde **yer almaz** ve kurum düzeyi
+yetkili bir kullanıcıya bireysel olarak atanabilir. `DepartmentHead`'e atanamaz: o rolün
+varsayılan atanabilir domain listesinde `institution:` yoktur (`department:`, `coordinator:`,
+`internship:`, `attendance:`, `document:`, `communication:`, `student:`).
+
+### Arayüz
+
+Yapılandırma formu WebUI'de **henüz yoktur** — `coordinationApi.getConfig` /
+`coordinationApi.upsertConfig` istemci fonksiyonları tanımlı ama hiçbir sayfa çağırmıyor.
+Form eklendiğinde görünürlük/salt-okunurluk kararı `Permissions.Institution.CoordinationConfigManage`
+iznine bakmalıdır (`src/WebUI/src/utils/permissions.ts`), **rol adına değil**; yetkisi olmayan
+kullanıcıya form salt okunur gösterilir ve kaydet düğmesi devre dışı bırakılır.

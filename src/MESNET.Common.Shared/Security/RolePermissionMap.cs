@@ -24,7 +24,10 @@ public static class RolePermissionMap
             "company:*",
             // Kurum geneli alan muafiyeti (#126) — "institution:*" zaten kapsar,
             // güvenlik kararı olduğu için açıkça yazılır.
-            Permissions.Institution.AllBranches
+            Permissions.Institution.AllBranches,
+            // Kurum geneli koordinasyon yapılandırması (#130) — "institution:*" zaten kapsar,
+            // güvenlik kararı olduğu için açıkça yazılır.
+            Permissions.Institution.CoordinationConfigManage
         ],
         // Müdür yardımcısı (#129). Kaynak: actors.md → "Müdür Yardımcısı" —
         // staj işlemleri koordinasyonu, evrak takibi ve onayı, öğretmen görevlendirmeleri,
@@ -39,6 +42,10 @@ public static class RolePermissionMap
             // DepartmentHead bu izni ALMAZ — alan kapsamı kontrolü ona uygulanır.
             // InstitutionStaff da ALMAZ (#129) — koordinasyon dağıtımı onun görevi değil.
             Permissions.Institution.AllBranches,
+            // Kurum geneli koordinasyon yapılandırması (#130): mesafe-saat kuralları,
+            // büyükşehir sınırı ve azami haftalık ek ders saati. Alan bazlı değil kurum
+            // düzeyi bir ayardır; DepartmentHead ve InstitutionStaff ALMAZ.
+            Permissions.Institution.CoordinationConfigManage,
             Permissions.Institution.View,
             Permissions.Student.View,
             Permissions.Student.Manage,

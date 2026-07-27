@@ -46,6 +46,37 @@ public static class Permissions
         /// <c>InstitutionStaff</c>'a açıkça verilir, <c>DepartmentHead</c>'e hiçbir yoldan geçmez.</para>
         /// </summary>
         public const string AllBranches = "institution:distribution:all-branches";
+
+        /// <summary>
+        /// Kurum geneli koordinasyon yapılandırmasını <b>değiştirme</b> yetkisi (#130).
+        ///
+        /// <para>Kapsadığı ayarlar (<c>CoordinationConfig</c>) alan bazlı değil <b>kurum
+        /// düzeyi</b>dir ve mevzuat türevidir: mesafe-saat eşleme tablosu
+        /// (<c>DistanceHourRules</c>), büyükşehir sınırı (<c>IsMetropolitan</c>) ve öğretmen
+        /// başına azami haftalık ek ders saati (<c>MaxWeeklyExtraHours</c>).</para>
+        ///
+        /// <para><b>Neden ayrı izin:</b> #126'nın alan kapsamı kontrolü bu uca uygulanamaz —
+        /// yapılandırmanın alanı yoktur. Yalnız <see cref="Permissions.DepartmentHead.Distribution"/>
+        /// istenseydi alan şefi, doğrudan yazamadığı diğer alanları kurum geneli parametreyi
+        /// değiştirerek <b>dolaylı</b> etkilerdi: <c>MaxWeeklyExtraHours</c> düşünce o alanların
+        /// mevcut atamaları limit üstüne çıkar, mesafe kuralları değişince tüm alanların
+        /// <c>MaxCoordinationHours</c> tavanları ve #116 dağıtım önerileri kayar.</para>
+        ///
+        /// <para><b>Muafiyet izni (<see cref="AllBranches"/>) neden kullanılmadı:</b> o izin
+        /// "tüm <i>alanlara</i> yazabilir" demektir; kurum geneli yapılandırma ise alan
+        /// kavramıyla hiç ilgili değildir. Muafiyeti buraya uydurmak anlamını bulanıklaştırırdı.</para>
+        ///
+        /// <para><b>Wildcard:</b> <c>institution:</c> öneki zorunludur.
+        /// <c>DepartmentHead</c> <c>department:*</c> taşır — izin o önekte olsaydı alan şefine
+        /// wildcard yoluyla geçer ve kısıt hiç çalışmazdı. <c>InstitutionManager</c>
+        /// <c>institution:*</c> ile alır, <c>DeputyDirector</c>'a açıkça verilir;
+        /// <c>DepartmentHead</c> ve <c>InstitutionStaff</c> hiçbir yoldan almaz.</para>
+        ///
+        /// <para><b>Okuma kısıtlanmadı:</b> <c>GET /api/coordination/teachers/config</c>
+        /// <see cref="Permissions.DepartmentHead.Distribution"/> ile açık kalır — alan şefi
+        /// yapılandırmayı görür, değiştiremez (#126'nın "okuma açık, yazma kapalı" kararı).</para>
+        /// </summary>
+        public const string CoordinationConfigManage = "institution:coordination-config:manage";
     }
 
     /// <summary>
