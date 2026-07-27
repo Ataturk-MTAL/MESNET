@@ -35,17 +35,17 @@
           <q-card-section>
             <div class="row items-center q-mb-xs no-wrap">
               <q-icon
-                :name="roleMeta(role.roleName).icon"
+                :name="roleIcon(role.roleName)"
                 color="primary"
                 size="24px"
                 class="q-mr-sm"
               />
               <div class="text-subtitle1 text-weight-bold">
-                {{ roleMeta(role.roleName).name }}
+                {{ role.label }}
               </div>
             </div>
             <div class="text-caption text-grey-7 q-mb-md">
-              {{ roleMeta(role.roleName).desc }}
+              {{ role.description }}
             </div>
 
             <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">
@@ -76,26 +76,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { securityApi, type RolePermissionsDto } from 'src/api/security'
+import { computed, onMounted } from 'vue'
 import { useNotify } from 'src/composables/useNotify'
+import { useRoleCatalogStore } from 'stores/roleCatalog'
 
 const notify = useNotify()
-const loading = ref(false)
-const roles = ref<RolePermissionsDto[]>([])
+// Rol listesi + Türkçe etiketler tek kaynaktan: GET /api/security/roles (#129)
+const roleCatalog = useRoleCatalogStore()
+const roles = computed(() => roleCatalog.roles)
+const loading = computed(() => roleCatalog.loading)
 
-// ── Rol adı → Türkçe ad + açıklama + ikon ──
-const ROLE_META: Record<string, { name: string; desc: string; icon: string }> = {
-  InstitutionManager: { name: 'Kurum Müdürü', desc: 'Kurumdaki tüm süreçleri ve kullanıcıları yönetir.', icon: 'account_balance' },
-  InstitutionStaff: { name: 'Kurum Personeli', desc: 'Staj, sözleşme, devamsızlık ve maaş işlemlerini yürütür.', icon: 'badge' },
-  Teacher: { name: 'Öğretmen / Koordinatör', desc: 'Öğrencileri ve staj sürecini takip eder, onaylar.', icon: 'school' },
-  Student: { name: 'Öğrenci', desc: 'Kendi staj ve devamsızlık bilgilerini görüntüler.', icon: 'person' },
-  DepartmentHead: { name: 'Alan Şefi', desc: 'Alanındaki koordinasyon, program ve onayları yürütür.', icon: 'supervisor_account' },
-  CompanyManager: { name: 'İşletme Yöneticisi', desc: 'İşletmedeki stajyerleri ve süreçleri yönetir.', icon: 'business' },
+// Rol adı ve açıklaması API'den gelir (#129) — burada YALNIZ ikon eşlemesi kalır; ikon saf
+// görsel bir tercihtir, yetki modelinin parçası değildir. Bilinmeyen rol için nötr ikon.
+const ROLE_ICONS: Record<string, string> = {
+  InstitutionManager: 'account_balance',
+  DeputyDirector: 'assignment_ind',
+  InstitutionStaff: 'badge',
+  DepartmentHead: 'supervisor_account',
+  Teacher: 'school',
+  CompanyManager: 'business',
+  MasterTrainer: 'engineering',
+  Student: 'person',
 }
 
-function roleMeta(roleName: string): { name: string; desc: string; icon: string } {
-  return ROLE_META[roleName] ?? { name: roleName, desc: '', icon: 'shield' }
+function roleIcon(roleName: string): string {
+  return ROLE_ICONS[roleName] ?? 'shield'
 }
 
 // ── Yetki kodu (resource:action) → okunabilir Türkçe ──
@@ -135,14 +140,10 @@ function permissionLabel(code: string): string {
 }
 
 async function load() {
-  loading.value = true
   try {
-    const res = await securityApi.listRoles()
-    roles.value = res.data ?? []
+    await roleCatalog.load()
   } catch (e) {
     notify.apiError(e, 'Roller yüklenirken bir hata oluştu.')
-  } finally {
-    loading.value = false
   }
 }
 

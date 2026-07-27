@@ -45,8 +45,15 @@ export interface InvitationDto {
   metadata: Record<string, string>
 }
 
+/**
+ * Rol kataloğu kaydı (#129). Türkçe etiket ve açıklama backend'den gelir — SmartEnum
+ * `Name`/`Slug` deseniyle aynı mantık: `roleName` İngilizce ve serialize edilir,
+ * `label` yalnız gösterim içindir. Arayüz kendi etiket haritasını TUTMAZ.
+ */
 export interface RolePermissionsDto {
   roleName: string
+  label: string
+  description: string
   permissions: string[]
 }
 

@@ -83,13 +83,14 @@
               />
             </q-td>
           </template>
+          <!-- Rol çipleri Türkçe etiketle basılır (#129); etiket rol kataloğundan gelir. -->
           <template #body-cell-roles="{ row }">
             <q-td>
               <q-badge
                 v-for="role in row.roles.slice(0, 2)"
                 :key="role"
                 color="neutral"
-                :label="role"
+                :label="roleCatalog.labelFor(role)"
                 class="q-mr-xs"
               />
               <span
@@ -198,6 +199,13 @@
           @request="onInvsRequest"
           @search="onInvsSearch"
         >
+          <!--
+            Hedef rol Türkçe etiketle gösterilir (#129). Katalogda olmayan bir değer ham
+            basılır — bozuk davet kaydının görünür kalması doğrudur, gizlenmesi değil.
+          -->
+          <template #body-cell-targetRole="{ row }">
+            <q-td>{{ roleCatalog.labelFor(row.targetRole) }}</q-td>
+          </template>
           <template #body-cell-status="{ row }">
             <q-td>
               <q-badge
@@ -518,6 +526,7 @@ import { useServerPagination } from 'src/composables/useServerPagination'
 import { Permissions } from 'utils/permissions'
 import { useAuthStore } from 'stores/auth'
 import { useEntityOptionsStore } from 'stores/entityOptions'
+import { useRoleCatalogStore } from 'stores/roleCatalog'
 import AppTable from 'components/AppTable.vue'
 import AppNotice from 'components/AppNotice.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
@@ -567,15 +576,11 @@ const { rows: invitations, loading: invsLoading, pagination: invsPagination, sea
     defaultDescending: true,
   })
 
-const roleOptions = [
-  { label: 'Kurum Müdürü', value: 'institution_manager' },
-  { label: 'Müdür Yardımcısı', value: 'deputy_director' },
-  { label: 'Alan Şefi', value: 'department_head' },
-  { label: 'Koordinatör Öğretmen', value: 'coordinator_teacher' },
-  { label: 'İşletme Yöneticisi', value: 'company_manager' },
-  { label: 'Usta Öğretici', value: 'master_trainer' },
-  { label: 'Öğrenci', value: 'student' },
-]
+// ── Roller: tek doğruluk kaynağı GET /api/security/roles (#129) ──
+// Elle yazılmış liste KALDIRILDI: gerçek rollerle eşleşmiyordu ve karşılığı olmayan adlar
+// (deputy_director, coordinator_teacher, master_trainer) sunucuya gidiyordu.
+const roleCatalog = useRoleCatalogStore()
+const roleOptions = computed(() => roleCatalog.options)
 
 const inviteForm = reactive({
   email: '', firstName: '', lastName: '', targetRole: '',
@@ -747,6 +752,8 @@ async function syncUsers() {
 // Initial load
 loadUsers()
 loadInvitations()
+// Rol kataloğu — davet formu, rol dialogu ve rol etiketleri için (#129)
+roleCatalog.load().catch(() => {})
 // Alan kataloğu — davet ve alan yönetimi dialoglarında kullanılır (#126)
 branchOpts.load().catch(() => {})
 </script>
