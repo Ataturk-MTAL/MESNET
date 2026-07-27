@@ -194,7 +194,11 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
     {
         try
         {
-            var rolesToAssign = await ResolveRealmRolesAsync(roles, ct);
+            var resolved = await ResolveRealmRolesAsync(roles, ct);
+            if (resolved.IsFailure)
+                return Result.Failure(resolved.Error);
+
+            var rolesToAssign = resolved.Value;
             if (rolesToAssign.Count == 0)
                 return Result.Success();
 
@@ -215,7 +219,11 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
     {
         try
         {
-            var rolesToRemove = await ResolveRealmRolesAsync(roles, ct);
+            var resolved = await ResolveRealmRolesAsync(roles, ct);
+            if (resolved.IsFailure)
+                return Result.Failure(resolved.Error);
+
+            var rolesToRemove = resolved.Value;
             if (rolesToRemove.Count == 0)
                 return Result.Success();
 
@@ -231,19 +239,52 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
         }
     }
 
-    // Verilen rol adlarını realm'deki RoleRepresentation'lara (id+name gerekli) çevirir.
-    private async Task<List<RoleRepresentation>> ResolveRealmRolesAsync(
+    /// <summary>
+    /// Verilen rol adlarını realm'deki <c>RoleRepresentation</c>'lara (id+name gerekli) çevirir.
+    ///
+    /// <para><b>Çözülemeyen ad sessizce ATLANMAZ (#129).</b> Eskiden eşleşmeyenler filtrelenir,
+    /// liste boşalırsa fonksiyon <c>Result.Success()</c> dönerdi: Keycloak kullanıcısı sıfır realm
+    /// rolüyle açılır, <c>UserAccount.Roles</c> uydurma adı saklar, kullanıcı giriş yapınca hiçbir
+    /// şey göremez ve <b>hata mesajı da almazdı</b>. Artık kısmi çözüm bile hatadır — hangi
+    /// adların çözülemediği çağırana bildirilir.</para>
+    /// </summary>
+    private async Task<Result<List<RoleRepresentation>>> ResolveRealmRolesAsync(
         IEnumerable<string> roles, CancellationToken ct)
     {
+        var requested = roles
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Select(r => r.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (requested.Count == 0)
+            return Result<List<RoleRepresentation>>.Success([]);
+
         using var resp = await SendAdminAsync(HttpMethod.Get, "/roles", null, ct);
         resp.EnsureSuccessStatusCode();
         var allRoles = await resp.Content.ReadFromJsonAsync<List<RoleRepresentation>>(ct) ?? [];
-        return roles
-            .Select(roleName => allRoles.FirstOrDefault(r =>
-                string.Equals(r.Name, roleName, StringComparison.OrdinalIgnoreCase)))
-            .Where(r => r is not null)
-            .Cast<RoleRepresentation>()
-            .ToList();
+
+        var resolved = new List<RoleRepresentation>();
+        var unresolved = new List<string>();
+        foreach (var roleName in requested)
+        {
+            var match = allRoles.FirstOrDefault(r =>
+                string.Equals(r.Name, roleName, StringComparison.OrdinalIgnoreCase));
+            if (match is null)
+                unresolved.Add(roleName);
+            else
+                resolved.Add(match);
+        }
+
+        if (unresolved.Count > 0)
+        {
+            _logger.LogError(
+                "Keycloak realm'inde çözülemeyen rol adı/adları: {Roles}", string.Join(", ", unresolved));
+            return Result<List<RoleRepresentation>>.Failure(
+                Errors.SecurityErrors.RealmRolesUnresolved(unresolved));
+        }
+
+        return Result<List<RoleRepresentation>>.Success(resolved);
     }
 
     // ── Attribute ─────────────────────────────────────────────────────────────────────
