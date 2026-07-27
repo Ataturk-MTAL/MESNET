@@ -609,8 +609,15 @@ permission demetine verilen isimdir; erişim kararı her zaman permission'a baka
 
 **Aynı permission'a sahip roller aynı işi yapabilir.** Örnek: işletme koordinatörlük saati
 takdiri `department:distribution:manage` ister; bu izin `InstitutionManager` (okul müdürü),
-`InstitutionStaff` (müdür yardımcısı) ve `DepartmentHead` (alan şefi) rollerinin hepsinde
-`department:*` ile bulunur — üçü de tam yetkilidir.
+`DeputyDirector` (müdür yardımcısı) ve `DepartmentHead` (alan şefi) rollerinin hepsinde
+`department:*` ile bulunur — üçü de tam yetkilidir. `InstitutionStaff` (kurum yetkilendirdiği
+personel) bu izni **almaz**; o rol yürütür, onaylamaz (#129).
+
+**Bunun tersi de doğru: erişimi açan permission, kurum geneli ayarı değiştirme yetkisi
+vermez.** Kurum koordinasyon yapılandırması (mesafe-saat kuralları, `MaxWeeklyExtraHours`)
+ayrı bir izin ister: `institution:coordination-config:manage` — yalnız `InstitutionManager`
+ve `DeputyDirector`'da bulunur. Alan şefi yapılandırmayı **görür, değiştiremez**; aksi hâlde
+doğrudan yazamadığı alanları kurum geneli parametreyle dolaylı olarak etkilerdi (#130).
 
 **Permission erişimi açar, KAPSAMI belirlemez.** "Hangi kurumun/alanın verisi" sorusu ayrı bir
 kontroldür ve iki kapsam da token claim'inden okunur, istekten ALINMAZ:
