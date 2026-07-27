@@ -21,6 +21,14 @@ public static class AssignablePermissionScope
     public static readonly IReadOnlyDictionary<string, string[]> Defaults = new Dictionary<string, string[]>
     {
         [MesnetRoles.InstitutionManager] = [All],
+        // Müdür yardımcısı (#129): kurum geneli yürütme — "*" değil, kullanıcı yönetimi
+        // dışındaki tüm domainler. Kapsam muafiyeti izni bu listeyle DE atanamaz
+        // (bkz. NeverDirectlyAssignable).
+        [MesnetRoles.DeputyDirector] =
+        [
+            "institution:", "student:", "internship:", "attendance:", "salary:",
+            "document:", "communication:", "coordinator:", "department:", "company:",
+        ],
         [MesnetRoles.InstitutionStaff] =
         [
             "institution:", "student:", "internship:", "attendance:", "salary:",
@@ -37,6 +45,11 @@ public static class AssignablePermissionScope
         [MesnetRoles.CompanyManager] =
         [
             "company:", "attendance:", "communication:",
+        ],
+        // Usta öğretici (#129): işletme içi dar kapsam — devam ve iletişim.
+        [MesnetRoles.MasterTrainer] =
+        [
+            "company:", "communication:",
         ],
         [MesnetRoles.Student] =
         [

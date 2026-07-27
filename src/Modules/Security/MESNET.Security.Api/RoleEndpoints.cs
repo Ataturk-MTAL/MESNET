@@ -17,12 +17,21 @@ public static class RoleEndpoints
         group.MapGet("/permissions", GetAllPermissions).RequireAuthorization(Permissions.UserManagement.View);
     }
 
+    /// <summary>
+    /// Rol kataloğu — <b>arayüzün tek doğruluk kaynağı</b> (#129).
+    ///
+    /// <para>Türkçe etiket ve açıklama da buradan döner; istemci kendi rol listesini veya etiket
+    /// haritasını tutmaz. Elle yazılmış liste, gerçek rollerle eşleşmeyi bırakıp uydurma adların
+    /// (ör. <c>deputy_director</c>) sunucuya gitmesine yol açmıştı.</para>
+    /// </summary>
     private static IResult GetRoles()
     {
-        var roles = MesnetRoles.All.Select(r => new
+        var roles = MesnetRoles.Catalog.Select(r => new
         {
-            RoleName = r,
-            Permissions = RolePermissionMap.GetRawPermissionsForRole(r)
+            RoleName = r.Name,
+            r.Label,
+            r.Description,
+            Permissions = RolePermissionMap.GetRawPermissionsForRole(r.Name)
         });
 
         return Results.Ok(ResponseBuilder.Success()
@@ -32,7 +41,7 @@ public static class RoleEndpoints
 
     private static IResult GetRolePermissions(string roleName)
     {
-        if (!MesnetRoles.All.Contains(roleName))
+        if (!MesnetRoles.IsValid(roleName))
             return Results.NotFound(ResponseBuilder.Fail(404)
                 .AddMessage($"Rol bulunamadı: {roleName}")
                 .Build());

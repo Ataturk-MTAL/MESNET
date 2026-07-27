@@ -72,6 +72,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { securityApi, type PermissionScopeData } from 'src/api/security'
 import { useNotify } from 'src/composables/useNotify'
+import { useRoleCatalogStore } from 'stores/roleCatalog'
 import AppNotice from 'components/AppNotice.vue'
 
 const notify = useNotify()
@@ -79,14 +80,10 @@ const data = ref<PermissionScopeData | null>(null)
 const model = reactive<Record<string, string[]>>({})
 const saving = ref(false)
 
-const ROLE_LABELS: Record<string, string> = {
-  InstitutionManager: 'Müdür / Müdür Yardımcısı',
-  InstitutionStaff: 'Kurum Personeli',
-  Teacher: 'Koordinatör Öğretmen',
-  DepartmentHead: 'Alan Şefi',
-  CompanyManager: 'İşletme Yetkilisi',
-  Student: 'Öğrenci',
-}
+// Rol etiketleri rol kataloğundan gelir (#129) — elle harita YOK. Eski harita
+// "InstitutionManager: Müdür / Müdür Yardımcısı" diyordu; müdür yardımcısı artık ayrı roldür.
+const roleCatalog = useRoleCatalogStore()
+
 const DOMAIN_LABELS: Record<string, string> = {
   '*': 'Tüm Yetkiler (*)',
   'institution:': 'Kurum Yönetimi',
@@ -102,7 +99,7 @@ const DOMAIN_LABELS: Record<string, string> = {
   'user:': 'Kullanıcı Yönetimi',
 }
 function roleLabel(r: string) {
-  return ROLE_LABELS[r] ?? r
+  return roleCatalog.labelFor(r)
 }
 function domainLabel(d: string) {
   return DOMAIN_LABELS[d] ?? d
@@ -114,6 +111,8 @@ const domainOptions = computed(() =>
 
 async function load() {
   try {
+    // Rol etiketleri için katalog; kapsam verisiyle birlikte yüklenir (#129).
+    await roleCatalog.load()
     const res = await securityApi.getPermissionScopes()
     data.value = res.data
     for (const role of res.data.roles) {

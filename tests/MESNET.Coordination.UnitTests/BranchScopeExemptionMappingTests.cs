@@ -41,18 +41,50 @@ public sealed class BranchScopeExemptionMappingTests
             .ShouldContain(Permissions.DepartmentHead.Distribution);
     }
 
+    /// <summary>
+    /// Muafiyet <b>kurum geneli koordinasyon</b> yetkisine bağlıdır: okul müdürü ve
+    /// müdür yardımcısı. #129'da müdür yardımcısı <c>InstitutionStaff</c>'tan ayrı role
+    /// (<c>DeputyDirector</c>) çıkınca muafiyet de oraya taşındı.
+    /// </summary>
     [Theory]
     [InlineData(MesnetRoles.InstitutionManager)]
-    [InlineData(MesnetRoles.InstitutionStaff)]
+    [InlineData(MesnetRoles.DeputyDirector)]
     public void Kurum_geneli_yetkili_roller_muafiyet_iznini_alir(string role)
     {
         PermissionsOf(role).ShouldContain(Permissions.Institution.AllBranches);
+    }
+
+    /// <summary>
+    /// <b>#129 regresyonu.</b> Muafiyet <c>InstitutionStaff</c>'tan KALDIRILDI: o rol artık
+    /// actors.md'deki "Kurum Yetkilendirdiği Personel"dir (öğrenci kaydı, belge doğrulama,
+    /// devamsızlık, maaş hesabı) ve sorumluluklarında koordinasyon dağıtımı yoktur.
+    /// Muafiyeti geri koyan biri, kurum geneli yazma kapsamını sessizce genişletmiş olur.
+    /// </summary>
+    [Fact]
+    public void Kurum_personeli_muafiyet_iznini_almaz()
+    {
+        PermissionsOf(MesnetRoles.InstitutionStaff)
+            .ShouldNotContain(Permissions.Institution.AllBranches);
+    }
+
+    /// <summary>
+    /// Kurum personeli koordinasyon dağıtımına hiç yazamaz — muafiyeti olmadığı gibi
+    /// <c>department:*</c> wildcard'ı da yoktur (#129). Yalnız muafiyeti kaldırmak yetmezdi:
+    /// dağıtım izni kalsaydı personel branşa bağlanmadan yazmaya çalışır, kilitlenirdi.
+    /// </summary>
+    [Fact]
+    public void Kurum_personeli_dagitim_iznini_de_almaz()
+    {
+        PermissionsOf(MesnetRoles.InstitutionStaff)
+            .ShouldNotContain(Permissions.DepartmentHead.Distribution);
     }
 
     [Theory]
     [InlineData(MesnetRoles.Teacher)]
     [InlineData(MesnetRoles.Student)]
     [InlineData(MesnetRoles.CompanyManager)]
+    [InlineData(MesnetRoles.MasterTrainer)]
+    [InlineData(MesnetRoles.InstitutionStaff)]
     public void Diger_roller_muafiyet_iznini_almaz(string role)
     {
         PermissionsOf(role).ShouldNotContain(Permissions.Institution.AllBranches);
@@ -134,7 +166,7 @@ public sealed class BranchScopeExemptionMappingTests
     /// </summary>
     [Theory]
     [InlineData(MesnetRoles.InstitutionManager)]
-    [InlineData(MesnetRoles.InstitutionStaff)]
+    [InlineData(MesnetRoles.DeputyDirector)]
     public void Muafiyet_izni_hicbir_role_bireysel_atanamaz(string role)
     {
         AssignablePermissionScope.CanAssign(

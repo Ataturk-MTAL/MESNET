@@ -64,10 +64,14 @@ public sealed class CreateUserBranchValidationTests
             .IsValid.ShouldBeTrue();
     }
 
-    /// <summary>Senaryonun kalbi: yöneticinin branşı yoktur ve bu doğru durumdur.</summary>
+    /// <summary>
+    /// Senaryonun kalbi: yöneticinin branşı yoktur ve bu doğru durumdur.
+    /// Müdür yardımcısı #129 ile <c>InstitutionStaff</c>'tan <c>DeputyDirector</c>'e taşındı;
+    /// muafiyet de onunla birlikte taşındı.
+    /// </summary>
     [Theory]
     [InlineData(MesnetRoles.InstitutionManager)]
-    [InlineData(MesnetRoles.InstitutionStaff)]
+    [InlineData(MesnetRoles.DeputyDirector)]
     public void Muafiyetli_yonetici_bransiz_olusturulabilir(string role)
     {
         Validator.Validate(Command([role])).IsValid.ShouldBeTrue();
@@ -78,6 +82,10 @@ public sealed class CreateUserBranchValidationTests
     [InlineData(MesnetRoles.Teacher)]
     [InlineData(MesnetRoles.Student)]
     [InlineData(MesnetRoles.CompanyManager)]
+    [InlineData(MesnetRoles.MasterTrainer)]
+    // Kurum personeli #129 ile dağıtım iznini de kaybetti → alan istenmez (muafiyetten değil,
+    // alan bazlı koordinasyona hiç yazmadığı için).
+    [InlineData(MesnetRoles.InstitutionStaff)]
     public void Dagitim_yetkisi_olmayan_roller_bransiz_olusturulabilir(string role)
     {
         Validator.Validate(Command([role])).IsValid.ShouldBeTrue();

@@ -66,9 +66,16 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!_accessToken.value && !!user.value)
   const accessToken = computed(() => _accessToken.value)
 
-  /** Müdür veya Müdür Yardımcısı — alan seçicisini görebilir */
+  /**
+   * Müdür veya Müdür Yardımcısı — alan seçicisini görebilir.
+   * #129: müdür yardımcısı artık ayrı realm rolüdür (`DeputyDirector`); eklenmeseydi o role
+   * sahip kullanıcı alan seçicisini kaybederdi. `InstitutionStaff` geriye dönük uyum için
+   * listede kalır — henüz rolü güncellenmemiş müdür yardımcıları o rolde durabilir.
+   */
   const isManager = computed(() =>
-    user.value?.roles.some((r) => r === 'InstitutionManager' || r === 'InstitutionStaff') ?? false,
+    user.value?.roles.some(
+      (r) => r === 'InstitutionManager' || r === 'DeputyDirector' || r === 'InstitutionStaff',
+    ) ?? false,
   )
 
   /** Alan Şefi veya yetkili koordinatör öğretmen — alan seçicisi göstermez, otomatik atanır */

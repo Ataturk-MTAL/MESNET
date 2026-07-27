@@ -52,7 +52,13 @@ public static class MarkAttendanceHandler
                 $"Geçersiz devamsızlık türü: {command.AbsenceType}.");
 
         var markedBy = currentUser.GetFullName();
-        var isBusinessUser = currentUser.IsInRole(MesnetRoles.CompanyManager);
+        // İşletme tarafından girilen devamsızlık okul onayı bekler. Usta öğretici de işletme
+        // tarafındadır (#129) — listeye alınmasaydı onun girdiği kayıt okul girmiş gibi doğrudan
+        // "Recorded" olur ve onay adımını atlardı.
+        // NOT: kontrol rol adına bakar — bilinen teknik borç (bkz. CLAUDE.md). Permission'a
+        // taşınamaz, çünkü `company:attendance:manage` izni `company:*` yoluyla okul müdüründe de var.
+        var isBusinessUser = currentUser.IsInRole(MesnetRoles.CompanyManager)
+            || currentUser.IsInRole(MesnetRoles.MasterTrainer);
         var initialStatus = isBusinessUser
             ? AttendanceStatus.Pending.Name
             : AttendanceStatus.Recorded.Name;

@@ -79,7 +79,11 @@
     "realm": [
       {
         "name": "InstitutionManager",
-        "description": "Kurum yöneticisi (Müdür / Müdür Yardımcısı)"
+        "description": "Okul müdürü"
+      },
+      {
+        "name": "DeputyDirector",
+        "description": "Müdür yardımcısı"
       },
       {
         "name": "InstitutionStaff",
@@ -100,6 +104,10 @@
       {
         "name": "CompanyManager",
         "description": "İşletme yetkilisi"
+      },
+      {
+        "name": "MasterTrainer",
+        "description": "Usta öğretici"
       }
     ]
   },

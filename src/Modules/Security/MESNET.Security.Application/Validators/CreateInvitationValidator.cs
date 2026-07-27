@@ -11,7 +11,10 @@ public class CreateInvitationValidator : AbstractValidator<CreateInvitation>
             .EmailAddress().WithMessage("Geçerli bir e-posta adresi giriniz.");
         RuleFor(x => x.FirstName).NotEmpty().WithMessage("Ad belirtilmelidir.");
         RuleFor(x => x.LastName).NotEmpty().WithMessage("Soyad belirtilmelidir.");
-        RuleFor(x => x.TargetRole).NotEmpty().WithMessage("Hedef rol belirtilmelidir.");
+        // Hedef rol sistemde tanımlı olmalıdır (#129) — tanınmayan ad Keycloak'ta çözülemez ve
+        // davet tamamlandığında kullanıcı sıfır realm rolüyle, hiçbir izin almadan açılırdı.
+        RuleFor(x => x.TargetRole).NotEmpty().WithMessage("Hedef rol belirtilmelidir.")
+            .MustBeKnownRole();
         RuleFor(x => x.CreatedByName).NotEmpty().WithMessage("Oluşturan kişi belirtilmelidir.");
     }
 }

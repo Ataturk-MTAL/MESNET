@@ -18,10 +18,15 @@ internal static class PlacementQueryScope
         var institutionId = user?.InstitutionId;
 
         // Teacher (kurum yöneticisi/personeli değilse) yalnız koordine ettiği öğrencileri görür.
+        // NOT: bu kontrol rol adına bakar — bilinen teknik borç (bkz. CLAUDE.md → "Bu kuralın
+        // bilinen istisnaları"), permission'a taşınmalıdır. #129 ile müdür yardımcısı ayrı role
+        // (DeputyDirector) çıktığı için liste genişletildi; eklenmeseydi öğretmenliği de olan
+        // bir müdür yardımcısı kurum geneli yerleştirme görünürlüğünü sessizce kaybederdi.
         Guid? teacherId = null;
         if (user is not null
             && currentUser.IsInRole(MesnetRoles.Teacher)
             && !currentUser.IsInRole(MesnetRoles.InstitutionManager)
+            && !currentUser.IsInRole(MesnetRoles.DeputyDirector)
             && !currentUser.IsInRole(MesnetRoles.InstitutionStaff))
         {
             var teacher = await session.Query<TeacherProfile>()

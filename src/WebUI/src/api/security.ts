@@ -45,8 +45,15 @@ export interface InvitationDto {
   metadata: Record<string, string>
 }
 
+/**
+ * Rol kataloğu kaydı (#129). Türkçe etiket ve açıklama backend'den gelir — SmartEnum
+ * `Name`/`Slug` deseniyle aynı mantık: `roleName` İngilizce ve serialize edilir,
+ * `label` yalnız gösterim içindir. Arayüz kendi etiket haritasını TUTMAZ.
+ */
 export interface RolePermissionsDto {
   roleName: string
+  label: string
+  description: string
   permissions: string[]
 }
 
@@ -71,6 +78,47 @@ export interface ChangePermissionsRequest {
 /** Alan (branş) kapsamı güncelleme (#126). Boş dizi kapsamı kaldırır — geçerli bir işlemdir. */
 export interface ChangeBranchesRequest {
   branchCodes: string[]
+}
+
+/**
+ * Rol modeli tutarlılık raporu (#129) — **yalnız tespit**.
+ * `suggestedRole` bir öneridir ve hiçbir yerde otomatik uygulanmaz; kimin müdür yardımcısı
+ * kimin personel olduğu okulun bilgisidir.
+ */
+export interface InvalidRoleInvitationDto {
+  invitationId: string
+  email: string
+  fullName: string
+  targetRole: string
+  status: string
+  suggestedRole: string | null
+}
+
+export interface InvalidRoleAccountDto {
+  userAccountId: string
+  username: string
+  fullName: string
+  roles: string[]
+  unknownRoles: string[]
+  suggestedRoles: string[]
+}
+
+/** Keycloak'ta hiç realm rolü olmayan hesap — bozulmanın en net belirtisi. */
+export interface RolelessAccountDto {
+  keycloakUserId: string
+  username: string
+  email: string
+}
+
+export interface RoleIntegrityReport {
+  knownRoles: string[]
+  invitationsWithUnknownRole: InvalidRoleInvitationDto[]
+  accountsWithUnknownRole: InvalidRoleAccountDto[]
+  /** Kimlik sunucusuna ulaşılamadıysa `false` — eksik tarama "temiz" sayılmaz. */
+  keycloakChecked: boolean
+  accountsWithoutRealmRole: RolelessAccountDto[]
+  keycloakCheckError: string | null
+  totalFindings: number
 }
 
 export interface PermissionScopeData {
@@ -141,4 +189,8 @@ export const securityApi = {
 
   listPermissions: () =>
     api.get<string[]>('/security/permissions'),
+
+  /** Rol modeli tutarlılık taraması (#129) — salt okunur, düzeltme yapmaz. */
+  getRoleIntegrity: () =>
+    api.get<RoleIntegrityReport>('/security/role-integrity'),
 }

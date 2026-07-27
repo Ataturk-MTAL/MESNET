@@ -22,4 +22,14 @@
     <ProjectReference Include="../../src/Modules/Security/MESNET.Security.Application/MESNET.Security.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      Keycloak realm tanımı, MesnetRoles ile birebir aynı olmalıdır (#129). Drift testinin
+      dosyayı okuyabilmesi için çıktı klasörüne kopyalanır — göreli yol arayışı yerine.
+    -->
+    <Content Include="../../src/MESNET.AppHost/keycloak/mesnet-realm.json"
+             Link="mesnet-realm.json"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

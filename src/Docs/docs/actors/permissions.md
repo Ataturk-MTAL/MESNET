@@ -33,8 +33,11 @@ yazılmış kontrol yalnız rol→permission haritasına satır eklemeyi gerekti
 | Rol | Karşılığı | `department:*` |
 |---|---|---|
 | `InstitutionManager` | Okul müdürü | ✅ |
-| `InstitutionStaff` | Müdür yardımcısı | ✅ |
+| `DeputyDirector` | Müdür yardımcısı | ✅ |
 | `DepartmentHead` | Alan şefi | ✅ |
+
+> `InstitutionStaff` (kurum yetkilendirdiği personel) bu üçlüye **dahil değildir** (#129):
+> koordinasyon dağıtımı onun görevi değildir, `department:*` almaz.
 
 Üçü de **yetkilidir**; farkı yaratan **kapsamdır** — alan şefi yalnız kendi alan(lar)ına
 yazabilir (#126).
@@ -63,52 +66,100 @@ görünürlük için kalmıştır.
 
 ### Temel Roller
 
+Phase 1'de **8 realm rolü** vardır. Tek doğruluk kaynağı
+`src/MESNET.Common.Shared/Security/MesnetRoles.cs`'tir; Keycloak realm tanımı
+(`src/MESNET.AppHost/keycloak/mesnet-realm.json` → `roles.realm`) ve rol-izin haritası
+(`RolePermissionMap.cs`) bu listeyle **birebir** aynı olmak zorundadır — sapmayı kilitleyen
+testler: `tests/MESNET.Security.UnitTests/RoleModelDriftTests.cs`.
+
+| Rol | Türkçe etiket | Karşılık gelen aktör |
+|---|---|---|
+| `InstitutionManager` | Kurum Müdürü | Kurum Müdürü |
+| `DeputyDirector` | Müdür Yardımcısı | Müdür Yardımcısı |
+| `InstitutionStaff` | Kurum Personeli | Kurum Yetkilendirdiği Personel |
+| `DepartmentHead` | Alan Şefi | Alan Şefi (Bölüm Başkanı) |
+| `Teacher` | Koordinatör Öğretmen | Öğretmen (Koordinatör) |
+| `CompanyManager` | İşletme Yetkilisi | İşletme Yöneticisi |
+| `MasterTrainer` | Usta Öğretici | Usta Öğretici |
+| `Student` | Öğrenci | Öğrenci |
+
+> **Türkçe etiketler koda gömülü değildir.** `MesnetRoles.Catalog` her rol için ad + etiket +
+> açıklama taşır ve `GET /api/security/roles` bunları döndürür; arayüz kendi rol listesini ya da
+> etiket haritasını tutmaz. SmartEnum `Name`/`Slug` deseninin aynısıdır: `Name` İngilizce ve
+> serialize edilir, etiket yalnız gösterimdir.
+
+#### `DeputyDirector` ve `MasterTrainer` neden eklendi (#129)
+
+Arayüzdeki rol listesi gerçek rollerle eşleşmiyordu: `deputy_director`, `coordinator_teacher`,
+`master_trainer` değerlerinin sistemde karşılığı yoktu. Karşılığı olmayan bir rol adı Keycloak'ta
+çözülemediği için kullanıcı **sıfır realm rolüyle** açılıyor, hiçbir izin alamıyor ve hata da
+görmüyordu. Kalıcı çözüm iki yönlüdür:
+
+1. **Model gerçeğe uyduruldu:** müdür yardımcısı ve usta öğretici birer aktördü ama rolleri yoktu.
+   `InstitutionManager` realm açıklaması müdür yardımcısını kendine sayıyor, `RolePermissionMap`
+   yorumu `InstitutionStaff`'a sayıyordu — çelişki ayrı rollerle çözüldü.
+2. **Sunucu artık tanımadığı rolü reddediyor:** `SecurityErrors.InvalidRole` ile 422; Keycloak'ta
+   çözülemeyen rol adı **sessizce başarı dönmüyor**.
+
+**`InstitutionStaff` daraltıldı.** Eski demeti (`user:*`, `department:*`, kapsam muafiyeti, tüm
+onaylar) gerçekte müdür yardımcısının demetiydi ve `DeputyDirector`'e taşındı. `InstitutionStaff`
+artık actors.md'deki "Kurum Yetkilendirdiği Personel" sorumluluklarıdır: öğrenci kayıt işlemleri,
+belge doğrulama, devamsızlık takibi, maaş hesaplamaları — **yürütür, onaylamaz**.
+
+> ⚠️ **Mevcut kurulumlarda etki:** bugüne kadar `InstitutionStaff` atanmış bir müdür yardımcısı,
+> rolü `DeputyDirector` olarak güncellenene kadar onay/kullanıcı yönetimi yetkilerini kaybeder.
+> Kimin müdür yardımcısı kimin personel olduğu okulun bilgisidir; **kod tahmin etmez ve otomatik
+> düzeltmez**. Tespit yolu: `GET /api/security/role-integrity` (aşağıda).
+
 ```json
 {
   "roles": [
-    {
-      "name": "TenantAdmin",
-      "description": "Üst Yönetim (Phase 2)",
-      "composite": false
-    },
-    {
-      "name": "InstitutionManager",
-      "description": "Kurum Müdürü",
-      "composite": false
-    },
-    {
-      "name": "InstitutionStaff",
-      "description": "Kurum Personeli",
-      "composite": false
-    },
-    {
-      "name": "Teacher",
-      "description": "Öğretmen",
-      "composite": false
-    },
-    {
-      "name": "Student",
-      "description": "Öğrenci",
-      "composite": false
-    },
-    {
-      "name": "DepartmentHead",
-      "description": "Alan Şefi",
-      "composite": false
-    },
-    {
-      "name": "CompanyManager",
-      "description": "İşletme Yöneticisi",
-      "composite": false
-    },
-    {
-      "name": "BlockchainAdmin",
-      "description": "Blockchain Yöneticisi (Phase 2)",
-      "composite": false
-    }
-  ]
+    { "name": "InstitutionManager", "description": "Okul müdürü" },
+    { "name": "DeputyDirector", "description": "Müdür yardımcısı" },
+    { "name": "InstitutionStaff", "description": "Kurum personeli" },
+    { "name": "DepartmentHead", "description": "Alan şefi" },
+    { "name": "Teacher", "description": "Koordinatör öğretmen" },
+    { "name": "CompanyManager", "description": "İşletme yetkilisi" },
+    { "name": "MasterTrainer", "description": "Usta öğretici" },
+    { "name": "Student", "description": "Öğrenci" }
+  ],
+  "_comment_phase2": "TenantAdmin ve BlockchainAdmin Phase 2'dedir; realm'de tanımlı değildir."
 }
 ```
+
+#### `DeputyDirector` izin demetinin gerekçesi
+
+Kaynak: actors.md → "Müdür Yardımcısı" (staj işlemleri koordinasyonu, evrak takibi ve onayı,
+öğretmen görevlendirmeleri, dekont ve maaş süreçleri yönetimi).
+
+| İzin | Gerekçe |
+|---|---|
+| `user:*` | Davet onay zinciri müdür yardımcısındadır; kullanıcı ve rol yönetimi yapar |
+| `department:*` | Öğretmen görevlendirmeleri + işletme dağıtımı |
+| `institution:distribution:all-branches` | Kurum geneli koordinasyon — tek alanla sınırlı değildir (#126) |
+| `internship:*` (view/manage/approve/contract) | Staj işlemleri koordinasyonu ve fesih onay zinciri |
+| `document:approve`, `document:verify`, `document:track` | Evrak takibi **ve onayı** |
+| `salary:approve`, `salary:parameter:manage` | Dekont onay zinciri, asgari ücret parametresi |
+| `attendance:approve` | Devamsızlık onayı |
+
+`InstitutionStaff` ile farkı: personelde `user:*`, `department:*`, kapsam muafiyeti ve
+`*:approve` izinlerinin **hiçbiri yoktur**; personel kaydı girer ve hesaplar, kararı müdür
+yardımcısı verir.
+
+#### `MasterTrainer` izin demetinin gerekçesi
+
+Usta öğretici işletmede öğrencinin eğitiminden sorumludur; işletmenin **yönetiminden** değil.
+Demet bilinçli olarak dardır:
+
+| İzin | Gerekçe |
+|---|---|
+| `company:attendance:manage` | Devam takibi |
+| `company:grade:enter` | Dönem notu girişi |
+| `student:view` | Kendi öğrencilerini görüntüleme |
+| `communication:*` | Kurum ve koordinatörle iletişim |
+
+**ALMAZ:** `company:student:request` (öğrenci talebi), `company:receipt:upload` (dekont),
+`company:document:manage` (işletme belgeleri), `company:manage`. Bunlar `CompanyManager`'da kalır.
 
 ### İzin Sabitleri (.NET)
 
@@ -948,8 +999,13 @@ Bu muafiyet **rol adına değil permission'a** bağlıdır.
 | Rol | `department:*` | `institution:distribution:all-branches` | Sonuç |
 |---|---|---|---|
 | `InstitutionManager` | ✅ | ✅ (`institution:*` ile) | Tüm alanlara yazar |
-| `InstitutionStaff` | ✅ | ✅ (açık kayıt) | Tüm alanlara yazar |
+| `DeputyDirector` | ✅ | ✅ (açık kayıt) | Tüm alanlara yazar |
 | `DepartmentHead` | ✅ | ❌ | Yalnız kendi alan(lar)ına yazar |
+| `InstitutionStaff` | ❌ | ❌ | Koordinasyon dağıtımına hiç yazmaz (#129) |
+
+> **#129 ile değişti:** muafiyet önce `InstitutionStaff`'taydı, gerekçesi "müdür yardımcısı tüm
+> alanları yönetebilmeli" idi. Müdür yardımcısı ayrı role (`DeputyDirector`) çıkınca muafiyet de
+> oraya taşındı; `InstitutionStaff`'ın actors.md'deki sorumluluklarında koordinasyon dağıtımı yok.
 
 > **İsimlendirme tuzağı (dikkat):** Muafiyet izni `department:distribution:all` olarak
 > adlandırılamaz. Üç rolün de `department:*` wildcard'ı vardır; o önekteki her yeni izin

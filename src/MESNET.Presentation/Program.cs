@@ -522,6 +522,7 @@ try
     app.MapUserManagementEndpoints();
     app.MapInvitationEndpoints();
     app.MapRoleEndpoints();
+    app.MapRoleIntegrityEndpoints();
 
     // Auth (kullanıcı bilgileri + permission listesi)
     app.MapAuthEndpoint();

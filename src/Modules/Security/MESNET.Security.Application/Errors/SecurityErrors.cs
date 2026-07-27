@@ -19,6 +19,19 @@ public static class SecurityErrors
     public static Error InvalidRole(string role) =>
         new("Security.InvalidRole", $"Geçersiz rol: {role}");
 
+    /// <summary>
+    /// İstenen rol adı/adları Keycloak realm'inde bulunamadı (#129).
+    ///
+    /// <para>Bu hata <b>sessiz veri bozulmasının</b> yerine geçer: eskiden çözülemeyen roller
+    /// filtrelenir ve işlem başarı dönerdi; kullanıcı sıfır realm rolüyle açılır, hiçbir izin
+    /// almaz ve hata da görmezdi. Rol adı geçerli görünüp realm'de yoksa realm tanımı
+    /// (<c>mesnet-realm.json</c>) ile <c>MesnetRoles</c> arasında sapma vardır.</para>
+    /// </summary>
+    public static Error RealmRolesUnresolved(IEnumerable<string> roles) =>
+        new("Security.RealmRolesUnresolved",
+            $"Şu rol(ler) kimlik sunucusunda tanımlı değil: {string.Join(", ", roles)}. " +
+            "İşlem yapılmadı — kullanıcı yetkisiz kalmasın diye yarım uygulanmaz.");
+
     public static Error PermissionNotAssignableToRole(string roles, string permissions) =>
         new("Security.PermissionNotAssignableToRole",
             $"Bu yetkiler kullanıcının rolüne ({roles}) atanamaz: {permissions}. " +
