@@ -14,6 +14,13 @@ export const Permissions = {
     Staff: 'institution:staff:manage',
     Report: 'institution:report:view',
     ManageGradeWindow: 'institution:grade-window:manage',
+    /**
+     * Kurum geneli koordinasyon yapılandırmasını DEĞİŞTİRME yetkisi (#130) —
+     * mesafe-saat kuralları, büyükşehir sınırı, azami haftalık ek ders saati.
+     * Okuma ayrıdır: `DepartmentHead.Distribution` ile açıktır (alan şefi görür, yazamaz).
+     * Görünürlük kararı her zaman bu izne bakar, rol adına DEĞİL.
+     */
+    CoordinationConfigManage: 'institution:coordination-config:manage',
   },
 
   Student: {

@@ -31,8 +31,13 @@ public static class CoordinationEndpoints
         group.MapGet("/{teacherId:guid}/overview", GetTeacherOverview).RequireAuthorization(Permissions.DepartmentHead.Workload);
 
         // Coordination config + assignment endpoints
+        //
+        // Kurum geneli yapılandırma (#130): OKUMA açık, YAZMA ayrı izinle kilitli.
+        // Yapılandırmanın alanı yoktur; #126'nın alan kapsamı kontrolü buraya uygulanamaz.
+        // Yazma da "department:distribution:manage" istese alan şefi, doğrudan yazamadığı
+        // diğer alanları kurum geneli parametreyi değiştirerek dolaylı etkilerdi.
         group.MapGet("/config", GetConfig).RequireAuthorization(Permissions.DepartmentHead.Distribution);
-        group.MapPost("/config", PostConfig).RequireAuthorization(Permissions.DepartmentHead.Distribution);
+        group.MapPost("/config", PostConfig).RequireAuthorization(Permissions.Institution.CoordinationConfigManage);
         group.MapGet("/assignments", ListAssignments).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapPost("/assignments", PostAssignment).RequireAuthorization(Permissions.DepartmentHead.Distribution);
         group.MapDelete("/assignments/{businessId:guid}", DeleteAssignment).RequireAuthorization(Permissions.DepartmentHead.Distribution);
