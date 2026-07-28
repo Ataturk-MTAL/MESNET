@@ -12,6 +12,7 @@
     <ProjectReference Include="../MESNET.Attendance.Shared/MESNET.Attendance.Shared.csproj" />
     <ProjectReference Include="../../Institution/MESNET.Institution.Shared/MESNET.Institution.Shared.csproj" />
     <ProjectReference Include="../../Enrollment/MESNET.Enrollment.Shared/MESNET.Enrollment.Shared.csproj" />
+    <ProjectReference Include="../../Security/MESNET.Security.Shared/MESNET.Security.Shared.csproj" />
     <ProjectReference Include="../../../MESNET.Common.Infrastructure/MESNET.Common.Infrastructure.csproj" />
   </ItemGroup>
 

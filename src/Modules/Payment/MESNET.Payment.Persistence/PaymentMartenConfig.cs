@@ -48,5 +48,9 @@ public class PaymentMartenConfig : IConfigureMarten
         // AcademicPeriodView — Institution event'lerinden (kapalı dönem kontrolü, #8)
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("payment");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
+
+        // UserNameView — Security.UserDisplayNameUpserted ile beslenir; denetim alanları
+        // yalnız kullanıcı kimliğini saklar, ad sorgu tarafında buradan çözülür (#137)
+        options.Schema.For<UserNameView>().DatabaseSchemaName("payment");
     }
 }

@@ -27,5 +27,9 @@ public class AttendanceMartenConfig : IConfigureMarten
 
         // Öğrenci ad/numara araması için denormalize view (Enrollment.StudentRegistered ile beslenir)
         options.Schema.For<StudentNameView>().DatabaseSchemaName("attendance");
+
+        // UserNameView (Security.UserDisplayNameUpserted ile beslenir) — denetim alanları
+        // yalnız kullanıcı kimliğini saklar, ad sorgu tarafında buradan çözülür (#137)
+        options.Schema.For<UserNameView>().DatabaseSchemaName("attendance");
     }
 }

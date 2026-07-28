@@ -150,5 +150,9 @@ public static class MartenConfiguration
 
         // InstitutionView (Institution modülünden InstitutionUpdated event'i ile beslenir)
         options.Schema.For<InstitutionView>().DatabaseSchemaName("coordination");
+
+        // UserNameView (Security.UserDisplayNameUpserted ile beslenir) — denetim alanları
+        // yalnız kullanıcı kimliğini saklar, ad sorgu tarafında buradan çözülür (#137)
+        options.Schema.For<UserNameView>().DatabaseSchemaName("coordination");
     }
 }
