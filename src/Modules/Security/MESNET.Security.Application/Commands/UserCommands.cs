@@ -61,3 +61,14 @@ public sealed record GetUserAccount(Guid UserAccountId);
 
 /// <summary>Keycloak'taki tüm kullanıcıları lokal UserAccount read-model'ine senkronize eder (upsert).</summary>
 public sealed record SyncUsersFromKeycloak;
+
+/// <summary>
+/// Her <c>UserAccount</c> için <c>UserDisplayNameUpserted</c> anlık görüntüsünü yeniden yayınlar (#137).
+///
+/// <para>Denetim alanları yalnız kullanıcı kimliğini saklar; adı her modül kendi şemasındaki
+/// <c>UserNameView</c>'ından çözer ve o view salt olayla beslenir. Bu komuttan önce var olan
+/// hesaplar için hiç olay yayınlanmadığından view onlarsız kalır — bu uç o boşluğu doldurur.</para>
+///
+/// <para>Tekrar çalıştırmak güvenlidir: aynı kimlikle üzerine yazar, kopya üretmez.</para>
+/// </summary>
+public sealed record ResyncUserDisplayNames;

@@ -4,16 +4,18 @@ using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Errors;
+using MESNET.Security.Application.Events;
 using MESNET.Security.Application.Services;
 using MESNET.Security.Core.Entities;
 using MESNET.Security.Shared.Events;
 using Microsoft.Extensions.Caching.Memory;
+using Wolverine;
 
 namespace MESNET.Security.Application.Handlers;
 
 public static class CreateUserHandler
 {
-    public static async Task<(Guid, UserCreated)> Handle(
+    public static async Task<(Guid, OutgoingMessages)> Handle(
         CreateUser command, IKeycloakAdminService keycloak, IDocumentSession session)
     {
         var kcResult = await keycloak.CreateUserAsync(
@@ -63,12 +65,22 @@ public static class CreateUserHandler
 
         session.Store(account);
 
-        var @event = new UserCreated(
-            account.Id, keycloakUserId, command.Username, account.FullName, command.Email,
-            command.Roles, command.InstitutionId, command.BusinessId,
-            command.Metadata ?? []);
+        // Birden çok cascading mesaj OutgoingMessages ile döndürülür — 3'lü tuple'da Wolverine
+        // yalnız 1. elemanı yanıt olarak alıp diğerlerini sessizce düşürüyor (bkz. PaymentSaga).
+        var messages = new OutgoingMessages
+        {
+            new UserCreated(
+                account.Id, keycloakUserId, command.Username, account.FullName, command.Email,
+                command.Roles, command.InstitutionId, command.BusinessId,
+                command.Metadata ?? [])
+        };
 
-        return (account.Id, @event);
+        // Denetim satırları yalnız kullanıcı kimliğini saklar; adı modüller bu olayla
+        // besledikleri kendi UserNameView'larından çözer (#137).
+        if (UserDisplayNameEvents.TryCreate(account) is { } displayName)
+            messages.Add(displayName);
+
+        return (account.Id, messages);
     }
 
     /// <summary>Boş/yinelenen kodları eler. Sonuç boş olabilir — bu bir hata değildir.</summary>
@@ -120,7 +132,7 @@ public static class ChangeUserBranchesHandler
 
 public static class UpdateUserHandler
 {
-    public static async Task<UserUpdated> Handle(
+    public static async Task<OutgoingMessages> Handle(
         UpdateUser command, IKeycloakAdminService keycloak, IDocumentSession session)
     {
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
@@ -139,7 +151,16 @@ public static class UpdateUserHandler
         account.UpdatedAt = DateTime.UtcNow;
         session.Store(account);
 
-        return new UserUpdated(account.Id, account.KeycloakUserId, account.FullName, command.Email);
+        var messages = new OutgoingMessages
+        {
+            new UserUpdated(account.Id, account.KeycloakUserId, account.FullName, command.Email)
+        };
+
+        // Ad değişmiş olabilir — denetim satırlarının gösterdiği ad bu olayla tazelenir (#137).
+        if (UserDisplayNameEvents.TryCreate(account) is { } displayName)
+            messages.Add(displayName);
+
+        return messages;
     }
 }
 
@@ -277,11 +298,46 @@ public static class DeleteUserHandler
 /// <summary>Senkronizasyon sonucu — toplam/yeni/güncellenen sayıları.</summary>
 public sealed record SyncUsersResult(int Total, int Created, int Updated);
 
+/// <summary>Yeniden yayın sonucu — kaç hesap için ad olayı üretildiği.</summary>
+public sealed record ResyncUserDisplayNamesResult(int Total, int Published, int Skipped);
+
+/// <summary>
+/// Mevcut hesaplar için ad olaylarını yeniden yayınlar — modüllerin
+/// <c>UserNameView</c> read-model'lerinin backfill'i (#137).
+/// </summary>
+public static class ResyncUserDisplayNamesHandler
+{
+    public static async Task<(ResyncUserDisplayNamesResult, OutgoingMessages)> Handle(
+        ResyncUserDisplayNames command, IQuerySession session)
+    {
+        var accounts = await session.Query<UserAccount>().ToListAsync();
+
+        var messages = new OutgoingMessages();
+        foreach (var account in accounts)
+        {
+            if (UserDisplayNameEvents.TryCreate(account) is { } displayName)
+                messages.Add(displayName);
+        }
+
+        // Atlananlar: Keycloak kimliği Guid olarak ayrıştırılamayan hesaplar. Hata değildir —
+        // denetim satırı token'daki sub claim'ini saklar, o kimlikle eşleşmeyecek bir view
+        // kaydı yalnız çöp olurdu.
+        var result = new ResyncUserDisplayNamesResult(
+            accounts.Count, messages.Count, accounts.Count - messages.Count);
+
+        return (result, messages);
+    }
+}
+
 public static class SyncUsersFromKeycloakHandler
 {
-    public static async Task<SyncUsersResult> Handle(
+    public static async Task<(SyncUsersResult, OutgoingMessages)> Handle(
         SyncUsersFromKeycloak command, IKeycloakAdminService keycloak, IDocumentSession session)
     {
+        // Senkronizasyon eskiden hiç olay yayınlamıyordu; yalnız UserAccount yazıyordu.
+        // Denetim adlarını modüllerin UserNameView'ına taşıyan tek kanal bu olay olduğu için
+        // burada da yayınlanmalı — yoksa Keycloak'tan gelen kullanıcılar view'a hiç girmez (#137).
+        var messages = new OutgoingMessages();
         var kcResult = await keycloak.GetUsersAsync();
         if (kcResult.IsFailure)
             throw new DomainException(kcResult.Error);
@@ -310,11 +366,13 @@ public static class SyncUsersFromKeycloakHandler
                 if (ku.BranchCodes.Count > 0) account.BranchCodes = ku.BranchCodes;
                 account.UpdatedAt = DateTime.UtcNow;
                 session.Store(account);
+                if (UserDisplayNameEvents.TryCreate(account) is { } updatedName)
+                    messages.Add(updatedName);
                 updated++;
             }
             else
             {
-                session.Store(new UserAccount
+                var newAccount = new UserAccount
                 {
                     Id = Guid.NewGuid(),
                     KeycloakUserId = ku.Id,
@@ -327,11 +385,14 @@ public static class SyncUsersFromKeycloakHandler
                     InstitutionId = ku.InstitutionId,
                     BusinessId = ku.BusinessId,
                     BranchCodes = ku.BranchCodes
-                });
+                };
+                session.Store(newAccount);
+                if (UserDisplayNameEvents.TryCreate(newAccount) is { } createdName)
+                    messages.Add(createdName);
                 created++;
             }
         }
 
-        return new SyncUsersResult(kcResult.Value.Count, created, updated);
+        return (new SyncUsersResult(kcResult.Value.Count, created, updated), messages);
     }
 }

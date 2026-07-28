@@ -6,6 +6,7 @@ using MESNET.Common.Shared;
 using MESNET.Common.Shared.Pagination;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Errors;
+using MESNET.Security.Application.Events;
 using MESNET.Security.Application.Services;
 using MESNET.Security.Core.Entities;
 using MESNET.Security.Core.Enums;
@@ -181,7 +182,11 @@ public static class CompleteInvitationHandler
             [invitation.TargetRole], invitation.InstitutionId, invitation.BusinessId,
             invitation.Metadata);
 
-        return [invitationCompleted, userCreated];
+        // Denetim satırları yalnız kullanıcı kimliğini saklar; adı modüller bu olayla
+        // besledikleri kendi UserNameView'larından çözer (#137).
+        return UserDisplayNameEvents.TryCreate(account) is { } displayName
+            ? [invitationCompleted, userCreated, displayName]
+            : [invitationCompleted, userCreated];
     }
 }
 
