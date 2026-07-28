@@ -79,12 +79,12 @@ export interface ScheduleConfigDto {
   configured: boolean
   dailyPeriodCount?: number
   updatedAt?: string
-  updatedBy?: string
+  updatedById?: string
+  updatedByName?: string | null
 }
 
 export interface UpdateScheduleConfigRequest {
   dailyPeriodCount: number
-  updatedBy: string
 }
 
 export interface UpdateSpecializationsRequest {

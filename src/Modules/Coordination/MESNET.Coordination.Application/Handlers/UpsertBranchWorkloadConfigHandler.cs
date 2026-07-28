@@ -56,7 +56,8 @@ public static class UpsertBranchWorkloadConfigHandler
             existing.WorkshopHeadHours = command.WorkshopHeadHours;
             existing.ClassLevels = classLevels;
             existing.UpdatedAt = DateTime.UtcNow;
-            existing.UpdatedBy = command.UpdatedBy;
+            // Aktör token'dan gelir, istekten DEĞİL (#137).
+            existing.UpdatedById = currentUser.GetUserId();
             existing.Recalculate();
             session.Store(existing);
         }
@@ -75,7 +76,7 @@ public static class UpsertBranchWorkloadConfigHandler
                 WorkshopHeadHours = command.WorkshopHeadHours,
                 ClassLevels = classLevels,
                 UpdatedAt = DateTime.UtcNow,
-                UpdatedBy = command.UpdatedBy,
+                UpdatedById = currentUser.GetUserId(),
             };
             config.Recalculate();
             session.Store(config);

@@ -13,8 +13,8 @@ public static class PaymentSeeder
         {
             institutionId = ctx.Get("Institution"),
             newMinimumWage = 22104.00m,
-            effectiveFrom = new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc),
-            updatedBy = "Sistem"
+            effectiveFrom = new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc)
+            // updatedBy gönderilmez — aktör artık token'dan damgalanır (#137).
         });
 
         if (result is not null)

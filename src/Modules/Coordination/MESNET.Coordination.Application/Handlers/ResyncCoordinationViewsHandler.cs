@@ -146,6 +146,6 @@ public static class ResyncCoordinationViewsHandler
         target.AssignedSlots = [.. previous.AssignedSlots];
         target.History = [.. previous.History];
         target.LastModifiedAt = previous.LastModifiedAt;
-        target.LastModifiedBy = previous.LastModifiedBy;
+        target.LastModifiedById = previous.LastModifiedById;
     }
 }

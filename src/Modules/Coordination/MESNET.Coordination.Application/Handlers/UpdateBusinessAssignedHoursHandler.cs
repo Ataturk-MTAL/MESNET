@@ -54,7 +54,8 @@ public static class UpdateBusinessAssignedHoursHandler
             await ValidateTeacherLimitAsync(session, view, newHours, cancellationToken);
         }
 
-        AssignedHoursMutation.Apply(view, newHours, command.IsHonoraryVisit, command.UpdatedBy);
+        // Aktör token'dan gelir, istekten DEĞİL (#137).
+        AssignedHoursMutation.Apply(view, newHours, command.IsHonoraryVisit, currentUser.GetUserId());
         session.Store(view);
     }
 

@@ -54,13 +54,16 @@ public static class UpdateBranchAssignedHoursHandler
             throw new DomainException(CoordinationErrors.BranchHoursConstraintViolated(violation));
         }
 
+        // Aktör token'dan gelir, istekten DEĞİL (#137).
+        var updatedById = currentUser.GetUserId();
+
         foreach (var (row, item) in targets)
         {
             AssignedHoursMutation.Apply(
                 row,
                 newHours: item.IsHonoraryVisit ? 0 : item.AssignedHours,
                 isHonoraryVisit: item.IsHonoraryVisit,
-                updatedBy: command.UpdatedBy);
+                updatedById: updatedById);
 
             session.Store(row);
         }

@@ -39,4 +39,6 @@ public sealed record ScheduleConfigDto(
     bool Configured,
     int? DailyPeriodCount,
     DateTime? UpdatedAt,
-    string? UpdatedBy);
+    // Kimlik saklanır, ad okuma anında UserNameView'dan çözülür (#137).
+    Guid? UpdatedById,
+    string? UpdatedByName);

@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Payment.Application.Commands;
 using MESNET.Payment.Application.Errors;
@@ -8,8 +9,12 @@ namespace MESNET.Payment.Application.Handlers;
 
 public static class UpdateMinimumWageHandler
 {
-    public static async Task Handle(UpdateMinimumWage command, IDocumentSession session)
+    public static async Task Handle(
+        UpdateMinimumWage command, IDocumentSession session, ICurrentUserService currentUser)
     {
+        // Aktör token'dan gelir, istekten DEĞİL (#137).
+        var updatedById = currentUser.GetUserId();
+
         // Yürürlükteki (henüz kapatılmamış) config. Birden fazla varsa en yenisi geçerlidir —
         // sıralama olmadan hangisinin geleceği belirsizdi (#75).
         var currentConfig = await session.Query<SalaryCalculationConfig>()
@@ -27,7 +32,7 @@ public static class UpdateMinimumWageHandler
             {
                 currentConfig.MinimumWage = command.NewMinimumWage;
                 currentConfig.MinimumWageUnder16 = command.NewMinimumWageUnder16;
-                currentConfig.UpdatedBy = command.UpdatedBy;
+                currentConfig.UpdatedById = updatedById;
                 RefreshStatutoryRates(currentConfig);
                 session.Store(currentConfig);
                 return;
@@ -49,7 +54,7 @@ public static class UpdateMinimumWageHandler
             MinimumWage = command.NewMinimumWage,
             MinimumWageUnder16 = command.NewMinimumWageUnder16,
             EffectiveFrom = command.EffectiveFrom,
-            UpdatedBy = command.UpdatedBy
+            UpdatedById = updatedById
         };
         session.Store(newConfig);
     }

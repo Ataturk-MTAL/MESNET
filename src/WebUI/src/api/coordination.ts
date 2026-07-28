@@ -123,7 +123,6 @@ export interface UpsertScheduleRequest {
   academicYear: number
   semester: string
   weeklySchedule: DailyScheduleInput[]
-  updatedBy: string
 }
 
 export interface DailyScheduleInput {
@@ -146,15 +145,18 @@ export interface ScheduleStreamSummaryDto {
   versionCount: number
   createdAt: string
   lastUpdatedAt: string | null
-  createdBy: string
-  lastUpdatedBy: string | null
+  createdById: string
+  createdByName: string | null
+  lastUpdatedById: string | null
+  lastUpdatedByName: string | null
 }
 
 export interface ScheduleVersionDto {
   version: number
   eventType: string
   timestamp: string
-  updatedBy: string
+  updatedById: string
+  updatedByName: string | null
   weeklySchedule: DailyScheduleDto[]
 }
 
@@ -181,14 +183,14 @@ export interface CoordinationConfigDto {
   isMetropolitan: boolean
   maxWeeklyExtraHours: number
   updatedAt: string
-  updatedBy: string
+  updatedById: string
+  updatedByName: string | null
 }
 
 export interface UpsertCoordinationConfigRequest {
   distanceHourRules?: DistanceHourRule[]
   isMetropolitan?: boolean
   maxWeeklyExtraHours?: number
-  updatedBy: string
 }
 
 // ── Business Assignment DTOs ──
@@ -221,13 +223,15 @@ export interface BusinessAssignmentDto {
   branchName: string
   assignedSlots: AssignedSlotInfo[]
   lastModifiedAt: string | null
-  lastModifiedBy: string | null
+  lastModifiedById: string | null
+  lastModifiedByName: string | null
 }
 
 export interface AssignmentHistoryEntryDto {
   timestamp: string
   action: string       // "Assigned" | "SlotAdded" | "SlotRemoved" | "Unassigned" | "HoursUpdated"
-  performedBy: string
+  performedById: string
+  performedByName: string | null
   teacherName: string | null
   slotDay: string | null
   slotPeriod: number | null
@@ -364,7 +368,6 @@ export interface AssignBusinessRequest extends BranchRowParams {
   assignedHours: number
   assignedDay: string
   periodNumber?: number
-  assignedBy: string
 }
 
 export interface ResyncCoordinationViewsResult {
@@ -450,7 +453,8 @@ export interface BranchWorkloadConfigDto {
   totalTeachingHours: number
   totalWorkloadPool: number
   updatedAt: string
-  updatedBy: string
+  updatedById: string
+  updatedByName: string | null
 }
 
 export interface UpsertBranchWorkloadConfigRequest {
@@ -586,7 +590,6 @@ export const coordinationApi = {
     day: string
     periodNumber: number
     businessId: string
-    assignedBy: string
   }) =>
     api.post(`/coordination/teachers/${teacherId}/assign-business`, data),
 

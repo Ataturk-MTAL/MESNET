@@ -23,10 +23,15 @@ public static class GetAssignmentHistoryHandler
                 CoordinationErrors.BusinessBranchNotFound(query.BusinessId, query.BranchCode));
         }
 
+        // Aktör adı saklanmaz, okuma anında çözülür (#137).
+        var names = await UserNameResolver.ResolveAsync(
+            session, view.History.Select(h => h.PerformedById), cancellationToken);
+
         return view.History.Select(h => new AssignmentHistoryEntryDto(
             h.Timestamp,
             h.Action,
-            h.PerformedBy,
+            h.PerformedById,
+            names.NameOf(h.PerformedById),
             h.TeacherName,
             h.SlotDay,
             h.SlotPeriod,

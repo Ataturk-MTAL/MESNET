@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Attendance.Application.Dtos;
 using MESNET.Attendance.Application.Errors;
 using MESNET.Attendance.Application.Extensions;
+using MESNET.Attendance.Application.Helpers;
 using MESNET.Attendance.Application.Queries;
 using MESNET.Attendance.Core.Entities;
 using MESNET.Common.Shared;
@@ -18,6 +19,8 @@ public static class GetWorkCalendarHandler
         if (calendar is null)
             throw new DomainException(AttendanceErrors.CalendarNotFound(query.InstitutionId, query.Year));
 
-        return calendar.ToDto();
+        // Aktör adı saklanmaz, okuma anında çözülür (#137).
+        return calendar.ToDto(
+            await UserNameResolver.ResolveOneAsync(session, calendar.UpdatedById));
     }
 }

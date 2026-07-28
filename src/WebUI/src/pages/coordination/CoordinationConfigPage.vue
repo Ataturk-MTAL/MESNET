@@ -293,8 +293,6 @@ const canManage = computed(() =>
   authStore.hasPermission(Permissions.Institution.CoordinationConfigManage),
 )
 
-const updatedBy = computed(() => authStore.user?.fullName ?? '')
-
 const {
   loading,
   saving,
@@ -312,7 +310,7 @@ const {
   addRule,
   removeRule,
   canRemoveRule,
-} = useCoordinationConfig({ notify, canManage, updatedBy })
+} = useCoordinationConfig({ notify, canManage })
 
 function formatTimestamp(value: string | null): string {
   if (!value) return '—'

@@ -72,7 +72,8 @@ public static class UnassignBusinessSlotHandler
         view.History.Insert(0, new AssignmentHistoryEntry(
             DateTime.UtcNow,
             isFullUnassign ? "Unassigned" : "SlotRemoved",
-            command.UnassignedBy,
+            // Aktör token'dan gelir, istekten DEĞİL (#137).
+            currentUser.GetUserId(),
             teacherName,
             command.Day,
             command.PeriodNumber,
@@ -81,7 +82,7 @@ public static class UnassignBusinessSlotHandler
                 ? $"{teacherName} öğretmenden atama kaldırıldı"
                 : $"{command.Day} {command.PeriodNumber}. saat kaldırıldı"));
         view.LastModifiedAt = DateTime.UtcNow;
-        view.LastModifiedBy = command.UnassignedBy;
+        view.LastModifiedById = currentUser.GetUserId();
 
         session.Store(view);
     }
@@ -118,7 +119,9 @@ public static class UnassignBusinessSlotHandler
                     d.Day.ToString(),
                     d.Periods.Select(p => new PeriodSlotData(p.PeriodNumber, p.Status.Name, p.CourseName, p.AssignedBusinessId)).ToList()
                 )).ToList(),
-                "system",
+                // Slot temizliği atama kaldırmanın yan etkisidir, ayrı bir kullanıcı
+                // eylemi değil — sistem damgası (Guid.Empty) bilinçlidir (#137).
+                Guid.Empty,
                 DateTime.UtcNow);
 
             session.Events.Append(schedule.Id, updateEvent);

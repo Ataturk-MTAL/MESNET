@@ -15,6 +15,5 @@ public class CreateInvitationValidator : AbstractValidator<CreateInvitation>
         // davet tamamlandığında kullanıcı sıfır realm rolüyle, hiçbir izin almadan açılırdı.
         RuleFor(x => x.TargetRole).NotEmpty().WithMessage("Hedef rol belirtilmelidir.")
             .MustBeKnownRole();
-        RuleFor(x => x.CreatedByName).NotEmpty().WithMessage("Oluşturan kişi belirtilmelidir.");
     }
 }

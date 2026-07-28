@@ -17,7 +17,7 @@ public static class AssignedHoursMutation
         BusinessCoordinationView view,
         int newHours,
         bool isHonoraryVisit,
-        string updatedBy)
+        Guid updatedById)
     {
         var oldHours = view.AssignedHours;
         var wasHonorary = view.IsHonoraryVisit;
@@ -28,7 +28,7 @@ public static class AssignedHoursMutation
         view.History.Insert(0, new AssignmentHistoryEntry(
             DateTime.UtcNow,
             "HoursUpdated",
-            updatedBy,
+            updatedById,
             view.AssignedTeacherName,
             null,
             null,
@@ -36,7 +36,7 @@ public static class AssignedHoursMutation
             DescribeChange(oldHours, wasHonorary, newHours, isHonoraryVisit)));
 
         view.LastModifiedAt = DateTime.UtcNow;
-        view.LastModifiedBy = updatedBy;
+        view.LastModifiedById = updatedById;
     }
 
     /// <summary>Geçmiş kaydı açıklaması — fahri geçişleri saat değişiminden ayrı okunur olsun.</summary>

@@ -27,6 +27,7 @@ public static class UserManagementEndpoints
         group.MapPost("/{userAccountId:guid}/toggle-status", ToggleStatus).RequireAuthorization(Permissions.UserManagement.Update);
         group.MapDelete("/{userAccountId:guid}", DeleteUser).RequireAuthorization(Permissions.UserManagement.Delete);
         group.MapPost("/sync", SyncUsers).RequireAuthorization(Permissions.UserManagement.Create);
+        group.MapPost("/resync-display-names", ResyncDisplayNames).RequireAuthorization(Permissions.UserManagement.Create);
 
         // Rol → atanabilir yetki domain kapsamı (yapılandırılabilir guardrail)
         var scopes = app.MapGroup("/api/security/permission-scopes").WithTags("PermissionScope");
@@ -143,6 +144,22 @@ public static class UserManagementEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Kullanıcı silindi.")
+            .Build());
+    }
+
+    /// <summary>
+    /// Mevcut hesapların adlarını modüllerin <c>UserNameView</c> read-model'lerine yeniden
+    /// yayınlar (#137). Dağıtımdan sonra bir kez çalıştırılmalıdır: bu değişiklikten önce
+    /// var olan kullanıcılar için hiç ad olayı yayınlanmadığından denetim satırları adsız kalır.
+    /// Tekrar çalıştırmak güvenlidir.
+    /// </summary>
+    private static async Task<IResult> ResyncDisplayNames(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ResyncUserDisplayNamesResult>(new ResyncUserDisplayNames());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.Published} kullanıcının adı yeniden yayınlandı ({result.Skipped} atlandı).")
             .Build());
     }
 

@@ -11,13 +11,15 @@ namespace MESNET.Coordination.Application.Commands;
 /// <param name="BranchCode">Alan kodu. Boş olamaz; koordinasyon satırı alan bazlıdır (#114).</param>
 /// <param name="AcademicPeriodId">Akademik dönem. Boş olamaz.</param>
 /// <param name="Items">Kaydedilecek satırlar. Boş olamaz, aynı işletme iki kez geçemez.</param>
-/// <param name="UpdatedBy">Değişikliği yapan kullanıcı — geçmiş kaydına yazılır.</param>
+/// <remarks>
+/// İşlemi yapan kullanıcı komutta TAŞINMAZ (#137) — handler token'dan
+/// (<c>ICurrentUserService.GetUserId()</c>) damgalar ve geçmiş kaydına o kimlik yazılır.
+/// </remarks>
 public sealed record UpdateBranchAssignedHours(
     Guid InstitutionId,
     string BranchCode,
     Guid AcademicPeriodId,
-    IReadOnlyList<BranchAssignedHoursItem> Items,
-    string UpdatedBy);
+    IReadOnlyList<BranchAssignedHoursItem> Items);
 
 /// <summary>
 /// Toplu kayıttaki tek satır isteği.

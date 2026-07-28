@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
@@ -19,8 +20,12 @@ public static class UpsertCoordinationConfigHandler
     public static async Task Handle(
         UpsertCoordinationConfig command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
+        // Aktör token'dan gelir, istekten DEĞİL (#137).
+        var updatedById = currentUser.GetUserId();
+
         var violation = CoordinationConfigPolicy.Validate(
             command.DistanceHourRules, command.MaxWeeklyExtraHours);
 
@@ -40,7 +45,7 @@ public static class UpsertCoordinationConfigHandler
                 existing.MaxWeeklyExtraHours = command.MaxWeeklyExtraHours.Value;
 
             existing.UpdatedAt = DateTime.UtcNow;
-            existing.UpdatedBy = command.UpdatedBy;
+            existing.UpdatedById = updatedById;
             session.Store(existing);
         }
         else
@@ -50,7 +55,7 @@ public static class UpsertCoordinationConfigHandler
                 Id = command.InstitutionId, // tek document per kurum
                 InstitutionId = command.InstitutionId,
                 UpdatedAt = DateTime.UtcNow,
-                UpdatedBy = command.UpdatedBy,
+                UpdatedById = updatedById,
             };
 
             if (command.DistanceHourRules is not null)

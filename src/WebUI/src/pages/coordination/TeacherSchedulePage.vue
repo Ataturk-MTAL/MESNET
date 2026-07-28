@@ -237,7 +237,7 @@
                       caption
                       class="text-grey-6"
                     >
-                      {{ ver.updatedBy }}
+                      {{ ver.updatedByName ?? 'Bilinmiyor' }}
                     </q-item-label>
                   </q-item-section>
                   <q-item-section
@@ -449,7 +449,7 @@ async function saveSchedule() {
       academicYear,
       semester,
       weeklySchedule: scheduleData.value,
-      updatedBy: authStore.user?.fullName ?? '',
+      // updatedBy gönderilmez — aktör token'dan damgalanır (#137)
     })
     notify.success('Ders programı kaydedildi.')
     hasExistingSchedule.value = true
