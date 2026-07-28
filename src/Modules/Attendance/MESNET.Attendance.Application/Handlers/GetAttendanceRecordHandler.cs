@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Attendance.Application.Dtos;
 using MESNET.Attendance.Application.Errors;
 using MESNET.Attendance.Application.Extensions;
+using MESNET.Attendance.Application.Helpers;
 using MESNET.Attendance.Application.Queries;
 using MESNET.Attendance.Core.Aggregates;
 using MESNET.Common.Shared;
@@ -17,6 +18,9 @@ public static class GetAttendanceRecordHandler
         if (record is null || record.IsDeleted)
             throw new DomainException(AttendanceErrors.NotFound(query.AttendanceId));
 
-        return record.ToDto();
+        // Aktör adı saklanmaz, okuma anında çözülür (#139).
+        var names = await UserNameResolver.ResolveAsync(session, record.ActorIds());
+
+        return record.ToDto(names);
     }
 }

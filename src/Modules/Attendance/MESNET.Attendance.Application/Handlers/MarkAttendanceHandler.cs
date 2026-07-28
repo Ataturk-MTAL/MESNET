@@ -51,7 +51,8 @@ public static class MarkAttendanceHandler
             throw new DomainException("ATTENDANCE_INVALID_ABSENCE_TYPE",
                 $"Geçersiz devamsızlık türü: {command.AbsenceType}.");
 
-        var markedBy = currentUser.GetFullName();
+        // Aktör kimliği saklanır, adı değil (#139) — ad okuma anında UserNameView'dan çözülür.
+        var markedById = currentUser.GetUserId();
         // İşletme tarafından girilen devamsızlık okul onayı bekler. Usta öğretici de işletme
         // tarafındadır (#129) — listeye alınmasaydı onun girdiği kayıt okul girmiş gibi doğrudan
         // "Recorded" olur ve onay adımını atlardı.
@@ -67,7 +68,7 @@ public static class MarkAttendanceHandler
         var @event = new AttendanceMarked(
             id, command.StudentId, command.BusinessId,
             command.InstitutionId, command.AcademicPeriodId,
-            command.Date, command.AbsenceType, markedBy, initialStatus);
+            command.Date, command.AbsenceType, markedById, initialStatus);
 
         session.Events.StartStream<AttendanceRecord>(id, @event);
 
@@ -77,7 +78,7 @@ public static class MarkAttendanceHandler
             notification = new NotifyAttendancePendingApproval(
                 id, command.StudentId, command.BusinessId,
                 command.InstitutionId, placement.TeacherId.Value,
-                markedBy, command.Date, command.AbsenceType);
+                markedById, command.Date, command.AbsenceType);
         }
 
         return (id, @event, notification);

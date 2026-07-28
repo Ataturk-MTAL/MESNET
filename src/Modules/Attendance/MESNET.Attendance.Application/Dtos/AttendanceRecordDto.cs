@@ -12,9 +12,15 @@ public sealed record AttendanceRecordDto(
     string Status,
     string StatusSlug,
     string? HealthReportUrl,
-    string MarkedBy,
+    // Aktör alanları hem kimlik hem çözümlenmiş ad taşır (#139): kimlik saklanan değerdir,
+    // ad okuma anında UserNameView'dan türetilir. Ad bilinmiyorsa null — hata değil
+    // (silinmiş kullanıcı ya da resync-display-names henüz koşmamış).
+    Guid MarkedById,
+    string? MarkedByName,
     DateTime MarkedAt,
-    string? ApprovedBy,
+    Guid? ApprovedById,
+    string? ApprovedByName,
     DateTime? ApprovedAt,
-    string? VerifiedBy,
+    Guid? VerifiedById,
+    string? VerifiedByName,
     DateTime? VerifiedAt);
