@@ -24,8 +24,8 @@ public sealed class RoleNameValidationTests
             Email: "davet@mesnet.local",
             FirstName: "Test",
             LastName: "Kullanıcı",
-            TargetRole: targetRole,
-            CreatedByName: "Test Yönetici");
+            // Oluşturan kullanıcı artık komutta taşınmaz — handler token'dan damgalar (#137).
+            TargetRole: targetRole);
 
     private static CreateUser User(params string[] roles) =>
         new(

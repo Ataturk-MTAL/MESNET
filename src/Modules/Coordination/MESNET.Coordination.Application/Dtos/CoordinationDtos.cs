@@ -12,7 +12,10 @@ public sealed record TeacherScheduleDto(
     List<DailyScheduleDto> WeeklySchedule,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
-    string CreatedBy,
+    // Kimlik saklanır, ad okuma anında UserNameView'dan çözülür (#137).
+    // Ad bilinmiyorsa null — hata değil (silinmiş kullanıcı / backfill henüz koşmamış).
+    Guid CreatedById,
+    string? CreatedByName,
     int Version);
 
 public sealed record DailyScheduleDto(
@@ -37,8 +40,11 @@ public sealed record ScheduleStreamSummaryDto(
     int VersionCount,
     DateTime CreatedAt,
     DateTime? LastUpdatedAt,
-    string CreatedBy,
-    string? LastUpdatedBy);
+    // Bkz. TeacherScheduleDto — kimlik saklanır, ad okuma anında çözülür (#137).
+    Guid CreatedById,
+    string? CreatedByName,
+    Guid? LastUpdatedById,
+    string? LastUpdatedByName);
 
 /// <summary>
 /// Bir ders programının değişiklik geçmişi (event listesi)
@@ -47,7 +53,8 @@ public sealed record ScheduleVersionDto(
     int Version,
     string EventType,
     DateTime Timestamp,
-    string UpdatedBy,
+    Guid UpdatedById,
+    string? UpdatedByName,
     List<DailyScheduleDto> WeeklySchedule);
 
 public sealed record ScheduleHistoryDto(
@@ -83,12 +90,14 @@ public sealed record BusinessAssignmentDto(
     string BranchName,
     List<AssignedSlotInfoDto> AssignedSlots,
     DateTime? LastModifiedAt = null,
-    string? LastModifiedBy = null);
+    Guid? LastModifiedById = null,
+    string? LastModifiedByName = null);
 
 public sealed record AssignmentHistoryEntryDto(
     DateTime Timestamp,
     string Action,
-    string PerformedBy,
+    Guid PerformedById,
+    string? PerformedByName,
     string? TeacherName,
     string? SlotDay,
     int? SlotPeriod,

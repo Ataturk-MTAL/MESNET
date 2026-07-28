@@ -90,8 +90,12 @@ public sealed class BusinessCoordinationView
     /// <summary>Son değişiklik tarihi</summary>
     public DateTime? LastModifiedAt { get; set; }
 
-    /// <summary>Son değişikliği yapan kişi</summary>
-    public string? LastModifiedBy { get; set; }
+    /// <summary>
+    /// Son değişikliği yapan kullanıcının kimliği — token'dan gelir, istekten ALINMAZ (#137).
+    /// Ad sorgu tarafında <c>UserNameView</c>'dan çözülür. Eski <c>lastModifiedBy</c> JSON
+    /// anahtarı (serbest metin ad) bu adla artık okunmaz.
+    /// </summary>
+    public Guid? LastModifiedById { get; set; }
 
     /// <summary>Atama değişiklik geçmişi (en yeni en üstte)</summary>
     public List<AssignmentHistoryEntry> History { get; set; } = [];
@@ -141,10 +145,15 @@ public sealed record AssignedSlotInfo(string Day, int PeriodNumber);
 /// İşletme atama geçmişi kaydı.
 /// Her atama/kaldırma/saat değişikliği bir entry olarak saklanır.
 /// </summary>
+/// <param name="PerformedById">
+/// İşlemi yapan kullanıcının kimliği — token'dan gelir, istekten ALINMAZ (#137).
+/// Ad sorgu tarafında <c>UserNameView</c>'dan çözülür. Eski <c>performedBy</c> JSON
+/// anahtarı (serbest metin ad) bu adla artık okunmaz.
+/// </param>
 public sealed record AssignmentHistoryEntry(
     DateTime Timestamp,
     string Action,           // "Assigned", "SlotAdded", "SlotRemoved", "Unassigned", "HoursUpdated"
-    string PerformedBy,
+    Guid PerformedById,
     string? TeacherName,
     string? SlotDay,
     int? SlotPeriod,

@@ -13,6 +13,5 @@ public class AssignBusinessToFreeSlotValidator : AbstractValidator<AssignBusines
         RuleFor(x => x.Day).NotEmpty().WithMessage("Gün belirtilmelidir.");
         RuleFor(x => x.PeriodNumber).GreaterThan(0).WithMessage("Ders saati sıfırdan büyük olmalıdır.");
         RuleFor(x => x.BusinessId).NotEmpty().WithMessage("İşletme belirtilmelidir.");
-        RuleFor(x => x.AssignedBy).NotEmpty().WithMessage("Atayan kişi belirtilmelidir.");
     }
 }

@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Institution.Application.Commands;
 using MESNET.Institution.Application.Errors;
@@ -14,6 +15,7 @@ public static class UpdateScheduleConfigurationHandler
     public static async Task<InstitutionUpdated> Handle(
         UpdateScheduleConfiguration command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
         var institution = await session.LoadAsync<Core.Entities.Institution>(command.InstitutionId, cancellationToken);
@@ -27,7 +29,8 @@ public static class UpdateScheduleConfigurationHandler
         {
             DailyPeriodCount = command.DailyPeriodCount,
             UpdatedAt = DateTime.UtcNow,
-            UpdatedBy = command.UpdatedBy
+            // Aktör token'dan gelir, istekten DEĞİL (#137).
+            UpdatedById = currentUser.GetUserId()
         };
 
         session.Store(institution);

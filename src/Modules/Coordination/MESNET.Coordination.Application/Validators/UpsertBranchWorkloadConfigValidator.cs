@@ -12,7 +12,6 @@ public class UpsertBranchWorkloadConfigValidator : AbstractValidator<UpsertBranc
         RuleFor(x => x.AcademicPeriodId).NotEmpty().WithMessage("Akademik dönem belirtilmelidir.");
         RuleFor(x => x.BranchCode).NotEmpty().WithMessage("Alan kodu belirtilmelidir.");
         RuleFor(x => x.EducationType).NotEmpty().WithMessage("Eğitim türü belirtilmelidir.");
-        RuleFor(x => x.UpdatedBy).NotEmpty().WithMessage("Güncelleyen kişi belirtilmelidir.");
 
         // Şeflik sayıları/saatleri — negatif değer geçersizdir
         RuleFor(x => x.DepartmentHeadCount).GreaterThanOrEqualTo(0).WithMessage("Alan şefi sayısı negatif olamaz.");

@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Coordination.Application.Dtos;
+using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Application.Queries;
 using MESNET.Coordination.Core.ReadModels;
 
@@ -33,6 +34,12 @@ public static class ListBusinessesForAssignmentHandler
 
         var views = await queryable.ToListAsync(cancellationToken);
 
+        // Aktör adı saklanmaz, okuma anında çözülür (#137).
+        var names = await UserNameResolver.ResolveAsync(
+            session,
+            views.Select(v => v.LastModifiedById ?? Guid.Empty),
+            cancellationToken);
+
         return views.Select(v => new BusinessAssignmentDto(
             v.ResolveBusinessId(),
             v.Name,
@@ -52,7 +59,8 @@ public static class ListBusinessesForAssignmentHandler
             v.BranchName,
             v.AssignedSlots.Select(s => new AssignedSlotInfoDto(s.Day, s.PeriodNumber)).ToList(),
             v.LastModifiedAt,
-            v.LastModifiedBy
+            v.LastModifiedById,
+            names.NameOf(v.LastModifiedById)
         )).ToList();
     }
 }

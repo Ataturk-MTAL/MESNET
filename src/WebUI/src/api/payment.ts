@@ -82,7 +82,6 @@ export const paymentApi = {
     institutionId: string,
     newMinimumWage: number,
     effectiveFrom: string,
-    updatedBy: string,
     newMinimumWageUnder16?: number,
   ) =>
     api.put('/payments/config/minimum-wage', {
@@ -90,6 +89,6 @@ export const paymentApi = {
       newMinimumWage,
       newMinimumWageUnder16: newMinimumWageUnder16 ?? null,
       effectiveFrom,
-      updatedBy,
+      // updatedBy gönderilmez — aktör token'dan damgalanır (#137)
     }),
 }

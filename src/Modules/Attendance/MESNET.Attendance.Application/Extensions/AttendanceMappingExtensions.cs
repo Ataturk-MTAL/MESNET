@@ -26,12 +26,17 @@ public static class AttendanceMappingExtensions
         record.VerifiedBy,
         record.VerifiedAt);
 
-    public static WorkCalendarDto ToDto(this WorkCalendar calendar) => new(
+    /// <param name="updatedByName">
+    /// Çözümlenmiş aktör adı (#137). Ad saklanmadığı için çağıran
+    /// <c>UserNameResolver</c> ile çözer; bilinmiyorsa <c>null</c> geçilir.
+    /// </param>
+    public static WorkCalendarDto ToDto(this WorkCalendar calendar, string? updatedByName = null) => new(
         calendar.Id,
         calendar.InstitutionId,
         calendar.Year,
         calendar.RestrictedDays.Select(d => d.ToDto()).ToList(),
-        calendar.UpdatedBy,
+        calendar.UpdatedById,
+        updatedByName,
         calendar.UpdatedAt);
 
     public static CalendarDayDto ToDto(this CalendarDay day) => new(

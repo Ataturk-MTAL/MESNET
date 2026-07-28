@@ -38,8 +38,10 @@ export interface InvitationDto {
   institutionId: string | null
   businessId: string | null
   createdAt: string
+  createdById: string | null
   createdByName: string | null
   approvedAt: string | null
+  approvedById: string | null
   approvedByName: string | null
   expiresAt: string
   metadata: Record<string, string>

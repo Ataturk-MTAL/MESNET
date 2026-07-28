@@ -105,12 +105,13 @@ public static class AssignBusinessToTeacherHandler
             view.AssignedPeriodNumber = firstSlot.PeriodNumber;
         }
 
-        // Audit trail
+        // Audit trail — aktör token'dan gelir, istekten DEĞİL (#137).
+        var assignedById = currentUser.GetUserId();
         var action = view.AssignedSlots.Count == 1 ? "Assigned" : "SlotAdded";
         view.History.Insert(0, new AssignmentHistoryEntry(
             DateTime.UtcNow,
             action,
-            command.AssignedBy,
+            assignedById,
             command.TeacherName,
             command.AssignedDay,
             command.PeriodNumber,
@@ -120,7 +121,7 @@ public static class AssignBusinessToTeacherHandler
                 : $"{command.AssignedDay} {command.PeriodNumber}. saat eklendi")
             + (view.IsHonoraryVisit ? " (fahri ziyaret — ek ders saatine sayılmaz)" : string.Empty)));
         view.LastModifiedAt = DateTime.UtcNow;
-        view.LastModifiedBy = command.AssignedBy;
+        view.LastModifiedById = assignedById;
 
         session.Store(view);
 
@@ -130,7 +131,7 @@ public static class AssignBusinessToTeacherHandler
             await AssignToScheduleSlot(
                 session, command.TeacherId, view.AcademicPeriodId,
                 command.AssignedDay, command.PeriodNumber.Value,
-                command.BusinessId, command.AssignedBy, cancellationToken);
+                command.BusinessId, assignedById, cancellationToken);
         }
 
         return new Coordination.Shared.Events.BusinessAssignedToTeacher(
@@ -222,7 +223,7 @@ public static class AssignBusinessToTeacherHandler
         string day,
         int periodNumber,
         Guid businessId,
-        string assignedBy,
+        Guid assignedById,
         CancellationToken cancellationToken)
     {
         if (!Enum.TryParse<DayOfWeek>(day, true, out var dayOfWeek))
@@ -249,7 +250,7 @@ public static class AssignBusinessToTeacherHandler
                 d.Day.ToString(),
                 d.Periods.Select(p => new PeriodSlotData(p.PeriodNumber, p.Status.Name, p.CourseName, p.AssignedBusinessId)).ToList()
             )).ToList(),
-            assignedBy,
+            assignedById,
             DateTime.UtcNow);
 
         session.Events.Append(schedule.Id, updateEvent);

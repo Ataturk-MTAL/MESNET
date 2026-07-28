@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Dtos;
 using MESNET.Coordination.Application.Errors;
+using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Application.Queries;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.Enums;
@@ -34,6 +35,10 @@ public static class GetTeacherScheduleHandler
             throw new DomainException(CoordinationErrors.ScheduleNotFound(query.TeacherId, query.AcademicYear, query.Semester));
         }
 
+        // Aktör adı saklanmaz, okuma anında çözülür (#137).
+        var names = await UserNameResolver.ResolveAsync(
+            session, [schedule.CreatedById], cancellationToken);
+
         // Entity → DTO mapping (DayOfWeek enum → string)
         return new TeacherScheduleDto(
             schedule.Id,
@@ -53,7 +58,8 @@ public static class GetTeacherScheduleHandler
             )).ToList(),
             schedule.CreatedAt,
             schedule.UpdatedAt,
-            schedule.CreatedBy,
+            schedule.CreatedById,
+            names.NameOf(schedule.CreatedById),
             schedule.Version);
     }
 }

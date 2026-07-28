@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Payment.Application.Commands;
 using MESNET.Payment.Application.Errors;
@@ -10,7 +11,8 @@ namespace MESNET.Payment.Application.Handlers;
 
 public static class ApproveReceiptByDeputyHandler
 {
-    public static async Task<ReceiptApprovedByDeputy> Handle(ApproveReceiptByDeputy command, IQuerySession session)
+    public static async Task<ReceiptApprovedByDeputy> Handle(
+        ApproveReceiptByDeputy command, IQuerySession session, ICurrentUserService currentUser)
     {
         // ReceiptId, command'da taşınmaz; ilgili maaş döneminin PaymentSummary document'ından okunur.
         // (Düz Guid parametresi Wolverine codegen tarafından DI'dan çözülmeye çalışılıyordu → 500.)
@@ -26,6 +28,8 @@ public static class ApproveReceiptByDeputyHandler
             throw new DomainException(PaymentErrors.InvalidPhase(
                 summary.Phase.Slug, PaymentPhase.TeacherApproved.Slug));
 
-        return new ReceiptApprovedByDeputy(command.SalaryPeriodId, receiptId, command.ApprovedBy, DateTime.UtcNow);
+        // Onaylayan token'dan gelir, istekten DEĞİL (#137).
+        return new ReceiptApprovedByDeputy(
+            command.SalaryPeriodId, receiptId, currentUser.GetUserId(), DateTime.UtcNow);
     }
 }

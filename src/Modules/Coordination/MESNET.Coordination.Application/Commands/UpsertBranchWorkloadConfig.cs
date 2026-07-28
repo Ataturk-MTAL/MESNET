@@ -1,5 +1,8 @@
 namespace MESNET.Coordination.Application.Commands;
 
+/// <remarks>
+/// İşlemi yapan kullanıcı komutta TAŞINMAZ (#137) — handler token'dan damgalar.
+/// </remarks>
 public sealed record UpsertBranchWorkloadConfig(
     Guid InstitutionId,
     Guid AcademicPeriodId,
@@ -9,8 +12,7 @@ public sealed record UpsertBranchWorkloadConfig(
     int WorkshopHeadCount,
     int DepartmentHeadHours,
     int WorkshopHeadHours,
-    List<ClassLevelInput> ClassLevels,
-    string UpdatedBy);
+    List<ClassLevelInput> ClassLevels);
 
 public sealed record ClassLevelInput(
     int ClassYear,

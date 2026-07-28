@@ -26,8 +26,6 @@ export interface UseCoordinationConfigOptions {
   notify: ReturnType<typeof useNotify>
   /** Yazma yetkisi — `Permissions.Institution.CoordinationConfigManage`. */
   canManage: ComputedRef<boolean> | Ref<boolean>
-  /** Kaydı yapan kullanıcı; backend `UpdatedBy` alanında zorunludur. */
-  updatedBy: ComputedRef<string> | Ref<string>
 }
 
 /** Kaydedilmemiş bir kurum için backend varsayılanı — ekranda boş tablo gösterilmez. */
@@ -41,7 +39,7 @@ const FALLBACK_RULES: DistanceHourRule[] = [
 const FALLBACK_MAX_WEEKLY_EXTRA_HOURS = 20
 
 export function useCoordinationConfig(options: UseCoordinationConfigOptions) {
-  const { notify, canManage, updatedBy } = options
+  const { notify, canManage } = options
 
   const loading = ref(false)
   const saving = ref(false)
@@ -107,7 +105,9 @@ export function useCoordinationConfig(options: UseCoordinationConfigOptions) {
       isMetropolitan.value = data.isMetropolitan
       maxWeeklyExtraHours.value = data.maxWeeklyExtraHours
       lastUpdatedAt.value = normalizeTimestamp(data.updatedAt)
-      lastUpdatedBy.value = data.updatedBy?.trim() ? data.updatedBy : null
+      // Ad backend'de saklanmaz; kimlikten UserNameView ile çözülür (#137).
+      // Bilinmiyorsa null döner — silinmiş kullanıcı ya da backfill henüz koşmamış demektir.
+      lastUpdatedBy.value = data.updatedByName?.trim() ? data.updatedByName : null
     } catch (e: unknown) {
       loadFailed.value = true
       notify.apiError(e, 'Koordinasyon yapılandırması yüklenemedi.')
@@ -165,7 +165,7 @@ export function useCoordinationConfig(options: UseCoordinationConfigOptions) {
         distanceHourRules: cloneRules(distanceHourRules.value),
         isMetropolitan: isMetropolitan.value,
         maxWeeklyExtraHours: maxWeeklyExtraHours.value,
-        updatedBy: updatedBy.value,
+        // updatedBy gönderilmez — aktör token'dan damgalanır (#137)
       })
       notify.success('Koordinasyon yapılandırması kaydedildi.')
     } catch (e: unknown) {

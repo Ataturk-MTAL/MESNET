@@ -29,5 +29,11 @@ public sealed class ScheduleConfiguration
     public int DailyPeriodCount { get; set; }
 
     public DateTime UpdatedAt { get; set; }
-    public string UpdatedBy { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Son değişikliği yapan kullanıcının kimliği — token'dan gelir, istekten ALINMAZ (#137).
+    /// Ad sorgu tarafında <c>UserNameView</c>'dan çözülür. Eski <c>updatedBy</c> JSON
+    /// anahtarı (serbest metin ad) bu adla artık okunmaz.
+    /// </summary>
+    public Guid UpdatedById { get; set; }
 }

@@ -10,6 +10,5 @@ public class UpdateScheduleConfigurationValidator : AbstractValidator<UpdateSche
         RuleFor(x => x.InstitutionId).NotEmpty().WithMessage("Kurum belirtilmelidir.");
         RuleFor(x => x.DailyPeriodCount).InclusiveBetween(1, 12)
             .WithMessage("Günlük ders sayısı 1-12 arasında olmalıdır.");
-        RuleFor(x => x.UpdatedBy).NotEmpty().WithMessage("Güncelleyen kişi belirtilmelidir.");
     }
 }

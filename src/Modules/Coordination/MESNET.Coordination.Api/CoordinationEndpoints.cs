@@ -236,9 +236,8 @@ public static class CoordinationEndpoints
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
-        var userName = http.User.FindFirst("name")?.Value ?? "system";
         await bus.InvokeAsync(new UnassignBusinessFromTeacher(
-            businessId, instId, userName,
+            businessId, instId,
             branchCode ?? string.Empty, academicPeriodId ?? Guid.Empty));
 
         return Results.Ok(ResponseBuilder.Success()
@@ -401,13 +400,8 @@ public static class CoordinationEndpoints
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
-        var userName = http.User.FindFirst("name")?.Value ?? "system";
 
-        await bus.InvokeAsync(command with
-        {
-            InstitutionId = instId,
-            UpdatedBy = userName,
-        });
+        await bus.InvokeAsync(command with { InstitutionId = instId });
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage($"{command.Items?.Count ?? 0} işletmenin takdir edilen saati güncellendi.")
@@ -448,12 +442,10 @@ public static class CoordinationEndpoints
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
-        var userName = http.User.FindFirst("name")?.Value ?? "system";
         await bus.InvokeAsync(command with
         {
             BusinessId = businessId,
             InstitutionId = instId,
-            UpdatedBy = userName,
             BranchCode = branchCode ?? command.BranchCode,
             AcademicPeriodId = academicPeriodId ?? command.AcademicPeriodId,
         });
@@ -473,9 +465,8 @@ public static class CoordinationEndpoints
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
-        var userName = http.User.FindFirst("name")?.Value ?? "system";
         await bus.InvokeAsync(new UnassignBusinessSlot(
-            businessId, day, periodNumber, instId, userName,
+            businessId, day, periodNumber, instId,
             branchCode ?? string.Empty, academicPeriodId ?? Guid.Empty));
 
         return Results.Ok(ResponseBuilder.Success()
@@ -508,12 +499,10 @@ public static class CoordinationEndpoints
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
-        var userName = http.User.FindFirst("name")?.Value ?? "system";
         await bus.InvokeAsync(command with
         {
             InstitutionId = instId,
-            BranchCode = branchCode,
-            UpdatedBy = userName
+            BranchCode = branchCode
         });
 
         return Results.Ok(ResponseBuilder.Success()

@@ -31,7 +31,6 @@
 import { ref, watch } from 'vue'
 import { institutionApi } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
-import { useAuthStore } from 'stores/auth'
 import FormDialog from 'components/FormDialog.vue'
 
 const open = defineModel<boolean>({ required: true })
@@ -44,7 +43,6 @@ const props = defineProps<{
 const emit = defineEmits<{ saved: [] }>()
 
 const notify = useNotify()
-const authStore = useAuthStore()
 const saving = ref(false)
 const dailyPeriodCount = ref(8)
 
@@ -59,7 +57,7 @@ async function handleSave() {
   try {
     await institutionApi.updateScheduleConfig(props.institutionId, {
       dailyPeriodCount: dailyPeriodCount.value,
-      updatedBy: authStore.user?.fullName ?? '',
+      // updatedBy gönderilmez — aktör token'dan damgalanır (#137)
     })
     notify.success('Ders programı ayarları güncellendi.')
     open.value = false

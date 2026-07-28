@@ -545,7 +545,7 @@
               :color="historyColor(entry.action)"
             >
               <template #subtitle>
-                {{ formatDate(entry.timestamp) }} — {{ entry.performedBy }}
+                {{ formatDate(entry.timestamp) }} — {{ entry.performedByName ?? 'Bilinmiyor' }}
               </template>
               <div class="text-body2">
                 {{ entry.details }}

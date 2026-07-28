@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
@@ -19,8 +20,12 @@ public static class UpsertTeacherScheduleHandler
     public static async Task<(Guid, TeacherScheduleUpserted)> Handle(
         UpsertTeacherSchedule command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
+        // Aktör token'dan gelir, istekten DEĞİL (#137).
+        var updatedById = currentUser.GetUserId();
+
         // Dönem aktiflik kontrolü
         var period = await session.LoadAsync<AcademicPeriodView>(command.AcademicPeriodId, cancellationToken);
         if (period is null) throw new DomainException(CoordinationErrors.AcademicPeriodNotFound(command.AcademicPeriodId));
@@ -67,7 +72,7 @@ public static class UpsertTeacherScheduleHandler
             var updateEvent = new ScheduleUpdated(
                 existingSchedule.Id,
                 weeklyData,
-                command.UpdatedBy,
+                updatedById,
                 DateTime.UtcNow);
 
             session.Events.Append(existingSchedule.Id, updateEvent);
@@ -90,7 +95,7 @@ public static class UpsertTeacherScheduleHandler
                 command.AcademicYear,
                 command.Semester,
                 weeklyData,
-                command.UpdatedBy,
+                updatedById,
                 DateTime.UtcNow);
 
             session.Events.StartStream<TeacherSchedule>(scheduleId, createEvent);

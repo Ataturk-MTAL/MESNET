@@ -23,7 +23,6 @@ export interface UseAssignmentDnDOptions {
   /** Seçili akademik dönem — koordinasyon satırı alan+dönem bazlıdır (#114) */
   academicPeriodId: Ref<string | null>
   notify: ReturnType<typeof useNotify>
-  authStore: { user: { fullName?: string } | null }
   loadData: () => Promise<void>
   loadTeacherSchedule: (teacherId: string) => Promise<void>
 }
@@ -31,7 +30,7 @@ export interface UseAssignmentDnDOptions {
 export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
   const {
     assignments, rawSchedule, selectedTeacherId, selectedTeacherName, academicPeriodId,
-    notify, authStore, loadData, loadTeacherSchedule,
+    notify, loadData, loadTeacherSchedule,
   } = options
 
   const pendingChanges = ref<PendingChange[]>([])
@@ -251,7 +250,7 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
             assignedHours: hours,
             assignedDay: change.day,
             periodNumber: change.periodNumber,
-            assignedBy: authStore.user?.fullName ?? '',
+            // assignedBy gönderilmez — aktör token'dan damgalanır (#137)
             ...branchRow,
           })
         } else {

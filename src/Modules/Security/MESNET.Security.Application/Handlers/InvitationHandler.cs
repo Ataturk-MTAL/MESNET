@@ -17,7 +17,7 @@ namespace MESNET.Security.Application.Handlers;
 public static class CreateInvitationHandler
 {
     public static async Task<(Guid, InvitationCreated)> Handle(
-        CreateInvitation command, IDocumentSession session)
+        CreateInvitation command, IDocumentSession session, ICurrentUserService currentUser)
     {
         var existing = await session.Query<UserInvitation>()
             .Where(i => i.Email == command.Email
@@ -37,7 +37,8 @@ public static class CreateInvitationHandler
             TargetRole = command.TargetRole,
             InstitutionId = command.InstitutionId,
             BusinessId = command.BusinessId,
-            CreatedByName = command.CreatedByName,
+            // Aktör token'dan gelir, istekten DEĞİL (#137).
+            CreatedById = currentUser.GetUserId(),
             Metadata = command.Metadata ?? [],
             Status = InvitationStatus.PendingApproval
         };
@@ -55,7 +56,8 @@ public static class CreateInvitationHandler
 public static class ApproveInvitationHandler
 {
     public static async Task<InvitationApproved> Handle(
-        ApproveInvitation command, IDocumentSession session, IEmailService emailService)
+        ApproveInvitation command, IDocumentSession session, IEmailService emailService,
+        ICurrentUserService currentUser)
     {
         var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId);
         if (invitation is null)
@@ -65,9 +67,12 @@ public static class ApproveInvitationHandler
             throw new DomainException(SecurityErrors.InvalidInvitationStatus(
                 command.InvitationId, invitation.Status.Slug, InvitationStatus.PendingApproval.Slug));
 
+        // Aktör token'dan gelir, istekten DEĞİL (#137).
+        var approvedById = currentUser.GetUserId();
+
         invitation.Status = InvitationStatus.Approved;
         invitation.ApprovedAt = DateTime.UtcNow;
-        invitation.ApprovedByName = command.ApprovedByName;
+        invitation.ApprovedById = approvedById;
         invitation.ExpiresAt = DateTime.UtcNow.AddDays(7);
         session.Store(invitation);
 
@@ -76,14 +81,14 @@ public static class ApproveInvitationHandler
 
         return new InvitationApproved(
             invitation.Id, invitation.Email, invitation.FullName,
-            invitation.TargetRole, command.ApprovedByName);
+            invitation.TargetRole, approvedById);
     }
 }
 
 public static class RejectInvitationHandler
 {
     public static async Task<InvitationRejected> Handle(
-        RejectInvitation command, IDocumentSession session)
+        RejectInvitation command, IDocumentSession session, ICurrentUserService currentUser)
     {
         var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId);
         if (invitation is null)
@@ -93,15 +98,18 @@ public static class RejectInvitationHandler
             throw new DomainException(SecurityErrors.InvalidInvitationStatus(
                 command.InvitationId, invitation.Status.Slug, InvitationStatus.PendingApproval.Slug));
 
+        // Aktör token'dan gelir, istekten DEĞİL (#137).
+        var rejectedById = currentUser.GetUserId();
+
         invitation.Status = InvitationStatus.Rejected;
         invitation.RejectedAt = DateTime.UtcNow;
-        invitation.RejectedByName = command.RejectedByName;
+        invitation.RejectedById = rejectedById;
         invitation.RejectionReason = command.Reason;
         session.Store(invitation);
 
         return new InvitationRejected(
             invitation.Id, invitation.Email, invitation.TargetRole,
-            command.RejectedByName, command.Reason);
+            rejectedById, command.Reason);
     }
 }
 
@@ -209,12 +217,54 @@ public static class GetInvitationsHandler
         queryable = queryable.ApplySearch(query.Search, i => i.Email, i => i.FullName);
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: i => i.CreatedAt);
 
-        return await queryable.ToPagedResultAsync(query, i => new InvitationDto(
-            i.Id, i.Email, i.FirstName, i.LastName, i.FullName,
-            i.TargetRole, i.Status.ToString(), i.InstitutionId, i.BusinessId,
-            i.CreatedAt, i.CreatedByName, i.ApprovedAt, i.ApprovedByName,
-            i.ExpiresAt, i.Metadata));
+        var page = await queryable.ToPagedResultAsync(query, i => i);
+
+        // Aktör adı saklanmaz, okuma anında çözülür (#137). Security kendi kimlik kaynağıdır;
+        // UserAccount aynı modülde olduğu için ayrı UserNameView'a gerek yoktur.
+        var names = await ResolveActorNamesAsync(session, page.Items);
+
+        return new PagedResult<InvitationDto>
+        {
+            Items = [.. page.Items.Select(i => new InvitationDto(
+                i.Id, i.Email, i.FirstName, i.LastName, i.FullName,
+                i.TargetRole, i.Status.ToString(), i.InstitutionId, i.BusinessId,
+                i.CreatedAt, i.CreatedById, NameOf(names, i.CreatedById),
+                i.ApprovedAt, i.ApprovedById, NameOf(names, i.ApprovedById),
+                i.ExpiresAt, i.Metadata))],
+            TotalCount = page.TotalCount,
+            Page = page.Page,
+            PageSize = page.PageSize
+        };
     }
+
+    /// <summary>Sayfadaki tüm aktör kimlikleri için kimlik → ad sözlüğü (tek sorgu).</summary>
+    private static async Task<Dictionary<Guid, string>> ResolveActorNamesAsync(
+        IQuerySession session, IReadOnlyList<UserInvitation> invitations)
+    {
+        var ids = invitations
+            .SelectMany(i => new[] { i.CreatedById, i.ApprovedById })
+            .Where(id => id is { } value && value != Guid.Empty)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToArray();
+
+        if (ids.Length == 0) return [];
+
+        // UserAccount.Id ile değil KeycloakUserId ile eşleşir: denetim alanı token'ın
+        // `sub` claim'ini saklar, lokal hesap kimliğini değil.
+        var idStrings = ids.Select(id => id.ToString()).ToArray();
+
+        var accounts = await session.Query<UserAccount>()
+            .Where(a => idStrings.Contains(a.KeycloakUserId))
+            .ToListAsync();
+
+        return accounts
+            .Where(a => Guid.TryParse(a.KeycloakUserId, out _))
+            .ToDictionary(a => Guid.Parse(a.KeycloakUserId), a => a.FullName);
+    }
+
+    private static string? NameOf(Dictionary<Guid, string> names, Guid? userId) =>
+        userId is { } id && id != Guid.Empty && names.TryGetValue(id, out var name) ? name : null;
 }
 
 public static class ResendInvitationHandler
@@ -240,8 +290,13 @@ public static class ResendInvitationHandler
     }
 }
 
+/// <remarks>
+/// Aktör alanları hem kimlik hem çözümlenmiş ad taşır (#137): kimlik saklanan değerdir,
+/// ad okuma anında türetilir ve bilinmiyorsa <c>null</c> olur (silinmiş kullanıcı vb.).
+/// </remarks>
 public sealed record InvitationDto(
     Guid Id, string Email, string FirstName, string LastName, string FullName,
     string TargetRole, string Status, Guid? InstitutionId, Guid? BusinessId,
-    DateTime CreatedAt, string? CreatedByName, DateTime? ApprovedAt, string? ApprovedByName,
+    DateTime CreatedAt, Guid? CreatedById, string? CreatedByName,
+    DateTime? ApprovedAt, Guid? ApprovedById, string? ApprovedByName,
     DateTime ExpiresAt, Dictionary<string, string> Metadata);
