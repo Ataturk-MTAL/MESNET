@@ -26,7 +26,28 @@ app.use(Quasar, {
   },
 })
 
-// Keycloak başlatılmadan app mount edilmez
-bootAuth().then(() => {
-  app.mount('#app')
-})
+// Keycloak başlatılmadan app mount edilmez.
+//
+// bootAuth() yeniden giriş yaptığında dönmez (login/logout tam sayfa yönlendirmedir ve
+// döndükleri promise ASLA settle olmaz) — bu normaldir, mount beklenmez. Ama boot GERÇEK
+// bir hata ile reddederse yakalanmazsa sayfa kalıcı beyaz kalır: #136'da index.html'deki
+// #app boştur, yani mount'tan önce ekranda hiçbir şey yoktur.
+bootAuth()
+  .then(() => {
+    app.mount('#app')
+  })
+  .catch((err: unknown) => {
+    console.error('[Auth] Başlatma başarısız:', err)
+    import('./boot/sessionExpiredScreen')
+      .then(({ showSessionExpiredScreen }) => {
+        showSessionExpiredScreen({
+          detail: 'Uygulama başlatılamadı.',
+          onLogout: () => {
+            import('./boot/auth')
+              .then(({ logout }) => logout())
+              .catch(() => {})
+          },
+        })
+      })
+      .catch(() => {})
+  })

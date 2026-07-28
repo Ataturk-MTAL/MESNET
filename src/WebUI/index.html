@@ -6,7 +6,25 @@
     <title>MESNET</title>
   </head>
   <body>
-    <div id="app"></div>
+    <!--
+      Mount, bootAuth() tamamlanana kadar beklediği için #app boş kalırsa ekran BEYAZ olur
+      ve kullanıcı hiçbir şey olmadığını sanır (#136). Bu iskele mount anında değiştirilir;
+      Vue'ya ihtiyaç duymadığı için boot hiç tamamlanmasa bile görünür.
+    -->
+    <div id="app">
+      <div
+        style="
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+          color: #5a5a5a;
+        "
+      >
+        Oturum doğrulanıyor…
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
