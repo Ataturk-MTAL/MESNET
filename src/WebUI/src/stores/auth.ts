@@ -2,6 +2,13 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type Keycloak from 'keycloak-js'
 import api from 'boot/axios'
+import { classifyAuthFailure, decodeTokenExp } from 'src/utils/authFailure'
+
+/**
+ * `loadPermissions` sonucu (#136). Yönlendirme kararı çağırana bırakılır: yeniden giriş
+ * tek huniden geçmeli, yoksa aynı anda tetiklenen `login()` ve `logout()` birbirini ezer.
+ */
+export type LoadPermissionsOutcome = 'ok' | 'reauth' | 'give-up'
 
 // Keycloak token payload
 interface KeycloakTokenParsed {
@@ -163,8 +170,11 @@ export const useAuthStore = defineStore('auth', () => {
   // Aspire restart sonrası backend henüz ayağa kalkmamış olabilir.
   // Network hatası (abort, timeout, ECONNREFUSED) → retry ile bekle.
   // Gerçek 401 → token geçersiz → login redirect.
-  async function loadPermissions(maxRetries = 5): Promise<void> {
-    if (!_accessToken.value) return
+  async function loadPermissions(maxRetries = 5): Promise<LoadPermissionsOutcome> {
+    if (!_accessToken.value) return 'reauth'
+
+    // Gönderilecek token'ın ölüm anı — 401 sınıflandırmasının ayırt edici ölçütü (#136).
+    const tokenExp = decodeTokenExp(_accessToken.value)
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -181,37 +191,42 @@ export const useAuthStore = defineStore('auth', () => {
             branchCodes: normalizeBranchCodes(data?.branchCodes),
           }
         }
-        return // başarılı — çık
+        return 'ok'
       } catch (err: unknown) {
         const axiosErr = err as { response?: { status?: number }; code?: string }
         const status = axiosErr.response?.status
         const code = axiosErr.code // 'ERR_NETWORK', 'ECONNABORTED', 'ERR_CANCELED'
 
-        // 401 veya ağ hatası → GEÇİCİ kabul et + retry. keycloak.init (login-required) hemen
-        // sonrası token KESİN geçerlidir; bu noktada 401 büyük olasılıkla API'nin JWKS'i restart
-        // sonrası henüz yüklemediğindendir. HEMEN re-login YAPMA → aynı geçerli token → 401 →
-        // re-login → sonsuz refresh döngüsü. Önce retry, ısrar ederse re-login.
-        const isTransient = !status || status === 401
-          || code === 'ERR_NETWORK' || code === 'ECONNABORTED' || code === 'ERR_CANCELED'
-        if (isTransient && attempt < maxRetries) {
+        // Kararı saf sınıflandırıcı verir; yönlendirmeyi bu fonksiyon YAPMAZ (#136).
+        //
+        // Eskiden 401 koşulsuz "geçici" sayılırdı. Gerekçesi gerçekti — keycloak.init
+        // sonrası 401 çoğunlukla API'nin JWKS önbelleğinin restart sonrası soğuk
+        // olmasındandı ve hemen re-login sonsuz döngü üretirdi. Ama ÖLÜ token da aynı
+        // kefeye giriyordu: 5 deneme × 1.5-6 sn = 15+ saniye beyaz ekran, sonunda login(),
+        // sonra yeniden aynı yer. Ayrım artık token'ın yerel `exp`'i ile yapılır:
+        // geçerli token + 401 = JWKS soğuk → tekrar dene; ölü token + 401 → yeniden giriş.
+        const action = classifyAuthFailure({
+          status, code, tokenExp, now: Date.now(), attempt, maxAttempts: maxRetries,
+        })
+
+        if (action === 'retry') {
           const delay = attempt * 1500 // 1.5s, 3s, 4.5s, 6s
           console.warn(`[Auth] /auth/me henüz hazır değil (durum: ${status ?? 'ağ'}), ${delay / 1000}s sonra tekrar... (${attempt}/${maxRetries})`)
           await new Promise((resolve) => setTimeout(resolve, delay))
           continue
         }
 
-        // Tüm denemeler tükendi ve hâlâ 401 → token gerçekten reddedildi → yeniden giriş
-        if (status === 401) {
-          console.warn('[Auth] Token ısrarla reddedildi, yeniden giriş yapılıyor...')
-          const { getKeycloak } = await import('boot/auth')
-          await getKeycloak().login()
-          return
+        if (action === 'reauth') {
+          console.warn(`[Auth] Token reddedildi (durum: ${status ?? 'ağ'}) — yeniden giriş gerekiyor.`)
+          return 'reauth'
         }
 
-        // Ağ/diğer hata — sessiz kal, uygulama permission'sız başlasın
         console.error('[Auth] Permission yüklenemedi:', err)
+        return 'give-up'
       }
     }
+
+    return 'give-up'
   }
 
   // Token refresh sonrası sadece token güncelle (permission'lar backend'de 5dk cache'li)
