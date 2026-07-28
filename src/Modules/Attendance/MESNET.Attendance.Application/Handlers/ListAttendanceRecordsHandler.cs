@@ -1,6 +1,7 @@
 using Marten;
 using MESNET.Attendance.Application.Dtos;
 using MESNET.Attendance.Application.Extensions;
+using MESNET.Attendance.Application.Helpers;
 using MESNET.Attendance.Application.Queries;
 using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Enums;
@@ -81,6 +82,19 @@ public static class ListAttendanceRecordsHandler
 
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: r => r.Date);
 
-        return await queryable.ToPagedResultAsync(query, r => r.ToDto());
+        var page = await queryable.ToPagedResultAsync(query, r => r);
+
+        // Aktör adı saklanmaz, okuma anında çözülür (#139) — satır başına ayrı sorgu
+        // atmamak için sayfadaki tüm kimlikler tek LoadMany ile çekilir.
+        var names = await UserNameResolver.ResolveAsync(
+            session, page.Items.SelectMany(r => r.ActorIds()));
+
+        return new PagedResult<AttendanceRecordDto>
+        {
+            Items = [.. page.Items.Select(r => r.ToDto(names))],
+            TotalCount = page.TotalCount,
+            Page = page.Page,
+            PageSize = page.PageSize
+        };
     }
 }

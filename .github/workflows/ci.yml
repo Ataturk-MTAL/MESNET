@@ -36,6 +36,26 @@ jobs:
       - name: Çözümü derle (MESNET.slnx)
         run: dotnet build MESNET.slnx -c Release
 
+      # Birim testleri altyapı gerektirmez; entegrasyon testlerinden ayrı ve hızlı koşar.
+      # Bunlar CI'da koşmuyordu (#139): #138/#139'un regresyon kilitleri yalnız yerelde
+      # çalışıyor, yani kuralı bozan bir PR sessizce yeşil geçiyordu.
+      #
+      # Glob ile taranır, liste sabitlenmez: yeni bir modülün testleri workflow'a
+      # eklenmeyi unutulduğu için atlanmasın.
+      - name: Birim testleri
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          projects=(tests/*.UnitTests/*.UnitTests.csproj)
+          if [ ${#projects[@]} -eq 0 ]; then
+            echo "::error::Hiç birim test projesi bulunamadı — glob deseni bozulmuş olabilir."
+            exit 1
+          fi
+          for project in "${projects[@]}"; do
+            echo "▶ $project"
+            dotnet test "$project" -c Release --no-build --logger 'console;verbosity=normal'
+          done
+
   frontend:
     name: Frontend — type-check & build
     runs-on: ubuntu-latest

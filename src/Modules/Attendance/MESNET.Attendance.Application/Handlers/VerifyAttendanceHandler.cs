@@ -21,6 +21,7 @@ public static class VerifyAttendanceHandler
             throw new DomainException("ATTENDANCE_INVALID_STATUS",
                 $"Devamsızlık kaydı bu durumdan doğrulanamaz. Mevcut durum: {record.Status.Slug}.");
 
-        return new AttendanceVerified(record.Id, record.StudentId, currentUser.GetFullName(), DateTime.UtcNow);
+        // Aktör kimliği saklanır, adı değil (#139).
+        return new AttendanceVerified(record.Id, record.StudentId, currentUser.GetUserId(), DateTime.UtcNow);
     }
 }

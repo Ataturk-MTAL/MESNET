@@ -21,7 +21,8 @@ public static class ApproveAttendanceHandler
             throw new DomainException("ATTENDANCE_INVALID_STATUS",
                 $"Devamsızlık kaydı bu durumdan onaylanamaz. Mevcut durum: {record.Status.Slug}.");
 
+        // Aktör kimliği saklanır, adı değil (#139).
         return new AttendanceApproved(
-            record.Id, record.StudentId, currentUser.GetFullName(), DateTime.UtcNow);
+            record.Id, record.StudentId, currentUser.GetUserId(), DateTime.UtcNow);
     }
 }

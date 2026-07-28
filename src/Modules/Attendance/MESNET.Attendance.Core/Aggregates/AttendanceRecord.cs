@@ -14,11 +14,18 @@ public sealed record AttendanceRecord(
     string? Reason,
     AttendanceStatus Status,
     string? HealthReportUrl,
-    string MarkedBy,
+    /// <summary>
+    /// Denetim aktörlerinin kimlikleri — token'dan gelir, ad SAKLANMAZ (#139).
+    /// Ad okuma anında <c>UserNameView</c>'dan çözülür; böylece kullanıcı adını
+    /// değiştirince eski kayıtlar bayat ad göstermez ve aktöre göre sorgu yapılabilir.
+    /// Eski <c>markedBy</c>/<c>approvedBy</c>/<c>verifiedBy</c> JSON anahtarları (serbest
+    /// metin ad) bu adlarla artık okunmaz.
+    /// </summary>
+    Guid MarkedById,
     DateTime MarkedAt,
-    string? ApprovedBy,
+    Guid? ApprovedById,
     DateTime? ApprovedAt,
-    string? VerifiedBy,
+    Guid? VerifiedById,
     DateTime? VerifiedAt,
     bool IsDeleted = false)
 {
@@ -37,7 +44,7 @@ public sealed record AttendanceRecord(
         AttendanceStatus.TryFromName(e.InitialStatus, true, out var status)
             ? status : AttendanceStatus.Recorded,
         null,
-        e.MarkedBy ?? string.Empty,
+        e.MarkedById,
         DateTime.UtcNow,
         null,
         null,
@@ -47,14 +54,14 @@ public sealed record AttendanceRecord(
     public AttendanceRecord Apply(AttendanceApproved e) => this with
     {
         Status = AttendanceStatus.Recorded,
-        ApprovedBy = e.ApprovedBy,
+        ApprovedById = e.ApprovedById,
         ApprovedAt = e.ApprovedAt
     };
 
     public AttendanceRecord Apply(AttendanceVerified e) => this with
     {
         Status = AttendanceStatus.Verified,
-        VerifiedBy = e.VerifiedBy,
+        VerifiedById = e.VerifiedById,
         VerifiedAt = e.VerifiedAt
     };
 

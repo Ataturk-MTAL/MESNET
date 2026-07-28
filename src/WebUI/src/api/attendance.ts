@@ -13,11 +13,16 @@ export interface AttendanceRecordDto {
   status: string
   statusSlug: string
   healthReportUrl: string | null
-  markedBy: string
+  // Aktör alanları hem kimlik hem çözümlenmiş ad taşır (#139). Ad backend'de saklanmaz;
+  // okuma anında UserNameView'dan çözülür ve bilinmiyorsa null gelir.
+  markedById: string
+  markedByName: string | null
   markedAt: string
-  approvedBy: string | null
+  approvedById: string | null
+  approvedByName: string | null
   approvedAt: string | null
-  verifiedBy: string | null
+  verifiedById: string | null
+  verifiedByName: string | null
   verifiedAt: string | null
 }
 

@@ -45,9 +45,12 @@ public static class UserNameResolver
         return view?.FullName;
     }
 
-    /// <summary>Tek kimlik için ad; bilinmiyorsa <c>null</c>.</summary>
-    public static string? NameOf(this IReadOnlyDictionary<Guid, string> names, Guid? userId) =>
-        userId is { } id && id != Guid.Empty && names.TryGetValue(id, out var name)
+    /// <summary>
+    /// Tek kimlik için ad; bilinmiyorsa <c>null</c>. Sözlük <c>null</c> geçilebilir —
+    /// ad çözümü istemeyen çağıranlar için (ör. birim testleri).
+    /// </summary>
+    public static string? NameOf(this IReadOnlyDictionary<Guid, string>? names, Guid? userId) =>
+        names is not null && userId is { } id && id != Guid.Empty && names.TryGetValue(id, out var name)
             ? name
             : null;
 }
