@@ -106,10 +106,15 @@ kullanılmıyor** — hiçbir kod onu atamıyor ya da kontrol etmiyor.
 Sonuç: kamu kurumunda staj yapan öğrenci için devlet katkısı, kanun ödenmemesini emrettiği
 hâlde özel işletme gibi hesaplanır.
 
-### 3. Sigorta primi kapsam dışı
+### 3. Sigorta primi — MESNET kapsamı dışında (karar verildi)
 
 Madde 25'e göre sigorta primleri asgari ücretin %50'si üzerinden **Bakanlık bütçesinden**
-karşılanır. MESNET bu akışı temsil etmiyor; kapsam dışı olması bilinçli mi, karar verilmeli.
+karşılanır. MESNET bu akışı temsil etmiyor ve **etmemesi bilinçlidir**: meslek lisesi
+öğrencisi eğitimi boyunca sigortalıdır, prim Bakanlık tarafından karşılanır ve yerleştirme
+türünden (işletme / okulda staj) bağımsızdır.
+
+Yani prim, MESNET'in hesapladığı bir tutar değil; ücret ve devlet katkısı hesabına da
+girmez. Okulda staj hâlinde de (bkz. #159) prim akışı değişmez.
 
 ## Diğer ilgili maddeler (özet)
 
