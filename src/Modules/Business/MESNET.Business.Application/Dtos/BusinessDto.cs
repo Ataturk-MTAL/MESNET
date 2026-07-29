@@ -14,6 +14,11 @@ public sealed record BusinessDto(
     string Source,
     string SourceSlug,
     int PersonnelCount,
+    /// <summary>
+    /// Kamu kurum/kuruluşu mu (#157). 3308 Geçici Madde 12 gereği kamu kurumlarına devlet
+    /// katkısı ödenmez; arayüzde işaretlenebilmesi ve düzeltilebilmesi için DTO'da taşınır.
+    /// </summary>
+    bool IsPublicInstitution,
     Location? Location,
     BusinessCapacityDto Capacity,
     List<BusinessRepresentativeDto> Representatives,

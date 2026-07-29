@@ -109,6 +109,17 @@
                   <q-icon name="category" />
                 </template>
               </q-select>
+              <q-toggle
+                v-model="form.isPublicInstitution"
+                label="Kamu kurum/kuruluşu"
+                :true-value="true"
+                :false-value="false"
+              />
+              <div class="text-caption text-grey-7 q-ml-sm">
+                3308 sayılı Kanun Geçici Madde 12 gereği kamu kurum ve kuruluşlarına
+                <strong>devlet katkısı ödenmez</strong>. Öğrencinin ücreti işletme tarafından
+                ödenmeye devam eder; yalnız devlet payı hesaplanmaz.
+              </div>
             </div>
 
             <!-- Harita: sağda (dar ekranda altta) -->
@@ -174,6 +185,9 @@ const form = reactive({
   email: '',
   website: '',
   personnelCount: 0,
+  // 3308 Geçici Madde 12 — kamu kurumlarına devlet katkısı ödenmez (#157).
+  // Varsayılan false: özel işletme, sistemdeki çoğunluk.
+  isPublicInstitution: false,
   location: null as { latitude: number; longitude: number } | null,
   sectors: [] as string[],
 })
@@ -202,6 +216,7 @@ async function loadBusiness() {
       email: b.email ?? '',
       website: b.website ?? '',
       personnelCount: b.personnelCount,
+      isPublicInstitution: b.isPublicInstitution,
       location: b.location ? { ...b.location } : null,
       sectors: b.sectors.map((s: SectorDto) => s.name),
     })
@@ -231,6 +246,10 @@ async function handleSave() {
         email: form.email || undefined,
         website: form.website || undefined,
         personnelCount: form.personnelCount || undefined,
+        // `|| undefined` KULLANILMAZ: `false || undefined` → undefined olur ve backend bunu
+        // "dokunma" olarak yorumlar (kısmi güncelleme deseni). O zaman bir kez kamu
+        // işaretlenen işletmenin işareti hiç kaldırılamazdı. Boolean her zaman aynen gider.
+        isPublicInstitution: form.isPublicInstitution,
         location: form.location ?? undefined,
         sectors: form.sectors,
       })
@@ -251,6 +270,7 @@ async function handleSave() {
         phoneNumber: form.phoneNumber || undefined,
         email: form.email || undefined,
         personnelCount: form.personnelCount || undefined,
+        isPublicInstitution: form.isPublicInstitution,
         location: form.location ?? undefined,
         sectors: form.sectors.length > 0 ? form.sectors : undefined,
       })

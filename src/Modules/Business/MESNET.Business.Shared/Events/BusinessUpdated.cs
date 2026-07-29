@@ -15,4 +15,6 @@ public sealed record BusinessUpdated(
     int PersonnelCount = 0,
     // İşletme Yetkilisi (BusinessRepresentative.FullName) — Dönem Not Fişi'nin (Form 8) imza
     // bloğunda basılır. Reporting başka modülün şemasını okuyamaz, olayla taşınmalı (#99).
-    string? RepresentativeName = null);
+    string? RepresentativeName = null,
+    // 3308 Geçici Madde 12 — bkz. BusinessRegistered.IsPublicInstitution (#157).
+    bool IsPublicInstitution = false);

@@ -167,7 +167,10 @@ public class PaymentSaga : Saga
             deductibleDays,
             contractWage is { IsActive: true } ? contractWage.AgreedMonthlyWage : null,
             CalculateAge(student?.BirthDate, command.ReferenceDate),
-            IsApprenticeCategory(student?.CategoryName));
+            IsApprenticeCategory(student?.CategoryName),
+            // Kamu kurumuna devlet katkısı ödenmez (#157). Profil yoksa false — özel işletme
+            // varsayımı bugünkü davranışı korur; eksik veri yüzünden katkı sessizce sıfırlanmaz.
+            business?.IsPublicInstitution ?? false);
     }
 
     /// <summary>

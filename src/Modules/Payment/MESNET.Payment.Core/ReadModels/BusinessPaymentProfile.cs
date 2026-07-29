@@ -14,4 +14,10 @@ public class BusinessPaymentProfile
     public Guid Id { get; set; }       // BusinessId
     public string Name { get; set; } = "";
     public int PersonnelCount { get; set; }
+
+    /// <summary>
+    /// Kamu kurum/kuruluşu mu (#157). 3308 Geçici Madde 12: kamu kurumlarına devlet katkısı
+    /// ödenmez. <c>false</c> kalırsa hak edilmeyen katkı hesaplanır.
+    /// </summary>
+    public bool IsPublicInstitution { get; set; }
 }

@@ -61,6 +61,11 @@ export interface BusinessDto {
   source: string
   sourceSlug: string
   personnelCount: number
+  /**
+   * Kamu kurum/kuruluşu mu (#157). 3308 Geçici Madde 12 gereği kamu kurumlarına devlet
+   * katkısı ödenmez — bu işaret doğrudan maaş/teşvik hesabını etkiler.
+   */
+  isPublicInstitution: boolean
   location: GeoLocation | null
   capacity: BusinessCapacityDto
   representatives: BusinessRepresentativeDto[]
@@ -81,6 +86,8 @@ export interface RegisterBusinessRequest {
   email?: string
   website?: string
   personnelCount?: number
+  /** Kamu kurum/kuruluşu mu (#157) — devlet katkısı hesabını etkiler, kayıt anında girilir. */
+  isPublicInstitution?: boolean
   location?: GeoLocation
   sectors?: string[]
 }
@@ -92,6 +99,8 @@ export interface UpdateBusinessRequest {
   email?: string
   website?: string
   personnelCount?: number
+  /** Kamu/özel ayrımı düzeltmesi (#157). Gönderilmezse dokunulmaz. */
+  isPublicInstitution?: boolean
   location?: GeoLocation
   sectors?: string[]
 }

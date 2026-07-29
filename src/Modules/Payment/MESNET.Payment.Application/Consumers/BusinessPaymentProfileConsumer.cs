@@ -16,7 +16,8 @@ public static class BusinessPaymentProfileConsumer
         {
             Id = @event.BusinessId,
             Name = @event.Name,
-            PersonnelCount = @event.PersonnelCount
+            PersonnelCount = @event.PersonnelCount,
+            IsPublicInstitution = @event.IsPublicInstitution
         });
     }
 
@@ -28,6 +29,7 @@ public static class BusinessPaymentProfileConsumer
 
         profile.Name = @event.Name;
         profile.PersonnelCount = @event.PersonnelCount;
+        profile.IsPublicInstitution = @event.IsPublicInstitution;
         session.Store(profile);
     }
 }
