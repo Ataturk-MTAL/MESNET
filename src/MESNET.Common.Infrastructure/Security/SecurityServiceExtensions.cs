@@ -25,6 +25,11 @@ public static class SecurityServiceExtensions
         // ICurrentUserService — Scoped (request başına)
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
+        // Her log kaydına kiracı (kurum) kimliği eklenir. Serilog'un ReadFrom.Services(...)
+        // çağrısı DI'daki ILogEventEnricher kayıtlarını toplar. Bugün tek kurum var ve değer
+        // sabit gibi davranır; alanın VARLIĞI önemlidir — log şeması en hızlı taşlaşan yüzeydir.
+        services.AddSingleton<Serilog.Core.ILogEventEnricher, Logging.TenantEnricher>();
+
         // Authorization policies
         services.AddAuthorization(options =>
         {

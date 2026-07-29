@@ -16,6 +16,9 @@
     <PackageReference Include="Marten" />
     <PackageReference Include="Minio" />
     <PackageReference Include="Mjml.Net" />
+    <!-- TenantEnricher — her log kaydına kiracı (kurum) kimliği ekler. Serilog.AspNetCore
+         ILogEventEnricher'ı da getirir; ayrı bir Serilog paketi gerekmez. -->
+    <PackageReference Include="Serilog.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
