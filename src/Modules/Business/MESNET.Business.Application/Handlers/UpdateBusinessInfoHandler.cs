@@ -23,11 +23,14 @@ public static class UpdateBusinessInfoHandler
         if (command.PersonnelCount is not null) business.PersonnelCount = command.PersonnelCount.Value;
         if (command.Location is not null) business.Location = command.Location;
         if (command.Sectors is not null) business.Sectors = command.Sectors;
+        // Kamu/özel ayrımı düzeltmesi (#157) — devlet katkısı hesabını doğrudan etkiler.
+        if (command.IsPublicInstitution is not null)
+            business.IsPublicInstitution = command.IsPublicInstitution.Value;
 
         session.Store(business);
 
         return new BusinessUpdated(business.Id, business.Name, business.Address, business.Location, business.Sectors,
             business.PhoneNumber, business.Email, business.MasterInstructor?.FullName, business.PersonnelCount,
-            business.PrimaryRepresentativeName());
+            business.PrimaryRepresentativeName(), business.IsPublicInstitution);
     }
 }

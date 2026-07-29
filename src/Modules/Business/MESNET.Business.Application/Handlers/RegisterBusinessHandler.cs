@@ -24,6 +24,7 @@ public static class RegisterBusinessHandler
             Email = command.Email,
             Website = command.Website,
             PersonnelCount = command.PersonnelCount,
+            IsPublicInstitution = command.IsPublicInstitution,
             Location = command.Location,
             Source = RegistrationSource.InstitutionRegistered,
             Status = BusinessStatus.Active,
@@ -40,7 +41,7 @@ public static class RegisterBusinessHandler
 
         await bus.PublishAsync(new BusinessRegistered(business.Id, business.TenantId, business.Name, business.Address, business.Location, business.Source.Name, business.Capacity.TotalSlots, business.Sectors,
             business.PhoneNumber, business.Email, business.MasterInstructor?.FullName, business.PersonnelCount,
-            business.PrimaryRepresentativeName()));
+            business.PrimaryRepresentativeName(), business.IsPublicInstitution));
         await bus.PublishAsync(new BusinessCapacityChanged(business.Id, business.Capacity.TotalSlots, business.Capacity.OccupiedSlots));
 
         return business.ToDto();

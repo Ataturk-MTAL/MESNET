@@ -20,4 +20,8 @@ public sealed record BusinessRegistered(
     int PersonnelCount = 0,
     // İşletme Yetkilisi (BusinessRepresentative.FullName) — Dönem Not Fişi'nin (Form 8) imza
     // bloğunda basılır. Reporting başka modülün şemasını okuyamaz, olayla taşınmalı (#99).
-    string? RepresentativeName = null);
+    string? RepresentativeName = null,
+    // 3308 Geçici Madde 12: kamu kurum ve kuruluşlarına Devlet katkısı ödenmez (#157).
+    // Payment bu bilgiyi başka modülün şemasından okuyamaz, olayla taşınmalı.
+    // Varsayılan false: bu alandan önce yazılmış olaylar özel işletme olarak deserialize olur.
+    bool IsPublicInstitution = false);

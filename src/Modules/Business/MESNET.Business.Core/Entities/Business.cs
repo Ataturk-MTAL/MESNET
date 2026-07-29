@@ -33,6 +33,19 @@ public class Business
     public RegistrationSource Source { get; set; } = RegistrationSource.InstitutionRegistered;
 
     public int PersonnelCount { get; set; }
+
+    /// <summary>
+    /// İşletme bir kamu kurum/kuruluşu mu (#157).
+    ///
+    /// <para>3308 Geçici Madde 12: <b>"Kamu kurum ve kuruluşlarına Devlet katkısı ödenmez."</b>
+    /// Bu alan o hükmün tek girdisidir; <c>false</c> kalırsa kamu kurumuna hak edilmeyen
+    /// devlet katkısı hesaplanır.</para>
+    ///
+    /// <para>Varsayılan <c>false</c> (özel işletme) bilinçlidir: bu alandan önce yazılmış
+    /// kayıtlar bugünkü davranışı korur. Mevcut kamu kurumları <b>elle işaretlenmelidir</b> —
+    /// sistem bunu türetemez.</para>
+    /// </summary>
+    public bool IsPublicInstitution { get; set; }
     public Location? Location { get; set; }
     public BusinessCapacity Capacity { get; set; } = new();
     public List<BusinessRepresentative> Representatives { get; set; } = [];

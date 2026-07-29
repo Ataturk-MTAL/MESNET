@@ -17,6 +17,7 @@ public static class BusinessMappingExtensions
         entity.Source.Name,
         entity.Source.Slug,
         entity.PersonnelCount,
+        entity.IsPublicInstitution,
         entity.Location,
         entity.Capacity.ToDto(),
         entity.Representatives.Select(r => r.ToDto()).ToList(),

@@ -12,4 +12,9 @@ public sealed record RegisterBusiness(
     int PersonnelCount,
     Location? Location,
     int TotalSlots,
-    List<string>? Sectors);
+    List<string>? Sectors,
+    /// <summary>
+    /// Kamu kurum/kuruluşu mu (#157). 3308 Geçici Madde 12 gereği kamu kurumlarına devlet
+    /// katkısı ödenmez; bu bilgi kayıt anında girilir, sistem türetemez.
+    /// </summary>
+    bool IsPublicInstitution = false);

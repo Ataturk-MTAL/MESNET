@@ -1,4 +1,5 @@
 using MESNET.Payment.Core.Entities;
+using MESNET.Payment.Core.Enums;
 
 namespace MESNET.Payment.Application.Services;
 
@@ -23,7 +24,14 @@ public static class SalaryCalculator
         decimal BaseWage,
         decimal Deduction,
         decimal NetAmount,
-        decimal GovernmentContribution);
+        decimal GovernmentContribution,
+        /// <summary>
+        /// Katkının hangi kural gereği hesaplandığı (#157). Önceden oran satır içinde
+        /// türetiliyor ve karar hiçbir yere yazılmıyordu; <c>GovernmentContributionType</c>
+        /// enum'u tanımlı olmasına rağmen hiç kullanılmıyordu. Kararı döndürmek hem denetimi
+        /// hem de "neden bu tutar" sorusunu cevaplanabilir kılar.
+        /// </summary>
+        GovernmentContributionType ContributionType);
 
     /// <param name="config">Kurumun yürürlükteki maaş parametreleri.</param>
     /// <param name="personnelCount">
@@ -65,7 +73,8 @@ public static class SalaryCalculator
         int deductibleAbsenceDays,
         decimal? agreedMonthlyWage = null,
         int? ageAtCalculation = null,
-        bool isApprentice = false)
+        bool isApprentice = false,
+        bool isPublicInstitution = false)
     {
         var isMesem = string.Equals(educationTypeName, MesemEducationType, StringComparison.OrdinalIgnoreCase);
         var isLargeBusiness = personnelCount >= config.PersonnelThreshold;
@@ -110,6 +119,27 @@ public static class SalaryCalculator
         // hesaplanıyordu ve devlet katkısı eksik çıkıyordu (#83).
         // MESEM'de sınıf/yeterlik şartı YOK: "mesleki eğitim merkezi programına devam eden
         // öğrencilere ödenebilecek en az ücretin ise tamamı".
+        // Kamu kurumlarına devlet katkısı ÖDENMEZ (#157) — 3308 Geçici Madde 12:
+        // "Kamu kurum ve kuruluşlarına Devlet katkısı ödenmez."
+        //
+        // Kontrol diğer tüm oranlardan ÖNCE gelir: kamu kurumu için MESEM/işletme büyüklüğü
+        // ayrımının hiçbir anlamı yok, katkı sıfırdır. Bu kural bugüne kadar hiç
+        // uygulanmıyordu; GovernmentContributionType.PublicInstitution enum değeri tanımlıydı
+        // ama hiçbir kod onu atamıyor ya da kontrol etmiyordu.
+        if (isPublicInstitution)
+        {
+            return new Result(
+                baseWage, deduction, netAmount,
+                GovernmentContribution: 0m,
+                ContributionType: GovernmentContributionType.PublicInstitution);
+        }
+
+        var contributionType = isMesem
+            ? GovernmentContributionType.MemStudent
+            : isLargeBusiness
+                ? GovernmentContributionType.NonMemLarge
+                : GovernmentContributionType.NonMemSmall;
+
         var govRate = isMesem
             ? config.GovContribMEM
             : isLargeBusiness
@@ -126,6 +156,6 @@ public static class SalaryCalculator
         // seçtiyse aradaki fark işveren payına eklenir, devlet katkısını büyütmez.
         var govContribution = Math.Min(statutoryFloor * govRate, netAmount);
 
-        return new Result(baseWage, deduction, netAmount, govContribution);
+        return new Result(baseWage, deduction, netAmount, govContribution, contributionType);
     }
 }

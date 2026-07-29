@@ -11,4 +11,9 @@ public sealed record UpdateBusinessInfo(
     string? Website,
     int? PersonnelCount,
     Location? Location,
-    List<string>? Sectors);
+    List<string>? Sectors,
+    /// <summary>
+    /// Kamu/özel ayrımı düzeltmesi (#157). <c>null</c> = dokunma — kısmi güncelleme deseni,
+    /// diğer alanlarla aynı.
+    /// </summary>
+    bool? IsPublicInstitution = null);
