@@ -10,6 +10,8 @@ var rabbitmqPassword = builder.AddParameter("rabbitmq-password", secret: true);
 var keycloakPassword = builder.AddParameter("keycloak-password", secret: true);
 var minioUser = builder.AddParameter("minio-user", secret: false);
 var minioPassword = builder.AddParameter("minio-password", secret: true);
+var openObserveUser = builder.AddParameter("openobserve-user", secret: false);
+var openObservePassword = builder.AddParameter("openobserve-password", secret: true);
 
 // Altyapı servisleri — Persistent: AppHost kapansa bile container'lar ayakta kalır
 // Dev'de her restart'ta yeniden oluşturulmazlar, veri ve state korunur
@@ -71,6 +73,36 @@ var osrm = builder.AddContainer("osrm", "ghcr.io/project-osrm/osrm-backend", "la
     .WithEndpoint("osrm", e => e.IsProxied = false)
     .WithLifetime(ContainerLifetime.Persistent);
 
+// OpenObserve — kalıcı log deposu (OTLP alıcısı)
+//
+// Neden ayrı bir depo: Aspire dashboard OTLP'yi yutar ama BELLEKTE tutar; AppHost kapanınca
+// her şey gider. #136'da (süresi dolmuş token döngüsü) teşhis yalnız sunucu logu sayesinde
+// mümkün oldu — o log kalıcı olmasaydı hata görülmeyecekti.
+//
+// İmaj: açık kaynak olan `public.ecr.aws/zinclabs/openobserve`. Resmî dokümandaki
+// `docker run` komutu ENTERPRISE imajını (`o2cr.ai/.../openobserve-enterprise`) gösterir;
+// bilerek kullanılmıyor.
+//
+// Etiket: `latest`. OpenObserve'un `slim` diye bir etiketi YOKTUR — iki seçenek var:
+// `latest` (tek statik Rust binary, her ortamda çalışır) ve `latest-simd` (AVX512/NEON
+// ister). Zaten ince olan `latest`; simd varyantı eski x86 sunucularda başlamayabilir.
+var openObserve = builder.AddContainer("openobserve", "public.ecr.aws/zinclabs/openobserve", "latest")
+    .WithHttpEndpoint(port: 5080, targetPort: 5080, name: "http")
+    .WithEndpoint(port: 5081, targetPort: 5081, name: "grpc", scheme: "http")
+    .WithEnvironment("ZO_DATA_DIR", "/data")
+    .WithEnvironment("ZO_ROOT_USER_EMAIL", openObserveUser)
+    .WithEnvironment("ZO_ROOT_USER_PASSWORD", openObservePassword)
+    // Kapatılmazsa açılışta dışarıya kullanım telemetrisi gönderir
+    // ("sending a track event OpenObserve - Starting server"). Öğrenci verisi işleyen bir
+    // kurulumda gözlemlenebilirlik aracının kendisi dışarı veri sızdırmamalıdır.
+    .WithEnvironment("ZO_TELEMETRY_ENABLED", "false")
+    .WithVolume("openobserve-data", "/data")
+    // Uç doğrulandı: container ayağa kalktıktan sonra GET /healthz → 200.
+    .WithHttpHealthCheck("/healthz", endpointName: "http")
+    .WithEndpoint("http", e => e.IsProxied = false)
+    .WithEndpoint("grpc", e => e.IsProxied = false)
+    .WithLifetime(ContainerLifetime.Persistent);
+
 var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WithExternalHttpEndpoints()
     .WithReference(postgres)
@@ -82,11 +114,21 @@ var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WithEnvironment("SmtpSettings__Host", mailpit.Resource.Host)
     .WithEnvironment("SmtpSettings__Port", mailpit.Resource.Port)
     .WithEnvironment("Osrm__BaseUrl", osrm.GetEndpoint("osrm"))
+    // Serilog'un OTLP sink'i OpenObserve'a yazar. Aspire'ın OTEL_EXPORTER_OTLP_ENDPOINT'i
+    // BİLEREK ezilmiyor: o değişken trace ve metric'i de taşır ve ezilirse dev'de Aspire
+    // dashboard'un izleme sekmesi boşalır. Üretimde üç sinyalin de OpenObserve'a gitmesi
+    // için o değişken dağıtım tarafında bu uca yönlendirilir (bkz. #144).
+    .WithEnvironment("OpenObserve__Endpoint", openObserve.GetEndpoint("grpc"))
+    .WithEnvironment("OpenObserve__User", openObserveUser)
+    .WithEnvironment("OpenObserve__Password", openObservePassword)
     .WaitFor(postgres)
     .WaitFor(rabbitmq)
     .WaitFor(keycloak)
     .WaitFor(minio)
-    .WaitFor(mailpit);
+    .WaitFor(mailpit)
+    // WaitFor DEĞİL: log deposu erişilemezse uygulama yine de açılmalıdır. Gözlemlenebilirlik
+    // altyapısını başlangıç bağımlılığı yapmak, teşhis aracını arıza kaynağına çevirir.
+    .WithReference(openObserve.GetEndpoint("grpc"));
 
 // Seeder — sadece dev modunda çalışır, API + Keycloak hazır olduktan sonra
 if (!builder.ExecutionContext.IsPublishMode)
