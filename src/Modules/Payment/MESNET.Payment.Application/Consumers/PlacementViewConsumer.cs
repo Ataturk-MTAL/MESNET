@@ -41,21 +41,41 @@ public static class PlacementViewConsumer
     /// maaş dönemini ESKİ işletmeyle açıyor, yeni yerleştirme "zaten var" diye atlanıyordu.
     /// Ayın maaşı öğrencinin ayrıldığı işletmeye yazılıyordu.</para>
     /// </summary>
-    public static async Task Consume(ContractTerminated @event, IDocumentSession session)
+    public static Task Consume(ContractTerminated @event, IDocumentSession session)
+        => CloseMatchingPlacementsAsync(
+            session, @event.StudentId, @event.BusinessId, @event.TerminatedAt);
+
+    /// <summary>
+    /// Sözleşme başarıyla tamamlandığında yerleştirmeyi kapatır (#152).
+    ///
+    /// <para>Feshin <b>ikizi</b>: bu tüketici de eksikti ve aynı sonucu doğuruyordu. Stajını
+    /// erken tamamlayan öğrenci için akademik dönem kapanana kadar her ay sonu maaş dönemi
+    /// açılmaya devam ediyordu. <c>ContractWageConsumer</c> yine yalnız ücret görünümünü
+    /// kapatıyor, yerleştirmeye dokunmuyordu.</para>
+    /// </summary>
+    public static Task Consume(ContractCompleted @event, IDocumentSession session)
+        => CloseMatchingPlacementsAsync(
+            session, @event.StudentId, @event.BusinessId, @event.CompletedAt);
+
+    /// <summary>
+    /// Sözleşme bitiş olaylarının ortak yazma yolu. Olaylar <c>PlacementId</c> taşımadığı için
+    /// eşleşme öğrenci + işletme ikilisiyle yapılır; hangi kaydın kapanacağına saf
+    /// <see cref="PlacementClosurePolicy"/> karar verir (tarih koruması dahil).
+    /// </summary>
+    private static async Task CloseMatchingPlacementsAsync(
+        IDocumentSession session, Guid studentId, Guid businessId, DateTime endedAt)
     {
-        // Fesih olayı PlacementId taşımaz; eşleşme öğrenci + işletme ikilisiyle yapılır.
         var views = await session.Query<PlacementView>()
-            .Where(p => p.StudentId == @event.StudentId
-                     && p.BusinessId == @event.BusinessId
+            .Where(p => p.StudentId == studentId
+                     && p.BusinessId == businessId
                      && p.IsActive)
             .ToListAsync();
 
         foreach (var view in views)
         {
-            // Karar saf politikada — bkz. PlacementClosurePolicy (tarih koruması dahil).
             if (!PlacementClosurePolicy.ShouldClose(
                     view.StudentId, view.BusinessId, view.IsActive, view.PlacedAt,
-                    @event.StudentId, @event.BusinessId, @event.TerminatedAt))
+                    studentId, businessId, endedAt))
             {
                 continue;
             }
