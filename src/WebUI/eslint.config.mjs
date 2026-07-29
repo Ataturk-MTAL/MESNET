@@ -1,27 +1,27 @@
-import js from '@eslint/js'
-import tseslint from 'typescript-eslint'
-import pluginVue from 'eslint-plugin-vue'
-import pluginA11y from 'eslint-plugin-vuejs-accessibility'
-import globals from 'globals'
+import js from "@eslint/js";
+import pluginVue from "eslint-plugin-vue";
+import pluginA11y from "eslint-plugin-vuejs-accessibility";
+import globals from "globals";
+import tseslint from "typescript-eslint";
 
 // CLAUDE.md'deki frontend kuralları bu ana kadar yalnızca elle denetleniyordu (#68).
 // Otomatikleştirilebilenler aşağıda kural olarak yazılı; her birinin başında hangi
 // CLAUDE.md maddesini karşıladığı belirtiliyor.
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', '.quasar/**'],
+    ignores: ["dist/**", "node_modules/**", ".quasar/**"],
   },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  ...pluginVue.configs['flat/recommended'],
-  ...pluginA11y.configs['flat/recommended'],
+  ...pluginVue.configs["flat/recommended"],
+  ...pluginA11y.configs["flat/recommended"],
 
   {
-    files: ['**/*.{ts,vue}'],
+    files: ["**/*.{ts,vue}"],
     languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
+      ecmaVersion: "latest",
+      sourceType: "module",
       globals: {
         ...globals.browser,
       },
@@ -31,54 +31,69 @@ export default tseslint.config(
     },
     rules: {
       // CLAUDE.md — "<script setup> zorunlu, Options API veya setup() fonksiyonu KULLANILMAZ"
-      'vue/component-api-style': ['error', ['script-setup']],
+      "vue/component-api-style": ["error", ["script-setup"]],
 
       // CLAUDE.md — "İkon butonu = aria-label + <q-tooltip>. title attribute'ü KULLANILMAZ
       // (WCAG için güvenilir değil, görsel tooltip standart açılmaz)."
       // Yalnız q-btn hedefleniyor: FormDialog/DetailDialog gibi kendi bileşenlerimizde
       // title bir prop, HTML attribute değil.
-      'vue/no-restricted-static-attribute': [
-        'error',
+      "vue/no-restricted-static-attribute": [
+        "error",
         {
-          key: 'title',
-          element: 'q-btn',
+          key: "title",
+          element: "q-btn",
           message:
-            'İkon butonunda title kullanma — aria-label (ekran okuyucu) + <q-tooltip> (görsel) kullan. CLAUDE.md ikon butonu kuralı.',
+            "İkon butonunda title kullanma — aria-label (ekran okuyucu) + <q-tooltip> (görsel) kullan. CLAUDE.md ikon butonu kuralı.",
         },
       ],
 
       // CLAUDE.md — "Fire-and-forget async çağrılarda .catch(() => {}) eklenir;
       // void fn() hata yutabilir."
-      'no-void': ['error', { allowAsStatement: false }],
+      "no-void": ["error", { allowAsStatement: false }],
 
       // CLAUDE.md — "JSON.parse(JSON.stringify()) YASAK."
-      'no-restricted-syntax': [
-        'error',
+      "no-restricted-syntax": [
+        "error",
         {
           selector:
             "CallExpression[callee.object.name='JSON'][callee.property.name='parse'] > CallExpression[callee.object.name='JSON'][callee.property.name='stringify']",
           message:
-            'JSON.parse(JSON.stringify()) ile derin kopya alma — CLAUDE.md yasaklıyor. Reaktif veri için elle .map() kopyası yaz.',
+            "JSON.parse(JSON.stringify()) ile derin kopya alma — CLAUDE.md yasaklıyor. Reaktif veri için elle .map() kopyası yaz.",
         },
       ],
 
       // Sayfa/görünüm bileşenleri tek kelimelik (StudentList, PaymentPage) — kasıtlı.
-      'vue/multi-word-component-names': 'off',
+      "vue/multi-word-component-names": "off",
 
       // Kullanılmayan değişken hatası; alt çizgiyle başlayanlar kasıtlı olarak muaf.
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' },
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrors: "none",
+        },
       ],
+      // "Üretim kodunda console.log bırakılmaz."
+      //
+      // info/warn/error muaf: depoda bir logger yok, bu üçü kalıcı tanılama kanalıdır ve
+      // #136'daki yeniden giriş döngüsü teşhis edilirken tam da o satırlar yük taşıdı —
+      // hangi kaçış yolunun tetiklendiğini yalnız onlar söylüyordu. Onları yasaklamak
+      // gerçek bir kazanç sağlamadan teşhis kabiliyetini keserdi.
+      //
+      // log/debug/trace/table/dir/group/time yasak: hepsi hata ayıklama ANI aracıdır,
+      // kalıcı tanılama değil. group ve time ayrıca erken return'de kapanmazsa
+      // (groupEnd/timeEnd atlanır) konsol durumunu sızdırır.
+      "no-console": ["error", { allow: ["info", "warn", "error"] }],
     },
   },
 
   {
-    files: ['**/*.spec.ts', '**/*.test.ts'],
+    files: ["**/*.spec.ts", "**/*.test.ts"],
     languageOptions: {
       globals: {
         ...globals.node,
       },
     },
   },
-)
+);
