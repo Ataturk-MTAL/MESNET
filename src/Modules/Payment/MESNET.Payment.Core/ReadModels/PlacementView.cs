@@ -17,6 +17,17 @@ public class PlacementView
     public Guid InstitutionId { get; set; }
     public Guid AcademicPeriodId { get; set; }
 
+    /// <summary>
+    /// Yerleştirmenin başlangıç anı. Fesih olayı yerleştirme kimliği taşımadığı için
+    /// (yalnız <c>StudentId</c> + <c>BusinessId</c>), aynı öğrencinin aynı işletmedeki
+    /// ESKİ ve YENİ yerleştirmesini ayırmak buna bakılarak yapılır (#152).
+    ///
+    /// <para>Bu alandan önce yazılmış kayıtlarda <c>DateTime.MinValue</c> olur; o kayıtlar
+    /// her fesihten önce sayılır ve kapatılırlar — istenen davranış budur, çünkü feshedilen
+    /// zaten onlardır.</para>
+    /// </summary>
+    public DateTime PlacedAt { get; set; }
+
     /// <summary>Fesih/ayrılma sonrası false — o öğrenci için maaş açılmaz.</summary>
     public bool IsActive { get; set; } = true;
 }
