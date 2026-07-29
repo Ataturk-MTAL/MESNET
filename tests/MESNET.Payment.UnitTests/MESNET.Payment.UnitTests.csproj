@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Test projesinde uyarılar build'i kırmasın -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Fesih sonrası yerleştirme kapanma kararı (#152) saf politikadadır; Core yeterli. -->
+    <ProjectReference Include="../../src/Modules/Payment/MESNET.Payment.Core/MESNET.Payment.Core.csproj" />
+    <!--
+      Yerleştirme-bitiren olayların tüketici kapsamı reflection ile doğrulanır (#152):
+      tüketici sınıfı Application'da, olay tipleri diğer modüllerin Shared katmanlarında.
+    -->
+    <ProjectReference Include="../../src/Modules/Payment/MESNET.Payment.Application/MESNET.Payment.Application.csproj" />
+  </ItemGroup>
+
+</Project>

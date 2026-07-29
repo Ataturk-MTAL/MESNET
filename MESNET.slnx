@@ -86,5 +86,6 @@
     <Project Path="tests/MESNET.Enrollment.UnitTests/MESNET.Enrollment.UnitTests.csproj"/>
     <Project Path="tests/MESNET.Security.UnitTests/MESNET.Security.UnitTests.csproj"/>
     <Project Path="tests/MESNET.Attendance.UnitTests/MESNET.Attendance.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Payment.UnitTests/MESNET.Payment.UnitTests.csproj"/>
   </Folder>
 </Solution>
