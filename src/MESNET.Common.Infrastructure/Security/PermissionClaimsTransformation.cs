@@ -76,10 +76,6 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         if (string.IsNullOrEmpty(sub))
             return principal;
 
-        // ── Institution claim enrichment ──
-        // Token'da institution_id yoksa DB'den staff eşleşmesiyle bul ve claim olarak ekle
-        await EnrichInstitutionClaimAsync(principal, sub);
-
         var cacheKey = $"user-permissions:{sub}";
 
         if (!_cache.TryGetValue(cacheKey, out PermissionCacheEntry? entry))
@@ -91,6 +87,12 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
                 _cache.Set(cacheKey, entry, CacheDuration);
             }
         }
+
+        // ── Kurum kapsamı claim enrichment ──
+        // Kullanıcı kaydı ÖNCE yüklenir: kayıt otoriterdir ve token claim'ini ezer.
+        // (Eskiden bu çağrı entry yüklenmeden önce yapılıyor ve token'daki claim varsa
+        // kayda hiç bakılmıyordu.)
+        await EnrichInstitutionClaimAsync(principal, sub, entry?.InstitutionId);
 
         // ── Alan (branş) kapsamı claim enrichment (#126) ──
         // Sıra: token claim → kullanıcı kaydındaki BranchCodes → personel kaydı yedeği.
@@ -163,7 +165,8 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
             if (info is null) return null;
 
             return new PermissionCacheEntry(
-                info.IsEnabled, info.Roles, info.DirectPermissions, info.BranchCodes);
+                info.IsEnabled, info.Roles, info.DirectPermissions, info.BranchCodes,
+                info.InstitutionId);
         }
         catch (Exception ex)
         {
@@ -330,14 +333,53 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     }
 
     /// <summary>
-    /// Token'da institution_id claim'i yoksa DB'den staff eşleşmesiyle bulup claim olarak ekler.
-    /// Raw SQL kullanır — Institution modülüne proje referansı gerekmez.
+    /// <c>institution_id</c> claim'ini çözer. Öncelik sırası — <c>branch_codes</c> (#126) ile
+    /// <b>birebir aynıdır</b>:
+    ///
+    /// <list type="number">
+    ///   <item><b>Kullanıcı kaydı</b> (<c>UserAccount.InstitutionId</c>) — <b>OTORİTERDİR</b>.
+    ///         Doluysa token'dan gelen <c>institution_id</c> claim'i <b>atılır</b> ve yerine
+    ///         kayıttaki değer konur</item>
+    ///   <item><b>Token claim'i</b> — yalnız kullanıcı kaydında kurum YOKKEN kabul edilir</item>
+    ///   <item><b>Personel kaydı yedeği</b> — kurum belgesindeki <c>staff[]</c> eşleşmesi;
+    ///         geçiş adımıdır, birincil yol DEĞİLDİR</item>
+    /// </list>
+    ///
+    /// <para><b>GÜVENLİK — bu sırayı TERS ÇEVİRMEYİN.</b> Önceden tam tersi yapılıyordu:
+    /// token'da claim varsa kayda <i>hiç bakılmıyordu</i>. <c>institution_id</c>, tıpkı
+    /// <c>branch_codes</c> gibi, Keycloak'ta <i>unmanaged</i> bir kullanıcı özniteliğidir;
+    /// realm politikası yanlışlıkla <c>ENABLED</c>'a çekilirse (ya da başka bir realm/ortam
+    /// öyle kurulursa) kullanıcı varsayılan <c>manage-account</c> rolüyle kendi Account
+    /// konsolundan <b>kendi kurumunu yazabilirdi</b>. Token imzalı olması içeriğin
+    /// <b>kullanıcı tarafından belirlenmediği</b> anlamına gelmez.</para>
+    ///
+    /// <para>Bu, çok kurumlu (Faz 2) yapıya geçilirken kritik hâle gelir: <c>institution_id</c>
+    /// kiracı anahtarı adayıdır. Kiracı sınırının, kullanıcının yazabileceği bir kaynaktan
+    /// gelmesi izolasyonun tamamını geçersiz kılardı. Bugün sistemde tek kurum bulunduğu için
+    /// istismar senaryosu oluşmuyor; düzeltme o güne bırakılmadı.</para>
+    ///
+    /// <para>Realm tarafında politika <c>ADMIN_EDIT</c>'tir; buradaki kontrol o yapılandırmaya
+    /// <b>bağımlı olmayan</b> ikinci katmandır. İkisinden biri kaldırılırsa açık geri gelir.</para>
     /// </summary>
-    private async Task EnrichInstitutionClaimAsync(ClaimsPrincipal principal, string keycloakUserId)
+    private async Task EnrichInstitutionClaimAsync(
+        ClaimsPrincipal principal, string keycloakUserId, Guid? accountInstitutionId)
     {
+        if (principal.Identity is not ClaimsIdentity identity)
+            return;
+
+        // (1) Kullanıcı kaydı OTORİTERDİR — token'dan geleni ezer.
+        if (accountInstitutionId is { } institution && institution != Guid.Empty)
+        {
+            RemoveInstitutionClaims(principal);
+            identity.AddClaim(new Claim("institution_id", institution.ToString()));
+            return;
+        }
+
+        // (2) Kayıtta kurum yok → token claim'i varsa olduğu gibi bırakılır.
         if (principal.HasClaim(c => c.Type == "institution_id"))
             return;
 
+        // (3) Personel kaydı yedeği — mevcut kullanıcılar için geçiş adımı.
         var cacheKey = $"user-institution:{keycloakUserId}";
 
         if (!_cache.TryGetValue(cacheKey, out string? institutionId))
@@ -348,7 +390,33 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
 
         if (!string.IsNullOrEmpty(institutionId))
         {
-            (principal.Identity as ClaimsIdentity)?.AddClaim(new Claim("institution_id", institutionId));
+            identity.AddClaim(new Claim("institution_id", institutionId));
+        }
+    }
+
+    /// <summary>
+    /// Token'dan gelen <c>institution_id</c> claim'lerini siler.
+    ///
+    /// <para><b>Tüm</b> identity'ler taranır, yalnız birincil olan değil: okuma tarafı
+    /// <c>ClaimsPrincipal.FindFirst</c> kullanır ve bütün identity'lerdeki claim'leri görür.
+    /// Yalnız <c>principal.Identity</c> temizlenseydi, ikinci bir identity üzerinde taşınan
+    /// değer okumada hayatta kalırdı — <c>RemoveBranchCodeClaims</c> ile aynı gerekçe.</para>
+    /// </summary>
+    private void RemoveInstitutionClaims(ClaimsPrincipal principal)
+    {
+        foreach (var identity in principal.Identities)
+        {
+            var existing = identity.FindAll("institution_id").ToList();
+
+            foreach (var claim in existing)
+            {
+                if (identity.TryRemoveClaim(claim))
+                    continue;
+
+                _logger.LogWarning(
+                    "Token'daki institution_id claim'i kaldırılamadı: {ClaimValue}. " +
+                    "Kapsam kararı yine de kullanıcı kaydından verilir.", claim.Value);
+            }
         }
     }
 
@@ -427,5 +495,6 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         bool IsEnabled,
         IReadOnlyList<string> Roles,
         IReadOnlyList<string> DirectPermissions,
-        IReadOnlyList<string> BranchCodes);
+        IReadOnlyList<string> BranchCodes,
+        Guid? InstitutionId);
 }
