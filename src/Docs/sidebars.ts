@@ -10,6 +10,7 @@ const sidebars: SidebarsConfig = {
         'architecture/project-scope',
         'architecture/module-design',
         'architecture/business-rules',
+        'architecture/3308-kanun-ozeti',
         'architecture/wolverine-patterns',
         'architecture/user-onboarding',
         'architecture/web-ui',
