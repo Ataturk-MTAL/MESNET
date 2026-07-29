@@ -56,8 +56,18 @@ try
             outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}{NewLine}  {Message:lj}{NewLine}{Exception}")
         .WriteTo.OpenTelemetry(otel =>
         {
-            otel.Endpoint = context.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://localhost:4317";
+            // OpenObserve yapılandırılmışsa oraya, değilse Aspire dashboard'un OTLP ucuna.
+            // İkisi de OTLP konuşur; değişen yalnız hedef ve kimlik başlıkları.
+            otel.Endpoint = context.Configuration["OpenObserve:Endpoint"]
+                ?? context.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
+                ?? "http://localhost:4317";
             otel.Protocol = Serilog.Sinks.OpenTelemetry.OtlpProtocol.Grpc;
+
+            var headers = OpenObserveHeaders.Build(context.Configuration);
+            if (headers is not null)
+            {
+                otel.Headers = headers;
+            }
         }));
 
     // Aspire Service Defaults (telemetry, health checks, resilience)
