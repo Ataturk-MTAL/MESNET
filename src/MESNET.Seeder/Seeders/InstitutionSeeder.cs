@@ -15,6 +15,10 @@ public static class InstitutionSeeder
         // Keycloak kullanıcılarının institution_id claim'ini güncelle
         await SyncKeycloakAsync(keycloak, institutionId.Value);
 
+        // Öznitelik yazıldı ama elimizdeki token hâlâ claim'siz. Kurum kapsamını token'dan
+        // okuyan uçlar (işletme kaydı vb.) bu tazeleme olmadan 422 döner (#147).
+        api.RefreshToken();
+
         // Alanlar + dallar
         await EnsureBranchesAsync(api, institutionId.Value);
 

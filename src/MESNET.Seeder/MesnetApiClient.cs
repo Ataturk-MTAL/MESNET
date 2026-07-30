@@ -33,6 +33,12 @@ public sealed class MesnetApiClient
     /// gövdesini destekler. Sayfalama projeye sonradan geldiği için bazı endpoint'ler dizi,
     /// bazıları PagedResult döndürüyor; çağıran tarafın bunu bilmesi gerekmesin (#80).
     /// </summary>
+    /// <summary>
+    /// Token önbelleğini düşürür — kullanıcı öznitelikleri (ör. <c>institution_id</c>)
+    /// değiştiğinde çağrılır, yoksa eski claim'lerle devam edilir.
+    /// </summary>
+    public void RefreshToken() => _tokenService.Invalidate();
+
     public async Task<IReadOnlyList<JsonElement>> GetListAsync(string url)
         => ToItems(await GetAsync(url));
 
