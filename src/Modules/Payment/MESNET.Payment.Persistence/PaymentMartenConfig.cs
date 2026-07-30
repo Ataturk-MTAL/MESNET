@@ -8,9 +8,8 @@ public class PaymentMartenConfig : IConfigureMarten
 {
     public void Configure(IServiceProvider services, StoreOptions options)
     {
-        // SalaryCalculationConfig — institution başına parametreler
+        // SalaryCalculationConfig — ULUSAL parametreler (#147), kurum başına değil.
         options.Schema.For<SalaryCalculationConfig>().DatabaseSchemaName("payment");
-        options.Schema.For<SalaryCalculationConfig>().Index(x => x.InstitutionId);
         options.Schema.For<SalaryCalculationConfig>().Index(x => x.EffectiveFrom);
         options.Schema.For<SalaryCalculationConfig>().Index(x => x.EffectiveTo);
 

@@ -15,6 +15,10 @@ public static class AssignablePermissionScope
     [
         "institution:", "company:", "student:", "internship:", "attendance:",
         "salary:", "document:", "communication:", "coordinator:", "department:", "user:",
+        // Ulusal (kurum üstü) domain (#147). Listede olması yalnız arayüzün domaini
+        // gösterebilmesi içindir; altındaki izinler NeverDirectlyAssignable olduğu için
+        // bireysel atanamaz.
+        "platform:",
     ];
 
     /// <summary>Varsayılan rol → atanabilir yetki domain (prefix) kümesi. Config yoksa kullanılır.</summary>
@@ -55,6 +59,12 @@ public static class AssignablePermissionScope
         [
             "student:", "communication:",
         ],
+        // Sistem yöneticisi (#147): yalnız ulusal domain. Kurum domainlerinden hiçbiri yok —
+        // bu rol kurum verisine yetki dağıtamaz.
+        [MesnetRoles.SystemAdmin] =
+        [
+            "platform:",
+        ],
     };
 
     /// <summary>
@@ -72,12 +82,18 @@ public static class AssignablePermissionScope
     /// <c>institution:distribution:all-branches</c> vererek kapsam kontrolünü tümden
     /// kaldırabilirdi. Kural mutlaktır, yapılandırma onu gevşetemez.</para>
     ///
+    /// <para><b>Ulusal (kurum üstü) izinler de buradadır (#147).</b> Aynı gerekçe, bir basamak
+    /// yukarısı: <c>InstitutionManager</c>'ın atanabilir kapsamı <see cref="All"/> (<c>"*"</c>)
+    /// olduğu için, bu liste olmasaydı bir okul müdürü <c>platform:parameter:manage</c>'i
+    /// istediği kullanıcıya bireysel atayıp ulusal/kurum ayrımını tümden kaldırabilirdi.</para>
+    ///
     /// <para>Benzer izinler ileride eklenirse <b>tek yer</b> burasıdır.</para>
     /// </summary>
     public static readonly IReadOnlySet<string> NeverDirectlyAssignable =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             Permissions.Institution.AllBranches,
+            Permissions.Platform.ParameterManage,
         };
 
     /// <summary>

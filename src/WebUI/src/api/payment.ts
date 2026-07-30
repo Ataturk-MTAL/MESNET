@@ -115,14 +115,14 @@ export const paymentApi = {
   salaryConfigHistory: () =>
     api.get<SalaryConfigHistoryDto>('/payments/config/minimum-wage'),
 
+  // Kurum kimliği GÖNDERİLMEZ (#147): asgari ücret ulusal parametredir. Eskiden gövdeden
+  // geliyordu ve yetkili bir kullanıcı başka kurumun ücretini değiştirebiliyordu.
   updateMinimumWage: (
-    institutionId: string,
     newMinimumWage: number,
     effectiveFrom: string,
     newMinimumWageUnder16?: number,
   ) =>
     api.put('/payments/config/minimum-wage', {
-      institutionId,
       newMinimumWage,
       newMinimumWageUnder16: newMinimumWageUnder16 ?? null,
       effectiveFrom,

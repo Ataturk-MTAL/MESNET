@@ -28,7 +28,6 @@ public sealed class PublicInstitutionContributionTests
 
     private static SalaryCalculationConfig Config() => new()
     {
-        InstitutionId = Guid.NewGuid(),
         MinimumWage = MinimumWage,
         EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         // Oranlar varsayılan: 3308 Madde 25 ve Geçici Madde 12 ile birebir

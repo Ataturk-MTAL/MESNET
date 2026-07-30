@@ -37,6 +37,14 @@ public static class MesnetRoles
     /// <summary>Usta öğretici (#129) — işletmede devam ve not girişi yapar, dar yetkilidir.</summary>
     public const string MasterTrainer = "MasterTrainer";
 
+    /// <summary>
+    /// Sistem yöneticisi (#147) — ULUSAL parametreleri girer (asgari ücret, 3308 oranları).
+    /// Kurum verisine yetkisi YOKTUR; okul rollerinin de ulusal parametreye yetkisi yoktur.
+    /// Gerçek işletimde bu işi Bakanlık düzeyi bir aktör yapar; o aktör tanımlandığında aynı
+    /// <c>platform:</c> izinlerini alır ve bu rol yerini ona bırakır.
+    /// </summary>
+    public const string SystemAdmin = "SystemAdmin";
+
     /// <summary>Rol kataloğu: ad + Türkçe etiket + açıklama. Arayüz etiketleri buradan gelir.</summary>
     public static IReadOnlyList<MesnetRoleInfo> Catalog { get; } =
     [
@@ -56,6 +64,8 @@ public static class MesnetRoles
             "İşletmedeki öğrencilerin devam takibini ve dönem not girişini yapar."),
         new(Student, "Öğrenci",
             "Kendi staj, devamsızlık ve ödeme bilgilerini görüntüler."),
+        new(SystemAdmin, "Sistem Yöneticisi",
+            "Ulusal hesaplama parametrelerini (asgari ücret, 3308 oranları) girer; kurum verisine yetkisi yoktur."),
     ];
 
     public static IReadOnlyList<string> All { get; } = [.. Catalog.Select(r => r.Name)];

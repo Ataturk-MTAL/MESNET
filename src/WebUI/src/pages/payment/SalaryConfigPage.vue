@@ -16,7 +16,10 @@
             hesaplanmaya devam eder.
           </div>
         </div>
+        <!-- Görme ile değiştirme ayrı izinler (#147): okul rolleri yürürlükteki tutarı
+             görür, ulusal parametreyi yazamaz. Buton yalnız yazma izniyle görünür. -->
         <q-btn
+          v-if="canManageParameters"
           unelevated
           color="primary"
           icon="add"
@@ -35,7 +38,10 @@
         <template #avatar>
           <q-icon name="report_problem" />
         </template>
-        Kurum için asgari ücret tanımlı değil. Tanımlanana kadar maaş hesabı yapılamaz.
+        Asgari ücret tanımlı değil. Tanımlanana kadar maaş hesabı yapılamaz.
+        <span v-if="!canManageParameters">
+          Ulusal parametre olduğu için girişi sistem yöneticisi yapar.
+        </span>
       </q-banner>
 
       <div class="row q-col-gutter-md q-mb-md">
@@ -248,12 +254,21 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import type { QTableProps } from 'quasar'
 import { paymentApi, type SalaryConfigDto } from 'src/api/payment'
 import { useAuthStore } from 'stores/auth'
+import { Permissions } from 'src/utils/permissions'
 import { useNotify } from 'src/composables/useNotify'
 import AppTable from 'components/AppTable.vue'
 import FormDialog from 'components/FormDialog.vue'
 
 const authStore = useAuthStore()
 const notify = useNotify()
+
+/**
+ * Ulusal parametre yazma yetkisi (#147). Rol adına DEĞİL izne bakılır — aynı izne sahip
+ * her aktör (bugün SystemAdmin, ileride Bakanlık düzeyi aktör) aynı işi yapabilir.
+ */
+const canManageParameters = computed(() =>
+  authStore.hasPermission(Permissions.Platform.ParameterManage),
+)
 
 const loading = ref(false)
 const saving = ref(false)
@@ -339,16 +354,9 @@ function validate(): boolean {
 async function handleSave() {
   if (!validate()) return
 
-  const institutionId = authStore.user?.institutionId
-  if (!institutionId) {
-    notify.error('Kullanıcının kurum bilgisi bulunamadı, kayıt yapılamıyor.')
-    return
-  }
-
   saving.value = true
   try {
     await paymentApi.updateMinimumWage(
-      institutionId,
       form.minimumWage,
       toIsoDate(form.effectiveFrom)!,
       form.minimumWageUnder16 ?? undefined,

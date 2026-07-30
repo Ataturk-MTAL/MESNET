@@ -108,6 +108,10 @@
       {
         "name": "MasterTrainer",
         "description": "Usta öğretici"
+      },
+      {
+        "name": "SystemAdmin",
+        "description": "Sistem yöneticisi — ulusal parametreler (asgari ücret, 3308 oranları)"
       }
     ]
   },
@@ -339,7 +343,8 @@
         }
       ],
       "realmRoles": [
-        "InstitutionManager"
+        "InstitutionManager",
+        "SystemAdmin"
       ]
     },
     {

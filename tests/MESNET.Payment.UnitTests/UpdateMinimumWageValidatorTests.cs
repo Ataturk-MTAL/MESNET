@@ -11,12 +11,11 @@ namespace MESNET.Payment.UnitTests;
 public class UpdateMinimumWageValidatorTests
 {
     private static readonly UpdateMinimumWageValidator Validator = new();
-    private static readonly Guid Institution = Guid.NewGuid();
     private static readonly DateTime NextYear = new(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     private static UpdateMinimumWage Command(
         decimal wage = 30_000m, decimal? under16 = null, DateTime? effectiveFrom = null) =>
-        new(Institution, wage, under16, effectiveFrom ?? NextYear);
+        new(wage, under16, effectiveFrom ?? NextYear);
 
     [Fact]
     public void accepts_a_future_effective_date()
@@ -73,11 +72,12 @@ public class UpdateMinimumWageValidatorTests
     }
 
     [Fact]
-    public void rejects_an_empty_institution()
+    public void command_carries_no_institution_scope()
     {
-        var result = Validator.Validate(
-            new UpdateMinimumWage(Guid.Empty, 30_000m, null, NextYear));
-
-        result.IsValid.ShouldBeFalse();
+        // Asgari ücret ULUSAL parametredir (#147). Komuta kurum kimliği geri eklenirse yazma
+        // ucu yine gövdeden kurum alır ve kurumlar arası yazma deliği açılır.
+        typeof(UpdateMinimumWage).GetProperties()
+            .Select(p => p.Name)
+            .ShouldNotContain("InstitutionId");
     }
 }

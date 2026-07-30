@@ -85,7 +85,13 @@ export const Permissions = {
     Calculate: 'salary:calculate',
     Approve: 'salary:approve',
     Receipt: 'salary:receipt:manage',
-    Parameter: 'salary:parameter:manage',
+    // Görüntüleme okullarda; YAZMA ulusal izindir (#147) → Platform.ParameterManage
+    ParameterView: 'salary:parameter:view',
+  },
+
+  // Ulusal (kurum üstü) izinler (#147). Hiçbir okul rolünde yoktur.
+  Platform: {
+    ParameterManage: 'platform:parameter:manage',
   },
 
   Coordinator: {

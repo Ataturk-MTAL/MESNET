@@ -140,7 +140,7 @@ Kaynak: actors.md → "Müdür Yardımcısı" (staj işlemleri koordinasyonu, ev
 | `institution:coordination-config:manage` | Kurum geneli koordinasyon yapılandırması — mevzuat türevi, kurum düzeyi ayar (#130) |
 | `internship:*` (view/manage/approve/contract) | Staj işlemleri koordinasyonu ve fesih onay zinciri |
 | `document:approve`, `document:verify`, `document:track` | Evrak takibi **ve onayı** |
-| `salary:approve`, `salary:parameter:manage` | Dekont onay zinciri, asgari ücret parametresi |
+| `salary:approve`, `salary:parameter:view` | Dekont onay zinciri; asgari ücreti **görür, değiştiremez** (#147) |
 | `attendance:approve` | Devamsızlık onayı |
 
 `InstitutionStaff` ile farkı: personelde `user:*`, `department:*`, kapsam muafiyeti, kurum
@@ -281,7 +281,14 @@ public static class Permissions
         public const string Calculate = "salary:calculate";
         public const string Approve = "salary:approve";
         public const string Receipt = "salary:receipt:manage";
-        public const string Parameter = "salary:parameter:manage";
+        // Asgari ücret/oranları GÖRÜNTÜLEME. Yazma ulusal izindir (#147) → Platform.ParameterManage
+        public const string ParameterView = "salary:parameter:view";
+    }
+
+    // Ulusal (kurum üstü) izinler (#147). Hiçbir okul rolünde yoktur.
+    public static class Platform
+    {
+        public const string ParameterManage = "platform:parameter:manage";
     }
 
     // Koordinatör İzinleri
@@ -1163,3 +1170,66 @@ Yapılandırma formu WebUI'de **henüz yoktur** — `coordinationApi.getConfig` 
 Form eklendiğinde görünürlük/salt-okunurluk kararı `Permissions.Institution.CoordinationConfigManage`
 iznine bakmalıdır (`src/WebUI/src/utils/permissions.ts`), **rol adına değil**; yetkisi olmayan
 kullanıcıya form salt okunur gösterilir ve kaydet düğmesi devre dışı bırakılır.
+
+
+## Ulusal (Platform) Parametreler — Bakanlık Katmanı (#147)
+
+Asgari ücret ve 3308 oranları **ulusal mevzuattır**. Bunlar kurum kapsamında tutulduğu sürece
+her okul aynı sayıyı ayrı ayrı giriyor ve değerler sapabiliyordu; ayrıca yazma ucu kurum
+kimliğini istek gövdesinden aldığı için yetkili bir kullanıcı **başka kurumun** ücretini
+değiştirebiliyordu. İkisi de aynı kökün sonucuydu: parametre yanlış katmandaydı.
+
+### Katman ayrımı
+
+| Katman | Ne | İzin |
+|---|---|---|
+| **Ulusal** | Asgari ücret, 16 yaş altı ücret, `ApprenticeRate` (Madde 25), `PersonnelThreshold`, `%15`/`%30` taban, devlet katkısı kesirleri (Geçici Madde 12) | `platform:parameter:manage` |
+| **Kurum** | Ders programı (`DailyPeriodCount`), mesafe-saat kuralları, `MaxWeeklyExtraHours` (#130) | `institution:coordination-config:manage` |
+| **İl** | Bugün boş. Çözüm "en özel kazanır" olduğu için sonradan araya girmesi kırıcı değil | — |
+
+### Önek neden `platform:`
+
+`RolePermissionMap`'te `InstitutionManager` hem `institution:*` hem `salary:*` wildcard'ını
+tutuyor. Ulusal izin `salary:national:manage` ya da `institution:...` diye adlandırılsaydı
+wildcard onu **her okul müdürüne sessizce** verir ve ayrım hiç çalışmazdı — #126'daki
+muafiyet-öneki tuzağının birebir tekrarı.
+
+`platform:` öneki hiçbir okul rolünde yoktur. Kilitleyen test:
+`tests/MESNET.Security.UnitTests/PlatformScopeMappingTests.cs` — hem bilinen izin adını hem
+önekin tamamını kontrol eder, böylece ileride eklenen bir platform izni sessizce okul rolüne
+düşerse test kırılır.
+
+### Okuma açık, yazma kapalı
+
+Okul rolleri yürürlükteki asgari ücreti **görür** (`salary:parameter:view`, `salary:*` ile
+gelir), yazamaz. Uç noktalar aynı yolda iki farklı izne bağlıdır:
+
+- `GET /api/payments/config/minimum-wage` → `salary:parameter:view`
+- `PUT /api/payments/config/minimum-wage` → `platform:parameter:manage`
+
+### Bireysel (direct) atama
+
+`platform:parameter:manage`, `AssignablePermissionScope.NeverDirectlyAssignable` listesindedir.
+Gerekçe #126 ile aynı, bir basamak yukarısı: `InstitutionManager`'ın atanabilir kapsamı `"*"`
+olduğu için bu liste olmasaydı bir okul müdürü ulusal izni istediği kullanıcıya bireysel atayıp
+ayrımı tümden kaldırabilirdi. **Yapılandırma bu kuralı gevşetemez.**
+
+### `SystemAdmin` rolü — geçici taşıyıcı
+
+Ulusal parametreyi bugün `SystemAdmin` rolü girer. Bu rolün **kurum verisine yetkisi yoktur**:
+`salary:view`, `student:view`, `attendance:view`, `institution:view`, `company:view` almaz —
+yalnız `platform:parameter:manage` ve yazdığı değerin geçmişini görmek için
+`salary:parameter:view`.
+
+Gerçek işletimde bu girişi **Bakanlık düzeyi bir aktör** yapar (asgari ücreti Asgari Ücret
+Tespit Komisyonu belirler, Resmî Gazete'de yayımlanır; 3308 Geçici Madde 12'nin son paragrafı
+usulü Bakanlık ve İŞKUR'a bırakır). O aktör tanımlandığında aynı `platform:` izinlerini alır
+ve `SystemAdmin` yerini ona bırakır.
+
+### Kaldırılan ikinci yazma yolu
+
+Institution modülünde ikinci bir `UpdateMinimumWage` komutu vardı: `SystemParameter["MinimumWage"]`
+yazıyor, `MinimumWageUpdated` yayınlıyor, Business modülü onu `MinimumWageReference`'a
+kaydediyordu. **Bu zincirin hiçbir halkası okunmuyordu** ve hiçbir uç noktadan tetiklenmiyordu;
+hesap yalnız Payment'ın `SalaryCalculationConfig`'ini okuyor. Bir uca bağlanması ulusal katmanı
+sessizce atlayacağı için zincir tümüyle kaldırıldı.
