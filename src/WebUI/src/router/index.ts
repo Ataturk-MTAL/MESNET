@@ -141,6 +141,12 @@ const router = createRouter({
           component: () => import('pages/payment/PaymentPage.vue'),
           meta: { permissions: ['salary:view'] },
         },
+        {
+          path: 'salary/config',
+          name: 'SalaryConfig',
+          component: () => import('pages/payment/SalaryConfigPage.vue'),
+          meta: { permissions: ['salary:parameter:manage'] },
+        },
 
         // İşletme Değerlendirmeleri
         {

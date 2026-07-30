@@ -8,6 +8,7 @@ using MESNET.Payment.Application.Services;
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.Enums;
 using MESNET.Payment.Core.ReadModels;
+using MESNET.Payment.Core.Services;
 using MESNET.Payment.Shared.Events;
 using Wolverine;
 using Wolverine.Persistence.Sagas;
@@ -136,10 +137,15 @@ public class PaymentSaga : Saga
     private static async Task<SalaryCalculator.Result> CalculateAsync(
         CalculateMonthlySalary command, IQuerySession session)
     {
+        // Yürürlük seçimi HESAPLANAN AYDAN türetilir, hesabın koştuğu andan değil — asgari ücret
+        // yıl içinde birden fazla kez artabilir ve "şu an" ile seçim geçmiş aya yeni ücreti
+        // uygular. Gerekçenin tamamı: SalaryMonth.ConfigReferenceDate.
+        var configDate = SalaryMonth.ConfigReferenceDate(command.Month, command.ReferenceDate);
+
         var config = await session.Query<SalaryCalculationConfig>()
             .Where(c => c.InstitutionId == command.InstitutionId)
-            .Where(c => c.EffectiveFrom <= command.ReferenceDate
-                        && (c.EffectiveTo == null || c.EffectiveTo >= command.ReferenceDate))
+            .Where(c => c.EffectiveFrom <= configDate
+                        && (c.EffectiveTo == null || c.EffectiveTo >= configDate))
             // Birden fazla kayıt eşleşirse en yenisi geçerlidir; sıralama olmadan hangisinin
             // geleceği belirsizdi ve tutar çalıştırmadan çalıştırmaya değişebilirdi (#75).
             .OrderByDescending(c => c.EffectiveFrom)
