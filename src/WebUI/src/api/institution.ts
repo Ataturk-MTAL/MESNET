@@ -44,8 +44,19 @@ export interface InstitutionDto {
   email: string | null
   webUrl: string | null
   location: GeoLocation | null
+  /** MEB il kodu (01–81) — kapsam anahtarı, serbest metin il adı DEĞİL. */
+  provinceCode: string | null
+  /** Sunucuda çözülen il adı — yalnız görüntü içindir. */
+  provinceName: string | null
+  districtCode: string | null
   branches: InstitutionBranchDto[]
   staff: StaffMemberDto[]
+}
+
+/** İl açılır listesi öğesi — kod yetkili, ad görüntü. */
+export interface ProvinceDto {
+  code: string
+  name: string
 }
 
 export interface UpdateInstitutionRequest {
@@ -55,6 +66,8 @@ export interface UpdateInstitutionRequest {
   email?: string
   webUrl?: string
   location?: GeoLocation
+  provinceCode?: string
+  districtCode?: string
 }
 
 export interface AuthorizeStaffRequest {
@@ -121,6 +134,9 @@ export const institutionApi = {
 
   get: (institutionId: string) =>
     api.get<InstitutionDto>(`/institutions/${institutionId}`),
+
+  listProvinces: () =>
+    api.get<ProvinceDto[]>('/institutions/provinces'),
 
   update: (institutionId: string, data: UpdateInstitutionRequest) =>
     api.patch(`/institutions/${institutionId}`, data),

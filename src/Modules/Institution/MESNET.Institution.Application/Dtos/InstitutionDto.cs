@@ -11,8 +11,22 @@ public sealed record InstitutionDto(
     string? Email,
     string? WebUrl,
     Location? Location,
+    // MEB il kodu + okuma anında çözülen adı (#147). Ad DTO'ya konur ki 81 ilin listesi
+    // frontend'de ikinci kez tanımlanmasın; kod yetkili, ad görüntü içindir.
+    string? ProvinceCode,
+    string? ProvinceName,
+    string? DistrictCode,
     List<InstitutionBranchDto> Branches,
     List<StaffMemberDto> Staff);
+
+/// <summary>Tek il — açılır liste için (kod yetkili, ad görüntü).</summary>
+public sealed record ProvinceDto(string Code, string Name);
+
+/// <summary>
+/// İl listesi sarmalayıcısı. Wolverine handler'dan dönen <c>IEnumerable&lt;T&gt;</c>'i
+/// cascading message sanıp her elemanı yayınlar — koleksiyon somut bir DTO'ya sarılmak zorunda.
+/// </summary>
+public sealed record ProvinceListDto(List<ProvinceDto> Items);
 
 public sealed record InstitutionBranchDto(
     string FieldCode,

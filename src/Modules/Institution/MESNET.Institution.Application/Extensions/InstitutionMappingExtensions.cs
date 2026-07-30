@@ -1,3 +1,4 @@
+using MESNET.Common.Shared.Reference;
 using MESNET.Institution.Application.Dtos;
 using MESNET.Institution.Core.Entities;
 using MESNET.Institution.Core.ValueObjects;
@@ -15,6 +16,9 @@ public static class InstitutionMappingExtensions
         entity.Email,
         entity.WebUrl,
         entity.Location,
+        entity.ProvinceCode,
+        TurkishProvinces.GetName(entity.ProvinceCode),
+        entity.DistrictCode,
         entity.Branches.Select(b => b.ToDto()).ToList(),
         entity.Staff.Select(s => s.ToDto()).ToList());
 

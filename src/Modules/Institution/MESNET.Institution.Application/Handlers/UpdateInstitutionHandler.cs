@@ -20,6 +20,8 @@ public static class UpdateInstitutionHandler
         if (command.Email is not null) institution.Email = command.Email;
         if (command.WebUrl is not null) institution.WebUrl = command.WebUrl;
         if (command.Location is not null) institution.Location = command.Location;
+        if (command.ProvinceCode is not null) institution.ProvinceCode = command.ProvinceCode;
+        if (command.DistrictCode is not null) institution.DistrictCode = command.DistrictCode;
 
         session.Store(institution);
 

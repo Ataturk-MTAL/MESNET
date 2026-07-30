@@ -103,6 +103,29 @@
                   <q-item dense>
                     <q-item-section avatar>
                       <q-icon
+                        name="map"
+                        color="grey-6"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label caption>
+                        İl
+                      </q-item-label>
+                      <!-- Ad görüntü, kod yetkili (#147) — ikisi birlikte gösterilir ki
+                           kaydın hangi il koduyla saklandığı ekrandan doğrulanabilsin. -->
+                      <q-item-label>
+                        <template v-if="institution.provinceName">
+                          {{ institution.provinceName }} ({{ institution.provinceCode }})
+                        </template>
+                        <span v-else>—</span>
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </div>
+                <div class="col-12 col-md-6">
+                  <q-item dense>
+                    <q-item-section avatar>
+                      <q-icon
                         name="phone"
                         color="grey-6"
                       />

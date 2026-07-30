@@ -9,4 +9,8 @@ public sealed record UpdateInstitution(
     string? PhoneNumber,
     string? Email,
     string? WebUrl,
-    Location? Location);
+    Location? Location,
+    // MEB il kodu (01–81) — null = değiştirme.
+    string? ProvinceCode = null,
+    // MEB ilçe kodu — null = değiştirme.
+    string? DistrictCode = null);

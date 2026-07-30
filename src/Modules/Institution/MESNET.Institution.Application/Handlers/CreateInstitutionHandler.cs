@@ -19,7 +19,9 @@ public static class CreateInstitutionHandler
             PhoneNumber = command.PhoneNumber,
             Email = command.Email,
             WebUrl = command.WebUrl,
-            Location = command.Location
+            Location = command.Location,
+            ProvinceCode = command.ProvinceCode,
+            DistrictCode = command.DistrictCode
         };
 
         session.Store(institution);

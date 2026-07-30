@@ -46,6 +46,45 @@
             <q-icon name="location_on" />
           </template>
         </q-input>
+        <!-- İl serbest metin DEĞİL kod olarak saklanır (#147): kapsam kararının anahtarı. -->
+        <q-select
+          v-model="form.provinceCode"
+          :options="provinceOptions"
+          option-value="code"
+          option-label="name"
+          emit-value
+          map-options
+          use-input
+          input-debounce="0"
+          label="İl"
+          outlined
+          :loading="provincesLoading"
+          :rules="[provinceRule]"
+          @filter="filterProvinces"
+        >
+          <template #prepend>
+            <q-icon name="map" />
+          </template>
+          <template #no-option>
+            <q-item>
+              <q-item-section class="text-grey">
+                Sonuç bulunamadı
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+        <q-input
+          v-model="form.districtCode"
+          label="İlçe Kodu (MEB)"
+          hint="İsteğe bağlı — yalnız rakam"
+          outlined
+          :rules="[districtRule]"
+          lazy-rules
+        >
+          <template #prepend>
+            <q-icon name="pin" />
+          </template>
+        </q-input>
         <q-input
           v-model="form.phoneNumber"
           label="Telefon"
@@ -105,7 +144,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { institutionApi } from 'src/api/institution'
+import { institutionApi, type ProvinceDto } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useInstitutionStore } from 'stores/institution'
 import { isSafeUrl } from 'utils/safeUrl'
@@ -114,6 +153,17 @@ import { isSafeUrl } from 'utils/safeUrl'
 function webUrlRule(value: string): true | string {
   if (!value) return true
   return isSafeUrl(value) || 'Geçerli bir web adresi girin (yalnız http/https).'
+}
+
+/** İl zorunlu — kapsam anahtarı olduğu için boş kaydedilemez (#147). */
+function provinceRule(value: string | null): true | string {
+  return !!value || 'İl seçilmelidir.'
+}
+
+/** İsteğe bağlı; doluysa yalnız rakam. Hane sayısı kısıtlanmaz (backend ile aynı kural). */
+function districtRule(value: string): true | string {
+  if (!value) return true
+  return /^\d+$/.test(value) || 'İlçe kodu yalnız rakam içerebilir.'
 }
 
 const router = useRouter()
@@ -127,10 +177,41 @@ const institutionId = ref('')
 const form = reactive({
   fullName: '',
   address: '',
+  provinceCode: null as string | null,
+  districtCode: '',
   phoneNumber: '',
   email: '',
   webUrl: '',
 })
+
+// 81 kayıtlık ulusal referans, tek sayfada kullanılıyor — Pinia'ya konmaz, per-instance kalır.
+const provinces = ref<ProvinceDto[]>([])
+const provinceOptions = ref<ProvinceDto[]>([])
+const provincesLoading = ref(false)
+
+async function loadProvinces() {
+  provincesLoading.value = true
+  try {
+    const { data } = await institutionApi.listProvinces()
+    provinces.value = data
+    provinceOptions.value = data
+  } catch (e) {
+    notify.apiError(e, 'İl listesi yüklenemedi.')
+  } finally {
+    provincesLoading.value = false
+  }
+}
+
+function filterProvinces(needle: string, update: (fn: () => void) => void) {
+  update(() => {
+    const term = needle.trim().toLocaleLowerCase('tr-TR')
+    provinceOptions.value = term
+      ? provinces.value.filter(
+          (p) => p.name.toLocaleLowerCase('tr-TR').includes(term) || p.code.startsWith(term),
+        )
+      : provinces.value
+  })
+}
 
 function goBack() {
   router.push('/institution').catch(() => {})
@@ -148,6 +229,8 @@ async function loadInstitution() {
     const { data: inst } = await institutionApi.get(institutionId.value)
     form.fullName = inst.fullName
     form.address = inst.address ?? ''
+    form.provinceCode = inst.provinceCode
+    form.districtCode = inst.districtCode ?? ''
     form.phoneNumber = inst.phoneNumber ?? ''
     form.email = inst.email ?? ''
     form.webUrl = inst.webUrl ?? ''
@@ -160,11 +243,20 @@ async function loadInstitution() {
 }
 
 async function handleSave() {
+  // Sayfada q-form yok, :rules kaydetmeyi kendiliğinden engellemez. İl gönderilmezse backend
+  // "değiştirme" olarak yorumlar ve eksik il sessizce eksik kalır — burada açıkça durdurulur.
+  if (!form.provinceCode) {
+    notify.error('İl seçilmelidir.')
+    return
+  }
+
   saving.value = true
   try {
     await institutionApi.update(institutionId.value, {
       fullName: form.fullName,
       address: form.address || undefined,
+      provinceCode: form.provinceCode,
+      districtCode: form.districtCode || undefined,
       phoneNumber: form.phoneNumber || undefined,
       email: form.email || undefined,
       webUrl: form.webUrl || undefined,
@@ -179,5 +271,8 @@ async function handleSave() {
   }
 }
 
-onMounted(loadInstitution)
+onMounted(() => {
+  loadProvinces().catch(() => {})
+  loadInstitution().catch(() => {})
+})
 </script>
