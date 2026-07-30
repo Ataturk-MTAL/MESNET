@@ -21,8 +21,17 @@ public static class SalaryMonth
     /// <c>EffectiveTo &gt;= referenceDate</c> koşulu kendi kapanış gününde patlar ve hiç config
     /// bulunmaz (<c>SalaryConfigMissing</c> → HTTP 422).
     ///
-    /// Ay ORTASINDA yürürlüğe giren bir artış ayın tamamına uygulanır; tutar bölüşülmez —
-    /// kısmi ay hesabı yok (bkz. #154, 3308 bu konuda sessiz).
+    /// Ay bütünlüğü bozulmaz: asgari ücret artışı Resmî Gazete'de yayımlanan yürürlük
+    /// tarihinde geçerli olur ve bu tarih pratikte ayın 1'idir (01.01, yıl içi zamda 01.07).
+    /// Yani ay ortası yürürlük asgari ücret tarafında bir vaka değildir. Yine de tarih ay
+    /// ortasına düşerse ayın tamamı yeni tutarla hesaplanır — belirsiz kalmaması için yazıldı.
+    ///
+    /// Bu, ay ortası FESHİN yol açtığı oranlama sorunuyla aynı şey DEĞİLDİR. Orada kural nettir:
+    /// öğrenci ay ortasında işletme değiştirdiğinde ücret ve devlet katkısı her işletmede
+    /// çalışılan gün oranında bölüşülür — ayrılınan işletme fesih gününe kadar, yeni işletme
+    /// sözleşme tarihinden ay sonuna kadar, teşvik de aynı oranda. Bölüşülemez değil;
+    /// SİSTEM bunu henüz temsil edemiyor: anahtar (öğrenci, ay) olduğu için ayda tek dönem
+    /// açılıyor ve <c>SalaryCalculator</c> tam ay varsayıyor (#154).
     /// </remarks>
     /// <param name="month">Ay, <c>yyyy-MM</c> formatında (ör. <c>2026-12</c>).</param>
     /// <param name="fallback">Ay çözümlenemezse kullanılacak tarih.</param>
