@@ -4,7 +4,7 @@ namespace MESNET.Business.Shared.Events;
 
 public sealed record BusinessActivated(
     Guid BusinessId,
-    Guid TenantId,
+    Guid InstitutionId,
     string Name,
     string? Address,
     Location? Location);

@@ -6,7 +6,6 @@ namespace MESNET.Institution.Core.Entities;
 public class Institution
 {
     public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
     public int InstitutionCode { get; set; }
     public required string FullName { get; set; }
     public string? Address { get; set; }

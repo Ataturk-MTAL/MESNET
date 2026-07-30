@@ -8,7 +8,6 @@ public class RegisterBusinessValidator : AbstractValidator<RegisterBusiness>
 {
     public RegisterBusinessValidator()
     {
-        RuleFor(x => x.TenantId).NotEmpty().WithMessage("Kurum (tenant) belirtilmelidir.");
         RuleFor(x => x.Name).NotEmpty().WithMessage("İşletme adı belirtilmelidir.")
             .MaximumLength(200).WithMessage("İşletme adı en fazla 200 karakter olmalıdır.");
         RuleFor(x => x.Address).NotEmpty().WithMessage("Adres belirtilmelidir.");

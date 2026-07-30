@@ -47,7 +47,6 @@ public static class InstitutionSeeder
 
         var data = await api.PostAsync("/api/institutions", new
         {
-            tenantId = Guid.Parse("10000000-0000-0000-0000-000000000001"),
             institutionCode = 967523,
             fullName = "Atatürk Mesleki ve Teknik Anadolu Lisesi",
             address = "Toroslar, Mersin",

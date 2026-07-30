@@ -13,10 +13,9 @@ namespace MESNET.Institution.UnitTests;
 public class CreateInstitutionProvinceValidationTests
 {
     private static readonly CreateInstitutionValidator Validator = new();
-    private static readonly Guid Tenant = Guid.NewGuid();
 
     private static CreateInstitution Command(string? provinceCode = "33", string? districtCode = null) =>
-        new(Tenant, 967523, "Atatürk Mesleki ve Teknik Anadolu Lisesi",
+        new(967523, "Atatürk Mesleki ve Teknik Anadolu Lisesi",
             "Toroslar, Mersin", null, null, null, (Location?)null, provinceCode, districtCode);
 
     [Fact]
