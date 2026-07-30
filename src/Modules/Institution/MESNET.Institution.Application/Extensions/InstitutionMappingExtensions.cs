@@ -18,7 +18,7 @@ public static class InstitutionMappingExtensions
         entity.Location,
         entity.ProvinceCode,
         TurkishProvinces.GetName(entity.ProvinceCode),
-        entity.DistrictCode,
+        entity.DistrictName,
         entity.Branches.Select(b => b.ToDto()).ToList(),
         entity.Staff.Select(s => s.ToDto()).ToList());
 

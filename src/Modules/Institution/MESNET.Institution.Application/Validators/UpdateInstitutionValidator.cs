@@ -20,9 +20,16 @@ public class UpdateInstitutionValidator : AbstractValidator<UpdateInstitution>
             .When(x => x.ProvinceCode is not null)
             .WithMessage("Geçerli bir MEB il kodu giriniz (01–81).");
 
-        RuleFor(x => x.DistrictCode)
-            .Must(CreateInstitutionValidator.BeADistrictCode)
-            .When(x => x.DistrictCode is not null)
-            .WithMessage("İlçe kodu yalnız rakam içerebilir.");
+        // Yalnız il ve ilçe BİRLİKTE gönderildiğinde çapraz doğrulanabilir. İlçe tek başına
+        // gelirse hangi ile ait olduğu istekte yoktur — o kontrol handler'da, mevcut kurumun
+        // ili okunarak yapılır (UpdateInstitutionHandler).
+        RuleFor(x => x.DistrictName)
+            .Must((command, district) => TurkishDistricts.IsValid(command.ProvinceCode, district))
+            .When(x => x.DistrictName is not null && x.ProvinceCode is not null)
+            .WithMessage(x => CreateInstitutionValidator.DistrictMessage(x.ProvinceCode));
+
+        RuleFor(x => x.InstitutionCode!.Value)
+            .GreaterThan(0).WithMessage("Kurum kodu sıfırdan büyük olmalıdır.")
+            .When(x => x.InstitutionCode is not null);
     }
 }

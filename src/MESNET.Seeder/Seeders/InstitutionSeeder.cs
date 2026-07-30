@@ -55,9 +55,9 @@ public static class InstitutionSeeder
             fullName = "Atatürk Mesleki ve Teknik Anadolu Lisesi",
             address = "Toroslar, Mersin",
             // MEB il kodu — Mersin = 33 (#147). Zorunlu alan; adresteki serbest metin değil bu
-            // kod kapsam kararında kullanılır. İlçe (Toroslar) kodu bilinçli boş: MEB ilçe
-            // kodları için doğrulanmış kaynak yok, uydurulmuş kod gerçek veri gibi görünürdü.
+            // kod kapsam kararında kullanılır. İlçe kapalı listeden gelir (TurkishDistricts).
             provinceCode = "33",
+            districtName = "Toroslar",
             phoneNumber = "0324 555 0001",
             email = "mersinataturk.mtal@meb.gov.tr",
             webUrl = "https://mersinataturkmtal.meb.k12.tr",
@@ -93,10 +93,11 @@ public static class InstitutionSeeder
         await api.PatchAsync($"/api/institutions/{institutionId}", new
         {
             fullName,
-            provinceCode = "33"
+            provinceCode = "33",
+            districtName = "Toroslar"
         });
 
-        Console.WriteLine("  ✓ Kurumun il kodu tamamlandı (33 — Mersin)");
+        Console.WriteLine("  ✓ Kurumun il/ilçe bilgisi tamamlandı (33 — Mersin / Toroslar)");
     }
 
     private static async Task SyncKeycloakAsync(KeycloakAdminService keycloak, Guid institutionId)

@@ -15,7 +15,7 @@ public sealed record InstitutionDto(
     // frontend'de ikinci kez tanımlanmasın; kod yetkili, ad görüntü içindir.
     string? ProvinceCode,
     string? ProvinceName,
-    string? DistrictCode,
+    string? DistrictName,
     List<InstitutionBranchDto> Branches,
     List<StaffMemberDto> Staff);
 
@@ -27,6 +27,12 @@ public sealed record ProvinceDto(string Code, string Name);
 /// cascading message sanıp her elemanı yayınlar — koleksiyon somut bir DTO'ya sarılmak zorunda.
 /// </summary>
 public sealed record ProvinceListDto(List<ProvinceDto> Items);
+
+/// <summary>
+/// İlçe adları, alfabetik. Sarmalayıcı, <c>ProvinceListDto</c> ile aynı gerekçeyle:
+/// çıplak koleksiyon Wolverine tarafından cascading message sanılır.
+/// </summary>
+public sealed record DistrictListDto(List<string> Items);
 
 public sealed record InstitutionBranchDto(
     string FieldCode,

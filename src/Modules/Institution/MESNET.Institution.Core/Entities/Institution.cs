@@ -26,10 +26,12 @@ public class Institution
     public string? ProvinceCode { get; set; }
 
     /// <summary>
-    /// MEB ilçe kodu. İlçe kapsamı henüz karara bağlanmadı (#147), o yüzden zorunlu değil —
-    /// alan şimdiden var ki ilçe gerektiğinde ayrım için ikinci bir geçiş gerekmesin.
+    /// İlçe adı — <c>TurkishDistricts</c> kapalı listesinden, ile bağlı. Serbest metin DEĞİL:
+    /// listede olmayan değer reddedilir, böylece aynı ilçe iki farklı yazımla kaydolamaz.
+    /// İlçede kod yerine ad tutulur çünkü ilde plaka kodu kadar güvenilir bir ilçe kodu
+    /// kaynağı yok; uydurulmuş kod gerçek veri gibi görünürdü (#147).
     /// </summary>
-    public string? DistrictCode { get; set; }
+    public string? DistrictName { get; set; }
 
     public string? PhoneNumber { get; set; }
     public string? Email { get; set; }

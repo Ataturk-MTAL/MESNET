@@ -48,7 +48,7 @@ export interface InstitutionDto {
   provinceCode: string | null
   /** Sunucuda çözülen il adı — yalnız görüntü içindir. */
   provinceName: string | null
-  districtCode: string | null
+  districtName: string | null
   branches: InstitutionBranchDto[]
   staff: StaffMemberDto[]
 }
@@ -67,7 +67,9 @@ export interface UpdateInstitutionRequest {
   webUrl?: string
   location?: GeoLocation
   provinceCode?: string
-  districtCode?: string
+  districtName?: string
+  /** MEB kurum kodu — kayıtta girilir, sonradan düzeltilebilir. */
+  institutionCode?: number
 }
 
 export interface AuthorizeStaffRequest {
@@ -137,6 +139,10 @@ export const institutionApi = {
 
   listProvinces: () =>
     api.get<ProvinceDto[]>('/institutions/provinces'),
+
+  /** İlin ilçeleri, alfabetik. Listesi tanımlı olmayan il için boş dizi döner. */
+  listDistricts: (provinceCode: string) =>
+    api.get<string[]>(`/institutions/provinces/${provinceCode}/districts`),
 
   update: (institutionId: string, data: UpdateInstitutionRequest) =>
     api.patch(`/institutions/${institutionId}`, data),

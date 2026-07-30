@@ -1185,7 +1185,7 @@ değiştirebiliyordu. İkisi de aynı kökün sonucuydu: parametre yanlış katm
 |---|---|---|
 | **Ulusal** | Asgari ücret, 16 yaş altı ücret, `ApprenticeRate` (Madde 25), `PersonnelThreshold`, `%15`/`%30` taban, devlet katkısı kesirleri (Geçici Madde 12) | `platform:parameter:manage` |
 | **Kurum** | Ders programı (`DailyPeriodCount`), mesafe-saat kuralları, `MaxWeeklyExtraHours` (#130) | `institution:coordination-config:manage` |
-| **İl** | Bugün boş. Çözüm "en özel kazanır" olduğu için sonradan araya girmesi kırıcı değil | — |
+| **İl / İlçe** | Kurum kaydındaki `ProvinceCode` (MEB il kodu) + `DistrictName` (kapalı listeden ilçe adı). Planlamanın ekseni budur; Bakanlık düzeyi bir aktör tasarlanmaz | — |
 
 ### Önek neden `platform:`
 

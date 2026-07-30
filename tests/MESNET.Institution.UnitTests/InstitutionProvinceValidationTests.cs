@@ -14,9 +14,9 @@ public class CreateInstitutionProvinceValidationTests
 {
     private static readonly CreateInstitutionValidator Validator = new();
 
-    private static CreateInstitution Command(string? provinceCode = "33", string? districtCode = null) =>
+    private static CreateInstitution Command(string? provinceCode = "33", string? districtName = null) =>
         new(967523, "Atatürk Mesleki ve Teknik Anadolu Lisesi",
-            "Toroslar, Mersin", null, null, null, (Location?)null, provinceCode, districtCode);
+            "Toroslar, Mersin", null, null, null, (Location?)null, provinceCode, districtName);
 
     [Fact]
     public void accepts_a_valid_province_code()
@@ -46,25 +46,44 @@ public class CreateInstitutionProvinceValidationTests
     }
 
     [Fact]
-    public void accepts_a_null_district_code()
+    public void accepts_a_null_district()
     {
-        // İlçe kapsamı henüz karara bağlanmadı (#147) — alan var, zorunlu değil.
-        Validator.Validate(Command(districtCode: null)).IsValid.ShouldBeTrue();
+        // İlçe zorunlu değil — kayıt il ile açılabilir, ilçe sonradan girilebilir.
+        Validator.Validate(Command(districtName: null)).IsValid.ShouldBeTrue();
     }
 
     [Fact]
-    public void accepts_a_numeric_district_code()
+    public void accepts_a_district_of_the_selected_province()
     {
-        Validator.Validate(Command(districtCode: "123456")).IsValid.ShouldBeTrue();
+        Validator.Validate(Command(districtName: "Toroslar")).IsValid.ShouldBeTrue();
     }
 
     [Theory]
-    [InlineData("Toroslar")]
-    [InlineData("33-01")]
-    [InlineData("12a")]
-    public void rejects_a_non_numeric_district_code(string districtCode)
+    [InlineData("toroslar")]   // küçük harf — aynı ilçenin ikinci yazımı olur
+    [InlineData("TOROSLAR")]
+    [InlineData("Toroslar ")]  // sonda boşluk
+    [InlineData("Torroslar")]  // yazım hatası
+    public void rejects_a_district_that_is_not_written_exactly_as_listed(string districtName)
     {
-        Validator.Validate(Command(districtCode: districtCode)).IsValid.ShouldBeFalse();
+        Validator.Validate(Command(districtName: districtName)).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void rejects_a_district_belonging_to_a_different_province()
+    {
+        // Çankaya Ankara'nın ilçesi; Mersin seçiliyken kabul edilemez.
+        Validator.Validate(Command(provinceCode: "33", districtName: "Çankaya")).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void rejects_any_district_for_a_province_with_no_district_list()
+    {
+        // Liste yalnız fiilen kullanılan iller için doldurulur. Tanımsız ilde ilçe girilemez —
+        // uydurma ilçe adının sessizce kaydolmasındansa açık ret.
+        var result = Validator.Validate(Command(provinceCode: "06", districtName: "Çankaya"));
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.ErrorMessage.Contains("ilçe listesi tanımlı değil"));
     }
 }
 
@@ -77,9 +96,10 @@ public class UpdateInstitutionProvinceValidationTests
     private static readonly UpdateInstitutionValidator Validator = new();
     private static readonly Guid InstitutionId = Guid.NewGuid();
 
-    private static UpdateInstitution Command(string? provinceCode = null, string? districtCode = null) =>
+    private static UpdateInstitution Command(
+        string? provinceCode = null, string? districtName = null, int? institutionCode = null) =>
         new(InstitutionId, "Atatürk Mesleki ve Teknik Anadolu Lisesi",
-            null, null, null, null, (Location?)null, provinceCode, districtCode);
+            null, null, null, null, (Location?)null, provinceCode, districtName, institutionCode);
 
     [Fact]
     public void accepts_an_omitted_province_code()
@@ -103,8 +123,31 @@ public class UpdateInstitutionProvinceValidationTests
     }
 
     [Fact]
-    public void rejects_a_non_numeric_district_code()
+    public void rejects_a_district_that_does_not_belong_to_the_province_sent_with_it()
     {
-        Validator.Validate(Command(districtCode: "Çankaya")).IsValid.ShouldBeFalse();
+        Validator.Validate(Command(provinceCode: "33", districtName: "Çankaya")).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void accepts_a_district_sent_alone_and_leaves_the_check_to_the_handler()
+    {
+        // İl gönderilmediğinde hangi ile ait olduğu istekte YOKTUR; doğrulayıcı bunu bilemez.
+        // Kombinasyon kontrolü UpdateInstitutionHandler'da, mevcut kurumun ili okunarak yapılır.
+        Validator.Validate(Command(districtName: "Çankaya")).IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void accepts_an_omitted_institution_code()
+    {
+        // Kurum kodu kayıtta girilir, sonradan düzeltilebilir — güncellemede zorunlu değil.
+        Validator.Validate(Command()).IsValid.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void rejects_a_non_positive_institution_code(int institutionCode)
+    {
+        Validator.Validate(Command(institutionCode: institutionCode)).IsValid.ShouldBeFalse();
     }
 }

@@ -20,6 +20,8 @@ public static class InstitutionEndpoints
         // Ulusal referans verisi — kurum kapsamı yok, /{institutionId:guid} kalıbından ÖNCE
         // kaydedilir ki "provinces" bir Guid gibi ele alınmaya çalışılmasın.
         group.MapGet("/provinces", GetProvinceList).RequireAuthorization(Permissions.Institution.View);
+        group.MapGet("/provinces/{provinceCode}/districts", GetDistrictList)
+            .RequireAuthorization(Permissions.Institution.View);
 
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Institution.View);
         group.MapGet("/{institutionId:guid}", Get).RequireAuthorization(Permissions.Institution.View);
@@ -55,6 +57,12 @@ public static class InstitutionEndpoints
     private static async Task<IResult> GetProvinceList(IMessageBus bus)
     {
         var result = await bus.InvokeAsync<ProvinceListDto>(new GetProvinces());
+        return Results.Ok(ResponseBuilder.Success().AddData(result.Items).Build());
+    }
+
+    private static async Task<IResult> GetDistrictList(string provinceCode, IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<DistrictListDto>(new GetDistricts(provinceCode));
         return Results.Ok(ResponseBuilder.Success().AddData(result.Items).Build());
     }
 

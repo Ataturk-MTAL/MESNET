@@ -73,16 +73,42 @@
             </q-item>
           </template>
         </q-select>
-        <q-input
-          v-model="form.districtCode"
-          label="İlçe Kodu (MEB)"
-          hint="İsteğe bağlı — yalnız rakam"
+        <!-- İlçe kapalı listeden seçilir; il değişince liste yeniden yüklenir ve seçim
+             temizlenir, yoksa kuruma başka ilin ilçesi yapışık kalırdı. -->
+        <q-select
+          v-model="form.districtName"
+          :options="districtOptions"
+          use-input
+          input-debounce="0"
+          clearable
+          label="İlçe"
+          :hint="districtHint"
           outlined
-          :rules="[districtRule]"
+          :disable="!form.provinceCode || districtsLoading"
+          :loading="districtsLoading"
+          @filter="filterDistricts"
+        >
+          <template #prepend>
+            <q-icon name="pin_drop" />
+          </template>
+          <template #no-option>
+            <q-item>
+              <q-item-section class="text-grey">
+                Sonuç bulunamadı
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+        <q-input
+          v-model.number="form.institutionCode"
+          label="Kurum Kodu (MEB)"
+          type="number"
+          outlined
+          :rules="[institutionCodeRule]"
           lazy-rules
         >
           <template #prepend>
-            <q-icon name="pin" />
+            <q-icon name="badge" />
           </template>
         </q-input>
         <q-input
@@ -142,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { institutionApi, type ProvinceDto } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
@@ -160,10 +186,10 @@ function provinceRule(value: string | null): true | string {
   return !!value || 'İl seçilmelidir.'
 }
 
-/** İsteğe bağlı; doluysa yalnız rakam. Hane sayısı kısıtlanmaz (backend ile aynı kural). */
-function districtRule(value: string): true | string {
-  if (!value) return true
-  return /^\d+$/.test(value) || 'İlçe kodu yalnız rakam içerebilir.'
+/** İsteğe bağlı; doluysa sıfırdan büyük olmalı (backend ile aynı kural). */
+function institutionCodeRule(value: number | null): true | string {
+  if (value === null || value === undefined || (value as unknown as string) === '') return true
+  return value > 0 || 'Kurum kodu sıfırdan büyük olmalıdır.'
 }
 
 const router = useRouter()
@@ -178,7 +204,8 @@ const form = reactive({
   fullName: '',
   address: '',
   provinceCode: null as string | null,
-  districtCode: '',
+  districtName: null as string | null,
+  institutionCode: null as number | null,
   phoneNumber: '',
   email: '',
   webUrl: '',
@@ -200,6 +227,60 @@ async function loadProvinces() {
   } finally {
     provincesLoading.value = false
   }
+}
+
+const districts = ref<string[]>([])
+const districtOptions = ref<string[]>([])
+const districtsLoading = ref(false)
+
+/** İlçe listesi yalnız fiilen kullanılan iller için doldurulur (TurkishDistricts). */
+const districtHint = computed(() => {
+  if (!form.provinceCode) return 'Önce il seçiniz.'
+  if (!districtsLoading.value && districts.value.length === 0)
+    return 'Bu il için ilçe listesi tanımlı değil.'
+  return 'İsteğe bağlı.'
+})
+
+async function loadDistricts(provinceCode: string | null) {
+  if (!provinceCode) {
+    districts.value = []
+    districtOptions.value = []
+    return
+  }
+
+  districtsLoading.value = true
+  try {
+    const { data } = await institutionApi.listDistricts(provinceCode)
+    districts.value = data
+    districtOptions.value = data
+  } catch (e) {
+    districts.value = []
+    districtOptions.value = []
+    notify.apiError(e, 'İlçe listesi yüklenemedi.')
+  } finally {
+    districtsLoading.value = false
+  }
+}
+
+// İl değişince ilçe listesi tazelenir. Seçili ilçe yeni ilin listesinde yoksa temizlenir —
+// bırakılırsa backend 422 "ilçesi kurumun iline ait değil" döner.
+watch(
+  () => form.provinceCode,
+  async (provinceCode) => {
+    await loadDistricts(provinceCode)
+    if (form.districtName && !districts.value.includes(form.districtName)) {
+      form.districtName = null
+    }
+  },
+)
+
+function filterDistricts(needle: string, update: (fn: () => void) => void) {
+  update(() => {
+    const term = needle.trim().toLocaleLowerCase('tr-TR')
+    districtOptions.value = term
+      ? districts.value.filter((d) => d.toLocaleLowerCase('tr-TR').includes(term))
+      : districts.value
+  })
 }
 
 function filterProvinces(needle: string, update: (fn: () => void) => void) {
@@ -230,7 +311,11 @@ async function loadInstitution() {
     form.fullName = inst.fullName
     form.address = inst.address ?? ''
     form.provinceCode = inst.provinceCode
-    form.districtCode = inst.districtCode ?? ''
+    form.institutionCode = inst.institutionCode
+    // İl watch'ı listeyi yükleyip eşleşmeyen ilçeyi temizler; ilçe ondan SONRA atanır ki
+    // kayıtlı değer kendi watch'ı tarafından silinmesin.
+    await loadDistricts(inst.provinceCode)
+    form.districtName = inst.districtName
     form.phoneNumber = inst.phoneNumber ?? ''
     form.email = inst.email ?? ''
     form.webUrl = inst.webUrl ?? ''
@@ -256,7 +341,8 @@ async function handleSave() {
       fullName: form.fullName,
       address: form.address || undefined,
       provinceCode: form.provinceCode,
-      districtCode: form.districtCode || undefined,
+      districtName: form.districtName ?? undefined,
+      institutionCode: form.institutionCode ?? undefined,
       phoneNumber: form.phoneNumber || undefined,
       email: form.email || undefined,
       webUrl: form.webUrl || undefined,

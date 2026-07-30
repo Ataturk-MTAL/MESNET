@@ -20,7 +20,7 @@ public static class CreateInstitutionHandler
             WebUrl = command.WebUrl,
             Location = command.Location,
             ProvinceCode = command.ProvinceCode,
-            DistrictCode = command.DistrictCode
+            DistrictName = command.DistrictName
         };
 
         session.Store(institution);

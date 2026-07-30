@@ -109,13 +109,16 @@
                     </q-item-section>
                     <q-item-section>
                       <q-item-label caption>
-                        İl
+                        İl / İlçe
                       </q-item-label>
                       <!-- Ad görüntü, kod yetkili (#147) — ikisi birlikte gösterilir ki
                            kaydın hangi il koduyla saklandığı ekrandan doğrulanabilsin. -->
                       <q-item-label>
                         <template v-if="institution.provinceName">
                           {{ institution.provinceName }} ({{ institution.provinceCode }})
+                          <template v-if="institution.districtName">
+                            / {{ institution.districtName }}
+                          </template>
                         </template>
                         <span v-else>—</span>
                       </q-item-label>

@@ -12,5 +12,7 @@ public sealed record UpdateInstitution(
     Location? Location,
     // MEB il kodu (01–81) — null = değiştirme.
     string? ProvinceCode = null,
-    // MEB ilçe kodu — null = değiştirme.
-    string? DistrictCode = null);
+    // İlçe adı (TurkishDistricts) — null = değiştirme.
+    string? DistrictName = null,
+    // MEB kurum kodu — null = değiştirme. Kayıtta girilir, sonradan düzeltilebilir.
+    int? InstitutionCode = null);

@@ -21,16 +21,21 @@ public class CreateInstitutionValidator : AbstractValidator<CreateInstitution>
             .When(x => !string.IsNullOrWhiteSpace(x.ProvinceCode))
             .WithMessage("Geçerli bir MEB il kodu giriniz (01–81).");
 
-        RuleFor(x => x.DistrictCode)
-            .Must(BeADistrictCode)
-            .When(x => !string.IsNullOrWhiteSpace(x.DistrictCode))
-            .WithMessage("İlçe kodu yalnız rakam içerebilir.");
+        // İlçe ile il birlikte doğrulanır: ilçe adı TEK BAŞINA anlamlı değildir, hangi ilin
+        // ilçesi olduğu bilinmeden doğrulanamaz. Aynı ad birden çok ilde geçebilir.
+        RuleFor(x => x.DistrictName)
+            .Must((command, district) => TurkishDistricts.IsValid(command.ProvinceCode, district))
+            .When(x => !string.IsNullOrWhiteSpace(x.DistrictName))
+            .WithMessage(x => DistrictMessage(x.ProvinceCode));
     }
 
     /// <summary>
-    /// MEB ilçe kodu yalnız rakamdan oluşur; uzunluğu ile ilgili doğrulanmış bir kaynak
-    /// olmadığı için hane sayısı kısıtlanmaz — yanlış bir üst sınır geçerli kaydı reddederdi.
+    /// İlçe listesi bulunmayan il ile ilçe listesinde olmayan ad ayrı hatalardır: ilki eksik
+    /// referans verisi (çözümü listeyi doldurmak), ikincisi hatalı giriş. Aynı mesajı vermek
+    /// kullanıcıyı olmayan bir yazım hatasını aramaya iterdi.
     /// </summary>
-    internal static bool BeADistrictCode(string? code) =>
-        code is not null && code.All(char.IsAsciiDigit);
+    internal static string DistrictMessage(string? provinceCode) =>
+        TurkishDistricts.IsKnown(provinceCode)
+            ? "Seçilen ile ait geçerli bir ilçe seçiniz."
+            : "Bu il için ilçe listesi tanımlı değil, ilçe girilemez.";
 }
