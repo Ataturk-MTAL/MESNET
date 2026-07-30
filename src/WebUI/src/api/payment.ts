@@ -27,6 +27,36 @@ export interface PaymentSummaryDto {
   lastUpdated: string
 }
 
+/**
+ * Bir asgari ücret yürürlük dönemi. Asgari ücret yıl içinde birden fazla kez artabildiği için
+ * kayıtlar tarih aralıklı tutulur ve maaş hesabı ayın içinde yürürlükte olanı seçer.
+ */
+export interface SalaryConfigDto {
+  id: string
+  minimumWage: number
+  minimumWageUnder16: number | null
+  effectiveFrom: string
+  effectiveTo: string | null
+  /** Bugün yürürlükte olan dönem. */
+  isCurrent: boolean
+  /** Yürürlüğü henüz başlamamış (ileri tarihli) dönem. */
+  isScheduled: boolean
+  updatedById: string
+  updatedBy: string | null
+  smallBusinessRate: number
+  largeBusinessRate: number
+  personnelThreshold: number
+  apprenticeRate: number
+  mem12thGradeRate: number
+  govContribSmallNonMEM: number
+  govContribLargeNonMEM: number
+  govContribMEM: number
+}
+
+export interface SalaryConfigHistoryDto {
+  items: SalaryConfigDto[]
+}
+
 export const PAYMENT_PHASES = [
   { label: 'Hesaplandı', value: 'Calculated' },
   { label: 'Dekont Bekleniyor', value: 'AwaitingReceipt' },
@@ -78,6 +108,13 @@ export const paymentApi = {
    * olmalı — önceki hâli `{ amount, effectiveDate }` gönderiyordu ve hiçbir alan eşleşmiyordu.
    * minimumWageUnder16: 16 yaşından küçükler için yaşa uygun asgari ücret (#85).
    */
+  /**
+   * Asgari ücret yürürlük geçmişi — geçmiş, yürürlükteki ve ileri tarihli dönemler.
+   * Kurum kapsamı parametre olarak GİTMEZ; backend token'daki institution_id'den okur.
+   */
+  salaryConfigHistory: () =>
+    api.get<SalaryConfigHistoryDto>('/payments/config/minimum-wage'),
+
   updateMinimumWage: (
     institutionId: string,
     newMinimumWage: number,

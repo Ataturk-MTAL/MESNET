@@ -28,6 +28,12 @@ public static class PaymentErrors
         new("Payment.SalaryConfigMissing",
             $"Kuruma ait maaş hesaplama ayarı bulunamadı, ücret hesaplanamıyor: {institutionId}");
 
+    // Kurum kapsamı token'dan gelir; claim yoksa hangi kurumun ayarı okunacağı belirsizdir.
+    // İstekten kurum almak yerine hata vermek gerekir — aksi hâlde kapsam istemciye geçer.
+    public static Error InstitutionScopeMissing() =>
+        new("Payment.InstitutionScopeMissing",
+            "Kullanıcının kurum bilgisi bulunamadı, kurum ayarları okunamıyor.");
+
     public static Error AcademicPeriodClosed(Guid id) =>
         new("Payment.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, ödeme işlemi yapılamaz: {id}");
 }

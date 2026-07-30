@@ -67,6 +67,7 @@ const menuDefinition: NavGroup[] = [
       { title: 'Sözleşmeler', icon: 'description', to: { name: 'ContractList' }, permissions: ['internship:manage', 'internship:contract:manage'] },
       { title: 'Devamsızlık', icon: 'event_available', to: { name: 'AttendanceList' }, permissions: ['attendance:view'] },
       { title: 'Maaş / Dekont', icon: 'payments', to: { name: 'SalaryList' }, permissions: ['salary:view'] },
+      { title: 'Asgari Ücret', icon: 'price_change', to: { name: 'SalaryConfig' }, permissions: ['salary:parameter:manage'] },
       { title: 'Dönem Notu Girişi', icon: 'edit_note', to: { name: 'TermGradeEntry' }, permissions: ['company:grade:enter'] },
     ],
   },

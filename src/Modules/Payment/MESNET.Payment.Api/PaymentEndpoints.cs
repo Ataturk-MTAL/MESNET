@@ -25,6 +25,7 @@ public static class PaymentEndpoints
         group.MapPost("/{id:guid}/approve/teacher", PostApproveTeacher).RequireAuthorization(Permissions.Salary.Approve);
         group.MapPost("/{id:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Salary.Approve);
         group.MapPost("/{id:guid}/reject", PostReject).RequireAuthorization(Permissions.Salary.Approve);
+        group.MapGet("/config/minimum-wage", GetMinimumWageHistory).RequireAuthorization(Permissions.Salary.Parameter);
         group.MapPut("/config/minimum-wage", PutMinimumWage).RequireAuthorization(Permissions.Salary.Parameter);
         group.MapPost("/open-monthly-periods", PostOpenMonthlyPeriods).RequireAuthorization(Permissions.Salary.Calculate);
     }
@@ -138,6 +139,16 @@ public static class PaymentEndpoints
     {
         await bus.InvokeAsync(command with { SalaryPeriodId = id });
         return Results.Ok(ResponseBuilder.Success().AddMessage("Dekont reddedildi.").Build());
+    }
+
+    /// <summary>
+    /// Asgari ücret yürürlük geçmişi — geçmiş, yürürlükteki ve ileri tarihli dönemler.
+    /// Kurum kapsamı handler'da token'dan okunur, sorgu dizesinden alınmaz.
+    /// </summary>
+    private static async Task<IResult> GetMinimumWageHistory(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<SalaryConfigHistoryDto>(new GetSalaryConfigHistory());
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
 
     private static async Task<IResult> PutMinimumWage(UpdateMinimumWage command, IMessageBus bus)
