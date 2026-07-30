@@ -25,8 +25,11 @@ public static class PaymentEndpoints
         group.MapPost("/{id:guid}/approve/teacher", PostApproveTeacher).RequireAuthorization(Permissions.Salary.Approve);
         group.MapPost("/{id:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Salary.Approve);
         group.MapPost("/{id:guid}/reject", PostReject).RequireAuthorization(Permissions.Salary.Approve);
-        group.MapGet("/config/minimum-wage", GetMinimumWageHistory).RequireAuthorization(Permissions.Salary.Parameter);
-        group.MapPut("/config/minimum-wage", PutMinimumWage).RequireAuthorization(Permissions.Salary.Parameter);
+        // Okuma okullara açık, YAZMA ulusal izin ister (#147) — aynı ucun iki farklı izni.
+        group.MapGet("/config/minimum-wage", GetMinimumWageHistory)
+            .RequireAuthorization(Permissions.Salary.ParameterView);
+        group.MapPut("/config/minimum-wage", PutMinimumWage)
+            .RequireAuthorization(Permissions.Platform.ParameterManage);
         group.MapPost("/open-monthly-periods", PostOpenMonthlyPeriods).RequireAuthorization(Permissions.Salary.Calculate);
     }
 

@@ -15,6 +15,10 @@ public static class InstitutionSeeder
         // Keycloak kullanıcılarının institution_id claim'ini güncelle
         await SyncKeycloakAsync(keycloak, institutionId.Value);
 
+        // Öznitelik yazıldı ama elimizdeki token hâlâ claim'siz. Kurum kapsamını token'dan
+        // okuyan uçlar (işletme kaydı vb.) bu tazeleme olmadan 422 döner (#147).
+        api.RefreshToken();
+
         // Alanlar + dallar
         await EnsureBranchesAsync(api, institutionId.Value);
 
@@ -41,15 +45,19 @@ public static class InstitutionSeeder
         {
             var id = arr[0].GetProperty("id").GetGuid();
             Console.WriteLine($"  → Kurum mevcut (id: {id.ToString()[..8]}...)");
+            await BackfillProvinceCodeAsync(api, arr[0], id);
             return id;
         }
 
         var data = await api.PostAsync("/api/institutions", new
         {
-            tenantId = Guid.Parse("10000000-0000-0000-0000-000000000001"),
             institutionCode = 967523,
             fullName = "Atatürk Mesleki ve Teknik Anadolu Lisesi",
             address = "Toroslar, Mersin",
+            // MEB il kodu — Mersin = 33 (#147). Zorunlu alan; adresteki serbest metin değil bu
+            // kod kapsam kararında kullanılır. İlçe kapalı listeden gelir (TurkishDistricts).
+            provinceCode = "33",
+            districtName = "Toroslar",
             phoneNumber = "0324 555 0001",
             email = "mersinataturk.mtal@meb.gov.tr",
             webUrl = "https://mersinataturkmtal.meb.k12.tr",
@@ -60,6 +68,36 @@ public static class InstitutionSeeder
         var institutionId = data.Value.GetProperty("id").GetGuid();
         Console.WriteLine($"  ✓ Kurum oluşturuldu (id: {institutionId.ToString()[..8]}...)");
         return institutionId;
+    }
+
+    /// <summary>
+    /// İl kodu alanı (#147) eklenmeden önce oluşturulmuş kurumu tamamlar. Seeder mevcut kurumu
+    /// bulunca erken döndüğü için bu yama olmadan il boş kalır ve kapsam kararının anahtarı
+    /// eksik kalırdı. Idempotent: kod zaten varsa hiçbir şey yapılmaz, ÜZERİNE YAZILMAZ —
+    /// elle başka bir il seçilmişse seeder onu geri almamalı.
+    /// </summary>
+    private static async Task BackfillProvinceCodeAsync(
+        MesnetApiClient api, System.Text.Json.JsonElement institution, Guid institutionId)
+    {
+        var hasProvince = institution.TryGetProperty("provinceCode", out var province)
+                          && province.ValueKind == System.Text.Json.JsonValueKind.String
+                          && !string.IsNullOrWhiteSpace(province.GetString());
+
+        if (hasProvince) return;
+
+        var fullName = institution.TryGetProperty("fullName", out var name)
+            ? name.GetString()
+            : null;
+
+        // PATCH'te fullName zorunlu (UpdateInstitutionValidator) — mevcut ad geri gönderilir.
+        await api.PatchAsync($"/api/institutions/{institutionId}", new
+        {
+            fullName,
+            provinceCode = "33",
+            districtName = "Toroslar"
+        });
+
+        Console.WriteLine("  ✓ Kurumun il/ilçe bilgisi tamamlandı (33 — Mersin / Toroslar)");
     }
 
     private static async Task SyncKeycloakAsync(KeycloakAdminService keycloak, Guid institutionId)

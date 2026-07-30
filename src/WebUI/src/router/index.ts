@@ -145,7 +145,9 @@ const router = createRouter({
           path: 'salary/config',
           name: 'SalaryConfig',
           component: () => import('pages/payment/SalaryConfigPage.vue'),
-          meta: { permissions: ['salary:parameter:manage'] },
+          // Görme yetkisi burada; DEĞİŞTİRME ayrı ve ULUSAL bir izindir
+          // ('platform:parameter:manage') ve sayfa içinde kontrol edilir (#147).
+          meta: { permissions: ['salary:parameter:view'] },
         },
 
         // İşletme Değerlendirmeleri

@@ -8,7 +8,6 @@ public class SelfRegisterBusinessValidator : AbstractValidator<SelfRegisterBusin
 {
     public SelfRegisterBusinessValidator()
     {
-        RuleFor(x => x.TenantId).NotEmpty().WithMessage("Kurum (tenant) belirtilmelidir.");
         RuleFor(x => x.KeycloakId).NotEmpty().WithMessage("Kullanıcı kimliği belirtilmelidir.");
         RuleFor(x => x.FullName).NotEmpty().WithMessage("Temsilci adı soyadı belirtilmelidir.");
         RuleFor(x => x.RepresentativePhone).NotEmpty().WithMessage("Temsilci telefonu belirtilmelidir.");

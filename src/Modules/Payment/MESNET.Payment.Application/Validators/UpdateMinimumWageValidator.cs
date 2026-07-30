@@ -7,7 +7,6 @@ public class UpdateMinimumWageValidator : AbstractValidator<UpdateMinimumWage>
 {
     public UpdateMinimumWageValidator()
     {
-        RuleFor(x => x.InstitutionId).NotEmpty().WithMessage("Kurum belirtilmelidir.");
         RuleFor(x => x.NewMinimumWage).GreaterThan(0).WithMessage("Asgari ücret sıfırdan büyük olmalıdır.");
 
         // Alan gönderilmezse 0001-01-01 gelir ve yürürlük zinciri yılbaşından değil tarihin

@@ -18,7 +18,6 @@ public static class UpdateMinimumWageHandler
         // Yürürlükteki (henüz kapatılmamış) config. Birden fazla varsa en yenisi geçerlidir —
         // sıralama olmadan hangisinin geleceği belirsizdi (#75).
         var currentConfig = await session.Query<SalaryCalculationConfig>()
-            .Where(c => c.InstitutionId == command.InstitutionId)
             .Where(c => c.EffectiveTo == null)
             .OrderByDescending(c => c.EffectiveFrom)
             .FirstOrDefaultAsync();
@@ -50,7 +49,6 @@ public static class UpdateMinimumWageHandler
         var newConfig = new SalaryCalculationConfig
         {
             Id = Guid.NewGuid(),
-            InstitutionId = command.InstitutionId,
             MinimumWage = command.NewMinimumWage,
             MinimumWageUnder16 = command.NewMinimumWageUnder16,
             EffectiveFrom = command.EffectiveFrom,

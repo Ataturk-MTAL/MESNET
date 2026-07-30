@@ -8,7 +8,6 @@ public static class BusinessSeeder
         Console.WriteLine("── İşletmeler ─────────────────────");
 
         if (!ctx.Has("Institution")) return;
-        var tenantId = ctx.Get("Institution");
 
         // Mevcut işletmeleri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
         // pageSize=500 ile tüm işletmeleri tek istekte çek
@@ -41,7 +40,6 @@ public static class BusinessSeeder
         // Business1: Elektrik-Elektronik sektörü (EET alanı için)
         await SeedBusiness(api, ctx, existingByName, "Business1", "Mezitli Elektrik Mühendislik A.Ş.", () => api.PostAsync("/api/businesses", new
         {
-            tenantId,
             name = "Mezitli Elektrik Mühendislik A.Ş.",
             address = "Davultepe Mah., Mezitli, Mersin",
             phoneNumber = "0324 444 1001",
@@ -56,7 +54,6 @@ public static class BusinessSeeder
         // Business2: Bilişim sektörü (BT alanı için)
         await SeedBusiness(api, ctx, existingByName, "Business2", "Mersin Bilişim Teknolojileri A.Ş.", () => api.PostAsync("/api/businesses", new
         {
-            tenantId,
             name = "Mersin Bilişim Teknolojileri A.Ş.",
             address = "Çiftlikköy Mah., Yenişehir, Mersin",
             phoneNumber = "0324 444 2002",
@@ -71,7 +68,6 @@ public static class BusinessSeeder
         // Business3: Makine sektörü (MTT alanı için)
         await SeedBusiness(api, ctx, existingByName, "Business3", "Toroslar CNC Makine Sanayi A.Ş.", () => api.PostAsync("/api/businesses", new
         {
-            tenantId,
             name = "Toroslar CNC Makine Sanayi A.Ş.",
             address = "Arpaçsakarlar Mah., Toroslar, Mersin",
             phoneNumber = "0324 444 3003",
@@ -86,7 +82,6 @@ public static class BusinessSeeder
         // Business4: Elektrik + Makine sektörü (EET & MTT alanları için)
         await SeedBusiness(api, ctx, existingByName, "Business4", "Akdeniz Otomasyon ve Makine Ltd. Şti.", () => api.PostAsync("/api/businesses", new
         {
-            tenantId,
             name = "Akdeniz Otomasyon ve Makine Ltd. Şti.",
             address = "Kuyuluk Mah., Mezitli, Mersin",
             phoneNumber = "0324 444 4004",
@@ -100,7 +95,6 @@ public static class BusinessSeeder
         // Business5: Bilişim sektörü (BT alanı için — self-register)
         await SeedBusiness(api, ctx, existingByName, "Business5", "Yeni Nesil Teknoloji", () => api.PostAsync("/api/businesses/self-register", new
         {
-            tenantId,
             keycloakId = "53000000-0000-0000-0000-000000000001",
             fullName = "Can Özkan",
             representativePhone = "0555 123 4567",
@@ -129,8 +123,7 @@ public static class BusinessSeeder
 
             var data = await api.PostAsync("/api/businesses", new
             {
-                tenantId,
-                name = b.Name,
+                    name = b.Name,
                 address = b.Address,
                 phoneNumber = b.Phone,
                 email = b.Email,

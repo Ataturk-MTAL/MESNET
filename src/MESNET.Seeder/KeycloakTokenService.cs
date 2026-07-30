@@ -16,6 +16,21 @@ public sealed class KeycloakTokenService
         _options = options;
     }
 
+    /// <summary>
+    /// Önbellekteki token'ı düşürür; bir sonraki çağrı yeni token alır.
+    /// </summary>
+    /// <remarks>
+    /// Kurum ilk koşuda seeder tarafından YARATILIR; o ana kadar hiçbir kullanıcının
+    /// <c>institution_id</c> özniteliği yoktur. Öznitelik Keycloak'a yazıldıktan sonra
+    /// eldeki token hâlâ eski (claim'siz) hâlidir ve kurum kapsamı token'dan okunan uçlar
+    /// 422 döner. Senkron sonrası token bir kez tazelenmelidir.
+    /// </remarks>
+    public void Invalidate()
+    {
+        _token = null;
+        _expiresAt = DateTime.MinValue;
+    }
+
     public async Task<string> GetTokenAsync()
     {
         if (_token is not null && DateTime.UtcNow < _expiresAt.AddSeconds(-30))

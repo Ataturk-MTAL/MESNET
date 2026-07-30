@@ -39,7 +39,7 @@ public static class BusinessRegisteredCoordinationConsumer
             Address = @event.Address,
             District = AddressHelper.ExtractDistrict(@event.Address),
             Location = @event.Location,
-            InstitutionId = @event.TenantId,
+            InstitutionId = @event.InstitutionId,
             ActiveStudentCount = 0,
         };
 
@@ -47,7 +47,7 @@ public static class BusinessRegisteredCoordinationConsumer
         if (@event.Location is not null)
         {
             await DistanceHelper.CalculateAndSetDistanceAsync(
-                view, @event.TenantId, session, osrmService, cancellationToken);
+                view, @event.InstitutionId, session, osrmService, cancellationToken);
         }
 
         session.Store(view);

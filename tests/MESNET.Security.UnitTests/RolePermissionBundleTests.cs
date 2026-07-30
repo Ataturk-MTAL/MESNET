@@ -65,11 +65,22 @@ public sealed class RolePermissionBundleTests
     [InlineData("internship:contract:manage")]
     [InlineData("document:approve")]       // evrak onayı
     [InlineData("salary:approve")]         // dekont onay zinciri
-    [InlineData("salary:parameter:manage")]
+    [InlineData("salary:parameter:view")]  // asgari ücreti GÖRÜR (#147)
     [InlineData("attendance:approve")]
     public void Mudur_yardimcisi_koordinasyon_ve_onay_yetkilerini_alir(string permission)
     {
         PermissionsOf(MesnetRoles.DeputyDirector).ShouldContain(permission);
+    }
+
+    [Fact]
+    public void Mudur_yardimcisi_asgari_ucreti_gorur_ama_DEGISTIREMEZ()
+    {
+        // #147: parametre ulusal mevzuattır. Bu izin eskiden "salary:parameter:manage" idi ve
+        // salary:* ile buraya geliyordu; yazma artık platform: önekinde ve yalnız SystemAdmin'de.
+        var permissions = PermissionsOf(MesnetRoles.DeputyDirector);
+
+        permissions.ShouldContain(Permissions.Salary.ParameterView);
+        permissions.ShouldNotContain(Permissions.Platform.ParameterManage);
     }
 
     // ── InstitutionStaff: yürütür, onaylamaz ─────────────────────────────────────────────

@@ -4,6 +4,15 @@ namespace MESNET.Business.Application.Errors;
 
 public static class BusinessErrors
 {
+    /// <summary>
+    /// Kurum kapsamı token'dan gelir; claim yoksa işletmenin hangi okula bağlanacağı
+    /// belirsizdir. İstekten kurum almak yerine hata vermek gerekir — aksi hâlde kapsam
+    /// istemciye geçer ve yetkili bir kullanıcı başka okulun adına işletme kaydeder (#147).
+    /// </summary>
+    public static Error InstitutionScopeMissing() =>
+        new("Business.InstitutionScopeMissing",
+            "Kullanıcının kurum bilgisi bulunamadı, işletme kaydedilemiyor.");
+
     public static Error NotFound(Guid id) =>
         new("Business.NotFound", $"İşletme bulunamadı: {id}");
 

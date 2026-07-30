@@ -1,9 +1,18 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Reference;
 
 namespace MESNET.Institution.Application.Errors;
 
 public static class InstitutionErrors
 {
+    /// <summary>
+    /// İlçe, kurumun iline ait değil. İl ve ilçe ayrı ayrı güncellenebildiği için nihai
+    /// kombinasyon handler'da doğrulanır (#147).
+    /// </summary>
+    public static Error DistrictNotInProvince(string districtName, string? provinceCode) =>
+        new("Institution.DistrictNotInProvince",
+            $"\"{districtName}\" ilçesi kurumun iline ({TurkishProvinces.GetName(provinceCode) ?? provinceCode ?? "tanımsız"}) ait değil.");
+
     public static Error NotFound(Guid id) =>
         new("Institution.NotFound", $"Kurum bulunamadı: {id}");
 

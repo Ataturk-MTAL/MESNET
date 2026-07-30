@@ -24,15 +24,13 @@ public static class PaymentErrors
             $"({current:yyyy-MM-dd}) önce olamaz.");
 
     // Config yoksa sessizce sabit bir tutarla hesaplamak yanlış para üretir — hata ver (#64).
-    public static Error SalaryConfigMissing(Guid institutionId) =>
+    /// <summary>
+    /// Hesaplanan ay için yürürlükte olan ulusal parametre yok (#147). Kurum kimliği
+    /// TAŞIMAZ — parametre ulusaldır, "kuruma ait ayar" diye bir şey yoktur.
+    /// </summary>
+    public static Error SalaryConfigMissing(string month) =>
         new("Payment.SalaryConfigMissing",
-            $"Kuruma ait maaş hesaplama ayarı bulunamadı, ücret hesaplanamıyor: {institutionId}");
-
-    // Kurum kapsamı token'dan gelir; claim yoksa hangi kurumun ayarı okunacağı belirsizdir.
-    // İstekten kurum almak yerine hata vermek gerekir — aksi hâlde kapsam istemciye geçer.
-    public static Error InstitutionScopeMissing() =>
-        new("Payment.InstitutionScopeMissing",
-            "Kullanıcının kurum bilgisi bulunamadı, kurum ayarları okunamıyor.");
+            $"{month} ayında yürürlükte olan asgari ücret kaydı bulunamadı, ücret hesaplanamıyor.");
 
     public static Error AcademicPeriodClosed(Guid id) =>
         new("Payment.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, ödeme işlemi yapılamaz: {id}");

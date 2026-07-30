@@ -56,7 +56,10 @@ public static class RolePermissionMap
             Permissions.Salary.View,
             Permissions.Salary.Calculate,
             Permissions.Salary.Approve,        // dekont onay zinciri
-            Permissions.Salary.Parameter,      // asgari ücret güncelleme
+            // Asgari ücret ve 3308 oranları ULUSAL mevzuattır; müdür yardımcısı GÖRÜR,
+            // değiştiremez (#147). Yazma izni Platform.ParameterManage'dir ve yalnız
+            // SystemAdmin'dedir — bu satır bilinçli olarak "view".
+            Permissions.Salary.ParameterView,
             Permissions.Attendance.View,
             Permissions.Attendance.Manage,
             Permissions.Attendance.Report,
@@ -164,6 +167,16 @@ public static class RolePermissionMap
             Permissions.Company.EnterGrade,    // dönem notu girişi
             Permissions.Student.View,          // kendi öğrencileri
             "communication:*"
+        ],
+        // Sistem yöneticisi (#147) — ULUSAL parametre girişi. Kurum domainlerinden HİÇBİRİ
+        // yoktur: bu rol kurum verisi görmez, yalnız mevzuat sayılarını yazar. Tersi de
+        // geçerli — okul rollerinin hiçbirinde "platform:" öneki yoktur.
+        [MesnetRoles.SystemAdmin] =
+        [
+            Permissions.Platform.ParameterManage,
+            // Yazdığı değerin yürürlük geçmişini görebilmesi için okuma izni de gerekir;
+            // "salary:*" verilMEZ — dekont, hesaplama ve öğrenci verisi bu role kapalıdır.
+            Permissions.Salary.ParameterView
         ]
     };
 

@@ -241,8 +241,35 @@ public static class Permissions
         /// <summary>Dekont yükleme ve öğrenci onayı yönetimi.</summary>
         public const string Receipt = "salary:receipt:manage";
 
-        /// <summary>Asgari ücret ve hesaplama parametrelerini güncelleme.</summary>
-        public const string Parameter = "salary:parameter:manage";
+        /// <summary>
+        /// Asgari ücret ve hesaplama parametrelerini GÖRÜNTÜLEME. Yazma bu izinle YAPILMAZ —
+        /// parametreler ulusal mevzuattır ve <see cref="Platform.ParameterManage"/> ister (#147).
+        /// </summary>
+        public const string ParameterView = "salary:parameter:view";
+    }
+
+    /// <summary>
+    /// <b>Ulusal (platform) düzeyi izinler — kurum sınırının ÜSTÜNDE (#147).</b>
+    ///
+    /// <para><b>Önek neden <c>platform:</c>:</b> <see cref="RolePermissionMap"/>'te
+    /// <c>InstitutionManager</c> hem <c>"institution:*"</c> hem <c>"salary:*"</c> wildcard'ını
+    /// tutuyor. Bu izin <c>salary:national:manage</c> ya da <c>institution:...</c> diye
+    /// adlandırılsaydı her okul müdürüne SESSİZCE geçer ve kontrol hiç çalışmazdı — #126'daki
+    /// muafiyet-öneki tuzağının birebir tekrarı. <c>platform:</c> öneki hiçbir okul rolünde
+    /// yoktur; kilitleyen test:
+    /// <c>tests/MESNET.Security.UnitTests/PlatformScopeMappingTests.cs</c>.</para>
+    ///
+    /// <para>Bu izinler <see cref="AssignablePermissionScope.NeverDirectlyAssignable"/>
+    /// listesindedir: bireysel (direct) ASLA atanamaz, yalnız rol üzerinden gelir.</para>
+    /// </summary>
+    public static class Platform
+    {
+        /// <summary>
+        /// Ulusal hesaplama parametrelerini (asgari ücret, 3308 oranları) güncelleme.
+        /// Gerçek işletimde Bakanlık düzeyi bir aktörün işidir; bugün
+        /// <c>SystemAdmin</c> rolündedir.
+        /// </summary>
+        public const string ParameterManage = "platform:parameter:manage";
     }
 
     /// <summary>

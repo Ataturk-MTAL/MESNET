@@ -1,4 +1,7 @@
 using Marten;
+using MESNET.Business.Application.Errors;
+using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Shared;
 using MESNET.Business.Application.Commands;
 using MESNET.Business.Application.Dtos;
 using MESNET.Business.Application.Extensions;
@@ -12,12 +15,20 @@ namespace MESNET.Business.Application.Handlers;
 public static class SelfRegisterBusinessHandler
 {
     public static async Task<BusinessDto> Handle(
-        SelfRegisterBusiness command, IDocumentSession session, IMessageBus bus)
+        SelfRegisterBusiness command, IDocumentSession session, IMessageBus bus,
+        ICurrentUserService currentUser)
     {
+        // Kurum kapsamı token'dan okunur, istekten ALINMAZ (#147). Eskiden komutun
+        // TenantId alanından geliyordu; WebUI o alanı hiç göndermediği için kayıt
+        // 422 ile reddediliyordu ve gönderen bir istemci başka okulun adına kaydedebilirdi.
+        var institutionId = currentUser.GetCurrentUser()?.InstitutionId;
+        if (institutionId is not { } scopedInstitutionId || scopedInstitutionId == Guid.Empty)
+            throw new DomainException(BusinessErrors.InstitutionScopeMissing());
+
         var business = new Core.Entities.Business
         {
             Id = Guid.NewGuid(),
-            TenantId = command.TenantId,
+            InstitutionId = scopedInstitutionId,
             Name = command.BusinessName,
             Address = command.Address,
             PhoneNumber = command.PhoneNumber,
@@ -47,7 +58,7 @@ public static class SelfRegisterBusinessHandler
         session.Store(business);
         await session.SaveChangesAsync();
 
-        await bus.PublishAsync(new BusinessRegistered(business.Id, business.TenantId, business.Name, business.Address, business.Location, business.Source.Name, business.Capacity.TotalSlots, business.Sectors,
+        await bus.PublishAsync(new BusinessRegistered(business.Id, business.InstitutionId, business.Name, business.Address, business.Location, business.Source.Name, business.Capacity.TotalSlots, business.Sectors,
             business.PhoneNumber, business.Email, business.MasterInstructor?.FullName, business.PersonnelCount,
             business.PrimaryRepresentativeName()));
         await bus.PublishAsync(new BusinessCapacityChanged(business.Id, business.Capacity.TotalSlots, business.Capacity.OccupiedSlots));

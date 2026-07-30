@@ -28,7 +28,7 @@ public static class BusinessActivatedCoordinationConsumer
             Address = @event.Address,
             District = AddressHelper.ExtractDistrict(@event.Address),
             Location = @event.Location,
-            InstitutionId = @event.TenantId,
+            InstitutionId = @event.InstitutionId,
             ActiveStudentCount = 0,
         });
     }

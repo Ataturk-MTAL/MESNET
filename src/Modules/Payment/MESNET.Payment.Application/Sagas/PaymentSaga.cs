@@ -142,8 +142,8 @@ public class PaymentSaga : Saga
         // uygular. Gerekçenin tamamı: SalaryMonth.ConfigReferenceDate.
         var configDate = SalaryMonth.ConfigReferenceDate(command.Month, command.ReferenceDate);
 
+        // Kurum filtresi YOK (#147) — parametre ulusaldır.
         var config = await session.Query<SalaryCalculationConfig>()
-            .Where(c => c.InstitutionId == command.InstitutionId)
             .Where(c => c.EffectiveFrom <= configDate
                         && (c.EffectiveTo == null || c.EffectiveTo >= configDate))
             // Birden fazla kayıt eşleşirse en yenisi geçerlidir; sıralama olmadan hangisinin
@@ -153,7 +153,7 @@ public class PaymentSaga : Saga
 
         // Config yoksa sessizce eski bir sabitle hesaplamak yanlış tutar üretir (#64) — hata ver.
         if (config is null)
-            throw new DomainException(PaymentErrors.SalaryConfigMissing(command.InstitutionId));
+            throw new DomainException(PaymentErrors.SalaryConfigMissing(command.Month));
 
         var business = await session.LoadAsync<BusinessPaymentProfile>(command.BusinessId);
         var student = await session.LoadAsync<StudentPaymentProfile>(command.StudentId);

@@ -14,7 +14,6 @@ public class BusinessMartenConfig : IConfigureMarten
         options.Schema.For<InstitutionBranchView>().Index(x => x.InstitutionId);
         options.Schema.For<InstitutionBranchView>().Index(x => x.IsActive);
 
-        options.Schema.For<MinimumWageReference>().DatabaseSchemaName("business");
 
         // Denormalize read models — Enrollment event'lerinden
         options.Schema.For<PlacedStudentView>().DatabaseSchemaName("business");

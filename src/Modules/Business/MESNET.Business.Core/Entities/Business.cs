@@ -10,7 +10,13 @@ namespace MESNET.Business.Core.Entities;
 public class Business
 {
     public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
+    /// <summary>
+    /// İşletmeyi kaydeden okul. Eskiden <c>TenantId</c> adındaydı ama taşıdığı değer her
+    /// zaman kurumun kimliğiydi; <c>Institution.TenantId</c> ise bambaşka bir literal
+    /// tutuyordu. Aynı ad iki modülde iki anlama geldiği için ad gerçeğe çekildi (#147).
+    /// Kayıt anında token'daki kurumdan doldurulur, istekten ALINMAZ.
+    /// </summary>
+    public Guid InstitutionId { get; set; }
     public required string Name { get; set; }
     public required string Address { get; set; }
     public string? PhoneNumber { get; set; }
