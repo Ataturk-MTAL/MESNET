@@ -76,14 +76,11 @@ public class CreateInstitutionProvinceValidationTests
     }
 
     [Fact]
-    public void rejects_any_district_for_a_province_with_no_district_list()
+    public void accepts_a_district_of_any_of_the_81_provinces()
     {
-        // Liste yalnız fiilen kullanılan iller için doldurulur. Tanımsız ilde ilçe girilemez —
-        // uydurma ilçe adının sessizce kaydolmasındansa açık ret.
-        var result = Validator.Validate(Command(provinceCode: "06", districtName: "Çankaya"));
-
-        result.IsValid.ShouldBeFalse();
-        result.Errors.ShouldContain(e => e.ErrorMessage.Contains("ilçe listesi tanımlı değil"));
+        // Liste 81 ilin tamamını kapsar; Mersin dışındaki iller de kayıt açabilir.
+        Validator.Validate(Command(provinceCode: "06", districtName: "Çankaya")).IsValid.ShouldBeTrue();
+        Validator.Validate(Command(provinceCode: "34", districtName: "Kadıköy")).IsValid.ShouldBeTrue();
     }
 }
 
