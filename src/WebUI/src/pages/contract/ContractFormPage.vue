@@ -62,6 +62,24 @@
           </template>
         </q-select>
 
+        <!--
+          Sınıf tekrarı katkı blokesi (#161). İşletme bunu sözleşme kurulurken bilmeli;
+          ayın sonunda dekont gelirken öğrenmesi "neden katkı gelmedi" çağrısı doğurur.
+        -->
+        <q-banner
+          v-if="contributionBlock"
+          dense
+          class="bg-orange-1 text-orange-10"
+        >
+          <template #avatar>
+            <q-icon name="info" />
+          </template>
+          Bu öğrenci <strong>{{ contributionBlock.classYear }}. sınıfı tekrar ediyor</strong> ve
+          bu sınıf yılı için devlet katkısı zaten alınmış ({{ contributionBlock.firstClaimedMonth }}).
+          Öğrencinin ücreti değişmez; <strong>devlet katkısı ödenmez</strong>, dolayısıyla
+          işletmenin ödeyeceği tutar yükselir.
+        </q-banner>
+
         <q-select
           v-model="form.businessId"
           :options="businessOpts.options.value"
@@ -152,9 +170,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { contractApi } from 'src/api/contract'
+import { paymentApi, type ContributionBlockDto } from 'src/api/payment'
 import { useNotify } from 'src/composables/useNotify'
 import { useStudentOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
 import { useAuthStore } from 'stores/auth'
@@ -167,6 +186,16 @@ const authStore = useAuthStore()
 const saving = ref(false)
 const studentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
+
+/**
+ * Katkısı bloke öğrenciler (#161). Liste küçük olduğu için tümü bir kez çekilir; seçilen
+ * öğrenci değiştikçe yeni istek atılmaz.
+ */
+const contributionBlocks = ref<ContributionBlockDto[]>([])
+
+const contributionBlock = computed(() =>
+  contributionBlocks.value.find((b) => b.studentId === form.studentId) ?? null,
+)
 
 const form = reactive({
   studentId: '',
@@ -201,10 +230,17 @@ async function handleSave() {
   }
 }
 
+async function loadContributionBlocks() {
+  const { data } = await paymentApi.contributionBlocks()
+  contributionBlocks.value = data
+}
+
 onMounted(() => {
   studentOpts.reset()
   studentOpts.load()
   businessOpts.reset()
   businessOpts.load()
+  // Uyarı bilgilendirmedir; alınamazsa sözleşme kurulmaya devam edebilmeli.
+  loadContributionBlocks().catch(() => {})
 })
 </script>

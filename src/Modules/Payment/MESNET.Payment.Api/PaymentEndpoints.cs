@@ -31,6 +31,17 @@ public static class PaymentEndpoints
         group.MapPut("/config/minimum-wage", PutMinimumWage)
             .RequireAuthorization(Permissions.Platform.ParameterManage);
         group.MapPost("/open-monthly-periods", PostOpenMonthlyPeriods).RequireAuthorization(Permissions.Salary.Calculate);
+        // Sınıf tekrarı nedeniyle katkısı bloke öğrenciler (#161) — yerleştirme/sözleşme
+        // ekranları okur, işletme maliyeti ayın sonunda değil kabul anında bilinsin.
+        group.MapGet("/contribution-blocks", GetContributionBlocks)
+            .RequireAuthorization(Permissions.Salary.View);
+    }
+
+    private static async Task<IResult> GetContributionBlocks(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ContributionBlockedStudentsResult>(
+            new GetContributionBlockedStudents());
+        return Results.Ok(ResponseBuilder.Success().AddData(result.Items).Build());
     }
 
     private static async Task<IResult> Get(Guid id, IMessageBus bus)

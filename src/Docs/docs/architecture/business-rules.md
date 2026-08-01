@@ -362,6 +362,41 @@ DevletKatkısı = AylıkTabanÜcret × DevletKatkısıOranı
 > "usul ve esaslar Bakanlık ve Türkiye İş Kurumu tarafından belirlenir"). Uygulamada katkı,
 > fiilen ödenen ücretle sınırlandırılır — aksi halde işveren payı negatife düşerdi.
 
+**Katkının ödenmediği hâller:**
+
+| Hâl | Katkı | Ücret |
+| --- | --- | --- |
+| Kamu kurum/kuruluşu | **0** — Geçici Madde 12: "Kamu kurum ve kuruluşlarına Devlet katkısı ödenmez" | Değişmez |
+| Sınıf tekrarı (§6.3.1) | **0** | Değişmez |
+
+### 6.3.1 Sınıf Yılı Başına Tek Katkı
+
+> Bir öğrenci belirli bir **sınıf yılı** için devlet katkısını **bir kez** alır. O sınıf yılı
+> tekrar edildiğinde katkı hesaplanmaz. Öğrenci katkı alınmamış bir sınıf yılına **terfi
+> ettiğinde** katkı yeniden işler.
+
+**Örnek:** 11. sınıfta kalan öğrenci, 11'i tekrar okuduğu yıl boyunca katkı almaz. 12. sınıfa
+geçtiğinde katkı yeniden başlar — 12 için henüz katkı alınmamıştır.
+
+- Kural **tüm öğrenciler** için geçerlidir, yalnız MESEM için değil
+- **Ücret etkilenmez.** Katkı işletmeye ödenir; öğrenci parasını işletmeden alır. Bloke, öğrencinin
+  ücretini değil **işveren payını** (`ÖdenecekÜcret − DevletKatkısı`) yükseltir. MESEM'de katkı en
+  az ücretin tamamı olduğu için işletmenin maliyeti sıfırdan tam ücrete çıkar
+- Katkı **fiilen ödendiğinde** (onay zinciri tamamlandığında) kaydedilir; reddedilen ödeme bloke
+  üretmez
+- Kayıt, katkının ilk alındığı **akademik dönemi** de tutar. Aynı dönemin sonraki ayları normal
+  işler; bloke yalnız sonraki bir dönemde aynı sınıf yılı görülünce doğar. Bu ayrım olmadan
+  öğrenci ilk yılının ikinci ayından itibaren katkısını kaybederdi
+- Katkısı bloke öğrenci **sözleşme kurulurken** uyarı olarak gösterilir — işletme maliyeti ayın
+  sonunda dekont gelirken öğrenmemelidir
+
+> **Mevzuat notu:** 3308 metninde sınıf tekrarına dair açık bir hüküm **yoktur**; Geçici Madde 12
+> usul ve esasları Bakanlık ve İŞKUR'a bırakıyor. Kural alan bilgisine dayanıyor — MEB genelgesi
+> veya İŞKUR usul ve esaslarından teyit alınması önerilir. Tasarım teyitten bağımsız olarak
+> doğrudur; teyit yalnız eşiğin yerini değiştirebilir.
+
+Karar kaydı ve gerekçe: issue #161.
+
 **İstisnalar:**
 
 - Kamu kurum ve kuruluşlarına devlet katkısı **ödenmez**
