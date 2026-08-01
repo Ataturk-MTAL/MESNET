@@ -597,7 +597,12 @@ Tam kural: `VERSIONING.md`. Özet: SemVer `vMAJOR.MINOR.PATCH` + **minör parite
 ## Yetkilendirme (KESİN KURAL)
 
 **Tüm yetkilendirme permission bazlıdır, rol bazlı DEĞİLDİR.** Roller yalnızca bir
-permission demetine verilen isimdir; erişim kararı her zaman permission'a bakar.
+permission demetine verilen isimdir; erişim kararı her zaman permission'a (ya da kapsam
+için claim'e) bakar. **Rol adına bakan yeni kontrol yazılmaz** — roller gelip geçer,
+izinler kalır.
+
+> Karar kaydı: `src/Docs/docs/architecture/adr-0001-yetkilendirme-permission-bazli.md`
+> (ADR-0001) — gerekçe, wildcard önek tuzağı, bilinen borç satırları ve çözümleri.
 
 - Uç noktalar `RequireAuthorization(Permissions.X.Y)` ile korunur — `RequireRole` KULLANILMAZ
 - Handler içinde karar gerekiyorsa `ICurrentUserService.HasPermission(...)` kullanılır
