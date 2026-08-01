@@ -71,6 +71,16 @@ title: Aktör Tanımları
   - Performans değerlendirmesi
   - Devam takibi
   - Beceri eğitimi
+  - Sağlık raporu tarayıp sisteme girme (girişi okul onayına tabidir)
+
+- **İşletme İnsan Kaynakları** (#172)
+  - İşletme adına belge yükleme
+  - Sağlık raporu tarayıp sisteme girme
+  - Öğrenci devam bilgisinin işletme tarafındaki kaydı
+
+  > İşletme yöneticisinin geniş demetini ALMAZ: öğrenci talebi, dekont yükleme ve maaş
+  > süreçleri yöneticide kalır. Girdiği kayıtlar okul onayına tabidir — koordinatör öğretmen
+  > onaylamadan hüküm doğurmaz.
 
 ## Eğitim Personeli Aktörleri
 
@@ -100,6 +110,19 @@ title: Aktör Tanımları
   - Maaş onayı
   - İşletme değerlendirme
   - Sertifika takibi
+  - Kendi sağlık raporunu yükleme (okul onayına tabidir)
+
+- **Veli** (#172)
+  - Öğrencinin devam durumunu görüntüleme
+  - Öğrencinin sağlık raporunu yükleme (okul onayına tabidir)
+  - Fesih onay zincirinde veli adımı (ıslak imza karşılığı)
+
+  > **Kapsamı tek öğrencidir:** veli yalnız bağlı olduğu öğrencinin verisini görür. Kapsam
+  > kararı permission'la değil, veliyle öğrenci arasındaki **bağ kaydıyla** verilir — kurum
+  > kapsamı `institution_id` claim'inden okunduğu gibi (bkz. ADR-0001).
+  >
+  > **Yazma yetkisi yoktur:** veli girdiği hiçbir kayıt doğrudan hüküm doğurmaz; sağlık raporu
+  > dahil her girişi koordinatör öğretmen onayından geçer.
 
 ## ~~Blockchain Aktörleri~~ (Phase 2)
 

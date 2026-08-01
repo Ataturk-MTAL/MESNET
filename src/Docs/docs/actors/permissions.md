@@ -83,6 +83,22 @@ testler: `tests/MESNET.Security.UnitTests/RoleModelDriftTests.cs`.
 | `MasterTrainer` | Usta Öğretici | Usta Öğretici |
 | `Student` | Öğrenci | Öğrenci |
 
+#### Planlanan roller — henüz YOK (#172)
+
+Aşağıdaki iki aktör `actors.md`'de tanımlıdır ama **realm rolü olarak mevcut değildir**.
+Yukarıdaki tablo ve "8 realm rolü" ifadesi bugünkü kodun gerçeğidir; sapma testleri
+(`RoleModelDriftTests`) bu listeyi kilitler.
+
+| Planlanan rol | Aktör | Neden henüz yok |
+|---|---|---|
+| `Parent` | Veli | Yeni aktör: kimlik doğrulama + öğrenciyle **bağ kaydı** gerekiyor. Kapsam kararı permission'la değil bu bağla verilir |
+| `CompanyHR` | İşletme İnsan Kaynakları | `CompanyManager`'ın dar bir alt kümesi; ayrı rol mü yoksa aynı rolde mi kalacağı kapsamla birlikte kararlaştırılacak |
+
+Her ikisinin de ortak niteliği: **girdikleri kayıt doğrudan hüküm doğurmaz.** Sağlık raporu
+dahil her girişleri koordinatör öğretmen onayından geçer (#172). Okul tarafı — koordinatör
+öğretmen, müdür yardımcısı, müdür — aynı kaydı **onaysız** girebilir; onay zaten kendilerinde
+biter.
+
 > **Türkçe etiketler koda gömülü değildir.** `MesnetRoles.Catalog` her rol için ad + etiket +
 > açıklama taşır ve `GET /api/security/roles` bunları döndürür; arayüz kendi rol listesini ya da
 > etiket haritasını tutmaz. SmartEnum `Name`/`Slug` deseninin aynısıdır: `Name` İngilizce ve
