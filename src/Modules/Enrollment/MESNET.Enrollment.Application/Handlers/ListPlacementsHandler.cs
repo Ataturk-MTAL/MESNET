@@ -59,10 +59,17 @@ public static class ListPlacementsHandler
                 [], totalCount, query.SafePage, query.SafePageSize);
 
         // Batch isim yükleme — sadece mevcut sayfa
-        var businessIds = placements.Select(p => p.BusinessId).Distinct().ToList();
+        // Okulda staj yerleştirmeleri işletme taşımaz (#159) — isim aramasına girmez.
+        var businessIds = placements
+            .Where(p => p.BusinessId.HasValue)
+            .Select(p => p.BusinessId!.Value)
+            .Distinct()
+            .ToList();
         var teacherIds = placements.Where(p => p.TeacherId.HasValue).Select(p => p.TeacherId!.Value).Distinct().ToList();
 
-        var businesses = await session.LoadManyAsync<BusinessProfileView>(businessIds);
+        var businesses = businessIds.Count > 0
+            ? await session.LoadManyAsync<BusinessProfileView>(businessIds)
+            : new List<BusinessProfileView>();
         var teachers = teacherIds.Count > 0
             ? await session.LoadManyAsync<TeacherProfile>(teacherIds)
             : new List<TeacherProfile>();
@@ -71,7 +78,7 @@ public static class ListPlacementsHandler
         var teacherNames = teachers.ToDictionary(t => t.Id, t => t.FullName);
 
         var items = placements.Select(p => p.ToDto(
-            businessNames.GetValueOrDefault(p.BusinessId, ""),
+            p.BusinessId.HasValue ? businessNames.GetValueOrDefault(p.BusinessId.Value, "") : "",
             p.TeacherId.HasValue ? teacherNames.GetValueOrDefault(p.TeacherId.Value) : null
         )).ToList();
 

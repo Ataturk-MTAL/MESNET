@@ -14,7 +14,7 @@ public static class GetPlacementHandler
         var placement = await session.LoadAsync<InternshipPlacement>(query.PlacementId);
         if (placement is null) return null;
 
-        var business = await session.LoadAsync<BusinessProfileView>(placement.BusinessId);
+        var business = placement.BusinessId is { } bid ? await session.LoadAsync<BusinessProfileView>(bid) : null;
         TeacherProfile? teacher = placement.TeacherId.HasValue
             ? await session.LoadAsync<TeacherProfile>(placement.TeacherId.Value)
             : null;

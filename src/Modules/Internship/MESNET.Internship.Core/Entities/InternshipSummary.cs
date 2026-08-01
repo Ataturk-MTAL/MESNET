@@ -8,7 +8,8 @@ public class InternshipSummary
     public Guid PlacementId { get; set; }
     public Guid StudentId { get; set; }
     public string StudentName { get; set; } = "";
-    public Guid BusinessId { get; set; }
+    /// <summary>İşletme — okulda stajda null (#159).</summary>
+    public Guid? BusinessId { get; set; }
     public string BusinessName { get; set; } = "";
     public Guid InstitutionId { get; set; }
     public Guid AcademicPeriodId { get; set; }

@@ -361,8 +361,25 @@ watch([branchFilter, () => periodStore.selectedPeriodId], () => loadStatusCounts
 
 const columns: QTableProps['columns'] = [
   { name: 'studentName', label: 'Öğrenci', field: 'studentName', align: 'left', sortable: true },
-  { name: 'businessName', label: 'İşletme', field: 'businessName', align: 'left', sortable: true },
-  { name: 'teacherName', label: 'Koordinatör', field: (row) => (row as InternshipPlacementDto).teacherName ?? '—', align: 'left' },
+  {
+    name: 'businessName',
+    label: 'İşletme',
+    // Okulda stajda işletme yoktur (#159) — boş hücre "veri eksik" gibi okunmasın diye
+    // türün Türkçe karşılığı yazılır ("Okulda").
+    field: (row) => {
+      const p = row as InternshipPlacementDto
+      return p.businessId ? p.businessName : p.placementTypeSlug
+    },
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'teacherName',
+    // Okulda stajda aynı alan gözetmeni (alan/atölye şefi) taşır ve ücret doğurmaz.
+    label: 'Koordinatör / Gözetmen',
+    field: (row) => (row as InternshipPlacementDto).teacherName ?? '—',
+    align: 'left',
+  },
   { name: 'statusSlug', label: 'Durum', field: 'statusSlug', align: 'left' },
   { name: 'sourceSlug', label: 'Kaynak', field: 'sourceSlug', align: 'left' },
   { name: 'placedAt', label: 'Yerleştirme Tarihi', field: 'placedAt', align: 'left', sortable: true },

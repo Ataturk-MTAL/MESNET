@@ -13,7 +13,8 @@ public class PlacementView
 {
     public Guid Id { get; set; }       // PlacementId
     public Guid StudentId { get; set; }
-    public Guid BusinessId { get; set; }
+    /// <summary>İşletme — okulda stajda null (#159).</summary>
+    public Guid? BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
     public Guid AcademicPeriodId { get; set; }
 

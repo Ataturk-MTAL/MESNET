@@ -369,6 +369,35 @@ DevletKatkısı = AylıkTabanÜcret × DevletKatkısıOranı
 | Kamu kurum/kuruluşu | **0** — Geçici Madde 12: "Kamu kurum ve kuruluşlarına Devlet katkısı ödenmez" | Değişmez |
 | Sınıf tekrarı (§6.3.1) | **0** | Değişmez |
 
+### 6.3.0 Okulda Staj — Ne Ücret Ne Katkı
+
+Staj yeri bulunamayan öğrenci stajını **okulda** yapar. Bu hâlde **ücret de devlet katkısı da
+ödenmez**; 3308 ikisini **ayrı ayrı** kapsam dışı tutuyor:
+
+| Kaynak | Kapsam dışı bıraktığı |
+| --- | --- |
+| **Madde 25**, ücret tabanı fıkrasının son cümlesi | İşletmenin ödeyeceği **ücret** |
+| **Geçici Madde 12**, aynı cümle | **Devlet katkısı** |
+
+> *"Staj yapacak işletme bulunamaması nedeniyle stajını okulda yapan ortaöğretim öğrencileri
+> ... bu fıkra hükmü kapsamı dışındadır."*
+
+**Temsil:** yerleştirmenin `BusinessId` alanı **null**, `PlacementType` = `School`. Kamu kurumu
+işareti (§6.3, `IsPublicInstitution`) bu hâlin çözümü **değildir** — o yalnız katkıyı sıfırlar,
+ücret yükümlülüğünü bırakır (dekont beklenir, gecikme uyarısı gider).
+
+**Sonuçları:**
+
+- Sözleşme kurulmaz → maaş dönemi açılmaz (dönemler sözleşmeden doğar, §6.2.1) → dekont ve
+  gecikme uyarısı doğmaz
+- Koordinasyon saati doğmaz: koordinasyon satırı (işletme, alan, dönem) üçlüsünden üretilir,
+  işletme olmadığı için satır hiç oluşmaz
+- **Staj sürer:** devamsızlık takibi, dönem notu ve mezuniyet akışı işlemeye devam eder
+- Öğrenciye **gözetmen** (alan ya da atölye şefi) atanabilir; bu atama **ücret doğurmaz**
+- İşletme başına üretilen raporlara (aylık devamsızlık, toplu belge) girmez
+
+Karar kaydı: issue #159.
+
 ### 6.3.1 Sınıf Yılı Başına Tek Katkı
 
 > Bir öğrenci belirli bir **sınıf yılı** için devlet katkısını **bir kez** alır. O sınıf yılı

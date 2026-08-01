@@ -49,6 +49,10 @@ export interface InternshipPlacementDto {
   source: string
   sourceSlug: string
   placedAt: string
+  /** `Business` | `School` (#159) */
+  placementType: string
+  /** Türkçe karşılığı: "İşletmede" | "Okulda" */
+  placementTypeSlug: string
 }
 
 export interface RegisterStudentRequest {
@@ -75,7 +79,11 @@ export interface RegisterStudentRequest {
 
 export interface CreatePlacementRequest {
   studentId: string
-  businessId: string
+  /**
+   * İşletme. Gönderilmezse/null ise **okulda staj** olur (#159): ücret ve devlet katkısı
+   * doğmaz, dekont beklenmez.
+   */
+  businessId?: string | null
   teacherId?: string
 }
 

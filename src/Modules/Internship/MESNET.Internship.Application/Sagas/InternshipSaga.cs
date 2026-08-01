@@ -13,7 +13,19 @@ public class InternshipSaga : Saga
 {
     public Guid Id { get; set; }
     public Guid StudentId { get; set; }
-    public Guid BusinessId { get; set; }
+    /// <summary>
+    /// İşletme — <b>okulda stajda null</b> (#159). Sözleşme akışı (fesih, tamamlama) bu hâlde
+    /// hiç tetiklenmez: sözleşme kurulmaz, dolayısıyla o yolları besleyen olaylar gelmez.
+    /// </summary>
+    public Guid? BusinessId { get; set; }
+
+    /// <summary>
+    /// Sözleşme akışındaki olaylar için işletme kimliği. Okulda stajda bu yollara girilmez;
+    /// girilirse sessizce boş kimlik yayınlamak yerine yüksek sesle patlar.
+    /// </summary>
+    private Guid BusinessIdForContractFlow => BusinessId
+        ?? throw new InvalidOperationException(
+            "Sözleşme akışı işletmesiz (okulda staj) yerleştirmede tetiklenemez — #159.");
     public Guid InstitutionId { get; set; }
     public Guid? ContractId { get; set; }
     public InternshipPhase Phase { get; set; } = InternshipPhase.Placed;
@@ -37,7 +49,9 @@ public class InternshipSaga : Saga
             BusinessId = e.BusinessId,
             InstitutionId = e.InstitutionId,
             AcademicPeriodId = e.AcademicPeriodId,
-            Phase = InternshipPhase.AwaitingContract
+            // Okulda stajda sözleşme kurulmaz (#159): AwaitingContract'ta beklenirse saga
+            // sonsuza kadar orada kalırdı. Staj fiilen sürüyor, doğrudan Active.
+            Phase = e.BusinessId.HasValue ? InternshipPhase.AwaitingContract : InternshipPhase.Active
         };
         var started = new InternshipStarted(id, e.PlacementId, e.StudentId, e.StudentName, e.BusinessId, e.BusinessName, e.InstitutionId, e.AcademicPeriodId, DateTime.UtcNow);
         return (saga, started);
@@ -123,7 +137,7 @@ public class InternshipSaga : Saga
 
         return (
             new TerminationApprovalOverridden(Id, StudentId, e.OverriddenBy, e.Reason, DateTime.UtcNow),
-            new TerminationFormRequested(Id, StudentId, BusinessId, InstitutionId)
+            new TerminationFormRequested(Id, StudentId, BusinessIdForContractFlow, InstitutionId)
         );
     }
 
@@ -134,7 +148,7 @@ public class InternshipSaga : Saga
         MarkCompleted();
 
         return new InternshipReplacementRequested(
-            StudentId, BusinessId, InstitutionId, string.Empty);
+            StudentId, BusinessIdForContractFlow, InstitutionId, string.Empty);
     }
 
     // ─── HANDLE: Sözleşme Tamamlandı ───
@@ -143,7 +157,7 @@ public class InternshipSaga : Saga
         Phase = InternshipPhase.Completed;
         MarkCompleted();
 
-        return new InternshipCompleted(Id, StudentId, BusinessId, DateTime.UtcNow);
+        return new InternshipCompleted(Id, StudentId, BusinessIdForContractFlow, DateTime.UtcNow);
     }
 
     // ─── PRIVATE: Onay zinciri kontrolü ───
@@ -152,7 +166,7 @@ public class InternshipSaga : Saga
         if (ApprovalChain!.IsComplete(RequiresParentApproval))
         {
             ApprovalChain = ApprovalChain with { CompletedAt = DateTime.UtcNow };
-            return new TerminationFormRequested(Id, StudentId, BusinessId, InstitutionId);
+            return new TerminationFormRequested(Id, StudentId, BusinessIdForContractFlow, InstitutionId);
         }
 
         return null;

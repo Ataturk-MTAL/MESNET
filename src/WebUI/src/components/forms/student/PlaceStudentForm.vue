@@ -14,7 +14,24 @@
     >
       Öğrenci: {{ studentName }}
     </div>
+    <!--
+      Okulda staj (#159): staj yeri bulunamayan öğrenci stajını okulda yapar. İşletme
+      seçilmez; ücret ve devlet katkısı doğmaz, dekont beklenmez.
+    -->
+    <q-toggle
+      v-model="form.isSchoolBased"
+      label="Okulda staj (işletme bulunamadı)"
+      color="warning"
+    />
+    <div
+      v-if="form.isSchoolBased"
+      class="text-caption text-orange-9 q-mb-sm"
+    >
+      Ücret ve devlet katkısı ödenmez, dekont beklenmez. Öğretmen alanı bu durumda
+      <strong>gözetmen</strong> (alan/atölye şefi) anlamına gelir ve ücret doğurmaz.
+    </div>
     <q-select
+      v-if="!form.isSchoolBased"
       v-model="form.businessId"
       :options="businessOpts.options.value"
       :loading="businessOpts.loading.value"
@@ -51,7 +68,7 @@
       </template>
     </q-select>
     <div
-      v-if="studentBranchCode && businessOpts.allOptions.value.length === 0 && !businessOpts.loading.value"
+      v-if="!form.isSchoolBased && studentBranchCode && businessOpts.allOptions.value.length === 0 && !businessOpts.loading.value"
       class="text-caption text-grey q-mt-sm"
     >
       Bu alandan öğrenci almaya yetkili işletme yok. İdare, işletmenin belgelerini inceleyip
@@ -59,7 +76,7 @@
     </div>
     <TeacherSelector
       v-model="form.teacherId"
-      label="Koordinatör Öğretmen (opsiyonel)"
+      :label="form.isSchoolBased ? 'Gözetmen (opsiyonel)' : 'Koordinatör Öğretmen (opsiyonel)'"
     />
   </FormDialog>
 </template>
@@ -97,12 +114,12 @@ const emptyBusinessText = computed(() =>
     : 'Sonuç bulunamadı',
 )
 
-const form = reactive({ businessId: '', teacherId: '' })
+const form = reactive({ businessId: '', teacherId: '', isSchoolBased: false })
 const errors = reactive<Record<string, string>>({})
 
 watch(open, (isOpen) => {
   if (isOpen) {
-    Object.assign(form, { businessId: '', teacherId: '' })
+    Object.assign(form, { businessId: '', teacherId: '', isSchoolBased: false })
     for (const key of Object.keys(errors)) errors[key] = ''
     businessOpts.reset()
     businessOpts.load()
@@ -115,10 +132,13 @@ async function handleSave() {
   try {
     await enrollmentApi.createPlacement({
       studentId: props.studentId,
-      businessId: form.businessId,
+      // Okulda stajda işletme GÖNDERİLMEZ (#159) — backend null'ı bu hâl olarak yorumluyor.
+      businessId: form.isSchoolBased ? null : form.businessId,
       teacherId: form.teacherId || undefined,
     })
-    notify.success('Öğrenci yerleştirildi.')
+    notify.success(form.isSchoolBased
+      ? 'Öğrenci okulda staja yerleştirildi.'
+      : 'Öğrenci yerleştirildi.')
     open.value = false
     emit('saved')
   } catch (e) {
