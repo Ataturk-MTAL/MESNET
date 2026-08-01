@@ -11,6 +11,9 @@ public sealed record PaymentSummaryDto(
     decimal NetAmount,
     decimal GovernmentContribution,
     decimal EmployerPayment,
+    // Tutarın kaç istihdam günü üzerinden hesaplandığı (#154). Ay içi fesihte aynı öğrenci/ay
+    // için iki satır görünür; hangisinin neden yarım tutar taşıdığı buradan okunur.
+    int EmployedDays,
     string Phase,
     string PhaseSlug,
     Guid? ReceiptId,

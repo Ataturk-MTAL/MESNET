@@ -278,10 +278,39 @@ Her devamsızlık kaydı, aktif `InternshipPlacement`'taki öğrenci-işletme e�
 **Formül:**
 
 ```
-GünlükÜcret = AylıkTabanÜcret / 30
-KesintiBedeli = GünlükÜcret × KesintiyeTabiGünSayısı
-ÖdenecekÜcret = AylıkTabanÜcret - KesintiBedeli
+GünlükÜcret     = AylıkTabanÜcret / 30
+OranlıTabanÜcret = GünlükÜcret × İstihdamGünSayısı      (bkz. §6.2.1)
+KesintiBedeli   = GünlükÜcret × KesintiyeTabiGünSayısı
+ÖdenecekÜcret   = OranlıTabanÜcret - KesintiBedeli
 ```
+
+Kesinti **oranlanmış** tutardan düşer ve onu aşamaz — yarım ay çalışan öğrencinin ücreti
+negatife düşemez.
+
+### 6.2.1 İstihdam Günü Oranlaması (kısmi ay)
+
+Öğrenci ay ortasında işletme değiştirebilir (fesih → yeni sözleşme; doğrudan transfer yoktur).
+Bu durumda ücret ve devlet katkısı **her işletmede çalışılan gün oranında bölüşülür**:
+ayrılınan işletme fesih gününe kadar, yeni işletme sözleşme tarihinden ay sonuna kadar.
+
+**Gün sayımı — SGK usulü 30 günlük ay:**
+
+| Durum | İstihdam günü |
+| --- | --- |
+| Ay tam çalışıldı | **30** (ayın gün sayısına bakılmaz — Şubat da 30, Temmuz da 30) |
+| Ay eksik çalışıldı | **Fiilî gün** (iki uç dahil) |
+| Sözleşme ayla hiç kesişmiyor | 0 — maaş dönemi açılmaz |
+
+Devlet katkısı **aynı oranla** hesaplanır (§6.3'teki matrah oranlanır).
+
+> **Kabul edilen sonuç:** 31 günlük ayda bölüşme olduğunda gün toplamı 31 olur ve ödenen toplam
+> tabanı aşar (31/30). Kırpma yapılmaz; her işveren kendi istihdam günü için sabit günlük ücreti
+> öder. Kırpmanın hangi işletmeden düşeceği keyfî bir karar gerektirirdi.
+
+Maaş dönemi kimliği bu yüzden **(sözleşme, ay)** ikilisinden türetilir — (öğrenci, ay) olsaydı
+ayda tek dönem açılabilir ve iki işverenin yükümlülüğü tek kayda sıkışırdı.
+
+Karar kaydı ve gerekçe: issue #154.
 
 **Kesintiye tabi devamsızlık türleri** (`AbsenceType.AffectsSalary`):
 

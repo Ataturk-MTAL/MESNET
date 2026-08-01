@@ -7,9 +7,18 @@ using MESNET.Payment.Core.Services;
 namespace MESNET.Payment.Application.Consumers;
 
 /// <summary>
-/// Enrollment olaylarından Payment'ın yerel yerleştirme kaydını besler.
-/// Aylık maaş zamanlayıcısının çalışma listesi budur (#63).
+/// Enrollment olaylarından Payment'ın yerel yerleştirme kaydını besler (#63).
 /// </summary>
+/// <remarks>
+/// <b>Bu kayıt artık maaş dönemlerinin çalışma listesi DEĞİL (#154).</b> Liste
+/// <c>ContractEmploymentView</c>'a taşındı: yerleştirme fesihte kapanıyor ve kapalı kayıt ay
+/// sonu koşusundan düşüyordu, yani ay ortasında ayrılan öğrencinin çalıştığı günler için
+/// ayrılınan işletmeye hiç maaş dönemi açılmıyordu. Sözleşme kaydı kapanmaz, yalnız bitiş
+/// tarihi alır.
+///
+/// <para>Kayıt ve tüketici korunuyor: #152'nin regresyonlarını kilitleyen testler buna bağlı.
+/// Payment içinde şu an okuyanı yok — kaldırılması ya da yeniden amaçlanması ayrı bir iştir.</para>
+/// </remarks>
 public static class PlacementViewConsumer
 {
     public static void Consume(StudentPlaced @event, IDocumentSession session)

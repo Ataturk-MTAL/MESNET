@@ -147,6 +147,13 @@
           <div class="text-caption text-grey">
             Brüt: {{ formatCurrency(row.baseWage) }}
           </div>
+          <!--
+            Ay ortasında işletme değişen öğrencide aynı ay için iki satır oluşur (#154).
+            Kısmi ay yalnız burada görünür olmazsa tutar "eksik hesaplanmış" gibi okunur.
+          -->
+          <div v-if="row.employedDays < FULL_MONTH_DAYS" class="text-caption text-orange-8">
+            Kısmi ay: {{ row.employedDays }} gün
+          </div>
         </q-td>
       </template>
       <template #body-cell-actions="{ row }">
@@ -382,6 +389,9 @@ const columns: QTableProps['columns'] = [
   { name: 'phaseSlug', label: 'Aşama', field: 'phaseSlug', align: 'left' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ]
+
+/** Tam ay gün sayısı — backend `EmploymentDays.FullMonthDays` ile aynı (SGK usulü 30 günlük ay). */
+const FULL_MONTH_DAYS = 30
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })

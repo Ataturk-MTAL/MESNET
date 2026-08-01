@@ -1,5 +1,6 @@
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.Enums;
+using MESNET.Payment.Core.Services;
 
 namespace MESNET.Payment.Application.Services;
 
@@ -15,7 +16,9 @@ namespace MESNET.Payment.Application.Services;
 /// </remarks>
 public static class SalaryCalculator
 {
-    private const int DaysInSalaryMonth = 30;      // business-rules.md §6.2: GünlükÜcret = Taban / 30
+    // business-rules.md §6.2: GünlükÜcret = Taban / 30. Aynı sabit oranlamanın da böleni
+    // olduğu için tek kaynakta durur (#154) — burada ikinci bir 30 tanımlanmaz.
+    private const int DaysInSalaryMonth = EmploymentDays.FullMonthDays;
     private const int ApprenticeshipClassYear = 12; // MESEM 12. sınıf = kalfalık yeterliği
     private const string MesemEducationType = "Mesem";
     private const int MinorAgeThreshold = 16;      // 3308 md.25: "yaşına uygun asgari ücret" (#85)
@@ -31,7 +34,12 @@ public static class SalaryCalculator
         /// enum'u tanımlı olmasına rağmen hiç kullanılmıyordu. Kararı döndürmek hem denetimi
         /// hem de "neden bu tutar" sorusunu cevaplanabilir kılar.
         /// </summary>
-        GovernmentContributionType ContributionType);
+        GovernmentContributionType ContributionType,
+        /// <summary>
+        /// Tutarın kaç istihdam günü üzerinden hesaplandığı (#154). Aynı gerekçe:
+        /// ay içi fesihte "neden yarım ücret" sorusu kayıttan cevaplanabilmeli.
+        /// </summary>
+        int EmployedDays);
 
     /// <param name="config">Kurumun yürürlükteki maaş parametreleri.</param>
     /// <param name="personnelCount">
@@ -59,6 +67,12 @@ public static class SalaryCalculator
     /// Aday çırak veya çırak mı (#85). Madde 25: "aday çırak ve çırağa yaşına uygun asgari
     /// ücretin yüzde otuzundan ... aşağı ücret ödenemez" — işletme büyüklüğüne bakılmaz.
     /// </param>
+    /// <param name="employedDays">
+    /// Sözleşmenin o ayda ürettiği istihdam günü (#154) — <see cref="EmploymentDays.InMonth"/>.
+    /// Tam ay 30'dur; ay ortası fesih/başlangıçta fiilî gün sayısıdır. Ücret ve devlet katkısı
+    /// bu oranla hesaplanır, böylece aynı ayda iki işveren kendi günü kadar yükümlü olur.
+    /// Varsayılan tam aydır: oranlamanın gerekmediği çağrı yollarında davranış değişmez.
+    /// </param>
     /// <param name="agreedMonthlyWage">
     /// Sözleşmede taahhüt edilen aylık ücret (#84). 3308 Madde 25: ücret "düzenlenecek sözleşme
     /// ile tespit edilir", kanundaki yüzdeler yalnız ALT SINIRDIR ("aşağı ücret ödenemez").
@@ -74,8 +88,13 @@ public static class SalaryCalculator
         decimal? agreedMonthlyWage = null,
         int? ageAtCalculation = null,
         bool isApprentice = false,
-        bool isPublicInstitution = false)
+        bool isPublicInstitution = false,
+        int employedDays = EmploymentDays.FullMonthDays)
     {
+        // Savunma: gün sayısı 0–30 aralığının dışına çıkamaz. Bozuk veri negatif ücret ya da
+        // tam aydan fazla ödeme üretmemeli.
+        employedDays = Math.Clamp(employedDays, 0, EmploymentDays.FullMonthDays);
+
         var isMesem = string.Equals(educationTypeName, MesemEducationType, StringComparison.OrdinalIgnoreCase);
         var isLargeBusiness = personnelCount >= config.PersonnelThreshold;
 
@@ -107,12 +126,23 @@ public static class SalaryCalculator
             ? agreed
             : statutoryFloor;
 
-        // §6.2 Devamsızlık kesintisi — mazeretsiz devamsızlık ve ücretsiz izin günleri.
+        // §6.2 Günlük ücret. Bölen her zaman 30'dur — ayın gün sayısı değil (#154).
         var dailyWage = baseWage / DaysInSalaryMonth;
-        var deduction = dailyWage * deductibleAbsenceDays;
-        if (deduction > baseWage) deduction = baseWage;   // ücret negatife düşemez
 
-        var netAmount = baseWage - deduction;
+        // İstihdam günü oranlaması (#154). Ay ortasında fesih edilen ya da başlayan sözleşme
+        // yalnız kendi günlerinden sorumludur; aynı ayda iki işveren bölüşür.
+        // Tam ayda bölüp çarpma yapılmaz: 10.000/30×30 ondalık artıkla tam 10.000 etmez.
+        var proratedWage = employedDays >= DaysInSalaryMonth
+            ? baseWage
+            : dailyWage * employedDays;
+
+        // §6.2 Devamsızlık kesintisi — mazeretsiz devamsızlık ve ücretsiz izin günleri.
+        // Kesinti günlük ücrete bağlıdır; tavanı ORANLANMIŞ tutardır (tam ay tabanı değil),
+        // yoksa yarım ay çalışan öğrencinin ücreti negatife düşebilirdi.
+        var deduction = dailyWage * deductibleAbsenceDays;
+        if (deduction > proratedWage) deduction = proratedWage;   // ücret negatife düşemez
+
+        var netAmount = proratedWage - deduction;
 
         // §6.3 Devlet katkısı. Geçici Madde 12 matrahı "ÖDENEBİLECEK EN AZ ÜCRET" olarak
         // tanımlıyor — yani Madde 25'teki yasal taban. Önceden kesinti düşülmüş net üzerinden
@@ -129,9 +159,10 @@ public static class SalaryCalculator
         if (isPublicInstitution)
         {
             return new Result(
-                baseWage, deduction, netAmount,
+                proratedWage, deduction, netAmount,
                 GovernmentContribution: 0m,
-                ContributionType: GovernmentContributionType.PublicInstitution);
+                ContributionType: GovernmentContributionType.PublicInstitution,
+                EmployedDays: employedDays);
         }
 
         var contributionType = isMesem
@@ -154,8 +185,18 @@ public static class SalaryCalculator
         // Matrah YASAL TABAN, sözleşmedeki fazlası değil (#84): Geçici Madde 12 katkıyı
         // "ödenebilecek EN AZ ücret" üzerinden tanımlıyor. İşletme daha yüksek ücret ödemeyi
         // seçtiyse aradaki fark işveren payına eklenir, devlet katkısını büyütmez.
-        var govContribution = Math.Min(statutoryFloor * govRate, netAmount);
+        //
+        // Matrah da istihdam günüyle oranlanır (#154): işletme öğrenciyi 15 gün çalıştırdıysa
+        // teşvikin de yarısını alır. Kural sahibi: "hangi işletmede kaç gün çalıştıysa o oranda
+        // işletme katkı alır." Net tavanı oranlamadan SONRA uygulanır, yoksa yarım ayda katkı
+        // fiilen ödenen ücreti aşabilirdi.
+        var proratedFloor = employedDays >= DaysInSalaryMonth
+            ? statutoryFloor
+            : statutoryFloor / DaysInSalaryMonth * employedDays;
 
-        return new Result(baseWage, deduction, netAmount, govContribution, contributionType);
+        var govContribution = Math.Min(proratedFloor * govRate, netAmount);
+
+        return new Result(
+            proratedWage, deduction, netAmount, govContribution, contributionType, employedDays);
     }
 }

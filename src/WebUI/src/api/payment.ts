@@ -15,6 +15,12 @@ export interface PaymentSummaryDto {
   netAmount: number
   governmentContribution: number
   employerPayment: number
+  /**
+   * Tutarın kaç istihdam günü üzerinden hesaplandığı (#154). Tam ay 30'dur. Ay ortasında
+   * işletme değiştiren öğrencide aynı ay için iki satır oluşur; her satır kendi sözleşmesinin
+   * günlerini taşır.
+   */
+  employedDays: number
   phase: string
   phaseSlug: string
   receiptId: string | null

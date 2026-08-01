@@ -5,6 +5,9 @@ namespace MESNET.Payment.Shared.Events;
 // işletme/kurum bazlı filtreleme ve son-gün indeksi çalışmıyordu (#74).
 public sealed record SalaryCalculated(
     Guid SalaryPeriodId,
+    // Dönemin sözleşmesi (#154). Ay içi fesihte aynı öğrenci/ay için birden çok dönem oluşur;
+    // özet kaydı hangi sözleşmeye ait olduğunu taşımazsa iki satır ayırt edilemez.
+    Guid ContractId,
     Guid StudentId,
     Guid BusinessId,
     Guid InstitutionId,
@@ -14,4 +17,7 @@ public sealed record SalaryCalculated(
     decimal BaseWage,
     decimal Deduction,
     decimal GovContribution,
-    DateTime ReceiptDueDate);
+    DateTime ReceiptDueDate,
+    // Tutarın kaç istihdam günü üzerinden hesaplandığı (#154) — "neden yarım ücret" sorusu
+    // özet kaydından cevaplanabilmeli.
+    int EmployedDays);
