@@ -29,6 +29,14 @@ public class PaymentSaga : Saga
     public Guid BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
     public Guid AcademicPeriodId { get; set; }
+
+    /// <summary>
+    /// Hesabın yapıldığı sınıf yılı (#161). Katkı kaydı onay tamamlandığında yazılır; o an
+    /// öğrencinin profili bir sonraki sınıfa geçmiş olabilir, bu yüzden sınıf yılı hesap
+    /// anında dondurulur.
+    /// </summary>
+    public int ClassYear { get; set; }
+
     public string Month { get; set; } = default!;
     public decimal BaseWage { get; set; }
     public decimal DeductionAmount { get; set; }
@@ -57,7 +65,7 @@ public class PaymentSaga : Saga
         CalculateMonthlySalary command,
         IDocumentSession session)
     {
-        var result = await CalculateAsync(command, session);
+        var (result, classYear) = await CalculateAsync(command, session);
 
         // business-rules.md §6.6: ücret her ayın 8'ine kadar yatırılır — çalışılan ayın DEĞİL,
         // TAKİP EDEN ayın 8'i. Maaş ay sonunda hesaplandığı için referans ayın 8'i kullanılsaydı
@@ -74,6 +82,7 @@ public class PaymentSaga : Saga
             BusinessId = command.BusinessId,
             InstitutionId = command.InstitutionId,
             AcademicPeriodId = command.AcademicPeriodId,
+            ClassYear = classYear,
             Month = command.Month,
             BaseWage = result.BaseWage,
             DeductionAmount = result.Deduction,
@@ -125,7 +134,7 @@ public class PaymentSaga : Saga
         // sonradan değişirse öğrenci/öğretmen/müdür yrd. onayladıkları rakamdan başkasını almış olur.
         if (Phase != PaymentPhase.AwaitingReceipt) return null;
 
-        var result = await CalculateAsync(
+        var (result, _) = await CalculateAsync(
             new CalculateMonthlySalary(
                 Id, ContractId, StudentId, BusinessId, InstitutionId, AcademicPeriodId, Month,
                 command.ReferenceDate),
@@ -143,7 +152,12 @@ public class PaymentSaga : Saga
             result.NetAmount, result.BaseWage, result.Deduction, result.GovernmentContribution);
     }
 
-    private static async Task<SalaryCalculator.Result> CalculateAsync(
+    /// <returns>
+    /// Hesap sonucu ve hesabın yapıldığı sınıf yılı. Sınıf yılı saga'da saklanır (#161):
+    /// katkı kaydı onay tamamlandığında yazılır ve o an öğrencinin profili bir sonraki sınıfa
+    /// geçmiş olabilir — kayıt, katkının FİİLEN alındığı sınıf yılına yazılmalıdır.
+    /// </returns>
+    private static async Task<(SalaryCalculator.Result Result, int ClassYear)> CalculateAsync(
         CalculateMonthlySalary command, IQuerySession session)
     {
         // Yürürlük seçimi HESAPLANAN AYDAN türetilir, hesabın koştuğu andan değil — asgari ücret
@@ -185,7 +199,18 @@ public class PaymentSaga : Saga
         var deductibleDays = await CountDeductibleAbsenceDaysAsync(
             session, command.StudentId, command.Month, contract.StartDate, contract.EndDate);
 
-        return SalaryCalculator.Calculate(
+        // Sınıf tekrarı katkı blokesi (#161). Karar saf politikada; hesaplayıcı geçmişe bakmaz.
+        // Sınıf yılı bilinmiyorsa (profil eksik, ClassYear 0) bloke UYGULANMAZ: eksik veri
+        // yüzünden işletmeye sessizce tam ücret yükü bindirilmemeli.
+        var classYearClaim = student is { ClassYear: > 0 }
+            ? await session.LoadAsync<ClassYearContributionClaim>(
+                ContributionClaimId.For(command.StudentId, student.ClassYear))
+            : null;
+
+        var classYearExhausted = ClassYearContributionPolicy.IsExhausted(
+            classYearClaim, command.AcademicPeriodId);
+
+        var result = SalaryCalculator.Calculate(
             config,
             business?.PersonnelCount ?? 0,
             student?.EducationTypeName ?? "",
@@ -198,7 +223,10 @@ public class PaymentSaga : Saga
             // Kamu kurumuna devlet katkısı ödenmez (#157). Profil yoksa false — özel işletme
             // varsayımı bugünkü davranışı korur; eksik veri yüzünden katkı sessizce sıfırlanmaz.
             business?.IsPublicInstitution ?? false,
-            employedDays);
+            employedDays,
+            classYearExhausted);
+
+        return (result, student?.ClassYear ?? 0);
     }
 
     /// <summary>
@@ -318,7 +346,9 @@ public class PaymentSaga : Saga
         Phase = PaymentPhase.Completed;
         MarkCompleted();
 
-        return new PaymentCompleted(Id, StudentId, Month, NetAmount);
+        return new PaymentCompleted(
+            Id, StudentId, Month, NetAmount,
+            AcademicPeriodId, ClassYear, GovernmentContribution);
     }
 
     // ─── HANDLE: Dekont reddedildi ───

@@ -53,6 +53,11 @@ public class PaymentMartenConfig : IConfigureMarten
         // Ay kesişimi sorgusu (StartDate <= ay sonu && (EndDate == null || EndDate >= ay başı))
         options.Schema.For<ContractEmploymentView>().Index(x => x.StartDate);
 
+        // ClassYearContributionClaim — sınıf yılı başına devlet katkısı kaydı (#161).
+        // Onay zinciri tamamlanınca yazılır; sınıf tekrarında katkı buradan bloke edilir.
+        options.Schema.For<ClassYearContributionClaim>().DatabaseSchemaName("payment");
+        options.Schema.For<ClassYearContributionClaim>().Index(x => x.StudentId);
+
         // AcademicPeriodView — Institution event'lerinden (kapalı dönem kontrolü, #8)
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("payment");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);

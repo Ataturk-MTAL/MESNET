@@ -74,6 +74,18 @@ export const PAYMENT_PHASES = [
   { label: 'Reddedildi', value: 'Rejected' },
 ] as const
 
+/**
+ * Sınıf tekrarı nedeniyle devlet katkısı bloke olan öğrenci (#161). Öğrencinin ÜCRETİ
+ * etkilenmez; yükselen şey işveren payıdır (Net − Katkı).
+ */
+export interface ContributionBlockDto {
+  studentId: string
+  /** Tekrar edilen ve katkısı tükenmiş sınıf yılı. */
+  classYear: number
+  /** Katkının ilk alındığı ay (`yyyy-MM`) — gerekçe izi. */
+  firstClaimedMonth: string
+}
+
 export const paymentApi = {
   list: (params?: { studentId?: string; businessId?: string; institutionId?: string; academicPeriodId?: string; phase?: string; month?: string; branchCode?: string; monthFrom?: string; monthTo?: string } & PaginationParams) =>
     api.get<PagedResponse<PaymentSummaryDto>>('/payments', { params }),
@@ -120,6 +132,15 @@ export const paymentApi = {
    */
   salaryConfigHistory: () =>
     api.get<SalaryConfigHistoryDto>('/payments/config/minimum-wage'),
+
+  /**
+   * Sınıf tekrarı nedeniyle devlet katkısı bloke olan öğrenciler (#161).
+   * Sözleşme/yerleştirme ekranı bunu okur: katkı işletmeye ödenir, bloke edilince işletmenin
+   * maliyeti yükselir ve bunu ayın sonunda dekont gelirken değil, öğrenciyi kabul ederken
+   * bilmelidir.
+   */
+  contributionBlocks: () =>
+    api.get<ContributionBlockDto[]>('/payments/contribution-blocks'),
 
   // Kurum kimliği GÖNDERİLMEZ (#147): asgari ücret ulusal parametredir. Eskiden gövdeden
   // geliyordu ve yetkili bir kullanıcı başka kurumun ücretini değiştirebiliyordu.

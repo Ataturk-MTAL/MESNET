@@ -73,6 +73,12 @@ public static class SalaryCalculator
     /// bu oranla hesaplanır, böylece aynı ayda iki işveren kendi günü kadar yükümlü olur.
     /// Varsayılan tam aydır: oranlamanın gerekmediği çağrı yollarında davranış değişmez.
     /// </param>
+    /// <param name="isClassYearContributionExhausted">
+    /// Öğrenci bu sınıf yılı için devlet katkısını zaten aldı mı (#161) — sınıf tekrarı hâli.
+    /// Kararı <see cref="MESNET.Payment.Core.Services.ClassYearContributionPolicy"/> verir;
+    /// hesaplayıcı geçmişe SORGU ATMAZ, saf kalır. ÜCRETİ etkilemez: katkı işletmeye ödenir,
+    /// bloke yalnız işveren payını (Net − Katkı) yükseltir.
+    /// </param>
     /// <param name="agreedMonthlyWage">
     /// Sözleşmede taahhüt edilen aylık ücret (#84). 3308 Madde 25: ücret "düzenlenecek sözleşme
     /// ile tespit edilir", kanundaki yüzdeler yalnız ALT SINIRDIR ("aşağı ücret ödenemez").
@@ -89,7 +95,8 @@ public static class SalaryCalculator
         int? ageAtCalculation = null,
         bool isApprentice = false,
         bool isPublicInstitution = false,
-        int employedDays = EmploymentDays.FullMonthDays)
+        int employedDays = EmploymentDays.FullMonthDays,
+        bool isClassYearContributionExhausted = false)
     {
         // Savunma: gün sayısı 0–30 aralığının dışına çıkamaz. Bozuk veri negatif ücret ya da
         // tam aydan fazla ödeme üretmemeli.
@@ -162,6 +169,20 @@ public static class SalaryCalculator
                 proratedWage, deduction, netAmount,
                 GovernmentContribution: 0m,
                 ContributionType: GovernmentContributionType.PublicInstitution,
+                EmployedDays: employedDays);
+        }
+
+        // Sınıf tekrarı (#161): bu sınıf yılının katkısı zaten alınmış. Kamu kurumu kontrolünden
+        // SONRA gelir — kamuda katkı hiç doğmadığı için sınıf yılı "tüketilmiş" sayılmaz ve
+        // gerekçe olarak kamu kuralı kaydedilmelidir.
+        // Ücrete dokunulmaz: öğrenci çalışmaya devam ediyor, işletme ücretini ödüyor. Kalkan
+        // yalnız katkıdır ve mali yük işletmeye biner.
+        if (isClassYearContributionExhausted)
+        {
+            return new Result(
+                proratedWage, deduction, netAmount,
+                GovernmentContribution: 0m,
+                ContributionType: GovernmentContributionType.ClassYearRepeated,
                 EmployedDays: employedDays);
         }
 
