@@ -21,6 +21,8 @@ public class EnrollmentMartenConfig : IConfigureMarten
         options.Schema.For<InternshipPlacement>().Index(x => x.StudentId);
         options.Schema.For<InternshipPlacement>().Index(x => x.BusinessId);
         options.Schema.For<InternshipPlacement>().Index(x => x.AcademicPeriodId);
+        // Okulda staj / işletmede staj ayrımıyla filtreleme (#159)
+        options.Schema.For<InternshipPlacement>().Index(x => x.TypeName);
 
         options.Schema.For<BusinessProfileView>().DatabaseSchemaName("enrollment");
         options.Schema.For<BusinessProfileView>().Index(x => x.IsActive);

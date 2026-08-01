@@ -8,7 +8,8 @@ public class InternshipPlacementView
 {
     public Guid Id { get; set; }
     public Guid StudentId { get; set; }
-    public Guid BusinessId { get; set; }
+    /// <summary>İşletme — okulda stajda null (#159). Devamsızlık takibi bu hâlde de sürer.</summary>
+    public Guid? BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
     public Guid? TeacherId { get; set; }
     public Guid AcademicPeriodId { get; set; }

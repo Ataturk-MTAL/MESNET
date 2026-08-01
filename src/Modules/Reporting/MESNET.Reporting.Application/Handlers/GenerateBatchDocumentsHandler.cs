@@ -93,8 +93,11 @@ public static class GenerateBatchDocumentsHandler
             var teacherName = teacherGroup.First().TeacherName;
 
             // Bu öğretmenin işletmelerini grupla
+            // Belge üretimi işletme bağlamı ister (sözleşme, devam çizelgesi). Okulda staj
+            // yerleştirmesinin işletmesi yoktur (#159) — bu akışa girmez.
             var businessIds = teacherGroup
-                .Select(p => p.BusinessId)
+                .Where(p => p.BusinessId.HasValue)
+                .Select(p => p.BusinessId!.Value)
                 .Distinct()
                 .ToList();
 
@@ -159,7 +162,9 @@ public static class GenerateBatchDocumentsHandler
 
         foreach (var placement in placements)
         {
-            if (existingStudentBizPairs.Contains((placement.StudentId, placement.BusinessId)))
+            if (placement.BusinessId is not { } placementBusinessId) { skipped++; continue; }
+
+            if (existingStudentBizPairs.Contains((placement.StudentId, placementBusinessId)))
             {
                 skipped++;
                 continue;

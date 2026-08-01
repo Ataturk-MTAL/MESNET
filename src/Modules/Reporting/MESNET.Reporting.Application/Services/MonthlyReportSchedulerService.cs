@@ -110,8 +110,11 @@ public class MonthlyReportSchedulerService : BackgroundService
 
                 try
                 {
+                    // Okulda staj yerleştirmesi işletme taşımaz (#159) — işletme başına
+                    // sayfalanan bu rapora girmez.
                     var businessIds = teacherGroup
-                        .Select(p => p.BusinessId)
+                        .Where(p => p.BusinessId.HasValue)
+                        .Select(p => p.BusinessId!.Value)
                         .Distinct()
                         .ToList();
 

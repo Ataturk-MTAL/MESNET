@@ -5,7 +5,8 @@ public sealed record InternshipStarted(
     Guid PlacementId,
     Guid StudentId,
     string StudentName,
-    Guid BusinessId,
+    // Okulda stajda null (#159) — işveren yok.
+    Guid? BusinessId,
     string BusinessName,
     Guid InstitutionId,
     Guid AcademicPeriodId,

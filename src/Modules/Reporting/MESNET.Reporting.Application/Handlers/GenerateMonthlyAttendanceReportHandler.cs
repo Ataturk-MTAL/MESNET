@@ -65,7 +65,12 @@ public static class GenerateMonthlyAttendanceReportHandler
 
         foreach (var teacherGroup in teacherGroups)
         {
-            var businessIds = teacherGroup.Select(p => p.BusinessId).Distinct();
+            // Rapor işletme başına sayfalanır; okulda staj yerleştirmesinin işletmesi yoktur
+            // (#159) ve bu sayfaya girmez. Okulda staj raporlaması ayrı bir iştir.
+            var businessIds = teacherGroup
+                .Where(p => p.BusinessId.HasValue)
+                .Select(p => p.BusinessId!.Value)
+                .Distinct();
             foreach (var businessId in businessIds)
             {
                 var pageData = await BuildReportData(

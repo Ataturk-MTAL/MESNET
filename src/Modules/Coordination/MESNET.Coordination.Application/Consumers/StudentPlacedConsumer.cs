@@ -23,12 +23,17 @@ public static class StudentPlacedConsumer
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
+        // Okulda staj (#159): işletme yok, ziyaret edilecek yer yok, koordinasyon saati
+        // doğmaz. Satır kimliği (BusinessId, BranchCode, AcademicPeriodId) üçlüsünden
+        // üretildiği için zaten kurulamaz — burada açıkça çıkılıyor ki niyet görünsün.
+        if (@event.BusinessId is not { } businessId) return;
+
         var rowId = CoordinationViewId.For(
-            @event.BusinessId, @event.BranchCode, @event.AcademicPeriodId);
+            businessId, @event.BranchCode, @event.AcademicPeriodId);
 
         var row = await session.LoadAsync<BusinessCoordinationView>(rowId, cancellationToken);
 
-        row ??= await CreateBranchRowAsync(rowId, @event, session, cancellationToken);
+        row ??= await CreateBranchRowAsync(rowId, businessId, @event, session, cancellationToken);
 
         row.Name = @event.BusinessName.Length > 0 ? @event.BusinessName : row.Name;
         row.BranchCode = @event.BranchCode;
@@ -44,17 +49,18 @@ public static class StudentPlacedConsumer
     /// </summary>
     private static async Task<BusinessCoordinationView> CreateBranchRowAsync(
         Guid rowId,
+        Guid businessId,
         StudentPlaced @event,
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
         var baseRow = await session.LoadAsync<BusinessCoordinationView>(
-            CoordinationViewId.Base(@event.BusinessId), cancellationToken);
+            CoordinationViewId.Base(businessId), cancellationToken);
 
         var row = new BusinessCoordinationView
         {
             Id = rowId,
-            BusinessId = @event.BusinessId,
+            BusinessId = businessId,
             Name = baseRow?.Name ?? @event.BusinessName,
             Address = baseRow?.Address,
             District = baseRow?.District,

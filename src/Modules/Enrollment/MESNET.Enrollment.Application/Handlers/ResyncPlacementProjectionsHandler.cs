@@ -35,9 +35,15 @@ public static class ResyncPlacementProjectionsHandler
             // alanlarını denormalize tutuyor. Bu adlar olmadan yayınlarsak onların verisini
             // boş string'le eziyoruz — kaynak kayıt eksikse yayınlamak yerine atlıyoruz.
             var student = await session.LoadAsync<StudentProfile>(placement.StudentId, ct);
-            var business = await session.LoadAsync<BusinessProfileView>(placement.BusinessId, ct);
 
-            if (student is null || business is null) { skipped++; continue; }
+            // Okulda staj yerleştirmesinde işletme YOKTUR ve bu eksik veri değildir (#159) —
+            // atlanmamalı, yoksa o öğrencinin projeksiyonları hiç dolmaz.
+            var business = placement.BusinessId is { } bid
+                ? await session.LoadAsync<BusinessProfileView>(bid, ct)
+                : null;
+
+            if (student is null || (placement.BusinessId.HasValue && business is null))
+            { skipped++; continue; }
 
             await bus.PublishAsync(new StudentPlaced(
                 placement.Id,
@@ -48,9 +54,10 @@ public static class ResyncPlacementProjectionsHandler
                 placement.TeacherId,
                 placement.PlacedAt,
                 StudentName: student.FullName,
-                BusinessName: business.BusinessName,
+                BusinessName: business?.BusinessName ?? "",
                 BranchCode: student.BranchCode,
-                BranchName: student.BranchName));
+                BranchName: student.BranchName,
+                PlacementType: placement.Type.Name));
 
             published++;
         }

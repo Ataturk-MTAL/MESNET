@@ -28,10 +28,20 @@ export const editStudentSchema = z.object({
   guardianPhone: z.string().max(20, 'Veli telefon numarası en fazla 20 karakter olmalıdır').optional(),
 })
 
-export const placementSchema = z.object({
-  businessId: z.string().min(1, 'İşletme seçilmelidir'),
-  teacherId: z.string().optional(),
-})
+/**
+ * Yerleştirme (#159). `isSchoolBased` işaretliyse işletme seçilmez — staj yeri bulunamayan
+ * öğrenci stajını okulda yapar; ücret ve devlet katkısı doğmaz.
+ */
+export const placementSchema = z
+  .object({
+    businessId: z.string(),
+    teacherId: z.string().optional(),
+    isSchoolBased: z.boolean(),
+  })
+  .refine((v) => v.isSchoolBased || v.businessId.length > 0, {
+    message: 'İşletme seçilmelidir',
+    path: ['businessId'],
+  })
 
 export const transferSchema = z.object({
   newBusinessId: z.string().min(1, 'Yeni işletme seçilmelidir'),

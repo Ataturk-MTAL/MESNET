@@ -4,7 +4,8 @@ public sealed record InternshipPlacementDto(
     Guid Id,
     Guid StudentId,
     string StudentName,
-    Guid BusinessId,
+    // Okulda stajda null (#159) — işveren yok. Arayüz türe bakarak "Okulda" yazar.
+    Guid? BusinessId,
     string BusinessName,
     Guid InstitutionId,
     Guid AcademicPeriodId,
@@ -15,4 +16,7 @@ public sealed record InternshipPlacementDto(
     string StatusSlug,
     string Source,
     string SourceSlug,
-    DateTime PlacedAt);
+    DateTime PlacedAt,
+    // Yerleştirme türü (#159): Business / School + Türkçe karşılığı.
+    string PlacementType = "Business",
+    string PlacementTypeSlug = "İşletmede");

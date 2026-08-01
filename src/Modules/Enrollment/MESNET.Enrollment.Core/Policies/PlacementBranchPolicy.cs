@@ -29,8 +29,10 @@ public static class PlacementBranchPolicy
     public static Dictionary<Guid, List<string>> GroupBranchCodesByBusiness(
         IEnumerable<InternshipPlacement> placements) =>
         placements
-            .Where(p => p.BusinessId != Guid.Empty && !string.IsNullOrWhiteSpace(p.BranchCode))
-            .GroupBy(p => p.BusinessId)
+            // Okulda staj yerleştirmeleri işletme taşımaz (#159) — dolguya girmez.
+            .Where(p => p.BusinessId is { } id && id != Guid.Empty
+                        && !string.IsNullOrWhiteSpace(p.BranchCode))
+            .GroupBy(p => p.BusinessId!.Value)
             .ToDictionary(
                 g => g.Key,
                 g => g.Select(p => p.BranchCode.Trim())

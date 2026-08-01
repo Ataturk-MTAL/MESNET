@@ -82,8 +82,11 @@ public static class PlacementViewConsumer
 
         foreach (var view in views)
         {
+            // Okulda staj yerleştirmesi sözleşme olaylarıyla kapanmaz (#159): sözleşmesi yok.
+            if (view.BusinessId is not { } viewBusinessId) continue;
+
             if (!PlacementClosurePolicy.ShouldClose(
-                    view.StudentId, view.BusinessId, view.IsActive, view.PlacedAt,
+                    view.StudentId, viewBusinessId, view.IsActive, view.PlacedAt,
                     studentId, businessId, endedAt))
             {
                 continue;
