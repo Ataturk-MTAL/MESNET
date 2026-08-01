@@ -1,4 +1,8 @@
 ---
+# Dosya adındaki "3308-" öneki Docusaurus tarafından SIRA öneki sayılıp kırpılır
+# (id "architecture/kanun-ozeti" olur) ve sidebars.ts'teki kayıt kırılır. Kanun numarası
+# id'nin parçası kalsın diye id açıkça yazılır — kaldırılmamalı.
+id: 3308-kanun-ozeti
 title: 3308 Sayılı Kanun — Özet Notlar
 ---
 

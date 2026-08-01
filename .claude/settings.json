@@ -1,4 +1,7 @@
 {
+  "enabledPlugins": {
+    "alp-lab@alp-lab": false
+  },
   "permissions": {
     "allow": [
       "WebFetch(domain:project-osrm.org)",
