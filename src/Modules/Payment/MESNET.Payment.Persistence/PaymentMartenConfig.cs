@@ -35,14 +35,23 @@ public class PaymentMartenConfig : IConfigureMarten
         options.Schema.For<StudentAbsenceView>().DatabaseSchemaName("payment");
         options.Schema.For<StudentAbsenceView>().Index(x => new { x.StudentId, x.Month },
             x => x.Name = "idx_absence_student_month");
+        // Kesinti sözleşmenin istihdam penceresine göre sayılıyor (#154) — gün alanı sorguda.
+        options.Schema.For<StudentAbsenceView>().Index(x => x.Date);
 
         // PlacementView — Enrollment event'lerinden; aylık maaş zamanlayıcısının çalışma listesi (#63)
         options.Schema.For<PlacementView>().DatabaseSchemaName("payment");
         options.Schema.For<PlacementView>().Index(x => x.StudentId);
         options.Schema.For<PlacementView>().Index(x => x.AcademicPeriodId);
 
-        // StudentContractWageView — Contract event'lerinden; sözleşme ücreti yasal tabanın üstündeyse esas alınır (#84)
-        options.Schema.For<StudentContractWageView>().DatabaseSchemaName("payment");
+        // ContractEmploymentView — Contract event'lerinden; maaş dönemlerinin çalışma listesi,
+        // gün oranlamasının ve sözleşme ücretinin kaynağı (#84, #154).
+        // StudentContractWageView'ın yerine geçti: o kayıt öğrenci başına tekti ve ay içinde
+        // işletme değiştiren öğrencide eski sözleşmenin ücretini kaybediyordu.
+        options.Schema.For<ContractEmploymentView>().DatabaseSchemaName("payment");
+        options.Schema.For<ContractEmploymentView>().Index(x => x.StudentId);
+        options.Schema.For<ContractEmploymentView>().Index(x => x.AcademicPeriodId);
+        // Ay kesişimi sorgusu (StartDate <= ay sonu && (EndDate == null || EndDate >= ay başı))
+        options.Schema.For<ContractEmploymentView>().Index(x => x.StartDate);
 
         // AcademicPeriodView — Institution event'lerinden (kapalı dönem kontrolü, #8)
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("payment");

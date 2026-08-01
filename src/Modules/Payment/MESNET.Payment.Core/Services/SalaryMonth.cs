@@ -45,7 +45,11 @@ public static class SalaryMonth
             0, 0, 0, DateTimeKind.Utc);
     }
 
-    private static bool TryParse(string? month, out int year, out int monthNumber)
+    /// <summary>
+    /// <c>yyyy-MM</c> metnini yıl/ay sayılarına çözer. Ay sınırlarını hesaplaması gereken
+    /// çağıranlar için açıktır (#154) — biçim bilgisi ikinci bir yere kopyalanmaz.
+    /// </summary>
+    public static bool TryParse(string? month, out int year, out int monthNumber)
     {
         year = 0;
         monthNumber = 0;

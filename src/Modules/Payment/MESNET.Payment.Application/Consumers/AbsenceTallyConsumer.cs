@@ -24,6 +24,8 @@ public static class AbsenceTallyConsumer
             StudentId = @event.StudentId,
             BusinessId = @event.BusinessId,
             Month = @event.Date.ToString("yyyy-MM"),
+            // Gün, kesintinin hangi sözleşmeye yazılacağını belirler (#154).
+            Date = @event.Date.Date,
             AbsenceTypeName = @event.AbsenceType,
             StatusName = @event.InitialStatus
         });

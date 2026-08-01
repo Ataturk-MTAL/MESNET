@@ -19,6 +19,7 @@ public static class PaymentSummaryConsumer
         var summary = new PaymentSummary
         {
             Id = @event.SalaryPeriodId,
+            ContractId = @event.ContractId,
             StudentId = @event.StudentId,
             // BusinessId/InstitutionId/ReceiptDueDate atanmadığı sürece özet kaydı boş Guid ve
             // null tarihle yazılıyordu; işletme/kurum filtreleri ve son-gün indeksi ölüydü (#74).
@@ -31,6 +32,7 @@ public static class PaymentSummaryConsumer
             NetAmount = @event.NetAmount,
             GovernmentContribution = @event.GovContribution,
             EmployerPayment = @event.NetAmount - @event.GovContribution,
+            EmployedDays = @event.EmployedDays,
             ReceiptDueDate = @event.ReceiptDueDate,
             Phase = PaymentPhase.Calculated,
             LastUpdated = DateTime.UtcNow,

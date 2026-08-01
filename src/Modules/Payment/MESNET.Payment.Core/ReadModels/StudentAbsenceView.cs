@@ -21,6 +21,17 @@ public class StudentAbsenceView
     /// <summary>Ay, <c>yyyy-MM</c> formatında (ör. <c>2026-07</c>).</summary>
     public string Month { get; set; } = "";
 
+    /// <summary>
+    /// Devamsızlığın günü (#154). Ay içinde işletme değiştiren öğrencide kesinti yalnız ilgili
+    /// SÖZLEŞMENİN istihdam penceresine düşen günlerden sayılır; tarih olmadan aynı devamsızlık
+    /// her iki işletmeden de kesilirdi.
+    ///
+    /// <para>Bu alandan önce yazılmış kayıtlarda <c>DateTime.MinValue</c>'dur ve hiçbir pencereye
+    /// düşmez — eski kayıtların kesintisi kaybolur. Dağıtımda Attendance'tan yeniden
+    /// senkronizasyon gerekir.</para>
+    /// </summary>
+    public DateTime Date { get; set; }
+
     /// <summary><c>Excused</c> / <c>Unexcused</c> / <c>HealthReport</c>.</summary>
     public string AbsenceTypeName { get; set; } = "";
 

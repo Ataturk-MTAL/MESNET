@@ -18,6 +18,13 @@ namespace MESNET.Payment.Application.Sagas;
 public class PaymentSaga : Saga
 {
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// Dönemin sözleşmesi (#154). Kimlik (sözleşme, ay) ikilisinden türediği için yeniden
+    /// hesap yolunun gün oranını bulabilmesi buna bağlıdır.
+    /// </summary>
+    public Guid ContractId { get; set; }
+
     public Guid StudentId { get; set; }
     public Guid BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
@@ -62,6 +69,7 @@ public class PaymentSaga : Saga
         var saga = new PaymentSaga
         {
             Id = command.SalaryPeriodId,
+            ContractId = command.ContractId,
             StudentId = command.StudentId,
             BusinessId = command.BusinessId,
             InstitutionId = command.InstitutionId,
@@ -78,10 +86,10 @@ public class PaymentSaga : Saga
         var messages = new OutgoingMessages
         {
             new SalaryCalculated(
-                command.SalaryPeriodId, command.StudentId, command.BusinessId,
+                command.SalaryPeriodId, command.ContractId, command.StudentId, command.BusinessId,
                 command.InstitutionId, command.AcademicPeriodId, command.Month,
                 result.NetAmount, result.BaseWage, result.Deduction,
-                result.GovernmentContribution, receiptDueDate),
+                result.GovernmentContribution, receiptDueDate, result.EmployedDays),
             new ReceiptUploadRequested(
                 command.SalaryPeriodId, command.StudentId, command.BusinessId, receiptDueDate)
         };
@@ -119,7 +127,8 @@ public class PaymentSaga : Saga
 
         var result = await CalculateAsync(
             new CalculateMonthlySalary(
-                Id, StudentId, BusinessId, InstitutionId, AcademicPeriodId, Month, command.ReferenceDate),
+                Id, ContractId, StudentId, BusinessId, InstitutionId, AcademicPeriodId, Month,
+                command.ReferenceDate),
             session);
 
         if (result.NetAmount == NetAmount && result.Deduction == DeductionAmount) return null;
@@ -158,11 +167,23 @@ public class PaymentSaga : Saga
         var business = await session.LoadAsync<BusinessPaymentProfile>(command.BusinessId);
         var student = await session.LoadAsync<StudentPaymentProfile>(command.StudentId);
 
-        var deductibleDays = await CountDeductibleAbsenceDaysAsync(session, command.StudentId, command.Month);
+        // Dönemin sözleşmesi: hem taahhüt edilen ücretin (#84) hem de gün oranlamasının (#154)
+        // kaynağı. Kayıt öğrenci başına değil SÖZLEŞME başına tutulur — ay içinde işletme
+        // değiştiren öğrencide her dönem kendi sözleşmesinin ücretini görür.
+        var contract = await session.LoadAsync<ContractEmploymentView>(command.ContractId);
+        if (contract is null)
+            throw new DomainException(PaymentErrors.ContractEmploymentMissing(command.ContractId, command.Month));
 
-        // Sözleşmede taahhüt edilen ücret (#84). Yürürlükte sözleşme yoksa veya ücret
-        // belirtilmemişse null geçilir ve yasal taban uygulanır.
-        var contractWage = await session.LoadAsync<StudentContractWageView>(command.StudentId);
+        // İstihdam günü: ay tam çalışıldıysa 30, ay ortası fesih/başlangıçta fiilî gün (#154).
+        var employedDays = SalaryMonth.TryParse(command.Month, out var year, out var month)
+            ? EmploymentDays.InMonth(contract.StartDate, contract.EndDate, year, month)
+            : EmploymentDays.FullMonthDays;
+
+        // Devamsızlık yalnız bu sözleşmenin istihdam penceresine düşen günlerden sayılır.
+        // Öğrenci bazında sayılsaydı ay içi devirde aynı devamsızlık her iki işletmeden de
+        // kesilirdi — öğrenci bir günü iki kez kaybederdi.
+        var deductibleDays = await CountDeductibleAbsenceDaysAsync(
+            session, command.StudentId, command.Month, contract.StartDate, contract.EndDate);
 
         return SalaryCalculator.Calculate(
             config,
@@ -171,12 +192,13 @@ public class PaymentSaga : Saga
             student?.ClassYear ?? 0,
             student?.HasJourneymanQualification ?? false,
             deductibleDays,
-            contractWage is { IsActive: true } ? contractWage.AgreedMonthlyWage : null,
+            contract.AgreedMonthlyWage,
             CalculateAge(student?.BirthDate, command.ReferenceDate),
             IsApprenticeCategory(student?.CategoryName),
             // Kamu kurumuna devlet katkısı ödenmez (#157). Profil yoksa false — özel işletme
             // varsayımı bugünkü davranışı korur; eksik veri yüzünden katkı sessizce sıfırlanmaz.
-            business?.IsPublicInstitution ?? false);
+            business?.IsPublicInstitution ?? false,
+            employedDays);
     }
 
     /// <summary>
@@ -205,14 +227,26 @@ public class PaymentSaga : Saga
     /// ücretsiz izin (<c>AbsenceType.AffectsSalary</c>). <c>Pending</c> sayılmaz: işletmenin tek
     /// taraflı girişi öğretmen onayı olmadan öğrencinin ücretini kesemez.
     /// </summary>
+    /// <remarks>
+    /// Pencere daraltması #154 ile eklendi: sayım sözleşmenin istihdam günlerine sınırlıdır.
+    /// Üst uç yoksa (sözleşme sürüyor) ay sonuna kadar sayılır.
+    /// </remarks>
     private static Task<int> CountDeductibleAbsenceDaysAsync(
-        IQuerySession session, Guid studentId, string month)
-        => session.Query<StudentAbsenceView>()
+        IQuerySession session, Guid studentId, string month,
+        DateTime windowStart, DateTime? windowEnd)
+    {
+        var start = windowStart.Date;
+        var end = (windowEnd ?? DateTime.MaxValue).Date;
+
+        return session.Query<StudentAbsenceView>()
             .Where(a => a.StudentId == studentId
                         && a.Month == month
+                        && a.Date >= start
+                        && a.Date <= end
                         && DeductibleAbsenceTypes.Contains(a.AbsenceTypeName)
                         && a.StatusName != PendingStatus)
             .CountAsync();
+    }
 
     // AbsenceType.AffectsSalary ile aynı küme. SmartEnum Marten LINQ'te kullanılamadığı için
     // düz string (bkz. CLAUDE.md — SmartEnum LINQ kuralları).
