@@ -329,6 +329,18 @@ Karar kaydı ve gerekçe: issue #154.
 > Yalnız **onaylanmış** kayıtlar sayılır — işletmenin girdiği ve henüz öğretmence onaylanmamış
 > (`Pending`) devamsızlık öğrencinin ücretini kesmez.
 
+**Türü seçen taraf, dolaylı olarak kesintiyi seçer (#175).** Bu yüzden tür girişinde iki kural
+vardır:
+
+1. **İşletme resmî izin veremez, yalnız devamsızlık bildirir.** İşletme tarafı (hüküm izni
+   `attendance:direct-entry` olmayan kullanıcı) yalnız **Mazeretsiz** girebilir. Mazeret, izin
+   ve sağlık raporu birer *sınıflandırma kararıdır* ve okul tarafındadır: mazeret veli
+   dilekçesiyle öğrenci işlerinde çözülür, sağlık raporu kendi onay zincirinden geçer (#172),
+   tür değişikliği `/correct` ile yapılır.
+2. **Ücretli izin hakkı yalnız MESEM'dedir.** Örgün eğitimde ücretli izin hakkı yoktur; o
+   günler için sağlık raporu ya da veli izni gerekir. Öğrencinin eğitim türü bilinmiyorsa
+   ücretli izin **reddedilir** — eksik veri sessizce para sonucu doğurmasın.
+
 **Sağlık raporu kesintiyi ancak ONAYLANDIĞINDA kaldırır (#172).** Rapor girişi bilinçli olarak
 geniştir: işletme yetkilisi, işletme İK, usta öğretici ve öğrenci de yükleyebilir. Ama yükleme
 tek başına devamsızlık türünü değiştirmez — koordinatör öğretmen onaylayana kadar tür ne ise

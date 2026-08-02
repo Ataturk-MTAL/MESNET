@@ -5,6 +5,7 @@ using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Entities;
 using MESNET.Attendance.Core.Enums;
 using MESNET.Attendance.Core.ReadModels;
+using MESNET.Attendance.Core.Services;
 using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
@@ -47,7 +48,7 @@ public static class MarkAttendanceHandler
             throw new DomainException("ATTENDANCE_RESTRICTED_DATE",
                 "Bu tarih kısıtlı bir gündür, devamsızlık girişi yapılamaz.");
 
-        if (!AbsenceType.TryFromName(command.AbsenceType, true, out _))
+        if (!AbsenceType.TryFromName(command.AbsenceType, true, out var absenceType))
             throw new DomainException("ATTENDANCE_INVALID_ABSENCE_TYPE",
                 $"Geçersiz devamsızlık türü: {command.AbsenceType}.");
 
@@ -61,7 +62,17 @@ public static class MarkAttendanceHandler
         // NeverDirectlyAssignable olduğu için bir işletme kullanıcısına bireysel atanamaz.
         // Rol adı listesi olsaydı #172'de eklenen CompanyHR sessizce dışarıda kalır, o rolün
         // girdiği kayıt okul girmiş gibi doğrudan "Recorded" olurdu.
-        var isPendingEntry = !currentUser.HasPermission(Permissions.Attendance.DirectEntry);
+        var hasDirectEntry = currentUser.HasPermission(Permissions.Attendance.DirectEntry);
+        var isPendingEntry = !hasDirectEntry;
+
+        // İşletme resmî izin veremez, yalnız devamsızlık bildirir (#175). Sınıflandırma —
+        // mazeret, izin, sağlık raporu — okul tarafındadır ve her biri ücreti etkiler.
+        if (!AbsenceTypePolicy.CanReport(absenceType, hasDirectEntry))
+            throw new DomainException(AttendanceErrors.TypeNotReportableByBusiness(absenceType.Slug));
+
+        // Ücretli izin hakkı örgün eğitimde yoktur, yalnız MESEM'dedir (#175).
+        await EnsureTypeAllowedForStudentAsync(session, command.StudentId, absenceType);
+
         var initialStatus = isPendingEntry
             ? AttendanceStatus.Pending.Name
             : AttendanceStatus.Recorded.Name;
@@ -84,5 +95,24 @@ public static class MarkAttendanceHandler
         }
 
         return (id, @event, notification);
+    }
+
+    /// <summary>
+    /// Türün öğrencinin eğitim türünde geçerli olduğunu doğrular (#175).
+    /// Eğitim türü lokal <c>StudentNameView</c>'dan okunur — modüller arası doğrudan sorgu yasak.
+    /// </summary>
+    internal static async Task EnsureTypeAllowedForStudentAsync(
+        IQuerySession session, Guid studentId, AbsenceType absenceType)
+    {
+        // Yalnız kısıtlı tür için sorgu atılır; diğer türlerde ek okuma maliyeti doğmaz.
+        if (absenceType != AbsenceType.PaidLeave) return;
+
+        var student = await session.LoadAsync<StudentNameView>(studentId);
+        if (student is null)
+            throw new DomainException(AttendanceErrors.StudentNotFound(studentId));
+
+        if (!AbsenceTypePolicy.IsValidForEducationType(absenceType, student.EducationType))
+            throw new DomainException(
+                AttendanceErrors.PaidLeaveNotAllowedForEducationType(student.EducationType));
     }
 }

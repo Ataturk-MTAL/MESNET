@@ -45,4 +45,21 @@ public static class AttendanceErrors
 
     public static Error RejectionReasonRequired() =>
         new("Attendance.RejectionReasonRequired", "Ret gerekçesi zorunludur.");
+
+    // ─── Devamsızlık türü giriş kuralları (#175) ───
+
+    public static Error TypeNotReportableByBusiness(string typeSlug) =>
+        new("Attendance.TypeNotReportableByBusiness",
+            $"İşletme yalnız mazeretsiz devamsızlık bildirebilir; \"{typeSlug}\" girilemez. " +
+            "Mazeret, izin ve sağlık raporu sınıflandırması okul tarafındadır.");
+
+    public static Error PaidLeaveNotAllowedForEducationType(string? educationTypeName) =>
+        new("Attendance.PaidLeaveNotAllowed",
+            educationTypeName is null
+                ? "Öğrencinin eğitim türü bilinmiyor; ücretli izin girilemez."
+                : "Ücretli izin hakkı yalnız mesleki eğitim merkezi (MESEM) öğrencilerindedir. " +
+                  "Örgün eğitimde sağlık raporu ya da veli izni gerekir.");
+
+    public static Error StudentNotFound(Guid studentId) =>
+        new("Attendance.StudentNotFound", $"Öğrenci kaydı bulunamadı: {studentId}");
 }
