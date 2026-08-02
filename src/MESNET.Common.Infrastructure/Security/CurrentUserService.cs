@@ -35,9 +35,11 @@ public sealed class CurrentUserService : ICurrentUserService
         var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
         var permissions = user.FindAll("permissions").Select(c => c.Value).ToList();
         var branchCodes = BranchCodeClaims.Read(user);
+        var linkedStudentIds = LinkedStudentClaims.Read(user);
 
         _cachedContext = new UserContext(
-            userId, fullName, institutionId, businessId, studentId, roles, permissions, branchCodes);
+            userId, fullName, institutionId, businessId, studentId, roles, permissions,
+            branchCodes, linkedStudentIds);
         return _cachedContext;
     }
 
@@ -70,5 +72,10 @@ public sealed class CurrentUserService : ICurrentUserService
     public IReadOnlyList<string> GetBranchCodes()
     {
         return GetCurrentUser()?.BranchCodes ?? [];
+    }
+
+    public IReadOnlyList<Guid> GetLinkedStudentIds()
+    {
+        return GetCurrentUser()?.LinkedStudentIds ?? [];
     }
 }

@@ -21,9 +21,16 @@ public interface IUserPermissionProvider
 /// birebir aynı güven sırası. Bağlı olmayan kullanıcılarda (ör. sistem yöneticisi)
 /// <c>null</c> olabilir; bu bir eksiklik değildir.
 /// </param>
+/// <param name="LinkedStudentIds">
+/// Velinin bağlı olduğu öğrenciler (#174). <b>Kayıt otoriterdir</b> — <c>BranchCodes</c> ile
+/// birebir aynı güven sırası: doluysa token'daki <c>linked_student_ids</c> claim'leri atılır.
+/// Boş olması normaldir (veli olmayan her kullanıcıda boştur) ve hiçbir öğrenciye erişim
+/// doğurmaz.
+/// </param>
 public sealed record UserPermissionInfo(
     bool IsEnabled,
     IReadOnlyList<string> Roles,
     IReadOnlyList<string> DirectPermissions,
     IReadOnlyList<string> BranchCodes,
-    Guid? InstitutionId = null);
+    Guid? InstitutionId = null,
+    IReadOnlyList<Guid>? LinkedStudentIds = null);

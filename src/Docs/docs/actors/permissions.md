@@ -1468,3 +1468,75 @@ eşlemesi + işletme akışı regresyonu).
 
 Tek katman yeterli olurdu; üçü birden var çünkü ilk ikisi *sessiz* korumadır — biri kaldırılsa
 belirti dönem sonuna kadar görünmezdi.
+
+## Veli Aktörü — Kapsam İzinle Değil Bağ Kaydıyla Verilir (#174)
+
+Veli `actors.md`'de tanımlıydı ama **realm rolü olarak yoktu**: sistemde hiç kullanıcısı
+olmadığı için #172'nin sağlık raporu zincirine, #177'nin ücretli izin başvurusuna ve fesih
+zincirindeki kendi adımına giremiyordu.
+
+### Kapsam neden permission ile verilemez
+
+**Tüm velilerin izinleri aynıdır**; onları birbirinden ayıran tek şey hangi öğrenciye bağlı
+oldukları. İzin bazlı bir çözüm ya her veliyi her öğrenciye açardı ya da öğrenci başına izin
+üretmeyi gerektirirdi. ADR-0001: *izin erişimi açar, kapsamı belirlemez.*
+
+Kapsam bir **kayıt**tır: `UserAccount.LinkedStudentIds`. Desen `BranchCodes` (#126) ile
+birebir aynıdır:
+
+| | Alan kapsamı (#126) | Veli kapsamı (#174) |
+|---|---|---|
+| Kayıt | `UserAccount.BranchCodes` | `UserAccount.LinkedStudentIds` |
+| Claim | `branch_codes` | `linked_student_ids` |
+| Otorite | **Kayıt** — token claim'i ezilir | **Kayıt** — token claim'i ezilir |
+| Yönetim ucu | `POST /api/security/users/{id}/branches` | `POST /api/security/users/{id}/students` |
+| İzin | `user:roles:manage` | `user:roles:manage` |
+| Boş liste anlamı | "Alana bağlı değil" (müdür için normal) | **"Bağ kurulmamış"** — hiçbir erişim |
+
+> **Token yedeği YOKTUR.** `branch_codes`'ta mevcut kullanıcılar için bir token/DB yedeği
+> bırakılmıştı; burada yoktur. Öznitelik Keycloak'ta *unmanaged*'dır: yedek bırakılsaydı
+> kullanıcı kendi Account konsolundan kendine öğrenci ekleyip başka bir öğrencinin verisine
+> erişebilirdi. **Token'ın imzalı olması içeriğin kullanıcı tarafından belirlenmediği anlamına
+> gelmez.**
+
+### İzin demeti
+
+| İzin | Ne açar |
+|---|---|
+| `student:view-own`, `internship:view-own`, `attendance:view-own`, `salary:view-own` | Öğrencisinin verisi (kapsam bağ kaydından) |
+| `attendance:upload` | Sağlık raporu — **onaya düşer** (#172) |
+| `attendance:leave:request` | MESEM ücretli izin başvurusu (#177) |
+| `internship:approve:parent` | Fesih zincirindeki **yalnız veli adımı** |
+| `communication:*` (view/send/issue) | Okulla iletişim |
+
+**Hüküm izinleri verilmez:** `attendance:direct-entry` ve `attendance:health-report:direct`
+velide **yoktur** — veli, öğrencisinin ücret kesintisini tek taraflı kaldıramaz. `Parent`,
+`AttendanceDirectEntryMappingTests.NonSchoolRoles` listesindedir.
+
+### `internship:approve:parent` neden ayrı izin
+
+Fesih zincirinin **veli, öğretmen ve müdür yardımcısı** adımları aynı `internship:approve`
+iznini istiyordu. Veliye o izin verilseydi `/approve/teacher` ve `/approve/deputy` uçlarına da
+erişir, **zincirin üç adımını tek başına tamamlardı**.
+
+Okul tarafı (öğretmen, müdür yardımcısı, müdür) yeni izni de taşır: veli hesabı olmayan
+öğrencide adımı bugün olduğu gibi okul yürütür — **davranış değişmedi**.
+
+### Guard tek yerdedir
+
+`ParentScopeGuard` (Common.Infrastructure) — `BranchScopeGuard` deseninin aynısı. Kural:
+**bağ kaydı olan kullanıcı yalnız bağlı olduğu öğrenciye dokunabilir; bağı olmayan kullanıcı
+bu kontrolden etkilenmez.** Okul ve işletme tarafının kapsamı kurum/işletme claim'lerinden
+gelir; guard yalnız bağ kapsamını uygular, erişim kararını değil.
+
+**Öğrenci kimliği istekten ALINMAZ**, sunucuda çözülmüş kayıttan okunur (devamsızlık kaydı,
+staj saga'sı, yerleştirme). Tek istisna ücretli izin başvurusudur: orada öğrenci istekte gelir
+ama **bağ kaydına karşı doğrulanır** — karar yine sunucudaki otoriter kayda dayanır.
+
+Uygulandığı yerler: sağlık raporu yükleme, ücretli izin başvurusu ve listesi, fesih zinciri
+veli adımı. Kilitleyen test: `tests/MESNET.Security.UnitTests/ParentScopeTests.cs`.
+
+> **Kapsam dışı bırakıldı:** devamsızlık/staj/maaş **listeleme** uçları `attendance:view` gibi
+> okul izinleri istiyor ve `*:view-own` izinleri bugün hiçbir ucu korumuyor — bu öğrenci rolü
+> için de geçerli olan, #174 öncesinden gelen bir borçtur. Veliye o izinler verildi ama okuma
+> yüzeyi ayrı bir işte ele alınmalı.

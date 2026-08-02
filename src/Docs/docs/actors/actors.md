@@ -117,14 +117,17 @@ title: Aktör Tanımları
   - Sertifika takibi
   - Kendi sağlık raporunu yükleme (okul onayına tabidir)
 
-- **Veli** (#172) — realm rolü henüz YOK, ayrı issue'da ele alınacak
+- **Veli** (`Parent`, #174)
   - Öğrencinin devam durumunu görüntüleme
   - Öğrencinin sağlık raporunu yükleme (okul onayına tabidir)
-  - Fesih onay zincirinde veli adımı (ıslak imza karşılığı)
+  - MESEM ücretli izin başvurusu açma (işletme ve okul onayından geçer, #177)
+  - Fesih onay zincirinde **yalnız** veli adımı (`internship:approve:parent`)
 
   > **Kapsamı tek öğrencidir:** veli yalnız bağlı olduğu öğrencinin verisini görür. Kapsam
   > kararı permission'la değil, veliyle öğrenci arasındaki **bağ kaydıyla** verilir — kurum
-  > kapsamı `institution_id` claim'inden okunduğu gibi (bkz. ADR-0001).
+  > kapsamı `institution_id` claim'inden okunduğu gibi (bkz. ADR-0001). Bağ kaydı
+  > `UserAccount.LinkedStudentIds`'tir ve **otoriter olan kayıttır** — token'dan gelen
+  > `linked_student_ids` claim'i her istekte silinir ve yerine kayıt konur.
   >
   > **Yazma yetkisi yoktur:** veli girdiği hiçbir kayıt doğrudan hüküm doğurmaz; sağlık raporu
   > dahil her girişi koordinatör öğretmen onayından geçer.

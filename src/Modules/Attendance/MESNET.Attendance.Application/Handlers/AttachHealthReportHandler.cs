@@ -67,6 +67,11 @@ public static class AttachHealthReportHandler
         if (record.EffectiveReportStatus == HealthReportStatus.Pending)
             throw new DomainException(AttendanceErrors.HealthReportAlreadyPending(record.Id));
 
+        // Veli kapsamı (#174): bağ kaydı olan kullanıcı yalnız kendi öğrencisine rapor
+        // yükleyebilir. Öğrenci kimliği istekten değil KAYITTAN okunuyor — istekten alınsaydı
+        // veli başka öğrencinin kimliğini göndererek kontrolü aşardı.
+        ParentScopeGuard.EnsureCanAccessStudent(currentUser, record.StudentId);
+
         var contentType = ValidateFile(command.ReportFile);
 
         var attachedById = currentUser.GetUserId();

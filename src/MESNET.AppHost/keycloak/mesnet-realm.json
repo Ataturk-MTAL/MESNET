@@ -98,6 +98,10 @@
         "description": "Öğrenci"
       },
       {
+        "name": "Parent",
+        "description": "Veli — bağlı olduğu öğrencinin devam ve staj sürecini izler, girişleri okul onayına tabidir"
+      },
+      {
         "name": "DepartmentHead",
         "description": "Alan şefi"
       },

@@ -21,7 +21,10 @@ public static class InternshipEndpoints
         group.MapGet("/{internshipId:guid}", Get).RequireAuthorization(Permissions.Internship.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Internship.View);
         group.MapPost("/{internshipId:guid}/terminate", PostRequestTermination).RequireAuthorization(Permissions.Internship.Manage);
-        group.MapPost("/{internshipId:guid}/approve/parent", PostApproveParent).RequireAuthorization(Permissions.Internship.Approve);
+        // Veli adımı ayrı izin ister (#174): "internship:approve" verilseydi veli
+        // /approve/teacher ve /approve/deputy uçlarına da erişir, zincirin üç adımını tek
+        // başına tamamlardı. Okul tarafı bu izni de taşır — bugünkü davranış korunur.
+        group.MapPost("/{internshipId:guid}/approve/parent", PostApproveParent).RequireAuthorization(Permissions.Internship.ApproveParent);
         group.MapPost("/{internshipId:guid}/approve/teacher", PostApproveTeacher).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/director", PostApproveDirector).RequireAuthorization(Permissions.Internship.Manage);

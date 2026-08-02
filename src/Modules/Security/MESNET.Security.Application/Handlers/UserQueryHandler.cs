@@ -24,7 +24,12 @@ public sealed record UserAccountDto(
     bool IsEnabled, Guid? InstitutionId, Guid? BusinessId,
     List<string> Roles, List<string> DirectPermissions,
     DateTime CreatedAt, DateTime? UpdatedAt,
-    List<string> BranchCodes, bool BranchRequired, bool BranchMissing);
+    List<string> BranchCodes, bool BranchRequired, bool BranchMissing,
+    /// <summary>
+    /// Velinin bağlı olduğu öğrenciler (#174). Boş olması normaldir — veli olmayan her
+    /// kullanıcıda boştur. Kapsam kararının kaynağıdır; izin değildir.
+    /// </summary>
+    List<Guid> LinkedStudentIds);
 
 public static class GetUserAccountsHandler
 {
@@ -87,7 +92,8 @@ public static class GetUserAccountsHandler
             a.IsEnabled, a.InstitutionId, a.BusinessId,
             a.Roles, a.DirectPermissions,
             a.CreatedAt, a.UpdatedAt,
-            a.BranchCodes, required, required && a.BranchCodes.Count == 0);
+            a.BranchCodes, required, required && a.BranchCodes.Count == 0,
+            a.LinkedStudentIds);
     }
 }
 

@@ -16,4 +16,11 @@ public interface ICurrentUserService
     /// Bilgi yoksa boş liste döner — boş liste "hiçbir alana yazamaz" demektir.
     /// </summary>
     IReadOnlyList<string> GetBranchCodes();
+
+    /// <summary>
+    /// Velinin bağlı olduğu öğrenciler — <c>linked_student_ids</c> claim'i (#174).
+    /// Kapsam kararı için kullanılır; erişim kararı için değil (o permission'ın işidir).
+    /// Bilgi yoksa boş liste döner — boş liste "hiçbir öğrenciye erişemez" demektir.
+    /// </summary>
+    IReadOnlyList<Guid> GetLinkedStudentIds();
 }

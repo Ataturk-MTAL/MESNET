@@ -31,6 +31,7 @@ public sealed class UserPermissionProvider : IUserPermissionProvider
             account.Roles.AsReadOnly(),
             account.DirectPermissions.AsReadOnly(),
             account.BranchCodes.AsReadOnly(),
-            account.InstitutionId);
+            account.InstitutionId,
+            account.LinkedStudentIds.AsReadOnly());
     }
 }

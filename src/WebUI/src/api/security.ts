@@ -25,6 +25,11 @@ export interface UserAccountDto {
   branchRequired: boolean
   /** Alan zorunlu ama girilmemiş — "branş atanmamış" rozetiyle gösterilir. */
   branchMissing: boolean
+  /**
+   * Velinin bağlı olduğu öğrenciler (#174). Boş olması normaldir — veli olmayan her
+   * kullanıcıda boştur. Velinin KAPSAMI budur; izinleri tüm velilerde aynıdır.
+   */
+  linkedStudentIds: string[]
 }
 
 export interface InvitationDto {
@@ -80,6 +85,14 @@ export interface ChangePermissionsRequest {
 /** Alan (branş) kapsamı güncelleme (#126). Boş dizi kapsamı kaldırır — geçerli bir işlemdir. */
 export interface ChangeBranchesRequest {
   branchCodes: string[]
+}
+
+/**
+ * Veli–öğrenci bağı güncelleme (#174). Boş dizi bağı kaldırır — geçerli bir işlemdir
+ * (öğrenci mezun oldu, vesayet değişti). Kaldırma anında velinin kapsamı kapanır.
+ */
+export interface ChangeStudentsRequest {
+  studentIds: string[]
 }
 
 /**
@@ -154,6 +167,9 @@ export const securityApi = {
 
   changeBranches: (userAccountId: string, data: ChangeBranchesRequest) =>
     api.post(`/security/users/${userAccountId}/branches`, data),
+
+  changeStudents: (userAccountId: string, data: ChangeStudentsRequest) =>
+    api.post(`/security/users/${userAccountId}/students`, data),
 
   toggleStatus: (userAccountId: string) =>
     api.post(`/security/users/${userAccountId}/toggle-status`),

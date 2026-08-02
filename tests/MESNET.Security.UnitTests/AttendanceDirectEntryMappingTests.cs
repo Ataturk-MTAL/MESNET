@@ -22,7 +22,9 @@ public sealed class AttendanceDirectEntryMappingTests
         MesnetRoles.CompanyManager,
         MesnetRoles.MasterTrainer,
         MesnetRoles.CompanyHR,
-        MesnetRoles.Student
+        MesnetRoles.Student,
+        // Veli (#174) — girdiği rapor da onaya düşer; ödemeyi etkileyen kararı veremez.
+        MesnetRoles.Parent
     ];
 
     /// <summary>Sahibin saydığı taraf: sağlık raporunu onaysız girebilenler.</summary>
@@ -43,7 +45,8 @@ public sealed class AttendanceDirectEntryMappingTests
         MesnetRoles.CompanyManager,
         MesnetRoles.MasterTrainer,
         MesnetRoles.CompanyHR,
-        MesnetRoles.Student
+        MesnetRoles.Student,
+        MesnetRoles.Parent   // #174 — veli de sağlık raporu yükler
     ];
 
     private static IReadOnlyList<string> PermissionsOf(string role) =>

@@ -130,6 +130,47 @@ public static class ChangeUserBranchesHandler
     }
 }
 
+/// <summary>
+/// Velinin bağlı olduğu öğrencileri değiştirir (#174).
+///
+/// <para>Kapsam kaydı ve Keycloak özniteliği birlikte güncellenir. Öznitelik yalnız
+/// <b>görünürlük</b> içindir — otoriter olan kayıttır ve
+/// <c>PermissionClaimsTransformation</c> token'dan gelen değeri her istekte siler.</para>
+/// </summary>
+public static class ChangeUserStudentsHandler
+{
+    public static async Task<UserStudentsChanged> Handle(
+        ChangeUserStudents command, IKeycloakAdminService keycloak,
+        IDocumentSession session, IMemoryCache cache)
+    {
+        var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
+        if (account is null)
+            throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
+
+        var previous = account.LinkedStudentIds.ToList();
+        var studentIds = ParentScopePolicy.Normalize(command.StudentIds);
+
+        // Boş liste özniteliği siler — bağı kaldırmak geçerli bir işlemdir.
+        var kcResult = await keycloak.SetUserAttributeValuesAsync(
+            account.KeycloakUserId,
+            LinkedStudentClaims.ClaimType,
+            [.. studentIds.Select(id => id.ToString())]);
+
+        if (kcResult.IsFailure)
+            throw new DomainException(kcResult.Error);
+
+        account.LinkedStudentIds = studentIds;
+        account.UpdatedAt = DateTime.UtcNow;
+        session.Store(account);
+
+        // Kapsam değişimi cache'i geçersiz kılmalı; aksi hâlde kaldırılan bağ cache süresi
+        // boyunca geçerli kalır ve veli erişmemesi gereken öğrencinin verisini görmeye devam eder.
+        PermissionClaimsTransformation.InvalidateCache(cache, account.KeycloakUserId);
+
+        return new UserStudentsChanged(account.Id, account.KeycloakUserId, previous, studentIds);
+    }
+}
+
 public static class UpdateUserHandler
 {
     public static async Task<OutgoingMessages> Handle(

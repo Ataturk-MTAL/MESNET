@@ -26,6 +26,18 @@ public class UserAccount
     /// kaynağıdır. Boş olması hata değildir: müdür/müdür yardımcısı hiçbir alana bağlı değildir.
     /// </summary>
     public List<string> BranchCodes { get; set; } = [];
+
+    /// <summary>
+    /// Velinin bağlı olduğu öğrenciler (#174) — <c>linked_student_ids</c> claim'inin kaynağı.
+    ///
+    /// <para><b>Kapsam buradan okunur, izinden DEĞİL</b> (ADR-0001). Tüm velilerin izinleri
+    /// aynıdır; onları birbirinden ayıran tek şey bu listedir. Boş olması normaldir — veli
+    /// olmayan her kullanıcıda boştur ve hiçbir öğrenciye erişim doğurmaz.</para>
+    ///
+    /// <para>Bir veli birden çok öğrenciye (kardeşler) bağlı olabilir; bu yüzden
+    /// <see cref="StudentId"/> (öğrencinin kendi hesabı) ile karıştırılmamalıdır.</para>
+    /// </summary>
+    public List<Guid> LinkedStudentIds { get; set; } = [];
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }

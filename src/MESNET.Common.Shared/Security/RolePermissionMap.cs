@@ -62,7 +62,10 @@ public static class RolePermissionMap
             Permissions.Student.Manage,
             Permissions.Internship.View,       // staj listesi görüntüleme
             Permissions.Internship.Manage,     // fesih talebi başlatma, genel yönetim
-            Permissions.Internship.Approve,    // fesih onay zinciri (veli ıslak imzası + kendi adımı)
+            Permissions.Internship.Approve,    // fesih onay zinciri (kendi adımı)
+            // Veli adımı (#174) ayrı izne taşındı; veli hesabı olmayan öğrencide adımı okul
+            // yürütür — bugünkü davranış korunur.
+            Permissions.Internship.ApproveParent,
             Permissions.Internship.Contract,   // sözleşme yönetimi
             Permissions.Salary.View,
             Permissions.Salary.Calculate,
@@ -133,6 +136,7 @@ public static class RolePermissionMap
             Permissions.Internship.View,
             Permissions.Internship.Review,     // başvuru inceleme
             Permissions.Internship.Approve,    // fesih onay zincirinde kendi adımı
+            Permissions.Internship.ApproveParent,  // veli hesabı yoksa adımı okul yürütür (#174)
             Permissions.Attendance.View,
             Permissions.Attendance.Manage,
             Permissions.Attendance.Report,
@@ -242,6 +246,30 @@ public static class RolePermissionMap
             Permissions.Student.View,          // işletmedeki öğrenciler
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage
+        ],
+        // Veli (#174). Demet DAR: veli veri GİRER ama hiçbir girişi hüküm doğurmaz ve hiçbir
+        // şeyi onaylamaz — fesih zincirindeki kendi adımı hariç. Kapsamı izinle değil
+        // UserAccount.LinkedStudentIds KAYDIYLA sınırlıdır (ADR-0001): aşağıdaki izinler tüm
+        // velilerde aynıdır, onları ayıran tek şey hangi öğrenciye bağlı oldukları.
+        [MesnetRoles.Parent] =
+        [
+            Permissions.Student.ViewOwn,        // öğrencisinin profili
+            Permissions.Internship.ViewOwn,     // öğrencisinin staj durumu
+            // Fesih zincirindeki VELİ adımı — "internship:approve" DEĞİL. O izin verilseydi
+            // veli /approve/teacher ve /approve/deputy uçlarına da erişir, zincirin üç adımını
+            // tek başına tamamlardı.
+            Permissions.Internship.ApproveParent,
+            Permissions.Attendance.ViewOwn,     // öğrencisinin devamsızlığı
+            // Sağlık raporu girişi (#172) — onaya düşer. DirectEntry / HealthReportDirect
+            // bu rolde YOKTUR: veli, öğrencisinin ücret kesintisini tek taraflı kaldıramaz.
+            Permissions.Attendance.Upload,
+            // MESEM ücretli izin başvurusu (#177) — öğrenci adına açar, yine iki taraflı
+            // onaydan geçer. #177'de "veli rolü gelince aynı uca eklenir" diye yazılmıştı.
+            Permissions.Attendance.LeaveRequest,
+            Permissions.Salary.ViewOwn,         // öğrencisinin ücret bilgisi
+            Permissions.Communication.ViewMessages,
+            Permissions.Communication.SendMessage,
+            Permissions.Communication.ReportIssue
         ],
         // Sistem yöneticisi (#147) — ULUSAL parametre girişi. Kurum domainlerinden HİÇBİRİ
         // yoktur: bu rol kurum verisi görmez, yalnız mevzuat sayılarını yazar. Tersi de
