@@ -9,7 +9,7 @@ title: 'ADR-0001: Yetkilendirme permission bazlıdır'
 | **Durum** | Kabul edildi |
 | **Tarih** | 01.08.2026 |
 | **Karar sahibi** | Proje sahibi |
-| **İlgili** | #126, #129, #130, #147 · `src/Docs/docs/actors/permissions.md` |
+| **İlgili** | #126, #129, #130, #147 · ADR-0002 · `src/Docs/docs/actors/permissions.md` |
 
 ## Karar
 
@@ -130,3 +130,10 @@ grep -rn "roles.includes\|roles.some" src/WebUI/src --include='*.ts' --include='
 
 Yeni bir eşleşme çıkarsa, ilgili PR'da ya permission'a taşınır ya da bu ADR'ye gerekçesiyle
 yazılır. Üçüncü seçenek yok.
+
+## İlgili
+
+- [ADR-0002: İzin ağacı — gruplama ekseni ve önek seçimi](./adr-0002-izin-agaci-ve-onek-secimi.md)
+  — bu ADR *neye bakılacağını* söyler; ADR-0002 izinlerin **nasıl adlandırıldığını ve
+  gruplandığını** sabitler ve önek seçiminin neden bir güvenlik kararı olduğunu anlatır.
+  Koddan üretilen tam izin matrisi oradadır.

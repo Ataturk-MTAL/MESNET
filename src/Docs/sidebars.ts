@@ -8,6 +8,7 @@ const sidebars: SidebarsConfig = {
       label: 'Mimari',
       items: [
         'architecture/adr-0001-yetkilendirme-permission-bazli',
+        'architecture/adr-0002-izin-agaci-ve-onek-secimi',
         'architecture/project-scope',
         'architecture/module-design',
         'architecture/business-rules',
