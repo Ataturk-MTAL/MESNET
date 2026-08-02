@@ -62,4 +62,49 @@ public static class AttendanceErrors
 
     public static Error StudentNotFound(Guid studentId) =>
         new("Attendance.StudentNotFound", $"Öğrenci kaydı bulunamadı: {studentId}");
+
+    // ─── Ücretli izin başvurusu (#177) ───
+
+    public static Error PaidLeaveRequiresApprovedRequest() =>
+        new("Attendance.PaidLeaveRequiresRequest",
+            "Ücretli izin doğrudan girilemez. Öğrenci başvuru açar; başvuru işletme ve okul " +
+            "onayından geçtiğinde izin günleri otomatik olarak kaydedilir.");
+
+    public static Error PaidLeaveRequestNotFound(Guid requestId) =>
+        new("Attendance.PaidLeaveRequestNotFound", $"Ücretli izin başvurusu bulunamadı: {requestId}");
+
+    public static Error PaidLeaveInvalidRange(int maxDays) =>
+        new("Attendance.PaidLeaveInvalidRange",
+            $"İzin tarih aralığı geçersiz. Başlangıç bitişten sonra olamaz ve aralık en çok {maxDays} gün olabilir.");
+
+    public static Error PaidLeaveReasonRequired() =>
+        new("Attendance.PaidLeaveReasonRequired", "İzin gerekçesi zorunludur.");
+
+    public static Error PaidLeaveStartsInPast() =>
+        new("Attendance.PaidLeaveStartsInPast",
+            "Ücretli izin önceden planlanır; geçmiş tarihli başvuru açılamaz.");
+
+    public static Error PaidLeaveOverlappingRequest() =>
+        new("Attendance.PaidLeaveOverlappingRequest",
+            "Bu tarih aralığında açık ya da onaylanmış bir ücretli izin başvurunuz zaten var.");
+
+    public static Error PaidLeaveInvalidStage(string currentStatusSlug) =>
+        new("Attendance.PaidLeaveInvalidStage",
+            $"Başvuru bu adım için uygun durumda değil. Mevcut durum: {currentStatusSlug}.");
+
+    public static Error PaidLeaveBusinessScopeMismatch() =>
+        new("Attendance.PaidLeaveBusinessScopeMismatch",
+            "Bu başvuruyu yalnız öğrencinin yerleştirildiği işletme onaylayabilir.");
+
+    public static Error PaidLeaveSameApprover() =>
+        new("Attendance.PaidLeaveSameApprover",
+            "İşletme onayını veren kullanıcı okul onayını da veremez; onay iki ayrı taraftandır.");
+
+    public static Error PaidLeaveStudentScopeMissing() =>
+        new("Attendance.PaidLeaveStudentScopeMissing",
+            "Başvuru yalnız öğrencinin kendi hesabından açılabilir (student_id bilgisi yok).");
+
+    public static Error PaidLeavePlacementNotFound(Guid studentId) =>
+        new("Attendance.PaidLeavePlacementNotFound",
+            $"Öğrencinin aktif işletme yerleştirmesi bulunamadı, izin başvurusu açılamaz: {studentId}");
 }

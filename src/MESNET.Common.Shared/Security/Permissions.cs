@@ -269,6 +269,43 @@ public static class Permissions
         /// </summary>
         public const string HealthReportDirect = "attendance:health-report:direct";
 
+        /// <summary>
+        /// MESEM ücretli izin başvurusu açma (#177) — <b>öğrenci</b>.
+        ///
+        /// <para>Başvuru hüküm doğurmaz: devamsızlık kaydı açılmaz, ücrete etki etmez. Kimin
+        /// adına başvurulduğu izinle değil <b>kapsamla</b> belirlenir — <c>StudentId</c> token'ın
+        /// <c>student_id</c> claim'inden alınır, istekten ALINMAZ. Veli rolü (#174) geldiğinde
+        /// aynı uca eklenecektir.</para>
+        /// </summary>
+        public const string LeaveRequest = "attendance:leave:request";
+
+        /// <summary>
+        /// Ücretli izin başvurusunun <b>işletme</b> onayı (#177) — zincirin 1. adımı.
+        ///
+        /// <para><b>Bu izin tek başına adımı vermez.</b> <c>InstitutionManager</c>
+        /// <c>attendance:*</c> wildcard'ını taşır; hangi önekte tanımlanırsa tanımlansın izin
+        /// okul müdürüne de gider (<c>platform:</c> dışında serbest önek yoktur). Adımı işletmeye
+        /// bağlayan şey <b>kapsam</b>tır: token'daki <c>business_id</c> claim'i başvurunun
+        /// işletmesiyle eşleşmek zorundadır ve okul rollerinde o claim yoktur. ADR-0001:
+        /// permission erişimi açar, KAPSAMI belirlemez.</para>
+        /// </summary>
+        public const string LeaveBusinessApprove = "attendance:leave:business-approve";
+
+        /// <summary>
+        /// Ücretli izin başvurusunun <b>okul</b> onayı (#177) — zincirin 2. adımı; izin bu adımla
+        /// resmîleşir ve devamsızlık kayıtları doğar.
+        ///
+        /// <para>Sahibin kararı: onay <c>DeputyDirector</c> ve <c>InstitutionManager</c>'dadır.
+        /// Koordinatör öğretmen zincirde adım TUTMAZ, yalnız bildirim alır.</para>
+        ///
+        /// <para><b>Bireysel atanamaz</b> (<c>AssignablePermissionScope.NeverDirectlyAssignable</c>):
+        /// işletme rollerinin atanabilir domain listesinde <c>attendance:</c> vardır; sabit liste
+        /// olmasaydı bir işletme kullanıcısına okul adımı bireysel atanabilir ve iki taraflı onay
+        /// tek tarafa çökerdi. "Aynı kullanıcı iki adımı yapamaz" kuralı bunu tek başına
+        /// kapatmaz — ikinci bir işletme kullanıcısı okul adımını yapardı.</para>
+        /// </summary>
+        public const string LeaveApprove = "attendance:leave:approve";
+
         /// <summary>Devamsızlık kaydını silme (son 7 gün, müdür/müdür yardımcısı).</summary>
         public const string Delete = "attendance:delete";
     }

@@ -74,6 +74,10 @@ const STATUS_COLORS: Record<string, string> = {
   'Mazeretli': ACTIVE, //       mazeretli: kabul edilebilir (yeşil)
   'Mazeretsiz': WARNING, //     mazeretsiz: dikkat gerektiren (turuncu)
   'Sağlık Raporu': INFO, //     belgeli/sağlık raporu (cyan)
+  // Ücretli izin başvurusu (PaidLeaveStatus slug'ları, #177) — zincirin iki adımı ayrı görünür
+  'İşletme Onayı Bekliyor': PENDING,
+  'Okul Onayı Bekliyor': PENDING,
+  'Resmileşti': SUCCESS, //     iki onay tamamlandı, izin günleri kaydedildi
 }
 
 const color = computed(() => STATUS_COLORS[props.slug] ?? 'grey-7')

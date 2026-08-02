@@ -90,4 +90,28 @@ public sealed class AbsenceTypePolicyTests
         AbsenceType.PaidLeave.AffectsSalary.ShouldBeFalse();
         AbsenceType.Unexcused.AffectsSalary.ShouldBeTrue();
     }
+
+    /// <summary>
+    /// Ücretli izin DOĞRUDAN GİRİLEMEZ (#177) — okul tarafı da giremez. Yalnız öğrenci
+    /// başvurusunun işletme ve okul onayından geçmesiyle doğar.
+    ///
+    /// <para>Kısıt okul tarafına da uygulanır çünkü türü seçmek doğrudan para kararıdır: doğrudan
+    /// giriş açık kalsaydı iki taraflı onay zinciri tek komutla atlanabilirdi.</para>
+    /// </summary>
+    [Fact]
+    public void Ucretli_izin_dogrudan_girilemez()
+    {
+        AbsenceTypePolicy.RequiresApprovedRequest(AbsenceType.PaidLeave).ShouldBeTrue();
+    }
+
+    /// <summary>Diğer türler onay zinciri istemez — doğrudan girilebilir kalır.</summary>
+    [Theory]
+    [InlineData(nameof(AbsenceType.Unexcused))]
+    [InlineData(nameof(AbsenceType.Excused))]
+    [InlineData(nameof(AbsenceType.UnpaidLeave))]
+    [InlineData(nameof(AbsenceType.HealthReport))]
+    public void Diger_turler_basvuru_zorunlulugu_tasimaz(string typeName)
+    {
+        AbsenceTypePolicy.RequiresApprovedRequest(AbsenceType.FromName(typeName)).ShouldBeFalse();
+    }
 }

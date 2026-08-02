@@ -317,6 +317,10 @@ public static class Permissions
         // Hüküm izinleri (#172) — girilen kaydın onay beklememesi.
         public const string DirectEntry = "attendance:direct-entry";
         public const string HealthReportDirect = "attendance:health-report:direct";
+        // Ücretli izin onay zinciri (#177) — işletme adımını izin değil business_id kapsamı bağlar.
+        public const string LeaveRequest = "attendance:leave:request";
+        public const string LeaveBusinessApprove = "attendance:leave:business-approve";
+        public const string LeaveApprove = "attendance:leave:approve";
     }
 
     // Maaş İzinleri
@@ -1349,3 +1353,65 @@ zincirini tümden kaldırabilirdi.
 `attendance:direct-entry` iznine bakar. Borcun gerçek maliyeti #172'de görüldü: yeni eklenen
 `CompanyHR` rolü listede olmadığı için o rolün girdiği kayıt okul girmiş gibi doğrudan
 `Recorded` olurdu.
+
+## Ücretli İzin Onay Zinciri — İki Taraflı Onay Kapsamla Kurulur (#177)
+
+MESEM'de ücretli izin bir tür seçimi değil, **başvuru**dur: öğrenci açar, işletme onaylar, okul
+onaylar. Ancak son adımda resmîleşir ve o güne ait devamsızlık kaydı doğar.
+
+```
+Öğrenci başvurur → İşletme onaylar → Okul (müdür yrd./müdür) onaylar → RESMİLEŞİR
+```
+
+### İzinler
+
+| İzin | Ne açar | Kimde |
+|---|---|---|
+| `attendance:leave:request` | Başvuru açma | `Student` (veli #174 ile eklenecek) |
+| `attendance:leave:business-approve` | 1. adım — işletme onayı/reddi | `CompanyManager`, `MasterTrainer`, `CompanyHR` (+ wildcard'la `InstitutionManager`) |
+| `attendance:leave:approve` | 2. adım — okul onayı/reddi | `InstitutionManager`, `DeputyDirector` |
+
+Koordinatör öğretmen zincirde **adım tutmaz**; yalnız bildirim alır (SSE
+`attendance.paid-leave-approved`). Sahibin kararı: *"Müdür yardımcısı ve müdür yeterli ama
+öğretmene de izin bilgisini verelim, notifikasyon gibi düşün."*
+
+### İki taraflı onay permission ile GARANTİ EDİLEMEZ
+
+`InstitutionManager` **her domain wildcard'ını** taşır (`institution:*`, `attendance:*`,
+`company:*`, `department:*`, `student:*` …). Yani işletme adımı için tanımlanacak izin — hangi
+önekte olursa olsun — okul müdürüne de gider; `platform:` dışında serbest önek yoktur. Önek
+seçerek çözülemeyen ilk vaka budur.
+
+**Çözüm kapsamdır, izin değil** (ADR-0001: permission erişimi açar, kapsamı belirlemez):
+
+1. **İşletme adımı `business_id` claim'i ister.** Token'daki claim başvurunun `BusinessId`'siyle
+   eşleşmek zorundadır ve okul rollerinde o claim yoktur — müdür wildcard izne rağmen adımı
+   yapamaz. Aynı desen `StudentTermGradeEndpoints`'te kullanılıyor.
+2. **İşletme onayını veren okul onayını veremez.** Bir kullanıcı iki rolü birden taşıyabilir
+   (izinler rollerin birleşimidir); bu kural olmasaydı tek kişi zincirin iki adımını da
+   yürütürdü. Kimliksiz onay (`Guid.Empty`) da reddedilir — iki tarafı da boş bir onay eşitlik
+   kontrolünü sessizce geçerdi.
+
+Kapsam kararı saf sınıftadır: `MESNET.Attendance.Core/Services/PaidLeaveApprovalPolicy.cs`.
+Kilitleyen testler: `tests/MESNET.Attendance.UnitTests/PaidLeaveApprovalPolicyTests.cs` ve
+`tests/MESNET.Security.UnitTests/PaidLeaveApprovalMappingTests.cs`.
+
+### Bireysel (direct) atama
+
+`attendance:leave:approve`, `AssignablePermissionScope.NeverDirectlyAssignable` listesindedir.
+İşletme rollerinin atanabilir domain listesinde `attendance:` **vardır** (devamsızlık girişi ve
+rapor yükleme için gerekli); sabit liste olmasaydı `user:roles:manage` yetkisi olan biri bir
+işletme kullanıcısına okul adımını atayabilir ve zincir tek tarafa çökerdi. "Aynı kullanıcı iki
+adımı yapamaz" kuralı bunu **kapatmaz** — ikinci bir işletme kullanıcısı okul adımını yapardı.
+
+İşletme adımı (`attendance:leave:business-approve`) listede **değildir**: onu izin değil
+`business_id` kapsamı sınırlar, okul kullanıcısına atansa bile işe yaramaz.
+
+### Ücretli izin artık doğrudan girilemez
+
+`POST /api/attendance` ve `POST /api/attendance/{id}/correct` uçları `PaidLeave` türünü
+**reddeder** — okul tarafı için de. Türü seçmek doğrudan para kararıdır (ücretli izin kesinti
+doğurmaz); doğrudan giriş açık kalsaydı iki taraflı onay tek komutla atlanabilirdi, tıpkı #172
+öncesinde `/correct` ucunun sağlık raporu zincirini atlaması gibi. Kısıt **komut yolundadır**;
+onaydan doğan kayıtlar olay tüketicisiyle (`PaidLeaveAttendanceConsumer`) açıldığı için bu
+kapıdan geçmez.

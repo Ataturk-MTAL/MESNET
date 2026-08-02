@@ -513,6 +513,7 @@ try
     // Attendance
     app.MapAttendanceEndpoints();
     app.MapWorkCalendarEndpoints();
+    app.MapPaidLeaveEndpoints();
     // Payment
     app.MapPaymentEndpoints();
     // Coordination

@@ -65,13 +65,16 @@ public static class MarkAttendanceHandler
         var hasDirectEntry = currentUser.HasPermission(Permissions.Attendance.DirectEntry);
         var isPendingEntry = !hasDirectEntry;
 
+        // Ücretli izin DOĞRUDAN GİRİLEMEZ (#177) — okul tarafı da giremez. Yalnız öğrenci
+        // başvurusunun işletme ve okul onayından geçmesiyle doğar; kayıtları
+        // PaidLeaveAttendanceConsumer açar. Kısıt komut yolundadır, olay yolunda değil.
+        if (AbsenceTypePolicy.RequiresApprovedRequest(absenceType))
+            throw new DomainException(AttendanceErrors.PaidLeaveRequiresApprovedRequest());
+
         // İşletme resmî izin veremez, yalnız devamsızlık bildirir (#175). Sınıflandırma —
         // mazeret, izin, sağlık raporu — okul tarafındadır ve her biri ücreti etkiler.
         if (!AbsenceTypePolicy.CanReport(absenceType, hasDirectEntry))
             throw new DomainException(AttendanceErrors.TypeNotReportableByBusiness(absenceType.Slug));
-
-        // Ücretli izin hakkı örgün eğitimde yoktur, yalnız MESEM'dedir (#175).
-        await EnsureTypeAllowedForStudentAsync(session, command.StudentId, absenceType);
 
         var initialStatus = isPendingEntry
             ? AttendanceStatus.Pending.Name
@@ -95,24 +98,5 @@ public static class MarkAttendanceHandler
         }
 
         return (id, @event, notification);
-    }
-
-    /// <summary>
-    /// Türün öğrencinin eğitim türünde geçerli olduğunu doğrular (#175).
-    /// Eğitim türü lokal <c>StudentNameView</c>'dan okunur — modüller arası doğrudan sorgu yasak.
-    /// </summary>
-    internal static async Task EnsureTypeAllowedForStudentAsync(
-        IQuerySession session, Guid studentId, AbsenceType absenceType)
-    {
-        // Yalnız kısıtlı tür için sorgu atılır; diğer türlerde ek okuma maliyeti doğmaz.
-        if (absenceType != AbsenceType.PaidLeave) return;
-
-        var student = await session.LoadAsync<StudentNameView>(studentId);
-        if (student is null)
-            throw new DomainException(AttendanceErrors.StudentNotFound(studentId));
-
-        if (!AbsenceTypePolicy.IsValidForEducationType(absenceType, student.EducationType))
-            throw new DomainException(
-                AttendanceErrors.PaidLeaveNotAllowedForEducationType(student.EducationType));
     }
 }
