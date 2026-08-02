@@ -1,12 +1,8 @@
 using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Api;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Builder;
+using MESNET.Coordination.UnitTests.Infrastructure;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
-using Wolverine;
 using Xunit;
 
 namespace MESNET.Coordination.UnitTests;
@@ -73,67 +69,9 @@ public sealed class CoordinationEndpointAuthorizationTests
 
     // ── Yardımcılar ──
 
-    private static IReadOnlyList<string> PoliciesOf(string method, string route)
-    {
-        var match = AuthorizedEndpoints()
-            .SingleOrDefault(e => e.Method == method && e.Route == route);
+    private static IReadOnlyList<string> PoliciesOf(string method, string route) =>
+        EndpointPolicyProbe.PoliciesOf(AuthorizedEndpoints(), method, route);
 
-        match.ShouldNotBeNull($"{method} {route} ucu kayıtlı değil.");
-        return match.Policies;
-    }
-
-    private sealed record EndpointInfo(string Method, string Route, IReadOnlyList<string> Policies);
-
-    private static IReadOnlyList<EndpointInfo> AuthorizedEndpoints()
-    {
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddRouting();
-        // Uç imzalarındaki IMessageBus servis olarak tanınmalı; aksi hâlde parametre
-        // çıkarımı onu gövde (body) sanır ve endpoint kurulumu patlar. Örnek hiç
-        // çözümlenmez — metadata çıkarımı yalnız kaydın varlığına bakar.
-        services.AddSingleton<IMessageBus>(
-            _ => throw new NotSupportedException("Metadata testi mesaj yolu çözümlemez."));
-        using var provider = services.BuildServiceProvider();
-
-        var builder = new TestEndpointRouteBuilder(provider);
-        builder.MapCoordinationEndpoints();
-
-        return
-        [
-            .. builder.DataSources
-                .SelectMany(source => source.Endpoints)
-                .OfType<RouteEndpoint>()
-                .SelectMany(endpoint =>
-                {
-                    // Politika adı = izin sabiti. Grup seviyesindeki RequireAuthorization()
-                    // politikasızdır (yalnız kimlik doğrulama ister) — elenir.
-                    var policies = endpoint.Metadata
-                        .OfType<IAuthorizeData>()
-                        .Select(data => data.Policy)
-                        .Where(policy => !string.IsNullOrWhiteSpace(policy))
-                        .Select(policy => policy!)
-                        .ToList();
-
-                    var methods = endpoint.Metadata
-                        .GetMetadata<HttpMethodMetadata>()?.HttpMethods ?? [];
-
-                    return methods.Select(method => new EndpointInfo(
-                        method, endpoint.RoutePattern.RawText ?? string.Empty, policies));
-                })
-        ];
-    }
-
-    /// <summary>
-    /// <see cref="IEndpointRouteBuilder"/>'ın en küçük gerçeklemesi — tüm bir
-    /// <c>WebApplication</c> ayağa kaldırmadan uç kayıtlarını toplar.
-    /// </summary>
-    private sealed class TestEndpointRouteBuilder(IServiceProvider serviceProvider) : IEndpointRouteBuilder
-    {
-        public ICollection<EndpointDataSource> DataSources { get; } = [];
-
-        public IServiceProvider ServiceProvider { get; } = serviceProvider;
-
-        public IApplicationBuilder CreateApplicationBuilder() => new ApplicationBuilder(ServiceProvider);
-    }
+    private static IReadOnlyList<EndpointPolicyProbe.EndpointInfo> AuthorizedEndpoints() =>
+        EndpointPolicyProbe.Collect(builder => builder.MapCoordinationEndpoints());
 }

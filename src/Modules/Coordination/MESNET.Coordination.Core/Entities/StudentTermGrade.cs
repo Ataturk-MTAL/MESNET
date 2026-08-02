@@ -5,15 +5,28 @@ using MESNET.Coordination.Core.Enums;
 namespace MESNET.Coordination.Core.Entities;
 
 /// <summary>
-/// Öğrencinin işletmede dönem boyunca aldığı notlar — Dönem Not Fişi'nin (MEB md. 82) kaynağı.
+/// Öğrencinin dönem boyunca aldığı staj notları — Dönem Not Fişi'nin (MEB md. 82) kaynağı.
 /// İşletme yetkilisi (CompanyManager) not giriş penceresinde işletme notlarını girer;
 /// okul-payı (*) alanlarını ve kesinleştirmeyi okul/koordinatör yapar.
+///
+/// <para><b>Okulda staj (#171):</b> işverensiz yerleştirmede (#159) notu okul girer
+/// (<c>department:school-grade:enter</c>) ve <see cref="BusinessId"/> <c>null</c> kalır.
+/// O kayıt için <b>fiş üretilmez</b> — Reporting'e taşıyan olay hiç yayınlanmaz.</para>
 /// </summary>
 public sealed class StudentTermGrade
 {
     public Guid Id { get; set; }
     public Guid StudentId { get; set; }
-    public Guid BusinessId { get; set; }
+
+    /// <summary>
+    /// İşletme — <b>okulda stajda null</b> (#171). Yerleştirme tarafında da nullable seçilmişti
+    /// (#159); tutarlılık için burada da nullable.
+    ///
+    /// <para>Bu alan aynı zamanda <b>ayrım anahtarıdır</b>: <c>null</c> olan kayıt işletme
+    /// akışına (kapsam kontrolü, fiş üretimi, <c>StudentTermGradeSubmitted</c> olayı) hiç
+    /// girmez.</para>
+    /// </summary>
+    public Guid? BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
     public Guid AcademicPeriodId { get; set; }
     public Guid? TeacherId { get; set; }

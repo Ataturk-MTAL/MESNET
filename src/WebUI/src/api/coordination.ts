@@ -746,6 +746,17 @@ export const coordinationApi = {
 
   submitTermGrade: (id: string) =>
     api.post(`/coordination/term-grades/${id}/submit`),
+
+  // Okulda staj (#171) — işverensiz yerleştirmede notu okul girer. Kapsam institution_id
+  // claim'inden gelir; işletme akışından ayrı uçlardır ve fiş ÜRETMEZ.
+  getSchoolStudentsForGrading: (academicPeriodId: string) =>
+    api.get<{ students: StudentGradeRow[] }>('/coordination/term-grades/school-students', { params: { academicPeriodId } }),
+
+  enterSchoolTermGrade: (data: EnterSchoolTermGradeRequest) =>
+    api.post<{ id: string }>('/coordination/term-grades/school', data),
+
+  submitSchoolTermGrade: (id: string) =>
+    api.post(`/coordination/term-grades/school/${id}/submit`),
 }
 
 export interface StudentGradeRow {
@@ -761,6 +772,19 @@ export interface StudentGradeRow {
   experimentGrades: number[]
   masterInstructorName: string | null
   termAverage: number | null
+}
+
+/**
+ * Okulda staj dönem notu (#171). İşletme isteğinden iki farkı var: `masterInstructorName`
+ * yoktur (usta öğretici işletme tarafının kavramı) ve kurum kapsamı token'dan gelir.
+ */
+export interface EnterSchoolTermGradeRequest {
+  studentId: string
+  academicPeriodId: string
+  practiceGrades: number[]
+  serviceGrades: number[]
+  projectGrades: number[]
+  experimentGrades: number[]
 }
 
 export interface EnterTermGradeRequest {

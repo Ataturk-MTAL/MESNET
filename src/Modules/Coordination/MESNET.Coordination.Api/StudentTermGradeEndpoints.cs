@@ -25,7 +25,52 @@ public static class StudentTermGradeEndpoints
         // Koordinatör/okul: gönderilmiş notlar (fiş üretilecekler)
         group.MapGet("/submitted", GetSubmitted).RequireAuthorization(Permissions.Coordinator.Report);
 
+        // Okulda staj (#171) — işverensiz yerleştirmede notu okul girer. İzin `department:`
+        // önekli: `department:*` alan şefi, müdür yardımcısı ve müdürdedir; sahibin saydığı
+        // küme tam olarak budur. Kapsam `institution_id` claim'inden gelir.
+        group.MapGet("/school-students", GetSchoolStudents)
+            .RequireAuthorization(Permissions.DepartmentHead.SchoolGradeEnter);
+        group.MapPost("/school", PostEnterSchool)
+            .RequireAuthorization(Permissions.DepartmentHead.SchoolGradeEnter);
+        group.MapPost("/school/{id:guid}/submit", PostSubmitSchool)
+            .RequireAuthorization(Permissions.DepartmentHead.SchoolGradeEnter);
+
         return app;
+    }
+
+    private static async Task<IResult> GetSchoolStudents(
+        Guid academicPeriodId, IMessageBus bus, HttpContext http)
+    {
+        var result = await bus.InvokeAsync<TermGradeRowsResult>(
+            new GetSchoolStudentsForGrading(GetInstitutionId(http), academicPeriodId));
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
+    }
+
+    private static async Task<IResult> PostEnterSchool(
+        EnterSchoolTermGrade command, IMessageBus bus, HttpContext http)
+    {
+        var id = await bus.InvokeAsync<Guid>(command with
+        {
+            InstitutionId = GetInstitutionId(http),
+            EnteredByName = GetUserName(http)
+        });
+
+        return Results.Created(
+            $"/api/coordination/term-grades/{id}",
+            ResponseBuilder.Success(201)
+                .AddData(new { id })
+                .AddMessage("Okulda staj dönem notu kaydedildi (taslak).")
+                .Build());
+    }
+
+    private static async Task<IResult> PostSubmitSchool(
+        Guid id, IMessageBus bus, HttpContext http)
+    {
+        await bus.InvokeAsync(new SubmitSchoolTermGrade(id) { InstitutionId = GetInstitutionId(http) });
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Okulda staj dönem notu gönderildi.")
+            .Build());
     }
 
     private static async Task<IResult> GetMyStudents(

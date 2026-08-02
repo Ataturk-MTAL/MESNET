@@ -5,16 +5,30 @@ using MESNET.Coordination.Application.Errors;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.Enums;
 using MESNET.Coordination.Core.ReadModels;
-using MESNET.Coordination.Shared.Events;
 
 namespace MESNET.Coordination.Application.Handlers;
 
-public static class StudentTermGradeHandler
+/// <summary>
+/// <b>Okulda staj</b> yapan öğrencinin dönem notu (#171).
+///
+/// <para>İşletme akışından (<see cref="StudentTermGradeHandler"/>) üç noktada ayrılır:</para>
+/// <list type="number">
+///   <item>Kapsam <c>business_id</c> claim'i değil <b>kurum</b> ve okulda staj yerleştirmesidir —
+///         okuldaki şefin <c>business_id</c> claim'i yoktur.</item>
+///   <item><c>BusinessId</c> <c>null</c> kalır; kayıt işletme kapsamlı hiçbir sorguya girmez.</item>
+///   <item>Gönderim <c>StudentTermGradeSubmitted</c> olayını <b>yayınlamaz</b> — okulda staj için
+///         MEB Form 8 üretilmez, Reporting bu kayıttan haberdar olmaz.</item>
+/// </list>
+/// </summary>
+public static class SchoolTermGradeHandler
 {
     public static async Task<Guid> Handle(
-        EnterStudentTermGrade command, IDocumentSession session, CancellationToken ct)
+        EnterSchoolTermGrade command, IDocumentSession session, CancellationToken ct)
     {
-        // 1) Pencere kontrolü — dönem aktif + bugün not giriş penceresinde
+        if (command.InstitutionId == Guid.Empty)
+            throw new DomainException(CoordinationErrors.SchoolGradeInstitutionScopeMissing());
+
+        // 1) Pencere kontrolü — işletme akışıyla aynı kural
         var period = await session.LoadAsync<AcademicPeriodView>(command.AcademicPeriodId, ct)
             ?? throw new DomainException(CoordinationErrors.AcademicPeriodNotFound(command.AcademicPeriodId));
         if (!period.IsActive)
@@ -22,13 +36,16 @@ public static class StudentTermGradeHandler
         if (!period.IsGradeEntryOpen(DateOnly.FromDateTime(DateTime.UtcNow)))
             throw new DomainException(CoordinationErrors.GradeEntryWindowClosed(command.AcademicPeriodId));
 
-        // 2) Yerleştirme/kapsam kontrolü — öğrenci bu işletmeye yerleştirilmiş olmalı
-        var placement = await session.Query<CoordinationPlacedStudentView>()
+        // 2) Kapsam — öğrenci gerçekten OKULDA staj yapıyor ve bu kurumda olmalı.
+        //    İşletmede staj yapan öğrencinin notu bu uçtan girilemez: girilebilseydi okul,
+        //    işletmenin gireceği notu onun yerine yazabilirdi.
+        var placement = await session.Query<SchoolPlacedStudentView>()
             .Where(p => p.StudentId == command.StudentId
-                        && p.BusinessId == command.BusinessId
+                        && p.InstitutionId == command.InstitutionId
+                        && p.AcademicPeriodId == command.AcademicPeriodId
                         && p.IsActive)
             .FirstOrDefaultAsync(ct)
-            ?? throw new DomainException(CoordinationErrors.StudentNotPlacedAtBusiness(command.StudentId));
+            ?? throw new DomainException(CoordinationErrors.StudentNotPlacedAtSchool(command.StudentId));
 
         // 3) Upsert — öğrenci + dönem başına tek not; gönderilmişse düzenlenemez
         var existing = await session.Query<StudentTermGrade>()
@@ -38,10 +55,9 @@ public static class StudentTermGradeHandler
         if (existing is not null && existing.StatusName != StudentTermGradeStatus.Draft.Name)
             throw new DomainException(CoordinationErrors.StudentTermGradeAlreadySubmitted(existing.Id));
 
-        // Okulda staj notu (#171) bu uçtan ezilemez — iki akış birbirinin üstüne yazamaz.
-        // Yerleştirme kontrolü zaten bu hâli engelliyor; bu satır kaydın kendisini koruyor.
-        if (existing is not null && existing.BusinessId is null)
-            throw new DomainException(CoordinationErrors.StudentTermGradeBelongsToSchool(existing.Id));
+        // Aynı öğrencinin işletme notu varsa bu uçtan ezilemez — akışlar birbirinin üstüne yazamaz.
+        if (existing?.BusinessId is not null)
+            throw new DomainException(CoordinationErrors.StudentTermGradeBelongsToBusiness(existing.Id));
 
         var grade = existing ?? new StudentTermGrade
         {
@@ -50,12 +66,11 @@ public static class StudentTermGradeHandler
             AcademicPeriodId = command.AcademicPeriodId,
         };
 
-        grade.BusinessId = command.BusinessId;
+        grade.BusinessId = null;
         grade.InstitutionId = placement.InstitutionId;
-        grade.TeacherId = placement.TeacherId;
+        grade.TeacherId = placement.TeacherId;   // okulda stajda gözetmen
         grade.StudentName = placement.StudentName;
         grade.BranchName = placement.BranchName;
-        grade.MasterInstructorName = command.MasterInstructorName;
         grade.PracticeGrades = command.PracticeGrades;
         grade.ServiceGrades = command.ServiceGrades;
         grade.ProjectGrades = command.ProjectGrades;
@@ -71,23 +86,24 @@ public static class StudentTermGradeHandler
         return grade.Id;
     }
 
-    public static async Task<StudentTermGradeSubmitted> Handle(
-        SubmitStudentTermGrade command, IDocumentSession session, CancellationToken ct)
+    /// <summary>
+    /// Taslağı kesinleştirir. <b>Olay yayınlamaz</b> — Reporting'in <c>StudentTermGradeView</c>'ı
+    /// oluşmaz, dolayısıyla Form 8 üretim yolu bu kayıt için hiç açılmaz.
+    /// </summary>
+    public static async Task Handle(
+        SubmitSchoolTermGrade command, IDocumentSession session, CancellationToken ct)
     {
         var grade = await session.LoadAsync<StudentTermGrade>(command.StudentTermGradeId, ct)
             ?? throw new DomainException(CoordinationErrors.StudentTermGradeNotFound(command.StudentTermGradeId));
 
-        // Okulda staj notu (#171) bu uçtan gönderilemez — gönderilseydi StudentTermGradeSubmitted
-        // yayınlanır ve Reporting o kayıt için Form 8 üretebilir hâle gelirdi. Olayın
-        // BusinessId'si bilinçli olarak nullable DEĞİL: olay yalnız işletme notu için vardır.
-        if (grade.BusinessId is not { } gradeBusinessId)
-            throw new DomainException(CoordinationErrors.StudentTermGradeBelongsToSchool(grade.Id));
+        // İşletme notu bu uçtan gönderilemez: gönderilseydi Reporting'e taşıyan olay hiç
+        // yayınlanmaz ve o öğrencinin fişi sessizce üretilemez hâle gelirdi.
+        if (grade.BusinessId is not null)
+            throw new DomainException(CoordinationErrors.StudentTermGradeBelongsToBusiness(grade.Id));
 
-        // Kapsam — yalnız kendi işletmesinin notunu gönderebilir
-        if (gradeBusinessId != command.BusinessId)
-            throw new DomainException(CoordinationErrors.StudentNotPlacedAtBusiness(grade.StudentId));
+        if (grade.InstitutionId != command.InstitutionId)
+            throw new DomainException(CoordinationErrors.StudentNotPlacedAtSchool(grade.StudentId));
 
-        // Pencere hâlâ açık olmalı
         var period = await session.LoadAsync<AcademicPeriodView>(grade.AcademicPeriodId, ct);
         if (period is null || !period.IsGradeEntryOpen(DateOnly.FromDateTime(DateTime.UtcNow)))
             throw new DomainException(CoordinationErrors.GradeEntryWindowClosed(grade.AcademicPeriodId));
@@ -97,15 +113,9 @@ public static class StudentTermGradeHandler
         grade.SubmittedAt = DateTime.UtcNow;
         session.Store(grade);
         await session.SaveChangesAsync(ct);
-
-        // Cascading event → Reporting StudentTermGradeView'ini besler (fiş gerçek notlardan üretilir)
-        return new StudentTermGradeSubmitted(
-            grade.Id, grade.StudentId, gradeBusinessId, grade.InstitutionId, grade.AcademicPeriodId,
-            grade.PracticeGrades, grade.ServiceGrades, grade.ProjectGrades, grade.ExperimentGrades,
-            grade.TermAverage, grade.MasterInstructorName, grade.SubmittedAt.Value);
     }
 
-    // İşletmede verilen 4 kategorinin tüm notlarının aritmetik ortalaması (otomatik dönem ortalaması)
+    // Okulda verilen 4 kategorinin tüm notlarının aritmetik ortalaması
     private static decimal? ComputeAverage(StudentTermGrade g)
     {
         var all = g.PracticeGrades

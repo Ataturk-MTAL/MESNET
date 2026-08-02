@@ -367,6 +367,28 @@ public static class Permissions
 
         /// <summary>Haftalık ziyaret ataması oluşturma ve yönetimi.</summary>
         public const string WeeklyVisit = "department:weekly-visit:manage";
+
+        /// <summary>
+        /// <b>Okulda staj</b> yapan öğrencinin dönem notunu girme (#171).
+        ///
+        /// <para>İşletmede staj yapan öğrencinin notunu işletme girer
+        /// (<see cref="Company.EnterGrade"/>, kapsam <c>business_id</c> claim'i). Okulda staj
+        /// yapan öğrencinin (#159, işverensiz yerleştirme) işletmesi yoktur; o izin ve o kapsam
+        /// kullanılamaz — okuldaki şefin <c>business_id</c> claim'i yoktur. Bu izin olmadan
+        /// öğrencinin notu <b>hiç girilemiyordu</b>: yerleştirme işletme kapsamlı görünüme
+        /// girmediği için not giriş listesinde de görünmüyordu.</para>
+        ///
+        /// <para><b>Önek neden <c>department:</c> — bu kez wildcard İSTENEN sonucu veriyor:</b>
+        /// sahibin kararı notu alan şefi, müdür yardımcısı ve müdürün girebilmesi yönünde.
+        /// <c>department:*</c> wildcard'ı tam olarak bu üç roldedir (<c>DepartmentHead</c>,
+        /// <c>DeputyDirector</c>, <c>InstitutionManager</c>), dolayısıyla önek hedef kümeyi
+        /// birebir karşılar. <c>Teacher</c> ve işletme rollerinde bu önek YOKTUR.</para>
+        ///
+        /// <para><b>Not: bu izin fiş üretmez.</b> Okulda staj için MEB Form 8 (Dönem Not Fişi)
+        /// üretilmez — sahibin ifadesi: <i>"Okulda staj için ayrı form yok, hatta form yok genel
+        /// olarak."</i> Kayıt yalnız öğrencinin başarı değerlendirmesi için tutulur.</para>
+        /// </summary>
+        public const string SchoolGradeEnter = "department:school-grade:enter";
     }
 
     /// <summary>

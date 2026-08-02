@@ -28,6 +28,13 @@ public static class GenerateTermGradeSlipFromGradesHandler
             .Where(p => p.StudentId == command.StudentId && p.AcademicPeriodId == command.AcademicPeriodId)
             .FirstOrDefaultAsync(ct);
 
+        // Okulda staj (#159/#171): MEB Form 8 üretilmez. Fiş "İşletmenin Adı" alanı ve iki
+        // işletme imzası (usta öğretici, işletme yetkilisi) taşır; işverensiz staj için ayrı
+        // bir form da yoktur. Coordination o notu Reporting'e hiç taşımadığı için buraya
+        // normalde ulaşılmaz — bu kontrol, ulaşılırsa anlaşılır bir hata döndürmek içindir.
+        if (placement is { BusinessId: null })
+            throw new DomainException(ReportingErrors.TermGradeSlipNotAvailableForSchoolPlacement(command.StudentId));
+
         // İşletme iletişim/yetkili bilgisi — Business olaylarından beslenen yerel read-model (#99).
         // Placement'taki kopya, işletme olayı yerleştirmeden önce geldiyse boş kalabildiği için asıl kaynak budur.
         var businessContact = await session.LoadAsync<BusinessContactReportView>(grades.BusinessId, ct);

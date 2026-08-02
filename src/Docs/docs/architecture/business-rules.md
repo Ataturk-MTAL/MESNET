@@ -425,6 +425,41 @@ işareti (§6.3, `IsPublicInstitution`) bu hâlin çözümü **değildir** — o
 
 Karar kaydı: issue #159.
 
+#### Dönem notunu okul girer, fiş üretilmez (#171)
+
+Dönem notu akışının her adımı işletmeye bağlıydı: uç `company:grade:enter` istiyor, işletme
+kimliği `business_id` claim'inden okunuyor, öğrenci listesi işletme kapsamlı görünümden
+geliyordu. Okulda staj yerleştirmesi o görünüme hiç girmediği için öğrenci not giriş ekranında
+**görünmüyor ve notu hiç girilemiyordu** — belirti ancak dönem sonunda "bu öğrencinin notu
+nerede" diye sorulduğunda çıkardı.
+
+| | İşletmede staj | Okulda staj |
+| --- | --- | --- |
+| Notu giren | İşletme yetkilisi | **Alan şefi, müdür yardımcısı, müdür** |
+| İzin | `company:grade:enter` | `department:school-grade:enter` |
+| Kapsam | `business_id` claim'i | `institution_id` claim'i + okulda staj yerleştirmesi |
+| `StudentTermGrade.BusinessId` | Dolu | **null** |
+| Usta öğretici adı | Girilir | Alan yok (işletme kavramı) |
+| MEB Form 8 (Dönem Not Fişi) | Üretilir | **Üretilmez** |
+
+**Fiş neden üretilmez:** form "İşletmenin Adı" alanı ve iki işletme imzası (usta öğretici,
+işletme yetkilisi) taşır. Sahibin ifadesi: *"Okulda staj için ayrı form yok, hatta form yok
+genel olarak."* Not kaydı yalnız öğrencinin başarı değerlendirmesi için tutulur.
+
+Üretim yolu **üç katmanda** kapalıdır: okul gönderimi `StudentTermGradeSubmitted` olayını
+yayınlamaz (Reporting kayıttan haberdar olmaz), fiş listesi (`GET /submitted`) işletmesiz
+notları filtreler, ve fiş üretim handler'ı işverensiz yerleştirmeyi açık hatayla reddeder.
+
+**İki akış birbirinin üstüne yazamaz:** işletme ucu okulda staj notunu, okul ucu işletme notunu
+düzenleyemez/gönderemez — her iki yönde de ayrı hata döner.
+
+> **Önek notu (ADR-0001):** izin `department:` öneklidir ve bu, wildcard tuzağının **istenen
+> sonucu verdiği** nadir vakadır. `department:*` wildcard'ı tam olarak alan şefi, müdür
+> yardımcısı ve müdürdedir — hedef küme birebir örtüşür. Aynı önek #126, #130 ve #172'de
+> reddedilmişti; oralarda hedef küme daha dardı.
+
+Karar kaydı: issue #171.
+
 ### 6.3.1 Sınıf Yılı Başına Tek Katkı
 
 > Bir öğrenci belirli bir **sınıf yılı** için devlet katkısını **bir kez** alır. O sınıf yılı

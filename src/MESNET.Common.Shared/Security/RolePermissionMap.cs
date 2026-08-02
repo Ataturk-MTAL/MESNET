@@ -32,7 +32,9 @@ public static class RolePermissionMap
             // para etkisi olan bir karar olduğu için açıkça yazılır.
             Permissions.Attendance.DirectEntry,
             Permissions.Attendance.HealthReportDirect,
-            Permissions.Attendance.Upload
+            Permissions.Attendance.Upload,
+            // Okulda staj dönem notu (#171) — "department:*" zaten kapsar, açıkça yazılır.
+            Permissions.DepartmentHead.SchoolGradeEnter
         ],
         // Müdür yardımcısı (#129). Kaynak: actors.md → "Müdür Yardımcısı" —
         // staj işlemleri koordinasyonu, evrak takibi ve onayı, öğretmen görevlendirmeleri,
@@ -74,6 +76,8 @@ public static class RolePermissionMap
             // "koordinatör öğretmen, müdür yardımcısı ya da müdür doğrudan girebilir".
             Permissions.Attendance.DirectEntry,
             Permissions.Attendance.HealthReportDirect,
+            // Okulda staj dönem notu (#171) — "department:*" zaten kapsar, açıkça yazılır.
+            Permissions.DepartmentHead.SchoolGradeEnter,
             Permissions.Document.View,
             Permissions.Document.Upload,
             Permissions.Document.Verify,
@@ -159,6 +163,10 @@ public static class RolePermissionMap
         [MesnetRoles.DepartmentHead] =
         [
             "department:*",
+            // Okulda staj yapan öğrencinin dönem notu (#171) — "department:*" zaten kapsar,
+            // sahibin açık kararı olduğu için ayrıca yazılır. İşletmede staj notunu işletme
+            // girer; bu izin yalnız işverensiz yerleştirme (#159) içindir.
+            Permissions.DepartmentHead.SchoolGradeEnter,
             Permissions.Student.View,
             Permissions.Coordinator.Schedule,
             Permissions.Attendance.View,

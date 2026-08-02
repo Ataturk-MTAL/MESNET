@@ -56,6 +56,9 @@ export const Permissions = {
     Attendance: 'company:attendance:manage',
     UploadReceipt: 'company:receipt:upload',
     MasterTrainer: 'company:trainer:manage',
+    // İşletmede staj yapan öğrencinin dönem notunu girme. Okulda staj karşılığı ayrıdır:
+    // DepartmentHead.SchoolGradeEnter (#171).
+    EnterGrade: 'company:grade:enter',
   },
 
   Internship: {
@@ -113,6 +116,12 @@ export const Permissions = {
     Workload: 'department:workload:view',
     TeacherAssign: 'department:teacher:assign',
     ScheduleView: 'department:schedule:view',
+    /**
+     * Okulda staj yapan öğrencinin dönem notunu girme (#171). `department:*` wildcard'ı alan
+     * şefi, müdür yardımcısı ve müdürdedir — sahibin saydığı küme tam olarak bu. İşletmede
+     * staj notunu işletme girer (`company:grade:enter`).
+     */
+    SchoolGradeEnter: 'department:school-grade:enter',
   },
 
   Document: {

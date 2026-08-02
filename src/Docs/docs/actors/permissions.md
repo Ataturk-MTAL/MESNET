@@ -354,6 +354,9 @@ public static class Permissions
         public const string Workload = "department:workload:view";
         public const string TeacherAssign = "department:teacher:assign";
         public const string ScheduleView = "department:schedule:view";
+        // Okulda staj dönem notu girişi (#171) — "department:*" alan şefi, müdür yardımcısı
+        // ve müdürdedir; sahibin saydığı küme tam olarak bu.
+        public const string SchoolGradeEnter = "department:school-grade:enter";
     }
 
     // Evrak İzinleri
@@ -1349,3 +1352,44 @@ zincirini tümden kaldırabilirdi.
 `attendance:direct-entry` iznine bakar. Borcun gerçek maliyeti #172'de görüldü: yeni eklenen
 `CompanyHR` rolü listede olmadığı için o rolün girdiği kayıt okul girmiş gibi doğrudan
 `Recorded` olurdu.
+
+## Okulda Staj Dönem Notu — Wildcard'ın İSTENEN Sonucu Verdiği Vaka (#171)
+
+Dönem notu akışının her adımı işletmeye bağlıydı; okulda staj yapan öğrenci (#159, işverensiz
+yerleştirme) not giriş listesinde hiç görünmüyor ve **notu hiç girilemiyordu**.
+
+### İki akış, iki izin
+
+| | İşletmede staj | Okulda staj |
+|---|---|---|
+| Notu giren | İşletme yetkilisi / usta öğretici | **Alan şefi, müdür yardımcısı, müdür** |
+| İzin | `company:grade:enter` | `department:school-grade:enter` |
+| Kapsam | `business_id` claim'i | `institution_id` claim'i + okulda staj yerleştirmesi |
+| Fiş (MEB Form 8) | Üretilir | **Üretilmez** |
+
+Okuldaki şefin `business_id` claim'i **yoktur** — işletme izni ona verilse bile hiçbir işe
+yaramazdı. Kapsam bu yüzden kurum claim'i ve `SchoolPlacedStudentView` üzerinden kurulur.
+
+### Önek neden `department:` — bu kez tuzak değil
+
+`department:*` wildcard'ı `InstitutionManager`, `DeputyDirector` **ve** `DepartmentHead`
+rollerindedir. Diğer kararlarda bu önek tam da bu yüzden **reddedilmişti**: #126'da alan şefine
+kapsam muafiyeti, #130'da kurum geneli yapılandırma, #172'de hüküm izni geçmesin diye. Burada
+sahibin saydığı küme o üç rolle **birebir aynı** olduğu için önek hedefi doğrudan karşılıyor.
+
+`Teacher` ve işletme rollerinde `department:` öneki yoktur. Kilitleyen testler:
+`tests/MESNET.Security.UnitTests/SchoolTermGradeMappingTests.cs` (rol dağılımı + önek kararı) ve
+`tests/MESNET.Coordination.UnitTests/SchoolTermGradeEndpointAuthorizationTests.cs` (uç → izin
+eşlemesi + işletme akışı regresyonu).
+
+### Fiş üretim yolu üç katmanda kapalı
+
+1. Okul gönderimi `StudentTermGradeSubmitted` olayını **yayınlamaz** — Reporting'in
+   `StudentTermGradeView` kaydı hiç oluşmaz
+2. Fiş listesi (`GET /term-grades/submitted`) `BusinessId != null` filtresi taşır — koordinatör
+   ekranda görmez, üretmeyi denemez
+3. Fiş üretim handler'ı işverensiz yerleştirmeyi açık hatayla reddeder
+   (`Reporting.TermGradeSlipNotAvailableForSchoolPlacement`)
+
+Tek katman yeterli olurdu; üçü birden var çünkü ilk ikisi *sessiz* korumadır — biri kaldırılsa
+belirti dönem sonuna kadar görünmezdi.

@@ -94,6 +94,12 @@ public static class MartenConfiguration
         options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.InstitutionId);
         options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.AcademicPeriodId);
 
+        // SchoolPlacedStudentView (okulda staj — işverensiz yerleştirme, #159/#171)
+        options.Schema.For<SchoolPlacedStudentView>().DatabaseSchemaName("coordination");
+        options.Schema.For<SchoolPlacedStudentView>().Index(x => x.StudentId);
+        options.Schema.For<SchoolPlacedStudentView>().Index(x => x.InstitutionId);
+        options.Schema.For<SchoolPlacedStudentView>().Index(x => x.AcademicPeriodId);
+
         // BusinessEvaluation
         options.Schema.For<BusinessEvaluation>().DatabaseSchemaName("coordination");
         options.Schema.For<BusinessEvaluation>().Index(x => x.BusinessId);
