@@ -38,6 +38,18 @@ public sealed record ChangeUserRoles(Guid UserAccountId, List<string> NewRoles);
 /// </summary>
 public sealed record ChangeUserBranches(Guid UserAccountId, List<string> BranchCodes);
 
+/// <summary>
+/// Velinin bağlı olduğu öğrencileri değiştirir (#174).
+///
+/// <para><b>Neden ayrı komut:</b> <c>ChangeUserBranches</c> ile aynı gerekçe — bu bir
+/// <b>yetki kapsamı</b> kararıdır, kimlik güncellemesi değil. Bağ kaydı velinin hangi
+/// öğrencinin verisine erişeceğini belirler; izinleri değil kapsamı açar (ADR-0001).</para>
+///
+/// <para><b>Boş liste geçerlidir</b> — bağı kaldırmak meşru bir işlemdir (öğrenci mezun oldu,
+/// vesayet değişti). Kaldırma anında kapsam kapanır: veli artık hiçbir öğrenciye erişemez.</para>
+/// </summary>
+public sealed record ChangeUserStudents(Guid UserAccountId, List<Guid> StudentIds);
+
 public sealed record ChangeUserPermissions(Guid UserAccountId, List<string> DirectPermissions);
 
 public sealed record ToggleUserStatus(Guid UserAccountId, bool Enable, string? Reason = null);

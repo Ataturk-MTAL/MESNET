@@ -66,6 +66,13 @@ public static class AssignablePermissionScope
         [
             "student:", "communication:",
         ],
+        // Veli (#174): öğrenciyle aynı dar kapsam. "attendance:" ve "internship:" bilinçli
+        // olarak YOK — veliye o domainlerden bireysel izin atanabilseydi, kapsamı bağ kaydıyla
+        // sınırlı olan bir kullanıcı okul tarafının uçlarına erişebilirdi.
+        [MesnetRoles.Parent] =
+        [
+            "student:", "communication:",
+        ],
         // Sistem yöneticisi (#147): yalnız ulusal domain. Kurum domainlerinden hiçbiri yok —
         // bu rol kurum verisine yetki dağıtamaz.
         [MesnetRoles.SystemAdmin] =

@@ -18,7 +18,8 @@ namespace MESNET.Attendance.Application.Handlers;
 /// <para><b>Kapsam kararı permission + claim ile verilir, rol adına bakılmaz</b> (ADR-0001):
 /// okul onayını verebilen kullanıcı kurumun tümünü görür; işletme kullanıcısı
 /// <c>business_id</c> claim'iyle kendi başvurularını; öğrenci <c>student_id</c> claim'iyle
-/// yalnız kendisininkini. Hiçbir kapsam çözülemezse <b>boş liste</b> döner — kapsamsız
+/// yalnız kendisininkini; veli <c>linked_student_ids</c> ile yalnız bağlı olduğu öğrencilerinkini
+/// (#174). Hiçbir kapsam çözülemezse <b>boş liste</b> döner — kapsamsız
 /// kullanıcıya tüm kurumun izin geçmişini açmaktansa hiçbir şey göstermek doğrudur.</para>
 /// </summary>
 public static class ListPaidLeaveRequestsHandler
@@ -78,6 +79,14 @@ public static class ListPaidLeaveRequestsHandler
 
         if (query.StudentIdClaim is { } studentId && studentId != Guid.Empty)
             return queryable.Where(r => r.StudentId == studentId);
+
+        // Veli (#174): bağ kaydındaki öğrencilerin başvuruları. Kapsam istekten değil
+        // claim'den gelir ve claim'in kaynağı otoriter kullanıcı kaydıdır.
+        if (ParentScopePolicy.HasLinkedStudents(query.LinkedStudentIds))
+        {
+            var linked = query.LinkedStudentIds!;
+            return queryable.Where(r => linked.Contains(r.StudentId));
+        }
 
         return null;
     }

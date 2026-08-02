@@ -47,6 +47,20 @@ public static class MesnetRoles
     public const string CompanyHR = "CompanyHR";
 
     /// <summary>
+    /// Veli (#174) — öğrencisinin devamını ve staj sürecini izler, sağlık raporu ve ücretli izin
+    /// başvurusu girer, fesih zincirinde kendi adımını onaylar.
+    ///
+    /// <para><b>Kapsamı tek bir izinle verilemez:</b> veli yalnız <b>bağlı olduğu</b> öğrencinin
+    /// verisine erişir ve bu bağ permission değil <b>kayıt</b>tır
+    /// (<c>UserAccount.LinkedStudentIds</c>) — ADR-0001: izin erişimi açar, kapsamı belirlemez.
+    /// Desen <c>BranchCodes</c> (#126) ile aynıdır: kayıt otoriterdir, token claim'i ezilir.</para>
+    ///
+    /// <para>Girdiği hiçbir kayıt doğrudan hüküm doğurmaz — <c>attendance:direct-entry</c> ve
+    /// <c>attendance:health-report:direct</c> bu rolde YOKTUR (#172).</para>
+    /// </summary>
+    public const string Parent = "Parent";
+
+    /// <summary>
     /// Sistem yöneticisi (#147) — ULUSAL parametreleri girer (asgari ücret, 3308 oranları).
     /// Kurum verisine yetkisi YOKTUR; okul rollerinin de ulusal parametreye yetkisi yoktur.
     /// Gerçek işletimde bu işi Bakanlık düzeyi bir aktör yapar; o aktör tanımlandığında aynı
@@ -75,6 +89,8 @@ public static class MesnetRoles
             "İşletme adına belge ve sağlık raporu girer, devam kaydı tutar; girişleri okul onayına tabidir."),
         new(Student, "Öğrenci",
             "Kendi staj, devamsızlık ve ödeme bilgilerini görüntüler."),
+        new(Parent, "Veli",
+            "Bağlı olduğu öğrencinin devam ve staj sürecini izler; sağlık raporu ve izin başvurusu girer."),
         new(SystemAdmin, "Sistem Yöneticisi",
             "Ulusal hesaplama parametrelerini (asgari ücret, 3308 oranları) girer; kurum verisine yetkisi yoktur."),
     ];

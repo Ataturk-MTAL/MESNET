@@ -101,6 +101,12 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         // durumdur (müdür/müdür yardımcısı hiçbir alana bağlı değildir).
         await EnrichBranchCodesClaimAsync(principal, sub, entry?.BranchCodes);
 
+        // ── Veli–öğrenci bağ kapsamı claim enrichment (#174) ──
+        // BranchCodes ile aynı güven sırası: KAYIT otoriterdir. Kayıt doluysa token'dan gelen
+        // linked_student_ids claim'leri silinir. DB yedeği YOKTUR — bağ yalnız kullanıcı
+        // kaydında tutulur; kayıt yoksa kapsam yoktur ve erişim doğmaz.
+        EnrichLinkedStudentClaims(principal, entry?.LinkedStudentIds);
+
         // Permission claim'lerini ekle
         var identity = principal.Identity as ClaimsIdentity;
         if (identity is null)
@@ -166,7 +172,7 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
 
             return new PermissionCacheEntry(
                 info.IsEnabled, info.Roles, info.DirectPermissions, info.BranchCodes,
-                info.InstitutionId);
+                info.InstitutionId, info.LinkedStudentIds ?? []);
         }
         catch (Exception ex)
         {
@@ -252,6 +258,57 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
 
         foreach (var code in BranchCodeClaims.Parse(joined))
             identity.AddClaim(new Claim(BranchCodeClaims.ClaimType, code));
+    }
+
+    /// <summary>
+    /// <c>linked_student_ids</c> claim'ini kullanıcı kaydından kurar (#174).
+    ///
+    /// <para><b>Kayıt otoriterdir.</b> Token'dan gelen değerler HER ZAMAN silinir — kayıt boş
+    /// olsa bile. <c>branch_codes</c>'ta token yedeği bırakılmıştı (mevcut kullanıcılar için
+    /// geçiş adımı); burada yedek YOKTUR çünkü bağ kaydı bu iş ile birlikte doğdu ve token'dan
+    /// gelen bir değerin meşru kaynağı olamaz. Öznitelik Keycloak'ta <i>unmanaged</i>'dır:
+    /// yedek bırakılsaydı kullanıcı kendi Account konsolundan kendine öğrenci ekleyip başka
+    /// bir öğrencinin verisine erişebilirdi.</para>
+    /// </summary>
+    private void EnrichLinkedStudentClaims(
+        ClaimsPrincipal principal, IReadOnlyList<Guid>? accountLinkedStudentIds)
+    {
+        if (principal.Identity is not ClaimsIdentity identity)
+            return;
+
+        RemoveLinkedStudentClaims(principal);
+
+        if (accountLinkedStudentIds is not { Count: > 0 })
+            return;
+
+        foreach (var studentId in accountLinkedStudentIds)
+            identity.AddClaim(new Claim(LinkedStudentClaims.ClaimType, studentId.ToString()));
+    }
+
+    /// <summary>
+    /// Token'daki <c>linked_student_ids</c> claim'lerini siler. Gerekçe
+    /// <see cref="RemoveBranchCodeClaims"/> ile aynı; silinemeyen claim sessizce bırakılmaz,
+    /// loglanır.
+    /// </summary>
+    private void RemoveLinkedStudentClaims(ClaimsPrincipal principal)
+    {
+        foreach (var identity in principal.Identities)
+        {
+            var existing = identity.FindAll(LinkedStudentClaims.ClaimType).ToList();
+            foreach (var claim in existing)
+            {
+                try
+                {
+                    identity.RemoveClaim(claim);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogError(ex,
+                        "Token'daki linked_student_ids claim'i kaldırılamadı: {ClaimValue}. " +
+                        "Kullanıcı tarafından belirlenmiş kapsam geçerli kalabilir.", claim.Value);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -496,5 +553,6 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         IReadOnlyList<string> Roles,
         IReadOnlyList<string> DirectPermissions,
         IReadOnlyList<string> BranchCodes,
-        Guid? InstitutionId);
+        Guid? InstitutionId,
+        IReadOnlyList<Guid> LinkedStudentIds);
 }

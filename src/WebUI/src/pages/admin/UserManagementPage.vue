@@ -165,6 +165,18 @@
                 >
                   <q-tooltip>Alanları (branş) yönet</q-tooltip>
                 </q-btn>
+                <!-- Veli–öğrenci bağı (#174): velinin KAPSAMI. İzinleri tüm velilerde
+                     aynıdır; erişeceği veriyi yalnız bu bağ belirler. -->
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="family_restroom"
+                  aria-label="Bağlı öğrencileri yönet"
+                  @click="openStudents(row)"
+                >
+                  <q-tooltip>Bağlı öğrencileri yönet (veli)</q-tooltip>
+                </q-btn>
               </PermissionGuard>
               <PermissionGuard :permission="Permissions.UserManagement.Update">
                 <q-btn
@@ -513,6 +525,77 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Veli–öğrenci bağı (#174) -->
+    <q-dialog v-model="studentsDialog">
+      <q-card style="min-width: 420px">
+        <q-toolbar class="bg-secondary text-white">
+          <q-icon
+            name="family_restroom"
+            size="sm"
+            class="q-mr-sm"
+          />
+          <q-toolbar-title>Bağlı Öğrenciler</q-toolbar-title>
+          <q-btn
+            v-close-popup
+            flat
+            round
+            dense
+            icon="close"
+            aria-label="Kapat"
+            color="white"
+          />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <AppNotice
+            type="info"
+            message="Velinin erişebileceği veriyi yalnız bu liste belirler. Boş bırakmak bağı kaldırır; veli hiçbir öğrencinin verisine erişemez."
+          />
+          <q-select
+            v-model="selectedStudents"
+            :options="studentOpts.options.value"
+            :loading="studentOpts.loading.value"
+            label="Öğrenciler"
+            outlined
+            multiple
+            use-chips
+            use-input
+            input-debounce="0"
+            emit-value
+            map-options
+            option-label="label"
+            option-value="value"
+            @filter="studentOpts.filter"
+          >
+            <template #prepend>
+              <q-icon name="school" />
+            </template>
+            <template #no-option>
+              <SelectEmptyOption />
+            </template>
+          </q-select>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions
+          align="right"
+          class="q-pa-md"
+        >
+          <q-btn
+            v-close-popup
+            flat
+            label="İptal"
+            color="grey-7"
+          />
+          <q-btn
+            unelevated
+            color="secondary"
+            label="Kaydet"
+            :loading="saving"
+            @click="saveStudents"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -531,7 +614,7 @@ import AppTable from 'components/AppTable.vue'
 import AppNotice from 'components/AppNotice.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
-import { useBranchOptions } from 'src/composables/useEntityOptions'
+import { useBranchOptions, useStudentOptions } from 'src/composables/useEntityOptions'
 import { resolveBranchCellState } from 'utils/branchAssignment'
 
 const $q = useQuasar()
@@ -551,8 +634,11 @@ const selectedRoles = ref<string[]>([])
 // ── Alan (branş) kapsamı (#126) ──
 const branchesDialog = ref(false)
 const selectedBranches = ref<string[]>([])
+const studentsDialog = ref(false)
+const selectedStudents = ref<string[]>([])
 const missingBranchOnly = ref(false)
 const branchOpts = useBranchOptions()
+const studentOpts = useStudentOptions()
 
 // ── Server-side pagination: Users ──
 // Boş liste yöneticide normaldir; filtre yalnız "beklenip girilmemiş" olanları getirir.
@@ -662,6 +748,29 @@ async function saveBranches() {
     await loadUsers()
   } catch (e) {
     notify.apiError(e, 'Alanlar güncellenirken bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
+}
+
+function openStudents(row: UserAccountDto) {
+  selectedUser.value = row
+  selectedStudents.value = [...row.linkedStudentIds]
+  studentsDialog.value = true
+  studentOpts.load().catch(() => {})
+}
+
+async function saveStudents() {
+  if (!selectedUser.value) return
+  saving.value = true
+  try {
+    // Boş dizi bağı kaldırır — öğrenci mezun olduğunda ya da vesayet değiştiğinde geçerli işlem.
+    await securityApi.changeStudents(selectedUser.value.id, { studentIds: selectedStudents.value })
+    notify.success('Velinin bağlı olduğu öğrenciler güncellendi.')
+    studentsDialog.value = false
+    await loadUsers()
+  } catch (e) {
+    notify.apiError(e, 'Bağlı öğrenciler güncellenirken bir hata oluştu.')
   } finally {
     saving.value = false
   }

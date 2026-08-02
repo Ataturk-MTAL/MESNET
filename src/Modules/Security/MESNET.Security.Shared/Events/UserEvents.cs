@@ -50,6 +50,16 @@ public sealed record UserBranchesChanged(
     IReadOnlyList<string> PreviousBranchCodes,
     IReadOnlyList<string> NewBranchCodes);
 
+/// <summary>
+/// Velinin bağlı olduğu öğrenciler değişti (#174). Kapsam kaydı değiştiği için permission
+/// cache'i geçersiz kılınır — aksi hâlde eski kapsam cache süresi boyunca geçerli kalırdı.
+/// </summary>
+public sealed record UserStudentsChanged(
+    Guid UserAccountId,
+    string KeycloakUserId,
+    IReadOnlyList<Guid> PreviousStudentIds,
+    IReadOnlyList<Guid> StudentIds);
+
 public sealed record UserActivated(
     Guid UserAccountId,
     string KeycloakUserId);

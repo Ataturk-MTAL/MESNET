@@ -1,6 +1,7 @@
 using MESNET.Attendance.Application.Commands;
 using MESNET.Attendance.Application.Dtos;
 using MESNET.Attendance.Application.Queries;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
@@ -49,9 +50,14 @@ public static class PaidLeaveEndpoints
     private static async Task<IResult> Post(
         RequestPaidLeave command, Guid academicPeriodId, IMessageBus bus, HttpContext http)
     {
+        // Öğrenci kendi adına başvuruyorsa claim kazanır; veli öğrencisi adına başvuruyorsa
+        // istekteki değer handler'da BAĞ KAYDINA karşı doğrulanır (#174). Karar handler'da
+        // tek yerde verilir — uç yalnız claim'i taşır.
+        var studentIdClaim = ClaimGuid(http, "student_id");
+
         var requestId = await bus.InvokeAsync<Guid>(command with
         {
-            StudentId = ClaimGuid(http, "student_id"),
+            StudentId = studentIdClaim != Guid.Empty ? studentIdClaim : command.StudentId,
             AcademicPeriodId = academicPeriodId
         });
 
@@ -121,6 +127,7 @@ public static class PaidLeaveEndpoints
             {
                 BusinessIdClaim = ClaimGuid(http, "business_id"),
                 StudentIdClaim = ClaimGuid(http, "student_id"),
+                LinkedStudentIds = LinkedStudentClaims.Read(http.User),
                 InstitutionIdClaim = ClaimGuid(http, "institution_id"),
                 AcademicPeriodId = academicPeriodId,
                 Page = page,

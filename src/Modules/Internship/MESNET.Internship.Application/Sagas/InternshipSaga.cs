@@ -1,3 +1,4 @@
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Attendance.Shared.Events;
 using MESNET.Contract.Shared.Events;
 using MESNET.Enrollment.Shared.Events;
@@ -90,8 +91,16 @@ public class InternshipSaga : Saga
     }
 
     // ─── HANDLE: Onay Zinciri — Veli ───
-    public object? Handle(ApproveTerminationByParent e)
+    /// <summary>
+    /// Veli adımı (#174). Kapsam kontrolü <b>saga state'indeki</b> öğrenciye bakar, istekten
+    /// gelen bir kimliğe değil: veli yalnız bağlı olduğu öğrencinin stajında bu adımı yapabilir.
+    /// Bağı olmayan çağıran (öğretmen, müdür yardımcısı) etkilenmez — veli hesabı olmayan
+    /// öğrencide adımı bugün olduğu gibi okul yürütür.
+    /// </summary>
+    public object? Handle(ApproveTerminationByParent e, ICurrentUserService currentUser)
     {
+        ParentScopeGuard.EnsureCanAccessStudent(currentUser, StudentId);
+
         ApprovalChain = ApprovalChain! with { ParentApproved = true };
         return CheckApprovalChainComplete();
     }

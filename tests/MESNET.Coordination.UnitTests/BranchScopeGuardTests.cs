@@ -34,6 +34,9 @@ public sealed class BranchScopeGuardTests
         public bool IsInRole(string role) => false;
 
         public IReadOnlyList<string> GetBranchCodes() => branchCodes;
+
+        // Veli kapsamı (#174) bu testlerin konusu değil — bağ yok.
+        public IReadOnlyList<Guid> GetLinkedStudentIds() => [];
     }
 
     private static ICurrentUserService DepartmentHead(params string[] branchCodes) =>

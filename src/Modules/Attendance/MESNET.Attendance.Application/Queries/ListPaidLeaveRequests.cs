@@ -20,6 +20,12 @@ public sealed record ListPaidLeaveRequests(string? Status = null) : PagedQuery
     /// <summary>Token'daki <c>institution_id</c> claim'i — uçta doldurulur.</summary>
     public Guid? InstitutionIdClaim { get; init; }
 
+    /// <summary>
+    /// Velinin bağlı olduğu öğrenciler — <c>linked_student_ids</c> claim'i (#174).
+    /// Kaynağı otoriter kullanıcı kaydıdır; token'dan gelen değerler silinmiş olur.
+    /// </summary>
+    public IReadOnlyList<Guid>? LinkedStudentIds { get; init; }
+
     /// <summary>Seçili akademik dönem (isteğe bağlı filtre).</summary>
     public Guid? AcademicPeriodId { get; init; }
 }
