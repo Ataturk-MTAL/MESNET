@@ -134,6 +134,27 @@ const router = createRouter({
           meta: { permissions: ['attendance:view'], formRoute: true },
         },
 
+        // MESEM ücretli izin başvurusu (#177) — zincirin üç tarafı da aynı listeyi görür,
+        // kapsamı sunucu daraltır (öğrenci kendi, işletme kendi öğrencileri, okul kurumu).
+        {
+          path: 'attendance/paid-leave',
+          name: 'PaidLeaveList',
+          component: () => import('pages/attendance/PaidLeavePage.vue'),
+          meta: {
+            permissions: [
+              'attendance:leave:request',
+              'attendance:leave:business-approve',
+              'attendance:leave:approve',
+            ],
+          },
+        },
+        {
+          path: 'attendance/paid-leave/new',
+          name: 'PaidLeaveNew',
+          component: () => import('pages/attendance/PaidLeaveFormPage.vue'),
+          meta: { permissions: ['attendance:leave:request'], formRoute: true },
+        },
+
         // Ücret / Maaş (Salary)
         {
           path: 'salary',

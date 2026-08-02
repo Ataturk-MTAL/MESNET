@@ -33,6 +33,10 @@ public static class RolePermissionMap
             Permissions.Attendance.DirectEntry,
             Permissions.Attendance.HealthReportDirect,
             Permissions.Attendance.Upload,
+            // Ücretli izin okul onayı (#177) — "attendance:*" zaten kapsar, para etkisi olduğu
+            // için açıkça yazılır. İşletme adımı (LeaveBusinessApprove) da wildcard'la buraya
+            // gelir; onu engelleyen izin değil business_id KAPSAMIDIR — müdürde o claim yoktur.
+            Permissions.Attendance.LeaveApprove,
             // Okulda staj dönem notu (#171) — "institution:*" zaten kapsar, açıkça yazılır.
             Permissions.Institution.SchoolGradeEnter
         ],
@@ -76,6 +80,9 @@ public static class RolePermissionMap
             // "koordinatör öğretmen, müdür yardımcısı ya da müdür doğrudan girebilir".
             Permissions.Attendance.DirectEntry,
             Permissions.Attendance.HealthReportDirect,
+            // Ücretli izin zincirinin 2. adımı (#177) — sahibin kararı: "müdür yardımcısı ve
+            // müdür yeterli". Koordinatör öğretmen ALMAZ; ona yalnız bildirim gider.
+            Permissions.Attendance.LeaveApprove,
             // Okulda staj dönem notu (#171). "institution:*" YALNIZ müdürdedir; müdür
             // yardımcısı bu izni ancak bu satırla alır — satır silinirse izni kaybeder.
             Permissions.Institution.SchoolGradeEnter,
@@ -156,6 +163,10 @@ public static class RolePermissionMap
             // Öğrenci kendi sağlık raporunu yükleyebilir (#172). Yükleme hüküm doğurmaz:
             // DirectEntry / HealthReportDirect bu rolde yoktur, rapor onaya düşer.
             Permissions.Attendance.Upload,
+            // MESEM ücretli izin başvurusu (#177). Başvuru da hüküm doğurmaz: işletme ve okul
+            // onayından geçmeden izin günü açılmaz. Kimin adına başvurulduğu student_id
+            // claim'inden gelir — öğrenci başkası adına başvuramaz.
+            Permissions.Attendance.LeaveRequest,
             Permissions.Salary.ViewOwn,
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage,
@@ -194,6 +205,9 @@ public static class RolePermissionMap
             // girdiği kayıt onaya düşer. Ödemeyi yapan taraf kendi kararıyla kesintiyi
             // kaldıramaz — #172'nin kapattığı asıl açık budur.
             Permissions.Attendance.Upload,
+            // Ücretli izin zincirinin 1. adımı (#177). Öğrencinin o gün işletmede olmayacağına
+            // önce işveren karar verir; okul onayı ondan sonra gelir.
+            Permissions.Attendance.LeaveBusinessApprove,
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage
         ],
@@ -209,6 +223,9 @@ public static class RolePermissionMap
             // yapan işletme aktörü sayıyor ve kaydını Pending'e düşürüyordu (#129/#172).
             Permissions.Attendance.Manage,
             Permissions.Attendance.Upload,     // sağlık raporu tarayıp girme
+            // Ücretli izin işletme onayı (#177) — usta öğretici öğrencinin günlük devamını
+            // bilen taraftır; her işletmede ayrı bir yetkili ya da İK bulunmaz.
+            Permissions.Attendance.LeaveBusinessApprove,
             "communication:*"
         ],
         // İşletme insan kaynakları (#172). Sahibin kuralı: sağlık raporunu "işletme müdürü,
@@ -221,6 +238,7 @@ public static class RolePermissionMap
             Permissions.Company.Attendance,    // işletme devam çizelgesi
             Permissions.Attendance.Manage,     // devamsızlık girişi (kaydı Pending başlar)
             Permissions.Attendance.Upload,     // sağlık raporu tarayıp girme
+            Permissions.Attendance.LeaveBusinessApprove, // ücretli izin işletme onayı (#177)
             Permissions.Student.View,          // işletmedeki öğrenciler
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage

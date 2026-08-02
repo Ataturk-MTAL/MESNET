@@ -103,6 +103,15 @@ public static class AssignablePermissionScope
     /// <c>attendance:health-report:direct</c>'i bireysel atayıp onay zincirini tümden
     /// kaldırabilirdi — yani ödemeyi yapan taraf kendi kesintisini iptal edebilirdi.</para>
     ///
+    /// <para><b>İki taraflı onayın okul adımı da buradadır (#177).</b>
+    /// <c>attendance:leave:approve</c> ücretli izni resmîleştirir ve devamsızlık kayıtlarını
+    /// doğurur. İşletme rollerinin atanabilir domain listesinde <c>attendance:</c> vardır; bu
+    /// liste olmasaydı okul adımı bir işletme kullanıcısına bireysel atanabilir ve zincir tek
+    /// tarafa çökerdi. "İşletme onayını veren okul onayını veremez" kuralı bunu tek başına
+    /// kapatmaz — ikinci bir işletme kullanıcısı okul adımını yapardı. İşletme adımının kendisi
+    /// (<c>attendance:leave:business-approve</c>) listede DEĞİLDİR: onu izin değil
+    /// <c>business_id</c> kapsamı sınırlar, okul kullanıcısına atansa bile işe yaramaz.</para>
+    ///
     /// <para>Benzer izinler ileride eklenirse <b>tek yer</b> burasıdır.</para>
     /// </summary>
     public static readonly IReadOnlySet<string> NeverDirectlyAssignable =
@@ -112,6 +121,7 @@ public static class AssignablePermissionScope
             Permissions.Platform.ParameterManage,
             Permissions.Attendance.DirectEntry,
             Permissions.Attendance.HealthReportDirect,
+            Permissions.Attendance.LeaveApprove,
         };
 
     /// <summary>

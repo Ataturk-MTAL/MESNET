@@ -26,6 +26,14 @@ public static class ServiceRegistration
             opts.Schema.For<AttendanceRecord>().Index(x => x.InstitutionId);
             opts.Schema.For<AttendanceRecord>().Index(x => x.Date);
             opts.Projections.Add<AttendanceViewProjection>(ProjectionLifecycle.Async);
+
+            // Ücretli izin başvurusu (#177) — durum geçişi olan varlık, event sourcing.
+            opts.Projections.Snapshot<PaidLeaveRequest>(SnapshotLifecycle.Inline);
+            opts.Schema.For<PaidLeaveRequest>().DatabaseSchemaName("attendance");
+            opts.Schema.For<PaidLeaveRequest>().Index(x => x.StudentId);
+            opts.Schema.For<PaidLeaveRequest>().Index(x => x.BusinessId);
+            opts.Schema.For<PaidLeaveRequest>().Index(x => x.InstitutionId);
+            opts.Schema.For<PaidLeaveRequest>().Index(x => x.StartDate);
         });
 
         return services;

@@ -341,6 +341,37 @@ vardır:
    günler için sağlık raporu ya da veli izni gerekir. Öğrencinin eğitim türü bilinmiyorsa
    ücretli izin **reddedilir** — eksik veri sessizce para sonucu doğurmasın.
 
+### Ücretli izin doğrudan girilmez, başvurudan doğar (#177)
+
+MESEM'de ücretli izin bir devamsızlık türü seçimi değil, **iki taraflı onaydan geçen bir
+başvurudur**:
+
+```
+Öğrenci başvurur → İşletme onaylar → Okul (müdür yrd./müdür) onaylar → RESMİLEŞİR
+                                                                        ↓
+                                          o günler için Ücretli İzin devamsızlık kaydı açılır
+```
+
+- Herhangi bir adımda **ret** → başvuru kapanır, devamsızlık kaydı **açılmaz**. Öğrenci aynı
+  tarihler için yeniden başvurabilir.
+- Resmileşince tarih aralığındaki günler için kayıt açılır; **kurum takvimindeki kısıtlı günler
+  atlanır** ve devamsızlık girişindeki "yalnız bu hafta" kısıtı uygulanmaz (izin önceden
+  planlanır). O gün için zaten bir kayıt varsa türü ücretli izne **düzeltilir** — yoksa
+  onaylanmış izne rağmen kesinti sürerdi.
+- **Ücretli izin artık hiçbir uçtan doğrudan girilemez** — okul tarafı da giremez
+  (`POST /api/attendance` ve `/correct` reddeder). Türü seçmek doğrudan para kararı olduğu için,
+  doğrudan giriş açık kalsaydı iki taraflı onay tek komutla atlanabilirdi.
+- Koordinatör öğretmen zincirde adım tutmaz, **bildirim** alır (SSE
+  `attendance.paid-leave-approved`).
+- İşletmesiz yerleştirmede (okulda staj, #159) başvuru açılamaz: onaylayacak işveren yoktur ve
+  o öğrencinin ücreti de yoktur.
+
+> **İki taraflı onay permission ile garanti edilemez.** `InstitutionManager` her domain
+> wildcard'ını taşır; işletme adımının izni ona da gider. Adımı işletmeye bağlayan şey
+> **kapsam**tır: token'daki `business_id` claim'i başvurunun işletmesiyle eşleşmek zorundadır ve
+> okul rollerinde o claim yoktur. Ayrıca **işletme onayını veren kullanıcı okul onayını
+> veremez** — bir kişi iki rolü birden taşıyabilir. Ayrıntı: `actors/permissions.md`.
+
 **Sağlık raporu kesintiyi ancak ONAYLANDIĞINDA kaldırır (#172).** Rapor girişi bilinçli olarak
 geniştir: işletme yetkilisi, işletme İK, usta öğretici ve öğrenci de yükleyebilir. Ama yükleme
 tek başına devamsızlık türünü değiştirmez — koordinatör öğretmen onaylayana kadar tür ne ise
