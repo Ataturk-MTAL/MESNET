@@ -1,4 +1,3 @@
-using Marten;
 using MESNET.Attendance.Application.Dtos;
 using MESNET.Attendance.Application.Extensions;
 using MESNET.Attendance.Application.Helpers;
@@ -7,17 +6,32 @@ using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Enums;
 using MESNET.Attendance.Core.ReadModels;
 using MESNET.Common.Infrastructure.Pagination;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared.Pagination;
+using MESNET.Common.Shared.Security;
+using Marten;
 
 namespace MESNET.Attendance.Application.Handlers;
 
 public static class ListAttendanceRecordsHandler
 {
     public static async Task<PagedResult<AttendanceRecordDto>> Handle(
-        ListAttendanceRecords query, IQuerySession session)
+        ListAttendanceRecords query, IQuerySession session, ICurrentUserService currentUser)
     {
         IQueryable<AttendanceRecord> queryable = session.Query<AttendanceRecord>()
             .Where(r => !r.IsDeleted);
+        // Kapsam merdiveni (#182): geniş görüntüleme izni yoksa kullanıcı yalnız KENDİ verisini
+        // görür — veli bağlı öğrencilerini, öğrenci kendisini. Kapsam çözülemezse boş sonuç;
+        // kapsamsız kullanıcıya tüm kurumun verisini açmaktansa hiçbir şey göstermek doğrudur.
+        var scope = OwnDataScope.Resolve(currentUser, Permissions.Attendance.View);
+        if (scope.IsEmpty)
+            return EmptyPage(query);
+
+        if (!scope.IsUnrestricted)
+        {
+            var scopedStudentIds = scope.StudentIds;
+            queryable = queryable.Where(r => scopedStudentIds.Contains(r.StudentId));
+        }
 
         if (query.StudentId.HasValue)
             queryable = queryable.Where(r => r.StudentId == query.StudentId.Value);
@@ -97,4 +111,13 @@ public static class ListAttendanceRecordsHandler
             PageSize = page.PageSize
         };
     }
+
+    /// <summary>Kapsam çözülemedi — sayfa bilgisi korunur, içerik boş döner (#182).</summary>
+    private static PagedResult<AttendanceRecordDto> EmptyPage(ListAttendanceRecords query) => new()
+    {
+        Items = [],
+        TotalCount = 0,
+        Page = query.Page,
+        PageSize = query.PageSize
+    };
 }

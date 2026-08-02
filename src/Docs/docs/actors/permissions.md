@@ -1544,3 +1544,48 @@ veli adımı. Kilitleyen test: `tests/MESNET.Security.UnitTests/ParentScopeTests
 > okul izinleri istiyor ve `*:view-own` izinleri bugün hiçbir ucu korumuyor — bu öğrenci rolü
 > için de geçerli olan, #174 öncesinden gelen bir borçtur. Veliye o izinler verildi ama okuma
 > yüzeyi ayrı bir işte ele alınmalı.
+
+## "Kendi verisi" Kapsam Merdiveni (#182)
+
+`attendance:view-own`, `internship:view-own` ve `salary:view-own` izinleri tanımlıydı ve
+öğrenciye dağıtılmıştı ama **hiçbir uçta kullanılmıyordu**. Listeleme uçları okul tarafı iznini
+(`attendance:view` vb.) istiyordu; öğrenci **kendi devamsızlığını**, veli (#174) de
+öğrencisininkini hiç göremiyordu. Kırık bir şey yoktu — akış sessizce hiç başlamıyordu.
+
+### Tek uç, iki izin
+
+Uçlar artık **birleşik policy** ister: `attendance:view | attendance:view-own`. Erişim ile
+kapsam ayrıdır (ADR-0001) — policy yalnız ucun açılıp açılmayacağına karar verir, hangi veriyi
+göreceğine handler'daki merdiven karar verir.
+
+| Uç | Policy |
+|---|---|
+| `GET /api/attendance`, `GET /api/attendance/{id}` | `PermissionPolicies.AttendanceViewOrOwn` |
+| `GET /api/internships`, `GET /api/internships/{id}` | `PermissionPolicies.InternshipViewOrOwn` |
+| `GET /api/payments`, `GET /api/payments/{id}` | `PermissionPolicies.SalaryViewOrOwn` |
+
+**Neden ayrı uç değil:** ayrı uç aynı sorguyu iki kez yazdırır ve kapsam kuralını iki yerde
+tutar; biri güncellenip diğeri unutulduğunda sapma sessiz olur.
+
+### Merdiven
+
+`OwnDataScope.Resolve(currentUser, broadViewPermission)` — sıra kritiktir:
+
+1. **Geniş görüntüleme izni** varsa → kapsam daraltılmaz (okul/işletme tarafının bugünkü
+   davranışı korunur)
+2. **Veli** — `linked_student_ids` doluysa yalnız bağlı öğrenciler (#174)
+3. **Öğrenci** — `student_id` claim'i varsa yalnız kendisi
+4. Hiçbiri yoksa → **boş sonuç**
+
+> Son basamak "hepsini göster" olsaydı, `view-own` taşıyan ama kapsamı çözülemeyen bir kullanıcı
+> **tüm kurumun verisini** görürdü — iznin açtığı ucun tam tersi sonuç.
+
+Veli bağı `student_id` claim'inden **önce** gelir: ikisi birden olan bir kullanıcıda açıkça
+kaydedilmiş olan kazanır.
+
+Kilitleyen test: `tests/MESNET.Security.UnitTests/OwnDataScopeTests.cs`.
+
+### Kapsam dışı bırakıldı
+
+Sözleşme ve dönem notu listeleri bu merdivene alınmadı — öğrenci/velinin o ekranlara ihtiyacı
+ayrıca kararlaştırılmalı. Yazma uçlarına dokunulmadı.

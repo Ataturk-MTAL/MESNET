@@ -40,6 +40,15 @@ public static class SecurityServiceExtensions
                     policy.AddRequirements(new PermissionRequirement(permission)));
             }
 
+            // Birleşik policy'ler (#182): "şu izinlerden herhangi biri". Uç hem okul tarafına
+            // hem veri sahibine açıktır; hangi veriyi göreceğine handler'daki kapsam merdiveni
+            // (OwnDataScope) karar verir.
+            foreach (var policyName in PermissionPolicies.All)
+            {
+                options.AddPolicy(policyName, policy =>
+                    policy.AddRequirements(new PermissionRequirement(PermissionPolicies.Split(policyName))));
+            }
+
             // Rol bazlı policy'ler (Keycloak realm roles)
             options.AddPolicy("RequireInstitutionManager", policy =>
                 policy.RequireRealmRoles(MesnetRoles.InstitutionManager));

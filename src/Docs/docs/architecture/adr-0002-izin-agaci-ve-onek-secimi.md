@@ -286,6 +286,7 @@ Hiçbir yapılandırmayla tek bir kullanıcıya verilemez —
 | İki taraflı onay kapsamı (#177) | `PaidLeaveApprovalMappingTests`, `PaidLeaveApprovalPolicyTests` |
 | Okulda staj notu önek kararı (#171) | `SchoolTermGradeMappingTests`, `SchoolTermGradeEndpointAuthorizationTests` |
 | Veli kapsamı (#174) | `ParentScopeTests` |
+| "Kendi verisi" kapsam merdiveni (#182) | `OwnDataScopeTests` |
 | Alan kapsamı muafiyeti (#126) | `BranchScopeExemptionMappingTests`, `BranchScopeGuardTests` |
 
 ## İlgili

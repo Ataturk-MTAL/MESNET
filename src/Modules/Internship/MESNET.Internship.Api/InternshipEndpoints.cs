@@ -18,8 +18,9 @@ public static class InternshipEndpoints
     {
         var group = app.MapGroup("/api/internships").WithTags("Internship").RequireAuthorization();
 
-        group.MapGet("/{internshipId:guid}", Get).RequireAuthorization(Permissions.Internship.View);
-        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Internship.View);
+        // Liste hem okul tarafına hem veri sahibine açıktır (#182).
+        group.MapGet("/{internshipId:guid}", Get).RequireAuthorization(PermissionPolicies.InternshipViewOrOwn);
+        group.MapGet("/", GetAll).RequireAuthorization(PermissionPolicies.InternshipViewOrOwn);
         group.MapPost("/{internshipId:guid}/terminate", PostRequestTermination).RequireAuthorization(Permissions.Internship.Manage);
         // Veli adımı ayrı izin ister (#174): "internship:approve" verilseydi veli
         // /approve/teacher ve /approve/deputy uçlarına da erişir, zincirin üç adımını tek
