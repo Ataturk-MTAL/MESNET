@@ -73,14 +73,14 @@ title: Aktör Tanımları
   - Beceri eğitimi
   - Sağlık raporu tarayıp sisteme girme (girişi okul onayına tabidir)
 
-- **İşletme İnsan Kaynakları** (#172)
+- **İşletme İnsan Kaynakları** (#172) — realm rolü: `CompanyHR`
   - İşletme adına belge yükleme
   - Sağlık raporu tarayıp sisteme girme
   - Öğrenci devam bilgisinin işletme tarafındaki kaydı
 
-  > İşletme yöneticisinin geniş demetini ALMAZ: öğrenci talebi, dekont yükleme ve maaş
-  > süreçleri yöneticide kalır. Girdiği kayıtlar okul onayına tabidir — koordinatör öğretmen
-  > onaylamadan hüküm doğurmaz.
+  > İşletme yöneticisinin geniş demetini ALMAZ: öğrenci talebi, dekont yükleme, işletme belge
+  > yönetimi, dönem notu girişi ve maaş süreçleri yöneticide kalır. Girdiği kayıtlar okul
+  > onayına tabidir — koordinatör öğretmen onaylamadan hüküm doğurmaz.
 
 ## Eğitim Personeli Aktörleri
 
@@ -112,7 +112,7 @@ title: Aktör Tanımları
   - Sertifika takibi
   - Kendi sağlık raporunu yükleme (okul onayına tabidir)
 
-- **Veli** (#172)
+- **Veli** (#172) — realm rolü henüz YOK, ayrı issue'da ele alınacak
   - Öğrencinin devam durumunu görüntüleme
   - Öğrencinin sağlık raporunu yükleme (okul onayına tabidir)
   - Fesih onay zincirinde veli adımı (ıslak imza karşılığı)

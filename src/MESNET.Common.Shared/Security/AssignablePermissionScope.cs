@@ -51,9 +51,16 @@ public static class AssignablePermissionScope
             "company:", "attendance:", "communication:",
         ],
         // Usta öğretici (#129): işletme içi dar kapsam — devam ve iletişim.
+        // "attendance:" #172 ile eklendi (devamsızlık girişi + sağlık raporu yükleme); hüküm
+        // doğuran iki izin NeverDirectlyAssignable listesindedir, bu prefix onları açmaz.
         [MesnetRoles.MasterTrainer] =
         [
-            "company:", "communication:",
+            "company:", "attendance:", "communication:",
+        ],
+        // İşletme insan kaynakları (#172): usta öğreticiyle aynı dar kapsam.
+        [MesnetRoles.CompanyHR] =
+        [
+            "company:", "attendance:", "communication:",
         ],
         [MesnetRoles.Student] =
         [
@@ -87,6 +94,15 @@ public static class AssignablePermissionScope
     /// olduğu için, bu liste olmasaydı bir okul müdürü <c>platform:parameter:manage</c>'i
     /// istediği kullanıcıya bireysel atayıp ulusal/kurum ayrımını tümden kaldırabilirdi.</para>
     ///
+    /// <para><b>Hüküm izinleri de buradadır (#172).</b> <c>attendance:direct-entry</c> ve
+    /// <c>attendance:health-report:direct</c> erişim değil <b>onay muafiyeti</b> açar: sahibinin
+    /// girdiği kayıt koordinatör öğretmen onayına düşmez, doğrudan geçerli olur ve ücret
+    /// kesintisini kaldırır. <c>CompanyManager</c>, <c>MasterTrainer</c> ve <c>CompanyHR</c>'ın
+    /// atanabilir domain listesinde <c>attendance:</c> vardır (devamsızlık girişi ve rapor
+    /// yükleme için gerekli); bu liste olmasaydı müdür yardımcısı bir işletme yetkilisine
+    /// <c>attendance:health-report:direct</c>'i bireysel atayıp onay zincirini tümden
+    /// kaldırabilirdi — yani ödemeyi yapan taraf kendi kesintisini iptal edebilirdi.</para>
+    ///
     /// <para>Benzer izinler ileride eklenirse <b>tek yer</b> burasıdır.</para>
     /// </summary>
     public static readonly IReadOnlySet<string> NeverDirectlyAssignable =
@@ -94,6 +110,8 @@ public static class AssignablePermissionScope
         {
             Permissions.Institution.AllBranches,
             Permissions.Platform.ParameterManage,
+            Permissions.Attendance.DirectEntry,
+            Permissions.Attendance.HealthReportDirect,
         };
 
     /// <summary>

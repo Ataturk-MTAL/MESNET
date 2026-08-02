@@ -20,8 +20,25 @@ public static class AttendanceEndpoints
         group.MapPost("/", Post).RequireAuthorization(Permissions.Attendance.Manage);
         group.MapPost("/{attendanceId:guid}/approve", PostApprove).RequireAuthorization(Permissions.Attendance.Approve);
         group.MapPost("/{attendanceId:guid}/verify", PostVerify).RequireAuthorization(Permissions.Attendance.Approve);
-        group.MapPost("/{attendanceId:guid}/correct", PostCorrect).RequireAuthorization(Permissions.Attendance.Manage);
-        group.MapPost("/{attendanceId:guid}/health-report", PostHealthReport).RequireAuthorization(Permissions.Attendance.Manage);
+        // Düzeltme devamsızlık TÜRÜNÜ değiştirir, yani doğrudan para sonucu doğurur: kaydı
+        // "Mazeretsiz"den "Sağlık Raporu"na çevirmek kesintiyi kaldırır. Bu yüzden uç
+        // "attendance:manage" değil "attendance:direct-entry" ister (#172) — o izin yalnız okul
+        // rollerindedir. Önceden işletme yetkilisi bu uçtan onay zincirini tümden atlayarak
+        // türü değiştirebiliyordu.
+        group.MapPost("/{attendanceId:guid}/correct", PostCorrect).RequireAuthorization(Permissions.Attendance.DirectEntry);
+
+        // Sağlık raporu girişi bilinçli olarak GENİŞTİR (#172): işletme yetkilisi, işletme İK,
+        // usta öğretici ve öğrenci de yükleyebilir. Hüküm doğurup doğurmadığına handler karar
+        // verir; yükleyende "attendance:health-report:direct" yoksa rapor onaya düşer.
+        group.MapPost("/{attendanceId:guid}/health-report", PostHealthReport)
+            .RequireAuthorization(Permissions.Attendance.Upload)
+            .DisableAntiforgery();
+
+        // Onay zincirinin 1. adımı — koordinatör öğretmen (müdür yardımcısı ve müdürde de var).
+        group.MapPost("/{attendanceId:guid}/health-report/approve", PostApproveHealthReport)
+            .RequireAuthorization(Permissions.Attendance.Approve);
+        group.MapPost("/{attendanceId:guid}/health-report/reject", PostRejectHealthReport)
+            .RequireAuthorization(Permissions.Attendance.Approve);
         group.MapDelete("/{attendanceId:guid}", Delete).RequireAuthorization(Permissions.Attendance.Delete);
         group.MapGet("/{attendanceId:guid}", Get).RequireAuthorization(Permissions.Attendance.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Attendance.View);
@@ -70,13 +87,50 @@ public static class AttendanceEndpoints
             .Build());
     }
 
+    // ────────────────────────────────────────────────────────────────────────────────
+    // POST /api/attendance/{attendanceId}/health-report — Sağlık raporu yükle (#172)
+    // Form alanı: ReportFile (IFormFile) — PDF, JPEG veya PNG
+    // ────────────────────────────────────────────────────────────────────────────────
     private static async Task<IResult> PostHealthReport(
-        Guid attendanceId, AttachHealthReport command, IMessageBus bus)
+        Guid attendanceId, HttpRequest request, IMessageBus bus)
+    {
+        if (!request.HasFormContentType)
+            return Results.BadRequest(ResponseBuilder.Fail()
+                .AddMessage("Multipart form-data bekleniyor.")
+                .Build());
+
+        var form = await request.ReadFormAsync();
+        var reportFile = form.Files["ReportFile"] ?? form.Files.FirstOrDefault();
+
+        if (reportFile is null)
+            return Results.BadRequest(ResponseBuilder.Fail()
+                .AddMessage("Sağlık raporu dosyası (ReportFile) eksik.")
+                .Build());
+
+        await bus.InvokeAsync(new AttachHealthReport(attendanceId, reportFile));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Sağlık raporu yüklendi.")
+            .Build());
+    }
+
+    private static async Task<IResult> PostApproveHealthReport(
+        Guid attendanceId, IMessageBus bus)
+    {
+        await bus.InvokeAsync(new ApproveHealthReport(attendanceId));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Sağlık raporu onaylandı.")
+            .Build());
+    }
+
+    private static async Task<IResult> PostRejectHealthReport(
+        Guid attendanceId, RejectHealthReport command, IMessageBus bus)
     {
         await bus.InvokeAsync(command with { AttendanceId = attendanceId });
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddMessage("Sağlık raporu ilişkilendirildi.")
+            .AddMessage("Sağlık raporu reddedildi.")
             .Build());
     }
 

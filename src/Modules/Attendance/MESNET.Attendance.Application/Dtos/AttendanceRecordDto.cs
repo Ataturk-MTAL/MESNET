@@ -23,4 +23,15 @@ public sealed record AttendanceRecordDto(
     DateTime? ApprovedAt,
     Guid? VerifiedById,
     string? VerifiedByName,
-    DateTime? VerifiedAt);
+    DateTime? VerifiedAt,
+    // Sağlık raporu onay zinciri (#172). Rapor yüklenmiş olması tek başına hüküm doğurmaz;
+    // arayüz "onay bekliyor" ile "onaylandı" ayrımını bu alanlardan gösterir.
+    string HealthReportStatus,
+    string HealthReportStatusSlug,
+    Guid? HealthReportAttachedById,
+    string? HealthReportAttachedByName,
+    DateTime? HealthReportAttachedAt,
+    Guid? HealthReportReviewedById,
+    string? HealthReportReviewedByName,
+    DateTime? HealthReportReviewedAt,
+    string? HealthReportRejectionReason);

@@ -53,14 +53,16 @@ public static class MarkAttendanceHandler
 
         // Aktör kimliği saklanır, adı değil (#139) — ad okuma anında UserNameView'dan çözülür.
         var markedById = currentUser.GetUserId();
-        // İşletme tarafından girilen devamsızlık okul onayı bekler. Usta öğretici de işletme
-        // tarafındadır (#129) — listeye alınmasaydı onun girdiği kayıt okul girmiş gibi doğrudan
-        // "Recorded" olur ve onay adımını atlardı.
-        // NOT: kontrol rol adına bakar — bilinen teknik borç (bkz. CLAUDE.md). Permission'a
-        // taşınamaz, çünkü `company:attendance:manage` izni `company:*` yoluyla okul müdüründe de var.
-        var isBusinessUser = currentUser.IsInRole(MesnetRoles.CompanyManager)
-            || currentUser.IsInRole(MesnetRoles.MasterTrainer);
-        var initialStatus = isBusinessUser
+        // İşletme tarafından girilen devamsızlık okul onayı bekler.
+        //
+        // Kontrol #172'ye kadar ROL ADINA bakıyordu (CompanyManager || MasterTrainer) ve
+        // CLAUDE.md'de teknik borç olarak yazılıydı. Artık kararı permission veriyor
+        // (ADR-0001): `attendance:direct-entry` yalnız okul rollerindedir ve
+        // NeverDirectlyAssignable olduğu için bir işletme kullanıcısına bireysel atanamaz.
+        // Rol adı listesi olsaydı #172'de eklenen CompanyHR sessizce dışarıda kalır, o rolün
+        // girdiği kayıt okul girmiş gibi doğrudan "Recorded" olurdu.
+        var isPendingEntry = !currentUser.HasPermission(Permissions.Attendance.DirectEntry);
+        var initialStatus = isPendingEntry
             ? AttendanceStatus.Pending.Name
             : AttendanceStatus.Recorded.Name;
 
@@ -73,7 +75,7 @@ public static class MarkAttendanceHandler
         session.Events.StartStream<AttendanceRecord>(id, @event);
 
         NotifyAttendancePendingApproval? notification = null;
-        if (isBusinessUser && placement.TeacherId is not null)
+        if (isPendingEntry && placement.TeacherId is not null)
         {
             notification = new NotifyAttendancePendingApproval(
                 id, command.StudentId, command.BusinessId,

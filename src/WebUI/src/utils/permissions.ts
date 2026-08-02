@@ -74,9 +74,15 @@ export const Permissions = {
     ViewOwn: 'attendance:view-own',
     Manage: 'attendance:manage',
     Report: 'attendance:report',
+    // Sağlık raporu yükleme (#172). Giriş geniştir: işletme, usta öğretici, işletme İK ve
+    // öğrenci de yükler — ama yükleme tek başına hüküm doğurmaz.
     Upload: 'attendance:upload',
     Approve: 'attendance:approve',
     Delete: 'attendance:delete',
+    // Girilen kaydın onay beklemeden geçerli olması (#172). Yalnız okul rollerindedir;
+    // arayüzde "onay bekliyor" rozetini gizlemek ve düzeltme butonunu göstermek için okunur.
+    DirectEntry: 'attendance:direct-entry',
+    HealthReportDirect: 'attendance:health-report:direct',
   },
 
   Salary: {

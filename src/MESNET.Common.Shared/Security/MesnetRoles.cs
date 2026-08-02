@@ -38,6 +38,15 @@ public static class MesnetRoles
     public const string MasterTrainer = "MasterTrainer";
 
     /// <summary>
+    /// İşletme insan kaynakları (#172) — işletme adına belge/sağlık raporu tarayıp girer ve
+    /// devam kaydı tutar. <see cref="CompanyManager"/>'ın geniş demetini ALMAZ: öğrenci talebi,
+    /// dekont yükleme, işletme belge yönetimi ve not girişi yöneticide kalır.
+    /// Girdiği hiçbir kayıt doğrudan hüküm doğurmaz — <c>attendance:direct-entry</c> ve
+    /// <c>attendance:health-report:direct</c> izinleri bu rolde YOKTUR.
+    /// </summary>
+    public const string CompanyHR = "CompanyHR";
+
+    /// <summary>
     /// Sistem yöneticisi (#147) — ULUSAL parametreleri girer (asgari ücret, 3308 oranları).
     /// Kurum verisine yetkisi YOKTUR; okul rollerinin de ulusal parametreye yetkisi yoktur.
     /// Gerçek işletimde bu işi Bakanlık düzeyi bir aktör yapar; o aktör tanımlandığında aynı
@@ -62,6 +71,8 @@ public static class MesnetRoles
             "İşletmedeki stajyerleri, belgeleri, devamsızlığı ve dekontları yönetir."),
         new(MasterTrainer, "Usta Öğretici",
             "İşletmedeki öğrencilerin devam takibini ve dönem not girişini yapar."),
+        new(CompanyHR, "İşletme İnsan Kaynakları",
+            "İşletme adına belge ve sağlık raporu girer, devam kaydı tutar; girişleri okul onayına tabidir."),
         new(Student, "Öğrenci",
             "Kendi staj, devamsızlık ve ödeme bilgilerini görüntüler."),
         new(SystemAdmin, "Sistem Yöneticisi",

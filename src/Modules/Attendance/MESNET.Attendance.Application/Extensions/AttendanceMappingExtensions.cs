@@ -34,7 +34,16 @@ public static class AttendanceMappingExtensions
         record.ApprovedAt,
         record.VerifiedById,
         names.NameOf(record.VerifiedById),
-        record.VerifiedAt);
+        record.VerifiedAt,
+        record.EffectiveReportStatus.Name,
+        record.EffectiveReportStatus.Slug,
+        record.HealthReportAttachedById,
+        names.NameOf(record.HealthReportAttachedById),
+        record.HealthReportAttachedAt,
+        record.HealthReportReviewedById,
+        names.NameOf(record.HealthReportReviewedById),
+        record.HealthReportReviewedAt,
+        record.HealthReportRejectionReason);
 
     /// <summary>Kaydın tüm aktör kimlikleri — ad çözümü için toplu yüklemede kullanılır.</summary>
     public static IEnumerable<Guid> ActorIds(this AttendanceRecord record)
@@ -42,6 +51,8 @@ public static class AttendanceMappingExtensions
         yield return record.MarkedById;
         if (record.ApprovedById is { } approved) yield return approved;
         if (record.VerifiedById is { } verified) yield return verified;
+        if (record.HealthReportAttachedById is { } attached) yield return attached;
+        if (record.HealthReportReviewedById is { } reviewed) yield return reviewed;
     }
 
     /// <param name="updatedByName">

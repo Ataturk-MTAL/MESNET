@@ -329,6 +329,21 @@ Karar kaydı ve gerekçe: issue #154.
 > Yalnız **onaylanmış** kayıtlar sayılır — işletmenin girdiği ve henüz öğretmence onaylanmamış
 > (`Pending`) devamsızlık öğrencinin ücretini kesmez.
 
+**Sağlık raporu kesintiyi ancak ONAYLANDIĞINDA kaldırır (#172).** Rapor girişi bilinçli olarak
+geniştir: işletme yetkilisi, işletme İK, usta öğretici ve öğrenci de yükleyebilir. Ama yükleme
+tek başına devamsızlık türünü değiştirmez — koordinatör öğretmen onaylayana kadar tür ne ise
+kesinti ona göre işler. Aksi hâlde **ödemeyi yapan taraf kendi kesintisini tek taraflı
+kaldırabilirdi**.
+
+| Kim yükledi | Sonuç |
+|---|---|
+| İşletme yetkilisi, işletme İK, usta öğretici, öğrenci | `Pending` — tür değişmez, kesinti sürer |
+| Koordinatör öğretmen, müdür yardımcısı, müdür | Doğrudan geçerli — tür `HealthReport`, kesinti kalkar |
+
+Reddedilen rapor türü değiştirmez; kesinti aynen uygulanır. 2. adımda müdür yardımcısı / müdür
+kesinti kararını mevcut dekont onay zincirinde uygular. Ayrıntı:
+[İzin Matrisi → Sağlık Raporu Onay Zinciri](../actors/permissions.md).
+
 **Örnek:** 20+ personel işletmede, asgari ücret 22.104,67 TL ise:
 - Taban ücret = 22.104,67 × 0.30 = 6.631,40 TL
 - 3 gün mazeretsiz devamsızlık → Kesinti = (6.631,40 / 30) × 3 = 663,14 TL

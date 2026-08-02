@@ -53,10 +53,13 @@ yazabilir (#126).
 
 ### Bu ilkenin bilinen istisnaları (teknik borç)
 
-Aşağıdaki iki nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
+Aşağıdaki nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
 
-- `src/Modules/Attendance/MESNET.Attendance.Application/Handlers/MarkAttendanceHandler.cs:55`
 - `src/Modules/Enrollment/MESNET.Enrollment.Application/Handlers/PlacementQueryScope.cs:23-34`
+
+`MarkAttendanceHandler`'daki rol adı kontrolü #172 ile kapatıldı — karar artık
+`attendance:direct-entry` iznine bakar. Ayrıntı:
+[Sağlık Raporu Onay Zinciri](#sağlık-raporu-onay-zinciri--giriş-geniş-hüküm-dar-172)
 
 `src/WebUI/src/stores/auth.ts` kapsam kararı #126 ile permission bazlına geçti
 (`canManageAllBranches` / `writableBranchCodes`); `isDepartmentHead` yalnız kapsam dışı
@@ -66,7 +69,7 @@ görünürlük için kalmıştır.
 
 ### Temel Roller
 
-Phase 1'de **8 realm rolü** vardır. Tek doğruluk kaynağı
+Phase 1'de **9 realm rolü** vardır. Tek doğruluk kaynağı
 `src/MESNET.Common.Shared/Security/MesnetRoles.cs`'tir; Keycloak realm tanımı
 (`src/MESNET.AppHost/keycloak/mesnet-realm.json` → `roles.realm`) ve rol-izin haritası
 (`RolePermissionMap.cs`) bu listeyle **birebir** aynı olmak zorundadır — sapmayı kilitleyen
@@ -81,23 +84,29 @@ testler: `tests/MESNET.Security.UnitTests/RoleModelDriftTests.cs`.
 | `Teacher` | Koordinatör Öğretmen | Öğretmen (Koordinatör) |
 | `CompanyManager` | İşletme Yetkilisi | İşletme Yöneticisi |
 | `MasterTrainer` | Usta Öğretici | Usta Öğretici |
+| `CompanyHR` | İşletme İnsan Kaynakları | İşletme İnsan Kaynakları |
 | `Student` | Öğrenci | Öğrenci |
 
-#### Planlanan roller — henüz YOK (#172)
-
-Aşağıdaki iki aktör `actors.md`'de tanımlıdır ama **realm rolü olarak mevcut değildir**.
-Yukarıdaki tablo ve "8 realm rolü" ifadesi bugünkü kodun gerçeğidir; sapma testleri
-(`RoleModelDriftTests`) bu listeyi kilitler.
+#### Planlanan roller — henüz YOK
 
 | Planlanan rol | Aktör | Neden henüz yok |
 |---|---|---|
-| `Parent` | Veli | Yeni aktör: kimlik doğrulama + öğrenciyle **bağ kaydı** gerekiyor. Kapsam kararı permission'la değil bu bağla verilir |
-| `CompanyHR` | İşletme İnsan Kaynakları | `CompanyManager`'ın dar bir alt kümesi; ayrı rol mü yoksa aynı rolde mi kalacağı kapsamla birlikte kararlaştırılacak |
+| `Parent` | Veli | Yeni aktör: kimlik doğrulama + öğrenciyle **bağ kaydı** gerekiyor. Kapsam kararı permission'la değil bu bağla verilir. #172'den ayrıldı; kendi issue'sunda ele alınacak |
 
-Her ikisinin de ortak niteliği: **girdikleri kayıt doğrudan hüküm doğurmaz.** Sağlık raporu
-dahil her girişleri koordinatör öğretmen onayından geçer (#172). Okul tarafı — koordinatör
-öğretmen, müdür yardımcısı, müdür — aynı kaydı **onaysız** girebilir; onay zaten kendilerinde
-biter.
+Velinin niteliği: **girdiği kayıt doğrudan hüküm doğurmaz.** Sağlık raporu dahil her girişi
+koordinatör öğretmen onayından geçer (#172). Okul tarafı — koordinatör öğretmen, müdür
+yardımcısı, müdür — aynı kaydı **onaysız** girebilir; onay zaten kendilerinde biter.
+
+#### `CompanyHR` neden ayrı rol (#172)
+
+Sahibin kuralı sağlık raporunu girebilecek tarafları sayarken işletme insan kaynaklarını
+işletme yöneticisinden ayrı andı. Aynı rolde bırakılsaydı İK, yöneticinin demetini
+(öğrenci talebi, dekont yükleme, işletme belge yönetimi, dönem notu girişi) de alırdı ve
+"kim ne yapabilir" denetlenemez hâle gelirdi. Demeti dar tutuldu: işletme görüntüleme,
+devam çizelgesi, devamsızlık girişi, sağlık raporu yükleme, iletişim.
+
+Hüküm izinleri (`attendance:direct-entry`, `attendance:health-report:direct`) bu rolde
+**yoktur** — girdiği her kayıt onaya düşer.
 
 > **Türkçe etiketler koda gömülü değildir.** `MesnetRoles.Catalog` her rol için ad + etiket +
 > açıklama taşır ve `GET /api/security/roles` bunları döndürür; arayüz kendi rol listesini ya da
@@ -137,6 +146,7 @@ belge doğrulama, devamsızlık takibi, maaş hesaplamaları — **yürütür, o
     { "name": "Teacher", "description": "Koordinatör öğretmen" },
     { "name": "CompanyManager", "description": "İşletme yetkilisi" },
     { "name": "MasterTrainer", "description": "Usta öğretici" },
+    { "name": "CompanyHR", "description": "İşletme insan kaynakları" },
     { "name": "Student", "description": "Öğrenci" }
   ],
   "_comment_phase2": "TenantAdmin ve BlockchainAdmin Phase 2'dedir; realm'de tanımlı değildir."
@@ -173,10 +183,17 @@ Demet bilinçli olarak dardır:
 | `company:attendance:manage` | Devam takibi |
 | `company:grade:enter` | Dönem notu girişi |
 | `student:view` | Kendi öğrencilerini görüntüleme |
+| `attendance:manage` | Devamsızlık girişi — kaydı `Pending` başlar (#172) |
+| `attendance:upload` | Sağlık raporu tarayıp girme — onaya düşer (#172) |
 | `communication:*` | Kurum ve koordinatörle iletişim |
 
 **ALMAZ:** `company:student:request` (öğrenci talebi), `company:receipt:upload` (dekont),
 `company:document:manage` (işletme belgeleri), `company:manage`. Bunlar `CompanyManager`'da kalır.
+Hüküm izinleri (`attendance:direct-entry`, `attendance:health-report:direct`) de **almaz**.
+
+> `attendance:manage` #172'de eklendi. Devamsızlık girişi ucu o izni ister; satır yokken usta
+> öğretici `POST /api/attendance`'a hiç ulaşamıyordu — oysa `MarkAttendanceHandler` onu giriş
+> yapan işletme aktörü sayıp kaydını `Pending`'e düşürüyordu.
 
 ### İzin Sabitleri (.NET)
 
@@ -287,6 +304,9 @@ public static class Permissions
         public const string Report = "attendance:report";
         public const string Upload = "attendance:upload";
         public const string Approve = "attendance:approve";
+        // Hüküm izinleri (#172) — girilen kaydın onay beklememesi.
+        public const string DirectEntry = "attendance:direct-entry";
+        public const string HealthReportDirect = "attendance:health-report:direct";
     }
 
     // Maaş İzinleri
@@ -1249,3 +1269,73 @@ yazıyor, `MinimumWageUpdated` yayınlıyor, Business modülü onu `MinimumWageR
 kaydediyordu. **Bu zincirin hiçbir halkası okunmuyordu** ve hiçbir uç noktadan tetiklenmiyordu;
 hesap yalnız Payment'ın `SalaryCalculationConfig`'ini okuyor. Bir uca bağlanması ulusal katmanı
 sessizce atlayacağı için zincir tümüyle kaldırıldı.
+
+## Sağlık Raporu Onay Zinciri — Giriş Geniş, Hüküm Dar (#172)
+
+Bir veriyi **girebilmek** ile o girişin **hüküm doğurması** ayrı kararlardır ve ayrı
+permission'larla verilir. Bu ayrım #172'nin çekirdeğidir.
+
+### Bulunan açık
+
+`POST /api/attendance/{id}/health-report` ucu `attendance:manage` istiyordu ve o izin
+`CompanyManager`'da vardı. Rapor eklendiği anda agregada devamsızlık türü `HealthReport`
+oluyordu; o tür ücret kesintisine tabi değildir (`business-rules.md` §6.2). Yani **ödemeyi
+yapan taraf, öğrencinin ücretinden yapılacak kesintiyi kendi kararıyla kaldırabiliyordu** ve
+arada hiçbir onay adımı yoktu.
+
+İkinci açık aynı yerdeydi ve ters yöne çalışıyordu: `HealthReportAttached` olayı Payment
+modülünde **hiç dinlenmiyordu**. Attendance'ta tür değişse bile Payment'ın yerel kaydı eski
+türde kalıyor, geçerli raporu olan öğrencinin ücreti kesilmeye devam ediyordu.
+
+Üçüncüsü: `POST /api/attendance/{id}/correct` de türü değiştiriyor ve yine `attendance:manage`
+istiyordu — yani onay zinciri kurulsa bile işletme o kapıdan aynı sonucu alabilirdi.
+
+### Kural
+
+| Kim girer | Sonuç |
+|---|---|
+| İşletme yetkilisi, işletme İK, usta öğretici, öğrenci, (veli — planlanan) | **Onay bekler** — koordinatör öğretmen onaylayana kadar tür değişmez, kesinti sürer |
+| Koordinatör öğretmen, müdür yardımcısı, müdür | **Doğrudan geçerli** — onay zaten kendilerinde biter |
+
+Kurum personeli (`InstitutionStaff`) **devamsızlığı** doğrudan girer ama **sağlık raporunu**
+onaysız geçerli kılamaz: sahibin saydığı taraf üç roldür ve #129'un "yürütür, onaylamaz"
+ayrımı burada da geçerlidir.
+
+2. adım ayrı bir devamsızlık uç noktası değildir: müdür yardımcısı / müdür kesinti kararını
+**mevcut dekont onay zincirinde** (`salary:approve`) uygular.
+
+### İzinler
+
+| İzin | Ne açar | Kimde |
+|---|---|---|
+| `attendance:upload` | Sağlık raporu **yükleme** (giriş) | Okul rolleri + `CompanyManager`, `MasterTrainer`, `CompanyHR`, `Student` |
+| `attendance:direct-entry` | Girilen **devamsızlığın** onay beklememesi | `InstitutionManager`, `DeputyDirector`, `InstitutionStaff`, `Teacher` |
+| `attendance:health-report:direct` | Girilen **raporun** onay beklememesi | `InstitutionManager`, `DeputyDirector`, `Teacher` |
+| `attendance:approve` | Onay/ret adımı (1. onay) | `InstitutionManager`, `DeputyDirector`, `Teacher` |
+
+### Önek neden `attendance:`
+
+`company:` **kullanılamaz** — `CompanyManager` `company:` önekli izinleri taşır, hüküm izni
+işletmeye geçerdi. `department:` de **kullanılamaz** — `DepartmentHead` ve `DeputyDirector`
+`department:*` taşır. `attendance:*` wildcard'ı yalnız `InstitutionManager`'dadır ve müdürün
+bu izne sahip olması istenen sonuçtur; işletme rolleri attendance izinlerini tek tek satırla
+alır, bu yüzden hüküm izni onlara wildcard'la sızmaz.
+
+Kilitleyen test: `tests/MESNET.Security.UnitTests/AttendanceDirectEntryMappingTests.cs`.
+
+### Bireysel (direct) atama
+
+`attendance:direct-entry` ve `attendance:health-report:direct`,
+`AssignablePermissionScope.NeverDirectlyAssignable` listesindedir. Gerekçe #126 ve #147'nin
+aynısı, bir basamak daha somut: işletme rollerinin atanabilir domain listesinde `attendance:`
+**vardır** (giriş ve yükleme için gerekli). Sabit liste olmasaydı `user:roles:manage` yetkisi
+olan biri bir işletme yetkilisine `attendance:health-report:direct`'i bireysel atayıp onay
+zincirini tümden kaldırabilirdi.
+
+### Rol adı kontrolü kaldırıldı
+
+`MarkAttendanceHandler` işletme girişini rol adına bakarak (`CompanyManager` ||
+`MasterTrainer`) ayırıyordu ve bu CLAUDE.md'de teknik borç olarak yazılıydı. Karar artık
+`attendance:direct-entry` iznine bakar. Borcun gerçek maliyeti #172'de görüldü: yeni eklenen
+`CompanyHR` rolü listede olmadığı için o rolün girdiği kayıt okul girmiş gibi doğrudan
+`Recorded` olurdu.

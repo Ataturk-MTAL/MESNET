@@ -660,12 +660,33 @@ kontroldür ve iki kapsam da token claim'inden okunur, istekten ALINMAZ:
 
 Ayrıntı: `src/Docs/docs/actors/permissions.md` → "Alan (Branş) Kapsamı Kontrolü"
 
+### Giriş geniş, hüküm dar (#172)
+
+Bir veriyi **girebilmek** ile o girişin **hüküm doğurması** ayrı kararlardır ve ayrı
+permission'larla verilir. Sağlık raporunu işletme yetkilisi, işletme İK, usta öğretici ve
+öğrenci de yükler (`attendance:upload`); ama girdikleri kayıt koordinatör öğretmen onaylayana
+kadar devamsızlık türünü değiştirmez — yani **ücret kesintisini kaldırmaz**. Ödemeyi yapan
+taraf kendi kesintisini tek taraflı iptal edemez.
+
+- `attendance:direct-entry` — girilen **devamsızlık** kaydı onay beklemez (okul rolleri)
+- `attendance:health-report:direct` — girilen **sağlık raporu** onay beklemez
+  (`InstitutionManager`, `DeputyDirector`, `Teacher` — kurum personeli ALMAZ)
+- İkisi de `AssignablePermissionScope.NeverDirectlyAssignable`: bireysel atanamaz, çünkü
+  işletme rollerinin atanabilir domain listesinde `attendance:` vardır
+- Kilitleyen test: `tests/MESNET.Security.UnitTests/AttendanceDirectEntryMappingTests.cs`
+
+**Tür değiştiren her uç para uçudur.** `POST /api/attendance/{id}/correct` devamsızlık türünü
+değiştirdiği için `attendance:manage` değil `attendance:direct-entry` ister — önceden işletme
+yetkilisi o uçtan onay zincirini tümden atlayabiliyordu.
+
 ### Bu kuralın bilinen istisnaları (teknik borç)
 
-Aşağıdaki iki nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
+Aşağıdaki nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
 
-- `src/Modules/Attendance/MESNET.Attendance.Application/Handlers/MarkAttendanceHandler.cs:55`
 - `src/Modules/Enrollment/MESNET.Enrollment.Application/Handlers/PlacementQueryScope.cs:23-34`
+
+(`MarkAttendanceHandler`'daki rol adı kontrolü #172 ile kapatıldı — karar artık
+`attendance:direct-entry` iznine bakar.)
 
 (`src/WebUI/src/stores/auth.ts` kapsam kararı artık `canManageAllBranches` /
 `writableBranchCodes` ile permission bazlıdır; `isDepartmentHead` yalnız kapsam DIŞI
