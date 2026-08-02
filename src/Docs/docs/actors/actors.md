@@ -73,7 +73,7 @@ title: Aktör Tanımları
   - Beceri eğitimi
   - Sağlık raporu tarayıp sisteme girme (girişi okul onayına tabidir)
 
-- **İşletme İnsan Kaynakları** (#172) — realm rolü: `CompanyHR`
+- **İşletme İnsan Kaynakları** (#172) — realm rolü: `CompanyHR`, **zorunlu değil**
   - İşletme adına belge yükleme
   - Sağlık raporu tarayıp sisteme girme
   - Öğrenci devam bilgisinin işletme tarafındaki kaydı
@@ -81,6 +81,11 @@ title: Aktör Tanımları
   > İşletme yöneticisinin geniş demetini ALMAZ: öğrenci talebi, dekont yükleme, işletme belge
   > yönetimi, dönem notu girişi ve maaş süreçleri yöneticide kalır. Girdiği kayıtlar okul
   > onayına tabidir — koordinatör öğretmen onaylamadan hüküm doğurmaz.
+  >
+  > Her işletmede ayrı bir İK bulunmaz; bu rol yalnız ayrı bir İK personeli varsa atanır.
+  > Yoksa sağlık raporunu işletme yöneticisi ya da **usta öğretici** girer — ikisinin de
+  > girişi aynı şekilde onaya tabidir. Bir kişi birden çok rol taşıyabilir (işletme sahibi
+  > aynı zamanda usta öğretici olabilir); roller birleşse de onay muafiyeti doğmaz.
 
 ## Eğitim Personeli Aktörleri
 

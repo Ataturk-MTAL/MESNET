@@ -108,6 +108,16 @@ devam çizelgesi, devamsızlık girişi, sağlık raporu yükleme, iletişim.
 Hüküm izinleri (`attendance:direct-entry`, `attendance:health-report:direct`) bu rolde
 **yoktur** — girdiği her kayıt onaya düşer.
 
+> **`CompanyHR` zorunlu değildir.** Her işletmede ayrı bir İK bulunmaz. İşletme sahibi aynı
+> zamanda usta öğretici olabilir, ya da sahip/yönetici ile usta öğretici farklı kişiler
+> olabilir. Bu yüzden sağlık raporunu **usta öğretici tek başına da girebilir**
+> (`attendance:upload` demetindedir); İK rolü yalnız ayrı bir İK personeli varsa atanır.
+>
+> Bir kullanıcının izinleri rollerinin **birleşimidir**. İşletme rollerinin hiçbirinde hüküm
+> izni olmadığı için birleşimleri de üretmez: "hem sahip hem usta öğretici" olan kullanıcı da
+> raporu onaya düşürür. Kilitleyen test:
+> `AttendanceDirectEntryMappingTests.Isletme_rolleri_birlestiginde_de_hukum_izni_dogmaz`.
+
 > **Türkçe etiketler koda gömülü değildir.** `MesnetRoles.Catalog` her rol için ad + etiket +
 > açıklama taşır ve `GET /api/security/roles` bunları döndürür; arayüz kendi rol listesini ya da
 > etiket haritasını tutmaz. SmartEnum `Name`/`Slug` deseninin aynısıdır: `Name` İngilizce ve

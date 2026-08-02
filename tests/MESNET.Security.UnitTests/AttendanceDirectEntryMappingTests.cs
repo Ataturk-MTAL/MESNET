@@ -141,6 +141,42 @@ public sealed class AttendanceDirectEntryMappingTests
             .ShouldBeFalse();
     }
 
+    /// <summary>
+    /// <b>İşletme rolleri tek kişide birleşebilir.</b> Her işletmede ayrı bir İK yoktur; işletme
+    /// sahibi aynı zamanda usta öğretici olabilir, ya da sahip/yönetici ile usta öğretici farklı
+    /// kişiler olabilir. Kullanıcının izinleri rollerinin BİRLEŞİMİdir — bu yüzden birleşimin de
+    /// hüküm izni üretmediği ayrıca kilitlenir. Üretse, "usta öğretici de olan işletme sahibi"
+    /// kendi girdiği raporu onaysız geçerli kılar ve kesintiyi kendisi kaldırırdı.
+    /// </summary>
+    [Theory]
+    [InlineData(MesnetRoles.CompanyManager, MesnetRoles.MasterTrainer)]
+    [InlineData(MesnetRoles.CompanyManager, MesnetRoles.CompanyHR)]
+    [InlineData(MesnetRoles.MasterTrainer, MesnetRoles.CompanyHR)]
+    public void Isletme_rolleri_birlestiginde_de_hukum_izni_dogmaz(string first, string second)
+    {
+        var permissions = RolePermissionMap.GetPermissionsForRoles([first, second]);
+
+        permissions.ShouldContain(Permissions.Attendance.Upload, "İşletme tarafı rapor girebilmeli.");
+        permissions.ShouldNotContain(Permissions.Attendance.DirectEntry);
+        permissions.ShouldNotContain(Permissions.Attendance.HealthReportDirect);
+        permissions.ShouldNotContain(Permissions.Attendance.Approve);
+    }
+
+    /// <summary>
+    /// Usta öğretici, işletmede İK olmasa bile tek başına sağlık raporu girebilmelidir —
+    /// ama girdiği rapor onaya düşer.
+    /// </summary>
+    [Fact]
+    public void Usta_ogretici_tek_basina_rapor_girer_ama_onaya_duser()
+    {
+        var permissions = PermissionsOf(MesnetRoles.MasterTrainer);
+
+        permissions.ShouldContain(Permissions.Attendance.Upload);
+        permissions.ShouldContain(Permissions.Attendance.Manage, "Devamsızlık girişi ucu bu izni ister.");
+        permissions.ShouldNotContain(Permissions.Attendance.HealthReportDirect);
+        permissions.ShouldNotContain(Permissions.Attendance.Approve);
+    }
+
     /// <summary>Kurum müdürünün "*" kapsamı bile bu izinleri bireysel atatamaz.</summary>
     [Fact]
     public void Kurum_muduru_yildiz_kapsamiyla_bile_hukum_iznini_atayamaz()
