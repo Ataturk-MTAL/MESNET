@@ -39,6 +39,12 @@ public static class AbsenceTypePolicy
     /// <para><b>Eğitim türü bilinmiyorsa REDDEDİLİR.</b> İzin verilseydi eksik veri sessizce
     /// para sonucu doğururdu; reddetmek görünür bir hata üretir ve
     /// <c>POST /api/enrollment/students/resync-projections</c> ile düzelir.</para>
+    ///
+    /// <para><b>Bu kontrol yalnız ÖN KOŞULDUR.</b> MESEM'de ücretli izin doğrudan girilen bir
+    /// tür değil, <b>başvuru</b>yla başlayıp işletme ve okul onayından geçerek resmileşen bir
+    /// süreçtir. Bu metot "hangi öğrencide mümkün" sorusunu cevaplar; "resmileşti mi" sorusunu
+    /// cevaplamaz. Onay zinciri gelene kadar tür okul tarafınca doğrudan girilebilir durumda —
+    /// izleyen iş o kapıyı kapatacak.</para>
     /// </summary>
     public static bool IsValidForEducationType(AbsenceType type, string? educationTypeName) =>
         type != AbsenceType.PaidLeave || IsMesem(educationTypeName);
