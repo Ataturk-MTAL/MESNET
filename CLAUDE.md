@@ -603,6 +603,12 @@ izinler kalır.
 
 > Karar kaydı: `src/Docs/docs/architecture/adr-0001-yetkilendirme-permission-bazli.md`
 > (ADR-0001) — gerekçe, wildcard önek tuzağı, bilinen borç satırları ve çözümleri.
+>
+> **Yeni izin tanımlarken önce ADR-0002'ye bak:**
+> `src/Docs/docs/architecture/adr-0002-izin-agaci-ve-onek-secimi.md` — gruplama ekseni, önek
+> seçim kuralı ve **koddan üretilen tam izin matrisi** (hangi rol hangi öneki wildcard'la
+> yutuyor). Matris `PermissionMatrixDocTests` ile kilitli; yeni izin eklendiğinde test kırmızı
+> olur ve doğru metni dosyaya yazar.
 
 - Uç noktalar `RequireAuthorization(Permissions.X.Y)` ile korunur — `RequireRole` KULLANILMAZ
 - Handler içinde karar gerekiyorsa `ICurrentUserService.HasPermission(...)` kullanılır

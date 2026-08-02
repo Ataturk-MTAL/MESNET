@@ -42,6 +42,10 @@ yazılmış kontrol yalnız rol→permission haritasına satır eklemeyi gerekti
 Üçü de **yetkilidir**; farkı yaratan **kapsamdır** — alan şefi yalnız kendi alan(lar)ına
 yazabilir (#126).
 
+> **Tam izin ağacı ve önek seçim kuralı:** [ADR-0002](../architecture/adr-0002-izin-agaci-ve-onek-secimi.md)
+> — koddan üretilen matris (hangi izin hangi rolde, açık satırla mı wildcard'la mı) ve yeni izin
+> tanımlarken izlenecek dört adım. Bu doküman gerekçeleri, ADR-0002 haritayı taşır.
+
 ### Permission erişimi açar, kapsamı belirlemez
 
 "Hangi kurumun/alanın verisi" sorusu ayrı bir kontroldür ve permission ile karıştırılmamalıdır.
