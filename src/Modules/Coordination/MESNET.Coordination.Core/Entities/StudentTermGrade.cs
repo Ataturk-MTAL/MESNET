@@ -10,7 +10,7 @@ namespace MESNET.Coordination.Core.Entities;
 /// okul-payı (*) alanlarını ve kesinleştirmeyi okul/koordinatör yapar.
 ///
 /// <para><b>Okulda staj (#171):</b> işverensiz yerleştirmede (#159) notu okul girer
-/// (<c>department:school-grade:enter</c>) ve <see cref="BusinessId"/> <c>null</c> kalır.
+/// (<c>institution:school-grade:enter</c>) ve <see cref="BusinessId"/> <c>null</c> kalır.
 /// O kayıt için <b>fiş üretilmez</b> — Reporting'e taşıyan olay hiç yayınlanmaz.</para>
 /// </summary>
 public sealed class StudentTermGrade

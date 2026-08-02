@@ -25,15 +25,16 @@ public static class StudentTermGradeEndpoints
         // Koordinatör/okul: gönderilmiş notlar (fiş üretilecekler)
         group.MapGet("/submitted", GetSubmitted).RequireAuthorization(Permissions.Coordinator.Report);
 
-        // Okulda staj (#171) — işverensiz yerleştirmede notu okul girer. İzin `department:`
-        // önekli: `department:*` alan şefi, müdür yardımcısı ve müdürdedir; sahibin saydığı
-        // küme tam olarak budur. Kapsam `institution_id` claim'inden gelir.
+        // Okulda staj (#171) — işverensiz yerleştirmede kurum işverenin yerine geçer, notu
+        // okul girer. İzin `institution:` önekli; müdür `institution:*` ile, müdür yardımcısı
+        // ve alan şefi AÇIK SATIRLA alır. Kapsam `institution_id` claim'inden gelir ve izinden
+        // bağımsızdır (ADR-0001) — herkes yalnız kendi kurumunun öğrencisini görür.
         group.MapGet("/school-students", GetSchoolStudents)
-            .RequireAuthorization(Permissions.DepartmentHead.SchoolGradeEnter);
+            .RequireAuthorization(Permissions.Institution.SchoolGradeEnter);
         group.MapPost("/school", PostEnterSchool)
-            .RequireAuthorization(Permissions.DepartmentHead.SchoolGradeEnter);
+            .RequireAuthorization(Permissions.Institution.SchoolGradeEnter);
         group.MapPost("/school/{id:guid}/submit", PostSubmitSchool)
-            .RequireAuthorization(Permissions.DepartmentHead.SchoolGradeEnter);
+            .RequireAuthorization(Permissions.Institution.SchoolGradeEnter);
 
         return app;
     }

@@ -194,12 +194,12 @@ const notify = useNotify()
 const authStore = useAuthStore()
 
 // İki ayrı akış (#171): işletmede staj notunu işletme girer (`company:grade:enter`),
-// okulda staj notunu okul girer (`department:school-grade:enter`). Görünürlük rol adına
+// okulda staj notunu okul girer (`institution:school-grade:enter`). Görünürlük rol adına
 // değil izne bakar (ADR-0001).
 type GradeMode = 'business' | 'school'
 
 const canEnterBusiness = computed(() => authStore.hasPermission(Permissions.Company.EnterGrade))
-const canEnterSchool = computed(() => authStore.hasPermission(Permissions.DepartmentHead.SchoolGradeEnter))
+const canEnterSchool = computed(() => authStore.hasPermission(Permissions.Institution.SchoolGradeEnter))
 const showModeTabs = computed(() => canEnterBusiness.value && canEnterSchool.value)
 
 const mode = ref<GradeMode>(canEnterBusiness.value ? 'business' : 'school')

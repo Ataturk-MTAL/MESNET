@@ -12,7 +12,7 @@ namespace MESNET.Coordination.UnitTests;
 ///
 /// <para>Kilitlenen karar: <b>iki ayrı akış, iki ayrı izin.</b> İşletmede staj notunu işletme
 /// girer (<c>company:grade:enter</c>, kapsam <c>business_id</c> claim'i); okulda staj notunu
-/// okul girer (<c>department:school-grade:enter</c>, kapsam <c>institution_id</c>). Okuldaki
+/// okul girer (<c>institution:school-grade:enter</c>, kapsam <c>institution_id</c>). Okuldaki
 /// şefin <c>business_id</c> claim'i yoktur — işletme izni ona hiçbir işe yaramazdı.</para>
 ///
 /// <para>Regresyon koruması: okul izni işletme uçlarına, işletme izni okul uçlarına
@@ -33,14 +33,14 @@ public sealed class SchoolTermGradeEndpointAuthorizationTests
     public void Okulda_staj_yazma_uclari_okul_iznini_ister(string route)
     {
         PoliciesOf(HttpMethods.Post, route)
-            .ShouldContain(Permissions.DepartmentHead.SchoolGradeEnter);
+            .ShouldContain(Permissions.Institution.SchoolGradeEnter);
     }
 
     [Fact]
     public void Okulda_staj_ogrenci_listesi_okul_iznini_ister()
     {
         PoliciesOf(HttpMethods.Get, SchoolStudentsRoute)
-            .ShouldContain(Permissions.DepartmentHead.SchoolGradeEnter);
+            .ShouldContain(Permissions.Institution.SchoolGradeEnter);
     }
 
     /// <summary>
@@ -65,22 +65,23 @@ public sealed class SchoolTermGradeEndpointAuthorizationTests
     {
         var enterPolicies = PoliciesOf(HttpMethods.Post, BusinessEnterRoute);
         enterPolicies.ShouldContain(Permissions.Company.EnterGrade);
-        enterPolicies.ShouldNotContain(Permissions.DepartmentHead.SchoolGradeEnter);
+        enterPolicies.ShouldNotContain(Permissions.Institution.SchoolGradeEnter);
 
         var listPolicies = PoliciesOf(HttpMethods.Get, BusinessStudentsRoute);
         listPolicies.ShouldContain(Permissions.Company.EnterGrade);
-        listPolicies.ShouldNotContain(Permissions.DepartmentHead.SchoolGradeEnter);
+        listPolicies.ShouldNotContain(Permissions.Institution.SchoolGradeEnter);
     }
 
     /// <summary>
     /// Okul izni <b>yalnız</b> okulda staj uçlarında olmalı. Başka uca yayan biri, o ucu
-    /// sessizce alan şefine de açmış olur (<c>department:*</c> onda da var).
+    /// sessizce alan şefine ve müdür yardımcısına da açmış olur — ikisi de bu izni açık
+    /// satırla taşıyor.
     /// </summary>
     [Fact]
     public void Okul_izni_baska_hicbir_uca_uygulanmaz()
     {
         var carriers = TermGradeEndpoints()
-            .Where(e => e.Policies.Contains(Permissions.DepartmentHead.SchoolGradeEnter))
+            .Where(e => e.Policies.Contains(Permissions.Institution.SchoolGradeEnter))
             .Select(e => $"{e.Method} {e.Route}")
             .OrderBy(x => x)
             .ToList();

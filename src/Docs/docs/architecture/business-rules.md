@@ -436,7 +436,7 @@ nerede" diye sorulduğunda çıkardı.
 | | İşletmede staj | Okulda staj |
 | --- | --- | --- |
 | Notu giren | İşletme yetkilisi | **Alan şefi, müdür yardımcısı, müdür** |
-| İzin | `company:grade:enter` | `department:school-grade:enter` |
+| İzin | `company:grade:enter` | `institution:school-grade:enter` |
 | Kapsam | `business_id` claim'i | `institution_id` claim'i + okulda staj yerleştirmesi |
 | `StudentTermGrade.BusinessId` | Dolu | **null** |
 | Usta öğretici adı | Girilir | Alan yok (işletme kavramı) |
@@ -453,10 +453,10 @@ notları filtreler, ve fiş üretim handler'ı işverensiz yerleştirmeyi açık
 **İki akış birbirinin üstüne yazamaz:** işletme ucu okulda staj notunu, okul ucu işletme notunu
 düzenleyemez/gönderemez — her iki yönde de ayrı hata döner.
 
-> **Önek notu (ADR-0001):** izin `department:` öneklidir ve bu, wildcard tuzağının **istenen
-> sonucu verdiği** nadir vakadır. `department:*` wildcard'ı tam olarak alan şefi, müdür
-> yardımcısı ve müdürdedir — hedef küme birebir örtüşür. Aynı önek #126, #130 ve #172'de
-> reddedilmişti; oralarda hedef küme daha dardı.
+> **Önek notu (ADR-0001):** izin `institution:` öneklidir — okulda staj yapıldığında kurum
+> işverenin yerine geçer, bu kurumun işidir. Önek **kapsamı belirlemez**: "herkes kendi
+> kurumuna göre yetkilenir" kuralı `institution_id` claim'inden gelir ve izinden bağımsızdır.
+> `institution:*` yalnız müdürdedir; müdür yardımcısı ve alan şefi izni **açık satırla** alır.
 
 Karar kaydı: issue #171.
 

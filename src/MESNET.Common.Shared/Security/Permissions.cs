@@ -77,6 +77,35 @@ public static class Permissions
         /// yapılandırmayı görür, değiştiremez (#126'nın "okuma açık, yazma kapalı" kararı).</para>
         /// </summary>
         public const string CoordinationConfigManage = "institution:coordination-config:manage";
+
+        /// <summary>
+        /// <b>Okulda staj</b> yapan öğrencinin dönem notunu girme (#171).
+        ///
+        /// <para>İşletmede staj yapan öğrencinin notunu işletme girer
+        /// (<see cref="Company.EnterGrade"/>, kapsam <c>business_id</c> claim'i). Okulda staj
+        /// yapan öğrencinin (#159, işverensiz yerleştirme) işvereni yoktur; o izin ve o kapsam
+        /// kullanılamaz — okuldaki yetkilinin <c>business_id</c> claim'i yoktur. Bu izin olmadan
+        /// öğrencinin notu <b>hiç girilemiyordu</b>: yerleştirme işletme kapsamlı görünüme
+        /// girmediği için not giriş listesinde de görünmüyordu.</para>
+        ///
+        /// <para><b>Önek neden <c>institution:</c>:</b> öğrenci okulda staj yaptığında kurum,
+        /// işverenin yerine geçer — bu bir alan/bölüm işi değil, <b>kurumun</b> işidir. Sahibin
+        /// kararı: <i>"Resmî kuruma bağlı izinler kurumsal olmalı."</i></para>
+        ///
+        /// <para><b>Kimde:</b> <c>InstitutionManager</c> (<c>institution:*</c> ile),
+        /// <c>DeputyDirector</c> ve <c>DepartmentHead</c> (<b>açık satırla</b> —
+        /// <c>institution:*</c> yalnız müdürdedir). Açık satırlar
+        /// <see cref="RolePermissionMap"/>'ten silinirse o iki rol izni kaybeder; kilitleyen
+        /// test: <c>tests/MESNET.Security.UnitTests/SchoolTermGradeMappingTests.cs</c>.</para>
+        ///
+        /// <para><b>Önek kapsamı BELİRLEMEZ</b> (ADR-0001): hangi kurumun öğrencisi sorusunu
+        /// <c>institution_id</c> claim'i cevaplar ve o kontrol izinden bağımsız çalışır.</para>
+        ///
+        /// <para><b>Not: bu izin fiş üretmez.</b> Okulda staj için MEB Form 8 (Dönem Not Fişi)
+        /// üretilmez — sahibin ifadesi: <i>"Okulda staj için ayrı form yok, hatta form yok genel
+        /// olarak."</i> Kayıt yalnız öğrencinin başarı değerlendirmesi için tutulur.</para>
+        /// </summary>
+        public const string SchoolGradeEnter = "institution:school-grade:enter";
     }
 
     /// <summary>
@@ -367,28 +396,6 @@ public static class Permissions
 
         /// <summary>Haftalık ziyaret ataması oluşturma ve yönetimi.</summary>
         public const string WeeklyVisit = "department:weekly-visit:manage";
-
-        /// <summary>
-        /// <b>Okulda staj</b> yapan öğrencinin dönem notunu girme (#171).
-        ///
-        /// <para>İşletmede staj yapan öğrencinin notunu işletme girer
-        /// (<see cref="Company.EnterGrade"/>, kapsam <c>business_id</c> claim'i). Okulda staj
-        /// yapan öğrencinin (#159, işverensiz yerleştirme) işletmesi yoktur; o izin ve o kapsam
-        /// kullanılamaz — okuldaki şefin <c>business_id</c> claim'i yoktur. Bu izin olmadan
-        /// öğrencinin notu <b>hiç girilemiyordu</b>: yerleştirme işletme kapsamlı görünüme
-        /// girmediği için not giriş listesinde de görünmüyordu.</para>
-        ///
-        /// <para><b>Önek neden <c>department:</c> — bu kez wildcard İSTENEN sonucu veriyor:</b>
-        /// sahibin kararı notu alan şefi, müdür yardımcısı ve müdürün girebilmesi yönünde.
-        /// <c>department:*</c> wildcard'ı tam olarak bu üç roldedir (<c>DepartmentHead</c>,
-        /// <c>DeputyDirector</c>, <c>InstitutionManager</c>), dolayısıyla önek hedef kümeyi
-        /// birebir karşılar. <c>Teacher</c> ve işletme rollerinde bu önek YOKTUR.</para>
-        ///
-        /// <para><b>Not: bu izin fiş üretmez.</b> Okulda staj için MEB Form 8 (Dönem Not Fişi)
-        /// üretilmez — sahibin ifadesi: <i>"Okulda staj için ayrı form yok, hatta form yok genel
-        /// olarak."</i> Kayıt yalnız öğrencinin başarı değerlendirmesi için tutulur.</para>
-        /// </summary>
-        public const string SchoolGradeEnter = "department:school-grade:enter";
     }
 
     /// <summary>

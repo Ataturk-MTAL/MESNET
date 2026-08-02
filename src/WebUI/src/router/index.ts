@@ -246,7 +246,7 @@ const router = createRouter({
           path: 'term-grades',
           name: 'TermGradeEntry',
           component: () => import('pages/coordination/TermGradeEntryPage.vue'),
-          meta: { permissions: ['company:grade:enter', 'department:school-grade:enter'] },
+          meta: { permissions: ['company:grade:enter', 'institution:school-grade:enter'] },
         },
 
         // Dönem Not Fişleri (koordinatör/okul)

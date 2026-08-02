@@ -21,6 +21,13 @@ export const Permissions = {
      * Görünürlük kararı her zaman bu izne bakar, rol adına DEĞİL.
      */
     CoordinationConfigManage: 'institution:coordination-config:manage',
+    /**
+     * Okulda staj yapan öğrencinin dönem notunu girme (#171). Öğrenci okulda staj yaptığında
+     * kurum işverenin yerine geçer — bu kurumun işidir, alan/bölüm işi değil.
+     * Müdür `institution:*` ile, müdür yardımcısı ve alan şefi AÇIK SATIRLA alır.
+     * İşletmede staj notunu işletme girer (`Company.EnterGrade`).
+     */
+    SchoolGradeEnter: 'institution:school-grade:enter',
   },
 
   Student: {
@@ -57,7 +64,7 @@ export const Permissions = {
     UploadReceipt: 'company:receipt:upload',
     MasterTrainer: 'company:trainer:manage',
     // İşletmede staj yapan öğrencinin dönem notunu girme. Okulda staj karşılığı ayrıdır:
-    // DepartmentHead.SchoolGradeEnter (#171).
+    // Institution.SchoolGradeEnter (#171).
     EnterGrade: 'company:grade:enter',
   },
 
@@ -116,12 +123,6 @@ export const Permissions = {
     Workload: 'department:workload:view',
     TeacherAssign: 'department:teacher:assign',
     ScheduleView: 'department:schedule:view',
-    /**
-     * Okulda staj yapan öğrencinin dönem notunu girme (#171). `department:*` wildcard'ı alan
-     * şefi, müdür yardımcısı ve müdürdedir — sahibin saydığı küme tam olarak bu. İşletmede
-     * staj notunu işletme girer (`company:grade:enter`).
-     */
-    SchoolGradeEnter: 'department:school-grade:enter',
   },
 
   Document: {

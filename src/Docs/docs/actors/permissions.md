@@ -236,6 +236,9 @@ public static class Permissions
         // mesafe-saat kuralları, büyükşehir sınırı, azami haftalık ek ders saati.
         // Aynı wildcard kuralı geçerli — "department:" öneki KULLANILMAZ.
         public const string CoordinationConfigManage = "institution:coordination-config:manage";
+        // Okulda staj dönem notu girişi (#171) — okulda staj kurumun işidir. Müdür
+        // "institution:*" ile, müdür yardımcısı ve alan şefi AÇIK SATIRLA alır.
+        public const string SchoolGradeEnter = "institution:school-grade:enter";
     }
 
     // Öğrenci İzinleri
@@ -354,9 +357,6 @@ public static class Permissions
         public const string Workload = "department:workload:view";
         public const string TeacherAssign = "department:teacher:assign";
         public const string ScheduleView = "department:schedule:view";
-        // Okulda staj dönem notu girişi (#171) — "department:*" alan şefi, müdür yardımcısı
-        // ve müdürdedir; sahibin saydığı küme tam olarak bu.
-        public const string SchoolGradeEnter = "department:school-grade:enter";
     }
 
     // Evrak İzinleri
@@ -1363,21 +1363,30 @@ yerleştirme) not giriş listesinde hiç görünmüyor ve **notu hiç girilemiyo
 | | İşletmede staj | Okulda staj |
 |---|---|---|
 | Notu giren | İşletme yetkilisi / usta öğretici | **Alan şefi, müdür yardımcısı, müdür** |
-| İzin | `company:grade:enter` | `department:school-grade:enter` |
+| İzin | `company:grade:enter` | `institution:school-grade:enter` |
 | Kapsam | `business_id` claim'i | `institution_id` claim'i + okulda staj yerleştirmesi |
 | Fiş (MEB Form 8) | Üretilir | **Üretilmez** |
 
 Okuldaki şefin `business_id` claim'i **yoktur** — işletme izni ona verilse bile hiçbir işe
 yaramazdı. Kapsam bu yüzden kurum claim'i ve `SchoolPlacedStudentView` üzerinden kurulur.
 
-### Önek neden `department:` — bu kez tuzak değil
+### Önek neden `institution:`
 
-`department:*` wildcard'ı `InstitutionManager`, `DeputyDirector` **ve** `DepartmentHead`
-rollerindedir. Diğer kararlarda bu önek tam da bu yüzden **reddedilmişti**: #126'da alan şefine
-kapsam muafiyeti, #130'da kurum geneli yapılandırma, #172'de hüküm izni geçmesin diye. Burada
-sahibin saydığı küme o üç rolle **birebir aynı** olduğu için önek hedefi doğrudan karşılıyor.
+Sahibin kararı: *"Resmî kuruma bağlı izinler kurumsal olmalı."* Öğrenci okulda staj yaptığında
+**kurum, işverenin yerine geçer** — bu bir alan/bölüm işi değildir. İzin bu yüzden
+`department:` değil `institution:` öneklidir.
 
-`Teacher` ve işletme rollerinde `department:` öneki yoktur. Kilitleyen testler:
+> **Önek kapsamı BELİRLEMEZ.** "Herkes kendi kurumuna göre yetkilenir" kuralı önekten değil
+> `institution_id` claim'inden gelir ve ADR-0001 gereği izinden bağımsız çalışır. (Phase 2'de
+> tenant katmanı gelirse claim adı değişebilir; kural aynı kalır.)
+
+**Bu önekte wildcard hedefi tek başına karşılamaz:** `institution:*` yalnız
+`InstitutionManager`'dadır. `DeputyDirector` ve `DepartmentHead` izni **açık satırla** alır —
+satır silinirse o iki rol izni sessizce kaybeder ve belirti ancak dönem sonunda çıkar. Alan
+şefinin `institution:` önekli başka hiçbir izni yoktur; kurum yönetimi izinleri (silme,
+personel yetkilendirme) ona geçmez.
+
+`Teacher` ve işletme rollerinde bu izin hiçbir yoldan bulunmaz. Kilitleyen testler:
 `tests/MESNET.Security.UnitTests/SchoolTermGradeMappingTests.cs` (rol dağılımı + önek kararı) ve
 `tests/MESNET.Coordination.UnitTests/SchoolTermGradeEndpointAuthorizationTests.cs` (uç → izin
 eşlemesi + işletme akışı regresyonu).
