@@ -99,7 +99,20 @@ public static class AttendanceEndpoints
                 .AddMessage("Multipart form-data bekleniyor.")
                 .Build());
 
-        var form = await request.ReadFormAsync();
+        // Bozuk ya da boş multipart gövde ReadFormAsync'te istisna atar (parçasız gövdede
+        // "Unexpected end of Stream"). Bu bir istemci hatasıdır — 500 değil 400 dönmelidir.
+        IFormCollection form;
+        try
+        {
+            form = await request.ReadFormAsync();
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException)
+        {
+            return Results.BadRequest(ResponseBuilder.Fail()
+                .AddMessage("Multipart form-data gövdesi okunamadı.")
+                .Build());
+        }
+
         var reportFile = form.Files["ReportFile"] ?? form.Files.FirstOrDefault();
 
         if (reportFile is null)
