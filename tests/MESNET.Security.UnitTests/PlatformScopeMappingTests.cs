@@ -25,6 +25,7 @@ public sealed class PlatformScopeMappingTests
         MesnetRoles.Teacher,
         MesnetRoles.CompanyManager,
         MesnetRoles.MasterTrainer,
+        MesnetRoles.CompanyHR,
         MesnetRoles.Student
     ];
 

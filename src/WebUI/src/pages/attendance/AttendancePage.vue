@@ -133,8 +133,65 @@
       <template #body-cell-statusSlug="{ row }">
         <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
       </template>
+      <template #body-cell-healthReport="{ row }">
+        <q-td>
+          <StatusBadge
+            v-if="row.healthReportStatus !== 'None'"
+            :slug="row.healthReportStatusSlug"
+          />
+          <span
+            v-else
+            class="text-grey-6"
+          >—</span>
+          <q-tooltip v-if="row.healthReportRejectionReason">
+            {{ row.healthReportRejectionReason }}
+          </q-tooltip>
+        </q-td>
+      </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
+          <PermissionGuard :permission="Permissions.Attendance.Upload">
+            <q-btn
+              v-if="row.healthReportStatus !== 'Pending'"
+              :disable="periodStore.isReadOnly"
+              flat
+              round
+              dense
+              icon="medical_information"
+              aria-label="Sağlık raporu yükle"
+              @click="openHealthReportUpload(row)"
+            >
+              <q-tooltip>Sağlık raporu yükle</q-tooltip>
+            </q-btn>
+          </PermissionGuard>
+          <PermissionGuard :permission="Permissions.Attendance.Approve">
+            <q-btn
+              v-if="row.healthReportStatus === 'Pending'"
+              flat
+              round
+              dense
+              icon="fact_check"
+              color="positive"
+              aria-label="Sağlık raporunu onayla"
+              @click="approveHealthReport(row)"
+            >
+              <q-tooltip>Sağlık raporunu onayla</q-tooltip>
+            </q-btn>
+          </PermissionGuard>
+          <PermissionGuard :permission="Permissions.Attendance.Approve">
+            <q-btn
+              v-if="row.healthReportStatus === 'Pending'"
+              flat
+              round
+              dense
+              icon="report_off"
+              color="negative"
+              aria-label="Sağlık raporunu reddet"
+              @click="openHealthReportReject(row)"
+            >
+              <q-tooltip>Sağlık raporunu reddet</q-tooltip>
+            </q-btn>
+          </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Approve">
             <q-btn
               v-if="row.status === 'Pending'"
@@ -163,7 +220,8 @@
               <q-tooltip>Doğrula</q-tooltip>
             </q-btn>
           </PermissionGuard>
-          <PermissionGuard :permission="Permissions.Attendance.Manage">
+          <!-- Düzeltme türü değiştirir, yani kesintiyi kaldırabilir: okul tarafı izni (#172). -->
+          <PermissionGuard :permission="Permissions.Attendance.DirectEntry">
             <q-btn
               flat
               round
@@ -200,6 +258,19 @@
       :reason="selected?.reason ?? ''"
       @saved="load"
     />
+
+    <HealthReportUploadForm
+      v-model="healthReportDialog"
+      :record-id="selected?.id ?? ''"
+      :requires-approval="!canEnterHealthReportDirectly"
+      @saved="load"
+    />
+
+    <HealthReportRejectForm
+      v-model="healthReportRejectDialog"
+      :record-id="selected?.id ?? ''"
+      @saved="load"
+    />
   </q-page>
 </template>
 
@@ -222,17 +293,28 @@ import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useRouter } from 'vue-router'
 import CorrectAttendanceForm from 'components/forms/attendance/CorrectAttendanceForm.vue'
+import HealthReportUploadForm from 'components/forms/attendance/HealthReportUploadForm.vue'
+import HealthReportRejectForm from 'components/forms/attendance/HealthReportRejectForm.vue'
 import AppNotice from 'components/AppNotice.vue'
+import { useAuthStore } from 'stores/auth'
 
 const notify = useNotify()
 const router = useRouter()
 const confirmDialog = useConfirmDialog()
 const periodStore = useAcademicPeriodStore()
+const authStore = useAuthStore()
 const filterStudentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
 const saving = ref(false)
 const selected = ref<AttendanceRecordDto | null>(null)
 const correctDialog = ref(false)
+const healthReportDialog = ref(false)
+const healthReportRejectDialog = ref(false)
+
+// Yükleyende bu izin yoksa rapor onaya düşer (#172) — kullanıcıya yükleme formunda söylenir.
+const canEnterHealthReportDirectly = computed(() =>
+  authStore.hasPermission(Permissions.Attendance.HealthReportDirect),
+)
 const studentIdFilter = ref('')
 const statusFilter = ref<string | null>(null)
 const monthFilter = ref<number | null>(null)
@@ -304,6 +386,7 @@ const columns: QTableProps['columns'] = [
   { name: 'business', label: 'İşletme', field: 'businessId', align: 'left' },
   { name: 'absenceTypeSlug', label: 'Tür', field: 'absenceTypeSlug', align: 'left' },
   { name: 'statusSlug', label: 'Durum', field: 'statusSlug', align: 'left' },
+  { name: 'healthReport', label: 'Sağlık Raporu', field: 'healthReportStatusSlug', align: 'left' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ]
 
@@ -372,6 +455,29 @@ async function verify(row: AttendanceRecordDto) {
 function openCorrect(row: AttendanceRecordDto) {
   selected.value = row
   correctDialog.value = true
+}
+
+function openHealthReportUpload(row: AttendanceRecordDto) {
+  selected.value = row
+  healthReportDialog.value = true
+}
+
+function openHealthReportReject(row: AttendanceRecordDto) {
+  selected.value = row
+  healthReportRejectDialog.value = true
+}
+
+async function approveHealthReport(row: AttendanceRecordDto) {
+  saving.value = true
+  try {
+    await attendanceApi.approveHealthReport(row.id)
+    notify.success('Sağlık raporu onaylandı — bu gün için ücret kesintisi uygulanmayacak.')
+    await load()
+  } catch (e) {
+    notify.apiError(e, 'Onaylama sırasında bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
 }
 
 watch(() => periodStore.selectedPeriodId, () => load())

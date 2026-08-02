@@ -15,7 +15,9 @@ namespace MESNET.Api.Tests.Attendance;
 ///     POST   /api/attendance/{attendanceId:guid}/approve   (ApproveAttendance)
 ///     POST   /api/attendance/{attendanceId:guid}/verify    (VerifyAttendance)
 ///     POST   /api/attendance/{attendanceId:guid}/correct   (CorrectAttendance)
-///     POST   /api/attendance/{attendanceId:guid}/health-report (AttachHealthReport)
+///     POST   /api/attendance/{attendanceId:guid}/health-report (AttachHealthReport — multipart)
+///     POST   /api/attendance/{attendanceId:guid}/health-report/approve (ApproveHealthReport)
+///     POST   /api/attendance/{attendanceId:guid}/health-report/reject (RejectHealthReport)
 ///     DELETE /api/attendance/{attendanceId:guid}           (DeleteAttendance)
 ///     GET    /api/attendance/{attendanceId:guid}           (GetAttendanceRecord)
 ///     GET    /api/attendance/                              (ListAttendanceRecords)
@@ -183,18 +185,65 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
     }
 
     // ---------------------------------------------------------------------
-    // POST /api/attendance/{id}/health-report  — AttachHealthReport (gövdeli)
+    // POST /api/attendance/{id}/health-report  — AttachHealthReport (multipart, #172)
     // ---------------------------------------------------------------------
 
     [Fact]
-    public async Task Saglik_raporu_iliskilendirme_bos_govdeyle_500_donmez()
+    public async Task Saglik_raporu_yukleme_dosyasiz_500_donmez()
     {
-        // Given — var olmayan kimlik ve boş/geçersiz JSON gövde
+        // Given — var olmayan kimlik ve dosyası olmayan multipart gövde
+        var attendanceId = Guid.NewGuid();
+        using var form = new MultipartFormDataContent();
+
+        // When — sağlık raporu yükleme isteği gönderilir
+        var response = await _fixture.Client.PostAsync(
+            $"/api/attendance/{attendanceId}/health-report", form);
+
+        // Then — validation/not-found (4xx) beklenir, sunucu hatası (500) DEĞİL
+        response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
+    }
+
+    [Fact]
+    public async Task Saglik_raporu_yukleme_json_govdeyle_500_donmez()
+    {
+        // Given — uç artık multipart bekliyor; eski JSON gövde 4xx vermeli, 500 değil
         var attendanceId = Guid.NewGuid();
 
-        // When — sağlık raporu ilişkilendirme isteği gönderilir
+        // When
         var response = await _fixture.Client.PostAsync(
             $"/api/attendance/{attendanceId}/health-report", EmptyJson());
+
+        // Then
+        response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
+    }
+
+    // ---------------------------------------------------------------------
+    // POST /api/attendance/{id}/health-report/approve|reject  — onay zinciri (#172)
+    // ---------------------------------------------------------------------
+
+    [Fact]
+    public async Task Olmayan_kaydin_saglik_raporunu_onaylama_500_donmez()
+    {
+        // Given — var olmayan rastgele bir devamsızlık kimliği
+        var attendanceId = Guid.NewGuid();
+
+        // When — rapor onaylanmaya çalışılır
+        var response = await _fixture.Client.PostAsync(
+            $"/api/attendance/{attendanceId}/health-report/approve", EmptyJson());
+
+        // Then — validation/not-found (4xx) beklenir, sunucu hatası (500) DEĞİL
+        response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
+    }
+
+    [Fact]
+    public async Task Saglik_raporu_reddi_gerekcesiz_500_donmez()
+    {
+        // Given — var olmayan kimlik ve gerekçesiz gövde
+        var attendanceId = Guid.NewGuid();
+
+        // When — rapor reddedilmeye çalışılır
+        var response = await _fixture.Client.PostAsync(
+            $"/api/attendance/{attendanceId}/health-report/reject", EmptyJson());
 
         // Then — validation/not-found (4xx) beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);

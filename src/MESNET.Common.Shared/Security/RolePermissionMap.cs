@@ -27,7 +27,12 @@ public static class RolePermissionMap
             Permissions.Institution.AllBranches,
             // Kurum geneli koordinasyon yapılandırması (#130) — "institution:*" zaten kapsar,
             // güvenlik kararı olduğu için açıkça yazılır.
-            Permissions.Institution.CoordinationConfigManage
+            Permissions.Institution.CoordinationConfigManage,
+            // Kaydın onay beklemeden hüküm doğurması (#172) — "attendance:*" zaten kapsar,
+            // para etkisi olan bir karar olduğu için açıkça yazılır.
+            Permissions.Attendance.DirectEntry,
+            Permissions.Attendance.HealthReportDirect,
+            Permissions.Attendance.Upload
         ],
         // Müdür yardımcısı (#129). Kaynak: actors.md → "Müdür Yardımcısı" —
         // staj işlemleri koordinasyonu, evrak takibi ve onayı, öğretmen görevlendirmeleri,
@@ -64,6 +69,11 @@ public static class RolePermissionMap
             Permissions.Attendance.Manage,
             Permissions.Attendance.Report,
             Permissions.Attendance.Approve,
+            Permissions.Attendance.Upload,          // sağlık raporu girişi (#172)
+            // Müdür yardımcısının girdiği kayıt onay beklemez (#172) — sahibin kuralı:
+            // "koordinatör öğretmen, müdür yardımcısı ya da müdür doğrudan girebilir".
+            Permissions.Attendance.DirectEntry,
+            Permissions.Attendance.HealthReportDirect,
             Permissions.Document.View,
             Permissions.Document.Upload,
             Permissions.Document.Verify,
@@ -90,6 +100,12 @@ public static class RolePermissionMap
             Permissions.Attendance.View,
             Permissions.Attendance.Manage,     // devamsızlık takibi
             Permissions.Attendance.Report,
+            Permissions.Attendance.Upload,     // sağlık raporu girişi (#172)
+            // Devamsızlık girişi onay beklemez — bugünkü davranış korunur (#172). Sağlık
+            // raporunda karşılığı olan HealthReportDirect ise YOKTUR: sahibin saydığı taraf
+            // koordinatör öğretmen, müdür yardımcısı ve müdürdür. Personelin girdiği rapor
+            // onaya düşer — #129'un "yürütür, onaylamaz" ayrımıyla aynı çizgi.
+            Permissions.Attendance.DirectEntry,
             Permissions.Document.View,
             Permissions.Document.Upload,
             Permissions.Document.Verify,       // belge doğrulama
@@ -108,7 +124,12 @@ public static class RolePermissionMap
             Permissions.Attendance.View,
             Permissions.Attendance.Manage,
             Permissions.Attendance.Report,
+            // Sağlık raporu onay zincirinin 1. adımı koordinatör öğretmendedir (#172):
+            // işletme/öğrenci/veli girişini o onaylar ya da reddeder.
             Permissions.Attendance.Approve,
+            Permissions.Attendance.Upload,
+            Permissions.Attendance.DirectEntry,
+            Permissions.Attendance.HealthReportDirect,
             Permissions.Salary.View,
             Permissions.Salary.Approve,        // dekont ilk onay (öğretmen adımı)
             Permissions.Coordinator.Schedule,
@@ -127,6 +148,9 @@ public static class RolePermissionMap
             Permissions.Internship.ViewOwn,
             Permissions.Internship.Apply,
             Permissions.Attendance.ViewOwn,
+            // Öğrenci kendi sağlık raporunu yükleyebilir (#172). Yükleme hüküm doğurmaz:
+            // DirectEntry / HealthReportDirect bu rolde yoktur, rapor onaya düşer.
+            Permissions.Attendance.Upload,
             Permissions.Salary.ViewOwn,
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage,
@@ -156,6 +180,10 @@ public static class RolePermissionMap
             Permissions.Company.RequestStudent,
             Permissions.Company.EnterGrade,
             Permissions.Attendance.Manage,
+            // Sağlık raporu girişi (#172). DirectEntry / HealthReportDirect YOKTUR: işletmenin
+            // girdiği kayıt onaya düşer. Ödemeyi yapan taraf kendi kararıyla kesintiyi
+            // kaldıramaz — #172'nin kapattığı asıl açık budur.
+            Permissions.Attendance.Upload,
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage
         ],
@@ -166,7 +194,26 @@ public static class RolePermissionMap
             Permissions.Company.Attendance,    // devam takibi
             Permissions.Company.EnterGrade,    // dönem notu girişi
             Permissions.Student.View,          // kendi öğrencileri
+            // Devamsızlık girişi ucu "attendance:manage" ister; bu satır olmadan usta öğretici
+            // POST /api/attendance'a hiç ulaşamıyordu — oysa MarkAttendanceHandler onu giriş
+            // yapan işletme aktörü sayıyor ve kaydını Pending'e düşürüyordu (#129/#172).
+            Permissions.Attendance.Manage,
+            Permissions.Attendance.Upload,     // sağlık raporu tarayıp girme
             "communication:*"
+        ],
+        // İşletme insan kaynakları (#172). Sahibin kuralı: sağlık raporunu "işletme müdürü,
+        // işletmenin insan kaynakları ya da usta öğretici tarayıp girebilir".
+        // CompanyManager'ın geniş demetini ALMAZ: öğrenci talebi, dekont yükleme, işletme belge
+        // yönetimi ve dönem notu girişi yöneticide kalır.
+        [MesnetRoles.CompanyHR] =
+        [
+            Permissions.Company.View,
+            Permissions.Company.Attendance,    // işletme devam çizelgesi
+            Permissions.Attendance.Manage,     // devamsızlık girişi (kaydı Pending başlar)
+            Permissions.Attendance.Upload,     // sağlık raporu tarayıp girme
+            Permissions.Student.View,          // işletmedeki öğrenciler
+            Permissions.Communication.ViewMessages,
+            Permissions.Communication.SendMessage
         ],
         // Sistem yöneticisi (#147) — ULUSAL parametre girişi. Kurum domainlerinden HİÇBİRİ
         // yoktur: bu rol kurum verisi görmez, yalnız mevzuat sayılarını yazar. Tersi de

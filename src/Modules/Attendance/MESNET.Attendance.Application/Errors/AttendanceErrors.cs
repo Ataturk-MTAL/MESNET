@@ -27,4 +27,22 @@ public static class AttendanceErrors
 
     public static Error AcademicPeriodClosed(Guid id) =>
         new("Attendance.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, işlem yapılamaz: {id}");
+
+    // ─── Sağlık raporu onay zinciri (#172) ───
+
+    public static Error HealthReportMissing(Guid attendanceId) =>
+        new("Attendance.HealthReportMissing",
+            $"Bu devamsızlık kaydında sağlık raporu yok: {attendanceId}");
+
+    public static Error HealthReportNotPending(string currentStatus) =>
+        new("Attendance.HealthReportNotPending",
+            $"Sağlık raporu onay bekleyen durumda değil. Mevcut durum: {currentStatus}.");
+
+    public static Error HealthReportAlreadyPending(Guid attendanceId) =>
+        new("Attendance.HealthReportAlreadyPending",
+            $"Bu kayıtta onay bekleyen bir sağlık raporu zaten var: {attendanceId}. " +
+            "Önce mevcut rapor onaylanmalı ya da reddedilmelidir.");
+
+    public static Error RejectionReasonRequired() =>
+        new("Attendance.RejectionReasonRequired", "Ret gerekçesi zorunludur.");
 }

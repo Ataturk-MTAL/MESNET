@@ -48,6 +48,42 @@ public static class AbsenceTallyConsumer
         session.Store(view);
     }
 
+    /// <summary>
+    /// Sağlık raporu ONAYLANDI (#172) — devamsızlık türü <c>HealthReport</c>'a döner ve o tür
+    /// ücret kesintisine tabi değildir (business-rules.md §6.2). Kesinti bu anda kalkar.
+    /// </summary>
+    public static async Task Consume(HealthReportApproved @event, IDocumentSession session)
+        => await SetHealthReportType(session, @event.AttendanceId);
+
+    /// <summary>
+    /// Rapor yüklendi (#172). Kesinti YALNIZ okul tarafının doğrudan girdiği raporda kalkar
+    /// (<c>RequiresApproval = false</c>) — onay zaten o rollerde biter.
+    ///
+    /// <para>İşletme, usta öğretici, işletme İK ya da öğrenci yüklediğinde
+    /// <c>RequiresApproval = true</c>'dur ve burada HİÇBİR ŞEY yapılmaz: ödemeyi yapan taraf
+    /// kendi kesintisini tek taraflı kaldıramaz. Tür ancak koordinatör öğretmenin onayıyla,
+    /// <c>HealthReportApproved</c> üzerinden değişir.</para>
+    ///
+    /// <para>#172 öncesinde bu olay HİÇ dinlenmiyordu; Attendance modülünde tür değişse bile
+    /// Payment'ın yerel kaydı eski türde kalıyor ve geçerli raporu olan öğrencinin ücreti
+    /// kesilmeye devam ediyordu. Aynı düzeltme o boşluğu da kapatır.</para>
+    /// </summary>
+    public static async Task Consume(HealthReportAttached @event, IDocumentSession session)
+    {
+        if (@event.RequiresApproval) return;
+
+        await SetHealthReportType(session, @event.AttendanceId);
+    }
+
+    private static async Task SetHealthReportType(IDocumentSession session, Guid attendanceId)
+    {
+        var view = await session.LoadAsync<StudentAbsenceView>(attendanceId);
+        if (view is null) return;
+
+        view.AbsenceTypeName = "HealthReport";
+        session.Store(view);
+    }
+
     public static void Consume(AttendanceDeleted @event, IDocumentSession session)
         => session.Delete<StudentAbsenceView>(@event.AttendanceId);
 

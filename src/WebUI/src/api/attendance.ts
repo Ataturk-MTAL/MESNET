@@ -24,7 +24,21 @@ export interface AttendanceRecordDto {
   verifiedById: string | null
   verifiedByName: string | null
   verifiedAt: string | null
+  // Sağlık raporu onay zinciri (#172). Rapor yüklenmiş olması tek başına hüküm doğurmaz:
+  // devamsızlık türü ancak `healthReportStatus === 'Approved'` olduğunda "Sağlık Raporu"na
+  // döner ve ücret kesintisi kalkar.
+  healthReportStatus: HealthReportStatus
+  healthReportStatusSlug: string
+  healthReportAttachedById: string | null
+  healthReportAttachedByName: string | null
+  healthReportAttachedAt: string | null
+  healthReportReviewedById: string | null
+  healthReportReviewedByName: string | null
+  healthReportReviewedAt: string | null
+  healthReportRejectionReason: string | null
 }
+
+export type HealthReportStatus = 'None' | 'Pending' | 'Approved' | 'Rejected'
 
 export interface AttendanceViewDto {
   id: string
@@ -84,11 +98,23 @@ export const attendanceApi = {
   remove: (attendanceId: string) =>
     api.delete(`/attendance/${attendanceId}`),
 
+  // Sağlık raporu yükleme (#172). Alan adı backend'in okuduğu adla birebir aynı olmalıdır:
+  // önceki hâlinde 'file' gönderiliyordu ve uç zaten JSON bekliyordu — çağrı hiç yapılmıyordu.
   uploadHealthReport: (attendanceId: string, file: File) => {
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('ReportFile', file)
     return api.post(`/attendance/${attendanceId}/health-report`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+
+  approveHealthReport: (attendanceId: string) =>
+    api.post(`/attendance/${attendanceId}/health-report/approve`),
+
+  rejectHealthReport: (attendanceId: string, reason: string) =>
+    api.post(`/attendance/${attendanceId}/health-report/reject`, { reason }),
 }
+
+// Yüklenebilecek rapor türleri — backend AttachHealthReportHandler ile aynı küme.
+export const HEALTH_REPORT_ACCEPT = '.pdf,.jpg,.jpeg,.png'
+export const HEALTH_REPORT_MAX_BYTES = 10 * 1024 * 1024

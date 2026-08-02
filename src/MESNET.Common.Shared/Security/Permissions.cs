@@ -210,11 +210,64 @@ public static class Permissions
         /// <summary>Devamsızlık raporları oluşturma.</summary>
         public const string Report = "attendance:report";
 
-        /// <summary>Devamsızlık belgesi (sağlık raporu vb.) yükleme.</summary>
+        /// <summary>
+        /// Devamsızlık belgesi (sağlık raporu vb.) <b>yükleme</b> (#172).
+        ///
+        /// <para>Giriş bilinçli olarak GENİŞTİR: işletme yetkilisi, işletme İK, usta öğretici ve
+        /// öğrenci de yükleyebilir. Para etkisi girişte değil <b>onay zincirinin sonunda</b>
+        /// doğar — yükleyen tarafta <see cref="HealthReportDirect"/> yoksa rapor onaya kadar
+        /// devamsızlık türünü değiştirmez, dolayısıyla ücret kesintisini kaldırmaz.</para>
+        ///
+        /// <para><b>Önek:</b> <c>attendance:</c>. <c>attendance:*</c> wildcard'ı yalnız
+        /// <c>InstitutionManager</c>'dadır ve orada olması istenen sonuçtur; işletme rolleri
+        /// attendance izinlerini tek tek satırla alır, bu yüzden geniş giriş izni onlara
+        /// wildcard'la sızmaz, açıkça verilir.</para>
+        /// </summary>
         public const string Upload = "attendance:upload";
 
         /// <summary>Devamsızlık kaydını doğrulama ve onaylama.</summary>
         public const string Approve = "attendance:approve";
+
+        /// <summary>
+        /// Girilen <b>devamsızlık kaydının onay beklemeden</b> geçerli olması (#172).
+        ///
+        /// <para>Bu izin erişim değil <b>hüküm</b> açar: sahibi olan kullanıcının girdiği kayıt
+        /// doğrudan <c>Recorded</c> başlar; olmayan kullanıcının girdiği kayıt <c>Pending</c>
+        /// başlar ve koordinatör öğretmen onayına kadar ücret kesintisi doğurmaz.</para>
+        ///
+        /// <para><b>Neyi düzeltir:</b> ayrım daha önce <c>MarkAttendanceHandler</c> içinde
+        /// <b>rol adına</b> bakılarak yapılıyordu (<c>IsInRole(CompanyManager)</c> ||
+        /// <c>IsInRole(MasterTrainer)</c>) ve CLAUDE.md'de bilinen teknik borç olarak yazılıydı.
+        /// Rol adı listesi yeni bir işletme rolü eklendiğinde (ör. <c>CompanyHR</c>) sessizce
+        /// eksik kalır ve o rolün girdiği kayıt okul girmiş gibi doğrudan hüküm doğururdu.</para>
+        ///
+        /// <para><b>Önek neden <c>attendance:</c>:</b> izin okul tarafında olmalı, işletme
+        /// tarafında olmamalı. <c>company:</c> KULLANILAMAZ — <c>CompanyManager</c> ve
+        /// <c>CompanyHR</c> o öneki taşır. <c>department:</c> de KULLANILAMAZ —
+        /// <c>DepartmentHead</c> ve <c>DeputyDirector</c> <c>department:*</c> taşır, izin alan
+        /// şefine de geçerdi. <c>attendance:*</c> yalnız <c>InstitutionManager</c>'dadır ve
+        /// müdürün bu izne sahip olması istenen sonuçtur. Kilitleyen test:
+        /// <c>tests/MESNET.Security.UnitTests/AttendanceDirectEntryMappingTests.cs</c>.</para>
+        /// </summary>
+        public const string DirectEntry = "attendance:direct-entry";
+
+        /// <summary>
+        /// Girilen <b>sağlık raporunun onay beklemeden</b> geçerli olması (#172).
+        ///
+        /// <para>Sahibin kuralı: "Koordinatör öğretmen, müdür yardımcısı ya da müdür doğrudan
+        /// öğrenci sağlık raporunu girebilir, bunda onaya gerek yoktur." Diğer herkesin —
+        /// işletme yetkilisi, işletme İK, usta öğretici, öğrenci, veli — girdiği rapor
+        /// koordinatör öğretmen onaylayana kadar hüküm doğurmaz.</para>
+        ///
+        /// <para><b><see cref="DirectEntry"/>'den neden ayrı:</b> iki kayıt aynı kişilerde
+        /// bitmiyor. Devamsızlık girişini <c>InstitutionStaff</c> da doğrudan yapar (bugünkü
+        /// davranış, #129: yürütür); sağlık raporunda sahibin saydığı taraf yalnız üç roldür.
+        /// Tek izne indirmek ya kurum personeline rapor onayı yetkisi verirdi ya da bugünkü
+        /// devamsızlık akışını bozardı.</para>
+        ///
+        /// <para><b>Önek:</b> <see cref="DirectEntry"/> ile aynı gerekçe — <c>attendance:</c>.</para>
+        /// </summary>
+        public const string HealthReportDirect = "attendance:health-report:direct";
 
         /// <summary>Devamsızlık kaydını silme (son 7 gün, müdür/müdür yardımcısı).</summary>
         public const string Delete = "attendance:delete";

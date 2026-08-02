@@ -27,10 +27,29 @@ public sealed record AttendanceRecord(
     DateTime? ApprovedAt,
     Guid? VerifiedById,
     DateTime? VerifiedAt,
-    bool IsDeleted = false)
+    bool IsDeleted = false,
+    /// <summary>
+    /// Sağlık raporunun onay durumu (#172). Rapor eklemek devamsızlık türünü ANINDA değiştirmez;
+    /// tür yalnız <c>Approved</c> olduğunda <c>HealthReport</c>'a döner.
+    ///
+    /// <para>Alan #172 ile eklendiği için eski JSON document'larında yoktur ve <c>null</c>
+    /// deserialize olur; <see cref="EffectiveReportStatus"/> onu <c>None</c> sayar.</para>
+    /// </summary>
+    HealthReportStatus? ReportStatus = null,
+    Guid? HealthReportAttachedById = null,
+    DateTime? HealthReportAttachedAt = null,
+    Guid? HealthReportReviewedById = null,
+    DateTime? HealthReportReviewedAt = null,
+    string? HealthReportRejectionReason = null)
 {
     // SmartEnum LINQ tuzağı: Status JSON'a düz string serialize edilir; sorgular için düz string kopya.
     public string StatusName => Status.Name;
+
+    /// <summary>Rapor durumunun null-güvenli okunuşu — kayıt yoksa <c>None</c>.</summary>
+    public HealthReportStatus EffectiveReportStatus => ReportStatus ?? HealthReportStatus.None;
+
+    /// <summary>SmartEnum LINQ tuzağı — aynı gerekçe (bkz. CLAUDE.md).</summary>
+    public string ReportStatusName => EffectiveReportStatus.Name;
 
     public static AttendanceRecord Create(AttendanceMarked e) => new(
         e.AttendanceId,
@@ -72,10 +91,36 @@ public sealed record AttendanceRecord(
         Reason = e.Reason
     };
 
+    /// <summary>
+    /// Rapor eklendi (#172). Tür burada DEĞİŞMEZ — onay bekleyen bir rapor ücret kesintisini
+    /// kaldırmaz. Yalnız <see cref="HealthReportAttached.RequiresApproval"/> false ise (okul
+    /// tarafı doğrudan girdi, ya da #172 öncesi yazılmış eski olay) tür anında geçerli olur.
+    /// </summary>
     public AttendanceRecord Apply(HealthReportAttached e) => this with
     {
         HealthReportUrl = e.ReportUrl,
+        HealthReportAttachedById = e.AttachedById,
+        HealthReportAttachedAt = e.AttachedAt,
+        HealthReportRejectionReason = null,
+        ReportStatus = e.RequiresApproval ? HealthReportStatus.Pending : HealthReportStatus.Approved,
+        Type = e.RequiresApproval ? Type : AbsenceType.HealthReport
+    };
+
+    public AttendanceRecord Apply(HealthReportApproved e) => this with
+    {
+        ReportStatus = HealthReportStatus.Approved,
+        HealthReportReviewedById = e.ApprovedById,
+        HealthReportReviewedAt = e.ApprovedAt,
         Type = AbsenceType.HealthReport
+    };
+
+    /// <summary>Reddedilen rapor türü değiştirmez — kesinti hangi türdeyse öyle kalır.</summary>
+    public AttendanceRecord Apply(HealthReportRejected e) => this with
+    {
+        ReportStatus = HealthReportStatus.Rejected,
+        HealthReportReviewedById = e.RejectedById,
+        HealthReportReviewedAt = e.RejectedAt,
+        HealthReportRejectionReason = e.Reason
     };
 
     public AttendanceRecord Apply(AttendanceDeleted _) => this with
