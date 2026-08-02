@@ -115,7 +115,7 @@ const router = createRouter({
               component: () => import('pages/internship/InternshipOverviewPage.vue'),
               // internship:view — personel görüntüleyebilir
               // internship:manage — durum değişikliklerini sayfa içi PermissionGuard kontrol eder
-              meta: { permissions: ['internship:view', 'internship:manage'] },
+              meta: { permissions: ['internship:view', 'internship:manage', 'internship:view-own'] },
             },
           ],
         },
@@ -125,7 +125,8 @@ const router = createRouter({
           path: 'attendance',
           name: 'AttendanceList',
           component: () => import('pages/attendance/AttendancePage.vue'),
-          meta: { permissions: ['attendance:view'] },
+          // Öğrenci ve veli de kendi kapsamında görür (#182); daraltmayı sunucu yapar.
+          meta: { permissions: ['attendance:view', 'attendance:view-own'] },
         },
         {
           path: 'attendance/new',
@@ -160,7 +161,7 @@ const router = createRouter({
           path: 'salary',
           name: 'SalaryList',
           component: () => import('pages/payment/PaymentPage.vue'),
-          meta: { permissions: ['salary:view'] },
+          meta: { permissions: ['salary:view', 'salary:view-own'] },
         },
         {
           path: 'salary/config',

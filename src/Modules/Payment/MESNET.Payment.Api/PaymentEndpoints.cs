@@ -17,8 +17,9 @@ public static class PaymentEndpoints
     {
         var group = app.MapGroup("/api/payments").RequireAuthorization();
 
-        group.MapGet("/{id:guid}", Get).RequireAuthorization(Permissions.Salary.View);
-        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Salary.View);
+        // Liste hem okul tarafına hem veri sahibine açıktır (#182).
+        group.MapGet("/{id:guid}", Get).RequireAuthorization(PermissionPolicies.SalaryViewOrOwn);
+        group.MapGet("/", GetAll).RequireAuthorization(PermissionPolicies.SalaryViewOrOwn);
         group.MapPost("/{id:guid}/upload-receipt/business", PostUploadReceiptByBusiness).RequireAuthorization(Permissions.Company.UploadReceipt);
         group.MapPost("/{id:guid}/upload-receipt/student", PostUploadReceiptByStudent).RequireAuthorization(Permissions.Salary.Receipt);
         group.MapPost("/{id:guid}/confirm", PostConfirm).RequireAuthorization(Permissions.Salary.Receipt);

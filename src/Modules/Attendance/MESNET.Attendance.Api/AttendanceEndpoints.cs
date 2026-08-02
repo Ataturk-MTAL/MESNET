@@ -40,8 +40,10 @@ public static class AttendanceEndpoints
         group.MapPost("/{attendanceId:guid}/health-report/reject", PostRejectHealthReport)
             .RequireAuthorization(Permissions.Attendance.Approve);
         group.MapDelete("/{attendanceId:guid}", Delete).RequireAuthorization(Permissions.Attendance.Delete);
-        group.MapGet("/{attendanceId:guid}", Get).RequireAuthorization(Permissions.Attendance.View);
-        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Attendance.View);
+        // Liste hem okul tarafına hem veri sahibine açıktır (#182): öğrenci kendi
+        // devamsızlığını, veli bağlı olduğu öğrencininkini görür. Daraltmayı handler yapar.
+        group.MapGet("/{attendanceId:guid}", Get).RequireAuthorization(PermissionPolicies.AttendanceViewOrOwn);
+        group.MapGet("/", GetAll).RequireAuthorization(PermissionPolicies.AttendanceViewOrOwn);
     }
 
     private static async Task<IResult> Post(
