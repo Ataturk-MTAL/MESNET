@@ -31,13 +31,40 @@ public static class StudentTermGradeQueryHandler
         return new TermGradeRowsResult(rows);
     }
 
+    // Okulda staj yapan öğrenciler + (varsa) mevcut not durumu — okul tarafı not girişi (#171)
+    public static async Task<TermGradeRowsResult> Handle(
+        GetSchoolStudentsForGrading query, IQuerySession session, CancellationToken ct)
+    {
+        var students = await session.Query<SchoolPlacedStudentView>()
+            .Where(p => p.InstitutionId == query.InstitutionId
+                        && p.AcademicPeriodId == query.AcademicPeriodId
+                        && p.IsActive)
+            .ToListAsync(ct);
+
+        var studentIds = students.Select(s => s.StudentId).ToList();
+        var grades = await session.Query<StudentTermGrade>()
+            .Where(g => g.AcademicPeriodId == query.AcademicPeriodId && studentIds.Contains(g.StudentId))
+            .ToListAsync(ct);
+        var byStudent = grades.ToDictionary(g => g.StudentId);
+
+        var rows = students
+            .OrderBy(s => s.StudentName)
+            .Select(s => ToRow(s.StudentId, s.StudentName, s.BranchName, byStudent.GetValueOrDefault(s.StudentId)))
+            .ToList();
+        return new TermGradeRowsResult(rows);
+    }
+
     // Koordinatör/okul için GÖNDERİLMİŞ notlar (fiş üretilecekler)
     public static async Task<TermGradeRowsResult> Handle(
         GetSubmittedTermGrades query, IQuerySession session, CancellationToken ct)
     {
+        // Okulda staj notları bu listeye GİRMEZ (#171): liste "fiş üretilecekler"dir ve o hâl
+        // için MEB Form 8 üretilmez. Filtre olmasaydı koordinatör ekranda görür ve üretmeyi
+        // denerdi — işletme adı ve iki işletme imzası olmayan bir fiş.
         var grades = await session.Query<StudentTermGrade>()
             .Where(g => g.InstitutionId == query.InstitutionId
                         && g.AcademicPeriodId == query.AcademicPeriodId
+                        && g.BusinessId != null
                         && g.StatusName == StudentTermGradeStatus.Submitted.Name)
             .ToListAsync(ct);
 

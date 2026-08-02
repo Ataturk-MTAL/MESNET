@@ -36,7 +36,9 @@ public static class RolePermissionMap
             // Ücretli izin okul onayı (#177) — "attendance:*" zaten kapsar, para etkisi olduğu
             // için açıkça yazılır. İşletme adımı (LeaveBusinessApprove) da wildcard'la buraya
             // gelir; onu engelleyen izin değil business_id KAPSAMIDIR — müdürde o claim yoktur.
-            Permissions.Attendance.LeaveApprove
+            Permissions.Attendance.LeaveApprove,
+            // Okulda staj dönem notu (#171) — "institution:*" zaten kapsar, açıkça yazılır.
+            Permissions.Institution.SchoolGradeEnter
         ],
         // Müdür yardımcısı (#129). Kaynak: actors.md → "Müdür Yardımcısı" —
         // staj işlemleri koordinasyonu, evrak takibi ve onayı, öğretmen görevlendirmeleri,
@@ -81,6 +83,9 @@ public static class RolePermissionMap
             // Ücretli izin zincirinin 2. adımı (#177) — sahibin kararı: "müdür yardımcısı ve
             // müdür yeterli". Koordinatör öğretmen ALMAZ; ona yalnız bildirim gider.
             Permissions.Attendance.LeaveApprove,
+            // Okulda staj dönem notu (#171). "institution:*" YALNIZ müdürdedir; müdür
+            // yardımcısı bu izni ancak bu satırla alır — satır silinirse izni kaybeder.
+            Permissions.Institution.SchoolGradeEnter,
             Permissions.Document.View,
             Permissions.Document.Upload,
             Permissions.Document.Verify,
@@ -170,6 +175,11 @@ public static class RolePermissionMap
         [MesnetRoles.DepartmentHead] =
         [
             "department:*",
+            // Okulda staj yapan öğrencinin dönem notu (#171). Alan şefinde "institution:"
+            // öneki HİÇ YOKTUR; izin yalnız bu açık satırla gelir — silinirse alan şefi notu
+            // giremez. İşletmede staj notunu işletme girer; bu izin yalnız işverensiz
+            // yerleştirme (#159) içindir.
+            Permissions.Institution.SchoolGradeEnter,
             Permissions.Student.View,
             Permissions.Coordinator.Schedule,
             Permissions.Attendance.View,

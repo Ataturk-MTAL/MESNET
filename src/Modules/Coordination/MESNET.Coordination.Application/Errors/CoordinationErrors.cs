@@ -108,6 +108,24 @@ public static class CoordinationErrors
         new("Coordination.StudentTermGradeAlreadySubmitted",
             $"Bu dönem notu zaten gönderilmiş, düzenlenemez: {id}");
 
+    // ─── Okulda staj dönem notu (#171) ───
+
+    public static Error StudentNotPlacedAtSchool(Guid studentId) =>
+        new("Coordination.StudentNotPlacedAtSchool",
+            $"Bu öğrencinin kurumunuzda okulda staj yerleştirmesi yok; notu bu yoldan giremezsiniz: {studentId}");
+
+    public static Error StudentTermGradeBelongsToBusiness(Guid id) =>
+        new("Coordination.StudentTermGradeBelongsToBusiness",
+            $"Bu dönem notu bir işletme stajına aittir; okulda staj yolundan işlenemez: {id}");
+
+    public static Error StudentTermGradeBelongsToSchool(Guid id) =>
+        new("Coordination.StudentTermGradeBelongsToSchool",
+            $"Bu dönem notu okulda staja aittir; işletme yolundan işlenemez: {id}");
+
+    public static Error SchoolGradeInstitutionScopeMissing() =>
+        new("Coordination.SchoolGradeInstitutionScopeMissing",
+            "Kurum bilgisi çözülemedi; okulda staj notu girilemez.");
+
     // Coordination Assignment
     public static Error BusinessNotFound(Guid businessId) =>
         new("Coordination.BusinessNotFound",

@@ -21,6 +21,13 @@ export const Permissions = {
      * Görünürlük kararı her zaman bu izne bakar, rol adına DEĞİL.
      */
     CoordinationConfigManage: 'institution:coordination-config:manage',
+    /**
+     * Okulda staj yapan öğrencinin dönem notunu girme (#171). Öğrenci okulda staj yaptığında
+     * kurum işverenin yerine geçer — bu kurumun işidir, alan/bölüm işi değil.
+     * Müdür `institution:*` ile, müdür yardımcısı ve alan şefi AÇIK SATIRLA alır.
+     * İşletmede staj notunu işletme girer (`Company.EnterGrade`).
+     */
+    SchoolGradeEnter: 'institution:school-grade:enter',
   },
 
   Student: {
@@ -56,6 +63,9 @@ export const Permissions = {
     Attendance: 'company:attendance:manage',
     UploadReceipt: 'company:receipt:upload',
     MasterTrainer: 'company:trainer:manage',
+    // İşletmede staj yapan öğrencinin dönem notunu girme. Okulda staj karşılığı ayrıdır:
+    // Institution.SchoolGradeEnter (#171).
+    EnterGrade: 'company:grade:enter',
   },
 
   Internship: {

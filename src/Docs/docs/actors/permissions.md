@@ -236,6 +236,9 @@ public static class Permissions
         // mesafe-saat kuralları, büyükşehir sınırı, azami haftalık ek ders saati.
         // Aynı wildcard kuralı geçerli — "department:" öneki KULLANILMAZ.
         public const string CoordinationConfigManage = "institution:coordination-config:manage";
+        // Okulda staj dönem notu girişi (#171) — okulda staj kurumun işidir. Müdür
+        // "institution:*" ile, müdür yardımcısı ve alan şefi AÇIK SATIRLA alır.
+        public const string SchoolGradeEnter = "institution:school-grade:enter";
     }
 
     // Öğrenci İzinleri
@@ -1415,3 +1418,53 @@ doğurmaz); doğrudan giriş açık kalsaydı iki taraflı onay tek komutla atla
 öncesinde `/correct` ucunun sağlık raporu zincirini atlaması gibi. Kısıt **komut yolundadır**;
 onaydan doğan kayıtlar olay tüketicisiyle (`PaidLeaveAttendanceConsumer`) açıldığı için bu
 kapıdan geçmez.
+
+## Okulda Staj Dönem Notu — Kurum İşverenin Yerine Geçer (#171)
+
+Dönem notu akışının her adımı işletmeye bağlıydı; okulda staj yapan öğrenci (#159, işverensiz
+yerleştirme) not giriş listesinde hiç görünmüyor ve **notu hiç girilemiyordu**.
+
+### İki akış, iki izin
+
+| | İşletmede staj | Okulda staj |
+|---|---|---|
+| Notu giren | İşletme yetkilisi / usta öğretici | **Alan şefi, müdür yardımcısı, müdür** |
+| İzin | `company:grade:enter` | `institution:school-grade:enter` |
+| Kapsam | `business_id` claim'i | `institution_id` claim'i + okulda staj yerleştirmesi |
+| Fiş (MEB Form 8) | Üretilir | **Üretilmez** |
+
+Okuldaki şefin `business_id` claim'i **yoktur** — işletme izni ona verilse bile hiçbir işe
+yaramazdı. Kapsam bu yüzden kurum claim'i ve `SchoolPlacedStudentView` üzerinden kurulur.
+
+### Önek neden `institution:`
+
+Sahibin kararı: *"Resmî kuruma bağlı izinler kurumsal olmalı."* Öğrenci okulda staj yaptığında
+**kurum, işverenin yerine geçer** — bu bir alan/bölüm işi değildir. İzin bu yüzden
+`department:` değil `institution:` öneklidir.
+
+> **Önek kapsamı BELİRLEMEZ.** "Herkes kendi kurumuna göre yetkilenir" kuralı önekten değil
+> `institution_id` claim'inden gelir ve ADR-0001 gereği izinden bağımsız çalışır. (Phase 2'de
+> tenant katmanı gelirse claim adı değişebilir; kural aynı kalır.)
+
+**Bu önekte wildcard hedefi tek başına karşılamaz:** `institution:*` yalnız
+`InstitutionManager`'dadır. `DeputyDirector` ve `DepartmentHead` izni **açık satırla** alır —
+satır silinirse o iki rol izni sessizce kaybeder ve belirti ancak dönem sonunda çıkar. Alan
+şefinin `institution:` önekli başka hiçbir izni yoktur; kurum yönetimi izinleri (silme,
+personel yetkilendirme) ona geçmez.
+
+`Teacher` ve işletme rollerinde bu izin hiçbir yoldan bulunmaz. Kilitleyen testler:
+`tests/MESNET.Security.UnitTests/SchoolTermGradeMappingTests.cs` (rol dağılımı + önek kararı) ve
+`tests/MESNET.Coordination.UnitTests/SchoolTermGradeEndpointAuthorizationTests.cs` (uç → izin
+eşlemesi + işletme akışı regresyonu).
+
+### Fiş üretim yolu üç katmanda kapalı
+
+1. Okul gönderimi `StudentTermGradeSubmitted` olayını **yayınlamaz** — Reporting'in
+   `StudentTermGradeView` kaydı hiç oluşmaz
+2. Fiş listesi (`GET /term-grades/submitted`) `BusinessId != null` filtresi taşır — koordinatör
+   ekranda görmez, üretmeyi denemez
+3. Fiş üretim handler'ı işverensiz yerleştirmeyi açık hatayla reddeder
+   (`Reporting.TermGradeSlipNotAvailableForSchoolPlacement`)
+
+Tek katman yeterli olurdu; üçü birden var çünkü ilk ikisi *sessiz* korumadır — biri kaldırılsa
+belirti dönem sonuna kadar görünmezdi.

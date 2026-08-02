@@ -261,12 +261,13 @@ const router = createRouter({
           meta: { permissions: ['internship:report:manage'] },
         },
 
-        // Dönem Notu Girişi (işletme)
+        // Dönem Notu Girişi — işletmede staj (işletme) + okulda staj (okul, #171).
+        // Sayfa hangi sekmeleri göstereceğine izne bakarak karar verir.
         {
           path: 'term-grades',
           name: 'TermGradeEntry',
           component: () => import('pages/coordination/TermGradeEntryPage.vue'),
-          meta: { permissions: ['company:grade:enter'] },
+          meta: { permissions: ['company:grade:enter', 'institution:school-grade:enter'] },
         },
 
         // Dönem Not Fişleri (koordinatör/okul)
