@@ -679,6 +679,25 @@ taraf kendi kesintisini tek taraflı iptal edemez.
 değiştirdiği için `attendance:manage` değil `attendance:direct-entry` ister — önceden işletme
 yetkilisi o uçtan onay zincirini tümden atlayabiliyordu.
 
+### İki taraflı onay kapsamla kurulur, izinle değil (#177)
+
+MESEM ücretli izni öğrenci başvurusuyla başlar, **işletme** ve **okul** onayından geçerek
+resmîleşir; ancak o zaman `PaidLeave` devamsızlık kaydı doğar (`PaidLeaveAttendanceConsumer`).
+`PaidLeave` artık hiçbir komut ucundan doğrudan girilemez — okul tarafı da giremez.
+
+`InstitutionManager` **her domain wildcard'ını** taşır, yani işletme adımının izni de ona gider
+ve `platform:` dışında serbest önek yoktur. Zinciri ayakta tutan iki kural izinde değil
+kapsamdadır (`Attendance.Core/Services/PaidLeaveApprovalPolicy.cs`):
+
+- İşletme adımı `business_id` claim'inin başvurunun `BusinessId`'siyle eşleşmesini ister;
+  okul rollerinde o claim yoktur
+- **İşletme onayını veren okul onayını veremez** — bir kullanıcı iki rolü birden taşıyabilir
+- `attendance:leave:approve` `NeverDirectlyAssignable`'dır; işletme rollerinin atanabilir
+  domain listesinde `attendance:` vardır
+
+Kilitleyen testler: `tests/MESNET.Attendance.UnitTests/PaidLeaveApprovalPolicyTests.cs`,
+`tests/MESNET.Security.UnitTests/PaidLeaveApprovalMappingTests.cs`
+
 ### Bu kuralın bilinen istisnaları (teknik borç)
 
 Aşağıdaki nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:

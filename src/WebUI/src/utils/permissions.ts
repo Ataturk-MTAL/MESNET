@@ -83,6 +83,12 @@ export const Permissions = {
     // arayüzde "onay bekliyor" rozetini gizlemek ve düzeltme butonunu göstermek için okunur.
     DirectEntry: 'attendance:direct-entry',
     HealthReportDirect: 'attendance:health-report:direct',
+    // MESEM ücretli izin başvurusu (#177). Başvuru öğrencinin, 1. onay işletmenin, 2. onay
+    // okulun. İşletme adımını izin değil `business_id` KAPSAMI bağlar — okul müdürü
+    // `attendance:*` wildcard'ıyla bu izne de sahiptir, ama o claim'i yoktur.
+    LeaveRequest: 'attendance:leave:request',
+    LeaveBusinessApprove: 'attendance:leave:business-approve',
+    LeaveApprove: 'attendance:leave:approve',
   },
 
   Salary: {

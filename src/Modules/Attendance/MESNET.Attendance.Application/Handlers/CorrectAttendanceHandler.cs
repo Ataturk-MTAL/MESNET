@@ -1,7 +1,8 @@
-using Marten;
 using MESNET.Attendance.Application.Commands;
+using MESNET.Attendance.Application.Errors;
 using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Enums;
+using MESNET.Attendance.Core.Services;
 using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
@@ -12,9 +13,8 @@ namespace MESNET.Attendance.Application.Handlers;
 public static class CorrectAttendanceHandler
 {
     [AggregateHandler]
-    public static async Task<AttendanceCorrected> Handle(
-        CorrectAttendance command, AttendanceRecord? record,
-        ICurrentUserService currentUser, IQuerySession session)
+    public static AttendanceCorrected Handle(
+        CorrectAttendance command, AttendanceRecord? record, ICurrentUserService currentUser)
     {
         if (record is null)
             throw new DomainException("ATTENDANCE_NOT_FOUND", "Devamsızlık kaydı bulunamadı.");
@@ -27,10 +27,12 @@ public static class CorrectAttendanceHandler
             throw new DomainException("ATTENDANCE_INVALID_ABSENCE_TYPE",
                 $"Geçersiz devamsızlık türü: {command.NewAbsenceType}.");
 
-        // Düzeltme de tür değiştirir; ücretli izin kısıtı burada da geçerlidir (#175).
-        // Uç zaten "attendance:direct-entry" istiyor (#172), yani okul tarafındayız —
-        // bildirim kısıtı (CanReport) burada uygulanmaz, eğitim türü kısıtı uygulanır.
-        await MarkAttendanceHandler.EnsureTypeAllowedForStudentAsync(session, record.StudentId, newType);
+        // Düzeltme de tür değiştirir; ücretli izin kısıtı burada da geçerlidir (#177).
+        // Bu kapı açık kalsaydı iki taraflı onay zinciri tek komutla atlanabilirdi — #172
+        // öncesinde /correct'in sağlık raporu zincirini atlaması gibi. Onaydan doğan
+        // düzeltmeler bu handler'dan değil PaidLeaveAttendanceConsumer'dan geçer.
+        if (AbsenceTypePolicy.RequiresApprovedRequest(newType))
+            throw new DomainException(AttendanceErrors.PaidLeaveRequiresApprovedRequest());
 
         return new AttendanceCorrected(
             record.Id, record.StudentId, currentUser.GetFullName(),

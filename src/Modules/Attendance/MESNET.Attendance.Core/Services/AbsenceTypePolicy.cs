@@ -40,14 +40,27 @@ public static class AbsenceTypePolicy
     /// para sonucu doğururdu; reddetmek görünür bir hata üretir ve
     /// <c>POST /api/enrollment/students/resync-projections</c> ile düzelir.</para>
     ///
-    /// <para><b>Bu kontrol yalnız ÖN KOŞULDUR.</b> MESEM'de ücretli izin doğrudan girilen bir
-    /// tür değil, <b>başvuru</b>yla başlayıp işletme ve okul onayından geçerek resmileşen bir
-    /// süreçtir. Bu metot "hangi öğrencide mümkün" sorusunu cevaplar; "resmileşti mi" sorusunu
-    /// cevaplamaz. Onay zinciri gelene kadar tür okul tarafınca doğrudan girilebilir durumda —
-    /// izleyen iş o kapıyı kapatacak.</para>
+    /// <para><b>Bu kontrol ÖN KOŞULDUR ve başvuru anında çalışır (#177).</b> "Hangi öğrencide
+    /// mümkün" sorusunu cevaplar; "resmileşti mi" sorusunu <see cref="RequiresApprovedRequest"/>
+    /// cevaplar. Örgün öğrenci ücretli izin başvurusu bile açamaz.</para>
     /// </summary>
     public static bool IsValidForEducationType(AbsenceType type, string? educationTypeName) =>
         type != AbsenceType.PaidLeave || IsMesem(educationTypeName);
+
+    /// <summary>
+    /// Bu tür yalnız resmîleşen bir başvurudan doğabilir mi (#177).
+    ///
+    /// <para>Ücretli izin artık <b>doğrudan girilemez</b> — okul tarafı bile giremez. Öğrenci
+    /// başvurur, işletme onaylar, okul onaylar; kayıtlar ancak o zaman
+    /// <c>PaidLeaveAttendanceConsumer</c> tarafından açılır.</para>
+    ///
+    /// <para><b>Neden okul tarafına da kapalı:</b> ücretli izin kesinti doğurmaz, yani türü
+    /// seçmek doğrudan para kararıdır. Doğrudan giriş açık kalsaydı iki taraflı onay zinciri
+    /// tek komutla atlanabilirdi — tıpkı #172 öncesinde <c>/correct</c> ucunun sağlık raporu
+    /// zincirini atlaması gibi. Kısıt komut yolundadır; onaydan doğan kayıtlar olay tüketicisiyle
+    /// açıldığı için bu kapıdan geçmez.</para>
+    /// </summary>
+    public static bool RequiresApprovedRequest(AbsenceType type) => type == AbsenceType.PaidLeave;
 
     private static bool IsMesem(string? educationTypeName) =>
         string.Equals(educationTypeName, MesemEducationType, StringComparison.OrdinalIgnoreCase);
