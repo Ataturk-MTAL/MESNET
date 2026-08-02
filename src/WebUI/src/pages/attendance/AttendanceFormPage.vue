@@ -139,6 +139,7 @@ import { useNotify } from 'src/composables/useNotify'
 import { usePlacementOptions } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useAuthStore } from 'stores/auth'
+import { Permissions } from 'utils/permissions'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
 const router = useRouter()
@@ -157,7 +158,19 @@ const form = reactive({
   reason: '',
 })
 
-const absenceTypeOptions = ABSENCE_TYPES.map((t) => ({ label: t.label, value: t.value }))
+// İşletme resmî izin veremez, yalnız devamsızlık bildirir (#175). Sınıflandırma — mazeret,
+// izin, sağlık raporu — okul tarafındadır. Sunucu da aynı kuralı uygular; bu yalnız kullanıcıya
+// seçemeyeceği türü göstermemek içindir.
+const canClassifyAbsence = computed(() =>
+  authStore.hasPermission(Permissions.Attendance.DirectEntry),
+)
+
+const absenceTypeOptions = computed(() =>
+  ABSENCE_TYPES.filter((t) => canClassifyAbsence.value || t.value === 'Unexcused').map((t) => ({
+    label: t.label,
+    value: t.value,
+  })),
+)
 
 const weekBounds = computed(() => {
   const today = new Date()

@@ -17,7 +17,9 @@ public static class StudentRegisteredConsumer
             Id = @event.StudentId,
             FullName = @event.FullName,
             StudentNumber = string.IsNullOrWhiteSpace(@event.StudentNumber) ? null : @event.StudentNumber,
-            BranchCode = @event.BranchCode
+            BranchCode = @event.BranchCode,
+            // Ücretli izin hakkı eğitim türüne bağlıdır (#175) — örgünde yok, MESEM'de var.
+            EducationType = @event.EducationType
         });
     }
 }
