@@ -37,6 +37,7 @@ public static class InstitutionMappingExtensions
 
     public static StaffMemberDto ToDto(this StaffMember vo) => new(
         vo.Id,
+        vo.KeycloakId,
         vo.FullName,
         vo.Role.Name,
         vo.Role.Slug,
