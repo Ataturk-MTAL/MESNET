@@ -173,13 +173,26 @@ public static class InstitutionSeeder
         var existingStaffIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (inst is { } instEl)
         {
+            // DTO'da beklenen alan yoksa SESSİZ GEÇME (#190): eskiden buradaki catch,
+            // StaffMemberDto'nun "keycloakId" taşımadığını 41 çalıştırma boyunca yuttu;
+            // her seferinde küme boş kaldı ve aynı 5 kişi yeniden eklendi (205 satır).
+            // Sunucu tarafında da guard var; bu log, kontrolün sessizce devre dışı
+            // kalmasını görünür kılmak içindir.
             try
             {
                 var staffArr = instEl.GetProperty("staff");
                 foreach (var s in staffArr.EnumerateArray())
-                    existingStaffIds.Add(s.GetProperty("keycloakId").GetString() ?? "");
+                {
+                    if (s.TryGetProperty("keycloakId", out var kcId) && kcId.GetString() is { } id)
+                        existingStaffIds.Add(id);
+                    else
+                        Console.WriteLine("  ⚠ Personel kaydında \"keycloakId\" alanı yok — mükerrer kontrolü yapılamıyor");
+                }
             }
-            catch { /* staff property yoksa boş set */ }
+            catch (KeyNotFoundException)
+            {
+                Console.WriteLine("  ⚠ Kurum yanıtında \"staff\" alanı yok — mükerrer kontrolü yapılamıyor");
+            }
         }
 
         // username → (role, branchCode) eşleştirmesi

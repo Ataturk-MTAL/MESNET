@@ -47,8 +47,16 @@ public sealed record InstitutionBranchDto(
     int DepartmentHeadCount,
     int WorkshopHeadCount);
 
+/// <param name="KeycloakId">
+/// Kullanıcının Keycloak kimliği (#190). DTO'da YOKTU; seeder mükerrer kontrolünü bu alandan
+/// yapmaya çalışıyor, bulamayınca istisna atıyor ve <c>catch {}</c> onu yutuyordu — her
+/// çalıştırmada aynı 5 kişi yeniden ekleniyordu. Kimliğin dışarı verilmesi kaydı yönetmek
+/// (mükerrer tespiti, rol değişimi) için gereklidir; uç zaten <c>institution:staff:manage</c>
+/// ister.
+/// </param>
 public sealed record StaffMemberDto(
     Guid Id,
+    string KeycloakId,
     string FullName,
     string Role,
     string RoleSlug,

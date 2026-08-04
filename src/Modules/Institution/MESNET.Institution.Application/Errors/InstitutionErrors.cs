@@ -13,6 +13,12 @@ public static class InstitutionErrors
         new("Institution.DistrictNotInProvince",
             $"\"{districtName}\" ilçesi kurumun iline ({TurkishProvinces.GetName(provinceCode) ?? provinceCode ?? "tanımsız"}) ait değil.");
 
+    /// <summary>Aynı kişi ikinci kez yetkilendirilemez (#190).</summary>
+    public static Error StaffAlreadyAuthorized(string keycloakId) =>
+        new("Institution.StaffAlreadyAuthorized",
+            $"Bu kullanıcı kurumda zaten yetkilendirilmiş: {keycloakId}. " +
+            "Rol ya da alan değişikliği için mevcut kaydı güncelleyin.");
+
     public static Error NotFound(Guid id) =>
         new("Institution.NotFound", $"Kurum bulunamadı: {id}");
 
