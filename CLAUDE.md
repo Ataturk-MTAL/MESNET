@@ -659,6 +659,13 @@ kontroldür ve iki kapsam da token claim'inden okunur, istekten ALINMAZ:
   Account konsolundan kendine alan ekleyip kapsamı aşabilirdi. **Token'ın imzalı olması
   içeriğin kullanıcı tarafından belirlenmediği anlamına gelmez** — bu sırayı ters çevirmeyin.
   İkinci katman: realm'de `unmanagedAttributePolicy: ADMIN_EDIT`
+- **Realm ayarı depoya yazmak yetmez — çalışan realm'e ulaştığını doğrulayın (#195).** Keycloak
+  realm import **tek seferliktir**: `mesnet-realm.json`'a sonradan eklenen rol/politika/client
+  ayarı mevcut bir kaba **hiç ulaşmaz** ve bunu hiçbir birim testi göremez (testler depodaki
+  dosyayı okur, çalışan realm'i değil). Gerçekten yaşandı: dev realm'inde politika `ENABLED`
+  kaldı ve **5 rol hiç oluşmadı**. Açılışta `RealmVerificationHostedService` çalışan realm'i
+  `RealmInvariants` ile karşılaştırır — Development'ta sapma **açılışı durdurur**, diğer
+  ortamlarda `LogCritical`. Keycloak'a ulaşılamaması sapma sayılmaz, kontrol atlanır
 - **Kapsam muafiyeti izinleri bireysel (direct) ASLA atanamaz** —
   `AssignablePermissionScope.NeverDirectlyAssignable` sabit listesi yapılandırmayı ezer.
   Rol → domain haritası çalışma zamanında değiştirilebildiği için (`user:roles:manage`),

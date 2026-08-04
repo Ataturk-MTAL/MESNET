@@ -169,6 +169,14 @@ jobs:
           tail -100 /tmp/api.log
           exit 1
 
+      # Realm doğrulaması Development'ta sapmada AÇILIŞI DURDURUR (#195) — yani API ayağa
+      # kalktıysa sapma yoktur. Ama "doğrulandı" ile "alanlar okunamadı, sessiz geçildi" aynı
+      # görünür: ikincisinde de açılış durmaz. Kontrolün gerçekten okuyup karar verdiğini
+      # görünür kılmak için satırlar loga basılır — kontrolün kendisi de sessiz kalmamalı.
+      - name: Realm doğrulama çıktısı
+        run: grep -iE "Realm doğrulan|Realm ayarlar|Realm doğrulaması atlandı|SAPMIŞ" /tmp/api.log
+             || echo "::warning::Realm doğrulama satırı bulunamadı — kontrol koşmamış olabilir (#195)"
+
       - name: Testler
         env:
           API_BASE_URL: http://127.0.0.1:5270
