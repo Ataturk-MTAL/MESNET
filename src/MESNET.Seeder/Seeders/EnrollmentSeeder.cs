@@ -437,6 +437,13 @@ public static class EnrollmentSeeder
             {
                 ctx.Set(p.Key, data.Value.GetProperty("id").GetGuid());
                 createdCount++;
+
+                // Küme bu koşuda açılan kayıtlarla GÜNCEL tutulur. Yoksa aşağıdaki okulda
+                // staj bloğu, az önce yerleştirilmiş öğrenciyi "boşta" sanıp 422 alır — boş
+                // veritabanında yaşandı, dolu bir dev veritabanında görünmemişti (döngü
+                // orada hiç kayıt açmıyor).
+                placedStudents.Add(studentId);
+
                 if (availableSlots.ContainsKey(targetBusinessId))
                     availableSlots[targetBusinessId]--;
                 Console.WriteLine($"  ✓ {p.StudentKey} → {p.BusinessKey} yerleştirildi");
