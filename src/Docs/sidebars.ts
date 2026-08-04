@@ -30,6 +30,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'infrastructure/keycloak',
         'infrastructure/gis-osrm',
+        'infrastructure/dagitim-on-kosullari',
       ],
     },
     {

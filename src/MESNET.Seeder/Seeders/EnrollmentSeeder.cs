@@ -19,18 +19,13 @@ public static class EnrollmentSeeder
         Console.WriteLine("── Öğretmenler ────────────────────");
 
         // Mevcut öğretmenleri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
-        var existing = await api.GetAsync($"/api/teachers?institutionId={institutionId}&pageSize=100");
+        var existing = await api.GetAllPagedAsync($"/api/teachers?institutionId={institutionId}");
         var existingByName = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-        if (existing is { } pagedResult
-            && pagedResult.TryGetProperty("items", out var itemsEl)
-            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+        foreach (var item in existing)
         {
-            foreach (var item in itemsEl.EnumerateArray())
-            {
-                var name = item.GetProperty("fullName").GetString() ?? "";
-                var id = item.GetProperty("id").GetGuid();
-                existingByName[name] = id;
-            }
+            var name = item.GetProperty("fullName").GetString() ?? "";
+            var id = item.GetProperty("id").GetGuid();
+            existingByName[name] = id;
         }
 
         // 6 öğretmen: her alandan 2
@@ -73,26 +68,22 @@ public static class EnrollmentSeeder
         Console.WriteLine();
         Console.WriteLine("── Öğrenciler ─────────────────────");
 
-        // Mevcut öğrencileri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
-        var existing = await api.GetAsync($"/api/students?institutionId={institutionId}&pageSize=200");
+        // Mevcut öğrencilerin TAMAMI — tek sayfa yetmez, sunucu pageSize'ı 100'e kırpar ve
+        // görülmeyen her öğrenci "yok" sayılıp yeniden yaratılırdı (bkz. GetAllPagedAsync).
+        var existingStudents = await api.GetAllPagedAsync($"/api/students?institutionId={institutionId}");
         var existingByName = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
         var missingNumberByName = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (existing is { } pagedResult
-            && pagedResult.TryGetProperty("items", out var itemsEl)
-            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+        foreach (var item in existingStudents)
         {
-            foreach (var item in itemsEl.EnumerateArray())
-            {
-                var name = item.GetProperty("fullName").GetString() ?? "";
-                var id = item.GetProperty("id").GetGuid();
-                existingByName[name] = id;
+            var name = item.GetProperty("fullName").GetString() ?? "";
+            var id = item.GetProperty("id").GetGuid();
+            existingByName[name] = id;
 
-                // Numara alanı sonradan eklendi (#99) — eski kayıtlar boş; geriye dönük doldurulur.
-                if (!item.TryGetProperty("studentNumber", out var numberEl)
-                    || string.IsNullOrWhiteSpace(numberEl.GetString()))
-                {
-                    missingNumberByName.Add(name);
-                }
+            // Numara alanı sonradan eklendi (#99) — eski kayıtlar boş; geriye dönük doldurulur.
+            if (!item.TryGetProperty("studentNumber", out var numberEl)
+                || string.IsNullOrWhiteSpace(numberEl.GetString()))
+            {
+                missingNumberByName.Add(name);
             }
         }
 
@@ -260,16 +251,11 @@ public static class EnrollmentSeeder
         AliasIfMissing(ctx, "Student7", "MTT_Student2");
         AliasIfMissing(ctx, "Student8", "MTT_Student3");
 
-        // Mevcut yerleştirmeleri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
-        var existing = await api.GetAsync("/api/placements?pageSize=200");
-        var placedStudents = new HashSet<Guid>();
-        if (existing is { } pagedResult
-            && pagedResult.TryGetProperty("items", out var itemsEl)
-            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
-        {
-            foreach (var item in itemsEl.EnumerateArray())
-                placedStudents.Add(item.GetProperty("studentId").GetGuid());
-        }
+        // Yerleştirmelerin TAMAMI tek yerden okunur; hem "bu öğrenci yerleşmiş mi" hem
+        // "bu alanda okulda staj var mı" kararı aynı listeden verilir.
+        var allPlacements = await api.GetAllPagedAsync("/api/placements");
+        var placedStudents = new HashSet<Guid>(
+            allPlacements.Select(p => p.GetProperty("studentId").GetGuid()));
 
         // EET: 30/40 öğrenci yerleştirilir (bazı işletmelere 2-3 öğrenci)
         // BT & MTT: mevcut yerleştirmeler korunur
@@ -451,6 +437,13 @@ public static class EnrollmentSeeder
             {
                 ctx.Set(p.Key, data.Value.GetProperty("id").GetGuid());
                 createdCount++;
+
+                // Küme bu koşuda açılan kayıtlarla GÜNCEL tutulur. Yoksa aşağıdaki okulda
+                // staj bloğu, az önce yerleştirilmiş öğrenciyi "boşta" sanıp 422 alır — boş
+                // veritabanında yaşandı, dolu bir dev veritabanında görünmemişti (döngü
+                // orada hiç kayıt açmıyor).
+                placedStudents.Add(studentId);
+
                 if (availableSlots.ContainsKey(targetBusinessId))
                     availableSlots[targetBusinessId]--;
                 Console.WriteLine($"  ✓ {p.StudentKey} → {p.BusinessKey} yerleştirildi");
@@ -459,7 +452,117 @@ public static class EnrollmentSeeder
 
         if (createdCount == 0)
             Console.WriteLine("  → Tüm yerleştirmeler zaten mevcut");
+
+        await SeedSchoolPlacements(api, ctx, institutionId, academicPeriodId, placedStudents, allPlacements);
     }
+
+    /// <summary>
+    /// Yerleştirilmiş öğrenci kimlikleri — <b>tüm sayfalar</b> gezilerek.
+    ///
+    /// <para>Eskiden tek istekte <c>pageSize=200</c> soruluyordu; sunucu
+    /// <c>PagedQuery.SafePageSize</c> ile bunu <b>100'e kırpıyor</b> ve fazlası sessizce
+    /// düşüyordu. Sonuç: 100'ü aşan her yerleştirme "yok" sayılıyor, seeder o öğrenciyi
+    /// yeniden yerleştirmeye çalışıyor ve her koşuda 422 "Yerleştirildi durumundan
+    /// Yerleştirildi durumuna geçirilemez" yağıyordu.</para>
+    /// </summary>
+    /// <summary>
+    /// Okulda staj (#159): staj yeri bulunamayan öğrenci stajını okulda yapar. İşletme YOKTUR —
+    /// gövdede <c>businessId</c> hiç gönderilmez; ücret, devlet katkısı ve dekont doğmaz.
+    ///
+    /// <para><b>Neden seed ediliyor:</b> bu yol hiçbir ortamda gerçek veriyle çalışmıyordu.
+    /// Yerleştirmelerin tamamı işletmeliydi, dolayısıyla <c>SchoolPlacedStudentView</c> hiç
+    /// dolmuyor, okulda staj dönem notu ekranı (#171) boş kalıyor ve
+    /// <c>ResyncPlacementProjections</c>'ın işverensiz dalı hiç yürütülmüyordu. Üç alandan
+    /// birer öğrenci, alan kapsamı kararlarının da gerçek veriyle karşılanmasını sağlar.</para>
+    ///
+    /// <para><c>teacherId</c> burada koordinatör değil <b>gözetmendir</b> (alan/atölye şefi) ve
+    /// ücret üretmez.</para>
+    /// </summary>
+    private static async Task SeedSchoolPlacements(
+        MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId,
+        HashSet<Guid> placedStudents, IReadOnlyList<System.Text.Json.JsonElement> allPlacements)
+    {
+        // Öğrenci anahtarı SABİTLENMEZ: yerleştirme planı ortamlar arasında kayabilir ve
+        // sabit anahtar dolu çıkarsa okulda staj kaydı hiç oluşmaz. Her alandaki İLK boşta
+        // öğrenci seçilir — boş veritabanında da, yıllardır koşan bir dev veritabanında da
+        // çalışır.
+        var branches = new (string Key, string BranchCode, string? TeacherKey)[]
+        {
+            ("SchoolPlacement1", "EET", "Teacher1"),
+            ("SchoolPlacement2", "BT",  "Teacher2"),
+            ("SchoolPlacement3", "MTT", "Teacher3"),
+        };
+
+        // Alanda zaten okulda staj varsa yenisi açılmaz. Kontrol öğrenci kimliğine DEĞİL
+        // yerleştirmenin kendisine bakar: mükerrer öğrenci kaydı bulunan bir veritabanında
+        // ad→kimlik eşlemesi koşudan koşuya kayar ve kimlik bazlı kontrol her seferinde
+        // "boşta öğrenci" bulup yeni kayıt açardı.
+        var okuldaStajliAlanlar = allPlacements
+            .Where(p => p.TryGetProperty("businessId", out var b)
+                        && b.ValueKind == System.Text.Json.JsonValueKind.Null)
+            .Select(p => p.TryGetProperty("branchCode", out var c) ? c.GetString() : null)
+            .Where(c => !string.IsNullOrEmpty(c))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var created = 0;
+        var bosBulunamayan = new List<string>();
+
+        foreach (var branch in branches)
+        {
+            if (okuldaStajliAlanlar.Contains(branch.BranchCode)) continue;
+
+            var studentKey = FindUnplacedStudentKey(ctx, branch.BranchCode, placedStudents);
+            if (studentKey is null)
+            {
+                bosBulunamayan.Add(branch.BranchCode);
+                continue;
+            }
+
+            // businessId GÖNDERİLMEZ — okulda stajın tek ölçütü işletmenin yokluğudur.
+            var body = new Dictionary<string, object>
+            {
+                ["studentId"] = ctx.Get(studentKey),
+                ["institutionId"] = institutionId,
+                ["academicPeriodId"] = academicPeriodId
+            };
+            if (branch.TeacherKey is not null && ctx.Has(branch.TeacherKey))
+                body["teacherId"] = ctx.Get(branch.TeacherKey);
+
+            var data = await api.PostAsync("/api/placements", body);
+            if (data is null) continue;
+
+            var placementId = data.Value.GetProperty("id").GetGuid();
+            ctx.Set(branch.Key, placementId);
+            placedStudents.Add(ctx.Get(studentKey));
+            created++;
+            Console.WriteLine($"  ✓ {studentKey} okulda staja yerleştirildi (işletmesiz)");
+        }
+
+        // "Hiç oluşturulmadı" ile "zaten vardı" AYNI ŞEY DEĞİLDİR — ilkini ikincisi diye
+        // yazmak, başarısız çağrıyı başarı gibi gösterir.
+        if (bosBulunamayan.Count > 0)
+            Console.WriteLine(
+                $"  ⚠ Okulda staj için boşta öğrenci kalmayan alan(lar): {string.Join(", ", bosBulunamayan)}");
+        else if (created == 0)
+            Console.WriteLine("  → Okulda staj yerleştirmeleri zaten mevcut");
+    }
+
+    /// <summary>Alandaki ilk yerleştirilmemiş öğrencinin anahtarı; hepsi doluysa <c>null</c>.</summary>
+    private static string? FindUnplacedStudentKey(
+        SeedContext ctx, string branchCode, HashSet<Guid> placedStudents)
+    {
+        for (var i = 1; i <= StudentsPerBranch; i++)
+        {
+            var key = $"{branchCode}_Student{i}";
+            if (ctx.Has(key) && !placedStudents.Contains(ctx.Get(key)))
+                return key;
+        }
+
+        return null;
+    }
+
+    /// <summary>Alan başına üretilen öğrenci sayısı — 12. sınıf iki şube (bkz. GenerateStudents).</summary>
+    private const int StudentsPerBranch = 40;
 
     /// <summary>
     /// İşletme id → kalan kontenjan haritası. Kapasite bilgisi taşımayan işletme haritaya
@@ -468,7 +571,7 @@ public static class EnrollmentSeeder
     private static async Task<Dictionary<Guid, int>> GetAvailableSlotsAsync(MesnetApiClient api)
     {
         var slots = new Dictionary<Guid, int>();
-        var businesses = await api.GetListAsync("/api/businesses?pageSize=500");
+        var businesses = await api.GetAllPagedAsync("/api/businesses");
 
         foreach (var b in businesses)
         {

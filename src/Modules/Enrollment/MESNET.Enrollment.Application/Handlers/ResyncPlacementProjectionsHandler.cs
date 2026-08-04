@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.Enums;
+using MESNET.Enrollment.Core.Policies;
 using MESNET.Enrollment.Core.ReadModels;
 using MESNET.Enrollment.Shared.Events;
 using Wolverine;
@@ -42,7 +43,9 @@ public static class ResyncPlacementProjectionsHandler
                 ? await session.LoadAsync<BusinessProfileView>(bid, ct)
                 : null;
 
-            if (student is null || (placement.BusinessId.HasValue && business is null))
+            // Atlama kuralı adlandırılmış ve testle kilitlenmiştir (#185) — buradaki koşulun
+            // "business is null" diye sadeleştirilmesi okulda staj kayıtlarını sessizce düşürür.
+            if (PlacementResyncPolicy.ShouldSkip(student, placement.BusinessId, business is not null))
             { skipped++; continue; }
 
             await bus.PublishAsync(new StudentPlaced(
