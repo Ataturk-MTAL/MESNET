@@ -36,7 +36,10 @@ const router = createRouter({
           path: 'institution/edit',
           name: 'InstitutionEdit',
           component: () => import('pages/institution/InstitutionFormPage.vue'),
-          meta: { permissions: ['institution:view'], formRoute: true },
+          // Form YAZMA yapar (PATCH /institutions/{id} → institution:manage).
+          // Okuma izniyle korunsaydı yalnız görüntüleme yetkisi olan kullanıcı formu
+          // doldurup Kaydet'te 403 duvarına çarpardı.
+          meta: { permissions: ['institution:manage'], formRoute: true },
         },
 
         // İşletme (Company)
@@ -73,13 +76,15 @@ const router = createRouter({
               path: 'students/new',
               name: 'StudentNew',
               component: () => import('pages/StudentFormPage.vue'),
-              meta: { permissions: ['student:view'], formRoute: true },
+              // POST /students → student:manage
+              meta: { permissions: ['student:manage'], formRoute: true },
             },
             {
               path: 'students/:id/edit',
               name: 'StudentEdit',
               component: () => import('pages/StudentFormPage.vue'),
-              meta: { permissions: ['student:view'], formRoute: true },
+              // PATCH /students/{id} → student:manage
+              meta: { permissions: ['student:manage'], formRoute: true },
             },
             // Phase 2 — MEB Protokolü modülü implement edilince açılacak
             // {
@@ -132,7 +137,9 @@ const router = createRouter({
           path: 'attendance/new',
           name: 'AttendanceNew',
           component: () => import('pages/attendance/AttendanceFormPage.vue'),
-          meta: { permissions: ['attendance:view'], formRoute: true },
+          // POST /attendance → attendance:manage. Alan şefi (attendance:view var,
+          // manage yok) bu formu açıp Kaydet'te 403 alıyordu.
+          meta: { permissions: ['attendance:manage'], formRoute: true },
         },
 
         // MESEM ücretli izin başvurusu (#177) — zincirin üç tarafı da aynı listeyi görür,
