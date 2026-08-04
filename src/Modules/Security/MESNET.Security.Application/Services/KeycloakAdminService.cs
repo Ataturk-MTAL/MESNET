@@ -317,6 +317,13 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
     /// <summary>
     /// Mevcut öznitelikleri koruyarak verilenleri üzerine yazar.
     /// Boş değer listesi özniteliği siler — "hiç yok" geçerli bir durumdur (#126).
+    ///
+    /// <para><b>Gövde, GET'ten dönen temsilin tamamıdır — yalnız <c>attributes</c> değişir.</b>
+    /// Keycloak'ın <i>declarative user profile</i> sağlayıcısı, PUT gövdesinde <c>attributes</c>
+    /// varsa onu <b>managed profil alanlarının tamamı</b> sayar: gövdede geçmeyen
+    /// <c>firstName</c>/<c>lastName</c> silinir, <c>email</c> ise yalnız üst seviye alandan
+    /// okunduğu için o da silinir. İstek yine <b>204 döner</b> — hata yok, sessiz veri kaybı
+    /// var (#190).</para>
     /// </summary>
     private async Task<Result> MergeUserAttributesAsync(
         string keycloakUserId,
@@ -352,7 +359,13 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
                     merged[key] = [.. values];
             }
 
-            var payload = new Dictionary<string, object?> { ["attributes"] = merged };
+            // GET temsilini olduğu gibi geri gönder; salt-okunur alanları (id, createdTimestamp,
+            // access…) Keycloak yok sayar. Kısmi gövde göndermek profil alanlarını siler (#190).
+            var payload = new Dictionary<string, object?>();
+            foreach (var prop in existing.EnumerateObject())
+                payload[prop.Name] = prop.Value;
+            payload["attributes"] = merged;
+
             using var putResp = await SendAdminAsync(HttpMethod.Put, $"/users/{keycloakUserId}", payload, ct);
             putResp.EnsureSuccessStatusCode();
             return Result.Success();

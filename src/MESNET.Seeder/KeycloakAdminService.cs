@@ -50,13 +50,17 @@ public sealed class KeycloakAdminService
 
     /// <summary>
     /// mesnet realm'daki tüm kullanıcıları döndürür.
+    ///
+    /// <para><c>briefRepresentation=false</c> açıkça istenir: kısa temsil profil alanlarını
+    /// atlar ve <see cref="KeycloakUser.FullName"/> sessizce boş dönerdi. Personel kayıtları
+    /// adını buradan alıyor (#190).</para>
     /// </summary>
     public async Task<List<KeycloakUser>> GetRealmUsersAsync()
     {
         var token = await GetAdminTokenAsync();
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var url = $"{_keycloakBaseUrl}/admin/realms/mesnet/users?max=100";
+        var url = $"{_keycloakBaseUrl}/admin/realms/mesnet/users?max=100&briefRepresentation=false";
         var response = await _http.GetAsync(url);
         response.EnsureSuccessStatusCode();
 
@@ -65,31 +69,65 @@ public sealed class KeycloakAdminService
 
     /// <summary>
     /// mesnet realm'daki tüm kullanıcıların institution_id attribute'unu günceller.
+    ///
+    /// <para><b>Gövde, GET'ten dönen temsilin tamamıdır — yalnız <c>attributes</c> değişir.</b>
+    /// Keycloak'ın <i>declarative user profile</i> sağlayıcısı, PUT gövdesinde <c>attributes</c>
+    /// varsa onu managed profil alanlarının tamamı sayar: gövdede geçmeyen
+    /// <c>firstName</c>/<c>lastName</c>/<c>email</c> <b>silinir</b> ve istek yine 204 döner.
+    /// Eski gövde (<c>new { attributes = attrs }</c>) her seeder çalıştırmasında realm'daki
+    /// TÜM kullanıcıların adını siliyordu; personel kayıtları bu yüzden boş adla açıldı (#190).</para>
     /// </summary>
     public async Task UpdateAllUsersInstitutionIdAsync(Guid institutionId)
     {
         var token = await GetAdminTokenAsync();
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        // mesnet realm kullanıcılarını listele
-        var usersUrl = $"{_keycloakBaseUrl}/admin/realms/mesnet/users?max=100";
+        // briefRepresentation=false açıkça istenir: kısa temsil profil alanlarını atlarsa
+        // aşağıdaki tam-temsil PUT'u onları silmiş olurdu.
+        var usersUrl = $"{_keycloakBaseUrl}/admin/realms/mesnet/users?max=100&briefRepresentation=false";
         var usersResponse = await _http.GetAsync(usersUrl);
         usersResponse.EnsureSuccessStatusCode();
 
-        var users = await usersResponse.Content.ReadFromJsonAsync<List<KeycloakUser>>(JsonOpts);
+        var users = await usersResponse.Content.ReadFromJsonAsync<List<JsonElement>>(JsonOpts);
         if (users is null || users.Count == 0) return;
 
         foreach (var user in users)
         {
-            // Mevcut attribute'ları koru, institution_id'yi güncelle
-            var attrs = user.Attributes ?? new Dictionary<string, List<string>>();
-            attrs["institution_id"] = [institutionId.ToString()];
+            if (!user.TryGetProperty("id", out var idElement)
+                || idElement.GetString() is not { Length: > 0 } userId)
+                continue;
 
-            var updateBody = new { attributes = attrs };
-            var updateUrl = $"{_keycloakBaseUrl}/admin/realms/mesnet/users/{user.Id}";
-            var updateResponse = await _http.PutAsJsonAsync(updateUrl, updateBody);
+            // Temsili olduğu gibi geri gönder; salt-okunur alanları Keycloak yok sayar.
+            var payload = new Dictionary<string, object?>();
+            foreach (var property in user.EnumerateObject())
+                payload[property.Name] = property.Value;
+
+            var attrs = ReadAttributes(user);
+            attrs["institution_id"] = [institutionId.ToString()];
+            payload["attributes"] = attrs;
+
+            var updateUrl = $"{_keycloakBaseUrl}/admin/realms/mesnet/users/{userId}";
+            var updateResponse = await _http.PutAsJsonAsync(updateUrl, payload);
             updateResponse.EnsureSuccessStatusCode();
         }
+    }
+
+    /// <summary>Mevcut çok değerli öznitelikleri okur; yoksa boş sözlük döner.</summary>
+    private static Dictionary<string, List<string>> ReadAttributes(JsonElement user)
+    {
+        var attrs = new Dictionary<string, List<string>>();
+        if (!user.TryGetProperty("attributes", out var attributes)
+            || attributes.ValueKind != JsonValueKind.Object)
+            return attrs;
+
+        foreach (var property in attributes.EnumerateObject())
+        {
+            attrs[property.Name] = property.Value.ValueKind == JsonValueKind.Array
+                ? [.. property.Value.EnumerateArray().Select(v => v.GetString() ?? string.Empty)]
+                : [];
+        }
+
+        return attrs;
     }
 
     public sealed class KeycloakUser
