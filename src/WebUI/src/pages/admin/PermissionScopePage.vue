@@ -12,9 +12,9 @@
       >
         <q-tooltip>Rollere dön</q-tooltip>
       </q-btn>
-      <div class="text-h5 col">
+      <h1 class="text-h5 col q-my-none">
         Atanabilir Yetki Kapsamı
-      </div>
+      </h1>
       <q-btn
         unelevated
         color="primary"

@@ -6,9 +6,9 @@
     >
       <div class="row items-center q-mb-md">
         <div class="col">
-          <div class="text-h5 text-weight-bold">
+          <h1 class="text-h5 text-weight-bold q-my-none">
             Asgari Ücret Yönetimi
-          </div>
+          </h1>
           <div class="text-caption text-grey-7">
             Maaş ve devlet katkısı hesabının tabanı. Asgari ücret yıl içinde birden fazla kez
             artabilir — her artış <strong>yürürlük tarihiyle</strong> girilir ve o tarihten

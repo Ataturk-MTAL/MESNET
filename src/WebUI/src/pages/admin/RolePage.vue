@@ -1,8 +1,8 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold">
+    <h1 class="text-h5 text-weight-bold q-my-none">
       Rol Yetkileri
-    </div>
+    </h1>
     <div class="text-caption text-grey-7 q-mb-lg">
       Her rolün sistemde neleri yapabildiğini gösteren salt-bilgi ekranıdır. Kullanıcılara rol
       atamak için <strong>Kullanıcılar</strong> sayfasını kullanın.

@@ -1,8 +1,8 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">
+    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
       Haftalık Ziyaretler
-    </div>
+    </h1>
 
     <!-- Filtreler -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
@@ -212,9 +212,9 @@
       <q-card style="min-width: 700px; max-width: 900px">
         <q-card-section class="row items-center">
           <div>
-            <div class="text-h6">
+            <h2 class="text-h6 q-my-none">
               Eksik Ziyaret Atamaları
-            </div>
+            </h2>
             <div class="text-caption text-grey-7">
               Koordinasyon atamalarında olup bu planda bulunmayan kayıtlar alan bazında listeleniyor.
             </div>

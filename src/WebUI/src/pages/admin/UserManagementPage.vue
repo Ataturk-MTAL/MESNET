@@ -1,8 +1,8 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">
+    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
       Kullanıcı Yönetimi
-    </div>
+    </h1>
 
     <q-tabs
       v-model="tab"

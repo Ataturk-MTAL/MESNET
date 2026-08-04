@@ -16,9 +16,9 @@
         >
           <q-tooltip>İşletmelere dön</q-tooltip>
         </q-btn>
-        <div class="text-h5 text-weight-bold col">
+        <h1 class="text-h5 text-weight-bold col q-my-none">
           {{ isEdit ? 'İşletme Düzenle' : 'Yeni İşletme' }}
-        </div>
+        </h1>
       </div>
 
       <q-card

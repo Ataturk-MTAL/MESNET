@@ -1,8 +1,8 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-xs">
+    <h1 class="text-h5 text-weight-bold q-mb-xs q-mt-none">
       İşletme Saat Ayarları
-    </div>
+    </h1>
     <div class="text-caption text-grey-7 q-mb-lg">
       İşletme dağıtımından ÖNCE yapılır: her işletmeye takdir edilen koordinasyon saati
       burada belirlenir. Toplam, alanın ders yükü havuzunu aşamaz.

@@ -1,9 +1,9 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">
+      <h1 class="text-h5 col q-my-none">
         Dönem Notu Girişi
-      </div>
+      </h1>
       <q-btn
         flat
         round

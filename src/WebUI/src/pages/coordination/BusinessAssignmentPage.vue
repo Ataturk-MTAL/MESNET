@@ -1,8 +1,8 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">
+    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
       İşletme Dağıtımı
-    </div>
+    </h1>
 
     <!-- Klavye akışının durum duyurusu (#88). Görsel olarak gizli, ekran okuyucuya açık. -->
     <div
@@ -677,9 +677,9 @@
     >
       <q-card style="min-width: 350px">
         <q-card-section>
-          <div class="text-h6">
+          <h2 class="text-h6 q-my-none">
             Kaydedilmemiş Değişiklikler
-          </div>
+          </h2>
         </q-card-section>
         <q-card-section>
           {{ pendingChanges.length }} adet kaydedilmemiş değişiklik var. Öğretmen değiştirirseniz bu değişiklikler kaybolacak.

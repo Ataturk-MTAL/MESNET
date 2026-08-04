@@ -4,9 +4,9 @@
       <div class="text-h1 text-grey-4">
         404
       </div>
-      <div class="text-h5 q-mt-md">
+      <h1 class="text-h5 q-mt-md q-mb-none">
         Sayfa Bulunamadı
-      </div>
+      </h1>
       <div class="text-body1 text-grey q-mt-sm">
         Aradığınız sayfa mevcut değil veya taşınmış olabilir.
       </div>

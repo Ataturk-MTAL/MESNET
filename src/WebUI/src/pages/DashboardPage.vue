@@ -3,9 +3,9 @@
     <!-- Hoş Geldin -->
     <div class="row items-center q-mb-lg">
       <div class="col">
-        <div class="text-h5 text-weight-bold">
+        <h1 class="text-h5 text-weight-bold q-my-none">
           {{ greeting }}
-        </div>
+        </h1>
         <div class="text-caption text-grey">
           {{ institutionName || '' }}{{ institutionName ? ' · ' : '' }}{{ todayFormatted }}
         </div>

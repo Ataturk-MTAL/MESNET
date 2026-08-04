@@ -6,9 +6,9 @@
         size="64px"
         color="negative"
       />
-      <div class="text-h5 q-mt-md">
+      <h1 class="text-h5 q-mt-md q-mb-none">
         Erişim Yetkisi Yok
-      </div>
+      </h1>
       <div class="text-body1 text-grey q-mt-sm">
         Bu sayfayı görüntülemek için gerekli izniniz bulunmamaktadır.
       </div>

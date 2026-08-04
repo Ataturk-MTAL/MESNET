@@ -1,8 +1,8 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">
+    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
       Ders Yükü Havuzu
-    </div>
+    </h1>
 
     <!-- Alan Seçici -->
     <div class="row q-col-gutter-md q-mb-lg items-end">

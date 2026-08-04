@@ -33,17 +33,30 @@
             :class="cellClass(day.value, period)"
             @click="onCellClick(day.value, period)"
           >
+            <!-- Hücre klavyeyle de çevrilebilir (WCAG 2.1.1): Enter/Space fare
+              tıklamasıyla AYNI handler'ı çağırır. Düzenleme kipi dışında
+              aria-disabled ile bildirilir; onCellClick zaten erken döner. -->
             <div
-              v-if="isOccupied(day.value, period)"
-              class="text-caption text-grey-8"
+              role="button"
+              tabindex="0"
+              :aria-disabled="!editing"
+              :aria-pressed="isOccupied(day.value, period)"
+              :aria-label="cellLabel(day.label, day.value, period)"
+              @keydown.enter.prevent="onCellClick(day.value, period)"
+              @keydown.space.prevent="onCellClick(day.value, period)"
             >
-              Dolu
-            </div>
-            <div
-              v-else
-              class="text-caption text-positive-strong"
-            >
-              Boş
+              <div
+                v-if="isOccupied(day.value, period)"
+                class="text-caption text-grey-8"
+              >
+                Dolu
+              </div>
+              <div
+                v-else
+                class="text-caption text-positive-strong"
+              >
+                Boş
+              </div>
             </div>
           </td>
         </tr>
@@ -112,6 +125,11 @@ function isOccupied(dayValue: string, periodNumber: number): boolean {
   return slot?.status === 'Occupied'
 }
 
+function cellLabel(dayLabel: string, dayValue: string, periodNumber: number): string {
+  const durum = isOccupied(dayValue, periodNumber) ? 'dolu' : 'boş'
+  return `${dayLabel} ${periodNumber}. ders: ${durum}`
+}
+
 function cellClass(dayValue: string, periodNumber: number): string {
   const occupied = isOccupied(dayValue, periodNumber)
   const base = props.editing ? 'cursor-pointer ' : ''
@@ -175,5 +193,10 @@ const freeCount = computed(() => totalSlots.value - occupiedCount.value)
 
 .schedule-cell.cursor-pointer:hover {
   filter: brightness(0.95);
+}
+
+[role="button"]:focus-visible {
+  outline: 2px solid var(--q-primary);
+  outline-offset: -2px;
 }
 </style>
