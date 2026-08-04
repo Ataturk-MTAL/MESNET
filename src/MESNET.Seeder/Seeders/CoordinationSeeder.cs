@@ -29,21 +29,16 @@ public static class CoordinationSeeder
     private static async Task SeedGuidanceVisits(MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId)
     {
         // Mevcut ziyaretleri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
-        var existing = await api.GetAsync("/api/coordination/guidance-visits?pageSize=100");
+        var existing = await api.GetAllPagedAsync("/api/coordination/guidance-visits");
         var existingKeys = new HashSet<string>(); // "teacherId|businessId"
         var existingList = new List<(string Key, Guid Id)>();
-        if (existing is { } pagedResult
-            && pagedResult.TryGetProperty("items", out var itemsEl)
-            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+        foreach (var item in existing)
         {
-            foreach (var item in itemsEl.EnumerateArray())
-            {
-                var tid = item.GetProperty("teacherId").GetGuid();
-                var bid = item.GetProperty("businessId").GetGuid();
-                var id = item.GetProperty("id").GetGuid();
-                existingKeys.Add($"{tid}|{bid}");
-                existingList.Add(($"{tid}|{bid}", id));
-            }
+            var tid = item.GetProperty("teacherId").GetGuid();
+            var bid = item.GetProperty("businessId").GetGuid();
+            var id = item.GetProperty("id").GetGuid();
+            existingKeys.Add($"{tid}|{bid}");
+            existingList.Add(($"{tid}|{bid}", id));
         }
 
         // Guidance Visit 1: Approved

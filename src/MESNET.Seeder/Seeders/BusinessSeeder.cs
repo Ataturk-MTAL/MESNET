@@ -10,19 +10,15 @@ public static class BusinessSeeder
         if (!ctx.Has("Institution")) return;
 
         // Mevcut işletmeleri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
-        // pageSize=500 ile tüm işletmeleri tek istekte çek
-        var existing = await api.GetAsync("/api/businesses?pageSize=500");
+        // Tüm işletmeler — sayfa sayfa. Tek istekte pageSize=500 istemek işe yaramaz:
+        // sunucu 100'e kırpar ve fazlası sessizce düşer (bkz. GetAllPagedAsync).
+        var existing = await api.GetAllPagedAsync("/api/businesses");
         var existingByName = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-        if (existing is { } pagedResult
-            && pagedResult.TryGetProperty("items", out var itemsEl)
-            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+        foreach (var item in existing)
         {
-            foreach (var item in itemsEl.EnumerateArray())
-            {
-                var name = item.GetProperty("name").GetString() ?? "";
-                var id = item.GetProperty("id").GetGuid();
-                existingByName[name] = id;
-            }
+            var name = item.GetProperty("name").GetString() ?? "";
+            var id = item.GetProperty("id").GetGuid();
+            existingByName[name] = id;
         }
 
         Console.WriteLine($"  ℹ Mevcut işletme sayısı: {existingByName.Count}");
@@ -247,7 +243,7 @@ public static class BusinessSeeder
 
     private static async Task AuthorizeBranchesAsync(MesnetApiClient api)
     {
-        var businesses = await api.GetListAsync("/api/businesses?pageSize=500");
+        var businesses = await api.GetAllPagedAsync("/api/businesses");
         var authorizedCount = 0;
 
         foreach (var b in businesses)

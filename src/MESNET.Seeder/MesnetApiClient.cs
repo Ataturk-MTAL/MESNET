@@ -42,6 +42,41 @@ public sealed class MesnetApiClient
     public async Task<IReadOnlyList<JsonElement>> GetListAsync(string url)
         => ToItems(await GetAsync(url));
 
+    /// <summary>Sunucunun kabul ettiği en büyük sayfa boyutu (<c>PagedQuery.SafePageSize</c>).</summary>
+    private const int MaxPageSize = 100;
+
+    /// <summary>
+    /// Sayfalı bir listenin <b>tamamını</b> gezerek döndürür.
+    ///
+    /// <para><b>Neden gerekli:</b> <c>PagedQuery.SafePageSize</c> istenen sayfa boyutunu
+    /// <c>Math.Clamp(PageSize, 1, 100)</c> ile kırpar ve bunu <b>sessizce</b> yapar — istek
+    /// yine 200 döner, gövde yalnız 100 kayıt taşır. Seeder'daki
+    /// <c>?pageSize=200</c> / <c>?pageSize=500</c> çağrıları bu yüzden listenin geri kalanını
+    /// hiç görmüyordu.</para>
+    ///
+    /// <para><b>Sonucu:</b> "zaten var mı" kontrolleri eksik veriyle karar veriyor ve kayıt her
+    /// koşuda yeniden yaratılıyordu. Ölçülen hasar: 122 gerçek öğrenci için <b>774 öğrenci
+    /// kaydı</b>, kimileri 24 kopya. Aynı örüntü personel kayıtlarında da yaşanmıştı (#190).</para>
+    ///
+    /// <para>Sorgu dizesi taşıyan yollar desteklenir; <c>page</c>/<c>pageSize</c> eklenir.</para>
+    /// </summary>
+    public async Task<IReadOnlyList<JsonElement>> GetAllPagedAsync(string url)
+    {
+        var separator = url.Contains('?') ? '&' : '?';
+        var all = new List<JsonElement>();
+
+        for (var page = 1; ; page++)
+        {
+            var items = ToItems(await GetAsync($"{url}{separator}page={page}&pageSize={MaxPageSize}"));
+            all.AddRange(items);
+
+            // Dolu bir sayfadan az geldiyse son sayfadayız. Sayfa hiç gelmediyse de biter.
+            if (items.Count < MaxPageSize) break;
+        }
+
+        return all;
+    }
+
     public static IReadOnlyList<JsonElement> ToItems(JsonElement? data)
     {
         if (data is not { } el)
