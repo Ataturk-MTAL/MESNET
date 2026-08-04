@@ -459,6 +459,62 @@ public static class EnrollmentSeeder
 
         if (createdCount == 0)
             Console.WriteLine("  → Tüm yerleştirmeler zaten mevcut");
+
+        await SeedSchoolPlacements(api, ctx, institutionId, academicPeriodId, placedStudents);
+    }
+
+    /// <summary>
+    /// Okulda staj (#159): staj yeri bulunamayan öğrenci stajını okulda yapar. İşletme YOKTUR —
+    /// gövdede <c>businessId</c> hiç gönderilmez; ücret, devlet katkısı ve dekont doğmaz.
+    ///
+    /// <para><b>Neden seed ediliyor:</b> bu yol hiçbir ortamda gerçek veriyle çalışmıyordu.
+    /// Yerleştirmelerin tamamı işletmeliydi, dolayısıyla <c>SchoolPlacedStudentView</c> hiç
+    /// dolmuyor, okulda staj dönem notu ekranı (#171) boş kalıyor ve
+    /// <c>ResyncPlacementProjections</c>'ın işverensiz dalı hiç yürütülmüyordu. Üç alandan
+    /// birer öğrenci, alan kapsamı kararlarının da gerçek veriyle karşılanmasını sağlar.</para>
+    ///
+    /// <para><c>teacherId</c> burada koordinatör değil <b>gözetmendir</b> (alan/atölye şefi) ve
+    /// ücret üretmez.</para>
+    /// </summary>
+    private static async Task SeedSchoolPlacements(
+        MesnetApiClient api, SeedContext ctx, Guid institutionId, Guid academicPeriodId,
+        HashSet<Guid> placedStudents)
+    {
+        var schoolPlacements = new (string Key, string StudentKey, string? TeacherKey)[]
+        {
+            ("SchoolPlacement1", "EET_Student31", "Teacher1"),
+            ("SchoolPlacement2", "BT_Student31",  "Teacher2"),
+            ("SchoolPlacement3", "MTT_Student31", "Teacher3"),
+        };
+
+        var created = 0;
+        foreach (var p in schoolPlacements)
+        {
+            if (!ctx.Has(p.StudentKey)) continue;
+
+            var studentId = ctx.Get(p.StudentKey);
+            if (placedStudents.Contains(studentId)) continue;
+
+            // businessId GÖNDERİLMEZ — okulda stajın tek ölçütü işletmenin yokluğudur.
+            var body = new Dictionary<string, object>
+            {
+                ["studentId"] = studentId,
+                ["institutionId"] = institutionId,
+                ["academicPeriodId"] = academicPeriodId
+            };
+            if (p.TeacherKey is not null && ctx.Has(p.TeacherKey))
+                body["teacherId"] = ctx.Get(p.TeacherKey);
+
+            var data = await api.PostAsync("/api/placements", body);
+            if (data is null) continue;
+
+            ctx.Set(p.Key, data.Value.GetProperty("id").GetGuid());
+            created++;
+            Console.WriteLine($"  ✓ {p.StudentKey} okulda staja yerleştirildi (işletmesiz)");
+        }
+
+        if (created == 0)
+            Console.WriteLine("  → Okulda staj yerleştirmeleri zaten mevcut");
     }
 
     /// <summary>
