@@ -1,9 +1,9 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-lg">
-      <div class="text-h5 text-weight-bold col">
+      <h1 class="text-h5 text-weight-bold col q-my-none">
         MEB Formları ve Dokümanlar
-      </div>
+      </h1>
       <div class="q-gutter-sm">
         <q-btn
           v-if="canGenerate"
@@ -214,9 +214,9 @@
     >
       <q-card style="min-width: 420px">
         <q-card-section>
-          <div class="text-h6">
+          <h2 class="text-h6 q-my-none">
             Toplu Belge Oluştur
-          </div>
+          </h2>
           <div class="text-caption text-grey-7">
             Seçili form tipi ve dönem için eksik belgeler otomatik oluşturulur.
             Zaten oluşturulmuş belgeler tekrar oluşturulmaz.

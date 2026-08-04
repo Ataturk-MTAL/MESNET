@@ -1,8 +1,8 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-xs">
+    <h1 class="text-h5 text-weight-bold q-mb-xs q-mt-none">
       Kurum Koordinasyon Yapılandırması
-    </div>
+    </h1>
     <div class="text-caption text-grey-7 q-mb-lg">
       Mesafe-saat mevzuat tablosu, büyükşehir sınırı ve azami haftalık ek ders saati.
       Bu ayarlar kurum genelidir ve akademik dönemden bağımsızdır.

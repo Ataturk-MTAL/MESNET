@@ -40,9 +40,9 @@ withDefaults(
           :name="icon"
           class="q-mr-sm"
         />
-        <div class="text-h6">
+        <h2 class="text-h6 q-my-none">
           {{ title }}
-        </div>
+        </h2>
         <q-space />
         <slot name="toolbar-actions" />
         <q-btn

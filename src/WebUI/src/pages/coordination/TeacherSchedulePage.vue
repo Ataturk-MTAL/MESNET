@@ -1,8 +1,8 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">
+    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
       Öğretmen Ders Programı
-    </div>
+    </h1>
 
     <!-- Filtreler -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
@@ -156,9 +156,9 @@
                   <div class="text-caption text-grey-7">
                     {{ day.label }}
                   </div>
-                  <div class="text-h6 text-positive-strong">
+                  <h2 class="text-h6 text-positive-strong q-my-none">
                     {{ freeSlotsPerDay(day.value) }}
-                  </div>
+                  </h2>
                   <div class="text-caption text-grey-6">
                     boş saat
                   </div>

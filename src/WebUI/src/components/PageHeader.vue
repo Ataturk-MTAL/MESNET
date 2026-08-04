@@ -1,9 +1,9 @@
 <template>
   <div class="row items-center q-mb-lg">
     <div class="col">
-      <div class="text-h5 text-weight-bold">
+      <h1 class="text-h5 text-weight-bold q-my-none">
         {{ title }}
-      </div>
+      </h1>
       <div
         v-if="subtitle"
         class="text-subtitle2 text-grey-7"

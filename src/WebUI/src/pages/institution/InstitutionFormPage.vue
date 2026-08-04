@@ -15,9 +15,9 @@
       >
         <q-tooltip>Kurum bilgilerine dön</q-tooltip>
       </q-btn>
-      <div class="text-h5 text-weight-bold col">
+      <h1 class="text-h5 text-weight-bold col q-my-none">
         Kurum Bilgilerini Düzenle
-      </div>
+      </h1>
     </div>
 
     <q-card
