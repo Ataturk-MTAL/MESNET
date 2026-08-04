@@ -1,4 +1,5 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 
 namespace MESNET.Security.Application.Services;
 
@@ -37,6 +38,16 @@ public interface IKeycloakAdminService
 
     /// <summary>Realm'deki tüm kullanıcıları (rolleri + institution/business/branch attribute'larıyla) döndürür.</summary>
     Task<Result<List<KeycloakUserInfo>>> GetUsersAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Çalışan realm'in kritik ayarlarını okur — depodaki tanımla karşılaştırmak için (#195).
+    ///
+    /// <para>Tek tek alanlar okunamazsa <b>hata döndürmez</b>: okunabilen alanlar dolu, okunamayanlar
+    /// <c>null</c> gelir ve <see cref="RealmSnapshot.UnreadableFields"/>'a yazılır. Yetki eksikliğini
+    /// sapma sanmak yanlış alarm üretir. Yalnız Keycloak'a hiç ulaşılamıyorsa <c>Failure</c> döner —
+    /// o zaman "sapma yok" da denemez.</para>
+    /// </summary>
+    Task<Result<RealmSnapshot>> GetRealmSnapshotAsync(CancellationToken ct = default);
 }
 
 /// <summary>Senkronizasyon için Keycloak'tan çekilen kullanıcı bilgisi.</summary>

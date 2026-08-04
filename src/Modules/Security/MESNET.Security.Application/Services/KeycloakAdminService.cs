@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Keycloak.AuthServices.Sdk.Admin.Models;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -454,6 +455,69 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
             .SelectMany(s => s!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    // ── Realm yapılandırması (#195) ────────────────────────────────────────────────────
+    /// <inheritdoc />
+    public async Task<Result<RealmSnapshot>> GetRealmSnapshotAsync(CancellationToken ct = default)
+    {
+        // Ulaşılabilirlik ayrı, okunabilirlik ayrı: token alınamıyorsa "sapma yok" DENEMEZ.
+        try
+        {
+            await GetAdminTokenAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Realm anlık görüntüsü alınamadı — Keycloak'a ulaşılamıyor.");
+            return Result<RealmSnapshot>.Failure(
+                Errors.SecurityErrors.KeycloakOperationFailed(ex.Message));
+        }
+
+        var unreadable = new List<string>();
+
+        var policy = await ReadAsync("/users/profile", "unmanagedAttributePolicy", root =>
+            root.TryGetProperty("unmanagedAttributePolicy", out var el) ? el.GetString() : null);
+
+        var roles = await ReadAsync("/roles?briefRepresentation=true&max=200", "realm roles", root =>
+            root.ValueKind != JsonValueKind.Array
+                ? null
+                : (IReadOnlyList<string>)[.. root.EnumerateArray()
+                    .Select(r => r.TryGetProperty("name", out var n) ? n.GetString() : null)
+                    .Where(n => !string.IsNullOrEmpty(n))
+                    .Select(n => n!)]);
+
+        var webClientIsPublic = await ReadAsync(
+            $"/clients?clientId={RealmInvariants.WebClientId}", $"client {RealmInvariants.WebClientId}",
+            root => root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0
+                    && root[0].TryGetProperty("publicClient", out var el)
+                ? el.GetBoolean()
+                : (bool?)null);
+
+        return Result<RealmSnapshot>.Success(new RealmSnapshot(policy, roles, webClientIsPublic, unreadable));
+
+        // Tek alanın okunamaması bütün doğrulamayı düşürmez — eksik bilgi olarak işaretlenir.
+        async Task<T?> ReadAsync<T>(string path, string label, Func<JsonElement, T?> select)
+        {
+            try
+            {
+                using var resp = await SendAdminAsync(HttpMethod.Get, path, null, ct);
+                if (!resp.IsSuccessStatusCode)
+                {
+                    unreadable.Add($"{label} (HTTP {(int)resp.StatusCode})");
+                    return default;
+                }
+
+                var value = select(await resp.Content.ReadFromJsonAsync<JsonElement>(ct));
+                if (value is null) unreadable.Add($"{label} (alan yok)");
+                return value;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Realm ayarı okunamadı: {Label}", label);
+                unreadable.Add($"{label} ({ex.GetType().Name})");
+                return default;
+            }
+        }
     }
 
     // Keycloak UserRepresentation.attributes → { "institution_id": ["<guid>"] } biçimindedir.
