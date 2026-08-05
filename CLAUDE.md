@@ -711,15 +711,17 @@ kapsamdadır (`Attendance.Core/Services/PaidLeaveApprovalPolicy.cs`):
 Kilitleyen testler: `tests/MESNET.Attendance.UnitTests/PaidLeaveApprovalPolicyTests.cs`,
 `tests/MESNET.Security.UnitTests/PaidLeaveApprovalMappingTests.cs`
 
-### Bu kuralın bilinen istisnaları (teknik borç)
+### Bilinen istisna KALMADI — rol adına bakan kapsam kararı yoktur (#184, #192)
 
-Aşağıdaki nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
+Borç listesi kapandı. `IsInRole` çağrısı modül kodunun tamamında **yoktur**; frontend'de
+rol adına bakan computed **yoktur** (`isManager` ve `isDepartmentHead` kaldırıldı, ikisinin de
+tüketicisi kalmamıştı).
 
-- `src/Modules/Enrollment/MESNET.Enrollment.Application/Handlers/PlacementQueryScope.cs:23-34`
+- `MarkAttendanceHandler` → `attendance:direct-entry` iznine bakar (#172)
+- `PlacementQueryScope` → kapsam merdiveni: `institution:view` → `business_id` claim'i →
+  öğretmen kaydı → **boş**. Karar `PlacementScopePolicy`'de ve testle kilitli (#184)
+- `TeacherSchedulePage` alan ön-seçimi → `writableBranchCodes` (#192). Eski koşul
+  `isDepartmentHead && user.branchCode` idi ve **hiç tutmuyordu**: `branchCode` #126 ile
+  deprecate edilip `null` atanıyordu, yani özellik sessizce çalışmıyordu
 
-(`MarkAttendanceHandler`'daki rol adı kontrolü #172 ile kapatıldı — karar artık
-`attendance:direct-entry` iznine bakar.)
-
-(`src/WebUI/src/stores/auth.ts` kapsam kararı artık `canManageAllBranches` /
-`writableBranchCodes` ile permission bazlıdır; `isDepartmentHead` yalnız kapsam DIŞI
-görünürlük için kalmıştır.)
+**Yeni rol-adı kontrolü eklenmez.** Kapsam kararı izne, claim'e ya da kayda bakar.

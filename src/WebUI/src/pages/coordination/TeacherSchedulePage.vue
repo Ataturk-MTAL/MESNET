@@ -513,8 +513,15 @@ watch(
 
 onMounted(async () => {
   await institutionStore.loadScheduleConfig()
-  if (authStore.isDepartmentHead && authStore.user?.branchCode) {
-    branchFilter.value = authStore.user.branchCode
+  // Alan ön-seçimi kapsam kaydından gelir, rol adından DEĞİL (ADR-0001, #192).
+  // Eski koşul `isDepartmentHead && user.branchCode` idi ve HİÇ tutmuyordu: `branchCode`
+  // #126 ile deprecate edilip token'dan kurulurken `null` atanıyor. Ön-seçim sessizce
+  // çalışmıyordu; kullanıcı her girişte alanı elle seçiyordu.
+  const scopedBranch =
+    authStore.writableBranchCodes?.length === 1 ? authStore.writableBranchCodes[0] : null
+
+  if (scopedBranch) {
+    branchFilter.value = scopedBranch
   }
 })
 </script>

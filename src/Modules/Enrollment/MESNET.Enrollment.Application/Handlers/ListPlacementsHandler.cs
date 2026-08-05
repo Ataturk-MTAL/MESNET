@@ -16,9 +16,18 @@ public static class ListPlacementsHandler
     public static async Task<PagedResult<InternshipPlacementDto>> Handle(
         ListPlacements query, IQuerySession session, ICurrentUserService currentUser)
     {
-        // Yetki-kapsam (kurum + Teacher/CompanyManager) — liste ve sayım sorgularında ortak.
-        var (institutionId, teacherId, effectiveBusinessId) =
-            await PlacementQueryScope.ResolveAsync(currentUser, session, query.BusinessId);
+        // Kapsam merdiveni — liste ve sayım sorgularında ortak (ADR-0001, #184).
+        // Çözülemeyen kapsam BOŞ sayfadır; sessizce kurum geneline düşmez.
+        if (await PlacementQueryScope.ResolveAsync(currentUser, session, query.BusinessId)
+            is not { } scope)
+        {
+            return new PagedResult<InternshipPlacementDto>
+            {
+                Items = [], TotalCount = 0, Page = query.Page, PageSize = query.PageSize
+            };
+        }
+
+        var (institutionId, teacherId, effectiveBusinessId) = scope;
 
         IQueryable<InternshipPlacement> queryable = session.Query<InternshipPlacement>();
 
