@@ -16,6 +16,7 @@ public static class StudentRegisteredConsumer
         var profile = new StudentPaymentProfile
         {
             Id = @event.StudentId,
+            InstitutionId = @event.InstitutionId,
             FullName = @event.FullName,
             StudentNumber = @event.StudentNumber,
             BranchCode = @event.BranchCode,

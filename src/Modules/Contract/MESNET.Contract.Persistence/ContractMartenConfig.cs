@@ -23,5 +23,6 @@ public class ContractMartenConfig : IConfigureMarten
 
         // Öğrenci ad/numara araması için denormalize view (Enrollment.StudentRegistered ile beslenir)
         options.Schema.For<StudentNameView>().DatabaseSchemaName("contract");
+        options.Schema.For<StudentNameView>().Index(x => x.InstitutionId);
     }
 }

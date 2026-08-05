@@ -15,6 +15,12 @@ namespace MESNET.Payment.Core.ReadModels;
 public class StudentAbsenceView
 {
     public Guid Id { get; set; }            // AttendanceId
+
+    /// <summary>
+    /// Kiracı anahtarı (#147). Türetilmiş görünüm olsa da kiracıya ait veri taşır; anahtarsız
+    /// hâlinde çok-okul sorgusu iki okulun satırını ayırt edemezdi.
+    /// </summary>
+    public Guid InstitutionId { get; set; }
     public Guid StudentId { get; set; }
     public Guid BusinessId { get; set; }
 

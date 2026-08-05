@@ -17,6 +17,7 @@ public partial class AttendanceViewProjection : MultiStreamProjection<Attendance
         var view = new AttendanceView
         {
             Id = e.StudentId,
+            InstitutionId = e.InstitutionId,
             StudentId = e.StudentId,
             BusinessId = e.BusinessId,
             LastUpdated = DateTime.UtcNow

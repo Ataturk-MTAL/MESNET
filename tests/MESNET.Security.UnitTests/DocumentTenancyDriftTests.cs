@@ -79,12 +79,20 @@ public sealed class DocumentTenancyDriftTests
     }
 
     /// <summary>
-    /// <c>MissingKey</c> geçici bir sınıftır: kiracıya ait veri taşıyıp kiracı anahtarı olmayan
-    /// belgeler. Bu testin amacı listeyi <b>görünür</b> tutmak — sayı arttığında fark edilsin.
-    /// Kiracılık geçişinden önce bu sınıfın boşalması gerekir.
+    /// <c>MissingKey</c> sınıfı <b>boş kalmalı</b> (#147 adım 1).
+    ///
+    /// <para>Dört görünüm bu sınıftaydı — <c>StudentNameView</c> (iki modülde),
+    /// <c>StudentPaymentProfile</c>, <c>StudentAbsenceView</c>, <c>AttendanceView</c>. Hepsi
+    /// öğrenci düzeyinde veri taşıyor ve kiracı anahtarı yoktu; çok-okulda sorgu iki okulun
+    /// satırını ayırt edemezdi. Kaynak olaylar (<c>StudentRegistered</c>, <c>AttendanceMarked</c>)
+    /// <c>InstitutionId</c>'yi zaten taşıdığı için damgalamak yeterliydi.</para>
+    ///
+    /// <para><b>Mühür:</b> bu sınıfa yeni belge girmesi artık kabul edilmez. Yeni bir görünüm
+    /// kiracıya ait veri taşıyorsa kiracı anahtarını <b>doğduğu anda</b> alır — sonradan eklemek
+    /// backfill gerektirir ve o backfill unutulursa sızıntı sessizdir.</para>
     /// </summary>
     [Fact]
-    public void Kiracı_anahtari_eksik_belgeler_bilinen_listede()
+    public void Kiracı_anahtari_eksik_belge_kalmadi()
     {
         var eksik = DocumentTenancyMap.All
             .Where(kv => kv.Value == DocumentTenancy.MissingKey)
@@ -92,13 +100,11 @@ public sealed class DocumentTenancyDriftTests
             .OrderBy(t => t)
             .ToList();
 
-        eksik.ShouldBe(
-            ["AttendanceView", "StudentAbsenceView", "StudentNameView", "StudentPaymentProfile"],
-            ignoreOrder: true,
-            customMessage:
-            "Kiracı anahtarı eksik belge listesi değişti. Yeni bir belge bu sınıfa girdiyse "
-            + "gerekçesi yazılmalı; çıktıysa bu test güncellenmeli. Liste kiracılık geçişinden "
-            + "önce BOŞALMALIDIR (#149) — o belgeler çok-okulda iki okulun satırını ayırt edemez.");
+        eksik.ShouldBeEmpty(
+            "Kiracıya ait veri taşıyıp kiracı anahtarı olmayan belge bırakılamaz (#147). "
+            + "Kaynak olay InstitutionId taşıyorsa görünümü doğduğu anda damgalayın; sonradan "
+            + "eklemek backfill gerektirir ve unutulan backfill sessiz sızıntıdır:\n  "
+            + string.Join("\n  ", eksik));
     }
 
     private static string RepoRoot()
