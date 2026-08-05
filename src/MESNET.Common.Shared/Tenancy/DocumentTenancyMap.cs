@@ -52,6 +52,9 @@ public static class DocumentTenancyMap
         // ── Kiracıya ait: InstitutionId taşır, kiracı sınırı içindedir ────────────────
         // Olay kaynaklı aggregate'ler — anlık görüntüleri de kiracıya aittir
         ["AttendanceRecord"] = Tenant,
+        // Saga durumu kiracıya aittir — süreç tek okulun içinde yürür
+        ["PaymentSaga"] = Tenant,
+        ["InternshipSaga"] = Tenant,
         ["PaidLeaveRequest"] = Tenant,
 
         ["AcademicPeriod"] = Tenant,
@@ -101,6 +104,14 @@ public static class DocumentTenancyMap
         ["BusinessProfileView"] = Shared,
         // 3308 devlet katkısı oranları — ulusal parametre
         ["ClassYearContributionClaim"] = Shared,
+        // PAYLAŞIMLI İŞLETME KATALOĞU — bir işletme birden çok okuldan öğrenci alır; tüm
+        // okullar tüm işletmeleri listeler. Bugün Business.InstitutionId duruyor ama anlamı
+        // kapsam değil PROVENANCE olmalı (hangi okul kaydetti) — ayrı domain migration.
+        ["Business"] = Shared,
+
+        // Kiracının KENDİSİ — kiracıya ait değil, onu tanımlar
+        ["Institution"] = Identity,
+
         // MEB alan/dal kataloğu — ulusal, kuruma göre değişmez
         ["FieldOfStudy"] = Shared,
         // Kurum listesi görünümü — kiracıların KENDİSİ, kiracıya ait değil

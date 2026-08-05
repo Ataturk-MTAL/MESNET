@@ -19,8 +19,15 @@ namespace MESNET.Security.UnitTests;
 /// </summary>
 public sealed class DocumentTenancyDriftTests
 {
-    /// <summary><c>options.Schema.For&lt;T&gt;()</c> — Marten'a kayıtlı belge tiplerinin otoritesi.</summary>
-    private static readonly Regex SchemaForRegex = new(@"Schema\.For<(\w+)>", RegexOptions.Compiled);
+    /// <summary>
+    /// <c>options.Schema.For&lt;T&gt;()</c> — Marten'a kayıtlı belge tiplerinin otoritesi.
+    ///
+    /// <para>Tip adı <b>nitelikli</b> yazılabilir (<c>Schema.For&lt;Core.Entities.Business&gt;()</c>);
+    /// desen yalnız <c>\w+</c> arasaydı o çağrılar sessizce taramanın dışında kalırdı — testin
+    /// verdiği "her belge sınıflandırıldı" güvencesi yanlış olurdu. İlk sürümde tam olarak bu
+    /// oldu: dört tip (<c>Business</c>, <c>Institution</c>, iki saga) kaçmıştı.</para>
+    /// </summary>
+    private static readonly Regex SchemaForRegex = new(@"Schema\.For<([\w.]+)>", RegexOptions.Compiled);
 
     private static HashSet<string> KayitliBelgeTipleri()
     {
@@ -34,7 +41,11 @@ public sealed class DocumentTenancyDriftTests
                 continue;
 
             foreach (Match m in SchemaForRegex.Matches(File.ReadAllText(file)))
-                tipler.Add(m.Groups[1].Value);
+            {
+                // Nitelikli ad → son segment (Core.Entities.Business → Business).
+                var tip = m.Groups[1].Value;
+                tipler.Add(tip[(tip.LastIndexOf('.') + 1)..]);
+            }
         }
 
         return tipler;
