@@ -45,7 +45,7 @@ public static class InstitutionSeeder
         {
             var id = arr[0].GetProperty("id").GetGuid();
             Console.WriteLine($"  → Kurum mevcut (id: {id.ToString()[..8]}...)");
-            await BackfillProvinceCodeAsync(api, arr[0], id);
+            await BackfillProvinceDistrictAsync(api, arr[0], id);
             return id;
         }
 
@@ -70,34 +70,52 @@ public static class InstitutionSeeder
         return institutionId;
     }
 
+    private const string VarsayilanIlKodu = "33";        // MEB il kodu — Mersin
+    private const string VarsayilanIlce = "Toroslar";
+
     /// <summary>
-    /// İl kodu alanı (#147) eklenmeden önce oluşturulmuş kurumu tamamlar. Seeder mevcut kurumu
-    /// bulunca erken döndüğü için bu yama olmadan il boş kalır ve kapsam kararının anahtarı
-    /// eksik kalırdı. Idempotent: kod zaten varsa hiçbir şey yapılmaz, ÜZERİNE YAZILMAZ —
-    /// elle başka bir il seçilmişse seeder onu geri almamalı.
+    /// İl/ilçe alanları (#147) eklenmeden önce oluşturulmuş kurumu tamamlar. Seeder mevcut
+    /// kurumu bulunca erken döndüğü için bu yama olmadan alanlar boş kalır ve kapsam kararının
+    /// anahtarı eksik kalır.
+    ///
+    /// <para><b>Her alan AYRI değerlendirilir (#196).</b> Eskiden yalnız il koduna bakılıp
+    /// doluysa erken dönülüyordu; PATCH gövdesi ikisini birden yazdığı hâlde koruma tek alana
+    /// bakıyordu. Sonuç: il bir kez dolduktan sonra ilçe <b>kalıcı olarak boş kalıyordu</b> ve
+    /// hiçbir koşu onu tamamlamıyordu. Canlı veride tam olarak bu olmuştu — il <c>33</c>,
+    /// ilçe <c>null</c>. Doğrulama da yakalamaz: ilçe yalnız doluysa doğrulanır, boş bırakmak
+    /// geçerlidir.</para>
+    ///
+    /// <para><b>Üzerine YAZILMAZ:</b> yalnız boş alan doldurulur — elle başka bir il/ilçe
+    /// seçilmişse seeder onu geri almamalı. Handler <c>null</c> gelen alanı "değiştirme" sayar.</para>
     /// </summary>
-    private static async Task BackfillProvinceCodeAsync(
+    private static async Task BackfillProvinceDistrictAsync(
         MesnetApiClient api, System.Text.Json.JsonElement institution, Guid institutionId)
     {
-        var hasProvince = institution.TryGetProperty("provinceCode", out var province)
-                          && province.ValueKind == System.Text.Json.JsonValueKind.String
-                          && !string.IsNullOrWhiteSpace(province.GetString());
+        var (ilEksik, ilceEksik) = InstitutionBackfillPolicy.MissingFields(institution);
 
-        if (hasProvince) return;
+        if (!ilEksik && !ilceEksik) return;
 
         var fullName = institution.TryGetProperty("fullName", out var name)
             ? name.GetString()
             : null;
 
         // PATCH'te fullName zorunlu (UpdateInstitutionValidator) — mevcut ad geri gönderilir.
+        // Dolu alan gövdeye KONMAZ; handler null'ı "değiştirme" sayar.
         await api.PatchAsync($"/api/institutions/{institutionId}", new
         {
             fullName,
-            provinceCode = "33",
-            districtName = "Toroslar"
+            provinceCode = ilEksik ? VarsayilanIlKodu : null,
+            districtName = ilceEksik ? VarsayilanIlce : null
         });
 
-        Console.WriteLine("  ✓ Kurumun il/ilçe bilgisi tamamlandı (33 — Mersin / Toroslar)");
+        var tamamlanan = (ilEksik, ilceEksik) switch
+        {
+            (true, true) => $"il/ilçe ({VarsayilanIlKodu} — Mersin / {VarsayilanIlce})",
+            (true, false) => $"il ({VarsayilanIlKodu} — Mersin)",
+            _ => $"ilçe ({VarsayilanIlce})",
+        };
+
+        Console.WriteLine($"  ✓ Kurumun {tamamlanan} bilgisi tamamlandı");
     }
 
     private static async Task SyncKeycloakAsync(KeycloakAdminService keycloak, Guid institutionId)
