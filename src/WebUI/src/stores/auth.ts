@@ -41,8 +41,6 @@ export interface AuthUser {
   fullName: string
   roles: string[]
   institutionId: string | null
-  /** @deprecated Tek alan varsayımı — yerine `branchCodes` kullanın (#126). */
-  branchCode: string | null
   /** Kullanıcının sorumlu olduğu alan kodları; bir kişi birden çok alandan sorumlu olabilir (#126). */
   branchCodes: string[]
 }
@@ -73,22 +71,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!_accessToken.value && !!user.value)
   const accessToken = computed(() => _accessToken.value)
 
-  /**
-   * Müdür veya Müdür Yardımcısı — alan seçicisini görebilir.
-   * #129: müdür yardımcısı artık ayrı realm rolüdür (`DeputyDirector`); eklenmeseydi o role
-   * sahip kullanıcı alan seçicisini kaybederdi. `InstitutionStaff` geriye dönük uyum için
-   * listede kalır — henüz rolü güncellenmemiş müdür yardımcıları o rolde durabilir.
-   */
-  const isManager = computed(() =>
-    user.value?.roles.some(
-      (r) => r === 'InstitutionManager' || r === 'DeputyDirector' || r === 'InstitutionStaff',
-    ) ?? false,
-  )
 
-  /** Alan Şefi veya yetkili koordinatör öğretmen — alan seçicisi göstermez, otomatik atanır */
-  const isDepartmentHead = computed(() =>
-    user.value?.roles.includes('DepartmentHead') ?? false,
-  )
 
   function hasPermission(permission: string): boolean {
     return permissions.value.some(
@@ -155,7 +138,6 @@ export const useAuthStore = defineStore('auth', () => {
         parsed.preferred_username,
       roles: realmRoles,
       institutionId: parsed.institution_id ?? null,
-      branchCode: null,
       // Token'da claim varsa hemen kullan; yoksa loadPermissions() backend'den doldurur (#126)
       branchCodes: normalizeBranchCodes(parsed.branch_codes),
     }
@@ -187,7 +169,6 @@ export const useAuthStore = defineStore('auth', () => {
           user.value = {
             ...user.value,
             ...(data?.institutionId ? { institutionId: data.institutionId } : {}),
-            branchCode: data?.branchCode ?? null,
             branchCodes: normalizeBranchCodes(data?.branchCodes),
           }
         }
@@ -247,8 +228,6 @@ export const useAuthStore = defineStore('auth', () => {
     isInitialized,
     isAuthenticated,
     accessToken,
-    isManager,
-    isDepartmentHead,
     canManageAllBranches,
     writableBranchCodes,
     canWriteBranch,

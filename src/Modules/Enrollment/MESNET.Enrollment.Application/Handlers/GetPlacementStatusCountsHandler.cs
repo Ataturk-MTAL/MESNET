@@ -10,9 +10,13 @@ public static class GetPlacementStatusCountsHandler
     public static async Task<PlacementStatusCountsResult> Handle(
         GetPlacementStatusCounts query, IQuerySession session, ICurrentUserService currentUser)
     {
-        // Liste ile AYNI yetki-kapsam (sayım kullanıcı işletme filtresi taşımaz → businessIdFilter null).
-        var (institutionId, teacherId, effectiveBusinessId) =
-            await PlacementQueryScope.ResolveAsync(currentUser, session, businessIdFilter: null);
+        // Liste ile AYNI kapsam (sayım kullanıcı işletme filtresi taşımaz → businessIdFilter null).
+        // Çözülemeyen kapsam boş sayımdır — liste boşken sayacın dolu olması çelişki olurdu.
+        if (await PlacementQueryScope.ResolveAsync(currentUser, session, businessIdFilter: null)
+            is not { } scope)
+            return new PlacementStatusCountsResult([]);
+
+        var (institutionId, teacherId, effectiveBusinessId) = scope;
 
         IQueryable<InternshipPlacement> queryable = session.Query<InternshipPlacement>();
 

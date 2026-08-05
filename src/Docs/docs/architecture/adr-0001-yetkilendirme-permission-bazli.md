@@ -93,17 +93,18 @@ okunur. Ayrıntı: `docs/actors/permissions.md` → "Alan (Branş) Kapsamı Kont
 `RequireRole` ve `IsInRole` taraması:
 
 - ✅ **`RequireRole` hiçbir uçta yok.** Kural 1 tam uygulanıyor.
-- ⚠ **`IsInRole` üç yerde** + frontend'de iki rol-adı computed'ı. Hepsi bilinen teknik borçtur:
+- ✅ **`IsInRole` hiçbir modül kodunda yok** ve frontend'de rol-adı computed'ı kalmadı.
+  Borç listesi #172, #184 ve #192 ile kapandı:
 
-| Yer | Ne yapıyor | Doğru çözüm |
+| Yer | Neydi | Ne oldu |
 |---|---|---|
-| `src/Modules/Attendance/MESNET.Attendance.Application/Handlers/MarkAttendanceHandler.cs:61-62` | Devamsızlığı **işletme mi girdi** (onay bekler) yoksa okul mu (doğrudan kayıt) | Yeni izin, okul wildcard'larının **dışında** bir önekle (ör. `workplace:attendance:self-report`); yalnız `CompanyManager` + `MasterTrainer` alır. `company:` **kullanılamaz** — `company:*` okul müdüründe var |
-| `src/Modules/Enrollment/MESNET.Enrollment.Application/Handlers/PlacementQueryScope.cs:26-30` | Öğretmeni yalnız koordine ettiği öğrencilere daraltır | Kurum geneli görüş için muafiyet izni (ör. `institution:placement:all-students`) — `Institution.AllBranches` deseninin aynısı: `InstitutionManager`'a `institution:*` ile, `DeputyDirector` + `InstitutionStaff`'a açıkça verilir |
-| `src/Modules/Enrollment/MESNET.Enrollment.Application/Handlers/PlacementQueryScope.cs:39` | `CompanyManager`'ı kendi işletmesine daraltır | Rol değil **claim**: `business_id` claim'inin varlığı zaten kapsamdır |
-| `src/WebUI/src/stores/auth.ts:82-86` (`isManager`) | Alan seçicisini gösterir | `canManageAllBranches` (permission bazlı, mevcut) |
-| `src/WebUI/src/stores/auth.ts:89-91` (`isDepartmentHead`) → `pages/coordination/TeacherSchedulePage.vue:516` | Alanı otomatik atar | `!canManageAllBranches && writableBranchCodes.length === 1` |
+| `MarkAttendanceHandler` | Devamsızlığı işletme mi girdi (onay bekler) yoksa okul mu | `attendance:direct-entry` izni (#172) |
+| `PlacementQueryScope` | Öğretmeni koordine ettiği öğrencilere daraltır | Kapsam merdiveni: `institution:view` → `business_id` claim'i → öğretmen **kaydı** → boş (#184) |
+| `PlacementQueryScope` | `CompanyManager`'ı kendi işletmesine daraltır | Rol değil **claim**: `business_id` varsa kapsam odur (#184) |
+| `auth.ts` (`isManager`) | Alan seçicisini gösterir | Kaldırıldı — tüketicisi yoktu; kapsam kararı `canManageAllBranches` (#192) |
+| `auth.ts` (`isDepartmentHead`) → `TeacherSchedulePage` | Alanı otomatik atar | `writableBranchCodes`; eski koşul `branchCode` `null` olduğu için **hiç tutmuyordu** (#192) |
 
-Bu satırlar düzeltilene kadar **yeni rol-adı kontrolü eklenmez**; borç büyütülmez.
+**Yeni rol-adı kontrolü eklenmez.**
 
 ## Sonuçlar
 

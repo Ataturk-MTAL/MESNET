@@ -247,6 +247,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { Permissions } from 'src/utils/permissions'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { enrollmentApi, type InternshipPlacementDto } from 'src/api/enrollment'
@@ -277,7 +278,7 @@ const branchFilter = ref<string | null>(null)
 const absenceLoading = ref(false)
 const highAbsenceRows = ref<InternshipSummaryDto[]>([])
 const markingId = ref<string | null>(null)
-const canManage = computed(() => authStore.hasPermission('internship:manage'))
+const canManage = computed(() => authStore.hasPermission(Permissions.Internship.Manage))
 
 const absenceColumns: QTableProps['columns'] = [
   { name: 'studentName', label: 'Öğrenci', field: 'studentName', align: 'left' },

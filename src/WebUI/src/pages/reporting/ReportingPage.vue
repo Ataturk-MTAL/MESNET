@@ -291,6 +291,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { Permissions } from 'src/utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import {
   reportingApi,
@@ -323,7 +324,7 @@ const resyncing = ref(false)
 const selected = ref<GeneratedDocumentSummaryDto[]>([])
 
 // Müdür/müdür yardımcısı belge oluşturabilir
-const canGenerate = computed(() => authStore.hasPermission('institution:manage'))
+const canGenerate = computed(() => authStore.hasPermission(Permissions.Institution.Manage))
 
 const filterState = reactive({
   formType: null as string | null,
