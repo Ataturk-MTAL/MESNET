@@ -21,6 +21,7 @@ public static class AbsenceTallyConsumer
         session.Store(new StudentAbsenceView
         {
             Id = @event.AttendanceId,
+            InstitutionId = @event.InstitutionId,
             StudentId = @event.StudentId,
             BusinessId = @event.BusinessId,
             Month = @event.Date.ToString("yyyy-MM"),

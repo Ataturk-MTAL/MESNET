@@ -15,6 +15,7 @@ public static class StudentRegisteredConsumer
         session.Store(new StudentNameView
         {
             Id = @event.StudentId,
+            InstitutionId = @event.InstitutionId,
             FullName = @event.FullName,
             StudentNumber = string.IsNullOrWhiteSpace(@event.StudentNumber) ? null : @event.StudentNumber
         });

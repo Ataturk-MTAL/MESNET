@@ -16,6 +16,7 @@ public class AttendanceMartenConfig : IConfigureMarten
         options.Schema.For<AttendanceView>().DatabaseSchemaName("attendance");
         options.Schema.For<AttendanceView>().Index(x => x.StudentId);
         options.Schema.For<AttendanceView>().Index(x => x.BusinessId);
+        options.Schema.For<AttendanceView>().Index(x => x.InstitutionId);
 
         options.Schema.For<AcademicPeriodView>().DatabaseSchemaName("attendance");
         options.Schema.For<AcademicPeriodView>().Index(x => x.InstitutionId);
@@ -27,6 +28,7 @@ public class AttendanceMartenConfig : IConfigureMarten
 
         // Öğrenci ad/numara araması için denormalize view (Enrollment.StudentRegistered ile beslenir)
         options.Schema.For<StudentNameView>().DatabaseSchemaName("attendance");
+        options.Schema.For<StudentNameView>().Index(x => x.InstitutionId);
 
         // UserNameView (Security.UserDisplayNameUpserted ile beslenir) — denetim alanları
         // yalnız kullanıcı kimliğini saklar, ad sorgu tarafında buradan çözülür (#137)

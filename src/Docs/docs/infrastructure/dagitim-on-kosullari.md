@@ -69,6 +69,34 @@ değildir. Kural `PlacementResyncPolicy` içinde adlandırılmış ve testle kil
 "işletme kaydı yoksa atla" diye sadeleştirilmesi okulda staj yapan her öğrenciyi sessizce
 düşürür ve dönem notu girilemez hâle getirir.
 
+## Kiracı anahtarı eklenen görünümler (#147 adım 1)
+
+Dört görünüme `InstitutionId` eklendi. Alan yeni olduğu için **mevcut satırlarda boştur** ve
+doldurulması gerekir:
+
+| Görünüm | Backfill yolu |
+| --- | --- |
+| `StudentNameView` (Attendance + Contract) | `POST /api/students/resync-projections` |
+| `StudentPaymentProfile` | `POST /api/students/resync-projections` |
+| `AttendanceView` | Marten projeksiyon yeniden kurulumu (async daemon) — uç gerekmez |
+| `StudentAbsenceView` | ⚠ **Hazır yol YOK** — aşağıya bakınız |
+
+### `StudentAbsenceView` boşluğu
+
+Bu görünümü `AbsenceTallyConsumer` yazıyor ve kaynağı `AttendanceMarked` olayı. Attendance
+modülünde **resync ucu yok**, yani olayı yeniden yayınlayacak bir yol bulunmuyor.
+
+İki seçenek: (a) Attendance modülüne diğerleriyle aynı desende bir resync ucu eklemek,
+(b) tek seferlik SQL ile doldurmak — `StudentAbsenceView.Id` devamsızlık kaydının kimliğidir ve
+kiracı bilgisi o kayıttan okunabilir.
+
+**Ölçüt:** backfill sonrası kiracıya ait hiçbir belgede `institutionId` boş kalmamalı. Kontrol:
+
+```sql
+select count(*) from payment.mt_doc_studentabsenceview
+where coalesce(data->>'institutionId','') = '';
+```
+
 ## Sırayı bozmayın
 
 Bir adım başka bir adımın verisini üretiyorsa sıra önemlidir. Örnek: koordinasyon zinciri

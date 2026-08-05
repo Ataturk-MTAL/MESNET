@@ -27,6 +27,7 @@ public class PaymentMartenConfig : IConfigureMarten
         // StudentPaymentProfile — enrollment event'inden beslenen yerel öğrenci profili
         options.Schema.For<StudentPaymentProfile>().DatabaseSchemaName("payment");
         options.Schema.For<StudentPaymentProfile>().Index(x => x.BranchCode);
+        options.Schema.For<StudentPaymentProfile>().Index(x => x.InstitutionId);
 
         // BusinessPaymentProfile — Business event'lerinden; taban ücret oranı personel sayısına bağlı (#64)
         options.Schema.For<BusinessPaymentProfile>().DatabaseSchemaName("payment");
@@ -37,6 +38,7 @@ public class PaymentMartenConfig : IConfigureMarten
             x => x.Name = "idx_absence_student_month");
         // Kesinti sözleşmenin istihdam penceresine göre sayılıyor (#154) — gün alanı sorguda.
         options.Schema.For<StudentAbsenceView>().Index(x => x.Date);
+        options.Schema.For<StudentAbsenceView>().Index(x => x.InstitutionId);
 
         // PlacementView — Enrollment event'lerinden; aylık maaş zamanlayıcısının çalışma listesi (#63)
         options.Schema.For<PlacementView>().DatabaseSchemaName("payment");

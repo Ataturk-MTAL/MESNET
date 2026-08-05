@@ -7,6 +7,12 @@ namespace MESNET.Payment.Core.ReadModels;
 public class StudentPaymentProfile
 {
     public Guid Id { get; set; }       // StudentId
+
+    /// <summary>
+    /// Kiracı anahtarı (#147). Türetilmiş görünüm olsa da kiracıya ait veri taşır; anahtarsız
+    /// hâlinde çok-okul sorgusu iki okulun satırını ayırt edemezdi.
+    /// </summary>
+    public Guid InstitutionId { get; set; }
     public string FullName { get; set; } = "";
     public string StudentNumber { get; set; } = "";
     public string BranchCode { get; set; } = "";

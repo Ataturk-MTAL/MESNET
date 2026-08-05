@@ -51,6 +51,12 @@ public static class DocumentTenancyMap
     {
         // ── Kiracıya ait: InstitutionId taşır, kiracı sınırı içindedir ────────────────
         // Olay kaynaklı aggregate'ler — anlık görüntüleri de kiracıya aittir
+        // #147 adım 1 ile kiracı anahtarı eklendi — önce MissingKey sınıfındaydılar
+        ["AttendanceView"] = Tenant,
+        ["StudentAbsenceView"] = Tenant,
+        ["StudentNameView"] = Tenant,
+        ["StudentPaymentProfile"] = Tenant,
+
         ["AttendanceRecord"] = Tenant,
         // Saga durumu kiracıya aittir — süreç tek okulun içinde yürür
         ["PaymentSaga"] = Tenant,
@@ -127,14 +133,8 @@ public static class DocumentTenancyMap
         // Kimlik katmanı; InstitutionId taşır ama kiracı sınırı DEĞİL — kullanıcı kurumlar arası taşınabilir
         ["UserAccount"] = Identity,
 
-        // ── BOŞLUK: türetilmiş, öğrenci düzeyinde veri taşır, kiracı anahtarı yok ─────
-        // Öğrenci devamsızlık özeti taşır, kiracı anahtarı YOK
-        ["AttendanceView"] = MissingKey,
-        // Öğrenci devamsızlık günleri taşır, kiracı anahtarı YOK
-        ["StudentAbsenceView"] = MissingKey,
-        // Öğrenci adı/numarası taşır, kiracı anahtarı YOK
-        ["StudentNameView"] = MissingKey,
-        // Öğrenci adı/numarası taşır, kiracı anahtarı YOK
-        ["StudentPaymentProfile"] = MissingKey,
+        // ── BOŞLUK: kiracıya ait veri taşıyıp kiracı anahtarı olmayan belge KALMADI ────
+        // (Dördü de #147 adım 1 ile InstitutionId aldı; sınıf bilerek boş bırakıldı.)
+
     };
 }
