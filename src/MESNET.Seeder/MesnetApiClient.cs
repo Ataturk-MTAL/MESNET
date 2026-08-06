@@ -29,6 +29,25 @@ public sealed class MesnetApiClient
     public int FailureCount { get; private set; }
 
     /// <summary>
+    /// Gövdesinde <c>data</c> taşımayan 2xx yanıtın karşılığı — <b>başarı, veri yok</b> (#204).
+    ///
+    /// <para><b>Neden gerekli:</b> yazma uçlarının bir kısmı bilerek veri döndürmez;
+    /// <c>ResponseBuilder.Success().AddMessage(...)</c> gövdeyi <c>"data": null</c> ile kapatır.
+    /// System.Text.Json bunu <c>JsonElement?</c> alanında C# <c>null</c>'ına indirger ve o an
+    /// "veri yok" ile "çağrı başarısız" ayırt edilemez hâle gelir.</para>
+    ///
+    /// <para>Ayrım kaybolunca iki yönlü yalan doğuyordu: alan aktivasyonu <b>başarılı olduğu
+    /// hâlde</b> ✗ basılıyor ve <c>continue</c> ile dal yazımı atlanıyordu; asgari ücret ise
+    /// <b>yazıldığı hâlde</b> hiç satır basmıyordu. Yanıt 2xx olduğu için
+    /// <see cref="FailureCount"/> de artmıyor, çıkış kodu sıfır kalıyordu.</para>
+    ///
+    /// <para>Bundan sonra <c>null</c> dönüşü <b>yalnız</b> gerçek hatayı (2xx olmayan yanıt)
+    /// gösterir. <see cref="GetAsync"/> bunun dışındadır: orada 404 → <c>null</c> "kayıt yok"
+    /// demektir ve seeder'ın "zaten var mı" kontrolleri buna dayanır.</para>
+    /// </summary>
+    public static readonly JsonElement NoData = JsonDocument.Parse("null").RootElement;
+
+    /// <summary>
     /// Liste endpoint'ini okur ve hem düz dizi hem de PagedResult (<c>{ items: [...] }</c>)
     /// gövdesini destekler. Sayfalama projeye sonradan geldiği için bazı endpoint'ler dizi,
     /// bazıları PagedResult döndürüyor; çağıran tarafın bunu bilmesi gerekmesin (#80).
@@ -112,7 +131,8 @@ public sealed class MesnetApiClient
         }
 
         var envelope = await response.Content.ReadFromJsonAsync<ApiEnvelope>(JsonOptions);
-        return envelope?.Data;
+        // Veri yoksa NoData: 2xx her zaman başarıdır, null yalnız gerçek hatayı gösterir (#204).
+        return envelope?.Data ?? NoData;
     }
 
     public async Task<JsonElement?> PutAsync(string url, object? body = null)
@@ -134,7 +154,8 @@ public sealed class MesnetApiClient
         }
 
         var envelope = await response.Content.ReadFromJsonAsync<ApiEnvelope>(JsonOptions);
-        return envelope?.Data;
+        // Veri yoksa NoData: 2xx her zaman başarıdır, null yalnız gerçek hatayı gösterir (#204).
+        return envelope?.Data ?? NoData;
     }
 
     public async Task<JsonElement?> PatchAsync(string url, object? body = null)
@@ -156,7 +177,8 @@ public sealed class MesnetApiClient
         }
 
         var envelope = await response.Content.ReadFromJsonAsync<ApiEnvelope>(JsonOptions);
-        return envelope?.Data;
+        // Veri yoksa NoData: 2xx her zaman başarıdır, null yalnız gerçek hatayı gösterir (#204).
+        return envelope?.Data ?? NoData;
     }
 
     public async Task<JsonElement?> GetAsync(string url)
