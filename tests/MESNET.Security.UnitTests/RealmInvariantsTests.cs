@@ -23,7 +23,9 @@ public sealed class RealmInvariantsTests
     private static RealmSnapshot Saglikli() => new(
         UnmanagedAttributePolicy: RealmInvariants.ExpectedUnmanagedAttributePolicy,
         RealmRoles: [.. MesnetRoles.All],
-        WebClientIsPublic: true);
+        WebClientIsPublic: true,
+        SeedUserRoles: RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
+            kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase));
 
     [Fact]
     public void Depodaki_tanimla_uyumlu_realm_sapma_uretmez()
@@ -60,6 +62,47 @@ public sealed class RealmInvariantsTests
 
         drift.Key.ShouldBe("realm roles");
         drift.Actual.ShouldContain(MesnetRoles.Parent);
+    }
+
+    /// <summary>
+    /// <b>Canlı ortamda gerçekten bulunan sapma (#205).</b> Dev realm'inde 11 rolün tamamı vardı —
+    /// rol denetimi temiz geçiyordu — ama <c>admin</c> kullanıcısında yalnız
+    /// <c>InstitutionManager</c> atanmıştı. <c>SystemAdmin</c> eksik olduğu için
+    /// <c>platform:parameter:manage</c> hiç gelmedi ve <c>PUT /api/payments/config/minimum-wage</c>
+    /// 403 döndü; asgari ücret dev'de hiç girilemedi.
+    ///
+    /// <para>Rolün <b>var olması</b> ile kullanıcıya <b>atanmış olması</b> ayrı şeylerdir; eski
+    /// denetim yalnız ilkine bakıyordu.</para>
+    /// </summary>
+    [Fact]
+    public void Kullaniciya_rol_atanmamissa_sapma_bildirilir()
+    {
+        var eksikAtama = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
+            kv => kv.Key,
+            kv => kv.Key == "admin"
+                ? (IReadOnlyList<string>)[MesnetRoles.InstitutionManager]  // SystemAdmin düşürüldü
+                : kv.Value,
+            StringComparer.OrdinalIgnoreCase);
+
+        var drift = RealmInvariants.Verify(Saglikli() with { SeedUserRoles = eksikAtama })
+            .ShouldHaveSingleItem();
+
+        drift.Key.ShouldBe("kullanıcı admin → realm rolleri");
+        drift.Actual.ShouldContain(MesnetRoles.SystemAdmin);
+        // Mesaj eyleme dönüşebilmeli.
+        drift.Impact.ShouldContain("role-mappings");
+    }
+
+    /// <summary>Birden çok kullanıcıda eksik varsa her biri ayrı satır olmalı.</summary>
+    [Fact]
+    public void Her_kullanicinin_eksigi_ayri_bildirilir()
+    {
+        var hicRolYok = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
+            kv => kv.Key, kv => (IReadOnlyList<string>)[], StringComparer.OrdinalIgnoreCase);
+
+        var drifts = RealmInvariants.Verify(Saglikli() with { SeedUserRoles = hicRolYok });
+
+        drifts.Count.ShouldBe(RealmInvariants.ExpectedSeedUserRoles.Count);
     }
 
     [Fact]
@@ -126,6 +169,49 @@ public sealed class RealmInvariantsTests
         RealmInvariants.Verify(Saglikli() with { RealmRoles = fazlali }).ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// <b>Var olmayan tohum kullanıcısı sapma DEĞİLDİR (#205).</b> <c>admin</c>, <c>teacher1</c>
+    /// gibi kullanıcılar yalnız geliştirme realm'inin tohum verisidir; gerçek kurulumda hiçbiri
+    /// bulunmaz. "Yoksa sapma" deseydik her üretim açılışı yanlış alarm çalardı ve kontrol
+    /// güvenilirliğini kaybederdi — denetlenen tek şey <b>var olan</b> kullanıcının eksik rolüdür.
+    /// </summary>
+    [Fact]
+    public void Bulunmayan_tohum_kullanicisi_sapma_sayilmaz()
+    {
+        var uretimGibi = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+
+        RealmInvariants.Verify(Saglikli() with { SeedUserRoles = uretimGibi }).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Kullanicida_fazladan_rol_sapma_sayilmaz()
+    {
+        var fazlali = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
+            kv => kv.Key,
+            kv => (IReadOnlyList<string>)[.. kv.Value, "offline_access", "uma_authorization"],
+            StringComparer.OrdinalIgnoreCase);
+
+        RealmInvariants.Verify(Saglikli() with { SeedUserRoles = fazlali }).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Kullanici_rol_adi_buyuk_kucuk_harfe_duyarsiz_eslesir()
+    {
+        var farkliYazim = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
+            kv => kv.Key,
+            kv => (IReadOnlyList<string>)[.. kv.Value.Select(r => r.ToUpperInvariant())],
+            StringComparer.OrdinalIgnoreCase);
+
+        RealmInvariants.Verify(Saglikli() with { SeedUserRoles = farkliYazim }).ShouldBeEmpty();
+    }
+
+    /// <summary>Atama hiç okunamadıysa (yetki yok, sürüm farkı) sapma üretilmez.</summary>
+    [Fact]
+    public void Okunamayan_kullanici_atamasi_sapma_sayilmaz()
+    {
+        RealmInvariants.Verify(Saglikli() with { SeedUserRoles = null }).ShouldBeEmpty();
+    }
+
     // ── Depodaki realm tanımıyla tutarlılık ────────────────────────────────────────────
 
     /// <summary>
@@ -162,5 +248,39 @@ public sealed class RealmInvariantsTests
             .Single(c => c.GetProperty("clientId").GetString() == RealmInvariants.WebClientId);
 
         webClient.GetProperty("publicClient").GetBoolean().ShouldBeTrue();
+    }
+
+    /// <summary>
+    /// Beklenen kullanıcı→rol haritası depodaki realm tanımının <b>aynısı</b> olmalı (#205).
+    ///
+    /// <para>İkisi ayrı dosyada yaşıyor: biri değişip diğeri unutulursa denetim kendi kaynağından
+    /// sapar. İki yönü de kırılır — realm'e eklenen atama sabite yansımazsa denetim onu <b>hiç
+    /// aramaz</b> (tam #205'in kaçırdığı durum); sabitte olup realm'de olmayan atama ise doğru
+    /// kurulmuş bir ortamı yanlışlıkla "sapmış" damgalar.</para>
+    /// </summary>
+    [Fact]
+    public void Beklenen_kullanici_rolleri_depodaki_realm_tanimiyla_ayni()
+    {
+        var realm = JsonDocument.Parse(File.ReadAllText("mesnet-realm.json")).RootElement;
+
+        var dosyadaki = realm.GetProperty("users").EnumerateArray()
+            .Where(u => u.TryGetProperty("realmRoles", out var r) && r.GetArrayLength() > 0)
+            .ToDictionary(
+                u => u.GetProperty("username").GetString()!,
+                u => u.GetProperty("realmRoles").EnumerateArray()
+                    .Select(r => r.GetString()!).OrderBy(r => r, StringComparer.Ordinal).ToList(),
+                StringComparer.OrdinalIgnoreCase);
+
+        var beklenen = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
+            kv => kv.Key,
+            kv => kv.Value.OrderBy(r => r, StringComparer.Ordinal).ToList(),
+            StringComparer.OrdinalIgnoreCase);
+
+        beklenen.Keys.OrderBy(k => k, StringComparer.Ordinal).ShouldBe(
+            dosyadaki.Keys.OrderBy(k => k, StringComparer.Ordinal),
+            "mesnet-realm.json ile RealmInvariants.ExpectedSeedUserRoles aynı kullanıcıları saymalı.");
+
+        foreach (var (kullanici, roller) in beklenen)
+            roller.ShouldBe(dosyadaki[kullanici], $"{kullanici} kullanıcısının rolleri ayrışmış.");
     }
 }

@@ -38,6 +38,49 @@ Bu artık elle takip edilmez. Açılışta `RealmVerificationHostedService` çal
 Gerçek bir örnekte depoda 11 rol tanımlıyken çalışan realm'de yalnız 6'sı vardı; eksik beşi
 farklı sürümlerde eklenip her seferinde unutulmuştu.
 
+### Rolün var olması yetmez — atandığını da denetleyin
+
+İlk sürüm yalnız rolün realm'de **var olduğuna** bakıyordu. Bu, sorunun bir katman üstüydü:
+rol listesi tamamlandıktan sonra bile **kullanıcı→rol ataması** eksik kalabiliyor.
+
+Gerçek örnek (#205): 11 rolün tamamı yerindeydi, rol denetimi temiz geçiyordu; ama `admin`
+kullanıcısında yalnız `InstitutionManager` atanmıştı. `SystemAdmin` eksik olduğu için
+`platform:parameter:manage` hiç gelmedi, `PUT /api/payments/config/minimum-wage` 403 döndü ve
+asgari ücret o ortamda hiç girilemedi.
+
+Doğrulama artık ikisini de kapsıyor. Beklenen atamalar
+`RealmInvariants.ExpectedSeedUserRoles`'ta durur ve bir testle `mesnet-realm.json`'a bağlıdır —
+realm dosyasına eklenen bir atama sabite yansımazsa denetim onu **hiç aramaz**.
+
+**Bulunmayan kullanıcı sapma değildir.** `admin`, `teacher1` gibi kullanıcılar yalnız geliştirme
+realm'inin tohum verisidir; gerçek kurulumda hiçbiri bulunmaz. Denetlenen tek şey, var olan
+kullanıcının eksik rolüdür.
+
+### Rolü Keycloak'ta düzeltmek YETMEZ — üç katman var
+
+Bu ölçülerek bulundu: `admin` kullanıcısına Keycloak'ta `SystemAdmin` atandıktan sonra bile
+`PUT /api/payments/config/minimum-wage` **403 dönmeye devam etti**. Token doğruydu
+(`realm_access.roles` içinde `SystemAdmin` vardı) ama API onu hiç kullanmıyordu.
+
+Yetki üç katmandan geçer ve **her biri ayrı ayrı dönmelidir**:
+
+| # | Katman | Nasıl güncellenir | Gecikme |
+| --- | --- | --- | --- |
+| 1 | Keycloak rol ataması | `POST /admin/realms/{realm}/users/{id}/role-mappings/realm` | anında |
+| 2 | `UserAccount.Roles` kaydı | `POST /api/security/users/sync` | anında |
+| 3 | İzin önbelleği (`user-permissions:{sub}`) | kendiliğinden düşer | **5 dakika** |
+
+İkinci katman kritiktir: `PermissionClaimsTransformation` **kayıt varsa token'daki rollere hiç
+bakmaz** — kayıt otoriterdir (`BranchCodes` ile aynı ilke). Yani Keycloak'ta yapılan rol
+değişikliği senkronizasyon çağrılmadan sisteme hiç ulaşmaz.
+
+Üçüncü katman ölçüldü: kayıt düzeltildikten sonra uç **3 dakika daha 403 döndü**, dördüncü
+denemede 200'e geçti. Düzeltmenin işe yaramadığı sanılıp geri alınmasın.
+
+> **Denetim bu üç katmanın yalnız birincisini görür.** Açılış doğrulaması realm'i denetler;
+> `UserAccount` kaydının Keycloak'tan sapmasını görmez. Rol değişikliğinden sonra senkronizasyonu
+> elle çağırın.
+
 ## Resync / backfill uçları
 
 Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden çok kez

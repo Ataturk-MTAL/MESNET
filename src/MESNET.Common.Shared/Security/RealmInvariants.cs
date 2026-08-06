@@ -35,6 +35,36 @@ public static class RealmInvariants
     public const string WebClientId = "mesnet-web";
 
     /// <summary>
+    /// Depodaki realm tanımının tohum kullanıcılarına vaat ettiği realm rolleri (#205).
+    ///
+    /// <para><b>Neden rol listesi yetmiyor:</b> rolün realm'de <b>var olması</b> ile kullanıcıya
+    /// <b>atanmış olması</b> ayrı şeylerdir ve import ikisini ayrı yerde taşır. Canlı dev
+    /// realm'inde 11 rolün tamamı vardı — <see cref="VerifyRealmRoles"/> temiz geçiyordu — ama
+    /// <c>admin</c> kullanıcısında yalnız <c>InstitutionManager</c> atanmıştı. <c>SystemAdmin</c>
+    /// eksik olduğu için <c>platform:parameter:manage</c> hiç gelmedi;
+    /// <c>PUT /api/payments/config/minimum-wage</c> 403 döndü ve asgari ücret dev'de hiç
+    /// girilemedi.</para>
+    ///
+    /// <para><b>Var olmayan kullanıcı sapma değildir.</b> Bunlar yalnız geliştirme realm'inin
+    /// tohum verisidir; gerçek kurulumda hiçbiri bulunmaz. Denetlenen tek şey, <b>var olan</b>
+    /// kullanıcının eksik rolüdür — aksi hâlde her üretim açılışı yanlış alarm çalardı.</para>
+    ///
+    /// <para>Kilit: <c>RealmInvariantsTests.Beklenen_kullanici_rolleri_depodaki_realm_tanimiyla_ayni</c>
+    /// bu haritayı <c>mesnet-realm.json</c> ile karşılaştırır. Realm'e eklenen bir atama buraya
+    /// yansımazsa denetim onu <b>hiç aramaz</b> — #205'in kaçırdığı durum tam budur.</para>
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> ExpectedSeedUserRoles =
+        new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["admin"] = [MesnetRoles.InstitutionManager, MesnetRoles.SystemAdmin],
+            ["viceprincipal"] = [MesnetRoles.InstitutionManager],
+            ["teacher1"] = [MesnetRoles.Teacher],
+            ["teacher2"] = [MesnetRoles.Teacher],
+            ["teacher3"] = [MesnetRoles.Teacher],
+            ["student1"] = [MesnetRoles.Student]
+        };
+
+    /// <summary>
     /// Sapmaları döndürür. Boş liste = realm depodaki tanımla uyumlu.
     ///
     /// <para>Okunamayan alan (<c>null</c>) sapma <b>sayılmaz</b>: yetki eksikliği ya da sürüm
@@ -47,6 +77,7 @@ public static class RealmInvariants
 
         VerifyUnmanagedAttributePolicy(snapshot, drifts);
         VerifyRealmRoles(snapshot, drifts);
+        VerifySeedUserRoles(snapshot, drifts);
         VerifyWebClientIsPublic(snapshot, drifts);
 
         return drifts;
@@ -82,6 +113,33 @@ public static class RealmInvariants
             + "Düzeltme: eksik rolleri realm'e ekleyin ya da realm'i yeniden import edin."));
     }
 
+    /// <summary>
+    /// Kullanıcı→rol atamalarını denetler (#205). Her kullanıcı <b>ayrı</b> sapma satırı üretir;
+    /// tek satırda toplansaydı ikinci eksik ilkinin arkasında kalırdı.
+    /// </summary>
+    private static void VerifySeedUserRoles(RealmSnapshot snapshot, List<RealmDrift> drifts)
+    {
+        if (snapshot.SeedUserRoles is not { } atamalar) return;
+
+        foreach (var (kullanici, beklenen) in ExpectedSeedUserRoles)
+        {
+            // Kullanıcı yoksa sapma değil — üretimde tohum kullanıcıları hiç bulunmaz.
+            if (!atamalar.TryGetValue(kullanici, out var mevcutRoller)) continue;
+
+            var mevcut = new HashSet<string>(mevcutRoller, StringComparer.OrdinalIgnoreCase);
+            var eksik = beklenen.Where(r => !mevcut.Contains(r)).ToList();
+            if (eksik.Count == 0) continue;
+
+            drifts.Add(new RealmDrift(
+                $"kullanıcı {kullanici} → realm rolleri",
+                string.Join(", ", beklenen),
+                mevcutRoller.Count == 0 ? "hiç rol yok" : $"eksik: {string.Join(", ", eksik)}",
+                $"Rol realm'de var ama atanmamış; kullanıcı o rolün izinlerini hiç almaz ve "
+                + $"ilgili uçlar 403 döner. Düzeltme: POST /admin/realms/{{realm}}/users/{{id}}"
+                + $"/role-mappings/realm — eksik roller: {string.Join(", ", eksik)}."));
+        }
+    }
+
     private static void VerifyWebClientIsPublic(RealmSnapshot snapshot, List<RealmDrift> drifts)
     {
         if (snapshot.WebClientIsPublic is not { } isPublic || isPublic) return;
@@ -115,11 +173,17 @@ public static class RealmInvariants
 /// <c>GET /admin/realms/{realm}/clients?clientId=mesnet-web</c> → <c>publicClient</c>.
 /// </param>
 /// <param name="UnreadableFields">Okunamayan alanların adları — sapma değil, eksik bilgi.</param>
+/// <param name="SeedUserRoles">
+/// <c>GET /admin/realms/{realm}/users/{id}/role-mappings/realm</c> → kullanıcı adı başına rol
+/// adları. <b>Yalnız bulunan</b> kullanıcılar yer alır; anahtarın yokluğu "kullanıcı bu realm'de
+/// yok" demektir ve sapma sayılmaz. Sözlüğün tamamen <c>null</c> olması "hiç okunamadı" demektir.
+/// </param>
 public sealed record RealmSnapshot(
     string? UnmanagedAttributePolicy = null,
     IReadOnlyList<string>? RealmRoles = null,
     bool? WebClientIsPublic = null,
-    IReadOnlyList<string>? UnreadableFields = null);
+    IReadOnlyList<string>? UnreadableFields = null,
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? SeedUserRoles = null);
 
 /// <summary>Tek bir sapma: ne bekleniyordu, ne bulundu, neye yol açar.</summary>
 /// <param name="Key">Sapan ayarın adı.</param>
