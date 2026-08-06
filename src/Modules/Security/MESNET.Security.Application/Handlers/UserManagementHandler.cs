@@ -399,7 +399,8 @@ public static class ResyncUserDisplayNamesHandler
 public static class SyncUsersFromKeycloakHandler
 {
     public static async Task<(SyncUsersResult, OutgoingMessages)> Handle(
-        SyncUsersFromKeycloak command, IKeycloakAdminService keycloak, IDocumentSession session)
+        SyncUsersFromKeycloak command, IKeycloakAdminService keycloak, IDocumentSession session,
+        IMemoryCache cache)
     {
         // Senkronizasyon eskiden hiç olay yayınlamıyordu; yalnız UserAccount yazıyordu.
         // Denetim adlarını modüllerin UserNameView'ına taşıyan tek kanal bu olay olduğu için
@@ -434,6 +435,15 @@ public static class SyncUsersFromKeycloakHandler
                 if (ku.BranchCodes.Count > 0) account.BranchCodes = ku.BranchCodes;
                 account.UpdatedAt = DateTime.UtcNow;
                 session.Store(account);
+
+                // Rol/kapsam tazelendi — önbellek temizlenmezse izinler 5 dakika daha ESKİ
+                // hâliyle verilir (#209). Ölçüldü: düzeltmeden sonra uç 180 saniye boyunca 403
+                // dönmeye devam etti; yönetici düzeltmenin işe yaramadığını sanar.
+                //
+                // Yeni hesap dalında gerekmez: kaydı bulunamayan kullanıcı için dönüşüm
+                // önbelleğe hiçbir şey koymaz, bayatlayacak girdi yoktur.
+                PermissionClaimsTransformation.InvalidateCache(cache, account.KeycloakUserId);
+
                 if (UserDisplayNameEvents.TryCreate(account) is { } updatedName)
                     messages.Add(updatedName);
                 updated++;
