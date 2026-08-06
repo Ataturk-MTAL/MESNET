@@ -56,6 +56,31 @@ realm dosyasına eklenen bir atama sabite yansımazsa denetim onu **hiç aramaz*
 realm'inin tohum verisidir; gerçek kurulumda hiçbiri bulunmaz. Denetlenen tek şey, var olan
 kullanıcının eksik rolüdür.
 
+### Rolü Keycloak'ta düzeltmek YETMEZ — üç katman var
+
+Bu ölçülerek bulundu: `admin` kullanıcısına Keycloak'ta `SystemAdmin` atandıktan sonra bile
+`PUT /api/payments/config/minimum-wage` **403 dönmeye devam etti**. Token doğruydu
+(`realm_access.roles` içinde `SystemAdmin` vardı) ama API onu hiç kullanmıyordu.
+
+Yetki üç katmandan geçer ve **her biri ayrı ayrı dönmelidir**:
+
+| # | Katman | Nasıl güncellenir | Gecikme |
+| --- | --- | --- | --- |
+| 1 | Keycloak rol ataması | `POST /admin/realms/{realm}/users/{id}/role-mappings/realm` | anında |
+| 2 | `UserAccount.Roles` kaydı | `POST /api/security/users/sync` | anında |
+| 3 | İzin önbelleği (`user-permissions:{sub}`) | kendiliğinden düşer | **5 dakika** |
+
+İkinci katman kritiktir: `PermissionClaimsTransformation` **kayıt varsa token'daki rollere hiç
+bakmaz** — kayıt otoriterdir (`BranchCodes` ile aynı ilke). Yani Keycloak'ta yapılan rol
+değişikliği senkronizasyon çağrılmadan sisteme hiç ulaşmaz.
+
+Üçüncü katman ölçüldü: kayıt düzeltildikten sonra uç **3 dakika daha 403 döndü**, dördüncü
+denemede 200'e geçti. Düzeltmenin işe yaramadığı sanılıp geri alınmasın.
+
+> **Denetim bu üç katmanın yalnız birincisini görür.** Açılış doğrulaması realm'i denetler;
+> `UserAccount` kaydının Keycloak'tan sapmasını görmez. Rol değişikliğinden sonra senkronizasyonu
+> elle çağırın.
+
 ## Resync / backfill uçları
 
 Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden çok kez
