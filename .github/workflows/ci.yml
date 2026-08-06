@@ -92,6 +92,59 @@ jobs:
       - name: Type-check & build
         run: pnpm build
 
+  # Docusaurus sitesi (#186). Daha önce hiç derlenmiyordu: kırık bağlantı, MDX ayrıştırma
+  # hatası ve sidebar'daki ölü girdi yalnız biri elle derlerse görülüyordu.
+  #
+  # Bu işin değeri docusaurus.config.ts'deki 'throw' ayarlarından gelir — onBrokenLinks,
+  # onBrokenAnchors ve onBrokenMarkdownLinks 'warn' kalsaydı iş yeşil geçer ve kontrol yalnız
+  # "webpack çöktü mü" sorusunu yanıtlardı.
+  docs:
+    name: Dokümanlar — Docusaurus derleme
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/Docs
+
+    # Diyagramlar remark-kroki ile sunucu tarafında render ediliyor. Servis olmadan da derleme
+    # BAŞARILI olur (eklenti hatayı loglayıp geçer), ama o zaman her koşu onlarca "request
+    # failed" satırı basar ve gerçek bir sorun bu gürültüde kaybolur.
+    services:
+      kroki:
+        image: yuzutech/kroki:latest
+        ports:
+          - 8000:8000
+        env:
+          KROKI_SAFE_MODE: safe
+          # C4 diyagramları C4-PlantUML kütüphanesini uzaktan !include ediyor.
+          KROKI_PLANTUML_ALLOW_INCLUDE: "true"
+          KROKI_COMMAND_TIMEOUT: 60s
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: pnpm kur
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Node kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/Docs/pnpm-lock.yaml
+
+      - name: Bağımlılıklar
+        run: pnpm install --frozen-lockfile
+
+      # NOT: Diyagram render hatası derlemeyi DÜŞÜRMEZ. Kroki uzaktan !include yaptığı için
+      # ağ kaynaklı aralıklı 400'ler ölçüldü; kapı koymak kararsız kırmızıya yol açardı.
+      # İş, bağlantı/MDX/sidebar bütünlüğünü doğrular — diyagram içeriğini değil.
+      - name: Derleme
+        run: pnpm build
+        env:
+          KROKI_SERVER: http://localhost:8000
+
   # 233 black-box API testi (#67). Gerçek yığın gerektiriyor: PostgreSQL+PostGIS, RabbitMQ,
   # Keycloak (realm import), MinIO. Konteynerler .github/compose.ci.yml ile ayağa kalkıyor,
   # API arka planda çalıştırılıyor, sonra dotnet test koşuyor.
