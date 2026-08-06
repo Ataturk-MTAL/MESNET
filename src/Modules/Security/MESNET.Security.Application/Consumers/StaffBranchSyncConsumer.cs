@@ -35,7 +35,7 @@ public static class StaffBranchSyncConsumer
             return;
 
         var account = await session.Query<UserAccount>()
-            .FirstOrDefaultAsync(u => u.KeycloakUserId == @event.KeycloakId, cancellationToken);
+            .FirstOrDefaultAsync(u => u.KeycloakUserId == @event.KeycloakId && u.DeletedAt == null, cancellationToken);
 
         if (account is null)
             return;

@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Shared.Security;
 using MESNET.Security.Core.Entities;
 
 namespace MESNET.Security.Application.Services;
@@ -27,7 +28,10 @@ public sealed class UserPermissionProvider : IUserPermissionProvider
             return null;
 
         return new UserPermissionInfo(
-            account.IsEnabled,
+            // Silinmiş kayıt de erişim üretmez (#210). Bu sorgu mezar taşlarını BİLEREK
+            // süzmez — kaydı bulamazsak dönüşüm token yedeğine düşer ve izinler token'daki
+            // rollerden yeniden türetilir; tam kaçındığımız durum budur.
+            UserAccountAccessPolicy.GrantsAccess(account.IsEnabled, account.DeletedAt),
             account.Roles.AsReadOnly(),
             account.DirectPermissions.AsReadOnly(),
             account.BranchCodes.AsReadOnly(),
