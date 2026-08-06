@@ -99,6 +99,74 @@ public sealed class RealmSnapshotReadTests
         RealmInvariants.Verify(result.Value).ShouldBeEmpty();
     }
 
+    // ── Kullanıcı→rol ataması (#205) ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Kullanici_rol_atamalari_okunur()
+    {
+        var service = CreateService(new StubHandler());
+
+        var result = await service.GetRealmSnapshotAsync();
+
+        var atamalar = result.Value.SeedUserRoles.ShouldNotBeNull();
+        atamalar.Count.ShouldBe(RealmInvariants.ExpectedSeedUserRoles.Count);
+        atamalar["admin"].ShouldContain(MesnetRoles.SystemAdmin);
+        RealmInvariants.Verify(result.Value).ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Canlı dev realm'inde bulunan durum: rol listesi tamdı, atama eksikti. Eski denetim
+    /// bunu göremiyordu.
+    /// </summary>
+    [Fact]
+    public async Task Atanmamis_rol_okunur_ve_sapma_bulunur()
+    {
+        var service = CreateService(new StubHandler { AdminRoles = [MesnetRoles.InstitutionManager] });
+
+        var result = await service.GetRealmSnapshotAsync();
+
+        result.Value.RealmRoles.ShouldNotBeNull().Count.ShouldBe(MesnetRoles.All.Count);
+
+        var drift = RealmInvariants.Verify(result.Value).ShouldHaveSingleItem();
+        drift.Key.ShouldContain("admin");
+        drift.Actual.ShouldContain(MesnetRoles.SystemAdmin);
+    }
+
+    /// <summary>
+    /// Üretim realm'inde tohum kullanıcıları yoktur. Yokluk sapma da, eksik bilgi de değildir —
+    /// aksi hâlde her üretim açılışı gürültü çıkarırdı.
+    /// </summary>
+    [Fact]
+    public async Task Bulunmayan_kullanici_sapma_da_eksik_bilgi_de_uretmez()
+    {
+        var service = CreateService(new StubHandler { UsersFound = false });
+
+        var result = await service.GetRealmSnapshotAsync();
+
+        result.Value.SeedUserRoles.ShouldNotBeNull().ShouldBeEmpty();
+        result.Value.UnreadableFields.ShouldNotBeNull().ShouldBeEmpty();
+        RealmInvariants.Verify(result.Value).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Rol_atamasi_okunamazsa_eksik_bilgi_isaretlenir()
+    {
+        var service = CreateService(new StubHandler { RoleMappingStatus = HttpStatusCode.Forbidden });
+
+        var result = await service.GetRealmSnapshotAsync();
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.UnreadableFields.ShouldNotBeNull()
+            .ShouldContain(f => f.Contains("403", StringComparison.Ordinal));
+
+        // Okunamayan kullanıcı sözlüğe YARIM girmemeli — yarım kayıt "rolü yok" gibi okunur
+        // ve okunamayan alanı sapmaya çevirirdi.
+        result.Value.SeedUserRoles.ShouldNotBeNull().ShouldBeEmpty();
+
+        RealmInvariants.Verify(result.Value)
+            .ShouldBeEmpty("Okunamayan atama sapma sayılmamalı.");
+    }
+
     // ── Test çiftleri ────────────────────────────────────────────────────────────────────
 
     private static KeycloakAdminService CreateService(StubHandler handler) =>
@@ -119,10 +187,46 @@ public sealed class RealmSnapshotReadTests
         public HttpStatusCode ProfileStatus { get; init; } = HttpStatusCode.OK;
         public bool WebClientFound { get; init; } = true;
 
+        /// <summary>Kullanıcı arama sonucu — <c>false</c> ise realm'de hiç tohum kullanıcısı yok.</summary>
+        public bool UsersFound { get; init; } = true;
+
+        public HttpStatusCode RoleMappingStatus { get; init; } = HttpStatusCode.OK;
+
+        /// <summary><c>admin</c> kullanıcısına atanmış roller; <c>null</c> ise depodaki tanımın aynısı.</summary>
+        public IReadOnlyList<string>? AdminRoles { get; init; }
+
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var path = request.RequestUri!.AbsolutePath;
+
+            if (path.EndsWith("/role-mappings/realm", StringComparison.Ordinal))
+            {
+                if (RoleMappingStatus != HttpStatusCode.OK)
+                    return Task.FromResult(new HttpResponseMessage(RoleMappingStatus));
+
+                // .../users/{kullanıcıAdı}/role-mappings/realm — stub'da kimlik = kullanıcı adı.
+                var segments = path.Split('/');
+                var kullanici = segments[^3];
+                var roller = kullanici == "admin" && AdminRoles is { } ozel
+                    ? ozel
+                    : RealmInvariants.ExpectedSeedUserRoles[kullanici];
+
+                return Task.FromResult(Json(
+                    $"[{string.Join(",", roller.Select(r => $$"""{"name":"{{r}}"}"""))}]"));
+            }
+
+            if (path.EndsWith("/users", StringComparison.Ordinal))
+            {
+                if (!UsersFound) return Task.FromResult(Json("[]"));
+
+                // Kimlik yerine kullanıcı adını döndürüyoruz ki rol yolu hangi kullanıcı
+                // olduğunu bilebilsin.
+                var username = System.Web.HttpUtility
+                    .ParseQueryString(request.RequestUri.Query)["username"];
+                return Task.FromResult(Json(
+                    $$"""[{"id":"{{username}}","username":"{{username}}"}]"""));
+            }
 
             if (path.EndsWith("/protocol/openid-connect/token", StringComparison.Ordinal))
             {

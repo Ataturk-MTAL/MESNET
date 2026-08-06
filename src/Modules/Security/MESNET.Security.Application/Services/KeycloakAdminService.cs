@@ -493,7 +493,71 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
                 ? el.GetBoolean()
                 : (bool?)null);
 
-        return Result<RealmSnapshot>.Success(new RealmSnapshot(policy, roles, webClientIsPublic, unreadable));
+        var seedUserRoles = await ReadSeedUserRolesAsync();
+
+        return Result<RealmSnapshot>.Success(
+            new RealmSnapshot(policy, roles, webClientIsPublic, unreadable, seedUserRoles));
+
+        // Rolün var olması yetmez, kullanıcıya atanmış da olmalı (#205). Kullanıcı başına iki
+        // çağrı: önce kimlik, sonra rol eşlemesi.
+        //
+        // Bulunamayan kullanıcı "okunamadı" DEĞİLDİR — üretim realm'inde tohum kullanıcıları
+        // hiç bulunmaz ve her açılışta eksik-bilgi satırı basmak kontrolü gürültüye boğardı.
+        async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>?> ReadSeedUserRolesAsync()
+        {
+            var atamalar = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var kullanici in RealmInvariants.ExpectedSeedUserRoles.Keys)
+            {
+                var id = await ReadUserIdAsync(kullanici);
+                if (id is null) continue;
+
+                var roller = await ReadAsync(
+                    $"/users/{id}/role-mappings/realm",
+                    $"kullanıcı {kullanici} rol eşlemesi",
+                    root => root.ValueKind != JsonValueKind.Array
+                        ? null
+                        : (IReadOnlyList<string>)[.. root.EnumerateArray()
+                            .Select(r => r.TryGetProperty("name", out var n) ? n.GetString() : null)
+                            .Where(n => !string.IsNullOrEmpty(n))
+                            .Select(n => n!)]);
+
+                if (roller is not null) atamalar[kullanici] = roller;
+            }
+
+            return atamalar;
+        }
+
+        // ReadAsync'ten ayrı duruyor çünkü burada "boş sonuç" ayrı bir anlam taşır: kullanıcı
+        // yoksa bu eksik bilgi değil, o realm'de olmaması beklenen bir durumdur. HTTP hatası ise
+        // gerçekten okunamamıştır ve işaretlenir.
+        async Task<string?> ReadUserIdAsync(string kullanici)
+        {
+            var label = $"kullanıcı {kullanici}";
+            try
+            {
+                using var resp = await SendAdminAsync(
+                    HttpMethod.Get, $"/users?username={Uri.EscapeDataString(kullanici)}&exact=true", null, ct);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    unreadable.Add($"{label} (HTTP {(int)resp.StatusCode})");
+                    return null;
+                }
+
+                var root = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+                return root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0
+                       && root[0].TryGetProperty("id", out var el)
+                    ? el.GetString()
+                    : null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Realm ayarı okunamadı: {Label}", label);
+                unreadable.Add($"{label} ({ex.GetType().Name})");
+                return null;
+            }
+        }
 
         // Tek alanın okunamaması bütün doğrulamayı düşürmez — eksik bilgi olarak işaretlenir.
         async Task<T?> ReadAsync<T>(string path, string label, Func<JsonElement, T?> select)

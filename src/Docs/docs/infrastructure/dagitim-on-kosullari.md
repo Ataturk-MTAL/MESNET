@@ -38,6 +38,24 @@ Bu artık elle takip edilmez. Açılışta `RealmVerificationHostedService` çal
 Gerçek bir örnekte depoda 11 rol tanımlıyken çalışan realm'de yalnız 6'sı vardı; eksik beşi
 farklı sürümlerde eklenip her seferinde unutulmuştu.
 
+### Rolün var olması yetmez — atandığını da denetleyin
+
+İlk sürüm yalnız rolün realm'de **var olduğuna** bakıyordu. Bu, sorunun bir katman üstüydü:
+rol listesi tamamlandıktan sonra bile **kullanıcı→rol ataması** eksik kalabiliyor.
+
+Gerçek örnek (#205): 11 rolün tamamı yerindeydi, rol denetimi temiz geçiyordu; ama `admin`
+kullanıcısında yalnız `InstitutionManager` atanmıştı. `SystemAdmin` eksik olduğu için
+`platform:parameter:manage` hiç gelmedi, `PUT /api/payments/config/minimum-wage` 403 döndü ve
+asgari ücret o ortamda hiç girilemedi.
+
+Doğrulama artık ikisini de kapsıyor. Beklenen atamalar
+`RealmInvariants.ExpectedSeedUserRoles`'ta durur ve bir testle `mesnet-realm.json`'a bağlıdır —
+realm dosyasına eklenen bir atama sabite yansımazsa denetim onu **hiç aramaz**.
+
+**Bulunmayan kullanıcı sapma değildir.** `admin`, `teacher1` gibi kullanıcılar yalnız geliştirme
+realm'inin tohum verisidir; gerçek kurulumda hiçbiri bulunmaz. Denetlenen tek şey, var olan
+kullanıcının eksik rolüdür.
+
 ## Resync / backfill uçları
 
 Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden çok kez
