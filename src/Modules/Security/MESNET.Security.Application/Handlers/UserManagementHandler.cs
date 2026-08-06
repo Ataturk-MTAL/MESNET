@@ -106,7 +106,8 @@ public static class ChangeUserBranchesHandler
         IDocumentSession session, IMemoryCache cache)
     {
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
-        if (account is null)
+        // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
+        if (account is null || account.DeletedAt is not null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
         var previous = account.BranchCodes.ToList();
@@ -144,7 +145,8 @@ public static class ChangeUserStudentsHandler
         IDocumentSession session, IMemoryCache cache)
     {
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
-        if (account is null)
+        // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
+        if (account is null || account.DeletedAt is not null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
         var previous = account.LinkedStudentIds.ToList();
@@ -177,7 +179,8 @@ public static class UpdateUserHandler
         UpdateUser command, IKeycloakAdminService keycloak, IDocumentSession session)
     {
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
-        if (account is null)
+        // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
+        if (account is null || account.DeletedAt is not null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
         var kcResult = await keycloak.UpdateUserAsync(
@@ -212,7 +215,8 @@ public static class ChangeUserRolesHandler
         IDocumentSession session, IMemoryCache cache)
     {
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
-        if (account is null)
+        // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
+        if (account is null || account.DeletedAt is not null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
         var previousRoles = account.Roles.ToList();
@@ -250,7 +254,8 @@ public static class ChangeUserPermissionsHandler
         IDocumentSession session, IMemoryCache cache)
     {
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
-        if (account is null)
+        // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
+        if (account is null || account.DeletedAt is not null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
         // Mutlak guardrail — kapsam muafiyeti izinleri hiçbir yapılandırmayla bireysel
@@ -298,7 +303,8 @@ public static class ToggleUserStatusHandler
         IDocumentSession session, IMemoryCache cache)
     {
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
-        if (account is null)
+        // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
+        if (account is null || account.DeletedAt is not null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
         var kcResult = await keycloak.SetUserEnabledAsync(account.KeycloakUserId, command.Enable);
@@ -319,18 +325,37 @@ public static class ToggleUserStatusHandler
 
 public static class DeleteUserHandler
 {
+    /// <summary>
+    /// Kullanıcıyı siler. Keycloak kaydı gerçekten silinir, <b>yerel kayıt mezar taşı olarak
+    /// kalır</b> (#210).
+    ///
+    /// <para><b>Neden sert silinmiyor:</b> kayıt yoksa izin dönüşümü "bu kullanıcının kaydı
+    /// henüz oluşturulmamış" sanıp <b>token yedeğine</b> düşer ve izinleri <c>realm_access</c>
+    /// rollerinden yeniden türetir. Token imzalıdır, yalnız imza + <c>exp</c> ile doğrulanır —
+    /// silinen kullanıcı token'ı sona erene kadar (realm'de 1800 sn) tam yetkiyle çalışırdı.</para>
+    ///
+    /// <para>Önbellek de temizlenir; yoksa engel 5 dakika gecikirdi.</para>
+    /// </summary>
     public static async Task<UserDeleted> Handle(
-        DeleteUser command, IKeycloakAdminService keycloak, IDocumentSession session)
+        DeleteUser command, IKeycloakAdminService keycloak, IDocumentSession session,
+        IMemoryCache cache)
     {
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
-        if (account is null)
+        if (account is null || account.DeletedAt is not null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
         var kcResult = await keycloak.DeleteUserAsync(account.KeycloakUserId);
         if (kcResult.IsFailure)
             throw new DomainException(kcResult.Error);
 
-        session.Delete(account);
+        // Mezar taşı: kayıt bulunmaya devam etmeli ki erişim kesilebilsin. IsEnabled de
+        // düşürülür — iki alan birbirinin yedeği değil, ayrı ayrı kapatır.
+        account.DeletedAt = DateTime.UtcNow;
+        account.IsEnabled = false;
+        account.UpdatedAt = DateTime.UtcNow;
+        session.Store(account);
+
+        PermissionClaimsTransformation.InvalidateCache(cache, account.KeycloakUserId);
 
         return new UserDeleted(account.Id, account.KeycloakUserId);
     }
@@ -351,7 +376,8 @@ public static class ResyncUserDisplayNamesHandler
     public static async Task<(ResyncUserDisplayNamesResult, OutgoingMessages)> Handle(
         ResyncUserDisplayNames command, IQuerySession session)
     {
-        var accounts = await session.Query<UserAccount>().ToListAsync();
+        // Silinmiş hesaplar için ad olayı yayınlanmaz (#210).
+        var accounts = await session.Query<UserAccount>().Where(u => u.DeletedAt == null).ToListAsync();
 
         var messages = new OutgoingMessages();
         foreach (var account in accounts)
@@ -383,7 +409,8 @@ public static class SyncUsersFromKeycloakHandler
         if (kcResult.IsFailure)
             throw new DomainException(kcResult.Error);
 
-        var existing = await session.Query<UserAccount>().ToListAsync();
+        // Mezar taşları eşleşmeye girmez; Keycloak'ta o kullanıcı zaten yok (#210).
+        var existing = await session.Query<UserAccount>().Where(u => u.DeletedAt == null).ToListAsync();
         var byKeycloakId = existing
             .GroupBy(u => u.KeycloakUserId)
             .ToDictionary(g => g.Key, g => g.First());

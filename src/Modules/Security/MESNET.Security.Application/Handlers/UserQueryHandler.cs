@@ -36,7 +36,8 @@ public static class GetUserAccountsHandler
     public static async Task<PagedResult<UserAccountDto>> Handle(
         GetUserAccounts query, IQuerySession session)
     {
-        IQueryable<UserAccount> queryable = session.Query<UserAccount>();
+        // Mezar taşları yönetim yüzeyinde görünmez (#210).
+        IQueryable<UserAccount> queryable = session.Query<UserAccount>().Where(u => u.DeletedAt == null);
 
         if (query.InstitutionId.HasValue)
             queryable = queryable.Where(u => u.InstitutionId == query.InstitutionId.Value);
@@ -103,7 +104,8 @@ public static class GetUserAccountHandler
         GetUserAccount query, IQuerySession session)
     {
         var account = await session.LoadAsync<UserAccount>(query.UserAccountId);
-        if (account is null)
+        // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
+        if (account is null || account.DeletedAt is not null)
             throw new DomainException(SecurityErrors.UserNotFound(query.UserAccountId));
 
         return GetUserAccountsHandler.ToDto(account);

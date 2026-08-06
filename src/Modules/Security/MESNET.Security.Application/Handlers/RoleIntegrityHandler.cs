@@ -64,7 +64,8 @@ public static class GetRoleIntegrityReportHandler
                 i.Id, i.Email, i.FullName, i.TargetRole, i.StatusName, SuggestRole(i.TargetRole)))
             .ToList();
 
-        var accounts = await session.Query<UserAccount>().ToListAsync();
+        // Silinmiş hesabın rolü tutarsızsa da bildirilmez — düzeltilecek bir şey yok (#210).
+        var accounts = await session.Query<UserAccount>().Where(u => u.DeletedAt == null).ToListAsync();
         var badAccounts = accounts
             .Where(a => a.Roles.Any(r => !MesnetRoles.IsValid(r)))
             .OrderBy(a => a.FullName)
