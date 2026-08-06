@@ -27,10 +27,17 @@ public interface IUserPermissionProvider
 /// Boş olması normaldir (veli olmayan her kullanıcıda boştur) ve hiçbir öğrenciye erişim
 /// doğurmaz.
 /// </param>
+/// <param name="RolesWrittenAt">
+/// Kaydın son yazılma anı (<c>UpdatedAt ?? CreatedAt</c>) — sapma tespitinin zaman koşulu
+/// için (#208). Token bundan SONRA üretilmişse Keycloak kayıttan sonra değişmiş demektir;
+/// bu ayrım olmadan uygulamadan yapılan her rol kaldırma işlemi token ömrü boyunca yanlış
+/// alarm üretirdi. Varsayılan <c>default</c> = "bilinmiyor"; o hâlde sapma iddia edilmez.
+/// </param>
 public sealed record UserPermissionInfo(
     bool IsEnabled,
     IReadOnlyList<string> Roles,
     IReadOnlyList<string> DirectPermissions,
     IReadOnlyList<string> BranchCodes,
     Guid? InstitutionId = null,
-    IReadOnlyList<Guid>? LinkedStudentIds = null);
+    IReadOnlyList<Guid>? LinkedStudentIds = null,
+    DateTime RolesWrittenAt = default);

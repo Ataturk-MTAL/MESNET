@@ -77,9 +77,32 @@ değişikliği senkronizasyon çağrılmadan sisteme hiç ulaşmaz.
 Üçüncü katman ölçüldü: kayıt düzeltildikten sonra uç **3 dakika daha 403 döndü**, dördüncü
 denemede 200'e geçti. Düzeltmenin işe yaramadığı sanılıp geri alınmasın.
 
-> **Denetim bu üç katmanın yalnız birincisini görür.** Açılış doğrulaması realm'i denetler;
-> `UserAccount` kaydının Keycloak'tan sapmasını görmez. Rol değişikliğinden sonra senkronizasyonu
-> elle çağırın.
+### İkinci katman artık kendini bildiriyor (#208)
+
+Kayıt Keycloak'tan sapmışsa sistem **uyarı basar** — sessiz 403 dönemi kapandı:
+
+```
+UserAccount kaydı Keycloak'tan sapmış — kullanıcı 'admin', kayıtta eksik rol: SystemAdmin.
+Kayıt otoriter olduğu için bu roller izin ÜRETMEZ ve ilgili uçlar 403 döner.
+Düzeltme: POST /api/security/users/sync (izin önbelleği nedeniyle etkisi 5 dakikaya kadar gecikebilir).
+```
+
+Kontrol, kullanıcı sisteme geldiğinde çalışır (açılışta değil — gerçek bir kurulumda binlerce
+kullanıcı olabilir) ve kullanıcı başına en fazla **5 dakikada bir** konuşur; izin önbelleği
+tazelenirken kontrol edilir.
+
+**Uyarı erişimi değiştirmez.** Token'daki rolü kullanmak, kaydın otoriterliğini sessizce iptal
+ederdi; düzeltme kararı yöneticinindir.
+
+Yanlış alarm üretmemesi için iki koşul aranır:
+
+- Token, kayıttan **sonra** üretilmiş olmalı — yoksa uygulamadan yapılan her rol kaldırma
+  işlemi token ömrü boyunca (dev realm'inde 1800 sn) alarm çalardı
+- Rol, projenin tanıdığı bir MESNET rolü olmalı — Keycloak'ın teknik rolleri
+  (`offline_access`, `uma_authorization`, `default-roles-*`) `UserAccount`'a hiç yazılmaz
+
+> **Üçüncü katman hâlâ elle.** Senkronizasyon izin önbelleğini temizlemiyor (#209); düzeltmenin
+> etkisi 5 dakikaya kadar gecikebilir. "İşe yaramadı" sanıp geri almayın.
 
 ## Resync / backfill uçları
 

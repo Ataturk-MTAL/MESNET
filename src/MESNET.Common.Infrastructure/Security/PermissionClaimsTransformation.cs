@@ -85,6 +85,11 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
             if (entry is not null)
             {
                 _cache.Set(cacheKey, entry, CacheDuration);
+
+                // Sapma kontrolü BİLEREK cache miss dalında (#208): girdi 5 dakika yaşadığı
+                // için uyarı kullanıcı başına en fazla o sıklıkta çıkar. Her istekte
+                // çalıştırılsaydı tek bir sapma logu boğardı ve kontrol görmezden gelinirdi.
+                WarnIfAccountDrifted(principal, entry);
             }
         }
 
@@ -172,13 +177,50 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
 
             return new PermissionCacheEntry(
                 info.IsEnabled, info.Roles, info.DirectPermissions, info.BranchCodes,
-                info.InstitutionId, info.LinkedStudentIds ?? []);
+                info.InstitutionId, info.LinkedStudentIds ?? [], info.RolesWrittenAt);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "UserAccount yüklenirken hata: {KeycloakUserId}", keycloakUserId);
             return null;
         }
+    }
+
+    /// <summary>
+    /// <c>UserAccount</c> kaydı Keycloak'tan sapmışsa uyarır (#208).
+    ///
+    /// <para>Kayıt otoriter olduğu için token'daki doğru rol <b>hiç kullanılmaz</b>; kullanıcı
+    /// yalnız 403 görür ve nedenini anlamaz. Kararın kendisi saf
+    /// <see cref="UserAccountDriftPolicy"/> içinde ve testle kilitli; burada yalnız okuma var.</para>
+    ///
+    /// <para>Kontrol <b>erişimi değiştirmez</b> — yalnız log üretir. Sapmayı otomatik düzeltmek
+    /// (token'daki rolü kullanmak) kaydın otoriterliğini sessizce iptal ederdi; o karar
+    /// yöneticinindir.</para>
+    /// </summary>
+    private void WarnIfAccountDrifted(ClaimsPrincipal principal, PermissionCacheEntry entry)
+    {
+        if (ReadIssuedAt(principal) is not { } issuedAt) return;
+
+        var eksik = UserAccountDriftPolicy.Detect(
+            entry.Roles, entry.RolesWrittenAt, ExtractRealmRolesFromToken(principal), issuedAt);
+
+        if (eksik.Count == 0) return;
+
+        var username = principal.FindFirst("preferred_username")?.Value ?? "(bilinmiyor)";
+        _logger.LogWarning("{Rapor}", UserAccountDriftPolicy.Describe(username, eksik));
+    }
+
+    /// <summary>
+    /// Token'ın üretilme anı (<c>iat</c>, Unix saniye). Okunamazsa <c>null</c> — sapma
+    /// <b>iddia edilmez</b>, çünkü zaman koşulu olmadan yanlış alarm kaçınılmazdır.
+    /// </summary>
+    private static DateTime? ReadIssuedAt(ClaimsPrincipal principal)
+    {
+        var raw = principal.FindFirst("iat")?.Value;
+
+        return long.TryParse(raw, out var unixSeconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(unixSeconds).UtcDateTime
+            : null;
     }
 
     /// <summary>
@@ -548,11 +590,16 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         return [];
     }
 
+    /// <param name="RolesWrittenAt">
+    /// Kaydın son yazılma anı — sapma tespitinin zaman koşulu için (#208). Token bundan
+    /// SONRA üretilmişse Keycloak kayıttan sonra değişmiş demektir.
+    /// </param>
     private sealed record PermissionCacheEntry(
         bool IsEnabled,
         IReadOnlyList<string> Roles,
         IReadOnlyList<string> DirectPermissions,
         IReadOnlyList<string> BranchCodes,
         Guid? InstitutionId,
-        IReadOnlyList<Guid> LinkedStudentIds);
+        IReadOnlyList<Guid> LinkedStudentIds,
+        DateTime RolesWrittenAt);
 }
