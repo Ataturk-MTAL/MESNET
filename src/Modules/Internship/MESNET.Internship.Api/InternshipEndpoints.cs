@@ -85,16 +85,12 @@ public static class InternshipEndpoints
         Guid internshipId, RequestTerminationRequest request,
         ICurrentUserService currentUser, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(new RequestTermination(
+        // InvokeAsync<Result> DEĞİL: handler InternshipTerminationRequested döndürüyor ve
+        // Wolverine özel Result sarmalayıcısını anlamıyor — istek 500 dönüyordu. Fesih fiilen
+        // açılıyor, yalnız yanıt patlıyordu; uç arayüzden hiç çağrılmadığı için görülmemişti.
+        // Hata bildirimi DomainException ile gelir (422), Result ile değil.
+        await bus.InvokeAsync(new RequestTermination(
             internshipId, request.Reason, request.ReasonType, currentUser.GetFullName()));
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Fesih talebi oluşturuldu.")
