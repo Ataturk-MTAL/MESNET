@@ -199,6 +199,10 @@ public static class RolePermissionMap
             Permissions.Company.Manage,
             Permissions.Company.Document,
             Permissions.Company.Student,
+            // Fesih onay adımını yapabilmek için kendi stajlarını GÖRMESİ gerekir (#191).
+            // "view" değil "view-own": kapsamı OwnDataScope çözer ve işletme kimliği
+            // claim'den okunur — işletme yalnız KENDİ stajlarını görür.
+            Permissions.Internship.ViewOwn,
             Permissions.Company.Attendance,
             Permissions.Company.UploadReceipt,
             Permissions.Company.MasterTrainer,

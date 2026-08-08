@@ -125,13 +125,13 @@
         <template v-else>
           <q-list dense>
             <q-item
-              v-for="step in allSteps"
+              v-for="step in allStepsForSelected"
               :key="step.name"
             >
               <q-item-section avatar>
                 <q-icon
-                  :name="isApproved(step) ? 'check_circle' : 'radio_button_unchecked'"
-                  :color="isApproved(step) ? 'positive' : 'grey-5'"
+                  :name="isApproved(selectedChain, step) ? 'check_circle' : 'radio_button_unchecked'"
+                  :color="isApproved(selectedChain, step) ? 'positive' : 'grey-5'"
                 />
               </q-item-section>
               <q-item-section>
@@ -139,7 +139,7 @@
               </q-item-section>
               <q-item-section side>
                 <q-btn
-                  v-if="!isApproved(step) && canDo(step)"
+                  v-if="!isApproved(selectedChain, step) && canDo(step)"
                   dense
                   unelevated
                   color="primary"
@@ -220,6 +220,7 @@ import {
   type TerminationStepDto,
 } from 'src/api/internship'
 import { useServerPagination } from 'src/composables/useServerPagination'
+import { useTerminationChain } from 'src/composables/useTerminationChain'
 import { useNotify } from 'src/composables/useNotify'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useAuthStore } from 'stores/auth'
@@ -257,124 +258,63 @@ const { rows, loading, pagination, search, onRequest, onSearch, load } =
 // satırları izlemek aynı sonucu verir ve composable'ı değiştirmeye gerek bırakmaz.
 watch(rows, (items) => { loadChains(items).catch(() => {}) }, { immediate: true })
 
-// ─── Zincir durumları ───
-//
-// Liste DTO'su zinciri taşımıyor (zincir saga state'inde yaşıyor, read-model'de yok), bu
-// yüzden görünen satırlar için ayrı ayrı okunuyor. Sayfa başına ~20 küçük istek; liste
-// büyürse doğru çözüm zinciri read-model'e denormalize etmektir.
-const chains = ref<Record<string, TerminationChainStatusDto>>({})
-
-async function loadChains(items: InternshipSummaryDto[]) {
-  const sonuclar = await Promise.allSettled(
-    items.map((i) => internshipApi.getTerminationChain(i.id).then((r) => [i.id, r.data] as const)),
-  )
-
-  const yeni: Record<string, TerminationChainStatusDto> = {}
-  for (const s of sonuclar) if (s.status === 'fulfilled') yeni[s.value[0]] = s.value[1]
-  chains.value = yeni
-}
-
-function chainOf(id: string): TerminationChainStatusDto | undefined {
-  return chains.value[id]
-}
-
-function pendingOf(id: string): TerminationStepDto[] {
-  return chains.value[id]?.pendingSteps ?? []
-}
+const {
+  acting,
+  loadChains,
+  chainOf,
+  pendingOf,
+  allSteps,
+  isApproved,
+  canDo,
+  refresh,
+} = useTerminationChain()
 
 // ─── Zincir paneli ───
 const chainOpen = ref(false)
 const selected = ref<InternshipSummaryDto | null>(null)
 const selectedChain = ref<TerminationChainStatusDto | null>(null)
-const acting = ref(false)
 const overrideReason = ref('')
 
 const canOverride = computed(() => authStore.hasPermission(Permissions.Internship.Manage))
 
-/**
- * Panelde tüm adımlar gösterilir — onaylananlar işaretli, bekleyenler açık.
- *
- * Bekleyen listesi yalnız eksikleri taşıdığı için tamamlananları ondan türetemeyiz;
- * zincirin ham bayrakları kullanılır.
- */
-const allSteps = computed<TerminationStepDto[]>(() => {
-  const bekleyen = selectedChain.value?.pendingSteps ?? []
-  const tamamlanan = tamamlananAdimlar()
-  return [...tamamlanan, ...bekleyen].sort((a, b) => KANONIK.indexOf(a.name) - KANONIK.indexOf(b.name))
-})
-
-const KANONIK = ['Parent', 'Teacher', 'Deputy', 'Director', 'BusinessRep']
-
-/**
- * Onaylanmış adımlar — sunucu bunları `pendingSteps`'te göndermez, ham bayraklardan
- * çıkarılır. Bayrak→adım eşlemesi burada zorunlu; ama izin bilgisi yine sunucudan gelen
- * bekleyen adımlardan okunur, uydurulmaz.
- */
-function tamamlananAdimlar(): TerminationStepDto[] {
-  const c = selectedChain.value?.chain
-  if (!c) return []
-
-  const onayli: Array<[string, boolean, string]> = [
-    ['Parent', c.parentApproved && (selectedChain.value?.requiresParentApproval ?? false), 'Veli'],
-    ['Teacher', c.teacherApproved, 'Koordinatör Öğretmen'],
-    ['Deputy', c.deputyApproved, 'Müdür Yardımcısı'],
-    ['Director', c.directorApproved, 'Müdür'],
-    ['BusinessRep', c.businessRepApproved, 'İşletme Yetkilisi'],
-  ]
-
-  return onayli
-    .filter(([, verildi]) => verildi)
-    .map(([name, , slug]) => ({ name, slug, endpoint: '', permission: '' }))
-}
-
-function isApproved(step: TerminationStepDto): boolean {
-  return !(selectedChain.value?.pendingSteps ?? []).some((s) => s.name === step.name)
-}
-
-/** Buton görünürlüğü sunucudan gelen izne bakar — rol adına değil (ADR-0001). */
-function canDo(step: TerminationStepDto): boolean {
-  return !!step.permission && authStore.hasPermission(step.permission)
-}
+const allStepsForSelected = computed(() => allSteps(selectedChain.value))
 
 function openChain(row: InternshipSummaryDto) {
   selected.value = row
-  selectedChain.value = chains.value[row.id] ?? null
+  selectedChain.value = chainOf(row.id) ?? null
   overrideReason.value = ''
   chainOpen.value = true
 }
 
-async function refreshSelected() {
-  if (!selected.value) return
-  const res = await internshipApi.getTerminationChain(selected.value.id)
-  selectedChain.value = res.data
-  chains.value = { ...chains.value, [selected.value.id]: res.data }
-}
-
 async function approve(step: TerminationStepDto) {
   if (!selected.value) return
+  const internshipId = selected.value.id
+
   acting.value = true
   try {
-    await internshipApi.approveTerminationStep(selected.value.id, step.endpoint)
+    await internshipApi.approveTerminationStep(internshipId, step.endpoint)
     notify.success(`${step.slug} onayı verildi.`)
   } finally {
     acting.value = false
   }
   // Yenileme try/catch dışında: onay başarılı ama yenileme başarısızsa hem başarı hem hata
   // bildirimi gösterilmemeli.
-  await refreshSelected().catch(() => {})
+  await refresh(internshipId, selectedChain).catch(() => {})
 }
 
 async function doOverride() {
   if (!selected.value || !overrideReason.value.trim()) return
+  const internshipId = selected.value.id
+
   acting.value = true
   try {
-    await internshipApi.overrideTermination(selected.value.id, { reason: overrideReason.value.trim() })
+    await internshipApi.overrideTermination(internshipId, { reason: overrideReason.value.trim() })
     notify.success('Onay zinciri atlandı.')
     overrideReason.value = ''
   } finally {
     acting.value = false
   }
-  await refreshSelected().catch(() => {})
+  await refresh(internshipId, selectedChain).catch(() => {})
   load().catch(() => {})
 }
 </script>

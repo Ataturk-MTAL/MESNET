@@ -31,7 +31,7 @@ public static class GetTerminationChainHandler
         if (saga is null)
             throw new DomainException(InternshipErrors.NotFound(query.InternshipId));
 
-        EnsureInScope(currentUser, saga.StudentId, query.InternshipId);
+        EnsureInScope(currentUser, saga.StudentId, saga.BusinessId, query.InternshipId);
 
         var pending = TerminationChainPolicy.PendingSteps(saga.ApprovalChain, saga.RequiresParentApproval);
 
@@ -55,12 +55,20 @@ public static class GetTerminationChainHandler
     /// Kapsam dışı istek "bulunamadı" döner — "yetkin yok" deseydik, kimliğin var olduğunu
     /// doğrulamış olurduk.
     /// </summary>
-    private static void EnsureInScope(ICurrentUserService currentUser, Guid studentId, Guid internshipId)
+    private static void EnsureInScope(
+        ICurrentUserService currentUser, Guid studentId, Guid? businessId, Guid internshipId)
     {
-        var scope = OwnDataScope.Resolve(currentUser, Permissions.Internship.View);
+        // İşletme basamağı açık (#191): işletme yetkilisi kendi stajının zincirini okuyabilmeli,
+        // yoksa listede görüp detayını açamaz ve kendi onay adımını yapamazdı.
+        var scope = OwnDataScope.Resolve(
+            currentUser, Permissions.Internship.View, includeBusinessScope: true);
+
         if (scope.IsUnrestricted) return;
 
-        if (!scope.StudentIds.Contains(studentId))
-            throw new DomainException(InternshipErrors.NotFound(internshipId));
+        // Kapsamlar birleşir — öğrenci bağı YA DA işletme eşleşmesi yeter.
+        if (scope.StudentIds.Contains(studentId)) return;
+        if (scope.BusinessId is { } b && businessId == b) return;
+
+        throw new DomainException(InternshipErrors.NotFound(internshipId));
     }
 }

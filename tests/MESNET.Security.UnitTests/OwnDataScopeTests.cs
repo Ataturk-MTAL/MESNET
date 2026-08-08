@@ -180,20 +180,98 @@ public sealed class OwnDataScopeTests
         permissions.ShouldNotContain(Permissions.Salary.View);
     }
 
+    // ─── İşletme basamağı (#191, 3/3) ─────────────────────────────────────────────────
+
+    private static readonly Guid Isletme = Guid.Parse("44444444-4444-4444-4444-444444444444");
+
+    /// <summary>
+    /// <b>Basamak OPT-IN'dir.</b> İşletme yetkilisinin kendi stajlarını görmesi yalnız staj
+    /// listesinde isteniyor; devamsızlık ve ücret listelerinde aynı genişleme <b>istenmiyor</b>.
+    /// Varsayılan açık olsaydı iki uç sessizce genişlerdi — kimsenin talep etmediği bir
+    /// erişim, kimsenin fark etmediği bir açıktır.
+    /// </summary>
+    [Fact]
+    public void Isletme_basamagi_varsayilan_olarak_KAPALIDIR()
+    {
+        var user = Fake(permissions: [Permissions.Company.Student], businessId: Isletme);
+
+        var scope = OwnDataScope.Resolve(user, Permissions.Internship.View);
+
+        scope.IsEmpty.ShouldBeTrue("Opt-in olmadan işletme kapsamı doğmamalı.");
+        scope.BusinessId.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Isletme_yetkilisi_opt_in_ile_kendi_isletmesini_gorur()
+    {
+        var user = Fake(permissions: [Permissions.Company.Student], businessId: Isletme);
+
+        var scope = OwnDataScope.Resolve(user, Permissions.Internship.View, includeBusinessScope: true);
+
+        scope.IsUnrestricted.ShouldBeFalse();
+        scope.BusinessId.ShouldBe(Isletme);
+        scope.IsEmpty.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Geniş izin işletme basamağının ÖNÜNDEDİR — okul tarafı bugünkü davranışını korur.
+    /// </summary>
+    [Fact]
+    public void Genis_izin_isletme_basamagini_gecer()
+    {
+        var user = Fake(permissions: [Permissions.Internship.View], businessId: Isletme);
+
+        var scope = OwnDataScope.Resolve(user, Permissions.Internship.View, includeBusinessScope: true);
+
+        scope.IsUnrestricted.ShouldBeTrue();
+        scope.BusinessId.ShouldBeNull("Geniş izinde daraltma alanı doldurulmamalı.");
+    }
+
+    /// <summary>
+    /// Hem veli hem işletme yetkilisi olan kullanıcı <b>ikisini de</b> görür — kapsamlar
+    /// birleşir, biri diğerini yutmaz. Sıralı bir merdiven olsaydı bu kullanıcı sessizce
+    /// yarısını kaybederdi.
+    /// </summary>
+    [Fact]
+    public void Veli_ve_isletme_kapsamlari_birlesir()
+    {
+        var user = Fake(
+            permissions: [Permissions.Company.Student],
+            linkedStudentIds: [ChildA],
+            businessId: Isletme);
+
+        var scope = OwnDataScope.Resolve(user, Permissions.Internship.View, includeBusinessScope: true);
+
+        scope.StudentIds.ShouldBe([ChildA]);
+        scope.BusinessId.ShouldBe(Isletme);
+    }
+
+    /// <summary>İşletme kimliği boşsa kapsam doğmaz — boş kimlik "her işletme" demek değildir.</summary>
+    [Fact]
+    public void Bos_isletme_kimligi_kapsam_uretmez()
+    {
+        var user = Fake(permissions: [Permissions.Company.Student], businessId: Guid.Empty);
+
+        OwnDataScope.Resolve(user, Permissions.Internship.View, includeBusinessScope: true)
+            .IsEmpty.ShouldBeTrue();
+    }
+
     private static ICurrentUserService Fake(
         IReadOnlyList<string> permissions,
         IReadOnlyList<Guid>? linkedStudentIds = null,
-        Guid? studentId = null) =>
-        new FakeCurrentUser(permissions, linkedStudentIds ?? [], studentId);
+        Guid? studentId = null,
+        Guid? businessId = null) =>
+        new FakeCurrentUser(permissions, linkedStudentIds ?? [], studentId, businessId);
 
     /// <summary>Rol adı taşımayan sahte kullanıcı — kapsam kararı yalnız izin + claim ile verilir.</summary>
     private sealed class FakeCurrentUser(
         IReadOnlyList<string> permissions,
         IReadOnlyList<Guid> linkedStudentIds,
-        Guid? studentId) : ICurrentUserService
+        Guid? studentId,
+        Guid? businessId = null) : ICurrentUserService
     {
         public UserContext? GetCurrentUser() =>
-            new(Guid.NewGuid(), "Test Kullanıcı",
+            new(Guid.NewGuid(), "Test Kullanıcı", BusinessId: businessId,
                 StudentId: studentId, Permissions: permissions, LinkedStudentIds: linkedStudentIds);
 
         public Guid GetUserId() => Guid.Empty;

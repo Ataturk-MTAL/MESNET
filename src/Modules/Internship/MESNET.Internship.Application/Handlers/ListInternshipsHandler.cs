@@ -20,14 +20,27 @@ public static class ListInternshipsHandler
         // Kapsam merdiveni (#182): geniş görüntüleme izni yoksa kullanıcı yalnız KENDİ verisini
         // görür — veli bağlı öğrencilerini, öğrenci kendisini. Kapsam çözülemezse boş sonuç;
         // kapsamsız kullanıcıya tüm kurumun verisini açmaktansa hiçbir şey göstermek doğrudur.
-        var scope = OwnDataScope.Resolve(currentUser, Permissions.Internship.View);
+        //
+        // İşletme basamağı burada AÇIK (#191): işletme yetkilisi fesih onay adımını yapabilmek
+        // için kendi stajlarını görebilmeli. CompanyManager'da internship:view yok, bu basamak
+        // olmadan liste boş dönerdi. Basamak opt-in'dir — devamsızlık ve ücret listeleri onu
+        // istemez, orada aynı genişleme talep edilmedi.
+        var scope = OwnDataScope.Resolve(
+            currentUser, Permissions.Internship.View, includeBusinessScope: true);
+
         if (scope.IsEmpty)
             return EmptyPage(query);
 
         if (!scope.IsUnrestricted)
         {
+            // Kapsamlar BİRLEŞİR: hem veli hem işletme yetkilisi olan kullanıcı ikisini de
+            // görür. Tek filtreye indirgeseydik o kullanıcı sessizce yarısını kaybederdi.
             var scopedStudentIds = scope.StudentIds;
-            queryable = queryable.Where(s => scopedStudentIds.Contains(s.StudentId));
+            var scopedBusinessId = scope.BusinessId;
+
+            queryable = queryable.Where(s =>
+                scopedStudentIds.Contains(s.StudentId)
+                || (scopedBusinessId != null && s.BusinessId == scopedBusinessId));
         }
 
         if (query.StudentId.HasValue)
