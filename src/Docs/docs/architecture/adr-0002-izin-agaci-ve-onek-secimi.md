@@ -117,7 +117,7 @@ Wildcard'lar genişletilmiş hâliyle.
 | Kurum Personeli (`InstitutionStaff`) | 18 | — |
 | Alan Şefi (`DepartmentHead`) | 14 | `department:*` |
 | Koordinatör Öğretmen (`Teacher`) | 23 | — |
-| İşletme Yetkilisi (`CompanyManager`) | 14 | — |
+| İşletme Yetkilisi (`CompanyManager`) | 15 | — |
 | Usta Öğretici (`MasterTrainer`) | 10 | `communication:*` |
 | İşletme İnsan Kaynakları (`CompanyHR`) | 8 | — |
 | Öğrenci (`Student`) | 11 | — |
@@ -183,7 +183,7 @@ Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kay
 | `internship:review` | ○ | · | · | · | ● | · | · | · | · | · | · |
 | `internship:approve` | ○ | ● | · | · | ● | · | · | · | · | · | · |
 | `internship:approve:parent` | ○ | ● | · | · | ● | · | · | · | · | ● | · |
-| `internship:view-own` | ○ | · | · | · | · | · | · | · | ● | ● | · |
+| `internship:view-own` | ○ | · | · | · | · | ● | · | · | ● | ● | · |
 | `internship:manage` | ○ | ● | · | · | · | · | · | · | · | · | · |
 | `internship:contract:manage` | ○ | ● | · | · | · | · | · | · | · | · | · |
 | `internship:report:manage` | ○ | · | · | · | · | · | · | · | · | · | · |
