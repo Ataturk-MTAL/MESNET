@@ -112,16 +112,16 @@ Wildcard'lar genişletilmiş hâliyle.
 
 | Rol | İzin | Wildcard önekleri |
 | --- | ---: | --- |
-| Kurum Müdürü (`InstitutionManager`) | 78 | `attendance:*` `communication:*` `company:*` `coordinator:*` `department:*` `document:*` `institution:*` `internship:*` `salary:*` `student:*` `user:*` |
-| Müdür Yardımcısı (`DeputyDirector`) | 44 | `department:*` `user:*` |
+| Kurum Müdürü (`InstitutionManager`) | 77 | `attendance:*` `communication:*` `company:*` `coordinator:*` `department:*` `document:*` `institution:*` `internship:*` `salary:*` `student:*` `user:*` |
+| Müdür Yardımcısı (`DeputyDirector`) | 43 | `department:*` `user:*` |
 | Kurum Personeli (`InstitutionStaff`) | 18 | — |
 | Alan Şefi (`DepartmentHead`) | 14 | `department:*` |
-| Koordinatör Öğretmen (`Teacher`) | 23 | — |
+| Koordinatör Öğretmen (`Teacher`) | 22 | — |
 | İşletme Yetkilisi (`CompanyManager`) | 15 | — |
 | Usta Öğretici (`MasterTrainer`) | 10 | `communication:*` |
 | İşletme İnsan Kaynakları (`CompanyHR`) | 8 | — |
 | Öğrenci (`Student`) | 11 | — |
-| Veli (`Parent`) | 10 | — |
+| Veli (`Parent`) | 9 | — |
 | Sistem Yöneticisi (`SystemAdmin`) | 2 | — |
 
 ### Domainler
@@ -131,7 +131,7 @@ Wildcard'lar genişletilmiş hâliyle.
 | `institution:` | 9 | Kurum Müdürü |
 | `student:` | 6 | Kurum Müdürü |
 | `company:` | 10 | Kurum Müdürü |
-| `internship:` | 9 | Kurum Müdürü |
+| `internship:` | 8 | Kurum Müdürü |
 | `attendance:` | 12 | Kurum Müdürü |
 | `salary:` | 6 | Kurum Müdürü |
 | `platform:` | 1 | — (her rol tek tek alır) |
@@ -182,7 +182,6 @@ Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kay
 | `internship:view` | ○ | ● | ● | · | ● | · | · | · | · | · | · |
 | `internship:review` | ○ | · | · | · | ● | · | · | · | · | · | · |
 | `internship:approve` | ○ | ● | · | · | ● | · | · | · | · | · | · |
-| `internship:approve:parent` | ○ | ● | · | · | ● | · | · | · | · | ● | · |
 | `internship:view-own` | ○ | · | · | · | · | ● | · | · | ● | ● | · |
 | `internship:manage` | ○ | ● | · | · | · | · | · | · | · | · | · |
 | `internship:contract:manage` | ○ | ● | · | · | · | · | · | · | · | · | · |

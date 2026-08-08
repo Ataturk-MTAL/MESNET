@@ -97,15 +97,27 @@ PASİF → KAPATILMIŞ (kalıcı kapatma)
 
 ### 4.3 Dijital Onay Zinciri
 
-Fesih kararı şu sırayla dijital onay gerektirir:
+Fesih kararı **sırayla** şu dijital onayları gerektirir:
 
-1. **Öğrenci velisi** (18 yaş altı öğrenciler için zorunlu)
-2. **Koordinatör öğretmen**
-3. **Müdür yardımcısı**
-4. **Müdür**
-5. **İşletme yetkilisi**
+1. **Koordinatör öğretmen**
+2. **Müdür yardımcısı**
+3. **Müdür** — müdür onayında fesih **tamamlanır**
 
-**Takılma Kuralı:** Onay zinciri takılırsa (veli veya öğretmen onaylamıyorsa), yetkili müdür yardımcısı override yetkisiyle formu onaylayıp ıslak imzaya gönderebilir.
+**Veli ve işletme yetkilisi bu zincirde yoktur.** Onlar fesih **talep eder**, onaylamaz:
+
+| Talebi açan | Zincir |
+| --- | --- |
+| İşletme yetkilisi ya da veli | koordinatör öğretmen → müdür yardımcısı → müdür |
+| Okul (tek taraflı fesih) | koordinatör öğretmen **talep eder**, müdür yardımcısı → müdür onaylar |
+
+Her iki durumda da onaycı üçlüsü aynıdır; değişen yalnız talebi kimin açtığıdır ve o bilgi
+`RequestedBy`/`ReasonType` ile kaydedilir.
+
+**Sıra zorunludur:** müdür yardımcısı, koordinatör öğretmen onaylamadan onaylayamaz. Sırası
+gelmemiş adım denenirse istek reddedilir (422) ve hata mesajı hangi adımın beklendiğini söyler.
+
+**Takılma Kuralı:** Onay zinciri takılırsa yetkili müdür yardımcısı override yetkisiyle
+(gerekçe zorunlu) formu onaylayıp ıslak imzaya gönderebilir.
 
 ### 4.4 Islak İmza Süreci
 

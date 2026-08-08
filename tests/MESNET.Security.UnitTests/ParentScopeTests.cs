@@ -95,30 +95,19 @@ public sealed class ParentScopeTests
     }
 
     /// <summary>
-    /// Fesih zincirinde veli YALNIZ kendi adımını yapar. <c>internship:approve</c> verilseydi
-    /// <c>/approve/teacher</c> ve <c>/approve/deputy</c> uçlarına da erişir, zincirin üç adımını
-    /// tek başına tamamlardı — zincir hiçbir şey korumazdı.
+    /// Veli fesih zincirinde <b>onaycı değildir</b> (#218).
+    ///
+    /// <para>Model düzeltildi: veli ve işletme yetkilisi fesih <b>talep eder</b>, onaylamaz.
+    /// Zincir koordinatör öğretmen → müdür yardımcısı → müdürden ibarettir. Bu yüzden
+    /// <c>internship:approve:parent</c> izni de kaldırıldı — hiçbir uca bağlı değildi ve
+    /// olmayan bir yetkiyi varmış gibi gösteriyordu.</para>
     /// </summary>
     [Fact]
-    public void Veli_yalniz_kendi_fesih_adimini_yapar()
+    public void Veli_fesih_zincirinde_onaycu_degildir()
     {
-        ParentPermissions.ShouldContain(Permissions.Internship.ApproveParent);
         ParentPermissions.ShouldNotContain(Permissions.Internship.Approve);
         ParentPermissions.ShouldNotContain(Permissions.Internship.Manage);
-    }
-
-    /// <summary>
-    /// <b>Regresyon:</b> veli adımı ayrı izne taşındı ama okul tarafı hâlâ yapabiliyor —
-    /// veli hesabı olmayan öğrencide adımı bugün olduğu gibi okul yürütür.
-    /// </summary>
-    [Theory]
-    [InlineData(MesnetRoles.Teacher)]
-    [InlineData(MesnetRoles.DeputyDirector)]
-    [InlineData(MesnetRoles.InstitutionManager)]
-    public void Okul_tarafi_veli_adimini_yurutmeye_devam_eder(string role)
-    {
-        RolePermissionMap.GetPermissionsForRoles([role])
-            .ShouldContain(Permissions.Internship.ApproveParent);
+        ParentPermissions.ShouldNotContain("internship:approve:parent");
     }
 
     /// <summary>Veli okul/işletme tarafının hiçbir yönetim iznini almaz.</summary>

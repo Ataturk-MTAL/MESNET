@@ -63,9 +63,6 @@ public static class RolePermissionMap
             Permissions.Internship.View,       // staj listesi görüntüleme
             Permissions.Internship.Manage,     // fesih talebi başlatma, genel yönetim
             Permissions.Internship.Approve,    // fesih onay zinciri (kendi adımı)
-            // Veli adımı (#174) ayrı izne taşındı; veli hesabı olmayan öğrencide adımı okul
-            // yürütür — bugünkü davranış korunur.
-            Permissions.Internship.ApproveParent,
             Permissions.Internship.Contract,   // sözleşme yönetimi
             Permissions.Salary.View,
             Permissions.Salary.Calculate,
@@ -136,7 +133,6 @@ public static class RolePermissionMap
             Permissions.Internship.View,
             Permissions.Internship.Review,     // başvuru inceleme
             Permissions.Internship.Approve,    // fesih onay zincirinde kendi adımı
-            Permissions.Internship.ApproveParent,  // veli hesabı yoksa adımı okul yürütür (#174)
             Permissions.Attendance.View,
             Permissions.Attendance.Manage,
             Permissions.Attendance.Report,
@@ -259,10 +255,6 @@ public static class RolePermissionMap
         [
             Permissions.Student.ViewOwn,        // öğrencisinin profili
             Permissions.Internship.ViewOwn,     // öğrencisinin staj durumu
-            // Fesih zincirindeki VELİ adımı — "internship:approve" DEĞİL. O izin verilseydi
-            // veli /approve/teacher ve /approve/deputy uçlarına da erişir, zincirin üç adımını
-            // tek başına tamamlardı.
-            Permissions.Internship.ApproveParent,
             Permissions.Attendance.ViewOwn,     // öğrencisinin devamsızlığı
             // Sağlık raporu girişi (#172) — onaya düşer. DirectEntry / HealthReportDirect
             // bu rolde YOKTUR: veli, öğrencisinin ücret kesintisini tek taraflı kaldıramaz.

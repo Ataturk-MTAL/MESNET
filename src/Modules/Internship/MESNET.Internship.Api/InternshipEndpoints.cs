@@ -26,14 +26,9 @@ public static class InternshipEndpoints
         group.MapGet("/{internshipId:guid}/termination-chain", GetTerminationChainStatus)
             .RequireAuthorization(PermissionPolicies.InternshipViewOrOwn);
         group.MapPost("/{internshipId:guid}/terminate", PostRequestTermination).RequireAuthorization(Permissions.Internship.Manage);
-        // Veli adımı ayrı izin ister (#174): "internship:approve" verilseydi veli
-        // /approve/teacher ve /approve/deputy uçlarına da erişir, zincirin üç adımını tek
-        // başına tamamlardı. Okul tarafı bu izni de taşır — bugünkü davranış korunur.
-        group.MapPost("/{internshipId:guid}/approve/parent", PostApproveParent).RequireAuthorization(Permissions.Internship.ApproveParent);
         group.MapPost("/{internshipId:guid}/approve/teacher", PostApproveTeacher).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/director", PostApproveDirector).RequireAuthorization(Permissions.Internship.Manage);
-        group.MapPost("/{internshipId:guid}/approve/business", PostApproveBusinessRep).RequireAuthorization(Permissions.Company.Student);
         group.MapPost("/{internshipId:guid}/approve/override", PostOverride).RequireAuthorization(Permissions.Internship.Manage);
     }
 
@@ -97,14 +92,6 @@ public static class InternshipEndpoints
             .Build());
     }
 
-    private static async Task<IResult> PostApproveParent(
-        Guid internshipId, IMessageBus bus)
-    {
-        await bus.InvokeAsync(new ApproveTerminationByParent(internshipId));
-        return Results.Ok(ResponseBuilder.Success()
-            .AddMessage("Veli onayı verildi.")
-            .Build());
-    }
 
     private static async Task<IResult> PostApproveTeacher(
         Guid internshipId, IMessageBus bus)
@@ -133,14 +120,6 @@ public static class InternshipEndpoints
             .Build());
     }
 
-    private static async Task<IResult> PostApproveBusinessRep(
-        Guid internshipId, IMessageBus bus)
-    {
-        await bus.InvokeAsync(new ApproveTerminationByBusinessRep(internshipId));
-        return Results.Ok(ResponseBuilder.Success()
-            .AddMessage("İşletme yetkilisi onayı verildi.")
-            .Build());
-    }
 
     /// <summary>
     /// Onay zincirini atlar. <b>Kimin atladığı token'dan damgalanır</b> (#191) — override,

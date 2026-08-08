@@ -121,7 +121,7 @@ title: Aktör Tanımları
   - Öğrencinin devam durumunu görüntüleme
   - Öğrencinin sağlık raporunu yükleme (okul onayına tabidir)
   - MESEM ücretli izin başvurusu açma (işletme ve okul onayından geçer, #177)
-  - Fesih onay zincirinde **yalnız** veli adımı (`internship:approve:parent`)
+  - Fesih **talep edebilir**; onay zincirinde yer almaz (#218 — onaylar okul tarafında)
 
   > **Kapsamı tek öğrencidir:** veli yalnız bağlı olduğu öğrencinin verisini görür. Kapsam
   > kararı permission'la değil, veliyle öğrenci arasındaki **bağ kaydıyla** verilir — kurum

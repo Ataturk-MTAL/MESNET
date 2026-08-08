@@ -12,29 +12,24 @@ namespace MESNET.Internship.Application.Dtos;
 /// Fesih süreci açık mı. <c>false</c> ise zincir hiç başlamamıştır ve
 /// <paramref name="Chain"/> <c>null</c>'dur.
 /// </param>
-/// <param name="RequiresParentApproval">
-/// Veli adımı aranıyor mu — kararı saga verir (18 yaş altı). Arayüz bu adımı buna göre
-/// gösterir; kendi başına yaş hesaplamaz.
-/// </param>
 /// <param name="Chain">Ham onay bayrakları; süreç açılmamışsa <c>null</c>.</param>
-/// <param name="PendingSteps">
-/// Henüz onaylanmamış adımlar, kanonik sırada. <b>Sıra dayatma değildir</b> — zincir sıralı
-/// değildir, müdür öğretmenden önce onaylayabilir.
+/// <param name="NextStep">
+/// Sıradaki adım — zincir <b>sıralıdır</b> (#218), aynı anda yalnız bir adım onaylanabilir.
+/// Zincir kapandıysa ya da override edildiyse <c>null</c>.
 /// </param>
 /// <param name="TerminationReason">Fesih gerekçesi (talep sırasında girilir).</param>
-/// <param name="TerminationReasonType">Fesih gerekçe türü.</param>
+/// <param name="TerminationReasonType">Fesih gerekçe türü — talebi kimin açtığını da taşır.</param>
 public sealed record TerminationChainStatusDto(
     bool IsActive,
-    bool RequiresParentApproval,
     TerminationApprovalChainDto? Chain,
-    IReadOnlyList<TerminationStepDto> PendingSteps,
+    TerminationStepDto? NextStep,
     string? TerminationReason,
     string? TerminationReasonType);
 
 /// <summary>
 /// Zincirin tek bir adımı — arayüz butonu bu bilgiyle kurulur.
 /// </summary>
-/// <param name="Name">İngilizce ad (<c>Parent</c>, <c>Teacher</c> …) — makine tarafı.</param>
+/// <param name="Name">İngilizce ad (<c>Teacher</c>, <c>Deputy</c>, <c>Director</c>).</param>
 /// <param name="Slug">Türkçe görünen ad.</param>
 /// <param name="Endpoint">
 /// <c>POST /api/internships/{id}/approve/{Endpoint}</c> yolundaki son parça.

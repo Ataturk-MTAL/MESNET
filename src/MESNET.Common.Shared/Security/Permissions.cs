@@ -209,22 +209,6 @@ public static class Permissions
         /// <summary>Staj yerleştirme ve fesih onay zincirini ilerletme.</summary>
         public const string Approve = "internship:approve";
 
-        /// <summary>
-        /// Fesih onay zincirindeki <b>veli adımı</b> (#174).
-        ///
-        /// <para><b>Neden <see cref="Approve"/>'dan ayrı:</b> zincirin veli, öğretmen ve müdür
-        /// yardımcısı adımları aynı <c>internship:approve</c> iznini istiyordu. Veliye o izin
-        /// verilseydi <c>/approve/teacher</c> ve <c>/approve/deputy</c> uçlarına da erişir,
-        /// zincirin üç adımını tek başına tamamlardı. Veli yalnız bu izni alır.</para>
-        ///
-        /// <para>Okul tarafı (öğretmen, müdür yardımcısı, müdür) bu izni de taşır — veli hesabı
-        /// olmayan öğrencide adımı bugün olduğu gibi okul yürütür, davranış DEĞİŞMEZ.</para>
-        ///
-        /// <para><b>Kapsam ayrıdır:</b> veli yalnız bağlı olduğu öğrencinin stajında bu adımı
-        /// yapabilir — kontrol <c>UserAccount.LinkedStudentIds</c> kaydından okunur, istekten
-        /// ALINMAZ (ADR-0001).</para>
-        /// </summary>
-        public const string ApproveParent = "internship:approve:parent";
 
         /// <summary>Öğrencinin kendi staj durumunu görüntülemesi.</summary>
         public const string ViewOwn = "internship:view-own";

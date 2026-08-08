@@ -4,6 +4,7 @@ using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Internship.Application.Dtos;
 using MESNET.Internship.Application.Errors;
+using MESNET.Internship.Application.Extensions;
 using MESNET.Internship.Application.Queries;
 using MESNET.Internship.Application.Sagas;
 using MESNET.Internship.Core.Policies;
@@ -33,19 +34,14 @@ public static class GetTerminationChainHandler
 
         EnsureInScope(currentUser, saga.StudentId, saga.BusinessId, query.InternshipId);
 
-        var pending = TerminationChainPolicy.PendingSteps(saga.ApprovalChain, saga.RequiresParentApproval);
+        var next = TerminationChainPolicy.NextStep(saga.ApprovalChain);
 
         return new TerminationChainStatusDto(
             IsActive: saga.ApprovalChain is not null,
-            RequiresParentApproval: saga.RequiresParentApproval,
-            Chain: saga.ApprovalChain is { } chain
-                ? new TerminationApprovalChainDto(
-                    chain.ParentApproved, chain.TeacherApproved, chain.DeputyApproved,
-                    chain.DirectorApproved, chain.BusinessRepApproved,
-                    chain.IsOverridden, chain.OverriddenBy, chain.OverriddenAt, chain.CompletedAt)
-                : null,
-            PendingSteps: [.. pending.Select(s =>
-                new TerminationStepDto(s.Name, s.Slug, s.Endpoint, s.Permission))],
+            Chain: saga.ApprovalChain?.ToDto(),
+            NextStep: next is null
+                ? null
+                : new TerminationStepDto(next.Name, next.Slug, next.Endpoint, next.Permission),
             TerminationReason: saga.TerminationReason,
             TerminationReasonType: saga.TerminationReasonType);
     }
