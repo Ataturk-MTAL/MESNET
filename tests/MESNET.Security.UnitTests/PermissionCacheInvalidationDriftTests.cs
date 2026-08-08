@@ -34,18 +34,18 @@ public sealed class PermissionCacheInvalidationDriftTests
     /// hesabın önbellekte girdisi olamaz. Kayıt bulunamayan kullanıcı için dönüşüm zaten
     /// hiçbir şey önbelleğe koymaz.</para>
     /// </summary>
-    private static readonly Regex YetkiAlaniYazimi = new(
+    private static readonly Regex PermissionFieldWrite = new(
         @"\w+\.(Roles|IsEnabled|DirectPermissions|BranchCodes|LinkedStudentIds|DeletedAt|InstitutionId|BusinessId)\s*=(?!=)",
         RegexOptions.Compiled);
 
-    private static readonly Regex SinifBasi = new(
+    private static readonly Regex ClassHeader = new(
         @"^(?:public|internal)\s+(?:static\s+|sealed\s+)*class\s+(\w+)", RegexOptions.Compiled | RegexOptions.Multiline);
 
     [Fact]
     public void Yetki_alani_yazan_her_sinif_onbellegi_temizler()
     {
         var kok = Path.Combine(RepoRoot(), "src", "Modules", "Security");
-        var ihlaller = new List<string>();
+        var violations = new List<string>();
 
         foreach (var file in Directory.EnumerateFiles(kok, "*.cs", SearchOption.AllDirectories))
         {
@@ -53,20 +53,20 @@ public sealed class PermissionCacheInvalidationDriftTests
                 || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
                 continue;
 
-            foreach (var (ad, govde) in SiniflaraBol(File.ReadAllText(file)))
+            foreach (var (ad, govde) in SplitIntoClasses(File.ReadAllText(file)))
             {
-                if (!YetkiAlaniYazimi.IsMatch(govde)) continue;
+                if (!PermissionFieldWrite.IsMatch(govde)) continue;
                 if (govde.Contains("InvalidateCache", StringComparison.Ordinal)) continue;
 
-                ihlaller.Add($"{Path.GetFileName(file)} → {ad}");
+                violations.Add($"{Path.GetFileName(file)} → {ad}");
             }
         }
 
-        ihlaller.ShouldBeEmpty(
+        violations.ShouldBeEmpty(
             "Yetki taşıyan alanı yazan sınıf izin önbelleğini temizlemeli (#209), yoksa değişiklik "
             + "5 dakikaya kadar etkisiz kalır ve yönetici düzeltmenin işe yaramadığını sanar. "
             + "PermissionClaimsTransformation.InvalidateCache(cache, keycloakUserId) çağırın:\n  "
-            + string.Join("\n  ", ihlaller.OrderBy(x => x, StringComparer.Ordinal)));
+            + string.Join("\n  ", violations.OrderBy(x => x, StringComparer.Ordinal)));
     }
 
     /// <summary>
@@ -77,32 +77,32 @@ public sealed class PermissionCacheInvalidationDriftTests
     public void Tarama_bilinen_sinif_gorur()
     {
         var kok = Path.Combine(RepoRoot(), "src", "Modules", "Security");
-        var kapsanan = new List<string>();
+        var covered = new List<string>();
 
         foreach (var file in Directory.EnumerateFiles(kok, "*.cs", SearchOption.AllDirectories))
         {
             if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")) continue;
 
-            foreach (var (ad, govde) in SiniflaraBol(File.ReadAllText(file)))
-                if (YetkiAlaniYazimi.IsMatch(govde))
-                    kapsanan.Add(ad);
+            foreach (var (ad, govde) in SplitIntoClasses(File.ReadAllText(file)))
+                if (PermissionFieldWrite.IsMatch(govde))
+                    covered.Add(ad);
         }
 
-        kapsanan.ShouldContain("ChangeUserRolesHandler", "Tarama yetki alanı yazımını bulamıyorsa hiçbir şey doğrulamaz.");
-        kapsanan.ShouldContain("SyncUsersFromKeycloakHandler", "#209'un konusu olan handler kapsamda olmalı.");
-        kapsanan.ShouldContain("DeleteUserHandler", "#210'un mezar taşı yazımı kapsamda olmalı.");
+        covered.ShouldContain("ChangeUserRolesHandler", "Tarama yetki alanı yazımını bulamıyorsa hiçbir şey doğrulamaz.");
+        covered.ShouldContain("SyncUsersFromKeycloakHandler", "#209'un konusu olan handler kapsamda olmalı.");
+        covered.ShouldContain("DeleteUserHandler", "#210'un mezar taşı yazımı kapsamda olmalı.");
     }
 
     /// <summary>Kaynağı <c>public/internal class</c> sınırlarından bölerek (ad, gövde) çiftleri üretir.</summary>
-    private static IEnumerable<(string Ad, string Govde)> SiniflaraBol(string kaynak)
+    private static IEnumerable<(string Name, string Body)> SplitIntoClasses(string source)
     {
-        var eslesmeler = SinifBasi.Matches(kaynak);
+        var matches = ClassHeader.Matches(source);
 
-        for (var i = 0; i < eslesmeler.Count; i++)
+        for (var i = 0; i < matches.Count; i++)
         {
-            var bas = eslesmeler[i].Index;
-            var son = i + 1 < eslesmeler.Count ? eslesmeler[i + 1].Index : kaynak.Length;
-            yield return (eslesmeler[i].Groups[1].Value, kaynak[bas..son]);
+            var start = matches[i].Index;
+            var end = i + 1 < matches.Count ? matches[i + 1].Index : source.Length;
+            yield return (matches[i].Groups[1].Value, source[start..end]);
         }
     }
 

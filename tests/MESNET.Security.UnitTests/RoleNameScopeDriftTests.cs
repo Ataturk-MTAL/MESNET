@@ -23,7 +23,7 @@ public sealed class RoleNameScopeDriftTests
         var modulesRoot = Path.Combine(RepoRoot(), "src", "Modules");
         Directory.Exists(modulesRoot).ShouldBeTrue($"Modül klasörü bulunamadı: {modulesRoot}");
 
-        var ihlaller = new List<string>();
+        var violations = new List<string>();
 
         foreach (var file in Directory.EnumerateFiles(modulesRoot, "*.cs", SearchOption.AllDirectories))
         {
@@ -43,15 +43,15 @@ public sealed class RoleNameScopeDriftTests
                     continue;
 
                 if (line.Contains("IsInRole", StringComparison.Ordinal))
-                    ihlaller.Add($"{Path.GetRelativePath(RepoRoot(), file)}:{i + 1}");
+                    violations.Add($"{Path.GetRelativePath(RepoRoot(), file)}:{i + 1}");
             }
         }
 
-        ihlaller.ShouldBeEmpty(
+        violations.ShouldBeEmpty(
             "Kapsam kararı rol adına bakamaz (ADR-0001). Rol adı organizasyon şemasının bugünkü "
             + "fotoğrafıdır ve o şema kayar: yeni bir rol eklendiğinde bu kontrol sessizce yanlış "
             + "çalışır, hata vermez. Kararı izne, claim'e ya da kayda dayandırın — desen: "
-            + "PlacementScopePolicy (kapsam merdiveni).\n  " + string.Join("\n  ", ihlaller));
+            + "PlacementScopePolicy (kapsam merdiveni).\n  " + string.Join("\n  ", violations));
     }
 
     /// <summary>
@@ -61,7 +61,7 @@ public sealed class RoleNameScopeDriftTests
     public void Uclarda_RequireRole_yok()
     {
         var srcRoot = Path.Combine(RepoRoot(), "src");
-        var ihlaller = Directory
+        var violations = Directory
             .EnumerateFiles(srcRoot, "*.cs", SearchOption.AllDirectories)
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
                         && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
@@ -69,9 +69,9 @@ public sealed class RoleNameScopeDriftTests
             .Select(f => Path.GetRelativePath(RepoRoot(), f))
             .ToList();
 
-        ihlaller.ShouldBeEmpty(
+        violations.ShouldBeEmpty(
             "Uçlar permission ile korunur, rol ile değil (ADR-0001):\n  "
-            + string.Join("\n  ", ihlaller));
+            + string.Join("\n  ", violations));
     }
 
     /// <summary>

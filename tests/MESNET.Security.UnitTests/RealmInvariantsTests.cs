@@ -20,7 +20,7 @@ namespace MESNET.Security.UnitTests;
 public sealed class RealmInvariantsTests
 {
     /// <summary>Depodaki tanımla uyumlu realm — hiçbir sapma üretmemeli.</summary>
-    private static RealmSnapshot Saglikli() => new(
+    private static RealmSnapshot Healthy() => new(
         UnmanagedAttributePolicy: RealmInvariants.ExpectedUnmanagedAttributePolicy,
         RealmRoles: [.. MesnetRoles.All],
         WebClientIsPublic: true,
@@ -30,7 +30,7 @@ public sealed class RealmInvariantsTests
     [Fact]
     public void Depodaki_tanimla_uyumlu_realm_sapma_uretmez()
     {
-        RealmInvariants.Verify(Saglikli()).ShouldBeEmpty();
+        RealmInvariants.Verify(Healthy()).ShouldBeEmpty();
     }
 
     // ── Yakalanması gereken sapmalar ────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ public sealed class RealmInvariantsTests
     public void Unmanaged_oznitelik_politikasi_ENABLED_ise_sapma_bildirilir()
     {
         var drifts = RealmInvariants.Verify(
-            Saglikli() with { UnmanagedAttributePolicy = "ENABLED" });
+            Healthy() with { UnmanagedAttributePolicy = "ENABLED" });
 
         var drift = drifts.ShouldHaveSingleItem();
         drift.Key.ShouldBe("unmanagedAttributePolicy");
@@ -55,9 +55,9 @@ public sealed class RealmInvariantsTests
     [Fact]
     public void Realm_rolu_eksikse_sapma_bildirilir()
     {
-        var eksikRoller = MesnetRoles.All.Where(r => r != MesnetRoles.Parent).ToList();
+        var missingRoles = MesnetRoles.All.Where(r => r != MesnetRoles.Parent).ToList();
 
-        var drift = RealmInvariants.Verify(Saglikli() with { RealmRoles = eksikRoller })
+        var drift = RealmInvariants.Verify(Healthy() with { RealmRoles = missingRoles })
             .ShouldHaveSingleItem();
 
         drift.Key.ShouldBe("realm roles");
@@ -77,14 +77,14 @@ public sealed class RealmInvariantsTests
     [Fact]
     public void Kullaniciya_rol_atanmamissa_sapma_bildirilir()
     {
-        var eksikAtama = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
+        var missingAssignment = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
             kv => kv.Key,
             kv => kv.Key == "admin"
                 ? (IReadOnlyList<string>)[MesnetRoles.InstitutionManager]  // SystemAdmin düşürüldü
                 : kv.Value,
             StringComparer.OrdinalIgnoreCase);
 
-        var drift = RealmInvariants.Verify(Saglikli() with { SeedUserRoles = eksikAtama })
+        var drift = RealmInvariants.Verify(Healthy() with { SeedUserRoles = missingAssignment })
             .ShouldHaveSingleItem();
 
         drift.Key.ShouldBe("kullanıcı admin → realm rolleri");
@@ -97,10 +97,10 @@ public sealed class RealmInvariantsTests
     [Fact]
     public void Her_kullanicinin_eksigi_ayri_bildirilir()
     {
-        var hicRolYok = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
+        var noRoles = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
             kv => kv.Key, kv => (IReadOnlyList<string>)[], StringComparer.OrdinalIgnoreCase);
 
-        var drifts = RealmInvariants.Verify(Saglikli() with { SeedUserRoles = hicRolYok });
+        var drifts = RealmInvariants.Verify(Healthy() with { SeedUserRoles = noRoles });
 
         drifts.Count.ShouldBe(RealmInvariants.ExpectedSeedUserRoles.Count);
     }
@@ -108,7 +108,7 @@ public sealed class RealmInvariantsTests
     [Fact]
     public void Web_client_public_degilse_sapma_bildirilir()
     {
-        var drift = RealmInvariants.Verify(Saglikli() with { WebClientIsPublic = false })
+        var drift = RealmInvariants.Verify(Healthy() with { WebClientIsPublic = false })
             .ShouldHaveSingleItem();
 
         drift.Key.ShouldContain(RealmInvariants.WebClientId);
@@ -148,25 +148,25 @@ public sealed class RealmInvariantsTests
     public void Politika_buyuk_kucuk_harf_farkiyla_yazilmissa_sapma_sayilir()
     {
         // Keycloak değeri sabit biçimde döndürür; farklı yazım gerçekten farklı bir değerdir.
-        RealmInvariants.Verify(Saglikli() with { UnmanagedAttributePolicy = "admin_edit" })
+        RealmInvariants.Verify(Healthy() with { UnmanagedAttributePolicy = "admin_edit" })
             .ShouldHaveSingleItem().Key.ShouldBe("unmanagedAttributePolicy");
     }
 
     [Fact]
     public void Rol_adi_buyuk_kucuk_harfe_duyarsiz_eslesir()
     {
-        var farkliYazim = MesnetRoles.All.Select(r => r.ToUpperInvariant()).ToList();
+        var differentCasing = MesnetRoles.All.Select(r => r.ToUpperInvariant()).ToList();
 
-        RealmInvariants.Verify(Saglikli() with { RealmRoles = farkliYazim }).ShouldBeEmpty();
+        RealmInvariants.Verify(Healthy() with { RealmRoles = differentCasing }).ShouldBeEmpty();
     }
 
     /// <summary>Realm'de fazladan rol bulunması sapma değildir — beklenenler var, yeter.</summary>
     [Fact]
     public void Fazladan_realm_rolu_sapma_sayilmaz()
     {
-        List<string> fazlali = [.. MesnetRoles.All, "offline_access", "uma_authorization"];
+        List<string> withExtras = [.. MesnetRoles.All, "offline_access", "uma_authorization"];
 
-        RealmInvariants.Verify(Saglikli() with { RealmRoles = fazlali }).ShouldBeEmpty();
+        RealmInvariants.Verify(Healthy() with { RealmRoles = withExtras }).ShouldBeEmpty();
     }
 
     /// <summary>
@@ -178,38 +178,38 @@ public sealed class RealmInvariantsTests
     [Fact]
     public void Bulunmayan_tohum_kullanicisi_sapma_sayilmaz()
     {
-        var uretimGibi = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+        var productionLike = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
 
-        RealmInvariants.Verify(Saglikli() with { SeedUserRoles = uretimGibi }).ShouldBeEmpty();
+        RealmInvariants.Verify(Healthy() with { SeedUserRoles = productionLike }).ShouldBeEmpty();
     }
 
     [Fact]
     public void Kullanicida_fazladan_rol_sapma_sayilmaz()
     {
-        var fazlali = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
+        var withExtras = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
             kv => kv.Key,
             kv => (IReadOnlyList<string>)[.. kv.Value, "offline_access", "uma_authorization"],
             StringComparer.OrdinalIgnoreCase);
 
-        RealmInvariants.Verify(Saglikli() with { SeedUserRoles = fazlali }).ShouldBeEmpty();
+        RealmInvariants.Verify(Healthy() with { SeedUserRoles = withExtras }).ShouldBeEmpty();
     }
 
     [Fact]
     public void Kullanici_rol_adi_buyuk_kucuk_harfe_duyarsiz_eslesir()
     {
-        var farkliYazim = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
+        var differentCasing = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
             kv => kv.Key,
             kv => (IReadOnlyList<string>)[.. kv.Value.Select(r => r.ToUpperInvariant())],
             StringComparer.OrdinalIgnoreCase);
 
-        RealmInvariants.Verify(Saglikli() with { SeedUserRoles = farkliYazim }).ShouldBeEmpty();
+        RealmInvariants.Verify(Healthy() with { SeedUserRoles = differentCasing }).ShouldBeEmpty();
     }
 
     /// <summary>Atama hiç okunamadıysa (yetki yok, sürüm farkı) sapma üretilmez.</summary>
     [Fact]
     public void Okunamayan_kullanici_atamasi_sapma_sayilmaz()
     {
-        RealmInvariants.Verify(Saglikli() with { SeedUserRoles = null }).ShouldBeEmpty();
+        RealmInvariants.Verify(Healthy() with { SeedUserRoles = null }).ShouldBeEmpty();
     }
 
     // ── Depodaki realm tanımıyla tutarlılık ────────────────────────────────────────────
@@ -224,17 +224,17 @@ public sealed class RealmInvariantsTests
     {
         var realm = JsonDocument.Parse(File.ReadAllText("mesnet-realm.json")).RootElement;
 
-        var profilJson = realm
+        var profileJson = realm
             .GetProperty("components")
             .GetProperty("org.keycloak.userprofile.UserProfileProvider")[0]
             .GetProperty("config")
             .GetProperty("kc.user.profile.config")[0]
             .GetString();
 
-        var politika = JsonDocument.Parse(profilJson!).RootElement
+        var policy = JsonDocument.Parse(profileJson!).RootElement
             .GetProperty("unmanagedAttributePolicy").GetString();
 
-        politika.ShouldBe(
+        policy.ShouldBe(
             RealmInvariants.ExpectedUnmanagedAttributePolicy,
             "mesnet-realm.json ile RealmInvariants aynı değeri söylemeli.");
     }
@@ -263,7 +263,7 @@ public sealed class RealmInvariantsTests
     {
         var realm = JsonDocument.Parse(File.ReadAllText("mesnet-realm.json")).RootElement;
 
-        var dosyadaki = realm.GetProperty("users").EnumerateArray()
+        var inFile = realm.GetProperty("users").EnumerateArray()
             .Where(u => u.TryGetProperty("realmRoles", out var r) && r.GetArrayLength() > 0)
             .ToDictionary(
                 u => u.GetProperty("username").GetString()!,
@@ -271,16 +271,16 @@ public sealed class RealmInvariantsTests
                     .Select(r => r.GetString()!).OrderBy(r => r, StringComparer.Ordinal).ToList(),
                 StringComparer.OrdinalIgnoreCase);
 
-        var beklenen = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
+        var expected = RealmInvariants.ExpectedSeedUserRoles.ToDictionary(
             kv => kv.Key,
             kv => kv.Value.OrderBy(r => r, StringComparer.Ordinal).ToList(),
             StringComparer.OrdinalIgnoreCase);
 
-        beklenen.Keys.OrderBy(k => k, StringComparer.Ordinal).ShouldBe(
-            dosyadaki.Keys.OrderBy(k => k, StringComparer.Ordinal),
+        expected.Keys.OrderBy(k => k, StringComparer.Ordinal).ShouldBe(
+            inFile.Keys.OrderBy(k => k, StringComparer.Ordinal),
             "mesnet-realm.json ile RealmInvariants.ExpectedSeedUserRoles aynı kullanıcıları saymalı.");
 
-        foreach (var (kullanici, roller) in beklenen)
-            roller.ShouldBe(dosyadaki[kullanici], $"{kullanici} kullanıcısının rolleri ayrışmış.");
+        foreach (var (user, roles) in expected)
+            roles.ShouldBe(inFile[user], $"{user} kullanıcısının rolleri ayrışmış.");
     }
 }

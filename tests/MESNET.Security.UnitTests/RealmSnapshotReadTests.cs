@@ -108,9 +108,9 @@ public sealed class RealmSnapshotReadTests
 
         var result = await service.GetRealmSnapshotAsync();
 
-        var atamalar = result.Value.SeedUserRoles.ShouldNotBeNull();
-        atamalar.Count.ShouldBe(RealmInvariants.ExpectedSeedUserRoles.Count);
-        atamalar["admin"].ShouldContain(MesnetRoles.SystemAdmin);
+        var assignments = result.Value.SeedUserRoles.ShouldNotBeNull();
+        assignments.Count.ShouldBe(RealmInvariants.ExpectedSeedUserRoles.Count);
+        assignments["admin"].ShouldContain(MesnetRoles.SystemAdmin);
         RealmInvariants.Verify(result.Value).ShouldBeEmpty();
     }
 
@@ -207,13 +207,13 @@ public sealed class RealmSnapshotReadTests
 
                 // .../users/{kullanıcıAdı}/role-mappings/realm — stub'da kimlik = kullanıcı adı.
                 var segments = path.Split('/');
-                var kullanici = segments[^3];
-                var roller = kullanici == "admin" && AdminRoles is { } ozel
-                    ? ozel
-                    : RealmInvariants.ExpectedSeedUserRoles[kullanici];
+                var user = segments[^3];
+                var roles = user == "admin" && AdminRoles is { } custom
+                    ? custom
+                    : RealmInvariants.ExpectedSeedUserRoles[user];
 
                 return Task.FromResult(Json(
-                    $"[{string.Join(",", roller.Select(r => $$"""{"name":"{{r}}"}"""))}]"));
+                    $"[{string.Join(",", roles.Select(r => $$"""{"name":"{{r}}"}"""))}]"));
             }
 
             if (path.EndsWith("/users", StringComparison.Ordinal))

@@ -101,14 +101,14 @@ public static class RealmInvariants
     {
         if (snapshot.RealmRoles is not { Count: > 0 } roles) return;
 
-        var mevcut = new HashSet<string>(roles, StringComparer.OrdinalIgnoreCase);
-        var eksik = MesnetRoles.All.Where(r => !mevcut.Contains(r)).ToList();
-        if (eksik.Count == 0) return;
+        var existing = new HashSet<string>(roles, StringComparer.OrdinalIgnoreCase);
+        var missing = MesnetRoles.All.Where(r => !existing.Contains(r)).ToList();
+        if (missing.Count == 0) return;
 
         drifts.Add(new RealmDrift(
             "realm roles",
             $"{MesnetRoles.All.Count} rolün tamamı",
-            $"eksik: {string.Join(", ", eksik)}",
+            $"eksik: {string.Join(", ", missing)}",
             "Rol atama sessizce yarım kalır; kullanıcı giriş yapar ama hiçbir şey göremez. "
             + "Düzeltme: eksik rolleri realm'e ekleyin ya da realm'i yeniden import edin."));
     }
@@ -119,24 +119,24 @@ public static class RealmInvariants
     /// </summary>
     private static void VerifySeedUserRoles(RealmSnapshot snapshot, List<RealmDrift> drifts)
     {
-        if (snapshot.SeedUserRoles is not { } atamalar) return;
+        if (snapshot.SeedUserRoles is not { } assignments) return;
 
-        foreach (var (kullanici, beklenen) in ExpectedSeedUserRoles)
+        foreach (var (user, expected) in ExpectedSeedUserRoles)
         {
             // Kullanıcı yoksa sapma değil — üretimde tohum kullanıcıları hiç bulunmaz.
-            if (!atamalar.TryGetValue(kullanici, out var mevcutRoller)) continue;
+            if (!assignments.TryGetValue(user, out var mevcutRoller)) continue;
 
-            var mevcut = new HashSet<string>(mevcutRoller, StringComparer.OrdinalIgnoreCase);
-            var eksik = beklenen.Where(r => !mevcut.Contains(r)).ToList();
-            if (eksik.Count == 0) continue;
+            var existing = new HashSet<string>(mevcutRoller, StringComparer.OrdinalIgnoreCase);
+            var missing = expected.Where(r => !existing.Contains(r)).ToList();
+            if (missing.Count == 0) continue;
 
             drifts.Add(new RealmDrift(
-                $"kullanıcı {kullanici} → realm rolleri",
-                string.Join(", ", beklenen),
-                mevcutRoller.Count == 0 ? "hiç rol yok" : $"eksik: {string.Join(", ", eksik)}",
+                $"kullanıcı {user} → realm rolleri",
+                string.Join(", ", expected),
+                mevcutRoller.Count == 0 ? "hiç rol yok" : $"eksik: {string.Join(", ", missing)}",
                 $"Rol realm'de var ama atanmamış; kullanıcı o rolün izinlerini hiç almaz ve "
                 + $"ilgili uçlar 403 döner. Düzeltme: POST /admin/realms/{{realm}}/users/{{id}}"
-                + $"/role-mappings/realm — eksik roller: {string.Join(", ", eksik)}."));
+                + $"/role-mappings/realm — eksik roller: {string.Join(", ", missing)}."));
         }
     }
 
