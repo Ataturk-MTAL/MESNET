@@ -7,26 +7,35 @@ import {
 } from 'src/api/internship'
 import { useAuthStore } from 'stores/auth'
 
-/** Zincirin kanonik adım sırası — görüntüleme içindir, dayatma değildir. */
-const KANONIK = ['Parent', 'Teacher', 'Deputy', 'Director', 'BusinessRep']
+/**
+ * Zincirin adım sırası — **dayatma** sırasıdır, sunucu da aynısını uygular (#218).
+ *
+ * Veli ve işletme yetkilisi burada yoktur: onlar fesih **talep eder**, onaylamaz.
+ */
+const STEP_ORDER = ['Teacher', 'Deputy', 'Director'] as const
 
-const SLUGLAR: Record<string, string> = {
-  Parent: 'Veli',
+const STEP_LABELS: Record<string, string> = {
   Teacher: 'Koordinatör Öğretmen',
   Deputy: 'Müdür Yardımcısı',
   Director: 'Müdür',
-  BusinessRep: 'İşletme Yetkilisi',
+}
+
+/** Panelde gösterilen tek bir adım — onaylandı mı, şimdi onaylanabilir mi. */
+export interface ChainStepView {
+  name: string
+  label: string
+  approved: boolean
+  /** Sıradaki adım mı — yalnız bunun butonu etkindir. */
+  isNext: boolean
+  /** Sunucudan gelen adım tanımı; yalnız sıradaki adımda dolu olur. */
+  step: TerminationStepDto | null
 }
 
 /**
- * Fesih onay zinciri okuma ve ilerletme (#191).
+ * Fesih onay zinciri okuma ve ilerletme (#191, #218).
  *
- * Hem okul tarafındaki `TerminationsPage` hem veli/işletme tarafındaki `MyApprovalsPage`
- * aynı işi yapar: zinciri oku, kullanıcının yapabildiği adımı sun. Ekran farklı, mantık
- * aynı — iki yere kopyalansaydı biri düzeltilip diğeri unutulurdu.
- *
- * **İzin kararı sunucudan gelir.** Her adım kendi `permission` ve `endpoint` alanını taşır;
- * burada adım→izin eşlemesi tutulmaz (ADR-0001).
+ * **İzin kararı sunucudan gelir.** Sıradaki adım kendi `permission` ve `endpoint` alanını
+ * taşır; burada adım→izin eşlemesi tutulmaz (ADR-0001).
  */
 export function useTerminationChain() {
   const authStore = useAuthStore()
@@ -42,63 +51,53 @@ export function useTerminationChain() {
   const acting = ref(false)
 
   async function loadChains(items: InternshipSummaryDto[]): Promise<void> {
-    const sonuclar = await Promise.allSettled(
+    const results = await Promise.allSettled(
       items.map((i) =>
         internshipApi.getTerminationChain(i.id).then((r) => [i.id, r.data] as const),
       ),
     )
 
-    const yeni: Record<string, TerminationChainStatusDto> = {}
-    for (const s of sonuclar) if (s.status === 'fulfilled') yeni[s.value[0]] = s.value[1]
-    chains.value = yeni
+    const next: Record<string, TerminationChainStatusDto> = {}
+    for (const r of results) if (r.status === 'fulfilled') next[r.value[0]] = r.value[1]
+    chains.value = next
   }
 
   function chainOf(id: string): TerminationChainStatusDto | undefined {
     return chains.value[id]
   }
 
-  function pendingOf(id: string): TerminationStepDto[] {
-    return chains.value[id]?.pendingSteps ?? []
+  function nextStepOf(id: string): TerminationStepDto | null {
+    return chains.value[id]?.nextStep ?? null
   }
 
-  /** Bu kullanıcının **yapabildiği** bekleyen adımlar — buton görünürlüğü buna bakar. */
-  function actionableSteps(id: string): TerminationStepDto[] {
-    return pendingOf(id).filter((s) => !!s.permission && authStore.hasPermission(s.permission))
+  /** Sıradaki adımı bu kullanıcı yapabiliyor mu — buton görünürlüğü buna bakar. */
+  function canActOn(id: string): boolean {
+    const step = nextStepOf(id)
+    return !!step && authStore.hasPermission(step.permission)
   }
 
-  /**
-   * Panelde gösterilecek tüm adımlar — onaylananlar dâhil.
-   *
-   * Sunucu yalnız bekleyenleri gönderir; tamamlananlar ham bayraklardan çıkarılır. Bayrak→ad
-   * eşlemesi burada zorunlu, ama **izin bilgisi** yine sunucudan gelen adımdan okunur.
-   */
-  function allSteps(status: TerminationChainStatusDto | null): TerminationStepDto[] {
+  /** Panelde gösterilecek üç adım: onaylananlar işaretli, sıradaki etkin. */
+  function stepViews(status: TerminationChainStatusDto | null): ChainStepView[] {
     if (!status?.chain) return []
 
     const c = status.chain
-    const onayli: Array<[string, boolean]> = [
-      ['Parent', c.parentApproved && status.requiresParentApproval],
-      ['Teacher', c.teacherApproved],
-      ['Deputy', c.deputyApproved],
-      ['Director', c.directorApproved],
-      ['BusinessRep', c.businessRepApproved],
-    ]
+    const approvedByName: Record<string, boolean> = {
+      Teacher: c.teacherApproved,
+      Deputy: c.deputyApproved,
+      Director: c.directorApproved,
+    }
 
-    const tamamlanan: TerminationStepDto[] = onayli
-      .filter(([, verildi]) => verildi)
-      .map(([name]) => ({ name, slug: SLUGLAR[name] ?? name, endpoint: '', permission: '' }))
-
-    return [...tamamlanan, ...status.pendingSteps].sort(
-      (a, b) => KANONIK.indexOf(a.name) - KANONIK.indexOf(b.name),
-    )
+    return STEP_ORDER.map((name) => ({
+      name,
+      label: STEP_LABELS[name] ?? name,
+      approved: approvedByName[name] ?? false,
+      isNext: status.nextStep?.name === name,
+      step: status.nextStep?.name === name ? status.nextStep : null,
+    }))
   }
 
-  function isApproved(status: TerminationChainStatusDto | null, step: TerminationStepDto): boolean {
-    return !(status?.pendingSteps ?? []).some((s) => s.name === step.name)
-  }
-
-  function canDo(step: TerminationStepDto): boolean {
-    return !!step.permission && authStore.hasPermission(step.permission)
+  function canDo(step: TerminationStepDto | null): boolean {
+    return !!step && authStore.hasPermission(step.permission)
   }
 
   async function refresh(internshipId: string, target: Ref<TerminationChainStatusDto | null>) {
@@ -112,10 +111,9 @@ export function useTerminationChain() {
     acting,
     loadChains,
     chainOf,
-    pendingOf,
-    actionableSteps,
-    allSteps,
-    isApproved,
+    nextStepOf,
+    canActOn,
+    stepViews,
     canDo,
     refresh,
   }

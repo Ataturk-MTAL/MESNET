@@ -29,11 +29,9 @@ public static class InternshipMappingExtensions
         summary.LastUpdated);
 
     public static TerminationApprovalChainDto ToDto(this TerminationApprovalChain chain) => new(
-        chain.ParentApproved,
         chain.TeacherApproved,
         chain.DeputyApproved,
         chain.DirectorApproved,
-        chain.BusinessRepApproved,
         chain.IsOverridden,
         chain.OverriddenBy,
         chain.OverriddenAt,

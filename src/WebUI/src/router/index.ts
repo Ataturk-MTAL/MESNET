@@ -123,12 +123,12 @@ const router = createRouter({
               component: () => import('pages/internship/TerminationsPage.vue'),
               meta: { permissions: ['internship:view', 'internship:manage'] },
             },
-            // Veli ve işletme yetkilisinin onay sayfası (#191).
-            // Kapsamı SUNUCU çözer (veli bağı / işletme kimliği, ikisi de claim'den);
-            // rota yalnız kapıyı açar.
+            // Veli ve işletme yetkilisi için fesih DURUM sayfası (#191, #218).
+            // Salt okunur: onaylar okul tarafında verilir. Kapsamı SUNUCU çözer
+            // (veli bağı / işletme kimliği, ikisi de claim'den); rota yalnız kapıyı açar.
             {
-              path: 'my-approvals',
-              name: 'InternshipMyApprovals',
+              path: 'termination-status',
+              name: 'InternshipTerminationStatus',
               component: () => import('pages/internship/MyApprovalsPage.vue'),
               meta: { permissions: ['internship:view-own', 'company:student:manage'] },
             },

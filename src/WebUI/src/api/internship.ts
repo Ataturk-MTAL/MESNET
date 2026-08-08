@@ -39,11 +39,9 @@ export interface TerminationStepDto {
 }
 
 export interface TerminationApprovalChainDto {
-  parentApproved: boolean
   teacherApproved: boolean
   deputyApproved: boolean
   directorApproved: boolean
-  businessRepApproved: boolean
   isOverridden: boolean
   overriddenBy: string | null
   overriddenAt: string | null
@@ -53,16 +51,14 @@ export interface TerminationApprovalChainDto {
 export interface TerminationChainStatusDto {
   /** Fesih süreci açık mı. `false` ise `chain` null'dır. */
   isActive: boolean
-  /** Veli adımı aranıyor mu — kararı sunucu verir, arayüz yaş hesaplamaz. */
-  requiresParentApproval: boolean
   chain: TerminationApprovalChainDto | null
   /**
-   * Henüz onaylanmamış adımlar, kanonik sırada.
-   *
-   * **Sıra dayatma değildir** — zincir sıralı değil, müdür öğretmenden önce onaylayabilir.
+   * Sıradaki adım — zincir **sıralıdır** (#218), aynı anda yalnız bir adım onaylanabilir.
+   * Zincir kapandıysa ya da override edildiyse `null`.
    */
-  pendingSteps: TerminationStepDto[]
+  nextStep: TerminationStepDto | null
   terminationReason: string | null
+  /** Fesih gerekçe türü — talebi kimin açtığını da taşır (veli/işletme/okul). */
   terminationReasonType: string | null
 }
 

@@ -1510,21 +1510,22 @@ birebir aynıdır:
 | `student:view-own`, `internship:view-own`, `attendance:view-own`, `salary:view-own` | Öğrencisinin verisi (kapsam bağ kaydından) |
 | `attendance:upload` | Sağlık raporu — **onaya düşer** (#172) |
 | `attendance:leave:request` | MESEM ücretli izin başvurusu (#177) |
-| `internship:approve:parent` | Fesih zincirindeki **yalnız veli adımı** |
 | `communication:*` (view/send/issue) | Okulla iletişim |
 
 **Hüküm izinleri verilmez:** `attendance:direct-entry` ve `attendance:health-report:direct`
 velide **yoktur** — veli, öğrencisinin ücret kesintisini tek taraflı kaldıramaz. `Parent`,
 `AttendanceDirectEntryMappingTests.NonSchoolRoles` listesindedir.
 
-### `internship:approve:parent` neden ayrı izin
+### Veli fesih zincirinde onaycı değildir (#218)
 
-Fesih zincirinin **veli, öğretmen ve müdür yardımcısı** adımları aynı `internship:approve`
-iznini istiyordu. Veliye o izin verilseydi `/approve/teacher` ve `/approve/deputy` uçlarına da
-erişir, **zincirin üç adımını tek başına tamamlardı**.
+Fesih onay zinciri **koordinatör öğretmen → müdür yardımcısı → müdür**'den ibarettir. Veli ve
+işletme yetkilisi fesih **talep eder**, onaylamaz.
 
-Okul tarafı (öğretmen, müdür yardımcısı, müdür) yeni izni de taşır: veli hesabı olmayan
-öğrencide adımı bugün olduğu gibi okul yürütür — **davranış değişmedi**.
+Önceden zincirde ayrı bir "veli adımı" vardı ve `internship:approve:parent` izni onu açıyordu.
+Model gerçek kuralla uyuşmuyordu; adım kaldırılınca izin de kaldırıldı — hiçbir uca bağlı
+olmayan bir izin, olmayan bir yetkiyi varmış gibi gösterir.
+
+Talebi kimin açtığı `RequestedBy`/`ReasonType` ile kaydedilir.
 
 ### Guard tek yerdedir
 

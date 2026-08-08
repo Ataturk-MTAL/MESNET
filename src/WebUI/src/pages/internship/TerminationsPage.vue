@@ -24,43 +24,36 @@
       @request="onRequest"
       @search="onSearch"
     >
-      <template #body-cell-pending="props">
+      <template #body-cell-next="props">
         <q-td :props="props">
-          <template v-if="chainOf(props.row.id) === undefined">
-            <q-skeleton
-              type="text"
-              width="120px"
-            />
-          </template>
-          <template v-else-if="chainOf(props.row.id)?.chain?.isOverridden">
-            <q-chip
-              dense
-              color="warning"
-              text-color="white"
-              icon="bolt"
-              label="Override edildi"
-            />
-          </template>
-          <template v-else-if="pendingOf(props.row.id).length === 0">
-            <q-chip
-              dense
-              color="positive"
-              text-color="white"
-              icon="check"
-              label="Onaylar tamam"
-            />
-          </template>
-          <template v-else>
-            <q-chip
-              v-for="step in pendingOf(props.row.id)"
-              :key="step.name"
-              dense
-              outline
-              color="orange-9"
-              :label="step.slug"
-              class="q-mr-xs"
-            />
-          </template>
+          <q-skeleton
+            v-if="chainOf(props.row.id) === undefined"
+            type="text"
+            width="120px"
+          />
+          <q-chip
+            v-else-if="chainOf(props.row.id)?.chain?.isOverridden"
+            dense
+            color="warning"
+            text-color="white"
+            icon="bolt"
+            label="Override edildi"
+          />
+          <q-chip
+            v-else-if="!nextStepOf(props.row.id)"
+            dense
+            color="positive"
+            text-color="white"
+            icon="check"
+            label="Onaylar tamam"
+          />
+          <q-chip
+            v-else
+            dense
+            outline
+            color="orange-9"
+            :label="nextStepOf(props.row.id)?.slug"
+          />
         </q-td>
       </template>
 
@@ -123,30 +116,42 @@
         </div>
 
         <template v-else>
+          <div class="text-caption text-grey-7 q-mb-sm">
+            Onaylar sırayla verilir; sırası gelmeyen adım onaylanamaz.
+          </div>
+
           <q-list dense>
             <q-item
-              v-for="step in allStepsForSelected"
-              :key="step.name"
+              v-for="view in stepViews(selectedChain)"
+              :key="view.name"
             >
               <q-item-section avatar>
                 <q-icon
-                  :name="isApproved(selectedChain, step) ? 'check_circle' : 'radio_button_unchecked'"
-                  :color="isApproved(selectedChain, step) ? 'positive' : 'grey-5'"
+                  :name="view.approved ? 'check_circle' : 'radio_button_unchecked'"
+                  :color="view.approved ? 'positive' : view.isNext ? 'orange-9' : 'grey-5'"
                 />
               </q-item-section>
               <q-item-section>
-                <q-item-label>{{ step.slug }}</q-item-label>
+                <q-item-label :class="{ 'text-grey-6': !view.approved && !view.isNext }">
+                  {{ view.label }}
+                </q-item-label>
+                <q-item-label
+                  v-if="view.isNext"
+                  caption
+                >
+                  Sırada
+                </q-item-label>
               </q-item-section>
               <q-item-section side>
                 <q-btn
-                  v-if="!isApproved(selectedChain, step) && canDo(step)"
+                  v-if="view.isNext && view.step && canDo(view.step)"
                   dense
                   unelevated
                   color="primary"
                   label="Onayla"
                   :loading="acting"
                   :disable="periodStore.isReadOnly"
-                  @click="approve(step)"
+                  @click="approve(view.step)"
                 />
               </q-item-section>
             </q-item>
@@ -202,14 +207,15 @@
 
 <script setup lang="ts">
 /**
- * Fesih onay zinciri sayfası (#191).
+ * Fesih onay zinciri sayfası — okul tarafı (#191, #218).
  *
- * Backend'de yedi uç vardı ve **hiçbirinin istemcisi yoktu**; zincir arayüzden hiç
- * ilerletilemiyordu. Bu sayfa okul tarafının adımlarını bağlar.
+ * Zincir **sıralıdır**: koordinatör öğretmen → müdür yardımcısı → müdür. Aynı anda yalnız bir
+ * adımın butonu etkindir; sunucu da sırayı dayatır, arayüz onu yalnız yansıtır.
  *
- * **İzin kararı sunucudan gelir.** Her adım kendi `permission` alanını taşır; burada
- * adım→izin eşlemesi tutulmaz. Tutulsaydı biri değişip diğeri unutulduğunda buton yanlış
- * kişiye görünürdü (ADR-0001: karar izne bakar, rol adına değil).
+ * Veli ve işletme yetkilisi bu zincirde **yoktur** — onlar fesih talep eder, onaylamaz.
+ *
+ * **İzin kararı sunucudan gelir.** Sıradaki adım kendi `permission` alanını taşır; burada
+ * adım→izin eşlemesi tutulmaz (ADR-0001).
  */
 import { ref, computed, watch } from 'vue'
 import type { QTableProps } from 'quasar'
@@ -235,10 +241,13 @@ const periodStore = useAcademicPeriodStore()
 const authStore = useAuthStore()
 const notify = useNotify()
 
+const { acting, loadChains, chainOf, nextStepOf, stepViews, canDo, refresh } =
+  useTerminationChain()
+
 const columns: QTableProps['columns'] = [
   { name: 'studentName', label: 'Öğrenci', field: 'studentName', align: 'left', sortable: true },
   { name: 'businessName', label: 'İşletme', field: 'businessName', align: 'left' },
-  { name: 'pending', label: 'Bekleyen adım', field: 'id', align: 'left' },
+  { name: 'next', label: 'Sıradaki adım', field: 'id', align: 'left' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ]
 
@@ -256,28 +265,20 @@ const { rows, loading, pagination, search, onRequest, onSearch, load } =
 
 // Liste her yenilendiğinde zincirler de tazelenir. Composable'da "yüklendi" kancası yok;
 // satırları izlemek aynı sonucu verir ve composable'ı değiştirmeye gerek bırakmaz.
-watch(rows, (items) => { loadChains(items).catch(() => {}) }, { immediate: true })
+watch(
+  rows,
+  (items) => {
+    loadChains(items).catch(() => {})
+  },
+  { immediate: true },
+)
 
-const {
-  acting,
-  loadChains,
-  chainOf,
-  pendingOf,
-  allSteps,
-  isApproved,
-  canDo,
-  refresh,
-} = useTerminationChain()
-
-// ─── Zincir paneli ───
 const chainOpen = ref(false)
 const selected = ref<InternshipSummaryDto | null>(null)
 const selectedChain = ref<TerminationChainStatusDto | null>(null)
 const overrideReason = ref('')
 
 const canOverride = computed(() => authStore.hasPermission(Permissions.Internship.Manage))
-
-const allStepsForSelected = computed(() => allSteps(selectedChain.value))
 
 function openChain(row: InternshipSummaryDto) {
   selected.value = row
@@ -297,6 +298,7 @@ async function approve(step: TerminationStepDto) {
   } finally {
     acting.value = false
   }
+
   // Yenileme try/catch dışında: onay başarılı ama yenileme başarısızsa hem başarı hem hata
   // bildirimi gösterilmemeli.
   await refresh(internshipId, selectedChain).catch(() => {})
@@ -314,6 +316,7 @@ async function doOverride() {
   } finally {
     acting.value = false
   }
+
   await refresh(internshipId, selectedChain).catch(() => {})
   load().catch(() => {})
 }

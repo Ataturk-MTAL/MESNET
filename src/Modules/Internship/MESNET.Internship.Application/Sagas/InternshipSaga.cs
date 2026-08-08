@@ -3,7 +3,10 @@ using MESNET.Attendance.Shared.Events;
 using MESNET.Contract.Shared.Events;
 using MESNET.Enrollment.Shared.Events;
 using MESNET.Internship.Application.Commands;
+using MESNET.Common.Shared;
+using MESNET.Internship.Application.Errors;
 using MESNET.Internship.Core.Enums;
+using MESNET.Internship.Core.Policies;
 using MESNET.Internship.Core.ValueObjects;
 using MESNET.Internship.Shared.Events;
 using Wolverine;
@@ -90,46 +93,37 @@ public class InternshipSaga : Saga
         return new InternshipTerminationApprovalChainStarted(Id, StudentId, RequiresParentApproval);
     }
 
-    // ─── HANDLE: Onay Zinciri — Veli ───
-    /// <summary>
-    /// Veli adımı (#174). Kapsam kontrolü <b>saga state'indeki</b> öğrenciye bakar, istekten
-    /// gelen bir kimliğe değil: veli yalnız bağlı olduğu öğrencinin stajında bu adımı yapabilir.
-    /// Bağı olmayan çağıran (öğretmen, müdür yardımcısı) etkilenmez — veli hesabı olmayan
-    /// öğrencide adımı bugün olduğu gibi okul yürütür.
-    /// </summary>
-    public object? Handle(ApproveTerminationByParent e, ICurrentUserService currentUser)
-    {
-        ParentScopeGuard.EnsureCanAccessStudent(currentUser, StudentId);
-
-        ApprovalChain = ApprovalChain! with { ParentApproved = true };
-        return CheckApprovalChainComplete();
-    }
-
     // ─── HANDLE: Onay Zinciri — Koordinatör Öğretmen ───
-    public object? Handle(ApproveTerminationByTeacher e)
-    {
-        ApprovalChain = ApprovalChain! with { TeacherApproved = true };
-        return CheckApprovalChainComplete();
-    }
+    public object? Handle(ApproveTerminationByTeacher e) =>
+        Approve(TerminationStep.Teacher, c => c with { TeacherApproved = true });
 
     // ─── HANDLE: Onay Zinciri — Müdür Yardımcısı ───
-    public object? Handle(ApproveTerminationByDeputy e)
-    {
-        ApprovalChain = ApprovalChain! with { DeputyApproved = true };
-        return CheckApprovalChainComplete();
-    }
+    public object? Handle(ApproveTerminationByDeputy e) =>
+        Approve(TerminationStep.Deputy, c => c with { DeputyApproved = true });
 
     // ─── HANDLE: Onay Zinciri — Müdür ───
-    public object? Handle(ApproveTerminationByDirector e)
-    {
-        ApprovalChain = ApprovalChain! with { DirectorApproved = true };
-        return CheckApprovalChainComplete();
-    }
+    public object? Handle(ApproveTerminationByDirector e) =>
+        Approve(TerminationStep.Director, c => c with { DirectorApproved = true });
 
-    // ─── HANDLE: Onay Zinciri — İşletme Yetkilisi ───
-    public object? Handle(ApproveTerminationByBusinessRep e)
+    /// <summary>
+    /// Bir adımı onaylar. <b>Sıra dayatılır</b> (#218): müdür yardımcısı, öğretmen onaylamadan
+    /// onaylayamaz.
+    ///
+    /// <para>Karar saf <see cref="TerminationChainPolicy"/> içinde; burada yalnız uygulaması var.
+    /// Sıra atlanırsa <c>DomainException</c> (422) fırlar ve mesaj <b>hangi adımın beklendiğini</b>
+    /// söyler — yoksa kullanıcı neyi beklediğini bilemez.</para>
+    /// </summary>
+    private object? Approve(
+        TerminationStep step, Func<TerminationApprovalChain, TerminationApprovalChain> apply)
     {
-        ApprovalChain = ApprovalChain! with { BusinessRepApproved = true };
+        if (ApprovalChain is null)
+            throw new DomainException(InternshipErrors.TerminationNotStarted(Id));
+
+        if (!TerminationChainPolicy.CanApprove(ApprovalChain, step))
+            throw new DomainException(InternshipErrors.TerminationStepOutOfOrder(
+                TerminationChainPolicy.DescribeOutOfOrder(ApprovalChain, step)));
+
+        ApprovalChain = apply(ApprovalChain);
         return CheckApprovalChainComplete();
     }
 
@@ -146,7 +140,7 @@ public class InternshipSaga : Saga
 
         return (
             new TerminationApprovalOverridden(Id, StudentId, e.OverriddenBy, e.Reason, DateTime.UtcNow),
-            new TerminationFormRequested(Id, StudentId, BusinessIdForContractFlow, InstitutionId)
+            new TerminationFormRequested(Id, StudentId, BusinessId, InstitutionId)
         );
     }
 
@@ -172,10 +166,10 @@ public class InternshipSaga : Saga
     // ─── PRIVATE: Onay zinciri kontrolü ───
     private TerminationFormRequested? CheckApprovalChainComplete()
     {
-        if (ApprovalChain!.IsComplete(RequiresParentApproval))
+        if (ApprovalChain!.IsComplete())
         {
             ApprovalChain = ApprovalChain with { CompletedAt = DateTime.UtcNow };
-            return new TerminationFormRequested(Id, StudentId, BusinessIdForContractFlow, InstitutionId);
+            return new TerminationFormRequested(Id, StudentId, BusinessId, InstitutionId);
         }
 
         return null;

@@ -5,29 +5,24 @@ using MESNET.Internship.Core.ValueObjects;
 namespace MESNET.Internship.Core.Policies;
 
 /// <summary>
-/// Fesih onay zincirinin bir adımı (#191).
+/// Fesih onay zincirinin bir adımı (#218).
 ///
-/// <para>Her adım kendi <b>ucunu</b> ve <b>iznini</b> taşır. Arayüz butonu hangi kullanıcıya
-/// göstereceğine buradan karar verir; iki ayrı yere yazılsaydı biri değişip diğeri
-/// unutulduğunda buton yanlış kişiye görünürdü — ve yanlış görünen buton, sunucu reddettiği
-/// için yalnız kafa karıştırır.</para>
+/// <para>Zincirde <b>üç adım</b> vardır: koordinatör öğretmen → müdür yardımcısı → müdür.
+/// Veli ve işletme yetkilisi fesih <b>talep eder</b>, onaylamaz; onların adımları kaldırıldı.
+/// Kalsalardı arayüz olmayan bir yetkiyi varmış gibi gösterirdi.</para>
+///
+/// <para>Her adım kendi <b>ucunu</b> ve <b>iznini</b> taşır; arayüz butonu buna bakar.</para>
 /// </summary>
 public sealed class TerminationStep : SmartEnum<TerminationStep>
 {
-    public static readonly TerminationStep Parent =
-        new(nameof(Parent), 1, "Veli", "parent", Permissions.Internship.ApproveParent);
-
     public static readonly TerminationStep Teacher =
-        new(nameof(Teacher), 2, "Koordinatör Öğretmen", "teacher", Permissions.Internship.Approve);
+        new(nameof(Teacher), 1, "Koordinatör Öğretmen", "teacher", Permissions.Internship.Approve);
 
     public static readonly TerminationStep Deputy =
-        new(nameof(Deputy), 3, "Müdür Yardımcısı", "deputy", Permissions.Internship.Approve);
+        new(nameof(Deputy), 2, "Müdür Yardımcısı", "deputy", Permissions.Internship.Approve);
 
     public static readonly TerminationStep Director =
-        new(nameof(Director), 4, "Müdür", "director", Permissions.Internship.Manage);
-
-    public static readonly TerminationStep BusinessRep =
-        new(nameof(BusinessRep), 5, "İşletme Yetkilisi", "business", Permissions.Company.Student);
+        new(nameof(Director), 3, "Müdür", "director", Permissions.Internship.Manage);
 
     /// <summary>Türkçe görünen ad.</summary>
     public string Slug { get; }
@@ -48,63 +43,67 @@ public sealed class TerminationStep : SmartEnum<TerminationStep>
 }
 
 /// <summary>
-/// Zincirde hangi adımların beklediğini hesaplar (#191).
+/// Zincirde sıradaki adımı belirler ve <b>sırayı dayatır</b> (#218).
 ///
-/// <para><b>Zincir SIRALI DEĞİLDİR.</b> Saga her onayı bağımsız bir bayrak olarak yazar
-/// (<c>ApprovalChain with { DirectorApproved = true }</c>); müdür, öğretmenden önce
-/// onaylayabilir ve bu geçerlidir. Bu yüzden politika "sıradaki adım" değil <b>bekleyen
-/// adımların kümesini</b> döndürür. Sıra dayatmak, gerçekte olabilen bir durumu "imkânsız"
-/// saymak olurdu.</para>
+/// <para><b>Sıra zorunludur:</b> müdür yardımcısı, öğretmen onaylamadan onaylayamaz. Eski model
+/// her onayı bağımsız bir bayrak olarak yazıyordu; <c>business-rules.md</c> §4.3 "sırayla"
+/// diyordu ama kuralın kodda karşılığı yoktu.</para>
 ///
-/// <para><b>Bu sınıf saftır</b> — karar burada, okuma sorgu handler'ında. Aynı ayrım
+/// <para><b>Bu sınıf saftır</b> — karar burada, uygulaması saga'da. Aynı ayrım
 /// <c>PlacementScopePolicy</c> ve <c>RealmInvariants</c>'ta da var.</para>
-///
-/// <para><b>Bilinen tutarsızlık (#159 etkileşimi):</b> <c>TerminationApprovalChain.IsComplete</c>
-/// işletme onayını <b>her zaman</b> arar. Okulda staj yapan (işverensiz) öğrencide işletme
-/// yetkilisi yoktur, dolayısıyla o zincir kendiliğinden hiç tamamlanamaz — tek çıkış override.
-/// Politika bunu <b>düzeltmez</b>, backend gerçeğini birebir yansıtır: aksi hâlde arayüz
-/// "bekleyen adım yok" derken saga süreci kapatmaz ve iki taraf birbirini yalanlardı.</para>
 /// </summary>
 public static class TerminationChainPolicy
 {
-    /// <summary>Zincirin kanonik adım sırası — görüntüleme içindir, dayatma değildir.</summary>
-    private static readonly TerminationStep[] KanonikSira =
+    /// <summary>Zincirin sırası. Görüntüleme değil, <b>dayatma</b> sırasıdır.</summary>
+    private static readonly TerminationStep[] Order =
     [
-        TerminationStep.Parent,
         TerminationStep.Teacher,
         TerminationStep.Deputy,
-        TerminationStep.Director,
-        TerminationStep.BusinessRep
+        TerminationStep.Director
     ];
 
     /// <summary>
-    /// Henüz onaylanmamış adımlar. Boş liste = beklenen adım yok.
+    /// Sıradaki adım; zincir kapandıysa ya da hiç başlamadıysa <c>null</c>.
     /// </summary>
-    /// <param name="chain">Zincir; <c>null</c> ise fesih süreci hiç açılmamıştır.</param>
-    /// <param name="requiresParent">
-    /// Veli onayı aranıyor mu — kararı saga verir (<c>RequiresParentApproval</c>), politika
-    /// yeniden üretmez, uygular.
-    /// </param>
-    public static IReadOnlyList<TerminationStep> PendingSteps(
-        TerminationApprovalChain? chain, bool requiresParent)
+    /// <param name="chain">Zincir; <c>null</c> ise fesih süreci açılmamıştır.</param>
+    public static TerminationStep? NextStep(TerminationApprovalChain? chain)
     {
-        // Süreç açılmamış: "hepsi bekliyor" demek olmayan bir süreci varmış gibi gösterirdi.
-        if (chain is null) return [];
+        if (chain is null) return null;
 
-        // Override zinciri tümüyle kapatır; eksik adımlar artık beklenmiyor.
-        if (chain.IsOverridden) return [];
+        // Override zinciri tümüyle kapatır — eksik adımlar artık beklenmiyor.
+        if (chain.IsOverridden) return null;
 
-        return [.. KanonikSira.Where(step => !Onaylandi(chain, step, requiresParent))];
+        return Order.FirstOrDefault(step => !IsApproved(chain, step));
     }
 
-    private static bool Onaylandi(TerminationApprovalChain chain, TerminationStep step, bool requiresParent) =>
+    /// <summary>
+    /// Bu adım <b>şimdi</b> onaylanabilir mi. Sırası gelmemiş ya da geçmiş adım için
+    /// <c>false</c> döner.
+    /// </summary>
+    public static bool CanApprove(TerminationApprovalChain? chain, TerminationStep step) =>
+        NextStep(chain) == step;
+
+    /// <summary>
+    /// Sırası gelmemiş adımın reddine konacak açıklama — hangi adımın beklendiğini söyler,
+    /// yoksa kullanıcı neyi beklediğini bilemez.
+    /// </summary>
+    public static string DescribeOutOfOrder(TerminationApprovalChain? chain, TerminationStep step)
+    {
+        var expected = NextStep(chain);
+
+        if (expected is null)
+            return $"Fesih onay zinciri kapalı; '{step.Slug}' adımı onaylanamaz.";
+
+        return $"Onay sırası: önce '{expected.Slug}' adımı tamamlanmalı. "
+             + $"'{step.Slug}' adımının sırası henüz gelmedi.";
+    }
+
+    private static bool IsApproved(TerminationApprovalChain chain, TerminationStep step) =>
         step.Name switch
         {
-            nameof(TerminationStep.Parent) => !requiresParent || chain.ParentApproved,
             nameof(TerminationStep.Teacher) => chain.TeacherApproved,
             nameof(TerminationStep.Deputy) => chain.DeputyApproved,
             nameof(TerminationStep.Director) => chain.DirectorApproved,
-            nameof(TerminationStep.BusinessRep) => chain.BusinessRepApproved,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(step), step.Name, "Tanınmayan fesih onay adımı.")
         };
