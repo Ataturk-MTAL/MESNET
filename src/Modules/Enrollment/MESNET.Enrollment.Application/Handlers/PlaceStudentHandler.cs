@@ -65,8 +65,7 @@ public static class PlaceStudentHandler
             StudentName = student.FullName,
             BranchCode = student.BranchCode,
             Source = ApplicationSource.InstitutionAssignment,
-            Type = placementType,
-            TypeName = placementType.Name
+            Type = placementType
         };
 
         student.Status = StudentStatus.Placed;

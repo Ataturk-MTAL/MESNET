@@ -23,7 +23,6 @@ public static class MarkAsFailedToCompleteHandler
                 EnrollmentErrors.InvalidTransition("Staj", placement.Status.Slug, PlacementStatus.FailedToComplete.Slug));
 
         placement.Status = PlacementStatus.FailedToComplete;
-        placement.StatusName = PlacementStatus.FailedToComplete.Name;
 
         session.Store(placement);
 

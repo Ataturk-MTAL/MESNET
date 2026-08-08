@@ -34,18 +34,42 @@ public class InternshipPlacement
     /// <summary>Öğrencinin branş kodu — filtre için denormalize</summary>
     public string BranchCode { get; set; } = "";
 
-    [JsonConverter(typeof(SmartEnumNameConverter<PlacementStatus, int>))]
-    public PlacementStatus Status { get; set; } = PlacementStatus.Matched;
+    private PlacementStatus _status = PlacementStatus.Matched;
 
-    /// <summary>Marten LINQ sorguları için düz string kopyası</summary>
+    /// <summary>
+    /// Yerleştirme durumu.
+    ///
+    /// <para>Setter <see cref="StatusName"/>'i <b>otomatik senkron tutar</b> (#220). Auto-property
+    /// olduğu dönemde her yazan iki alanı da güncellemeyi hatırlamak zorundaydı; biri unutunca
+    /// belge <c>status=Cancelled, statusName=Matched</c> gibi kendisiyle çelişir hâle geliyordu.
+    /// Sorgular <see cref="StatusName"/>'e baktığı için kayıt <b>hâlâ açık görünüyordu</b> —
+    /// sessiz ve gözle görülmeyen bir sapma.</para>
+    /// </summary>
+    [JsonConverter(typeof(SmartEnumNameConverter<PlacementStatus, int>))]
+    public PlacementStatus Status
+    {
+        get => _status;
+        set { _status = value; StatusName = value.Name; }
+    }
+
+    /// <summary>
+    /// Marten LINQ sorguları için düz string kopyası — SmartEnum LINQ'te kullanılamaz.
+    /// <see cref="Status"/> setter'ı otomatik senkron tutar; elle yazılmasına gerek yoktur.
+    /// </summary>
     public string StatusName { get; set; } = PlacementStatus.Matched.Name;
 
     [JsonConverter(typeof(SmartEnumNameConverter<ApplicationSource, int>))]
     public ApplicationSource Source { get; set; } = ApplicationSource.InstitutionAssignment;
 
-    /// <summary>İşletmede mi okulda mı (#159).</summary>
+    private PlacementType _type = PlacementType.Business;
+
+    /// <summary>İşletmede mi okulda mı (#159). Setter <see cref="TypeName"/>'i senkron tutar.</summary>
     [JsonConverter(typeof(SmartEnumNameConverter<PlacementType, int>))]
-    public PlacementType Type { get; set; } = PlacementType.Business;
+    public PlacementType Type
+    {
+        get => _type;
+        set { _type = value; TypeName = value.Name; }
+    }
 
     /// <summary>Marten LINQ sorguları için düz string kopyası (SmartEnum LINQ'te kullanılamaz).</summary>
     public string TypeName { get; set; } = PlacementType.Business.Name;
