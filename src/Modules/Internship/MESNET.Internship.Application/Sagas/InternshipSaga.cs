@@ -128,7 +128,7 @@ public class InternshipSaga : Saga
     }
 
     // ─── HANDLE: Override — Müdür Yardımcısı onay zincirini atlayabilir ───
-    public (TerminationApprovalOverridden, TerminationFormRequested) Handle(OverrideTerminationApproval e)
+    public OutgoingMessages Handle(OverrideTerminationApproval e)
     {
         ApprovalChain = ApprovalChain! with
         {
@@ -138,10 +138,11 @@ public class InternshipSaga : Saga
             CompletedAt = DateTime.UtcNow
         };
 
-        return (
-            new TerminationApprovalOverridden(Id, StudentId, e.OverriddenBy, e.Reason, DateTime.UtcNow),
-            new TerminationFormRequested(Id, StudentId, BusinessId, InstitutionId)
-        );
+        // Override da zinciri kapatır — fesih kesinleşir, öğrenci okula alınır (#220).
+        var messages = TerminationCompletedMessages();
+        messages.Add(new TerminationApprovalOverridden(
+            Id, StudentId, e.OverriddenBy, e.Reason, DateTime.UtcNow));
+        return messages;
     }
 
     // ─── HANDLE: Sözleşme Feshedildi (Contract modülünden) ───
@@ -164,14 +165,21 @@ public class InternshipSaga : Saga
     }
 
     // ─── PRIVATE: Onay zinciri kontrolü ───
-    private TerminationFormRequested? CheckApprovalChainComplete()
+    /// <summary>
+    /// Zincir kapandıysa iki olay üretir: ıslak imza formu isteği ve <b>fesih kesinleşti</b>
+    /// bildirimi (#220). İkincisini Enrollment tüketip öğrenciyi okula alır.
+    /// </summary>
+    private OutgoingMessages? CheckApprovalChainComplete()
     {
-        if (ApprovalChain!.IsComplete())
-        {
-            ApprovalChain = ApprovalChain with { CompletedAt = DateTime.UtcNow };
-            return new TerminationFormRequested(Id, StudentId, BusinessId, InstitutionId);
-        }
+        if (!ApprovalChain!.IsComplete()) return null;
 
-        return null;
+        ApprovalChain = ApprovalChain with { CompletedAt = DateTime.UtcNow };
+        return TerminationCompletedMessages();
     }
+
+    private OutgoingMessages TerminationCompletedMessages() =>
+    [
+        new TerminationFormRequested(Id, StudentId, BusinessId, InstitutionId),
+        new InternshipTerminationCompleted(Id, StudentId, InstitutionId, AcademicPeriodId, BusinessId)
+    ];
 }

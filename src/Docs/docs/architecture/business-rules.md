@@ -129,8 +129,24 @@ gelmemiş adım denenirse istek reddedilir (422) ve hata mesajı hangi adımın 
 
 ### 4.5 Fesih Sonrası
 
-- Feshedilen stajyerin yeni işletmeye yerleştirilmesi Internship saga tarafından koordine edilir
-- `InternshipReplacementRequested` event'i → Enrollment modülü yeni eşleştirme yapar
+Fesih kesinleştiği anda (müdür onayı ya da override) öğrenci **otomatik olarak okula alınır**:
+
+- Eski yerleştirme `Fesih Yapıldı` (`Cancelled`) durumuna geçer
+- Yerine **işverensiz** (okulda staj, #159) bir yerleştirme açılır — aynı alan ve akademik dönem
+- Öğrenci **alan şefinin takibine** girer
+
+**Alan şefi yerleştirmeye kimlik olarak yazılmaz.** Alan şefliği `DepartmentHead` rolü +
+`branch_codes` kapsamıdır (#126); alan şefi bu yerleştirmeyi kendi branş kapsamından görür.
+
+**Alan şefine ek ücret yazılmaz.** Koordinasyon ücreti işletme başına hesaplanır; işverensiz
+yerleştirme hiç işletme üretmediği için ücret de doğmaz.
+
+Öğrenci dönem bitmeden yeni işletme bulamazsa alan şefi not ve devam/devamsızlık sürecini
+takip ederek dönemi tamamlatır. Yeni işletme bulunursa normal yerleştirme akışı işler —
+**doğrudan transfer yoktur**, fesih → yeni sözleşme zinciri geçerlidir.
+
+> Akış olayla taşınır: Internship `InternshipTerminationCompleted` yayınlar, Enrollment
+> tüketir. Modüller arası doğrudan çağrı yoktur.
 
 ---
 
