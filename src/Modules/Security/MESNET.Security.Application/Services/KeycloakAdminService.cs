@@ -505,16 +505,16 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
         // hiç bulunmaz ve her açılışta eksik-bilgi satırı basmak kontrolü gürültüye boğardı.
         async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>?> ReadSeedUserRolesAsync()
         {
-            var atamalar = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+            var assignments = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var kullanici in RealmInvariants.ExpectedSeedUserRoles.Keys)
+            foreach (var user in RealmInvariants.ExpectedSeedUserRoles.Keys)
             {
-                var id = await ReadUserIdAsync(kullanici);
+                var id = await ReadUserIdAsync(user);
                 if (id is null) continue;
 
-                var roller = await ReadAsync(
+                var roles = await ReadAsync(
                     $"/users/{id}/role-mappings/realm",
-                    $"kullanıcı {kullanici} rol eşlemesi",
+                    $"kullanıcı {user} rol eşlemesi",
                     root => root.ValueKind != JsonValueKind.Array
                         ? null
                         : (IReadOnlyList<string>)[.. root.EnumerateArray()
@@ -522,22 +522,22 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
                             .Where(n => !string.IsNullOrEmpty(n))
                             .Select(n => n!)]);
 
-                if (roller is not null) atamalar[kullanici] = roller;
+                if (roles is not null) assignments[user] = roles;
             }
 
-            return atamalar;
+            return assignments;
         }
 
         // ReadAsync'ten ayrı duruyor çünkü burada "boş sonuç" ayrı bir anlam taşır: kullanıcı
         // yoksa bu eksik bilgi değil, o realm'de olmaması beklenen bir durumdur. HTTP hatası ise
         // gerçekten okunamamıştır ve işaretlenir.
-        async Task<string?> ReadUserIdAsync(string kullanici)
+        async Task<string?> ReadUserIdAsync(string user)
         {
-            var label = $"kullanıcı {kullanici}";
+            var label = $"kullanıcı {user}";
             try
             {
                 using var resp = await SendAdminAsync(
-                    HttpMethod.Get, $"/users?username={Uri.EscapeDataString(kullanici)}&exact=true", null, ct);
+                    HttpMethod.Get, $"/users?username={Uri.EscapeDataString(user)}&exact=true", null, ct);
 
                 if (!resp.IsSuccessStatusCode)
                 {

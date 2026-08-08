@@ -30,13 +30,13 @@ public static class UserAccountDriftPolicy
     /// <para>Süzülmeselerdi kontrol <b>her kullanıcıda</b> sürekli alarm çalardı — yani hiç
     /// çalışmazdı. <c>default-roles-*</c> realm adına göre değiştiği için önek olarak elenir.</para>
     /// </summary>
-    private static readonly HashSet<string> TeknikRoller = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> TechnicalRoles = new(StringComparer.OrdinalIgnoreCase)
     {
         "offline_access", "uma_authorization", "manage-account", "manage-account-links",
         "view-profile", "manage-realm", "manage-users", "view-users", "query-users"
     };
 
-    private const string VarsayilanRolOneki = "default-roles-";
+    private const string DefaultRolePrefix = "default-roles-";
 
     /// <summary>
     /// Kayıtta eksik olan rolleri döndürür. Boş liste = sapma yok.
@@ -74,7 +74,7 @@ public static class UserAccountDriftPolicy
         var kayittakiler = new HashSet<string>(recordRoles, StringComparer.OrdinalIgnoreCase);
 
         return [.. tokenRoles
-            .Where(IlgiliRol)
+            .Where(IsRelevantRole)
             .Where(r => !kayittakiler.Contains(r))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(r => r, StringComparer.Ordinal)];
@@ -99,16 +99,16 @@ public static class UserAccountDriftPolicy
         _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
     };
 
-    private static bool IlgiliRol(string rol) =>
-        !string.IsNullOrWhiteSpace(rol)
-        && !TeknikRoller.Contains(rol)
-        && !rol.StartsWith(VarsayilanRolOneki, StringComparison.OrdinalIgnoreCase)
-        && MesnetRoles.All.Contains(rol, StringComparer.OrdinalIgnoreCase);
+    private static bool IsRelevantRole(string role) =>
+        !string.IsNullOrWhiteSpace(role)
+        && !TechnicalRoles.Contains(role)
+        && !role.StartsWith(DefaultRolePrefix, StringComparison.OrdinalIgnoreCase)
+        && MesnetRoles.All.Contains(role, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Log için tek biçimli, eyleme dönüşebilir özet.</summary>
-    public static string Describe(string username, IReadOnlyList<string> eksikRoller) =>
+    public static string Describe(string username, IReadOnlyList<string> missingRoles) =>
         $"UserAccount kaydı Keycloak'tan sapmış — kullanıcı '{username}', kayıtta eksik rol: "
-        + $"{string.Join(", ", eksikRoller)}. Kayıt otoriter olduğu için bu roller izin ÜRETMEZ "
+        + $"{string.Join(", ", missingRoles)}. Kayıt otoriter olduğu için bu roller izin ÜRETMEZ "
         + $"ve ilgili uçlar 403 döner. Düzeltme: POST /api/security/users/sync (izin önbelleği "
         + $"nedeniyle etkisi 5 dakikaya kadar gecikebilir).";
 }

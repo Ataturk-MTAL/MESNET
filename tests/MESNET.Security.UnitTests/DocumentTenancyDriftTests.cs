@@ -29,10 +29,10 @@ public sealed class DocumentTenancyDriftTests
     /// </summary>
     private static readonly Regex SchemaForRegex = new(@"Schema\.For<([\w.]+)>", RegexOptions.Compiled);
 
-    private static HashSet<string> KayitliBelgeTipleri()
+    private static HashSet<string> RegisteredDocumentTypes()
     {
         var root = Path.Combine(RepoRoot(), "src");
-        var tipler = new HashSet<string>(StringComparer.Ordinal);
+        var types = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
         {
@@ -43,39 +43,39 @@ public sealed class DocumentTenancyDriftTests
             foreach (Match m in SchemaForRegex.Matches(File.ReadAllText(file)))
             {
                 // Nitelikli ad → son segment (Core.Entities.Business → Business).
-                var tip = m.Groups[1].Value;
-                tipler.Add(tip[(tip.LastIndexOf('.') + 1)..]);
+                var type = m.Groups[1].Value;
+                types.Add(type[(type.LastIndexOf('.') + 1)..]);
             }
         }
 
-        return tipler;
+        return types;
     }
 
     [Fact]
     public void Kayitli_her_belge_tipi_siniflandirilmis()
     {
-        var kayitli = KayitliBelgeTipleri();
-        kayitli.Count.ShouldBeGreaterThan(30, "Tarama belge tipi bulamadıysa test hiçbir şey doğrulamaz.");
+        var registered = RegisteredDocumentTypes();
+        registered.Count.ShouldBeGreaterThan(30, "Tarama belge tipi bulamadıysa test hiçbir şey doğrulamaz.");
 
-        var siniflandirilmamis = kayitli.Where(t => !DocumentTenancyMap.All.ContainsKey(t)).OrderBy(t => t).ToList();
+        var unclassified = registered.Where(t => !DocumentTenancyMap.All.ContainsKey(t)).OrderBy(t => t).ToList();
 
-        siniflandirilmamis.ShouldBeEmpty(
+        unclassified.ShouldBeEmpty(
             "Yeni belge tipi kiracılık açısından sınıflandırılmalı (#147): kiracıya mı ait, "
             + "paylaşımlı mı, kimlik katmanı mı? Karar sonraya bırakılamaz — kiracılık geçişinde "
             + "yanlış damga veri göçü demektir. DocumentTenancyMap'e ekleyin:\n  "
-            + string.Join("\n  ", siniflandirilmamis));
+            + string.Join("\n  ", unclassified));
     }
 
     [Fact]
     public void Siniflandirmada_kayitli_olmayan_tip_yok()
     {
-        var kayitli = KayitliBelgeTipleri();
+        var registered = RegisteredDocumentTypes();
 
-        var fazla = DocumentTenancyMap.All.Keys.Where(t => !kayitli.Contains(t)).OrderBy(t => t).ToList();
+        var extra = DocumentTenancyMap.All.Keys.Where(t => !registered.Contains(t)).OrderBy(t => t).ToList();
 
-        fazla.ShouldBeEmpty(
+        extra.ShouldBeEmpty(
             "Sınıflandırmada Marten'a kayıtlı olmayan tip var — belge silindiyse girdisi de "
-            + "silinmeli, yoksa liste gerçeği yansıtmayı bırakır:\n  " + string.Join("\n  ", fazla));
+            + "silinmeli, yoksa liste gerçeği yansıtmayı bırakır:\n  " + string.Join("\n  ", extra));
     }
 
     /// <summary>
@@ -94,17 +94,17 @@ public sealed class DocumentTenancyDriftTests
     [Fact]
     public void Kiracı_anahtari_eksik_belge_kalmadi()
     {
-        var eksik = DocumentTenancyMap.All
+        var missing = DocumentTenancyMap.All
             .Where(kv => kv.Value == DocumentTenancy.MissingKey)
             .Select(kv => kv.Key)
             .OrderBy(t => t)
             .ToList();
 
-        eksik.ShouldBeEmpty(
+        missing.ShouldBeEmpty(
             "Kiracıya ait veri taşıyıp kiracı anahtarı olmayan belge bırakılamaz (#147). "
             + "Kaynak olay InstitutionId taşıyorsa görünümü doğduğu anda damgalayın; sonradan "
             + "eklemek backfill gerektirir ve unutulan backfill sessiz sızıntıdır:\n  "
-            + string.Join("\n  ", eksik));
+            + string.Join("\n  ", missing));
     }
 
     private static string RepoRoot()

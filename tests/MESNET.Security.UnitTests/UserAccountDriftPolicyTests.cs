@@ -32,25 +32,25 @@ public sealed class UserAccountDriftPolicyTests
     [Fact]
     public void Token_kayitta_olmayan_rol_tasiyorsa_sapma_bildirilir()
     {
-        var eksik = UserAccountDriftPolicy.Detect(
+        var missing = UserAccountDriftPolicy.Detect(
             recordRoles: [MesnetRoles.InstitutionManager],
             recordWrittenAt: KayitZamani,
             tokenRoles: [MesnetRoles.InstitutionManager, MesnetRoles.SystemAdmin],
             tokenIssuedAt: SonrakiToken);
 
-        eksik.ShouldBe([MesnetRoles.SystemAdmin]);
+        missing.ShouldBe([MesnetRoles.SystemAdmin]);
     }
 
     [Fact]
     public void Birden_cok_eksik_rol_tamami_bildirilir()
     {
-        var eksik = UserAccountDriftPolicy.Detect(
+        var missing = UserAccountDriftPolicy.Detect(
             recordRoles: [],
             recordWrittenAt: KayitZamani,
             tokenRoles: [MesnetRoles.Teacher, MesnetRoles.DepartmentHead],
             tokenIssuedAt: SonrakiToken);
 
-        eksik.ShouldBe([MesnetRoles.DepartmentHead, MesnetRoles.Teacher], ignoreOrder: true);
+        missing.ShouldBe([MesnetRoles.DepartmentHead, MesnetRoles.Teacher], ignoreOrder: true);
     }
 
     // ── Yanlış alarm üretmemesi gereken durumlar ───────────────────────────────────────
@@ -63,13 +63,13 @@ public sealed class UserAccountDriftPolicyTests
     [Fact]
     public void Kayit_tokendan_yeniyse_sapma_sayilmaz()
     {
-        var eksik = UserAccountDriftPolicy.Detect(
+        var missing = UserAccountDriftPolicy.Detect(
             recordRoles: [MesnetRoles.InstitutionManager],
             recordWrittenAt: KayitZamani,
             tokenRoles: [MesnetRoles.InstitutionManager, MesnetRoles.SystemAdmin],
             tokenIssuedAt: OncekiToken);
 
-        eksik.ShouldBeEmpty("Rol uygulamadan kaldırılmış olabilir; eski token sapma değildir.");
+        missing.ShouldBeEmpty("Rol uygulamadan kaldırılmış olabilir; eski token sapma değildir.");
     }
 
     /// <summary>Aynı anda yazılmış kayıt da sapma sayılmaz — sıra belirsizken suçlama yapılmaz.</summary>
@@ -159,12 +159,12 @@ public sealed class UserAccountDriftPolicyTests
     [InlineData("uma_authorization")]
     [InlineData("default-roles-mesnet")]
     [InlineData("manage-account")]
-    public void Keycloak_teknik_rolleri_sapma_sayilmaz(string teknikRol)
+    public void Keycloak_teknik_rolleri_sapma_sayilmaz(string technicalRole)
     {
         UserAccountDriftPolicy.Detect(
             recordRoles: [MesnetRoles.Teacher],
             recordWrittenAt: KayitZamani,
-            tokenRoles: [MesnetRoles.Teacher, teknikRol],
+            tokenRoles: [MesnetRoles.Teacher, technicalRole],
             tokenIssuedAt: SonrakiToken).ShouldBeEmpty();
     }
 
@@ -200,13 +200,13 @@ public sealed class UserAccountDriftPolicyTests
         var kayitUtc = new DateTime(2026, 8, 6, 14, 51, 0, DateTimeKind.Utc);
         var tokenUtc = new DateTime(2026, 8, 6, 15, 57, 0, DateTimeKind.Utc);
 
-        var eksik = UserAccountDriftPolicy.Detect(
+        var missing = UserAccountDriftPolicy.Detect(
             recordRoles: [MesnetRoles.InstitutionManager],
             recordWrittenAt: kayitUtc.ToLocalTime(),   // ← aynı an, Local kind
             tokenRoles: [MesnetRoles.InstitutionManager, MesnetRoles.SystemAdmin],
             tokenIssuedAt: tokenUtc);
 
-        eksik.ShouldBe([MesnetRoles.SystemAdmin],
+        missing.ShouldBe([MesnetRoles.SystemAdmin],
             "Aynı an farklı Kind ile yazıldığında karar değişmemeli.");
     }
 
@@ -227,10 +227,10 @@ public sealed class UserAccountDriftPolicyTests
     [Fact]
     public void Aciklama_kullanici_rol_ve_duzeltme_yolunu_tasir()
     {
-        var mesaj = UserAccountDriftPolicy.Describe("admin", [MesnetRoles.SystemAdmin]);
+        var message = UserAccountDriftPolicy.Describe("admin", [MesnetRoles.SystemAdmin]);
 
-        mesaj.ShouldContain("admin");
-        mesaj.ShouldContain(MesnetRoles.SystemAdmin);
-        mesaj.ShouldContain("/api/security/users/sync");
+        message.ShouldContain("admin");
+        message.ShouldContain(MesnetRoles.SystemAdmin);
+        message.ShouldContain("/api/security/users/sync");
     }
 }

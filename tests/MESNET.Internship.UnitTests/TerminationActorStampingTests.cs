@@ -23,7 +23,7 @@ namespace MESNET.Internship.UnitTests;
 public sealed class TerminationActorStampingTests
 {
     /// <summary>Uç metodunun gövdeden bağladığı tip — komut tipi olmamalı.</summary>
-    private static readonly Regex KomutuDogrudanBaglama = new(
+    private static readonly Regex BindsCommandDirectly = new(
         @"^\s*Guid internshipId,\s*(RequestTermination|OverrideTerminationApproval)\s+\w+",
         RegexOptions.Compiled | RegexOptions.Multiline);
 
@@ -36,7 +36,7 @@ public sealed class TerminationActorStampingTests
 
         File.Exists(dosya).ShouldBeTrue($"Uç dosyası bulunamadı: {dosya}");
 
-        var eslesmeler = KomutuDogrudanBaglama.Matches(File.ReadAllText(dosya))
+        var eslesmeler = BindsCommandDirectly.Matches(File.ReadAllText(dosya))
             .Select(m => m.Value.Trim())
             .ToList();
 
@@ -58,7 +58,7 @@ public sealed class TerminationActorStampingTests
                     Guid internshipId, OverrideTerminationApproval command, IMessageBus bus)
             """;
 
-        KomutuDogrudanBaglama.IsMatch(ornek).ShouldBeTrue(
+        BindsCommandDirectly.IsMatch(ornek).ShouldBeTrue(
             "Desen bilinen ihlali göremiyorsa test hiçbir şey doğrulamaz.");
     }
 

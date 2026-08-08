@@ -201,13 +201,13 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     {
         if (ReadIssuedAt(principal) is not { } issuedAt) return;
 
-        var eksik = UserAccountDriftPolicy.Detect(
+        var missing = UserAccountDriftPolicy.Detect(
             entry.Roles, entry.RolesWrittenAt, ExtractRealmRolesFromToken(principal), issuedAt);
 
-        if (eksik.Count == 0) return;
+        if (missing.Count == 0) return;
 
         var username = principal.FindFirst("preferred_username")?.Value ?? "(bilinmiyor)";
-        _logger.LogWarning("{Rapor}", UserAccountDriftPolicy.Describe(username, eksik));
+        _logger.LogWarning("{Rapor}", UserAccountDriftPolicy.Describe(username, missing));
     }
 
     /// <summary>

@@ -108,14 +108,14 @@ public static class InstitutionSeeder
             districtName = ilceEksik ? VarsayilanIlce : null
         });
 
-        var tamamlanan = (ilEksik, ilceEksik) switch
+        var completed = (ilEksik, ilceEksik) switch
         {
             (true, true) => $"il/ilçe ({VarsayilanIlKodu} — Mersin / {VarsayilanIlce})",
             (true, false) => $"il ({VarsayilanIlKodu} — Mersin)",
             _ => $"ilçe ({VarsayilanIlce})",
         };
 
-        Console.WriteLine($"  ✓ Kurumun {tamamlanan} bilgisi tamamlandı");
+        Console.WriteLine($"  ✓ Kurumun {completed} bilgisi tamamlandı");
     }
 
     private static async Task SyncKeycloakAsync(KeycloakAdminService keycloak, Guid institutionId)

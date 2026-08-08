@@ -31,23 +31,23 @@ public sealed class AuthorizeStaffGuardTests
     [Fact]
     public void Ayni_kullanici_ikinci_kez_eklenemez()
     {
-        var mevcut = new List<StaffMember>
+        var existing = new List<StaffMember>
         {
             new() { KeycloakId = KcId, FullName = "Zeynep Yılmaz", Role = StaffRole.VicePrincipal },
         };
 
-        mevcut.Any(s => s.KeycloakId == KcId).ShouldBeTrue("Guard bu koşulda kaydı reddetmeli.");
+        existing.Any(s => s.KeycloakId == KcId).ShouldBeTrue("Guard bu koşulda kaydı reddetmeli.");
     }
 
     [Fact]
     public void Farkli_kullanici_eklenebilir()
     {
-        var mevcut = new List<StaffMember>
+        var existing = new List<StaffMember>
         {
             new() { KeycloakId = KcId, FullName = "Zeynep Yılmaz", Role = StaffRole.VicePrincipal },
         };
 
-        mevcut.Any(s => s.KeycloakId == "baska-kimlik").ShouldBeFalse();
+        existing.Any(s => s.KeycloakId == "baska-kimlik").ShouldBeFalse();
     }
 
     /// <summary>

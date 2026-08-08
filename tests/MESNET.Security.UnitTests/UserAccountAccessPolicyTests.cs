@@ -76,7 +76,7 @@ public sealed class UserAccountAccessPolicyTests
     {
         var kok = Path.Combine(RepoRoot(), "src", "Modules", "Security");
         var desen = new Regex(@"session\.Delete\s*\(\s*account\s*\)|Delete<UserAccount>", RegexOptions.Compiled);
-        var ihlaller = new List<string>();
+        var violations = new List<string>();
 
         foreach (var file in Directory.EnumerateFiles(kok, "*.cs", SearchOption.AllDirectories))
         {
@@ -87,14 +87,14 @@ public sealed class UserAccountAccessPolicyTests
             var lines = File.ReadAllLines(file);
             for (var i = 0; i < lines.Length; i++)
                 if (desen.IsMatch(lines[i]))
-                    ihlaller.Add($"{Path.GetFileName(file)}:{i + 1}  {lines[i].Trim()}");
+                    violations.Add($"{Path.GetFileName(file)}:{i + 1}  {lines[i].Trim()}");
         }
 
-        ihlaller.ShouldBeEmpty(
+        violations.ShouldBeEmpty(
             "UserAccount SERT SİLİNEMEZ (#210). Kayıt silinirse izin dönüşümü onu bulamaz, "
             + "\"kaydı henüz yok\" sanar ve token'daki rollerden izin türetir — silinen kullanıcı "
             + "token'ı sona erene kadar (realm'de 1800 sn) tam yetkiyle çalışır. Silme yerine "
-            + "DeletedAt damgalayın:\n  " + string.Join("\n  ", ihlaller));
+            + "DeletedAt damgalayın:\n  " + string.Join("\n  ", violations));
     }
 
     private static string RepoRoot()
