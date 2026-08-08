@@ -21,6 +21,10 @@ public static class InternshipEndpoints
         // Liste hem okul tarafına hem veri sahibine açıktır (#182).
         group.MapGet("/{internshipId:guid}", Get).RequireAuthorization(PermissionPolicies.InternshipViewOrOwn);
         group.MapGet("/", GetAll).RequireAuthorization(PermissionPolicies.InternshipViewOrOwn);
+        // Zincir durumu okuma (#191) — daha önce hiçbir uçtan okunamıyordu.
+        // Veri sahibine de açık: veli/öğrenci kendi sürecini görebilmeli. Kapsam handler'da.
+        group.MapGet("/{internshipId:guid}/termination-chain", GetTerminationChainStatus)
+            .RequireAuthorization(PermissionPolicies.InternshipViewOrOwn);
         group.MapPost("/{internshipId:guid}/terminate", PostRequestTermination).RequireAuthorization(Permissions.Internship.Manage);
         // Veli adımı ayrı izin ister (#174): "internship:approve" verilseydi veli
         // /approve/teacher ve /approve/deputy uçlarına da erişir, zincirin üç adımını tek
@@ -37,6 +41,17 @@ public static class InternshipEndpoints
         Guid internshipId, IMessageBus bus)
     {
         var dto = await bus.InvokeAsync<InternshipSummaryDto>(new GetInternship(internshipId));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(dto)
+            .Build());
+    }
+
+    private static async Task<IResult> GetTerminationChainStatus(
+        Guid internshipId, IMessageBus bus)
+    {
+        var dto = await bus.InvokeAsync<TerminationChainStatusDto>(
+            new GetTerminationChain(internshipId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(dto)

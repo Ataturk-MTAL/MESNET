@@ -83,6 +83,7 @@
     <Project Path="tests/MESNET.Coordination.UnitTests/MESNET.Coordination.UnitTests.csproj"/>
     <Project Path="tests/MESNET.Reporting.UnitTests/MESNET.Reporting.UnitTests.csproj"/>
     <Project Path="tests/MESNET.Business.UnitTests/MESNET.Business.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Internship.UnitTests/MESNET.Internship.UnitTests.csproj"/>
     <Project Path="tests/MESNET.Enrollment.UnitTests/MESNET.Enrollment.UnitTests.csproj"/>
     <Project Path="tests/MESNET.Security.UnitTests/MESNET.Security.UnitTests.csproj"/>
     <Project Path="tests/MESNET.Attendance.UnitTests/MESNET.Attendance.UnitTests.csproj"/>
