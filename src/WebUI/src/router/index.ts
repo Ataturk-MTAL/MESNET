@@ -114,6 +114,15 @@ const router = createRouter({
               component: () => import('pages/contract/ContractFormPage.vue'),
               meta: { permissions: ['internship:contract:manage'], formRoute: true },
             },
+            // Fesih onay zinciri (#191) — okul tarafının adımları.
+            // Görüntüleme internship:view; her adımın butonu KENDİ iznine bakar ve o izin
+            // sunucudan gelen adım tanımından okunur.
+            {
+              path: 'terminations',
+              name: 'InternshipTerminations',
+              component: () => import('pages/internship/TerminationsPage.vue'),
+              meta: { permissions: ['internship:view', 'internship:manage'] },
+            },
             {
               path: 'overview',
               name: 'InternshipOverview',
