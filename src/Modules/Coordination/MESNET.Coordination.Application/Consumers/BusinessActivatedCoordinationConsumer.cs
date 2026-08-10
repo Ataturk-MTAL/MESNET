@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Business.Shared.Events;
 using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Core.ReadModels;
+using Microsoft.Extensions.Logging;
 
 namespace MESNET.Coordination.Application.Consumers;
 
@@ -14,6 +15,7 @@ public static class BusinessActivatedCoordinationConsumer
     public static async Task Consume(
         BusinessActivated @event,
         IDocumentSession session,
+        ILogger<BusinessCoordinationView> logger,
         CancellationToken cancellationToken)
     {
         var baseId = CoordinationViewId.Base(@event.BusinessId);
@@ -28,7 +30,9 @@ public static class BusinessActivatedCoordinationConsumer
             Address = @event.Address,
             District = AddressHelper.ExtractDistrict(@event.Address),
             Location = @event.Location,
-            InstitutionId = @event.InstitutionId,
+            // Provenance → kapsam çevirimi ve bugünkü yaklaşımın sınırı BusinessScopeOrigin'de.
+            InstitutionId = BusinessScopeOrigin.Resolve(
+                @event.RegisteredByInstitutionId, @event.BusinessId, logger),
             ActiveStudentCount = 0,
         });
     }

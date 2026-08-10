@@ -194,6 +194,39 @@ POST /api/security/users/{userAccountId}/institution
 personel kaydı yedeği onları kapsamaz ve `SyncUsersFromKeycloak` artık kurum bağı kurmuyor.
 Sync yanıtındaki `withoutInstitution` sayısı aynı boşluğu gösterir.
 
+## İşletme provenance göçü (ADR-0003 adım 4)
+
+`Business.InstitutionId` → `RegisteredByInstitutionId` olarak yeniden adlandırıldı. Alan
+**provenance**tır (kaydı hangi okul girdi), kapsam değil — işletme kataloğu paylaşımlıdır.
+
+Marten belgeyi JSON olarak saklar, yani **ad değişikliği anahtarı değiştirir**. Mevcut
+belgeler göç etmeden `registeredByInstitutionId` alanı boş (`Guid.Empty`) okunur.
+
+:::danger Atlanırsa ne olur
+Sorgular etkilenmez (hiçbir sorgu bu alanla filtrelemez), ama işletme **onaylandığında veya
+yeniden aktifleştirildiğinde** koordinasyon görünümü `Guid.Empty` kapsamıyla açılır ve işletme
+koordinasyon ekranlarından **kaybolur**. Boş provenance `LogWarning` üretir
+(`BusinessScopeOrigin`), yoksa bu sessiz olurdu.
+:::
+
+```sql
+update business.mt_doc_business
+set data = (data - 'institutionId')
+        || jsonb_build_object('registeredByInstitutionId', data->'institutionId')
+where data ? 'institutionId';
+```
+
+Doğrulama — ikisi de `0` dönmeli:
+
+```sql
+select count(*) from business.mt_doc_business where data ? 'institutionId';
+select count(*) from business.mt_doc_business
+where coalesce(data->>'registeredByInstitutionId','') in
+      ('', '00000000-0000-0000-0000-000000000000');
+```
+
+Göç idempotenttir: `where data ? 'institutionId'` koşulu ikinci koşuda hiçbir satır seçmez.
+
 ## Sırayı bozmayın
 
 Bir adım başka bir adımın verisini üretiyorsa sıra önemlidir. Örnek: koordinasyon zinciri

@@ -134,7 +134,7 @@ Sıralama ilkesi: **geri alınabilir işler önce, tek yönlü kapı en sonda ve
 | 1 | Dört `MissingKey` görünüme `InstitutionId` + backfill | Düşük | Evet | `MissingKey` sınıfı boş; teste "yeni tip eklenemez" mührü |
 | 2 | Kiracı otoritesinin kalan boşlukları | Orta | Evet, iki PR | ✅ Tamamlandı (#223 + bu PR) |
 | 3 | Keycloak sertleştirme: realm drift denetimi + user PUT'ları GET+merge'den geçsin | Düşük | Evet | Drift denetimi CI/smoke'ta yeşil; merge davranışı testli |
-| 4 | `Business.InstitutionId` → provenance (`RegisteredByInstitutionId`) | Orta, davranış farkı **sıfır** | Evet | Hiçbir sorgu `Business.InstitutionId`'yi kapsam filtresi yapmıyor |
+| 4 | `Business.InstitutionId` → provenance (`RegisteredByInstitutionId`) | Orta, davranış farkı **sıfır** | Evet | ✅ Tamamlandı |
 | 5 | **Marten conjoined açılışı** | Yüksek | **TEK YÖNLÜ KAPI** | İzolasyon test paketi yeşil; `tenant_id = *DEFAULT*` satır sayısı sıfır |
 | 6 | İkinci okul kontrol listesi | — | — | İzolasyon smoke'u iki gerçek okulla geçti |
 
@@ -171,6 +171,33 @@ kullanıcı **kapsamsız doğuyor** ve bağı idari bir işlem kuruyor. Sync son
 **Kalan borç:** `business_id` hâlâ token claim'i olarak okunuyor ve `CreateUser` onu Keycloak'a
 yazıyor. Kiracı anahtarı değil, kiracı *içinde* bir kapsam olduğu için bu adımın konusu değildi;
 ama aynı unmanaged-öznitelik riskini taşıyor ve ayrı ele alınmalı.
+
+### Adım 4 — ne değişti, ne değişmedi
+
+**Değişen: ad ve dolayısıyla okuma.** `Business.InstitutionId` → `RegisteredByInstitutionId`;
+`BusinessRegistered/Approved/Activated` olaylarında da aynı. Alan artık adıyla söylüyor:
+**kaydı hangi okul girdi**. Eski ad "bu işletme şu okula ait" diye okunuyordu ve adım 5'te bu
+okuma paylaşımlı kataloğu kiracıya bölerdi — bir okul diğerinin işletmesini hiç göremezdi.
+
+**Değişmeyen: davranış.** Hiçbir sorgu bu alanla filtrelemiyordu, bugün de filtrelemiyor.
+Faz 1'de tek kurum var, yani tüm değerler zaten aynı.
+
+**Bilinçli olarak bırakılan yaklaşım:** `BusinessCoordinationView.InstitutionId` hâlâ
+provenance'tan besleniyor — yani işletmeyi ilk kaydeden okul, onu koordine eden okul sayılıyor.
+Çok okullu yapıda yanlış olur: aynı işletmeye ikinci okuldan öğrenci yerleştirildiğinde o okul
+işletmeyi koordinasyon ekranlarında göremez. Doğrusu kapsamı **ilişkiden** (yerleştirme)
+türetmektir; bu, aynı vergi numaralı kayıtların birleştirilmesiyle birlikte ayrı bir domain
+migration'dır (bkz. Kapsam dışı). Çevirim tek bir yerde toplandı — `BusinessScopeOrigin` —
+böylece o migration geldiğinde değişecek tek nokta belli.
+
+**Kilit:** `BusinessProvenanceDriftTests` alanın okuyucularını listeyle sınırlar. Yeni bir
+okuyucu **bir karardır**, kazara eklenen satır değil: test kırmızıya döner, kararı veren listeye
+gerekçesiyle ekler. İkinci test eski adın entity'ye geri gelmesini engeller.
+
+**Göç gerekir:** Marten belgeyi JSON tuttuğu için ad değişikliği anahtarı değiştirir. Atlanırsa
+sorgular etkilenmez ama işletme onaylandığında koordinasyon görünümü `Guid.Empty` kapsamıyla
+açılır ve işletme ekranlardan kaybolur. Boş provenance `LogWarning` üretir; SQL
+`dagitim-on-kosullari.md`'de.
 
 ### Adım 5'in en riskli yeri ve azaltımları
 

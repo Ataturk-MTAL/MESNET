@@ -111,8 +111,10 @@ public static class DocumentTenancyMap
         // 3308 devlet katkısı oranları — ulusal parametre
         ["ClassYearContributionClaim"] = Shared,
         // PAYLAŞIMLI İŞLETME KATALOĞU — bir işletme birden çok okuldan öğrenci alır; tüm
-        // okullar tüm işletmeleri listeler. Bugün Business.InstitutionId duruyor ama anlamı
-        // kapsam değil PROVENANCE olmalı (hangi okul kaydetti) — ayrı domain migration.
+        // okullar tüm işletmeleri listeler. Alan artık adıyla da bunu söylüyor:
+        // Business.RegisteredByInstitutionId, PROVENANCE (hangi okul kaydetti) — kapsam değil
+        // (ADR-0003 adım 4). Aynı vergi numaralı kayıtların birleştirilmesi ve okula bağlı
+        // alanların ilişki entity'sine taşınması ayrı bir domain migration'dır.
         ["Business"] = Shared,
 
         // Kiracının KENDİSİ — kiracıya ait değil, onu tanımlar
