@@ -6,9 +6,15 @@ using Wolverine;
 namespace MESNET.Institution.Application.Handlers;
 
 /// <summary>
-/// Mevcut personel kayıtlarındaki alan bilgisini <see cref="StaffAuthorized"/> olarak
-/// yeniden yayınlar (#126). Security modülü olayı tüketip kullanıcı kaydının alan
-/// kapsamını doldurur — modüller arası doğrudan veri yazma yoktur.
+/// Mevcut personel kayıtlarını <see cref="StaffAuthorized"/> olarak yeniden yayınlar
+/// (#126, ADR-0003 adım 2.1). Security modülü olayı tüketip kullanıcı kaydının <b>kurum
+/// (kiracı anahtarı) ve alan kapsamı</b> boşluklarını doldurur — modüller arası doğrudan
+/// veri yazma yoktur.
+///
+/// <para><b>Alanı olmayan personel de yayınlanır.</b> Eskiden atlanıyordu ve gerekçesi
+/// makuldü: yayınlanacak bir alan yoktu. Ama olay <b>kurum kimliğini de</b> taşıyor ve
+/// kiracı anahtarı backfill'i ona bağlı. Atlamak, tam da hiçbir alana bağlı olmayan iki rolü —
+/// okul müdürü ve müdür yardımcısı — kiracı anahtarsız bırakırdı; canlıda ölçüldü.</para>
 /// </summary>
 public static class ResyncStaffBranchCodesHandler
 {
@@ -33,13 +39,13 @@ public static class ResyncStaffBranchCodesHandler
             {
                 total++;
 
-                // Alanı olmayan personel (müdür, müdür yrd.) ATLANIR — eksik veri değildir.
+                // Alanı olmayan personel (müdür, müdür yrd.) SAYILIR ama ATLANMAZ: olayın
+                // taşıdığı kurum kimliği kiracı anahtarı backfill'i için gerekli. Tüketici
+                // boş branşı zaten "eksik veri değil" diye ele alıyor (#126).
                 if (string.IsNullOrWhiteSpace(staff.BranchCode))
-                {
                     noBranch++;
-                    continue;
-                }
 
+                // Keycloak kimliği olmayan personel eşleştirilemez — yayın anlamsız.
                 if (string.IsNullOrWhiteSpace(staff.KeycloakId))
                 {
                     noKeycloakId++;
