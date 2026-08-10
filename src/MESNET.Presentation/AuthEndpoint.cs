@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Wolverine;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 
@@ -17,7 +18,13 @@ public static class AuthEndpoint
         return app;
     }
 
-    private static IResult GetCurrentUser(ClaimsPrincipal user)
+    /// <summary>
+    /// <paramref name="bus"/> yalnız <b>çözülmüş kiracıyı okumak</b> için alınır (#149).
+    /// Kiracıyı istek başına <c>TenantResolutionMiddleware</c> koyar; buradan yansıtmak, hattın
+    /// gerçekten çalıştığını dışarıdan görülebilir kılar. Aksi hâlde middleware sessizce
+    /// çalışmasa da hiçbir şey fark etmezdi — kiracılık açılana kadar.
+    /// </summary>
+    private static IResult GetCurrentUser(ClaimsPrincipal user, IMessageBus bus)
     {
         var sub = user.FindFirst("sub")?.Value
             ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -62,7 +69,9 @@ public static class AuthEndpoint
                 branchCode = branchCodes.Count > 0 ? branchCodes[0] : null,
                 branchCodes,
                 roles,
-                permissions
+                permissions,
+                // Kiracı = okul (ADR-0003). null ise kullanıcı kapsamsızdır.
+                tenantId = bus.TenantId
             })
             .Build());
     }

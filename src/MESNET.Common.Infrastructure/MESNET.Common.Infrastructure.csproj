@@ -19,6 +19,9 @@
     <!-- TenantEnricher — her log kaydına kiracı (kurum) kimliği ekler. Serilog.AspNetCore
          ILogEventEnricher'ı da getirir; ayrı bir Serilog paketi gerekmez. -->
     <PackageReference Include="Serilog.AspNetCore" />
+    <!-- TenantResolutionMiddleware — IMessageBus.TenantId'yi istek başına ayarlar (#149).
+         Wolverine düz Minimal API'de kiracıyı otomatik tespit etmez. -->
+    <PackageReference Include="WolverineFx" />
   </ItemGroup>
 
   <ItemGroup>

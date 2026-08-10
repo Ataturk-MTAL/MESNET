@@ -199,6 +199,47 @@ sorgular etkilenmez ama işletme onaylandığında koordinasyon görünümü `Gu
 açılır ve işletme ekranlardan kaybolur. Boş provenance `LogWarning` üretir; SQL
 `dagitim-on-kosullari.md`'de.
 
+### Adım 5, birinci yarı — kiracı hattı (kapı hâlâ kapalı)
+
+Conjoined açılmadan önce kiracının **taşınabilir** olması gerekiyor. Bu yarı geri alınabilir ve
+davranışı değiştirmez; ölçülen üç gerçek:
+
+**Göç yıkıcı DEĞİL.** Yama üretilip okundu (issue #149 adım 3). Her kiracılı tablo için üç
+ifade: `add column tenant_id ... DEFAULT '*DEFAULT*'`, eski PK'yı düşür, `PRIMARY KEY
+(tenant_id, id)` ekle. `DROP TABLE` / `DELETE` / `TRUNCATE` **yok**; 45 tablo, 144 delta.
+`mt_streams`/`mt_events` zaten `tenant_id` taşıyor — değişen yalnız PK, FK ve benzersiz indeks.
+47 `DROP CONSTRAINT ... CASCADE` var ama veritabanında tek FK bulunuyor (`fkey_mt_events_stream_id`)
+ve yama onu `(tenant_id, stream_id)` olarak yeniden kuruyor.
+
+**Wolverine düz Minimal API'de kiracıyı otomatik tespit etmez** — otomatik tespit yalnız
+`Wolverine.Http` uçları içindir. Ama `IMessageBus` *scoped* ve `TenantId` yazılabilir; tek bir
+middleware onu koyunca 219 `bus.InvokeAsync` çağrısının hiçbirine dokunmak gerekmiyor,
+cascading mesajlar ve `PublishAsync` kiracıyı devralıyor.
+
+**Kiracı uydurulmaz.** Kapsamsız kullanıcıyı varsayılan ya da `platform` kiracısına düşürmek,
+yazmalarını sessizce yanlış bölmeye göndermek olurdu. Çözülemezse kiracı konmaz; kapı
+açıldığında erişim gürültülü biçimde başarısız olur. Karar `TenantResolution` içinde ve testli:
+
+| Kullanıcı | Kiracı |
+| --- | --- |
+| Kurumu olan | kendi kurumunun kimliği |
+| Kurumu yok, `platform:` izni var (`SystemAdmin`) | `platform` |
+| Kurumu yok, platform izni de yok | **yok** |
+
+Kurumu olan kullanıcı platform izni de taşısa **kendi okulunda kalır** — aksi hâlde okul müdürü
+ulusal katmana yazarken okul verisinden kopardı.
+
+`platform` bir okul değildir ve kiracıya ait belge yazmaz. Var olma sebebi kiracısız session'ın
+adım 5'te yasaklanacak olması: kapsam dışı işlerin (ulusal parametre, alan/dal kataloğu, kimlik
+katmanı) de **adı olan** bir kimlik altında çalışması gerekir, `*DEFAULT*` gibi kimin olduğu
+belirsiz bir kova değil.
+
+**Sınıflandırma artık çalışma zamanında da denetleniyor.** Kaynak taraması
+(`DocumentTenancyDriftTests`) `Schema.For<T>()` bildirimlerini metin olarak arar; Marten ise
+bildirilmemiş bir tipi `session.Store(x)` anında kendiliğinden kaydeder ve öyle bir tip iki
+kontrolün arasından geçerdi. `DocumentTenancyVerificationHostedService` açılışta Marten'ın
+**gerçekten tanıdığı** tipleri haritayla karşılaştırır: Development'ta sapma açılışı durdurur.
+
 ### Adım 5'in en riskli yeri ve azaltımları
 
 Tehlike modu: mesaj tenant'sız yayınlanır → tüketici varsayılan kiracı session'ı açar → yazma
