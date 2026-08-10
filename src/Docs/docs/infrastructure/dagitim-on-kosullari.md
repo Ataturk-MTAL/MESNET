@@ -163,8 +163,40 @@ select count(*) from payment.mt_doc_studentabsenceview
 where coalesce(data->>'institutionId','') = '';
 ```
 
+## Kiracı anahtarı: token yolu kapandı (ADR-0003 adım 2)
+
+`institution_id` claim'i artık **yalnız sunucu tarafından** üretilir: önce kullanıcı kaydı
+(`UserAccount.InstitutionId`), sonra personel kaydı yedeği. **Token'daki değer hiç okunmuyor.**
+
+:::danger Bu dağıtımın ön koşulu
+Önce `POST /api/institutions/staff/resync-branch-codes` çalışmış olmalı. Backfill yapılmadan
+token yolu kapatılırsa, kaydı boş olan **mevcut kullanıcılar kapsamsız kalır ve kilitlenir**.
+Bu yüzden backfill ayrı bir dağıtım olarak (#223) önce gitti.
+:::
+
+**Dağıtım sonrası kontrol** — kapsamsız hesap kalmamalı:
+
+```sql
+select data->>'username'
+from security.mt_doc_useraccount
+where data->>'deletedAt' is null
+  and coalesce(data->>'institutionId','') = '';
+```
+
+Çıkan her satır için kurum bağını elle kurun:
+
+```
+POST /api/security/users/{userAccountId}/institution
+{ "institutionId": "<kurum-guid>" }
+```
+
+**Personel olmayan kullanıcılar** (işletme yetkilisi, öğrenci, veli) bu listede çıkabilir:
+personel kaydı yedeği onları kapsamaz ve `SyncUsersFromKeycloak` artık kurum bağı kurmuyor.
+Sync yanıtındaki `withoutInstitution` sayısı aynı boşluğu gösterir.
+
 ## Sırayı bozmayın
 
 Bir adım başka bir adımın verisini üretiyorsa sıra önemlidir. Örnek: koordinasyon zinciri
 dağıtımında önce **yetki backfill'i**, sonra **görünüm resync'i** gerekir — ters sırada
-yerleştirme tümden durur.
+yerleştirme tümden durur. Aynı biçimde kiracı anahtarında önce **backfill**, sonra
+**token yolunun kapatılması** gelir.

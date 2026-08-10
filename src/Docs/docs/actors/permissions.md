@@ -50,7 +50,9 @@ yazabilir (#126).
 
 "Hangi kurumun/alanın verisi" sorusu ayrı bir kontroldür ve permission ile karıştırılmamalıdır.
 
-- **Kurum kapsamı:** `institution_id` token claim'inden okunur, istekten alınmaz
+- **Kurum kapsamı:** `institution_id` claim'i, **kullanıcı kaydından üretilir** — token'dan
+  gelen değer hiç kabul edilmez (ADR-0003 adım 2).
+  Ayrıntı: [Kurum (Kiracı) Kapsamı](#kurum-kiracı-kapsamı)
 - **Alan (branş) kapsamı:** `branch_codes` token claim'inden okunur (#126).
   `ICurrentUserService.GetBranchCodes()` taşır; koordinasyon **yazma** handler'ları
   `BranchScopeGuard` ile kontrol eder. Ayrıntı: [Alan (Branş) Kapsamı Kontrolü](#alan-branş-kapsamı-kontrolü)
@@ -968,12 +970,58 @@ public static class StudentEndpoints
 - Role ve permission mapper'lar
 - Token scope yapılandırması
 
+## Kurum (Kiracı) Kapsamı
+
+`institution_id` claim'i **kiracı anahtarıdır** (ADR-0003). Bu yüzden diğer kapsam claim'lerinden
+katı bir kuralı vardır:
+
+> **Token'dan gelen `institution_id` hiçbir koşulda kabul edilmez** — kullanıcı kaydı boş olsa
+> bile. Kapsamsız kalmak, kullanıcının kendi seçtiği kiracıya düşmekten iyidir.
+
+**İki kaynak, ikisi de sunucu tarafında:**
+
+1. **Kullanıcı kaydı** — `UserAccount.InstitutionId`. Tek otorite.
+2. **Personel kaydı yedeği** — kurum belgesindeki `staff[]` eşleşmesi. Mevcut kullanıcılar için
+   geçiş adımıdır, birincil yol değildir.
+
+İkisi de boşsa claim eklenmez; kurum kapsamı isteyen uçlar o kullanıcıya kapanır ve durum
+`LogInformation` ile kaydedilir.
+
+**Neden `branch_codes`'tan katı:** alan kapsamı kiracı *içinde* bir yetki sınırıdır ve orada
+kayıt boşken token yedeği hâlâ kabul edilir. `institution_id` kiracının kendisini seçer; orada
+"yedek kaynak" diye bir şey olamaz. `institution_id` Keycloak'ta **unmanaged** bir özniteliktir —
+realm politikası yanlış kurulursa kullanıcı kendi `manage-account` rolüyle onu yazabilir.
+
+### Bağı kim kurar
+
+Tek yazma yolu: `POST /api/security/users/{id}/institution` — izin `user:roles:manage`
+(alan kapsamı ve rol atamasıyla aynı seviye; üçü de yetki kapsamı kararıdır).
+
+Kapsam kararı `UserInstitutionScopePolicy` içindedir ve aktörün kurumu **token claim'inden**
+okunur, istekten alınmaz:
+
+| Durum | Sonuç |
+| --- | --- |
+| Aktörün kendi kurumu yok | Yazamaz — kapsamsızlık sınırsızlık değildir |
+| Hedef kullanıcı bağsız → aktörün kurumu | ✅ |
+| Hedef kullanıcı **başka kuruma** bağlı | ❌ Devralma tek taraflı değildir |
+| Hedef kurum **başka bir kurum** | ❌ Hiçbir aktörün yetkisinde değil |
+| Kendi kullanıcısının bağını çözme (`null`) | ✅ Kullanıcı kapsamsız kalır |
+
+**Keycloak'a öznitelik yazılmaz.** Ne `CreateUser` ne davet kabulü ne de bu uç `institution_id`
+özniteliğini yazar. Keycloak'ta bir kopya bırakmak, ileride birinin o kopyayı yeniden otorite
+sanmasına davetiye çıkarır. Kilitleyen test:
+`tests/MESNET.Security.UnitTests/InstitutionClaimAuthorityTests.cs`.
+
+**`SyncUsersFromKeycloak` kurum bağı kurmaz.** Dışarıdan gelen kullanıcı kapsamsız doğar; sync
+sonucundaki `WithoutInstitution` sayısı ve uç mesajı bu boşluğu görünür kılar.
+
 ## Alan (Branş) Kapsamı Kontrolü
 
 **Permission erişimi açar, kapsamı belirlemez.** "Hangi kurumun/alanın verisi" sorusu ayrı bir
 kontroldür:
 
-- **Kurum kapsamı:** `institution_id` token claim'inden okunur, istekten alınmaz
+- **Kurum kapsamı:** yukarıdaki [Kurum (Kiracı) Kapsamı](#kurum-kiracı-kapsamı) bölümü
 - **Alan (branş) kapsamı:** `branch_codes` token claim'inden okunur (#126)
 
 ### Claim: `branch_codes`

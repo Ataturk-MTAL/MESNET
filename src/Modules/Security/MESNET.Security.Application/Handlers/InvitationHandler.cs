@@ -141,9 +141,9 @@ public static class CompleteInvitationHandler
         if (roleResult.IsFailure)
             throw new DomainException(roleResult.Error);
 
+        // institution_id Keycloak'a YAZILMAZ (ADR-0003 adım 2) — CreateUserHandler ile aynı
+        // gerekçe: kiracı anahtarının otoritesi UserAccount kaydıdır, Keycloak özniteliği değil.
         var attributes = new Dictionary<string, string>();
-        if (invitation.InstitutionId.HasValue)
-            attributes["institution_id"] = invitation.InstitutionId.Value.ToString();
         if (invitation.BusinessId.HasValue)
             attributes["business_id"] = invitation.BusinessId.Value.ToString();
         if (attributes.Count > 0)

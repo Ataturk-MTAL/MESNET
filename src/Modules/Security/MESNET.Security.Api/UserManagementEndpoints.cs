@@ -1,3 +1,4 @@
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
@@ -24,6 +25,11 @@ public static class UserManagementEndpoints
         group.MapPost("/{userAccountId:guid}/permissions", ChangePermissions).RequireAuthorization(Permissions.UserManagement.RolesManage);
         // Alan (branş) kapsamı bir YETKİ kapsamı kararıdır → roller/yetkiler ile aynı izin (#126)
         group.MapPost("/{userAccountId:guid}/branches", ChangeBranches).RequireAuthorization(Permissions.UserManagement.RolesManage);
+        // Kurum (kiracı) bağı da yetki kapsamı kararıdır → aynı izin (ADR-0003 adım 2).
+        // YENİ İZİN TANIMLANMADI: "hangi kuruma" sorusunu izin değil aktörün kendi kurum
+        // kapsamı cevaplar (UserInstitutionScopePolicy). Ayrı bir izin, "user:*" wildcard'ı
+        // üzerinden zaten aynı iki role düşerdi (ADR-0002) — erişimi hiç daraltmazdı.
+        group.MapPost("/{userAccountId:guid}/institution", ChangeInstitution).RequireAuthorization(Permissions.UserManagement.RolesManage);
         // Veli–öğrenci bağı (#174) — kapsam kararıdır, kimlik güncellemesi değil; bu yüzden
         // "user:update" değil "user:roles:manage" ister (ChangeBranches ile aynı çizgi).
         group.MapPost("/{userAccountId:guid}/students", ChangeStudents).RequireAuthorization(Permissions.UserManagement.RolesManage);
@@ -129,6 +135,28 @@ public static class UserManagementEndpoints
             .Build());
     }
 
+    /// <summary>
+    /// Kurum (kiracı) bağını yazar. <b>Aktörün kurum kapsamı token claim'inden okunur</b>,
+    /// istekten ALINMAZ — aksi hâlde gönderen taraf kendi kapsamını beyan edip kontrolü
+    /// anlamsız kılardı (ADR-0003 adım 2).
+    /// </summary>
+    private static async Task<IResult> ChangeInstitution(
+        Guid userAccountId, ChangeUserInstitution command,
+        ICurrentUserService currentUser, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command with
+        {
+            UserAccountId = userAccountId,
+            ActorInstitutionId = currentUser.GetCurrentUser()?.InstitutionId
+        });
+
+        var message = command.InstitutionId is null
+            ? "Kullanıcının kurum bağı çözüldü."
+            : "Kullanıcının kurum bağı güncellendi.";
+
+        return Results.Ok(ResponseBuilder.Success().AddMessage(message).Build());
+    }
+
     private static async Task<IResult> ChangeStudents(
         Guid userAccountId, ChangeUserStudents command, IMessageBus bus)
     {
@@ -180,9 +208,16 @@ public static class UserManagementEndpoints
     {
         var result = await bus.InvokeAsync<SyncUsersResult>(new SyncUsersFromKeycloak());
 
+        // Kapsamsız hesap sayısı mesaja BİLEREK eklenir (ADR-0003 adım 2): sync artık kiracı
+        // anahtarını Keycloak'tan kopyalamaz, o yüzden "senkronize edildi" tek başına işin
+        // bittiği anlamına gelmez.
+        var scopeNote = result.WithoutInstitution > 0
+            ? $" {result.WithoutInstitution} hesabın kurum bağı yok — kurum ataması gerekiyor."
+            : string.Empty;
+
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result)
-            .AddMessage($"{result.Total} kullanıcı senkronize edildi ({result.Created} yeni, {result.Updated} güncellendi).")
+            .AddMessage($"{result.Total} kullanıcı senkronize edildi ({result.Created} yeni, {result.Updated} güncellendi).{scopeNote}")
             .Build());
     }
 }

@@ -16,10 +16,11 @@ public interface IUserPermissionProvider
 /// boş olabilir ve bu bir eksiklik değildir (müdür/müdür yardımcısı alana bağlı değildir).
 /// </param>
 /// <param name="InstitutionId">
-/// Kullanıcının bağlı olduğu kurum. <b>Kayıt otoriterdir</b>; doluysa token'daki
-/// <c>institution_id</c> claim'i atılır ve yerine bu değer konur — <c>BranchCodes</c> ile
-/// birebir aynı güven sırası. Bağlı olmayan kullanıcılarda (ör. sistem yöneticisi)
-/// <c>null</c> olabilir; bu bir eksiklik değildir.
+/// Kullanıcının bağlı olduğu kurum — <b>kiracı anahtarı</b> (ADR-0003). Kayıt <b>tek</b>
+/// otoritedir: token'daki <c>institution_id</c> claim'i her durumda atılır, kayıt boş olsa
+/// bile. <c>BranchCodes</c>'tan daha katıdır; orada kayıt boşken token yedeği hâlâ kabul
+/// edilir, burada edilmez. Boş olması geçerlidir (ör. sistem yöneticisi) ve kullanıcı o
+/// hâlde kurum kapsamsız kalır.
 /// </param>
 /// <param name="LinkedStudentIds">
 /// Velinin bağlı olduğu öğrenciler (#174). <b>Kayıt otoriterdir</b> — <c>BranchCodes</c> ile

@@ -168,6 +168,16 @@ export const securityApi = {
   changeBranches: (userAccountId: string, data: ChangeBranchesRequest) =>
     api.post(`/security/users/${userAccountId}/branches`, data),
 
+  /**
+   * Kullanıcının kurum (kiracı) bağını yazar — `null` bağı çözer (ADR-0003 adım 2).
+   *
+   * Kiracı anahtarının TEK yazma yoludur: token'daki `institution_id` artık hiç okunmuyor ve
+   * Keycloak senkronizasyonu da bu alanı doldurmuyor. Hangi kuruma yazılabileceğine sunucu
+   * karar verir (aktörün kendi kurumu); istemci kurum seçimi yapmaz.
+   */
+  changeInstitution: (userAccountId: string, data: { institutionId: string | null }) =>
+    api.post(`/security/users/${userAccountId}/institution`, data),
+
   changeStudents: (userAccountId: string, data: ChangeStudentsRequest) =>
     api.post(`/security/users/${userAccountId}/students`, data),
 
@@ -177,8 +187,14 @@ export const securityApi = {
   deleteUser: (userAccountId: string) =>
     api.delete(`/security/users/${userAccountId}`),
 
+  /**
+   * `withoutInstitution`: senkronizasyon sonunda kurum bağı olmayan hesap sayısı. Sync kiracı
+   * anahtarını Keycloak'tan kopyalamaz (ADR-0003 adım 2); dışarıdan gelen kullanıcı kapsamsız
+   * doğar. Sayı sıfır değilse iş bitmemiştir.
+   */
   syncUsers: () =>
-    api.post<{ total: number; created: number; updated: number }>('/security/users/sync'),
+    api.post<{ total: number; created: number; updated: number; withoutInstitution: number }>(
+      '/security/users/sync'),
 
   // Rol → atanabilir yetki domain kapsamı (yapılandırılabilir guardrail)
   getPermissionScopes: () =>

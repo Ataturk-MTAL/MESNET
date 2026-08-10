@@ -13,7 +13,9 @@ namespace MESNET.Common.Infrastructure.Security;
 /// Keycloak paketinin rol dönüşümüne EK olarak çalışır.
 /// Her istekte Marten'dan güncel UserAccount okur → roller + DirectPermissions → permission claim'lerine dönüştürür.
 /// JWT stale claims problemini çözer: kullanıcı deaktive edilmişse permission eklenmez.
-/// Ayrıca token'da institution_id yoksa DB'den staff eşleşmesiyle claim olarak ekler.
+/// Ayrıca kapsam claim'lerini (institution_id, branch_codes, linked_student_ids) sunucu
+/// tarafındaki kayıttan çözer. institution_id için token'dan gelen değer HİÇ kabul edilmez
+/// (ADR-0003 adım 2) — kiracı anahtarı kullanıcının yazabileceği bir kaynaktan gelemez.
 /// </summary>
 public sealed class PermissionClaimsTransformation : IClaimsTransformation
 {
@@ -231,6 +233,7 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     {
         cache.Remove($"user-permissions:{keycloakUserId}");
         cache.Remove($"user-institution:{keycloakUserId}");
+        cache.Remove($"user-institution-warned:{keycloakUserId}");
         cache.Remove($"user-branch-codes:{keycloakUserId}");
     }
 
@@ -432,33 +435,35 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     }
 
     /// <summary>
-    /// <c>institution_id</c> claim'ini çözer. Öncelik sırası — <c>branch_codes</c> (#126) ile
-    /// <b>birebir aynıdır</b>:
+    /// <c>institution_id</c> claim'ini çözer. <b>Token'dan gelen değer HİÇBİR koşulda kabul
+    /// edilmez</b> (ADR-0003 adım 2); yalnız sunucu tarafı iki kaynak vardır:
     ///
     /// <list type="number">
-    ///   <item><b>Kullanıcı kaydı</b> (<c>UserAccount.InstitutionId</c>) — <b>OTORİTERDİR</b>.
-    ///         Doluysa token'dan gelen <c>institution_id</c> claim'i <b>atılır</b> ve yerine
-    ///         kayıttaki değer konur</item>
-    ///   <item><b>Token claim'i</b> — yalnız kullanıcı kaydında kurum YOKKEN kabul edilir</item>
+    ///   <item><b>Kullanıcı kaydı</b> (<c>UserAccount.InstitutionId</c>) — <b>OTORİTERDİR</b></item>
     ///   <item><b>Personel kaydı yedeği</b> — kurum belgesindeki <c>staff[]</c> eşleşmesi;
     ///         geçiş adımıdır, birincil yol DEĞİLDİR</item>
     /// </list>
     ///
-    /// <para><b>GÜVENLİK — bu sırayı TERS ÇEVİRMEYİN.</b> Önceden tam tersi yapılıyordu:
-    /// token'da claim varsa kayda <i>hiç bakılmıyordu</i>. <c>institution_id</c>, tıpkı
-    /// <c>branch_codes</c> gibi, Keycloak'ta <i>unmanaged</i> bir kullanıcı özniteliğidir;
-    /// realm politikası yanlışlıkla <c>ENABLED</c>'a çekilirse (ya da başka bir realm/ortam
-    /// öyle kurulursa) kullanıcı varsayılan <c>manage-account</c> rolüyle kendi Account
-    /// konsolundan <b>kendi kurumunu yazabilirdi</b>. Token imzalı olması içeriğin
-    /// <b>kullanıcı tarafından belirlenmediği</b> anlamına gelmez.</para>
+    /// <para>İkisi de boşsa claim <b>hiç eklenmez</b> ve kullanıcı kurum kapsamsız kalır.
+    /// Bu sessiz bir başarısızlık değildir: kapsam isteyen uçlar açık hata döner ve durum
+    /// <c>LogInformation</c> ile kaydedilir.</para>
     ///
-    /// <para>Bu, çok kurumlu (Faz 2) yapıya geçilirken kritik hâle gelir: <c>institution_id</c>
-    /// kiracı anahtarı adayıdır. Kiracı sınırının, kullanıcının yazabileceği bir kaynaktan
-    /// gelmesi izolasyonun tamamını geçersiz kılardı. Bugün sistemde tek kurum bulunduğu için
-    /// istismar senaryosu oluşmuyor; düzeltme o güne bırakılmadı.</para>
+    /// <para><b>GÜVENLİK — token kabul yolunu geri eklemeyin.</b> <c>institution_id</c>
+    /// Keycloak'ta <i>unmanaged</i> bir kullanıcı özniteliğidir; realm politikası yanlışlıkla
+    /// <c>ENABLED</c>'a çekilirse (ya da başka bir realm/ortam öyle kurulursa) kullanıcı
+    /// varsayılan <c>manage-account</c> rolüyle kendi Account konsolundan <b>kendi kurumunu
+    /// yazabilirdi</b>. Token imzalı olması içeriğin <b>kullanıcı tarafından belirlenmediği</b>
+    /// anlamına gelmez. Realm tarafındaki <c>ADMIN_EDIT</c> politikası ayrı bir katmandır;
+    /// buradaki kontrol ona <b>bağımlı değildir</b>.</para>
     ///
-    /// <para>Realm tarafında politika <c>ADMIN_EDIT</c>'tir; buradaki kontrol o yapılandırmaya
-    /// <b>bağımlı olmayan</b> ikinci katmandır. İkisinden biri kaldırılırsa açık geri gelir.</para>
+    /// <para><b>Neden <c>branch_codes</c>'tan daha katı:</b> alan kapsamı kiracı <i>içinde</i>
+    /// bir yetki sınırıdır; <c>institution_id</c> ise <b>kiracı anahtarının kendisidir</b>
+    /// (ADR-0003). Kiracı sınırının kullanıcının yazabileceği bir kaynaktan gelmesi, satır
+    /// bazlı izolasyonun tamamını geçersiz kılar — orada "yedek kaynak" diye bir şey olamaz.</para>
+    ///
+    /// <para><b>Ön koşul:</b> mevcut kullanıcıların kaydı doldurulmadan bu yol kapatılamaz —
+    /// bkz. <c>StaffAccountBackfillPolicy</c> (adım 2.1) ve
+    /// <c>POST /api/institutions/staff/resync-branch-codes</c>.</para>
     /// </summary>
     private async Task EnrichInstitutionClaimAsync(
         ClaimsPrincipal principal, string keycloakUserId, Guid? accountInstitutionId)
@@ -466,31 +471,68 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         if (principal.Identity is not ClaimsIdentity identity)
             return;
 
-        // (1) Kullanıcı kaydı OTORİTERDİR — token'dan geleni ezer.
+        // Token'daki değer HER DURUMDA atılır — sunucu tarafı kaynak bulunamasa bile.
+        // Aksi hâlde "kaynak yoksa token'a düş" davranışı geri gelirdi.
+        RemoveInstitutionClaims(principal);
+
+        // (1) Kullanıcı kaydı — kiracı anahtarının otoritesi.
         if (accountInstitutionId is { } institution && institution != Guid.Empty)
         {
-            RemoveInstitutionClaims(principal);
             identity.AddClaim(new Claim("institution_id", institution.ToString()));
             return;
         }
 
-        // (2) Kayıtta kurum yok → token claim'i varsa olduğu gibi bırakılır.
-        if (principal.HasClaim(c => c.Type == "institution_id"))
-            return;
-
-        // (3) Personel kaydı yedeği — mevcut kullanıcılar için geçiş adımı.
+        // (2) Personel kaydı yedeği — mevcut kullanıcılar için geçiş adımı.
         var cacheKey = $"user-institution:{keycloakUserId}";
 
         if (!_cache.TryGetValue(cacheKey, out string? institutionId))
         {
             institutionId = await LookupInstitutionIdAsync(keycloakUserId);
-            _cache.Set(cacheKey, institutionId ?? string.Empty, CacheDuration);
+
+            // ── SONUÇSUZ ARAMA ÖNBELLEĞE ALINMAZ ──
+            //
+            // Eskiden boş sonuç da CacheDuration boyunca saklanıyordu ve bu, geçici bir
+            // durumu 5 dakikalık bir kesintiye çeviriyordu: kullanıcı personel kaydına
+            // eklendikten SONRA bile kapsamsız kalıyordu, çünkü önbellekte "kurumu yok"
+            // yazıyordu. Kaydı olmayan kullanıcıda (henüz senkronize edilmemiş) tüketici
+            // tarafı da devreye giremez — `StaffBranchSyncConsumer` hesap bulamayınca erken
+            // döner, yani önbelleği temizleyecek kimse yoktur.
+            //
+            // Boş veritabanında tam olarak bu yaşandı: kurum oluşturulurken önbelleğe "yok"
+            // yazıldı, saniyeler sonra personel eklendi ve kurum kapsamı isteyen işletme
+            // kaydı 422 döndü. Token yolu bunu maskeliyordu (#204/#208 ile aynı sınıf hata).
+            //
+            // Bedel: kapsamsız kullanıcı için istek başına bir sorgu. Kapsamsızlık zaten
+            // düzeltilmesi gereken bir anomalidir, sürekli bir durum değil; o kullanıcının
+            // istekleri de çoğunlukla reddedilecektir.
+            if (!string.IsNullOrEmpty(institutionId))
+                _cache.Set(cacheKey, institutionId, CacheDuration);
+            else
+                WarnScopeless(keycloakUserId);
         }
 
         if (!string.IsNullOrEmpty(institutionId))
         {
             identity.AddClaim(new Claim("institution_id", institutionId));
         }
+    }
+
+    /// <summary>
+    /// Kapsamsızlığı görünür kılar. Arama artık her istekte yapıldığı için uyarı <b>ayrı bir
+    /// anahtarla</b> kısılır — aksi hâlde tek bir kapsamsız kullanıcı logu boğar ve uyarı
+    /// görmezden gelinir hâle gelirdi (#208 ile aynı gerekçe).
+    /// </summary>
+    private void WarnScopeless(string keycloakUserId)
+    {
+        var logKey = $"user-institution-warned:{keycloakUserId}";
+        if (_cache.TryGetValue(logKey, out _)) return;
+
+        _cache.Set(logKey, true, CacheDuration);
+
+        _logger.LogInformation(
+            "Kullanıcının kurum kapsamı yok: {KeycloakUserId}. Kayıt da personel eşleşmesi de " +
+            "boş — kurum kapsamı isteyen uçlar hata dönecek. Çözüm: " +
+            "POST /api/security/users/{{id}}/institution", keycloakUserId);
     }
 
     /// <summary>

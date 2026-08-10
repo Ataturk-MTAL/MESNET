@@ -631,10 +631,35 @@ ve `DeputyDirector`'da bulunur. Alan şefi yapılandırmayı **görür, değişt
 doğrudan yazamadığı alanları kurum geneli parametreyle dolaylı olarak etkilerdi (#130).
 
 **Permission erişimi açar, KAPSAMI belirlemez.** "Hangi kurumun/alanın verisi" sorusu ayrı bir
-kontroldür ve iki kapsam da token claim'inden okunur, istekten ALINMAZ:
+kontroldür ve kapsam istekten ALINMAZ:
 
-- **Kurum kapsamı:** `institution_id` claim'i
+- **Kurum kapsamı:** `institution_id` claim'i — **kullanıcı kaydından üretilir**, token'dan
+  gelen değer HİÇ kabul edilmez (ADR-0003 adım 2, aşağıya bak)
 - **Alan (branş) kapsamı:** `branch_codes` claim'i — liste (#126)
+
+### Kiracı anahtarı token'dan okunmaz (ADR-0003 adım 2)
+
+`institution_id` **kiracı anahtarıdır**; bu yüzden `branch_codes`'tan katı bir kuralı vardır.
+Kaynak ikiye indi ve ikisi de sunucu tarafında: **kullanıcı kaydı** (`UserAccount.InstitutionId`,
+otorite) → **personel kaydı yedeği** (`staff[]` eşleşmesi, geçiş adımı) → **boş**.
+
+- **Token'daki `institution_id` her istekte silinir** — kayıt boş olsa bile. "Kaynak yoksa
+  token'a düş" davranışı, kaydı olmayan kullanıcıya kendi kiracısını seçtirirdi. Öznitelik
+  Keycloak'ta *unmanaged*'dır; realm politikası yanlış kurulursa kullanıcı `manage-account`
+  ile onu kendi yazar. **Kapsamsız kalmak, yanlış kiracıya düşmekten iyidir**
+- **Keycloak'a `institution_id` YAZILMAZ** — ne `CreateUser`, ne davet kabulü, ne de kurum
+  değiştirme ucu. Oradaki bir kopya, ileride birinin onu yeniden otorite sanmasına davetiye
+  çıkarır. Kilitleyen test: `InstitutionClaimAuthorityTests` (kaynak taraması)
+- **`SyncUsersFromKeycloak` kurum bağı KURMAZ.** Dışarıdan gelen kullanıcı kapsamsız doğar;
+  sonuçtaki `WithoutInstitution` sayısı boşluğu görünür kılar
+- **Tek yazma yolu:** `POST /api/security/users/{id}/institution` (`user:roles:manage`).
+  Kapsam kararı `UserInstitutionScopePolicy`'de: aktör yalnız **kendi kurumuna** bağlar, başka
+  kuruma bağlı kullanıcıyı devralamaz, kendi kullanıcısının bağını çözebilir
+- **Ön koşul — sıra bozulmaz:** token yolu kapatılmadan önce backfill çalışmalı
+  (`POST /api/institutions/staff/resync-branch-codes`), yoksa mevcut kullanıcılar kilitlenir
+
+**Kalan borç:** `business_id` hâlâ token claim'i olarak okunuyor ve Keycloak'a yazılıyor.
+Kiracı anahtarı değil ama aynı unmanaged-öznitelik riskini taşıyor.
 
 ### Alan (branş) kapsamı kuralları (#126)
 

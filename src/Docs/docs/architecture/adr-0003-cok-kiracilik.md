@@ -132,21 +132,45 @@ Sıralama ilkesi: **geri alınabilir işler önce, tek yönlü kapı en sonda ve
 | ---: | --- | --- | --- | --- |
 | 0 | Belge sınıflandırması + drift kilidi | — | — | ✅ Tamamlandı (#201) |
 | 1 | Dört `MissingKey` görünüme `InstitutionId` + backfill | Düşük | Evet | `MissingKey` sınıfı boş; teste "yeni tip eklenemez" mührü |
-| 2 | Kiracı otoritesinin kalan boşlukları | Orta | Evet, iki PR | Kayıtsız kullanıcı → claim yok → kapsamlı uç reddeder; sync otoriteyi ezmez |
+| 2 | Kiracı otoritesinin kalan boşlukları | Orta | Evet, iki PR | ✅ Tamamlandı (#223 + bu PR) |
 | 3 | Keycloak sertleştirme: realm drift denetimi + user PUT'ları GET+merge'den geçsin | Düşük | Evet | Drift denetimi CI/smoke'ta yeşil; merge davranışı testli |
 | 4 | `Business.InstitutionId` → provenance (`RegisteredByInstitutionId`) | Orta, davranış farkı **sıfır** | Evet | Hiçbir sorgu `Business.InstitutionId`'yi kapsam filtresi yapmıyor |
 | 5 | **Marten conjoined açılışı** | Yüksek | **TEK YÖNLÜ KAPI** | İzolasyon test paketi yeşil; `tenant_id = *DEFAULT*` satır sayısı sıfır |
 | 6 | İkinci okul kontrol listesi | — | — | İzolasyon smoke'u iki gerçek okulla geçti |
 
-### Adım 2'nin iç sırası (bozulmamalı)
+### Adım 2'nin iç sırası (bozulmamalı) — tamamlandı
 
-1. Mevcut kullanıcılar için `UserAccount.InstitutionId` **backfill** (personel kaydından)
-2. `EnrichInstitutionClaimAsync`'teki token-kabul yolunu kapat
-3. `SyncUsersFromKeycloak`'ın otoriter kaydı ezmesini durdur
-4. `ChangeUserInstitution` ucu + cache invalidation
-5. `CreateUser`'ın Keycloak'a `institution_id` özniteliği yazmasını bırak
+1. ✅ Mevcut kullanıcılar için `UserAccount.InstitutionId` **backfill** (personel kaydından) — #223
+2. ✅ `EnrichInstitutionClaimAsync`'teki token-kabul yolunu kapat
+3. ✅ `SyncUsersFromKeycloak`'ın otoriter kaydı ezmesini durdur
+4. ✅ `ChangeUserInstitution` ucu + cache invalidation
+5. ✅ `CreateUser`'ın (ve davet kabulünün) Keycloak'a `institution_id` yazmasını bırak
 
-**Backfill'siz 2. madde mevcut kullanıcıları kilitler.** Ayrı deploy.
+**Backfill'siz 2. madde mevcut kullanıcıları kilitler.** Bu yüzden 1. madde ayrı deploy oldu.
+
+#### Sonuçta ne değişti
+
+**Kurum kapsamının kaynağı ikiye indi ve ikisi de sunucu tarafında:** kullanıcı kaydı
+(`UserAccount.InstitutionId`, otorite) ve personel kaydı yedeği (`staff[]` eşleşmesi, geçiş
+adımı). Token'daki `institution_id` **hiçbir koşulda** okunmuyor — kayıt boş olsa bile. Kapsamsız
+kalmak, kullanıcının kendi seçtiği kiracıya düşmekten iyidir.
+
+**Kiracı anahtarının tek yazma yolu** `POST /api/security/users/{id}/institution`. Kapsam kararı
+`UserInstitutionScopePolicy`'de: aktör yalnız **kendi kurumuna** bağlayabilir, başka kuruma bağlı
+kullanıcıyı devralamaz, bağı çözebilir. Faz 1'de tek kurum olduğu için kural bugün hep sağlanıyor;
+kontrol adım 5'ten sonra anlam kazanacağı için şimdiden yazıldı.
+
+**`branch_codes`'tan neden daha katı:** alan kapsamı kiracı *içinde* bir yetki sınırıdır ve orada
+kayıt boşken token yedeği hâlâ kabul edilir (#126). `institution_id` ise kiracı anahtarının
+kendisidir; orada "yedek kaynak" diye bir şey olamaz.
+
+**Yeni işletim gerçeği:** `SyncUsersFromKeycloak` artık kurum bağı kurmuyor. Dışarıdan gelen
+kullanıcı **kapsamsız doğuyor** ve bağı idari bir işlem kuruyor. Sync sonucu bunu sayıyor
+(`WithoutInstitution`) ve uç mesajı söylüyor — sessiz kalırsa "sync çalıştı" sanılırdı.
+
+**Kalan borç:** `business_id` hâlâ token claim'i olarak okunuyor ve `CreateUser` onu Keycloak'a
+yazıyor. Kiracı anahtarı değil, kiracı *içinde* bir kapsam olduğu için bu adımın konusu değildi;
+ama aynı unmanaged-öznitelik riskini taşıyor ve ayrı ele alınmalı.
 
 ### Adım 5'in en riskli yeri ve azaltımları
 

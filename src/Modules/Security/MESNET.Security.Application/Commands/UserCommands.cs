@@ -50,6 +50,27 @@ public sealed record ChangeUserBranches(Guid UserAccountId, List<string> BranchC
 /// </summary>
 public sealed record ChangeUserStudents(Guid UserAccountId, List<Guid> StudentIds);
 
+/// <summary>
+/// Kullanıcının kurum (kiracı) bağını değiştirir (ADR-0003 adım 2).
+///
+/// <para><b>Neden ayrı komut:</b> kurum bağı artık <b>tek</b> yerden değişir. Token'daki
+/// <c>institution_id</c> claim'i hiç kabul edilmiyor ve <c>SyncUsersFromKeycloak</c> de bu alanı
+/// yazmıyor; geriye idari bir işlem kalıyor. <c>UpdateUser</c>'a alan eklemek, ad-soyad
+/// değiştirebilen bir kullanıcıya <b>kiracı anahtarı</b> yazma yolu açardı.</para>
+///
+/// <para><b><c>null</c> geçerli bir değerdir</b> — bağı çözmek meşru bir işlemdir (kurumdan
+/// ayrılan personel, yanlış kuruma bağlanmış hesap). Çözülen kullanıcı kapsamsız kalır ve
+/// kurum kapsamı isteyen uçlar ona kapanır.</para>
+///
+/// <para>Kapsam kararı <c>UserInstitutionScopePolicy</c> içindedir; aktörün kurumu istekten
+/// değil token claim'inden okunur.</para>
+/// </summary>
+public sealed record ChangeUserInstitution(Guid UserAccountId, Guid? InstitutionId)
+{
+    /// <summary>İşlemi yapanın kurum kapsamı — uçta token claim'inden doldurulur, istekten ALINMAZ.</summary>
+    public Guid? ActorInstitutionId { get; init; }
+}
+
 public sealed record ChangeUserPermissions(Guid UserAccountId, List<string> DirectPermissions);
 
 public sealed record ToggleUserStatus(Guid UserAccountId, bool Enable, string? Reason = null);

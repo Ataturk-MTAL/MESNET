@@ -34,9 +34,12 @@ public static class CreateUserHandler
                 throw new DomainException(roleResult.Error);
         }
 
+        // institution_id Keycloak'a YAZILMAZ (ADR-0003 adım 2). Kiracı anahtarının otoritesi
+        // aşağıdaki UserAccount kaydıdır; claim de oradan üretilir. Keycloak'ta bir kopya
+        // bırakmak, ileride birinin o kopyayı yeniden otorite sanmasına davetiye çıkarır —
+        // kapatılan yol tam olarak buydu. business_id hâlâ yazılır: o alan bu adımın konusu
+        // değil ve bugün token claim'i olarak okunuyor.
         var attributes = new Dictionary<string, string>();
-        if (command.InstitutionId.HasValue)
-            attributes["institution_id"] = command.InstitutionId.Value.ToString();
         if (command.BusinessId.HasValue)
             attributes["business_id"] = command.BusinessId.Value.ToString();
 
@@ -128,6 +131,49 @@ public static class ChangeUserBranchesHandler
         PermissionClaimsTransformation.InvalidateCache(cache, account.KeycloakUserId);
 
         return new UserBranchesChanged(account.Id, account.KeycloakUserId, previous, branchCodes);
+    }
+}
+
+/// <summary>
+/// Kullanıcının kurum (kiracı) bağını değiştirir (ADR-0003 adım 2).
+///
+/// <para><b>Kiracı anahtarının tek yazma yolu budur.</b> Token'daki <c>institution_id</c>
+/// claim'i artık hiç kabul edilmiyor, <c>SyncUsersFromKeycloak</c> de bu alanı yazmıyor;
+/// geriye tek bir idari işlem kalıyor ve o işlem denetlenebilir bir olay üretiyor.</para>
+///
+/// <para><b>Keycloak'a öznitelik YAZILMAZ.</b> <c>ChangeUserBranches</c> alan kodlarını
+/// "görünürlük için" Keycloak'a da yazar; kurum için bu bilinçli olarak yapılmaz. Kiracı
+/// anahtarının Keycloak'ta bir kopyasının bulunması, ileride birinin o kopyayı yeniden
+/// otorite sanmasına davetiye çıkarır — ADR-0003'ün kapattığı yol tam olarak budur.</para>
+///
+/// <para>Kapsam değişimi permission cache'ini geçersiz kılar; aksi hâlde çözülen bağ cache
+/// süresi boyunca geçerli kalır ve kullanıcı erişmemesi gereken kurumun verisini görmeye
+/// devam ederdi.</para>
+/// </summary>
+public static class ChangeUserInstitutionHandler
+{
+    public static async Task<UserInstitutionChanged> Handle(
+        ChangeUserInstitution command, IDocumentSession session, IMemoryCache cache)
+    {
+        var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
+        // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
+        if (account is null || account.DeletedAt is not null)
+            throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
+
+        if (!UserInstitutionScopePolicy.CanAssign(
+                command.ActorInstitutionId, account.InstitutionId, command.InstitutionId))
+            throw new DomainException(SecurityErrors.InstitutionScopeNotAllowed());
+
+        var previous = account.InstitutionId;
+
+        account.InstitutionId = command.InstitutionId;
+        account.UpdatedAt = DateTime.UtcNow;
+        session.Store(account);
+
+        PermissionClaimsTransformation.InvalidateCache(cache, account.KeycloakUserId);
+
+        return new UserInstitutionChanged(
+            account.Id, account.KeycloakUserId, previous, command.InstitutionId);
     }
 }
 
@@ -361,8 +407,16 @@ public static class DeleteUserHandler
     }
 }
 
-/// <summary>Senkronizasyon sonucu — toplam/yeni/güncellenen sayıları.</summary>
-public sealed record SyncUsersResult(int Total, int Created, int Updated);
+/// <summary>
+/// Senkronizasyon sonucu — toplam/yeni/güncellenen sayıları.
+/// </summary>
+/// <param name="WithoutInstitution">
+/// Senkronizasyon sonunda <b>kurum kapsamı olmayan</b> hesap sayısı (ADR-0003 adım 2).
+/// Sync kiracı anahtarını Keycloak'tan kopyalamaz; dışarıdan gelen kullanıcı kapsamsız
+/// doğar ve bağı idari bir işlem kurar. Sayı sıfır değilse iş bitmemiştir — bu alan o
+/// boşluğu <b>görünür</b> kılmak içindir.
+/// </param>
+public sealed record SyncUsersResult(int Total, int Created, int Updated, int WithoutInstitution);
 
 /// <summary>Yeniden yayın sonucu — kaç hesap için ad olayı üretildiği.</summary>
 public sealed record ResyncUserDisplayNamesResult(int Total, int Published, int Skipped);
@@ -416,7 +470,9 @@ public static class SyncUsersFromKeycloakHandler
             .GroupBy(u => u.KeycloakUserId)
             .ToDictionary(g => g.Key, g => g.First());
 
-        int created = 0, updated = 0;
+        // Kapsamsız hesaplar SAYILIR ve uçta operatöre bildirilir. Sessiz kalırsa "sync
+        // çalıştı" sanılır ve kullanıcıların neden kurum kapsamı göremediği aranmaya başlanır.
+        int created = 0, updated = 0, withoutInstitution = 0;
         foreach (var ku in kcResult.Value)
         {
             if (byKeycloakId.TryGetValue(ku.Id, out var account))
@@ -428,7 +484,12 @@ public static class SyncUsersFromKeycloakHandler
                 account.LastName = ku.LastName;
                 account.IsEnabled = ku.Enabled;
                 account.Roles = ku.Roles;
-                if (ku.InstitutionId.HasValue) account.InstitutionId = ku.InstitutionId;
+                // InstitutionId BİLEREK tazelenmez (ADR-0003 adım 2): kiracı anahtarının
+                // otoritesi bu kayıttır, Keycloak değil. Eski satır
+                // (`if (ku.InstitutionId.HasValue) account.InstitutionId = ku.InstitutionId;`)
+                // Keycloak özniteliğini kaydın üzerine yazıyordu — yani kullanıcının
+                // yazabileceği bir kaynağı otorite hâline getiriyordu. Kurum bağı yalnız
+                // ChangeUserInstitution ile değişir.
                 if (ku.BusinessId.HasValue) account.BusinessId = ku.BusinessId;
                 // Branş yalnız Keycloak'ta VARSA tazelenir; yoksa lokal kayıt korunur.
                 // Boş öznitelik "branşı sil" anlamına gelmez — sync uydurmaz da, silmez de (#126).
@@ -447,6 +508,7 @@ public static class SyncUsersFromKeycloakHandler
                 if (UserDisplayNameEvents.TryCreate(account) is { } updatedName)
                     messages.Add(updatedName);
                 updated++;
+                if (HasNoInstitution(account.InstitutionId)) withoutInstitution++;
             }
             else
             {
@@ -460,7 +522,10 @@ public static class SyncUsersFromKeycloakHandler
                     LastName = ku.LastName,
                     IsEnabled = ku.Enabled,
                     Roles = ku.Roles,
-                    InstitutionId = ku.InstitutionId,
+                    // Kiracı anahtarı Keycloak'tan KOPYALANMAZ (ADR-0003 adım 2). Dışarıdan
+                    // gelen kullanıcı kurum kapsamsız doğar; bağ idari bir işlemdir
+                    // (ChangeUserInstitution) ya da personel kaydından backfill'lenir.
+                    InstitutionId = null,
                     BusinessId = ku.BusinessId,
                     BranchCodes = ku.BranchCodes
                 };
@@ -468,9 +533,13 @@ public static class SyncUsersFromKeycloakHandler
                 if (UserDisplayNameEvents.TryCreate(newAccount) is { } createdName)
                     messages.Add(createdName);
                 created++;
+                withoutInstitution++;   // yeni hesap her zaman kapsamsız doğar
             }
         }
 
-        return (new SyncUsersResult(kcResult.Value.Count, created, updated), messages);
+        return (new SyncUsersResult(kcResult.Value.Count, created, updated, withoutInstitution), messages);
     }
+
+    private static bool HasNoInstitution(Guid? institutionId) =>
+        institutionId is null || institutionId == Guid.Empty;
 }
