@@ -46,6 +46,15 @@ public static class SecurityErrors
             $"Bu yetkiler hiçbir kullanıcıya bireysel olarak atanamaz: {permissions}. " +
             "Veri kapsamını genişleten muafiyet izinleridir ve yalnız rol üzerinden verilebilir.");
 
+    /// <summary>
+    /// Kurum (kiracı) bağı, aktörün kendi kurum kapsamı dışına yazılmak istendi
+    /// (ADR-0003 adım 2). Karar <c>UserInstitutionScopePolicy</c> içindedir.
+    /// </summary>
+    public static Error InstitutionScopeNotAllowed() =>
+        new("Security.InstitutionScopeNotAllowed",
+            "Kullanıcının kurum bağı yalnız kendi kurumunuza yazılabilir. " +
+            "Başka bir kuruma bağlı kullanıcının bağı, o kurum tarafından çözülmelidir.");
+
     public static Error CannotDeleteSelf() =>
         new("Security.CannotDeleteSelf", "Kendi hesabınızı silemezsiniz.");
 

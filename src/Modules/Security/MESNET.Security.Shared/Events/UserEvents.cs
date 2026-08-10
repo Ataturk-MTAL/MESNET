@@ -43,6 +43,16 @@ public sealed record UserPermissionsChanged(
     string KeycloakUserId,
     IReadOnlyList<string> DirectPermissions);
 
+/// <summary>
+/// Kullanıcının kurum (kiracı) bağı değişti (ADR-0003 adım 2). <c>null</c> geçerli bir
+/// sonuçtur — bağ çözülmüş, kullanıcı kurum kapsamsız kalmıştır.
+/// </summary>
+public sealed record UserInstitutionChanged(
+    Guid UserAccountId,
+    string KeycloakUserId,
+    Guid? PreviousInstitutionId,
+    Guid? InstitutionId);
+
 /// <summary>Kullanıcının alan (branş) kapsamı değişti (#126). Boş liste geçerli bir sonuçtur.</summary>
 public sealed record UserBranchesChanged(
     Guid UserAccountId,

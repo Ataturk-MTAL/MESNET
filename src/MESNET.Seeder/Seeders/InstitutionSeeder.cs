@@ -12,18 +12,14 @@ public static class InstitutionSeeder
 
         ctx.Set("Institution", institutionId.Value);
 
-        // Keycloak kullanıcılarının institution_id claim'ini güncelle
-        await SyncKeycloakAsync(keycloak, institutionId.Value);
-
-        // Öznitelik yazıldı ama elimizdeki token hâlâ claim'siz. Kurum kapsamını token'dan
-        // okuyan uçlar (işletme kaydı vb.) bu tazeleme olmadan 422 döner (#147).
-        api.RefreshToken();
-
         // Alanlar + dallar
         await EnsureBranchesAsync(api, institutionId.Value);
 
         // Staff — Keycloak'tan gerçek kullanıcı ID'lerini al
         await EnsureStaffAsync(api, keycloak, institutionId.Value);
+
+        // Kurum kapsamı artık personel kaydından türer (ADR-0003 adım 2).
+        await BackfillUserInstitutionScopeAsync(api);
 
         // Ders programı
         await api.PutAsync($"/api/institutions/{institutionId.Value}/schedule-config", new
@@ -118,17 +114,33 @@ public static class InstitutionSeeder
         Console.WriteLine($"  ✓ Kurumun {completed} bilgisi tamamlandı");
     }
 
-    private static async Task SyncKeycloakAsync(KeycloakAdminService keycloak, Guid institutionId)
+    /// <summary>
+    /// Personel kayıtlarından kullanıcı hesaplarına kurum (kiracı) bağını yayar
+    /// (ADR-0003 adım 2 + 2.1).
+    ///
+    /// <para><b>Neden Keycloak özniteliği yerine bu:</b> seeder eskiden realm'daki tüm
+    /// kullanıcılara <c>institution_id</c> özniteliği yazıp token'ı tazeliyordu (#147).
+    /// O yol kapandı — token'dan gelen kurum artık <b>hiç kabul edilmiyor</b>, çünkü
+    /// <c>institution_id</c> Keycloak'ta unmanaged bir özniteliktir ve kiracı anahtarı
+    /// kullanıcının yazabileceği bir kaynaktan gelemez.</para>
+    ///
+    /// <para>Uç <c>StaffAuthorized</c> olaylarını yeniden yayınlar; tüketici hesabın kurum
+    /// alanını doldurur ve permission cache'ini temizler. Yayın <b>asenkron</b> olduğu için
+    /// kısa bir bekleme gerekir — sonraki seeder adımları (işletme kaydı) kurum kapsamı ister.</para>
+    /// </summary>
+    private static async Task BackfillUserInstitutionScopeAsync(MesnetApiClient api)
     {
-        try
+        var result = await api.PostAsync("/api/institutions/staff/resync-branch-codes", new { });
+        if (result is null)
         {
-            await keycloak.UpdateAllUsersInstitutionIdAsync(institutionId);
-            Console.WriteLine("  ✓ Keycloak institution_id senkronize edildi");
+            Console.WriteLine("  ⚠ Kurum kapsamı backfill'i başarısız — işletme kaydı 422 verebilir");
+            return;
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"  ⚠ Keycloak senkronizasyon başarısız: {ex.Message}");
-        }
+
+        // Wolverine durable local queue asenkron işler; tüketici bitmeden devam edilirse
+        // sonraki adım hâlâ kapsamsız token ile çalışır.
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        Console.WriteLine("  ✓ Kullanıcı kurum kapsamı personel kaydından dolduruldu");
     }
 
     private static async Task EnsureBranchesAsync(MesnetApiClient api, Guid institutionId)

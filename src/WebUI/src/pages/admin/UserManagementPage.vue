@@ -165,6 +165,21 @@
                 >
                   <q-tooltip>Alanları (branş) yönet</q-tooltip>
                 </q-btn>
+                <!-- Kurum (kiracı) bağı — ADR-0003 adım 2. Token'dan gelen institution_id
+                     artık okunmuyor ve sync de yazmıyor; bağ yalnız buradan kurulur. -->
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="domain"
+                  :color="row.institutionId ? undefined : 'warning'"
+                  aria-label="Kurum bağını yönet"
+                  @click="openInstitution(row)"
+                >
+                  <q-tooltip>
+                    {{ row.institutionId ? 'Kurum bağını yönet' : 'Kurum bağı yok — kapsamlı ekranlar kapalı' }}
+                  </q-tooltip>
+                </q-btn>
                 <!-- Veli–öğrenci bağı (#174): velinin KAPSAMI. İzinleri tüm velilerde
                      aynıdır; erişeceği veriyi yalnız bu bağ belirler. -->
                 <q-btn
@@ -526,6 +541,79 @@
       </q-card>
     </q-dialog>
 
+    <!--
+      Kurum (kiracı) bağı — ADR-0003 adım 2.
+
+      Kurum SEÇİCİSİ yoktur ve olmamalıdır: sunucu yalnız aktörün kendi kurumunu kabul eder
+      (UserInstitutionScopePolicy). Seçici koymak, istemciye gerçekte var olmayan bir karar
+      sunardı — kullanıcı başka kurum seçer, sunucu 422 döner.
+    -->
+    <q-dialog v-model="institutionDialog">
+      <q-card style="min-width: 420px">
+        <q-toolbar class="bg-secondary text-white">
+          <q-icon
+            name="domain"
+            size="sm"
+            class="q-mr-sm"
+          />
+          <q-toolbar-title>Kurum Bağı</q-toolbar-title>
+          <q-btn
+            v-close-popup
+            flat
+            round
+            dense
+            icon="close"
+            aria-label="Kapat"
+            color="white"
+          />
+        </q-toolbar>
+        <q-card-section class="q-pt-lg q-gutter-md">
+          <div class="text-body2">
+            {{ selectedUser?.fullName }}
+          </div>
+
+          <AppNotice
+            v-if="selectedUser?.institutionId"
+            type="info"
+            :message="`Bağlı olduğu kurum: ${institutionStore.institution?.fullName ?? selectedUser.institutionId}`"
+          />
+          <AppNotice
+            v-else
+            type="warning"
+            message="Bu kullanıcının kurum bağı yok. Kurum kapsamı isteyen ekranlar ona kapalıdır."
+          />
+
+          <div class="text-caption text-grey-7">
+            Kurum bağı kullanıcının hangi okulun verisini göreceğini belirler. Yalnız kendi
+            kurumunuza bağlayabilirsiniz.
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions
+          align="right"
+          class="q-pa-md"
+        >
+          <q-btn
+            v-if="selectedUser?.institutionId"
+            flat
+            color="negative"
+            label="Bağı çöz"
+            :loading="saving"
+            @click="saveInstitution(null)"
+          />
+          <q-btn
+            v-else
+            unelevated
+            color="secondary"
+            label="Kuruma bağla"
+            :loading="saving"
+            :disable="!institutionStore.institution"
+            @click="saveInstitution(institutionStore.institution?.id ?? null)"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <!-- Veli–öğrenci bağı (#174) -->
     <q-dialog v-model="studentsDialog">
       <q-card style="min-width: 420px">
@@ -610,6 +698,7 @@ import { Permissions } from 'utils/permissions'
 import { useAuthStore } from 'stores/auth'
 import { useEntityOptionsStore } from 'stores/entityOptions'
 import { useRoleCatalogStore } from 'stores/roleCatalog'
+import { useInstitutionStore } from 'stores/institution'
 import AppTable from 'components/AppTable.vue'
 import AppNotice from 'components/AppNotice.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
@@ -621,6 +710,8 @@ const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
 const entityOptionsStore = useEntityOptionsStore()
+// Kurum bağı dialogu kurum adını buradan gösterir; Faz 1'de tek kurum vardır (ADR-0003).
+const institutionStore = useInstitutionStore()
 
 const tab = ref('users')
 const saving = ref(false)
@@ -634,6 +725,8 @@ const selectedRoles = ref<string[]>([])
 // ── Alan (branş) kapsamı (#126) ──
 const branchesDialog = ref(false)
 const selectedBranches = ref<string[]>([])
+// ── Kurum (kiracı) bağı (ADR-0003 adım 2) ──
+const institutionDialog = ref(false)
 const studentsDialog = ref(false)
 const selectedStudents = ref<string[]>([])
 const missingBranchOnly = ref(false)
@@ -753,6 +846,36 @@ async function saveBranches() {
   }
 }
 
+function openInstitution(row: UserAccountDto) {
+  selectedUser.value = row
+  institutionDialog.value = true
+  institutionStore.loadInstitution().catch(() => {})
+}
+
+/**
+ * Kurum (kiracı) bağını yazar — `null` bağı çözer (ADR-0003 adım 2).
+ *
+ * Hangi kuruma yazılabileceğine sunucu karar verir; burada seçim yapılmaz.
+ */
+async function saveInstitution(institutionId: string | null) {
+  if (!selectedUser.value) return
+  saving.value = true
+  try {
+    await securityApi.changeInstitution(selectedUser.value.id, { institutionId })
+    notify.success(institutionId ? 'Kurum bağı kuruldu.' : 'Kurum bağı çözüldü.')
+    institutionDialog.value = false
+  } catch (e) {
+    notify.apiError(e, 'Kurum bağı güncellenirken bir hata oluştu.')
+    return
+  } finally {
+    saving.value = false
+  }
+
+  // Yenileme try/catch dışında: yazma başarılı ama liste yenilenemezse hem başarı hem hata
+  // bildirimi gösterilmemeli.
+  await loadUsers().catch(() => {})
+}
+
 function openStudents(row: UserAccountDto) {
   selectedUser.value = row
   selectedStudents.value = [...row.linkedStudentIds]
@@ -850,6 +973,15 @@ async function syncUsers() {
     const { data } = await securityApi.syncUsers()
     entityOptionsStore.invalidateKeycloakUsers()
     notify.success(`${data.total} kullanıcı senkronize edildi (${data.created} yeni, ${data.updated} güncellendi).`)
+
+    // Sync kiracı anahtarını Keycloak'tan kopyalamaz (ADR-0003 adım 2) — dışarıdan gelen
+    // kullanıcı kapsamsız doğar. Sessiz kalırsa "senkronize edildi" iş bitti sanılır.
+    if (data.withoutInstitution > 0) {
+      notify.warning(
+        `${data.withoutInstitution} hesabın kurum bağı yok. Kurum kapsamı isteyen ekranlar ` +
+        'onlara kapalı — satırdaki kurum simgesinden bağlayın.')
+    }
+
     await loadUsers()
   } catch (e) {
     notify.apiError(e, 'Senkronizasyon sırasında bir hata oluştu.')
