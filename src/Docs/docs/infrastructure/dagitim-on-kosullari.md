@@ -227,6 +227,74 @@ where coalesce(data->>'registeredByInstitutionId','') in
 
 Göç idempotenttir: `where data ? 'institutionId'` koşulu ikinci koşuda hiçbir satır seçmez.
 
+## Conjoined kiracılık göçü (ADR-0003 adım 5) — TEK YÖNLÜ KAPI
+
+Var olan bir veritabanını kiracılığa geçirir. **Yeni (boş) veritabanı bu adıma ihtiyaç
+duymaz** — Marten tabloları zaten kiracılı yaratır; kıran şey yalnız var olan tablonun
+deltasıdır.
+
+Betikler: `src/Docs/docs/infrastructure/sql/`
+
+```bash
+# 0) Yedek. Göç yıkıcı değil (ölçüldü: DROP/DELETE/TRUNCATE yok) ama geri dönüşü zordur.
+pg_dump -Fc mesnet > mesnet-conjoined-oncesi.dump
+
+# 1) Şema — TEK transaction. Yarıda kalırsa tamamı geri alınır.
+psql -d mesnet --single-transaction -v ON_ERROR_STOP=1 -f 149-conjoined-kiracilik.sql
+
+# 2) Damgalama — hedef kiracı AÇIKÇA verilir.
+psql -d mesnet -v ON_ERROR_STOP=1 \
+     -v tenant="$(psql -tAqc 'select id from institution.mt_doc_institution' mesnet)" \
+     -f 149-kiraci-damgalama.sql
+```
+
+Adım 2 kendi doğrulamasını yapar: `DAMGASIZ TOPLAM: 0` yazmalıdır.
+
+:::danger İki betiğin arası kesinti penceresidir
+Birinci betik sütunları ekler ama satırları `*DEFAULT*` kovasında bırakır. O hâlde **hiçbir
+okul kendi verisini göremez** — API 200 döner, listeler boş gelir. İki adım ayrı günlere
+bölünmez; ikisi de bittikten sonra uygulama açılır.
+:::
+
+:::warning Kuyruk boşken yapın
+Geçiş anında bekleyen kiracısız zarflar en sinsi durumdur: tüketici kiracı olmadan çalışır ve
+`DefaultTenantUsageDisabledException` alır. Wolverine yeniden dener, ama dener durur.
+:::
+
+**Neden açılışta değil, elden:** `ApplyAllDatabaseChangesOnStartup()` denendi ve API'yi
+açılışta öldürdü. Marten'ın ürettiği conjoined deltası aynı yabancı anahtarı iki kez ekliyor
+(`42710: constraint "fkey_mt_events_stream_id_tenant_id" ... already exists`) ve bütün göçü geri
+alıyor. Depodaki betikte yinelenen blok silinmiş, kalan ekleme `DROP ... IF EXISTS` ile
+idempotent yapılmıştır — Marten sürümü yükseltilirken bu düzeltmenin hâlâ gerekli olup olmadığı
+yeniden üretilerek kontrol edilmelidir.
+
+**Kalıcı doğrulama:** `TenantStampIntegrityTests` CI'da her koşuda `*DEFAULT*` satır sayısının
+sıfır olduğunu ve `mt_streams` birincil anahtarının `(tenant_id, id)` olduğunu ölçer.
+
+### Geri alma diye bir şey yok — eski sürüm damgayı SESSİZCE siler
+
+Bu ölçüldü, tahmin değil. Göç edilmiş bir veritabanına **kiracılık öncesi kod** bağlanırsa
+Marten `AutoCreate` ile şemayı kendi beklentisine uydurur ve kiracılığı **geri alır**. Üç GET
+isteği yetti:
+
+| | Önce | Üç istekten sonra |
+| --- | ---: | ---: |
+| `tenant_id` taşıyan tablo | 49 | **46** |
+| `mt_doc_studentprofile` PK | `(tenant_id, id)` | **`(id)`** |
+| Öğrenci satırı | 121 | 121 |
+
+Satırlar durur, **damga gider**. Hata yoktur, log temizdir, uçlar 200 döner. Tabloya
+dokunuldukça kayıp yayılır.
+
+:::danger Sürüm geri alınırsa göç de geri alınmış olmaz
+Kiracı bilgisi kolondaydı ve kolon düşürüldü; ileri sürüme dönmek onu geri getirmez, yalnız
+sütunu boş (`*DEFAULT*`) olarak yeniden yaratır. Tek çözüm yedekten dönmektir.
+
+Pratik sonuç: bu dağıtımdan sonra **eski imaja dönülmez**. Sorun çıkarsa ileri düzeltme yapılır
+ya da veritabanı yedekten geri yüklenir. Aynı kural geliştirme makineleri için de geçerlidir —
+göç edilmiş bir yerel veritabanına eski daldan API bağlamayın.
+:::
+
 ## Sırayı bozmayın
 
 Bir adım başka bir adımın verisini üretiyorsa sıra önemlidir. Örnek: koordinasyon zinciri

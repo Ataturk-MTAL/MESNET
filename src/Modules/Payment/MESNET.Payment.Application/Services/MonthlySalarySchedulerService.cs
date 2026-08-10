@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Payment.Application.Commands;
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.ReadModels;
@@ -75,13 +76,43 @@ public class MonthlySalarySchedulerService(
     // İşin kendisi OpenMonthlySalaryPeriodsHandler'da: aynı mantık hem bu zamanlayıcıdan hem
     // elle tetikleme endpoint'inden çalışsın (kaçırılmış koşu, ilk ay, sonradan eklenen
     // yerleştirme). Zamanlayıcıda yalnız zamanlama kalıyor.
+    /// <summary>
+    /// Maaş dönemi <b>her kiracı için ayrı ayrı</b> açılır (#149).
+    ///
+    /// <para>Zamanlanmış iş bir isteğe bağlı olmadığı için kiracıyı devralamaz; kiracılık
+    /// açıldıktan sonra kiracısız session <c>DefaultTenantUsageDisabledException</c> fırlatır.
+    /// Bir okulun dönemi açılamazsa diğerleri açılmaya devam eder — tek okul yüzünden bütün
+    /// okulların maaş ayını kaçırmak çok daha pahalıdır.</para>
+    /// </summary>
     private async Task OpenSalaryPeriods(CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
+        var tenants = await scope.ServiceProvider
+            .GetRequiredService<ITenantDirectory>()
+            .GetActiveTenantsAsync(ct);
 
+        if (tenants.Count == 0)
+        {
+            logger.LogWarning("Maaş dönemi açma atlandı — kayıtlı kiracı yok.");
+            return;
+        }
+
+        var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
         var referenceDate = DateTime.UtcNow;
-        await bus.PublishAsync(new OpenMonthlySalaryPeriods(
-            referenceDate.ToString("yyyy-MM"), referenceDate));
+
+        foreach (var tenantId in tenants)
+        {
+            try
+            {
+                await bus.PublishAsync(
+                    new OpenMonthlySalaryPeriods(referenceDate.ToString("yyyy-MM"), referenceDate),
+                    new DeliveryOptions { TenantId = tenantId });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Maaş dönemi açma başarısız — Kiracı: {TenantId}", tenantId);
+            }
+        }
     }
 }

@@ -92,7 +92,6 @@ public static class DocumentTenancyMap
         ["StudentTermGradeView"] = Tenant,
         ["TeacherProfile"] = Tenant,
         ["TeacherSchedule"] = Tenant,
-        ["UserInvitation"] = Tenant,
         ["VisitAssignmentReportView"] = Tenant,
         ["WeeklyVisitAssignment"] = Tenant,
         ["WeeklyVisitPlan"] = Tenant,
@@ -134,6 +133,17 @@ public static class DocumentTenancyMap
         // ── Kiracının kendisi / kimlik katmanı ────────────────────────────────────────
         // Kimlik katmanı; InstitutionId taşır ama kiracı sınırı DEĞİL — kullanıcı kurumlar arası taşınabilir
         ["UserAccount"] = Identity,
+
+        // Davet, kimlik katmanının ONBOARDING kenarıdır: daveti tamamlayan kişinin henüz
+        // kullanıcı kaydı, dolayısıyla kiracısı YOKTUR — uç anonimdir. Kiracıya ait
+        // sınıflandırılsaydı daveti okumak için önce kiracıyı bilmek gerekirdi; daveti okumadan
+        // da kiracı bilinemez. Aynı döngüsellik UserAccount'ta da var (#149).
+        // Ölçüldü: Tenant iken anonim POST /api/security/invitations/{id}/complete
+        // DefaultTenantUsageDisabledException ile 500 döndü.
+        // KALAN BORÇ: davet listeleme kapsamı isteğe bağlı InstitutionId filtresiyle çalışıyor
+        // (InvitationHandler). Kiracılık artık o listeyi ARKADAN DESTEKLEMİYOR; kapsam kararı
+        // sunucuda verilmeli.
+        ["UserInvitation"] = Identity,
 
         // ── BOŞLUK: kiracıya ait veri taşıyıp kiracı anahtarı olmayan belge KALMADI ────
         // (Dördü de #147 adım 1 ile InstitutionId aldı; sınıf bilerek boş bırakıldı.)
