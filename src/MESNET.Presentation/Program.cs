@@ -114,6 +114,12 @@ try
     // Email (MJML template + MailKit SMTP)
     builder.Services.AddEmailServices();
 
+    // Kiracılık sınıflandırması eksiksiz mi — modüller kaydolduktan SONRA (#149).
+    // Kaynak taraması bildirilmemiş belge tipini göremez; bu kontrol Marten'ın gerçekten
+    // tanıdığı tiplere bakar.
+    builder.Services.AddHostedService<
+        MESNET.Common.Infrastructure.Tenancy.DocumentTenancyVerificationHostedService>();
+
     // ────────────────────────────────────────────────────────────────────────────────
     // Authentication + Authorization
     // ────────────────────────────────────────────────────────────────────────────────
@@ -490,6 +496,10 @@ try
 
     app.UseAuthentication();
     app.UseAuthorization();
+
+    // Kiracı çözümü kimlik doğrulamadan SONRA gelmeli: kaynağı institution_id claim'idir ve
+    // o claim izin dönüşümünde üretilir (#149, ADR-0003 adım 2).
+    app.UseMiddleware<MESNET.Common.Infrastructure.Tenancy.TenantResolutionMiddleware>();
 
     app.MapWolverineEndpoints();
 
