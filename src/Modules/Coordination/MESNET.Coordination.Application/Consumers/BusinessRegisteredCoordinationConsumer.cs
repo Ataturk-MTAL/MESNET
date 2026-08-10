@@ -4,6 +4,7 @@ using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Application.Services;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.ReadModels;
+using Microsoft.Extensions.Logging;
 
 namespace MESNET.Coordination.Application.Consumers;
 
@@ -21,6 +22,7 @@ public static class BusinessRegisteredCoordinationConsumer
         BusinessRegistered @event,
         IDocumentSession session,
         IOsrmDistanceService osrmService,
+        ILogger<BusinessCoordinationView> logger,
         CancellationToken cancellationToken)
     {
         // Self-register işletmeler PendingApproval durumunda — haritada gösterilmez
@@ -31,6 +33,9 @@ public static class BusinessRegisteredCoordinationConsumer
         var existing = await session.LoadAsync<BusinessCoordinationView>(baseId, cancellationToken);
         if (existing is not null) return;
 
+        var scopeInstitutionId = BusinessScopeOrigin.Resolve(
+            @event.RegisteredByInstitutionId, @event.BusinessId, logger);
+
         var view = new BusinessCoordinationView
         {
             Id = baseId,
@@ -39,7 +44,8 @@ public static class BusinessRegisteredCoordinationConsumer
             Address = @event.Address,
             District = AddressHelper.ExtractDistrict(@event.Address),
             Location = @event.Location,
-            InstitutionId = @event.InstitutionId,
+            // Provenance → kapsam çevirimi ve bugünkü yaklaşımın sınırı BusinessScopeOrigin'de.
+            InstitutionId = scopeInstitutionId,
             ActiveStudentCount = 0,
         };
 
@@ -47,7 +53,7 @@ public static class BusinessRegisteredCoordinationConsumer
         if (@event.Location is not null)
         {
             await DistanceHelper.CalculateAndSetDistanceAsync(
-                view, @event.InstitutionId, session, osrmService, cancellationToken);
+                view, scopeInstitutionId, session, osrmService, cancellationToken);
         }
 
         session.Store(view);

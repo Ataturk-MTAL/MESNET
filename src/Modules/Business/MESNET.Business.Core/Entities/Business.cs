@@ -11,12 +11,24 @@ public class Business
 {
     public Guid Id { get; set; }
     /// <summary>
-    /// İşletmeyi kaydeden okul. Eskiden <c>TenantId</c> adındaydı ama taşıdığı değer her
-    /// zaman kurumun kimliğiydi; <c>Institution.TenantId</c> ise bambaşka bir literal
-    /// tutuyordu. Aynı ad iki modülde iki anlama geldiği için ad gerçeğe çekildi (#147).
-    /// Kayıt anında token'daki kurumdan doldurulur, istekten ALINMAZ.
+    /// İşletmeyi <b>kaydeden</b> okul — <b>provenance</b>, kapsam DEĞİL (ADR-0003 adım 4).
+    ///
+    /// <para><b>Bu alan bir kiracı anahtarı değildir ve filtre olarak kullanılmamalıdır.</b>
+    /// İşletme kataloğu <b>paylaşımlıdır</b>: bir işletme birden çok okuldan öğrenci alır ve
+    /// tüm okullar tüm işletmeleri listeler (<c>DocumentTenancyMap</c> → <c>Shared</c>).
+    /// Kaydı ilk kimin girdiği, o işletmenin kime ait olduğunu söylemez.</para>
+    ///
+    /// <para><b>Ad neden değişti:</b> alan <c>InstitutionId</c> adındayken "bu işletme şu
+    /// okula ait" diye okunuyordu. Conjoined kiracılık açıldığında (adım 5) bu okuma,
+    /// paylaşımlı kataloğu kiracıya bölmeye — yani bir okulun diğerinin işletmesini hiç
+    /// görememesine — yol açardı. Adın yalan söylememesi, bu kararın tek yapısal koruması.</para>
+    ///
+    /// <para><b>Geçmiş:</b> eskiden <c>TenantId</c> adındaydı; taşıdığı değer her zaman kurum
+    /// kimliğiydi ama <c>Institution.TenantId</c> bambaşka bir literal tutuyordu (#147).</para>
+    ///
+    /// <para>Kayıt anında token'daki kurumdan doldurulur, istekten ALINMAZ.</para>
     /// </summary>
-    public Guid InstitutionId { get; set; }
+    public Guid RegisteredByInstitutionId { get; set; }
     public required string Name { get; set; }
     public required string Address { get; set; }
     public string? PhoneNumber { get; set; }

@@ -28,7 +28,8 @@ public static class SelfRegisterBusinessHandler
         var business = new Core.Entities.Business
         {
             Id = Guid.NewGuid(),
-            InstitutionId = scopedInstitutionId,
+            // Provenance: kaydı GİREN okul. Kapsam alanı değildir (ADR-0003 adım 4).
+            RegisteredByInstitutionId = scopedInstitutionId,
             Name = command.BusinessName,
             Address = command.Address,
             PhoneNumber = command.PhoneNumber,
@@ -58,7 +59,7 @@ public static class SelfRegisterBusinessHandler
         session.Store(business);
         await session.SaveChangesAsync();
 
-        await bus.PublishAsync(new BusinessRegistered(business.Id, business.InstitutionId, business.Name, business.Address, business.Location, business.Source.Name, business.Capacity.TotalSlots, business.Sectors,
+        await bus.PublishAsync(new BusinessRegistered(business.Id, business.RegisteredByInstitutionId, business.Name, business.Address, business.Location, business.Source.Name, business.Capacity.TotalSlots, business.Sectors,
             business.PhoneNumber, business.Email, business.MasterInstructor?.FullName, business.PersonnelCount,
             business.PrimaryRepresentativeName()));
         await bus.PublishAsync(new BusinessCapacityChanged(business.Id, business.Capacity.TotalSlots, business.Capacity.OccupiedSlots));

@@ -2,9 +2,15 @@ using MESNET.Common.Shared;
 
 namespace MESNET.Business.Shared.Events;
 
+/// <param name="RegisteredByInstitutionId">
+/// İşletmeyi <b>kaydeden</b> okul — provenance, kapsam DEĞİL (ADR-0003 adım 4). İşletme
+/// kataloğu paylaşımlıdır; kaydı kimin girdiği o işletmenin kime ait olduğunu söylemez.
+/// Tüketici bu değeri bir kapsam alanına yazacaksa, bunun bugünkü tek kurumlu yaklaşım
+/// olduğunu <b>açıkça</b> yazmalıdır.
+/// </param>
 public sealed record BusinessRegistered(
     Guid BusinessId,
-    Guid InstitutionId,
+    Guid RegisteredByInstitutionId,
     string Name,
     string? Address,
     Location? Location,
