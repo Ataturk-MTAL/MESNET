@@ -233,6 +233,7 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     {
         cache.Remove($"user-permissions:{keycloakUserId}");
         cache.Remove($"user-institution:{keycloakUserId}");
+        cache.Remove($"user-institution-warned:{keycloakUserId}");
         cache.Remove($"user-branch-codes:{keycloakUserId}");
     }
 
@@ -487,23 +488,51 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         if (!_cache.TryGetValue(cacheKey, out string? institutionId))
         {
             institutionId = await LookupInstitutionIdAsync(keycloakUserId);
-            _cache.Set(cacheKey, institutionId ?? string.Empty, CacheDuration);
 
-            // Kapsamsızlık görünür olmalı. Cache miss dalında: uyarı kullanıcı başına en
-            // fazla CacheDuration sıklığında çıkar, her istekte değil (#208 ile aynı gerekçe).
-            if (string.IsNullOrEmpty(institutionId))
-            {
-                _logger.LogInformation(
-                    "Kullanıcının kurum kapsamı yok: {KeycloakUserId}. Kayıt da personel " +
-                    "eşleşmesi de boş — kurum kapsamı isteyen uçlar hata dönecek. Çözüm: " +
-                    "POST /api/security/users/{{id}}/institution", keycloakUserId);
-            }
+            // ── SONUÇSUZ ARAMA ÖNBELLEĞE ALINMAZ ──
+            //
+            // Eskiden boş sonuç da CacheDuration boyunca saklanıyordu ve bu, geçici bir
+            // durumu 5 dakikalık bir kesintiye çeviriyordu: kullanıcı personel kaydına
+            // eklendikten SONRA bile kapsamsız kalıyordu, çünkü önbellekte "kurumu yok"
+            // yazıyordu. Kaydı olmayan kullanıcıda (henüz senkronize edilmemiş) tüketici
+            // tarafı da devreye giremez — `StaffBranchSyncConsumer` hesap bulamayınca erken
+            // döner, yani önbelleği temizleyecek kimse yoktur.
+            //
+            // Boş veritabanında tam olarak bu yaşandı: kurum oluşturulurken önbelleğe "yok"
+            // yazıldı, saniyeler sonra personel eklendi ve kurum kapsamı isteyen işletme
+            // kaydı 422 döndü. Token yolu bunu maskeliyordu (#204/#208 ile aynı sınıf hata).
+            //
+            // Bedel: kapsamsız kullanıcı için istek başına bir sorgu. Kapsamsızlık zaten
+            // düzeltilmesi gereken bir anomalidir, sürekli bir durum değil; o kullanıcının
+            // istekleri de çoğunlukla reddedilecektir.
+            if (!string.IsNullOrEmpty(institutionId))
+                _cache.Set(cacheKey, institutionId, CacheDuration);
+            else
+                WarnScopeless(keycloakUserId);
         }
 
         if (!string.IsNullOrEmpty(institutionId))
         {
             identity.AddClaim(new Claim("institution_id", institutionId));
         }
+    }
+
+    /// <summary>
+    /// Kapsamsızlığı görünür kılar. Arama artık her istekte yapıldığı için uyarı <b>ayrı bir
+    /// anahtarla</b> kısılır — aksi hâlde tek bir kapsamsız kullanıcı logu boğar ve uyarı
+    /// görmezden gelinir hâle gelirdi (#208 ile aynı gerekçe).
+    /// </summary>
+    private void WarnScopeless(string keycloakUserId)
+    {
+        var logKey = $"user-institution-warned:{keycloakUserId}";
+        if (_cache.TryGetValue(logKey, out _)) return;
+
+        _cache.Set(logKey, true, CacheDuration);
+
+        _logger.LogInformation(
+            "Kullanıcının kurum kapsamı yok: {KeycloakUserId}. Kayıt da personel eşleşmesi de " +
+            "boş — kurum kapsamı isteyen uçlar hata dönecek. Çözüm: " +
+            "POST /api/security/users/{{id}}/institution", keycloakUserId);
     }
 
     /// <summary>
