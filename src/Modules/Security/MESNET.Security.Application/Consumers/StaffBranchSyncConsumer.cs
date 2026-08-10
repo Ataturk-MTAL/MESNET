@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Shared.Security;
 using MESNET.Institution.Shared.Events;
 using MESNET.Security.Application.Handlers;
 using MESNET.Security.Application.Services;
@@ -9,18 +10,24 @@ using Microsoft.Extensions.Caching.Memory;
 namespace MESNET.Security.Application.Consumers;
 
 /// <summary>
-/// Kurum personel kaydındaki alan (branş) bilgisini kullanıcı hesabına yansıtır (#126).
+/// Kurum personel kaydındaki <b>kurum ve alan</b> bilgisini kullanıcı hesabına yansıtır
+/// (#126, ADR-0003 adım 2.1).
 ///
 /// <para><b>İkincil (geçiş) yoldur.</b> Birincil yol kayıt sırasında girilen
 /// <c>CreateUser.BranchCodes</c>'tur. Bu tüketici, personel kaydı zaten branş taşıyan
 /// ama kullanıcı kaydında alan bulunmayan durumları doldurur — mevcut kullanıcılar için.</para>
 ///
-/// <para><b>Uydurma yok, üzerine yazma yok:</b></para>
-/// <list type="bullet">
-///   <item>Olayda branş yoksa hiçbir şey yapılmaz (müdür/müdür yrd. — normal durum)</item>
-///   <item>Kullanıcı kaydında zaten alan varsa DOKUNULMAZ — idarenin elle girdiği
-///         kapsam, personel kaydından gelen tahminle ezilmez</item>
-/// </list>
+/// <para><b>Kiracı anahtarı da burada doldurulur.</b> <c>UserAccount.InstitutionId</c> kiracı
+/// anahtarının otoritesidir (ADR-0003), ama mevcut kullanıcıların çoğunda boştur — kurum bilgisi
+/// bugüne kadar token claim'inden okunuyordu. Token yolu kapatılmadan ÖNCE bu boşluk
+/// doldurulmalı, yoksa mevcut kullanıcılar kapsamsız kalıp kilitlenir.</para>
+///
+/// <para><b>Uydurma yok, üzerine yazma yok</b> — karar
+/// <see cref="StaffAccountBackfillPolicy"/> içinde ve testle kilitli.</para>
+///
+/// <para><b>Branşın boş olması kurum backfill'ini ENGELLEMEZ.</b> Eskiden branş yoksa erken
+/// dönülüyordu; bu, okul müdürü ve müdür yardımcısının kiracı anahtarını sessizce doldurulmamış
+/// bırakırdı — ve onlar tam da hiçbir alana bağlı olmayan rollerdir.</para>
 /// </summary>
 public static class StaffBranchSyncConsumer
 {
@@ -31,7 +38,7 @@ public static class StaffBranchSyncConsumer
         IMemoryCache cache,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(@event.BranchCode) || string.IsNullOrWhiteSpace(@event.KeycloakId))
+        if (string.IsNullOrWhiteSpace(@event.KeycloakId))
             return;
 
         var account = await session.Query<UserAccount>()
@@ -40,18 +47,31 @@ public static class StaffBranchSyncConsumer
         if (account is null)
             return;
 
-        // Elle girilmiş kapsam korunur — bu tüketici yalnız BOŞLUĞU doldurur.
-        if (account.BranchCodes.Count > 0)
-            return;
+        var changed = false;
 
-        var branchCodes = CreateUserHandler.NormalizeBranchCodes([@event.BranchCode]);
-        if (branchCodes.Count == 0)
-            return;
+        // ── Kiracı anahtarı (ADR-0003 adım 2.1) ──
+        if (StaffAccountBackfillPolicy.ShouldFillInstitution(@event.InstitutionId, account.InstitutionId))
+        {
+            account.InstitutionId = @event.InstitutionId;
+            changed = true;
+        }
 
-        await keycloak.SetUserAttributeValuesAsync(
-            account.KeycloakUserId, BranchCodeClaims.ClaimType, branchCodes, cancellationToken);
+        // ── Alan (branş) kapsamı (#126) ──
+        if (StaffAccountBackfillPolicy.ShouldFillBranches(@event.BranchCode, account.BranchCodes))
+        {
+            var branchCodes = CreateUserHandler.NormalizeBranchCodes([@event.BranchCode!]);
+            if (branchCodes.Count > 0)
+            {
+                await keycloak.SetUserAttributeValuesAsync(
+                    account.KeycloakUserId, BranchCodeClaims.ClaimType, branchCodes, cancellationToken);
 
-        account.BranchCodes = branchCodes;
+                account.BranchCodes = branchCodes;
+                changed = true;
+            }
+        }
+
+        if (!changed) return;
+
         account.UpdatedAt = DateTime.UtcNow;
         session.Store(account);
 

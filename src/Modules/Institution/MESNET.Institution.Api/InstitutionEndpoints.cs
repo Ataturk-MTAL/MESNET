@@ -31,6 +31,9 @@ public static class InstitutionEndpoints
         group.MapPut("/{institutionId:guid}/schedule-config", PutScheduleConfig).RequireAuthorization(Permissions.Institution.Manage);
         group.MapGet("/{institutionId:guid}/schedule-config", GetScheduleConfig).RequireAuthorization(Permissions.Institution.View);
         // Mevcut kullanıcıların alan kapsamı için tek seferlik geçiş adımı (#126) — idempotent
+        // Personel kaydından kullanıcı hesabına backfill: alan kapsamı (#126) VE kurum
+        // (kiracı anahtarı, ADR-0003 adım 2.1). Olay yeniden yayınlanır, Security tüketir —
+        // modüller arası doğrudan veri yazma yoktur.
         group.MapPost("/staff/resync-branch-codes", PostResyncStaffBranchCodes).RequireAuthorization(Permissions.Institution.Staff);
 
         return app;

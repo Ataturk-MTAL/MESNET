@@ -117,7 +117,7 @@ Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden 
 | `POST /api/businesses/resync-projections` | Tüm işletmeler için `BusinessUpdated` yeniden yayınlanır — diğer modüllerin işletme görünümleri |
 | `POST /api/coordination/teachers/resync-views` | Koordinasyon görünümlerini kurum bazında yeniden kurar |
 | `POST /api/coordination/weekly-visits/resync` | Haftalık ziyaret olaylarını yeniden yayınlar |
-| `POST /api/institutions/staff/resync-branch-codes` | #126 öncesi kullanıcıların alan kapsamını personel kaydındaki bilgiden doldurur — **uydurmaz**, yalnız dolu olanı taşır |
+| `POST /api/institutions/staff/resync-branch-codes` | Personel kaydından kullanıcı hesabına **kurum (kiracı anahtarı) ve alan kapsamı** backfill'i — **uydurmaz, üzerine yazmaz**; yalnız boş alanı doldurur |
 | `POST /api/security/users/resync-display-names` | Kullanıcı görünen adlarını tazeler |
 
 ### Yerleştirme resync'i: atlanan kayıtlar
