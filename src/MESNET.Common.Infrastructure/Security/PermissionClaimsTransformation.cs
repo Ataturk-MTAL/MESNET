@@ -25,6 +25,9 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
+    /// <summary>İşletme kapsam claim'i (#229). Otoritesi <c>UserAccount.BusinessId</c>'dir.</summary>
+    private const string BusinessClaimType = "business_id";
+
     /// <summary>
     /// Institution staff tablosundan keycloakId ile kurum ID'si bulan raw SQL.
     /// Modül entity referansı kullanmaz — schema izolasyonuna uyar.
@@ -124,6 +127,13 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         // BranchCodes ile aynı güven sırası: KAYIT otoriterdir. Kayıt doluysa token'dan gelen
         // linked_student_ids claim'leri silinir. DB yedeği YOKTUR — bağ yalnız kullanıcı
         // kaydında tutulur; kayıt yoksa kapsam yoktur ve erişim doğmaz.
+        // ── İşletme kapsamı claim enrichment (#229) ──
+        // KAYIT OTORİTERDİR, token değil. business_id Keycloak'ta *unmanaged* özniteliktir;
+        // realm politikası yanlış kurulursa kullanıcı manage-account ile onu kendi yazar ve
+        // BAŞKA işletmenin ücretli izin talebini onaylayabilir (#177) ya da başka işletmenin
+        // öğrencisine not girebilir. institution_id ile aynı disiplin (ADR-0003 adım 2).
+        EnrichBusinessClaim(principal, entry?.BusinessId);
+
         EnrichLinkedStudentClaims(principal, entry?.LinkedStudentIds);
 
         // Permission claim'lerini ekle
@@ -203,7 +213,7 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
 
             return PermissionLookup.Of(new PermissionCacheEntry(
                 info.IsEnabled, info.Roles, info.DirectPermissions, info.BranchCodes,
-                info.InstitutionId, info.LinkedStudentIds ?? [], info.RolesWrittenAt));
+                info.InstitutionId, info.BusinessId, info.LinkedStudentIds ?? [], info.RolesWrittenAt));
         }
         catch (Exception ex)
         {
@@ -341,6 +351,52 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     /// yedek bırakılsaydı kullanıcı kendi Account konsolundan kendine öğrenci ekleyip başka
     /// bir öğrencinin verisine erişebilirdi.</para>
     /// </summary>
+    /// <summary>
+    /// <c>business_id</c> claim'ini <b>kullanıcı kaydından</b> kurar (#229).
+    ///
+    /// <para><b>Token'daki değer HER DURUMDA silinir</b> — kayıt boş olsa bile. "Kayıt yoksa
+    /// token'a düş" davranışı, kaydı olmayan kullanıcıya kendi işletmesini seçtirirdi; oysa bu
+    /// alan bir <b>yetki kapsamıdır</b>: <c>PaidLeaveApprovalPolicy.CanBusinessApprove</c>
+    /// yalnız buna bakar. Kapsamsız kalmak, yanlış işletmeye düşmekten iyidir.</para>
+    ///
+    /// <para>Kiracılık yarıçapı daraltır ama kapatmaz: <c>PaidLeaveRequest</c> ve
+    /// <c>StudentTermGrade</c> kiracıya aittir, yani sahte bir değer başka OKULUN verisine
+    /// ulaşamaz. Ama aynı okuldaki <b>tüm işletmeler</b> erişilebilir kalırdı.</para>
+    /// </summary>
+    private void EnrichBusinessClaim(ClaimsPrincipal principal, Guid? accountBusinessId)
+    {
+        if (principal.Identity is not ClaimsIdentity identity)
+            return;
+
+        RemoveBusinessClaims(principal);
+
+        if (accountBusinessId is not { } businessId || businessId == Guid.Empty)
+            return;
+
+        identity.AddClaim(new Claim(BusinessClaimType, businessId.ToString()));
+    }
+
+    /// <summary>Token'daki <c>business_id</c> claim'lerini siler; silinemezse loglanır.</summary>
+    private void RemoveBusinessClaims(ClaimsPrincipal principal)
+    {
+        foreach (var identity in principal.Identities)
+        {
+            foreach (var claim in identity.FindAll(BusinessClaimType).ToList())
+            {
+                try
+                {
+                    identity.RemoveClaim(claim);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Token'daki business_id claim'i kaldırılamadı: {ClaimValue}. "
+                        + "Kayıt otoritesi bu istekte uygulanamayabilir.", claim.Value);
+                }
+            }
+        }
+    }
+
     private void EnrichLinkedStudentClaims(
         ClaimsPrincipal principal, IReadOnlyList<Guid>? accountLinkedStudentIds)
     {
@@ -668,6 +724,7 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         IReadOnlyList<string> DirectPermissions,
         IReadOnlyList<string> BranchCodes,
         Guid? InstitutionId,
+        Guid? BusinessId,
         IReadOnlyList<Guid> LinkedStudentIds,
         DateTime RolesWrittenAt);
 }

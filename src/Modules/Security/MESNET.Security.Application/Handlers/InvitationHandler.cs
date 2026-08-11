@@ -145,7 +145,8 @@ public static class CompleteInvitationHandler
         // gerekçe: kiracı anahtarının otoritesi UserAccount kaydıdır, Keycloak özniteliği değil.
         var attributes = new Dictionary<string, string>();
         if (invitation.BusinessId.HasValue)
-            attributes["business_id"] = invitation.BusinessId.Value.ToString();
+            // business_id Keycloak'a YAZILMAZ (#229) — otorite UserAccount kaydıdır.
+            _ = invitation.BusinessId;
         if (attributes.Count > 0)
             await keycloak.SetUserAttributesAsync(keycloakUserId, attributes);
 

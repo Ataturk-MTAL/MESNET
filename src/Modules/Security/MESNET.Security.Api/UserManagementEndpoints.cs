@@ -30,6 +30,9 @@ public static class UserManagementEndpoints
         // kapsamı cevaplar (UserInstitutionScopePolicy). Ayrı bir izin, "user:*" wildcard'ı
         // üzerinden zaten aynı iki role düşerdi (ADR-0002) — erişimi hiç daraltmazdı.
         group.MapPost("/{userAccountId:guid}/institution", ChangeInstitution).RequireAuthorization(Permissions.UserManagement.RolesManage);
+        // İşletme kapsamı (#229) — claim kayıttan üretildiği için yanlış bağı düzeltebilecek
+        // TEK yol budur; Keycloak'a yazmak okunmaz, senkronizasyon kaydı ezmez.
+        group.MapPost("/{userAccountId:guid}/business", ChangeBusiness).RequireAuthorization(Permissions.UserManagement.RolesManage);
         // Veli–öğrenci bağı (#174) — kapsam kararıdır, kimlik güncellemesi değil; bu yüzden
         // "user:update" değil "user:roles:manage" ister (ChangeBranches ile aynı çizgi).
         group.MapPost("/{userAccountId:guid}/students", ChangeStudents).RequireAuthorization(Permissions.UserManagement.RolesManage);
@@ -151,6 +154,18 @@ public static class UserManagementEndpoints
     /// istekten ALINMAZ — aksi hâlde gönderen taraf kendi kapsamını beyan edip kontrolü
     /// anlamsız kılardı (ADR-0003 adım 2).
     /// </summary>
+    private static async Task<IResult> ChangeBusiness(
+        Guid userAccountId, ChangeUserBusiness command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command with { UserAccountId = userAccountId });
+
+        var message = command.BusinessId is null
+            ? "Kullanıcının işletme bağı çözüldü."
+            : "Kullanıcının işletme bağı güncellendi.";
+
+        return Results.Ok(ResponseBuilder.Success().AddMessage(message).Build());
+    }
+
     private static async Task<IResult> ChangeInstitution(
         Guid userAccountId, ChangeUserInstitution command,
         ICurrentUserService currentUser, IMessageBus bus)
