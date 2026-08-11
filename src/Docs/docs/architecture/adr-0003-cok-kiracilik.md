@@ -403,6 +403,25 @@ kalan boşluğu `InstitutionScopeDriftTests` kapatır.
 **Okumada da çalışır** — alan (branş) kapsamının aksine. Alan şefinin başka alanın dağıtımını
 görmesi bilinçli olarak açıktı; başka *okulun* personel listesini görmek değildir.
 
+### Kiracı ekseni tek noktada (#148)
+
+#148 `ITenantContext` + merkezî bir Marten session factory istiyordu; gerekçesi *"her yeni
+handler kiracı-kör yazılıyor, retrofit maliyeti doğrusal birikiyor"* idi. Retrofit yapılınca
+ölçüldü: **219 çağrı yerinin hiçbirine dokunulmadı.** Kiracıyı tek middleware
+`IMessageBus.TenantId` üzerine koydu, Wolverine handler'lara ve cascading mesajlara devretti,
+Marten conjoined satırları süzdü. Session factory'ye ihtiyaç olmadı — önerilen mekanizma bugün
+ölü ağırlık olurdu.
+
+**Ama issue'nun KURALI yaşıyor:** *"hiçbir kod `tenantId == institutionId` anlamsal varsayımı
+yapmayacak"*. Çevrim iki ayrı yerde duruyordu — istek yolunda ve arka plan kiracı dizininde.
+Biri değişip diğeri kalsaydı zamanlanmış işler **hiçbir verinin kullanmadığı** bir kiracıda
+koşardı; sonuç istisna değil **boş sonuç** olurdu: rapor üretilmez, maaş dönemi açılmaz, log
+temiz kalır.
+
+1:1 eşleşme artık yalnız `TenantResolution.ForInstitution` içinde. Kiracı ekseni bir gün okuldan
+başka bir şeye taşınırsa değişecek yer orasıdır; çağıranların hiçbiri okul kimliği taşıdığını
+varsaymaz. Kilit: `TenantIdentityMappingTests`.
+
 ### İkinci okul nasıl açılır (kontrol listesi)
 
 Delik kapanınca yeni bir sorun çıktı: `CanAssign`'ın üç kuralı birlikte okunduğunda
