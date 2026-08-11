@@ -142,7 +142,7 @@ Sıralama ilkesi: **geri alınabilir işler önce, tek yönlü kapı en sonda ve
 | 3 | Keycloak sertleştirme: realm drift denetimi + user PUT semantiği | Düşük | Evet | ✅ Tamamlandı (#195 drift + yazma semantiği bu PR) |
 | 4 | `Business.InstitutionId` → provenance (`RegisteredByInstitutionId`) | Orta, davranış farkı **sıfır** | Evet | ✅ Tamamlandı |
 | 5 | **Marten conjoined açılışı** | Yüksek | **TEK YÖNLÜ KAPI** | ✅ Tamamlandı (#226 hat + #227 kapı) |
-| 6 | İkinci okul kontrol listesi | — | — | İzolasyon smoke'u iki gerçek okulla geçti |
+| 6 | İkinci okul kontrol listesi | Orta | Evet | ✅ Tamamlandı — izolasyon üç gerçek okulla ölçüldü |
 
 ### Adım 2'nin iç sırası (bozulmamalı) — tamamlandı
 
@@ -363,6 +363,66 @@ satır `*DEFAULT*` kovasında kalmaz, `mt_streams` PK'sı `(tenant_id, id)`, sı
 iki yönde de yansır), `TenantlessSessionDriftTests` (argümansız session açma yok; istek dışında
 çalışan sınıfa session enjekte edilmez), `AnonymousEndpointDriftTests`,
 `IdentityLayerTenancyTests`.
+
+### Adım 6 — ikinci okul gerçekten açıldı, üç sızıntı çıktı
+
+Kiracılık kapısı (adım 5) satırları ayırıyor. Adım 6, ikinci bir okulu **gerçekten açıp** iki
+müdürle bakmakla başladı ve kiracılığın **koruyamadığı** bir yüzey buldu.
+
+**Kiracılık tarafı temiz.** Üç okul, üç müdür:
+
+| Müdür | Öğrenci | Sözleşme | Gördüğü kurum |
+| --- | ---: | ---: | ---: |
+| Atatürk MTAL | 121 | 4 | 1 |
+| Gazi MTAL | 2 | 0 | 1 |
+| Cumhuriyet MTAL | 0 | 0 | 1 |
+
+Kimlikle çapraz erişim iki yönde de 404; işletme kataloğu (paylaşımlı) üçünde de 100.
+
+**Ama `Institution` belgesi kiracının KENDİSİDİR ve damga taşımaz** — conjoined onu süzmez.
+`/api/institutions/{institutionId}` altındaki uçlar hedefi **istekten** alıyordu ve kimse
+aktörün kapsamıyla karşılaştırmıyordu. Gazi'nin müdürüyle ölçüldü:
+
+| İstek | Sonuç (önce) | Sonuç (sonra) |
+| --- | --- | --- |
+| `GET /api/institutions/{Atatürk}` | **200** — kayıt + **7 kişilik personel listesi** | 422 |
+| `PATCH /api/institutions/{Atatürk}` | **200** — okulun **adı değişti** | 422 |
+| `POST /api/institutions/{Atatürk}/staff` | **201** — personel **eklendi** (7→8) | 422 |
+| `GET /api/institutions` | iki okul | 1 okul |
+| `POST /api/security/users` + yabancı `institutionId` | **201** | 422 |
+
+Sonuncusu ADR-0001'in kendi cümlesinin ihlaliydi: *izin erişimi açar, kapsamı belirlemez.*
+`ChangeUserInstitution` `UserInstitutionScopePolicy` ile korunuyordu ama **oluşturma açıktı** —
+kilitli kapının yanındaki açık pencere.
+
+**Çözüm kapsamdadır, izinde değil.** Karar saf `InstitutionScopePolicy` içinde; uygulanışı
+`IInstitutionScoped` + Wolverine middleware (`IContractPeriodScoped` ile aynı idiom). Kontrol
+mesaj **tipine** bağlı olduğu için yeni bir uç eklemek yetmez, mesajın arayüzü taşıması gerekir;
+kalan boşluğu `InstitutionScopeDriftTests` kapatır.
+
+**Okumada da çalışır** — alan (branş) kapsamının aksine. Alan şefinin başka alanın dağıtımını
+görmesi bilinçli olarak açıktı; başka *okulun* personel listesini görmek değildir.
+
+### İkinci okul nasıl açılır (kontrol listesi)
+
+Delik kapanınca yeni bir sorun çıktı: `CanAssign`'ın üç kuralı birlikte okunduğunda
+**ikinci okulun ilk kullanıcısını bağlayabilecek kimse yoktu** — kapsamsız aktör yazamaz,
+A'nın müdürü B'ye yazamaz. Kural doğruydu, eksik olan **bilinçli bir istisnaydı**:
+
+`platform:tenant:manage` — kurum sınırının üstünde çalışma. `platform:` öneki hiçbir okul
+rolünde yoktur (`PlatformScopeMappingTests`), bugün yalnız `SystemAdmin`'dedir ve bireysel
+atanamaz.
+
+1. **Okulu aç:** `POST /api/institutions` — artık `institution:manage` değil
+   `platform:tenant:manage` ister. Yeni okul açmak kurum İÇİ bir iş değildir; ölçüldü, eski
+   hâliyle bir okul müdürü ikinci okulu kendisi yaratabiliyordu
+2. **İlk müdürü oluştur:** `POST /api/security/users` + `institutionId` = yeni okul.
+   Kapsam muafiyeti burada devreye girer
+3. **Doğrula:** yeni müdür giriş yapınca `tenantId` yeni okuldur, öğrenci/sözleşme sayısı
+   **0**, kurum listesi **1**
+
+`SystemAdmin` bu iş için kurum verisi yetkisi ALMAZ: `institution:view/manage` verilmedi, yani
+okul listesini bile görmez. Bağlama yetkisi izinden değil kapsam muafiyetinden gelir.
 
 ## Sonuçlar
 

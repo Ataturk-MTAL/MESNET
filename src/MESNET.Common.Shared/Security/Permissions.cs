@@ -390,6 +390,21 @@ public static class Permissions
         /// <c>SystemAdmin</c> rolündedir.
         /// </summary>
         public const string ParameterManage = "platform:parameter:manage";
+
+        /// <summary>
+        /// <b>Kurum sınırının üstünde çalışma</b> — yeni okul açmak, herhangi bir okulun kaydını
+        /// okumak/yazmak, bir kullanıcıyı herhangi bir okula bağlamak (ADR-0003 adım 6).
+        ///
+        /// <para>Bu izin olmadan her aktör <b>yalnız kendi okulunda</b> çalışır. Kapsam kararı
+        /// izinden değil, aktörün kurum claim'i ile hedef kurumun karşılaştırılmasından çıkar —
+        /// <see cref="InstitutionScopePolicy"/>.</para>
+        ///
+        /// <para><b>İkinci okulun ilk kullanıcısı bu izinle açılır.</b> Ölçüldü: izin yokken
+        /// <c>CreateUser</c> herhangi bir <c>InstitutionId</c>'yi kabul ediyordu ve A okulunun
+        /// müdürü B okuluna kullanıcı yaratabiliyordu — kilitli kapının yanındaki açık pencere.
+        /// O pencere kapanınca ikinci okulu açmak için <b>bilinçli</b> bir yol gerekti.</para>
+        /// </summary>
+        public const string TenantManage = "platform:tenant:manage";
     }
 
     /// <summary>

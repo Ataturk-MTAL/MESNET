@@ -273,6 +273,18 @@ public static class RolePermissionMap
         [MesnetRoles.SystemAdmin] =
         [
             Permissions.Platform.ParameterManage,
+            // Kurum sınırının üstünde çalışma (ADR-0003 adım 6): yeni okul açmak ve ilk
+            // kullanıcısını o okula bağlamak. Okul rollerinin hiçbirinde yoktur — okul müdürü
+            // kendi okulunda kalır. Bu izin olmasaydı ikinci okulun ilk kullanıcısı HİÇBİR
+            // yoldan açılamazdı: kapsamsız aktör bağ yazamaz, A'nın müdürü B'ye yazamaz.
+            Permissions.Platform.TenantManage,
+            // Yeni okulun İLK kullanıcısını (müdürünü) açabilmesi için kullanıcı yönetimi
+            // gerekir — okulu açıp içine kimseyi koyamamak işe yaramaz. Kurum VERİSİ yine
+            // kapalıdır: institution:view/manage VERİLMEZ, o yüzden bu rol okul listesini bile
+            // görmez. Açtığı okula bağlama yetkisi izinden değil kapsam muafiyetinden gelir
+            // (UserInstitutionScopePolicy).
+            Permissions.UserManagement.Create,
+            Permissions.UserManagement.RolesManage,
             // Yazdığı değerin yürürlük geçmişini görebilmesi için okuma izni de gerekir;
             // "salary:*" verilMEZ — dekont, hesaplama ve öğrenci verisi bu role kapalıdır.
             Permissions.Salary.ParameterView

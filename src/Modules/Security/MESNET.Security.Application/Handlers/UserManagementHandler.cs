@@ -19,6 +19,15 @@ public static class CreateUserHandler
     public static async Task<(Guid, OutgoingMessages)> Handle(
         CreateUser command, IKeycloakAdminService keycloak, IDocumentSession session)
     {
+        // Kapsam kontrolü OLUŞTURMADA da yapılır (ADR-0003 adım 6). ChangeUserInstitution
+        // korunuyordu ama oluşturma açıktı: kilitli kapının yanındaki açık pencere. Ölçüldü —
+        // A okulunun müdürü, InstitutionId'yi gövdeye yazarak B okuluna kullanıcı yaratabiliyordu.
+        // Yeni kullanıcının bugünkü bağı yoktur, o yüzden "current" null geçilir.
+        if (!UserInstitutionScopePolicy.CanAssign(
+                command.ActorInstitutionId, null, command.InstitutionId,
+                command.ActorHasPlatformScope))
+            throw new DomainException(SecurityErrors.InstitutionScopeNotAllowed());
+
         var kcResult = await keycloak.CreateUserAsync(
             command.Username, command.Email, command.FirstName, command.LastName,
             command.TemporaryPassword);

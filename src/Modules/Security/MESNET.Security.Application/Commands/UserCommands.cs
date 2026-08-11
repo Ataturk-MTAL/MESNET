@@ -20,7 +20,19 @@ public sealed record CreateUser(
     Guid? InstitutionId = null,
     Guid? BusinessId = null,
     Dictionary<string, string>? Metadata = null,
-    List<string>? BranchCodes = null);
+    List<string>? BranchCodes = null)
+{
+    /// <summary>
+    /// İşlemi yapanın kurum kapsamı — uçta token claim'inden doldurulur, istekten ALINMAZ.
+    /// </summary>
+    public Guid? ActorInstitutionId { get; init; }
+
+    /// <summary>
+    /// <c>platform:tenant:manage</c> — kurum sınırının üstünde çalışma yetkisi. Uçta izinden
+    /// doldurulur; ikinci okulun ilk kullanıcısı bu yolla açılır (ADR-0003 adım 6).
+    /// </summary>
+    public bool ActorHasPlatformScope { get; init; }
+}
 
 public sealed record UpdateUser(Guid UserAccountId, string Email, string FirstName, string LastName);
 

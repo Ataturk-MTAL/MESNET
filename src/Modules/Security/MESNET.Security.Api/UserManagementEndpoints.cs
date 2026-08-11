@@ -64,9 +64,15 @@ public static class UserManagementEndpoints
     }
 
     private static async Task<IResult> CreateUser(
-        CreateUser command, IMessageBus bus)
+        CreateUser command, ICurrentUserService currentUser, IMessageBus bus)
     {
-        var userId = await bus.InvokeAsync<Guid>(command);
+        // Kapsam istekten ALINMAZ: aktörün kurumu claim'den, platform muafiyeti izinden gelir
+        // (ADR-0003 adım 6). Gövdedeki InstitutionId yalnız HEDEFTİR, yetki değil.
+        var userId = await bus.InvokeAsync<Guid>(command with
+        {
+            ActorInstitutionId = currentUser.GetCurrentUser()?.InstitutionId,
+            ActorHasPlatformScope = currentUser.HasPermission(Permissions.Platform.TenantManage)
+        });
 
         return Results.Created(
             $"/api/security/users/{userId}",

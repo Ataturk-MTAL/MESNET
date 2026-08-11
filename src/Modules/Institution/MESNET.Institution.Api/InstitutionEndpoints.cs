@@ -25,7 +25,10 @@ public static class InstitutionEndpoints
 
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Institution.View);
         group.MapGet("/{institutionId:guid}", Get).RequireAuthorization(Permissions.Institution.View);
-        group.MapPost("/", Post).RequireAuthorization(Permissions.Institution.Manage);
+        // Yeni okul açmak KURUM ÜSTÜ bir iştir (ADR-0003 adım 6): institution:manage "kurum
+        // yönetebilir" der, "yeni kiracı açabilir" demez. Ölçüldü: bu uç institution:manage
+        // ile açıkken A okulunun müdürü ikinci bir okul yaratabiliyordu.
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Platform.TenantManage);
         group.MapPatch("/{institutionId:guid}", Patch).RequireAuthorization(Permissions.Institution.Manage);
         group.MapPost("/{institutionId:guid}/staff", PostStaff).RequireAuthorization(Permissions.Institution.Staff);
         group.MapPut("/{institutionId:guid}/schedule-config", PutScheduleConfig).RequireAuthorization(Permissions.Institution.Manage);

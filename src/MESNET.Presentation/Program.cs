@@ -296,6 +296,13 @@ try
         opts.Policies.ForMessagesOfType<MESNET.Attendance.Application.Guards.IAttendancePeriodScoped>()
             .AddMiddleware(typeof(MESNET.Attendance.Application.Guards.AttendancePeriodGuardMiddleware));
 
+        // Kurum kapsamı koruması (ADR-0003 adım 6) — hedef kurumu İSTEKTEN alan her
+        // command/query. Kiracılık bunu koruyamaz: Institution belgesi kiracının kendisidir
+        // ve damga taşımaz. Ölçüldü: kontrol yokken bir okul müdürü diğer okulun kaydını
+        // okuyor, adını değiştiriyor ve personel listesine kayıt ekleyebiliyordu.
+        opts.Policies.ForMessagesOfType<MESNET.Institution.Application.Security.IInstitutionScoped>()
+            .AddMiddleware(typeof(MESNET.Institution.Application.Security.InstitutionScopeGuardMiddleware));
+
         // Modül Application assembly'lerini handler keşfi için tanıt
         // Wolverine varsayılan olarak sadece host assembly'yi tarar
         opts.Discovery.IncludeAssembly(typeof(MESNET.Institution.Application.Commands.CreateInstitution).Assembly);

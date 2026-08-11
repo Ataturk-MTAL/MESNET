@@ -1,3 +1,4 @@
+using MESNET.Institution.Application.Security;
 namespace MESNET.Institution.Application.Commands;
 
 public sealed record CreateAcademicPeriod(
@@ -6,4 +7,4 @@ public sealed record CreateAcademicPeriod(
     int StartYear,
     int EndYear,
     DateOnly StartDate,
-    DateOnly EndDate);
+    DateOnly EndDate) : IInstitutionScoped;
