@@ -313,10 +313,12 @@ ya da veritabanı yedekten geri yüklenir. Aynı kural geliştirme makineleri i�
 göç edilmiş bir yerel veritabanına eski daldan API bağlamayın.
 :::
 
-## Keycloak'ta artık kalan `institution_id` özniteliği (ADR-0003 adım 3)
+## Keycloak'ta artık kalan kapsam anahtarı öznitelikleri (ADR-0003 adım 3, #229)
 
-Kiracı anahtarı artık **yalnız `UserAccount.InstitutionId`**'dir; token'daki `institution_id`
-claim'i her istekte siliniyor ve hiçbir kod onu Keycloak'a yazmıyor (`InstitutionClaimAuthorityTests`).
+Kapsam anahtarlarının **ikisi de** artık yalnız `UserAccount` kaydından üretiliyor:
+`institution_id` (ADR-0003 adım 2) ve `business_id` (#229). Token'daki değerler her istekte
+siliniyor ve hiçbir kod onları Keycloak'a yazmıyor (`InstitutionClaimAuthorityTests`,
+`BusinessClaimAuthorityTests`).
 
 Ama **eski kayıtlar duruyor.** Dev realm'inde ölçüldü: 8 kullanıcının 6'sında öznitelik hâlâ var.
 
@@ -330,7 +332,7 @@ ileride birinin onu yeniden otorite sanmasına davetiye çıkarır. Aynı sebepl
 POST /api/security/users/purge-institution-attribute      (user:roles:manage)
 ```
 
-Uç tüm Keycloak kullanıcılarını tarar ve özniteliği **öznitelik yazan normal yoldan** siler:
+Uç tüm Keycloak kullanıcılarını tarar ve **her iki özniteliği** de **öznitelik yazan normal yoldan** siler:
 gövde taze bir GET'ten kurulduğu için ad, e-posta ve diğer öznitelikler kaybolmaz.
 **Idempotenttir** — ikinci koşuda `purged = 0` döner.
 

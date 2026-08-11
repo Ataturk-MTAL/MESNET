@@ -40,5 +40,7 @@ public sealed record UserPermissionInfo(
     IReadOnlyList<string> DirectPermissions,
     IReadOnlyList<string> BranchCodes,
     Guid? InstitutionId = null,
+    /// <summary>İşletme kapsamı — otorite kayıttır, token değil (#229).</summary>
+    Guid? BusinessId = null,
     IReadOnlyList<Guid>? LinkedStudentIds = null,
     DateTime RolesWrittenAt = default);

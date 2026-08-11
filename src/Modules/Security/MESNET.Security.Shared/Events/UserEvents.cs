@@ -53,6 +53,16 @@ public sealed record UserInstitutionChanged(
     Guid? PreviousInstitutionId,
     Guid? InstitutionId);
 
+/// <summary>
+/// Kullanıcının işletme kapsamı değişti (#229). <c>null</c> geçerli bir sonuçtur — bağ
+/// çözülmüş, kullanıcı işletme kapsamsız kalmıştır.
+/// </summary>
+public sealed record UserBusinessChanged(
+    Guid UserAccountId,
+    string KeycloakUserId,
+    Guid? PreviousBusinessId,
+    Guid? BusinessId);
+
 /// <summary>Kullanıcının alan (branş) kapsamı değişti (#126). Boş liste geçerli bir sonuçtur.</summary>
 public sealed record UserBranchesChanged(
     Guid UserAccountId,

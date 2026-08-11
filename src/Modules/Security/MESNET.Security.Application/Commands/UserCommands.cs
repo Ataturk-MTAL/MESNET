@@ -83,6 +83,18 @@ public sealed record ChangeUserInstitution(Guid UserAccountId, Guid? Institution
     public Guid? ActorInstitutionId { get; init; }
 }
 
+/// <summary>
+/// Kullanıcının işletme kapsamını değiştirir (#229).
+///
+/// <para><b>Bu uç, kapsam anahtarını düzeltebilecek TEK yoldur.</b> Claim artık kayıttan
+/// üretiliyor (Keycloak'a yazmak okunmaz) ve senkronizasyon kaydı ezmiyor; dolayısıyla yanlış
+/// bir işletme bağı başka hiçbir yerden düzeltilemez. Bu yüzden claim değişikliğiyle
+/// <b>aynı sürümde</b> çıkmak zorundaydı.</para>
+///
+/// <para><c>null</c> = bağı çöz.</para>
+/// </summary>
+public sealed record ChangeUserBusiness(Guid UserAccountId, Guid? BusinessId);
+
 public sealed record ChangeUserPermissions(Guid UserAccountId, List<string> DirectPermissions);
 
 public sealed record ToggleUserStatus(Guid UserAccountId, bool Enable, string? Reason = null);
@@ -108,7 +120,8 @@ public sealed record GetUserAccount(Guid UserAccountId);
 public sealed record SyncUsersFromKeycloak;
 
 /// <summary>
-/// Keycloak kullanıcılarındaki artık <c>institution_id</c> özniteliğini siler (ADR-0003 adım 3).
+/// Keycloak kullanıcılarındaki artık <b>kapsam anahtarı</b> özniteliklerini siler:
+/// <c>institution_id</c> (ADR-0003 adım 3) ve <c>business_id</c> (#229).
 ///
 /// <para><b>Öznitelik ATILDIR</b> — kiracı anahtarının tek otoritesi
 /// <c>UserAccount.InstitutionId</c>'dir, token'dan gelen claim her istekte siliniyor (adım 2)

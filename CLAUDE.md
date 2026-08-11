@@ -702,8 +702,14 @@ otorite) → **personel kaydı yedeği** (`staff[]` eşleşmesi, geçiş adımı
 - **Ön koşul — sıra bozulmaz:** token yolu kapatılmadan önce backfill çalışmalı
   (`POST /api/institutions/staff/resync-branch-codes`), yoksa mevcut kullanıcılar kilitlenir
 
-**Kalan borç:** `business_id` hâlâ token claim'i olarak okunuyor ve Keycloak'a yazılıyor.
-Kiracı anahtarı değil ama aynı unmanaged-öznitelik riskini taşıyor.
+**`business_id` de aynı disiplinden geçti (#229).** Kiracı anahtarı değildir — işletme
+kataloğu okullar arası paylaşımlıdır — ama bir **yetki kapsamıdır**:
+`PaidLeaveApprovalPolicy.CanBusinessApprove` yalnız ona bakar (#177). Artık token'daki değer
+her istekte silinir ve `UserAccount.BusinessId`'den yeniden kurulur; Keycloak'a yazılmaz;
+senkronizasyon kaydı ezmez. Tek yazma yolu: `POST /api/security/users/{id}/business`.
+Kilitleyen test: `BusinessClaimAuthorityTests`.
+
+**Kalan borç:** `student_id` (#230) — otoritesi **hiç yok**, `UserAccount.StudentId` ölü alan.
 
 ### Alan (branş) kapsamı kuralları (#126)
 

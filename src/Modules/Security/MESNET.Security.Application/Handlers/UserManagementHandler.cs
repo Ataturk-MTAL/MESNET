@@ -44,14 +44,13 @@ public static class CreateUserHandler
                 throw new DomainException(roleResult.Error);
         }
 
-        // institution_id Keycloak'a YAZILMAZ (ADR-0003 adım 2). Kiracı anahtarının otoritesi
-        // aşağıdaki UserAccount kaydıdır; claim de oradan üretilir. Keycloak'ta bir kopya
-        // bırakmak, ileride birinin o kopyayı yeniden otorite sanmasına davetiye çıkarır —
-        // kapatılan yol tam olarak buydu. business_id hâlâ yazılır: o alan bu adımın konusu
-        // değil ve bugün token claim'i olarak okunuyor.
+        // Kapsam anahtarlarının HİÇBİRİ Keycloak'a yazılmaz: institution_id (ADR-0003 adım 2)
+        // ve business_id (#229). Otorite aşağıdaki UserAccount kaydıdır; claim'ler oradan
+        // üretilir. Keycloak'ta bir kopya bırakmak, ileride birinin o kopyayı yeniden otorite
+        // sanmasına davetiye çıkarır — kapatılan yol tam olarak buydu.
+        //
+        // Öznitelik sözlüğü şimdilik yalnız branş kodları için duruyor.
         var attributes = new Dictionary<string, string>();
-        if (command.BusinessId.HasValue)
-            attributes["business_id"] = command.BusinessId.Value.ToString();
 
         if (attributes.Count > 0)
             await keycloak.SetUserAttributesAsync(keycloakUserId, attributes);
@@ -194,6 +193,36 @@ public static class ChangeUserInstitutionHandler
 /// <b>görünürlük</b> içindir — otoriter olan kayıttır ve
 /// <c>PermissionClaimsTransformation</c> token'dan gelen değeri her istekte siler.</para>
 /// </summary>
+/// <summary>
+/// İşletme kapsamını değiştirir (#229). Claim kayıttan üretildiği için bu uç, yanlış bağı
+/// düzeltebilecek tek yoldur.
+///
+/// <para>Önbellek geçersiz kılınır; aksi hâlde kaldırılan bağ 5 dakika daha geçerli kalır ve
+/// kullanıcı erişmemesi gereken işletmenin verisini görmeye devam ederdi.</para>
+/// </summary>
+public static class ChangeUserBusinessHandler
+{
+    public static async Task<UserBusinessChanged> Handle(
+        ChangeUserBusiness command, IDocumentSession session, IMemoryCache cache)
+    {
+        var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
+        // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
+        if (account is null || account.DeletedAt is not null)
+            throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
+
+        var previous = account.BusinessId;
+
+        account.BusinessId = command.BusinessId;
+        account.UpdatedAt = DateTime.UtcNow;
+        session.Store(account);
+
+        PermissionClaimsTransformation.InvalidateCache(cache, account.KeycloakUserId);
+
+        return new UserBusinessChanged(
+            account.Id, account.KeycloakUserId, previous, command.BusinessId);
+    }
+}
+
 public static class ChangeUserStudentsHandler
 {
     public static async Task<UserStudentsChanged> Handle(
@@ -500,7 +529,10 @@ public static class SyncUsersFromKeycloakHandler
                 // Keycloak özniteliğini kaydın üzerine yazıyordu — yani kullanıcının
                 // yazabileceği bir kaynağı otorite hâline getiriyordu. Kurum bağı yalnız
                 // ChangeUserInstitution ile değişir.
-                if (ku.BusinessId.HasValue) account.BusinessId = ku.BusinessId;
+                // İşletme kapsamı Keycloak'tan KOPYALANMAZ (#229). Kullanıcının yazabileceği
+                // bir öznitelik, senkronizasyondan geçerek "otoriter kayıt" hâline gelirdi —
+                // #224'te kurum için kaldırılan aklama deseninin aynısı. Bağ idari bir
+                // işlemdir: ChangeUserBusiness.
                 // Branş yalnız Keycloak'ta VARSA tazelenir; yoksa lokal kayıt korunur.
                 // Boş öznitelik "branşı sil" anlamına gelmez — sync uydurmaz da, silmez de (#126).
                 if (ku.BranchCodes.Count > 0) account.BranchCodes = ku.BranchCodes;
@@ -536,7 +568,9 @@ public static class SyncUsersFromKeycloakHandler
                     // gelen kullanıcı kurum kapsamsız doğar; bağ idari bir işlemdir
                     // (ChangeUserInstitution) ya da personel kaydından backfill'lenir.
                     InstitutionId = null,
-                    BusinessId = ku.BusinessId,
+                    // Dışarıdan gelen kullanıcı işletme kapsamsız doğar (#229); kurum
+                    // anahtarıyla aynı gerekçe (#224).
+                    BusinessId = null,
                     BranchCodes = ku.BranchCodes
                 };
                 session.Store(newAccount);
@@ -574,8 +608,12 @@ public sealed record PurgeInstitutionAttributeResult(int Total, int Purged, int 
 /// </summary>
 public static class PurgeKeycloakInstitutionAttributeHandler
 {
-    /// <summary>Kiracı anahtarının Keycloak'taki artık öznitelik adı.</summary>
-    private const string InstitutionAttribute = "institution_id";
+    /// <summary>
+    /// Keycloak'ta artık kalan <b>kapsam anahtarı</b> öznitelikleri. İkisi de otoritesini
+    /// <c>UserAccount</c>'a bıraktı — <c>institution_id</c> ADR-0003 adım 2 ile,
+    /// <c>business_id</c> #229 ile — ve hiçbir kod artık onları yazmıyor.
+    /// </summary>
+    private static readonly string[] ScopeAttributes = ["institution_id", "business_id"];
 
     public static async Task<PurgeInstitutionAttributeResult> Handle(
         PurgeKeycloakInstitutionAttribute command,
@@ -591,22 +629,28 @@ public static class PurgeKeycloakInstitutionAttributeHandler
 
         foreach (var user in users.Value)
         {
-            if (user.InstitutionId is null)
+            if (user.InstitutionId is null && user.BusinessId is null)
             {
                 skipped++;
                 continue;
             }
 
-            // Boş değer listesi özniteliği kaldırır; diğer öznitelikler ve profil alanları korunur.
-            var result = await keycloak.SetUserAttributeValuesAsync(user.Id, InstitutionAttribute, [], ct);
-            if (result.IsFailure)
+            var userFailed = false;
+            foreach (var attribute in ScopeAttributes)
             {
-                failed++;
-                logger.LogWarning(
-                    "institution_id özniteliği silinemedi: {Username} ({UserId}) — {Error}",
-                    user.Username, user.Id, result.Error.Description);
-                continue;
+                // Boş değer listesi özniteliği kaldırır; diğer öznitelikler ve profil alanları
+                // korunur (gövde taze bir GET'ten kurulur — bkz. KeycloakUserWritePolicy).
+                var result = await keycloak.SetUserAttributeValuesAsync(user.Id, attribute, [], ct);
+                if (result.IsFailure)
+                {
+                    userFailed = true;
+                    logger.LogWarning(
+                        "{Attribute} özniteliği silinemedi: {Username} ({UserId}) — {Error}",
+                        attribute, user.Username, user.Id, result.Error.Description);
+                }
             }
+
+            if (userFailed) { failed++; continue; }
 
             purged++;
         }
