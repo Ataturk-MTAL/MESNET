@@ -1,6 +1,7 @@
 using FluentValidation;
 using MESNET.Business.Application.Commands;
 using MESNET.Business.Core.Enums;
+using MESNET.Business.Core.Services;
 
 namespace MESNET.Business.Application.Validators;
 
@@ -11,6 +12,10 @@ public class RegisterBusinessValidator : AbstractValidator<RegisterBusiness>
         RuleFor(x => x.Name).NotEmpty().WithMessage("İşletme adı belirtilmelidir.")
             .MaximumLength(200).WithMessage("İşletme adı en fazla 200 karakter olmalıdır.");
         RuleFor(x => x.Address).NotEmpty().WithMessage("Adres belirtilmelidir.");
+        RuleFor(x => x.TaxNumber)
+            .Must(TaxNumberPolicy.IsValid)
+            .WithMessage(TaxNumberPolicy.FormatMessage);
+
         RuleFor(x => x.PersonnelCount).GreaterThan(0).WithMessage("Personel sayısı sıfırdan büyük olmalıdır.");
         RuleFor(x => x.TotalSlots).GreaterThan(0).WithMessage("Toplam kontenjan sıfırdan büyük olmalıdır.");
         RuleFor(x => x.Email).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.Email))

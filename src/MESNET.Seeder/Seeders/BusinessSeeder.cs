@@ -37,6 +37,7 @@ public static class BusinessSeeder
         await SeedBusiness(api, ctx, existingByName, "Business1", "Mezitli Elektrik Mühendislik A.Ş.", () => api.PostAsync("/api/businesses", new
         {
             name = "Mezitli Elektrik Mühendislik A.Ş.",
+            taxNumber = "1000000007",   // #150 — paylaşımlı kataloğun doğal anahtarı
             address = "Davultepe Mah., Mezitli, Mersin",
             phoneNumber = "0324 444 1001",
             email = "info@mezitlielektrik.com.tr",
@@ -51,6 +52,7 @@ public static class BusinessSeeder
         await SeedBusiness(api, ctx, existingByName, "Business2", "Mersin Bilişim Teknolojileri A.Ş.", () => api.PostAsync("/api/businesses", new
         {
             name = "Mersin Bilişim Teknolojileri A.Ş.",
+            taxNumber = "1000000014",   // #150 — paylaşımlı kataloğun doğal anahtarı
             address = "Çiftlikköy Mah., Yenişehir, Mersin",
             phoneNumber = "0324 444 2002",
             email = "info@mersinbt.com",
@@ -65,6 +67,7 @@ public static class BusinessSeeder
         await SeedBusiness(api, ctx, existingByName, "Business3", "Toroslar CNC Makine Sanayi A.Ş.", () => api.PostAsync("/api/businesses", new
         {
             name = "Toroslar CNC Makine Sanayi A.Ş.",
+            taxNumber = "1000000021",   // #150 — paylaşımlı kataloğun doğal anahtarı
             address = "Arpaçsakarlar Mah., Toroslar, Mersin",
             phoneNumber = "0324 444 3003",
             email = "info@toroslarcnc.com",
@@ -79,6 +82,7 @@ public static class BusinessSeeder
         await SeedBusiness(api, ctx, existingByName, "Business4", "Akdeniz Otomasyon ve Makine Ltd. Şti.", () => api.PostAsync("/api/businesses", new
         {
             name = "Akdeniz Otomasyon ve Makine Ltd. Şti.",
+            taxNumber = "1000000028",   // #150 — paylaşımlı kataloğun doğal anahtarı
             address = "Kuyuluk Mah., Mezitli, Mersin",
             phoneNumber = "0324 444 4004",
             email = "info@akdenizotomasyon.com",
@@ -96,6 +100,7 @@ public static class BusinessSeeder
             representativePhone = "0555 123 4567",
             representativeEmail = "can@yeninesitek.com",
             businessName = "Yeni Nesil Teknoloji",
+            taxNumber = "1000000035",   // #150 — paylaşımlı kataloğun doğal anahtarı
             address = "Güneykent Mah., Toroslar, Mersin",
             phoneNumber = "0324 444 5005",
             email = "info@yeninesitek.com",
@@ -108,6 +113,7 @@ public static class BusinessSeeder
         // ── 95 ek işletme — Mersin genelinde gerçekçi dağılım ──────────────────
         var bulkBusinesses = GetBulkBusinessData();
         var createdCount = 0;
+        var bulkIndex = 0;
         var allByName = new Dictionary<string, Guid>(existingByName, StringComparer.OrdinalIgnoreCase);
 
         foreach (var b in bulkBusinesses)
@@ -119,7 +125,10 @@ public static class BusinessSeeder
 
             var data = await api.PostAsync("/api/businesses", new
             {
-                    name = b.Name,
+                name = b.Name,
+                // #150 — paylaşımlı kataloğun doğal anahtarı. Her işletmeye AYRI numara:
+                // sabit değer verilseydi ikinci kayıt benzersizlik kısıtına çarpardı.
+                taxNumber = BulkTaxNumber(++bulkIndex),
                 address = b.Address,
                 phoneNumber = b.Phone,
                 email = b.Email,
@@ -463,4 +472,10 @@ public static class BusinessSeeder
         int PersonnelCount,
         int TotalSlots,
         string[] Sectors);
+
+    /// <summary>
+    /// Toplu seed işletmeleri için 10 haneli sahte VKN. Elle yazılan beş işletmenin
+    /// numaralarıyla çakışmaması için farklı bir aralıktan üretilir (#150).
+    /// </summary>
+    private static string BulkTaxNumber(int index) => $"2{index:D9}";
 }

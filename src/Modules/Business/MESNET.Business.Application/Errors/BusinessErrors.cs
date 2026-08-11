@@ -13,6 +13,17 @@ public static class BusinessErrors
         new("Business.InstitutionScopeMissing",
             "Kullanıcının kurum bilgisi bulunamadı, işletme kaydedilemiyor.");
 
+    /// <summary>
+    /// Aynı vergi kimliğiyle ikinci kayıt (#150). İşletme kataloğu okullar arası
+    /// <b>paylaşımlıdır</b>: firma zaten kayıtlıysa yeniden kaydedilmez, listeden seçilir.
+    /// Kopya kayıtları sonradan birleştirmek — sözleşmelerin, koordinasyon görünümlerinin ve
+    /// devamsızlık kayıtlarının yeniden yönlendirilmesi — çok daha pahalıdır.
+    /// </summary>
+    public static Error TaxNumberAlreadyRegistered(string taxNumber) =>
+        new("Business.TaxNumberAlreadyRegistered",
+            $"Bu vergi kimliğiyle ({taxNumber}) kayıtlı bir işletme zaten var. "
+            + "İşletme kataloğu okullar arası paylaşımlıdır — mevcut kaydı listeden seçin.");
+
     public static Error NotFound(Guid id) =>
         new("Business.NotFound", $"İşletme bulunamadı: {id}");
 
