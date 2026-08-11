@@ -117,8 +117,26 @@ Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden 
 | `POST /api/businesses/resync-projections` | Tüm işletmeler için `BusinessUpdated` yeniden yayınlanır — diğer modüllerin işletme görünümleri |
 | `POST /api/coordination/teachers/resync-views` | Koordinasyon görünümlerini kurum bazında yeniden kurar |
 | `POST /api/coordination/weekly-visits/resync` | Haftalık ziyaret olaylarını yeniden yayınlar |
-| `POST /api/institutions/staff/resync-branch-codes` | Personel kaydından kullanıcı hesabına **kurum (kiracı anahtarı) ve alan kapsamı** backfill'i — **uydurmaz, üzerine yazmaz**; yalnız boş alanı doldurur |
+| `POST /api/institutions/staff/resync-branch-codes` | Personel kaydından kullanıcı hesabına **kurum (kiracı anahtarı) ve alan kapsamı** backfill'i — **uydurmaz, üzerine yazmaz**; yalnız boş alanı doldurur. **Yalnız çağıranın kendi okulu** için çalışır (#131); kurum üstü aktör `?institutionId=` ile hedef verir |
 | `POST /api/security/users/resync-display-names` | Kullanıcı görünen adlarını tazeler |
+
+### Personel backfill'i tek okulludur (#131)
+
+`resync-branch-codes` eskiden **bütün kurumların** personelini tarıyordu; kodda "Faz 1 tek
+kurumlu olduğu için pratik etkisi yok" diyen bir TODO vardı. O varsayım ikinci okulla birlikte
+çöktü ve ölçüldü: kendi okulunda **1** personeli olan bir müdür ucu çağırdığında **9** personel
+işlendi — üç okulun tamamı. Yayınlanan olaylar okuma değil, Security tarafında kullanıcı
+**kapsamı** yazıyor.
+
+Artık hedef aktörün claim'inden gelir. Çok okullu bir kurulumda **her okul için ayrı
+çalıştırın**; kurum üstü aktör hepsini sırayla hedefleyebilir:
+
+```
+POST /api/institutions/staff/resync-branch-codes                      → kendi okulu
+POST /api/institutions/staff/resync-branch-codes?institutionId=<id>   → platform:tenant:manage
+```
+
+Yabancı hedef veren okul aktörü **422** alır.
 
 ### Yerleştirme resync'i: atlanan kayıtlar
 

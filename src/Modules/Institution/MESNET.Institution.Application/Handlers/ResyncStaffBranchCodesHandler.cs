@@ -24,12 +24,20 @@ public static class ResyncStaffBranchCodesHandler
         IMessageBus bus,
         CancellationToken cancellationToken)
     {
-        // TODO(Faz 2): Kurum filtresi yok — tüm kurumların personeli taranıyor. Faz 1 tek
-        // kurumlu olduğu için pratik etkisi yoktur; çok kurumluya geçmeden önce komut
-        // InstitutionId almalı ve çağıran kullanıcının kurum kapsamıyla sınırlanmalıdır.
-        var institutions = await session
-            .Query<Core.Entities.Institution>()
-            .ToListAsync(cancellationToken);
+        // Kapsam TEK kuruma indirilmiştir (ADR-0003 adım 6). Burada eskiden "Faz 2'de
+        // daraltılmalı" diyen bir TODO vardı ve gerekçesi "Faz 1 tek kurumlu" idi; o varsayım
+        // ikinci okulla çöktü. Ölçüldü: kendi okulunda 1 personeli olan müdür ucu çağırdığında
+        // 9 personel işlendi (üç okulun tamamı) ve yayınlanan olaylar başka okulların
+        // kullanıcılarına KAPSAM yazdı.
+        //
+        // Kimlik guard'dan geçmiştir (IInstitutionScoped): aktör ya kendi kurumunu vermiştir
+        // ya da kurum üstü yetkiye sahiptir.
+        var target = await session
+            .LoadAsync<Core.Entities.Institution>(command.InstitutionId, cancellationToken);
+
+        var institutions = target is null
+            ? new List<Core.Entities.Institution>()
+            : [target];
 
         int total = 0, published = 0, noBranch = 0, noKeycloakId = 0;
 

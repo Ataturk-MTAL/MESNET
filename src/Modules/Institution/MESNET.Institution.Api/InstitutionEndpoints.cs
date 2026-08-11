@@ -1,3 +1,4 @@
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Institution.Application.Commands;
@@ -47,9 +48,21 @@ public static class InstitutionEndpoints
     /// kullanıcı kapsamını doldurur (#126). Alanı olmayan personel atlanır — bu beklenen
     /// durumdur, eksik değildir.
     /// </summary>
-    private static async Task<IResult> PostResyncStaffBranchCodes(IMessageBus bus)
+    /// <summary>
+    /// Hedef kurum <b>aktörün claim'inden</b> gelir; kurum üstü aktör (<c>platform:tenant:manage</c>)
+    /// <c>institutionId</c> sorgu parametresiyle başka okulu hedefleyebilir. Kapsam kararı
+    /// <c>InstitutionScopeGuardMiddleware</c>'de: kendi okulu olmayan bir aktörün ya da yabancı
+    /// hedef verenin isteği 422 döner.
+    /// </summary>
+    private static async Task<IResult> PostResyncStaffBranchCodes(
+        Guid? institutionId, ICurrentUserService currentUser, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<ResyncStaffBranchCodesResult>(new ResyncStaffBranchCodes());
+        var target = institutionId
+            ?? currentUser.GetCurrentUser()?.InstitutionId
+            ?? Guid.Empty;
+
+        var result = await bus.InvokeAsync<ResyncStaffBranchCodesResult>(
+            new ResyncStaffBranchCodes(target));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result)

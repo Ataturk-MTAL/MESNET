@@ -1,3 +1,5 @@
+using MESNET.Institution.Application.Security;
+
 namespace MESNET.Institution.Application.Commands;
 
 /// <summary>
@@ -14,8 +16,18 @@ namespace MESNET.Institution.Application.Commands;
 /// kullanıcı yönetimi ekranında "branş atanmamış" olarak listelenir ve idare elle girer.</para>
 ///
 /// <para>Tekrar çalıştırmak güvenlidir (idempotent).</para>
+///
+/// <para><b>TEK KURUMLA sınırlıdır</b> (ADR-0003 adım 6). Eskiden komut hiçbir kurum kimliği
+/// taşımıyor ve handler <b>bütün kurumları</b> tarıyordu; kodda "Faz 1 tek kurumlu olduğu için
+/// pratik etkisi yok" diye bir TODO vardı. O varsayım ikinci okulla birlikte çöktü ve ölçüldü:
+/// kendi okulunda <b>1</b> personeli olan bir müdür ucu çağırdığında <b>9</b> personel işlendi —
+/// üç okulun tamamı. Üstelik bu okuma değil; yayınlanan olaylar Security tarafında kullanıcı
+/// <b>kapsamını</b> dolduruyor.</para>
+///
+/// <para>Kimlik istekten değil <b>aktörün claim'inden</b> doldurulur; kurum üstü aktör hedefi
+/// açıkça verebilir. Kontrol <see cref="IInstitutionScoped"/> üzerinden çalışır.</para>
 /// </summary>
-public sealed record ResyncStaffBranchCodes;
+public sealed record ResyncStaffBranchCodes(Guid InstitutionId) : IInstitutionScoped;
 
 /// <param name="TotalStaff">İncelenen personel kaydı sayısı.</param>
 /// <param name="Published">Alan bilgisi bulunup olay yayınlanan personel sayısı.</param>
