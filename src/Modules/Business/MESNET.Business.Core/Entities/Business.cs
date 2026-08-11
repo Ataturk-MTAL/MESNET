@@ -29,6 +29,17 @@ public class Business
     /// <para>Kayıt anında token'daki kurumdan doldurulur, istekten ALINMAZ.</para>
     /// </summary>
     public Guid RegisteredByInstitutionId { get; set; }
+    /// <summary>
+    /// Okulların "bu işletme kapandı" bildirimleri (#151). Kapatma kararı <b>yeter sayıya</b>
+    /// bağlıdır ve sayım <b>farklı kurum</b> üzerinden yapılır — bkz.
+    /// <c>BusinessClosurePolicy</c>.
+    ///
+    /// <para>Bildirimler durumdan ayrı tutulur çünkü <b>geri çekilebilirler</b>: sayı eşiğin
+    /// altına inerse işletme kendiliğinden açılır. Durum alanı tek başına bu bilgiyi
+    /// taşıyamazdı.</para>
+    /// </summary>
+    public List<BusinessClosureReport> ClosureReports { get; set; } = [];
+
     public required string Name { get; set; }
     public required string Address { get; set; }
     public string? PhoneNumber { get; set; }
