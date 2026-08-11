@@ -1,3 +1,4 @@
+using MESNET.Business.Core.Services;
 using Marten;
 using MESNET.Business.Application.Commands;
 using MESNET.Business.Application.Errors;
@@ -17,6 +18,18 @@ public static class UpdateBusinessInfoHandler
 
         if (command.Name is not null) business.Name = command.Name;
         if (command.Address is not null) business.Address = command.Address;
+
+        // Vergi kimliği düzeltmesi (#150): benzersizlik korunmalı — başka bir kaydın anahtarına
+        // taşınamaz. Kısıt zaten engellerdi; buradaki kontrol anlaşılır hata döndürmek için.
+        if (TaxNumberPolicy.Normalize(command.TaxNumber) is { } newTaxNumber
+            && newTaxNumber != business.TaxNumber)
+        {
+            if (await session.Query<Core.Entities.Business>()
+                    .AnyAsync(b => b.TaxNumber == newTaxNumber && b.Id != business.Id))
+                throw new DomainException(BusinessErrors.TaxNumberAlreadyRegistered(newTaxNumber));
+
+            business.TaxNumber = newTaxNumber;
+        }
         if (command.PhoneNumber is not null) business.PhoneNumber = command.PhoneNumber;
         if (command.Email is not null) business.Email = command.Email;
         if (command.Website is not null) business.Website = command.Website;

@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
 export const registerBusinessSchema = z.object({
+  // #150 — paylaşımlı kataloğun doğal anahtarı: aynı firmayı iki okulun ayrı ayrı
+  // kaydetmesini engelleyen tek alan. 10 hane VKN (tüzel), 11 hane TCKN (şahıs).
+  taxNumber: z
+    .string()
+    .regex(/^\d{10}$|^\d{11}$/, 'Vergi kimlik numarası 10 haneli (VKN) ya da 11 haneli (TC kimlik no) olmalıdır'),
   name: z.string().min(1, 'İşletme adı belirtilmelidir').max(200, 'İşletme adı en fazla 200 karakter olmalıdır'),
   address: z.string().min(1, 'Adres belirtilmelidir'),
   phoneNumber: z.string().optional(),
@@ -14,6 +19,11 @@ export const registerBusinessSchema = z.object({
 })
 
 export const editBusinessSchema = z.object({
+  // #150 — paylaşımlı kataloğun doğal anahtarı: aynı firmayı iki okulun ayrı ayrı
+  // kaydetmesini engelleyen tek alan. 10 hane VKN (tüzel), 11 hane TCKN (şahıs).
+  taxNumber: z
+    .string()
+    .regex(/^\d{10}$|^\d{11}$/, 'Vergi kimlik numarası 10 haneli (VKN) ya da 11 haneli (TC kimlik no) olmalıdır'),
   name: z.string().min(1, 'İşletme adı belirtilmelidir').max(200, 'İşletme adı en fazla 200 karakter olmalıdır'),
   address: z.string().min(1, 'Adres belirtilmelidir'),
   phoneNumber: z.string().optional(),

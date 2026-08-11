@@ -5,6 +5,8 @@ namespace MESNET.Business.Application.Commands;
 public sealed record UpdateBusinessInfo(
     Guid BusinessId,
     string? Name,
+    /// <summary>Vergi kimliği düzeltmesi (#150). <c>null</c> = dokunma.</summary>
+    string? TaxNumber,
     string? Address,
     string? PhoneNumber,
     string? Email,

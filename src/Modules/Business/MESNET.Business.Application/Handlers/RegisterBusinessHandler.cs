@@ -6,6 +6,7 @@ using MESNET.Business.Application.Commands;
 using MESNET.Business.Application.Dtos;
 using MESNET.Business.Application.Extensions;
 using MESNET.Business.Core.Enums;
+using MESNET.Business.Core.Services;
 using MESNET.Business.Core.ValueObjects;
 using MESNET.Business.Shared.Events;
 using Wolverine;
@@ -25,9 +26,17 @@ public static class RegisterBusinessHandler
         if (institutionId is not { } scopedInstitutionId || scopedInstitutionId == Guid.Empty)
             throw new DomainException(BusinessErrors.InstitutionScopeMissing());
 
+        // Vergi kimliği paylaşımlı kataloğun doğal anahtarıdır (#150). Benzersizliği
+        // veritabanı kısıtı garanti eder; buradaki kontrol kullanıcıya ANLAŞILIR bir hata
+        // döndürmek içindir — kısıta çarpmak ham Postgres hatası üretirdi.
+        var taxNumber = TaxNumberPolicy.Normalize(command.TaxNumber);
+        if (await session.Query<Core.Entities.Business>().AnyAsync(b => b.TaxNumber == taxNumber))
+            throw new DomainException(BusinessErrors.TaxNumberAlreadyRegistered(taxNumber!));
+
         var business = new Core.Entities.Business
         {
             Id = Guid.NewGuid(),
+            TaxNumber = taxNumber,
             // Provenance: kaydı GİREN okul. Kapsam alanı değildir (ADR-0003 adım 4).
             RegisteredByInstitutionId = scopedInstitutionId,
             Name = command.Name,

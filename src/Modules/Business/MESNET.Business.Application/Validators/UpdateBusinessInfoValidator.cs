@@ -1,3 +1,4 @@
+using MESNET.Business.Core.Services;
 using FluentValidation;
 using MESNET.Business.Application.Commands;
 
@@ -7,6 +8,10 @@ public class UpdateBusinessInfoValidator : AbstractValidator<UpdateBusinessInfo>
 {
     public UpdateBusinessInfoValidator()
     {
+        RuleFor(x => x.TaxNumber)
+            .Must(TaxNumberPolicy.IsValid)
+            .When(x => x.TaxNumber is not null)
+            .WithMessage(TaxNumberPolicy.FormatMessage);
         // KISMİ güncelleme (PATCH): komuttaki tüm alanlar nullable ve handler yalnız null
         // OLMAYAN alanları yazıyor. Bu yüzden Name/Address koşulsuz zorunlu tutulamaz —
         // sadece sektör güncelleyen bir çağrı 422 alıyordu (#80). null = "dokunma",

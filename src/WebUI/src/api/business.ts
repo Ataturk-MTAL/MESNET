@@ -52,6 +52,7 @@ export interface AuthorizeBranchesRequest {
 export interface BusinessDto {
   id: string
   name: string
+  taxNumber?: string | null
   address: string
   phoneNumber: string | null
   email: string | null
@@ -80,6 +81,8 @@ export interface BusinessDto {
 }
 
 export interface RegisterBusinessRequest {
+  /** #150 — 10 hane VKN ya da 11 hane TCKN; paylaşımlı kataloğun doğal anahtarı. */
+  taxNumber: string
   name: string
   address: string
   phoneNumber?: string
@@ -93,6 +96,8 @@ export interface RegisterBusinessRequest {
 }
 
 export interface UpdateBusinessRequest {
+  /** #150 — düzeltme; gönderilmezse dokunulmaz (kısmi güncelleme). */
+  taxNumber?: string
   name?: string
   address?: string
   phoneNumber?: string

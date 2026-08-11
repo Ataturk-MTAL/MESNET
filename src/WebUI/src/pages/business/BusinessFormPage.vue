@@ -85,6 +85,20 @@
                 </template>
               </q-input>
               <q-input
+                v-model="form.taxNumber"
+                label="Vergi Kimlik No *"
+                outlined
+                maxlength="11"
+                mask="###########"
+                unmasked-value
+                hint="10 haneli VKN (tüzel kişi) ya da 11 haneli TC kimlik no (şahıs işletmesi). İşletme kataloğu okullar arası ortaktır; bu numara aynı firmanın iki kez kaydedilmesini engeller."
+                :rules="[(v: string) => /^\d{10}$|^\d{11}$/.test(v ?? '') || 'Vergi kimlik numarası 10 ya da 11 haneli olmalıdır']"
+              >
+                <template #prepend>
+                  <q-icon name="badge" />
+                </template>
+              </q-input>
+              <q-input
                 v-model.number="form.personnelCount"
                 label="Personel Sayısı"
                 outlined
@@ -180,6 +194,7 @@ const saving = ref(false)
 
 const form = reactive({
   name: '',
+  taxNumber: '',
   address: '',
   phoneNumber: '',
   email: '',
@@ -211,6 +226,7 @@ async function loadBusiness() {
     const { data: b } = await businessApi.get(businessId.value)
     Object.assign(form, {
       name: b.name,
+      taxNumber: b.taxNumber ?? '',
       address: b.address,
       phoneNumber: b.phoneNumber ?? '',
       email: b.email ?? '',
@@ -240,6 +256,7 @@ async function handleSave() {
     saving.value = true
     try {
       await businessApi.update(businessId.value!, {
+        taxNumber: form.taxNumber || undefined,
         name: form.name || undefined,
         address: form.address || undefined,
         phoneNumber: form.phoneNumber || undefined,
@@ -265,6 +282,7 @@ async function handleSave() {
     saving.value = true
     try {
       await businessApi.register({
+        taxNumber: form.taxNumber,
         name: form.name,
         address: form.address,
         phoneNumber: form.phoneNumber || undefined,

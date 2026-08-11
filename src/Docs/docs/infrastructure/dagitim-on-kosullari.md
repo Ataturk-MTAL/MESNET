@@ -350,6 +350,38 @@ Admin API'ye yalnız `{"attributes": {...}}` göndermek `firstName`/`email` alan
 `KeycloakUserWritePolicy`.
 :::
 
+## İşletme vergi kimliği — mevcut kayıtlar boş kalır (#150)
+
+Vergi kimliği artık **zorunlu** ve paylaşımlı işletme kataloğunun doğal anahtarı: aynı firmayı
+iki okulun ayrı ayrı kaydetmesini engelleyen tek alan odur.
+
+**Mevcut kayıtlar etkilenmez.** Benzersizlik kısıtı bilerek **kısmidir**:
+
+```sql
+CREATE UNIQUE INDEX idx_business_taxno_uniq ON business.mt_doc_business
+  ((data ->> 'taxNumber')) WHERE (data ->> 'taxNumber') IS NOT NULL;
+```
+
+Ölçüldü: dağıtım öncesi 100 işletmenin **100'ünde** alan `NULL`'dur. Tam kısıt kullanılsaydı
+göç ilk açılışta düşerdi.
+
+:::warning Eski kayıtlar kopya üretmeye devam eder
+`NULL` alanlar birbirini engellemez. Yani #150 **bundan sonra** doğacak kopyaları keser; hâlihazırdaki
+kayıtlar için koruma **yoktur**. Vergi kimlikleri doldurulana kadar aynı firma iki okulda iki kayıt
+olarak durabilir.
+:::
+
+Doldurma yolu: işletme düzenleme formu (`PATCH /api/businesses/{id}`, alan artık formda).
+İlerleme sorgusu:
+
+```sql
+SELECT count(*) FILTER (WHERE data->>'taxNumber' IS NULL) AS eksik,
+       count(*)                                          AS toplam
+FROM business.mt_doc_business;
+```
+
+Alan dolduruldukça kısıt kendiliğinden devreye girer; ayrı bir göç adımı gerekmez.
+
 ## Sırayı bozmayın
 
 Bir adım başka bir adımın verisini üretiyorsa sıra önemlidir. Örnek: koordinasyon zinciri

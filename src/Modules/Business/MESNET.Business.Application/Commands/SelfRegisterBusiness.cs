@@ -8,6 +8,8 @@ public sealed record SelfRegisterBusiness(
     string RepresentativePhone,
     string RepresentativeEmail,
     string BusinessName,
+    /// <summary>Vergi kimliği — 10 haneli VKN ya da 11 haneli TCKN (#150).</summary>
+    string TaxNumber,
     string Address,
     string? PhoneNumber,
     string? Email,
