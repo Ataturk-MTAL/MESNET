@@ -1,4 +1,5 @@
 using JasperFx;
+using JasperFx.MultiTenancy;
 using JasperFx.Events.Daemon;
 using Marten;
 using Weasel.Core;
@@ -24,6 +25,7 @@ using Wolverine.Marten;
 using Keycloak.AuthServices.Sdk;
 using MESNET.Common.Infrastructure.Email;
 using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Security.Api;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
@@ -92,8 +94,37 @@ try
             EnumStorage.AsString,
             Casing.CamelCase,
             configure: o => o.Converters.Add(new SmartEnumJsonConverterFactory()));
+
+        // ── Kiracılık (#149, ADR-0003 adım 5) ────────────────────────────────────────
+        // Damga DocumentTenancyMap'ten gelir; AllDocumentsAreMultiTenanted() KULLANILMAZ —
+        // ulusal katalog, ulusal parametreler, kimlik katmanı ve paylaşımlı işletme kataloğu
+        // damga almamalı. Damgayı geri almak tablo yeniden inşası demektir.
+        opts.Policies.OnDocuments<DocumentTenancyPolicy>();
+
+        // Olay akışları da kiracıya ait: mt_streams PK'sı (tenant_id, id), mt_events benzersiz
+        // indeksi (tenant_id, stream_id, version) olur.
+        opts.Events.TenancyStyle = TenancyStyle.Conjoined;
+
+        // ZORLAMANIN TAMAMI BU SATIRDAN GELİYOR. Varsayılan true'dur: kapsamsız bir session
+        // sessizce "*DEFAULT*" kiracısında çalışır — öldürmeye çalıştığımız sessiz sızıntının
+        // kılık değiştirmiş hâli. false iken kapsamsız session FIRLATIR ve unutmak ilk
+        // entegrasyon testinde çöker.
+        opts.Advanced.DefaultTenantUsageEnabled = false;
     })
     .InitializeWith(new FieldOfStudySeedData())
+    // ── ApplyAllDatabaseChangesOnStartup() BİLEREK YOK (#149) ───────────────────────────
+    // Kiracılık geçişinde denendi ve API'yi AÇILIŞTA ÖLDÜRDÜ. Sebep Marten'ın ürettiği göç
+    // betiğinin kendisiyle çelişmesi: conjoined deltası aynı yabancı anahtarı İKİ KEZ ekliyor
+    // ve ikincisi patlıyor —
+    //   MartenSchemaException: DDL Execution for 'All Configured Changes' Failed!
+    //   42710: constraint "fkey_mt_events_stream_id_tenant_id" for relation "mt_events" already exists
+    // Var olan bir veritabanının kiracılığa geçişi bu yüzden AÇILIŞTA yapılmaz; elden uygulanan
+    // ve gözden geçirilebilen bir betikle yapılır:
+    //   src/Docs/docs/infrastructure/sql/149-conjoined-kiracilik.sql (şema)
+    //   src/Docs/docs/infrastructure/sql/149-kiraci-damgalama.sql   (mevcut satırların damgası)
+    // Sıra ve gerekçe: src/Docs/docs/infrastructure/dagitim-on-kosullari.md
+    // Yeni (boş) veritabanı bu betiklere ihtiyaç duymaz — AutoCreate tabloları zaten kiracılı
+    // yaratır; kıran şey yalnız var olan tablonun DELTASIDIR.
     .IntegrateWithWolverine()
     .AddAsyncDaemon(DaemonMode.HotCold);
 

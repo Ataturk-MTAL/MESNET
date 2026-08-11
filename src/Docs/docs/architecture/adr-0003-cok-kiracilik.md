@@ -75,14 +75,19 @@ build kırılır.
 
 | Sınıf | Adet | Anlamı |
 | --- | ---: | --- |
-| `Tenant` | 39 | `InstitutionId` taşır, kiracı sınırı içinde |
+| `Tenant` | 42 | `InstitutionId` taşır, kiracı sınırı içinde |
 | `Shared` | 11 | Bilinçli olarak dışarıda — ulusal katalog/parametre, paylaşımlı işletme kataloğu |
-| `Identity` | 2 | Kiracının kendisi ve kimlik katmanı |
-| `MissingKey` | 4 | **Boşluk** — kiracıya ait veri taşıyor, kiracı anahtarı yok |
+| `Identity` | 3 | Kiracının kendisi, kullanıcı kaydı ve davet |
+| `MissingKey` | 0 | **Boşaldı** (#147 adım 1) — kiracı verisi taşıyıp anahtarı olmayan belge kalmadı |
 
-`MissingKey` sınıfı geçişten **önce boşalmalıdır**: `StudentNameView`, `StudentPaymentProfile`,
-`StudentAbsenceView`, `AttendanceView`. Dördü de türetilmiştir (olaydan yeniden kurulur), yani
-göç engeli değil **sızıntı yüzeyidir** — sorgu iki okulun satırını ayırt edemez.
+`MissingKey` sınıfı geçişten **önce boşaldı** (#147 adım 1): `StudentNameView`,
+`StudentPaymentProfile`, `StudentAbsenceView`, `AttendanceView`. Dördü de türetilmiştir (olaydan
+yeniden kurulur), yani göç engeli değil **sızıntı yüzeyiydi** — sorgu iki okulun satırını ayırt
+edemezdi. Sınıfın boş kalması `IdentityLayerTenancyTests` ile kilitlidir.
+
+`Identity` sınıfı adım 5'te ikiden üçe çıktı: `UserInvitation` oraya taşındı. Daveti tamamlayan
+kişinin henüz kullanıcı kaydı, dolayısıyla kiracısı yoktur; daveti okumadan da kiracı bilinemez —
+`UserAccount` ile aynı döngüsellik.
 
 ## Zamanlama: geçiş tek okulluyken yapılır
 
@@ -131,11 +136,11 @@ Sıralama ilkesi: **geri alınabilir işler önce, tek yönlü kapı en sonda ve
 | # | İş | Risk | Geri alınabilir | Bitti ölçütü |
 | ---: | --- | --- | --- | --- |
 | 0 | Belge sınıflandırması + drift kilidi | — | — | ✅ Tamamlandı (#201) |
-| 1 | Dört `MissingKey` görünüme `InstitutionId` + backfill | Düşük | Evet | `MissingKey` sınıfı boş; teste "yeni tip eklenemez" mührü |
+| 1 | Dört `MissingKey` görünüme `InstitutionId` + backfill | Düşük | Evet | ✅ Tamamlandı (#203) |
 | 2 | Kiracı otoritesinin kalan boşlukları | Orta | Evet, iki PR | ✅ Tamamlandı (#223 + bu PR) |
 | 3 | Keycloak sertleştirme: realm drift denetimi + user PUT'ları GET+merge'den geçsin | Düşük | Evet | Drift denetimi CI/smoke'ta yeşil; merge davranışı testli |
 | 4 | `Business.InstitutionId` → provenance (`RegisteredByInstitutionId`) | Orta, davranış farkı **sıfır** | Evet | ✅ Tamamlandı |
-| 5 | **Marten conjoined açılışı** | Yüksek | **TEK YÖNLÜ KAPI** | İzolasyon test paketi yeşil; `tenant_id = *DEFAULT*` satır sayısı sıfır |
+| 5 | **Marten conjoined açılışı** | Yüksek | **TEK YÖNLÜ KAPI** | ✅ Tamamlandı (#226 hat + bu PR kapı) |
 | 6 | İkinci okul kontrol listesi | — | — | İzolasyon smoke'u iki gerçek okulla geçti |
 
 ### Adım 2'nin iç sırası (bozulmamalı) — tamamlandı
@@ -251,6 +256,72 @@ Tehlike modu: mesaj tenant'sız yayınlanır → tüketici varsayılan kiracı s
 4. **İki sahte kiracıyla izolasyon paketi** CI'da kalıcı — tek seferlik geçiş testi değil
 5. **Kuyruk boşken deploy** — geçiş anında bekleyen tenant'sız zarflar en sinsi durum
 
+### Adım 5, ikinci yarı — kapı açıldı
+
+Kapı açıldı: `DocumentTenancyPolicy` (haritadan damga), `Events.TenancyStyle = Conjoined`,
+`Advanced.DefaultTenantUsageEnabled = false`. Ölçülenler, tahmin edilenlerden farklı çıktı.
+
+**İzolasyon çalışıyor — ölçüldü.** Tam yetkili (77 izin) ikinci bir kiracıyla bakıldığında:
+öğrenci 0, sözleşme 0, devamsızlık 0; işletme 100 (paylaşımlı, tasarım gereği). Aynı istekler
+birinci kiracıda 121/4/12 dönüyor. Yazma tarafı da kendiliğinden doğru damgalanıyor: yeni
+öğrenci ve onun asenkron tüketici çıktıları (`StudentNameView`, iki modülde) kiracıyı kuyruktan
+devraldı. **219 çağrı yerinin hiçbirine dokunulmadı.**
+
+**`ApplyAllDatabaseChangesOnStartup()` kullanılamıyor — Marten'ın göç betiği kendisiyle
+çelişiyor.** Conjoined deltası `shared.mt_events` üzerindeki
+`fkey_mt_events_stream_id_tenant_id` kısıtını **iki kez** ekliyor; ikincisi
+`42710: constraint already exists` ile patlıyor ve bütün göçü geri alıyor. Açılışta denendiğinde
+sonuç `MartenSchemaException` ve API'nin hiç ayağa kalkmaması oldu. Bu, "takılma" sanılan
+davranışın gerçek sebebiydi — log Aspire panosuna gittiği için görünmüyordu. Göç bu yüzden
+açılışta değil, elden uygulanan iki betikle yapılıyor (`dagitim-on-kosullari.md`).
+
+**AutoCreate tembeldir** ve kiracılık geçişinde bu yarım göç demek: dokunulmamış `mt_streams`
+eski `(id)` PK'sıyla kalır, damgalama FK yüzünden geri alınır. Betik tek transaction'da
+çalıştığı için bu tuzak kapanıyor. Boş veritabanı betiklere ihtiyaç duymaz — kıran şey yalnız
+var olan tablonun **deltasıdır**.
+
+**Aynı tembellik ters yönde çalışıyor ve kapının "tek yönlü" olmasının asıl sebebi bu.** Göç
+edilmiş bir veritabanına kiracılık öncesi kod bağlanırsa Marten şemayı kendi beklentisine uydurur
+ve **damgayı siler**. Ölçüldü: üç GET isteğinden sonra `tenant_id` taşıyan tablo sayısı 49'dan
+46'ya düştü, `mt_doc_studentprofile` birincil anahtarı `(tenant_id, id)`'den `(id)`'ye döndü.
+Satırlar yerinde kaldı (121), kiracı bilgisi gitti. Hata yok, log temiz, uçlar 200.
+
+Sürüm geri alınırsa göç geri alınmış olmaz: kiracı bilgisi kolondaydı, kolon düşürüldü. İleri
+sürüme dönmek onu geri getirmez — yalnız boş (`*DEFAULT*`) olarak yeniden yaratır. Bu dağıtımdan
+sonra eski imaja dönülmez; ileri düzeltme yapılır ya da yedekten geri yüklenir.
+
+**Kapının en pahalı bulgusu yetkilendirmedeydi.** `DefaultTenantUsageEnabled = false` açılınca
+DI'dan gelen `IQuerySession` kiracısız kaldı ve `UserPermissionProvider` sorgusu fırlattı.
+İstisna `PermissionClaimsTransformation` içinde **yutuluyordu**: sonuç sessizdi ve tam ters
+yöndeydi — yetkilendirme token'daki rollere geri düştü, yani ADR-0003 adım 2'nin kapattığı yol
+yeniden açıldı. Ölçüldü: **devre dışı bırakılmış bir hesap 22 izinle öğrenci verisi okumaya
+devam ediyordu (HTTP 200).**
+
+İki düzeltme yapıldı ve ikisi de kilitlendi:
+
+- Kimlik katmanı kiracıyı **açıkça** verir (`store.QuerySession(TenantResolution.Platform)`);
+  `UserAccount` zaten kiracı damgası taşımaz, hangi kiracıyla okunduğu sonucu değiştirmez
+- **Arıza token'a düşmez.** "Kayıt yok" (token yedeği meşru) ile "kayıt okunamadı" (arızada
+  kapalı kalınır) artık ayrı durumlar
+
+**Arka plan işleri kiracıyı istekten devralamaz.** Aylık maaş ve aylık rapor zamanlayıcıları
+`ITenantDirectory` ile kiracı kiracı dolaşıyor; sözleşme altyapıda, uygulaması Institution
+modülünde (şema izolasyonu korunur). Bir okulun koşusu patlarsa diğerleri devam eder.
+
+**Anonim istek platform kiracısında çalışır.** Uygulamada tek anonim uç var: davet tamamlama.
+Kiracı verilmezse istisna belge erişiminde değil **session açılırken** atılır — handler ilk
+satırını çalıştıramadan 500 döner. Bu "kiracı uydurmak" değildir: anonim çağıranın dokunabildiği
+belgeler kimlik katmanındadır ve damga taşımazlar. `UserInvitation` bu yüzden `Tenant`'tan
+`Identity`'ye alındı — daveti tamamlayan kişinin henüz kiracısı yoktur, daveti okumadan da
+kiracı bilinemez; `UserAccount` ile aynı döngüsellik. Liste `AnonymousEndpointDriftTests` ile
+kapalı: kiracıya ait belgeye dokunan yeni bir anonim uç sessizce **boş sonuç** görürdü.
+
+**Kalıcı nöbetçiler** (tek seferlik geçiş kontrolü değil): `TenantStampIntegrityTests` (hiçbir
+satır `*DEFAULT*` kovasında kalmaz, `mt_streams` PK'sı `(tenant_id, id)`, sınıflandırma tabloya
+iki yönde de yansır), `TenantlessSessionDriftTests` (argümansız session açma yok; istek dışında
+çalışan sınıfa session enjekte edilmez), `AnonymousEndpointDriftTests`,
+`IdentityLayerTenancyTests`.
+
 ## Sonuçlar
 
 **Kazanç:** izolasyon disiplinden altyapıya taşınır; filtre unutmak veri sızdırmak yerine boş
@@ -260,9 +331,11 @@ sonuç üretir. Yeni belge eklemek kiracı kararını zorunlu kılar.
 `AnyTenant`/`TenantIsOneOf` yeni bir bypass yüzeyi açar ve ADR-0001 disiplininde ayrı izinle
 korunmalıdır.
 
-**Açık kalan:** conjoined'e geçtikten sonra async projeksiyonların **tam yeniden kurulum**
-gerektirip gerektirmediği. Kaynaklar "genelde önerilir" diyor, kesin kural vermiyor — adım 5'te
-ölçülecek, dokümana güvenilmeyecek.
+**Ölçüldü — async projeksiyon yeniden kurulumu gerekmedi.** Kaynaklar "genelde önerilir" diyordu,
+kesin kural vermiyordu; dokümana güvenilmedi. Göç ve damgalama sonrası daemon mevcut
+ilerlemesinden devam etti: `mt_event_progression` içinde `AttendanceView:All` = 39,
+`HighWaterMark` = 39 — tam yetişmiş, sıfırdan kurulum yok. Bu **N=1 ve 39 olaylık** bir ölçümdür;
+çok akışlı büyük bir olay deposu için aynı sonucu garanti etmez.
 
 ## Kapsam dışı
 

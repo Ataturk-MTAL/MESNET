@@ -3,6 +3,7 @@ using System.Text.Json;
 using Marten;
 using Marten.Schema;
 using MESNET.Common.Shared.Enums;
+using MESNET.Common.Shared.Tenancy;
 using MESNET.Institution.Core.Entities;
 using MESNET.Institution.Core.ValueObjects;
 
@@ -12,7 +13,10 @@ public class FieldOfStudySeedData : IInitialData
 {
     public async Task Populate(IDocumentStore store, CancellationToken cancellation)
     {
-        await using var session = store.LightweightSession();
+        // Kiracısız session yasak (#149): kiracıya ait olmayan işler de ADI OLAN bir kimlik
+        // altında çalışır. FieldOfStudy ulusal bir katalogdur (Shared) — damgalanmaz, ama
+        // session yine bir kiracı ister ve o kiracı "platform"dur.
+        await using var session = store.LightweightSession(TenantResolution.Platform);
 
         var existing = await session.Query<FieldOfStudy>().CountAsync(cancellation);
         if (existing > 0)

@@ -29,25 +29,48 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next, ILogger<Ten
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        // Kimliği doğrulanmamış istek (health, metrics, OpenAPI) kiracıya ait veriye dokunmaz.
-        if (context.User.Identity?.IsAuthenticated == true)
+        // ── Kimliği doğrulanmamış istek → kimlik katmanı kiracısı ────────────────────────
+        // Kimliği olmayan çağıran hiçbir okula ait olamaz. Çoğu için (health, metrics,
+        // OpenAPI) bunun sonucu yok; ama uygulamada bir tane gerçek anonim uç var —
+        // davet tamamlama — ve o bir Wolverine handler'ı çalıştırır. Kiracı verilmezse
+        // istisna belge erişiminde DEĞİL, session AÇILIRKEN atılır: handler daha ilk satırını
+        // çalıştırmadan 500 döner. Ölçüldü: anonim
+        // POST /api/security/invitations/{id}/complete → DefaultTenantUsageDisabledException.
+        //
+        // Bu "kiracı uydurmak" değildir: anonim çağıranın dokunabildiği belgeler kimlik
+        // katmanındadır (UserInvitation, UserAccount) ve kiracı damgası TAŞIMAZLAR — hangi
+        // kiracıyla okundukları sonucu değiştirmez. Kiracıya ait bir belgeye dokunan yeni bir
+        // anonim uç, kapsamsız kalmak yerine boş sonuç görürdü; bu yüzden anonim uçların
+        // listesi AnonymousEndpointDriftTests ile kilitlidir.
+        if (context.User.Identity?.IsAuthenticated != true)
         {
-            var tenantId = TenantResolution.Resolve(
-                InstitutionIdOf(context.User),
-                context.User.FindAll("permissions").Select(c => c.Value));
+            context.RequestServices.GetRequiredService<IMessageBus>().TenantId =
+                TenantResolution.Platform;
 
-            if (tenantId is not null)
-            {
-                context.RequestServices.GetRequiredService<IMessageBus>().TenantId = tenantId;
-            }
-            else
-            {
-                // Debug: kapsamsızlık zaten izin dönüşümünde bildiriliyor (ADR-0003 adım 2);
-                // burada her istekte tekrar uyarmak o sinyali gürültüye boğardı.
-                logger.LogDebug(
-                    "İstek kiracısız çalışıyor: {Path}. Kullanıcının kurum kapsamı yok.",
-                    context.Request.Path);
-            }
+            await next(context);
+            return;
+        }
+
+        var tenantId = TenantResolution.Resolve(
+            InstitutionIdOf(context.User),
+            context.User.FindAll("permissions").Select(c => c.Value));
+
+        if (tenantId is not null)
+        {
+            context.RequestServices.GetRequiredService<IMessageBus>().TenantId = tenantId;
+        }
+        else
+        {
+            // Kimliği DOĞRULANMIŞ ama kapsamsız kullanıcı: burada platform kiracısına
+            // düşülmez. Anonim çağıranın aksine bu kullanıcı okul verisi yazmaya çalışır ve
+            // platforma yazması, veriyi sessizce yanlış bölmeye göndermek olurdu. Kiracısız
+            // kalır; erişim gürültülü biçimde başarısız olur.
+            //
+            // Debug: kapsamsızlık zaten izin dönüşümünde bildiriliyor (ADR-0003 adım 2);
+            // burada her istekte tekrar uyarmak o sinyali gürültüye boğardı.
+            logger.LogDebug(
+                "İstek kiracısız çalışıyor: {Path}. Kullanıcının kurum kapsamı yok.",
+                context.Request.Path);
         }
 
         await next(context);

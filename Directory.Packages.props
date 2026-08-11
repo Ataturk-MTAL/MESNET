@@ -43,6 +43,8 @@
     <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.1.2-preview.1.26125.13" />
     <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
     <PackageVersion Include="Aspire.Npgsql" Version="13.4.6" />
+    <!-- Kiracı damgası bütünlük testi (#149) doğrudan SQL ile bakar; Marten'a bağlı değil. -->
+    <PackageVersion Include="Npgsql" Version="10.0.2" />
     <PackageVersion Include="Aspire.RabbitMQ.Client" Version="13.4.6" />
     <!-- Telemetry (ServiceDefaults) -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.9" />

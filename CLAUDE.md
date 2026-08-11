@@ -192,6 +192,33 @@ Document.Create(container =>
 - Wolverine message storage paylaşımlıdır: `opts.Durability.MessageStorageSchemaName = "wolverine"`
 - Marten event stream'leri varsayılan schema'da (`shared`) tutulur — inline snapshot document'ları modül schema'sında
 
+#### Kiracılık (KESİN KURAL — #149, ADR-0003)
+
+**Kiracı = okul.** Marten conjoined kiracılık AÇIKTIR: kiracıya ait belgeler `tenant_id`
+taşır ve satır düzeyinde süzülür. Kiracısız session **yasaktır**
+(`Advanced.DefaultTenantUsageEnabled = false`) ve `DefaultTenantUsageDisabledException` atar.
+
+- **Damga tek yerden gelir:** `DocumentTenancyMap` (`Tenant` / `Shared` / `Identity`).
+  `AllDocumentsAreMultiTenanted()` KULLANILMAZ — ulusal katalog, ulusal parametreler, kimlik
+  katmanı ve paylaşımlı işletme kataloğu damga almamalıdır. Damgayı geri almak tablo yeniden
+  inşası demektir. Yeni belge eklerken sınıflandırma **zorunludur**, test kırılır.
+- **İstek bağlamında kiracıyı taşımak için hiçbir şey yapmayın.**
+  `TenantResolutionMiddleware` `IMessageBus.TenantId`'yi koyar; handler'lar, cascading
+  mesajlar ve `PublishAsync` onu devralır. Komutları tek tek etiketlemeyin.
+- **Argümansız session açmak YASAK:** `store.QuerySession()` / `LightweightSession()`.
+  Kiracıyı açıkça verin. İstek bağlamı dışında (arka plan işi, kimlik katmanı) hiçbir okula
+  ait olmayan işler `TenantResolution.Platform` kullanır.
+  Kilitleyen test: `TenantlessSessionDriftTests`.
+- **`BackgroundService`/`IHostedService`/kimlik katmanına `IQuerySession`/`IDocumentSession`
+  ENJEKTE EDİLMEZ** — DI'dan gelen session kiracısızdır. `IDocumentStore` alın; arka plan
+  işleri `ITenantDirectory` ile kiracı kiracı dolaşır.
+- **Anonim uç eklemeyin.** Anonim istek `platform` kiracısında çalışır; kiracıya ait belgeye
+  dokunursa sonuç sessizce **boş** döner, yazarsa satır platform damgasıyla doğar ve onu yazan
+  okul bir daha göremez. Liste `AnonymousEndpointDriftTests` ile kapalıdır.
+- **Var olan veritabanının geçişi açılışta yapılmaz** — `ApplyAllDatabaseChangesOnStartup()`
+  Marten'ın kendisiyle çelişen deltası yüzünden API'yi öldürür. Elden iki betik:
+  `src/Docs/docs/infrastructure/sql/` + sıra: `dagitim-on-kosullari.md`.
+
 #### Şema İzolasyonu (Schema Isolation)
 
 Her modül kendi PostgreSQL schema'sına sahiptir. Bu izolasyon, modüllerin bağımsız deploy edilebilirliğini ve microservice'e geçiş yolunu garanti eder.

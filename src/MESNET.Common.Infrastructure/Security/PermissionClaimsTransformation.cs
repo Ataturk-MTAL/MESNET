@@ -82,7 +82,19 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
 
         if (!_cache.TryGetValue(cacheKey, out PermissionCacheEntry? entry))
         {
-            entry = await LoadFromMartenAsync(sub);
+            var lookup = await LoadFromMartenAsync(sub);
+
+            // ── ARIZA TOKEN'A DÜŞMEZ (#149) ──
+            // "Kayıt yok" ile "kayıt okunamadı" ayrı şeylerdir. İkisi de null döndürdüğü
+            // sürece bir altyapı arızası sessizce token'daki rollere geri düşürüyordu —
+            // ADR-0003 adım 2'nin kapattığı yolun ta kendisi. Gerçekten yaşandı: kiracılık
+            // açılınca DI'dan gelen session kiracısız kaldı, sorgu fırlattı, istisna yutuldu
+            // ve DEVRE DIŞI bırakılmış bir hesap 22 izinle veri okumaya devam etti.
+            // Arızada kapalı kalınır: izin eklenmez, sonuç önbelleğe YAZILMAZ.
+            if (lookup.Failed)
+                return principal;
+
+            entry = lookup.Entry;
 
             if (entry is not null)
             {
@@ -161,7 +173,19 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         return principal;
     }
 
-    private async Task<PermissionCacheEntry?> LoadFromMartenAsync(string keycloakUserId)
+    /// <summary>
+    /// Kullanıcı kaydı arama sonucu. <b>Üç durum ayrıdır</b> ve ikisi birbirine
+    /// karıştırılmamalıdır: kayıt bulundu, kayıt yok (token yedeği meşrudur), arama
+    /// başarısız (arızada kapalı kalınır).
+    /// </summary>
+    private sealed record PermissionLookup(PermissionCacheEntry? Entry, bool Failed)
+    {
+        public static readonly PermissionLookup NotFound = new(null, false);
+        public static readonly PermissionLookup Failure = new(null, true);
+        public static PermissionLookup Of(PermissionCacheEntry entry) => new(entry, false);
+    }
+
+    private async Task<PermissionLookup> LoadFromMartenAsync(string keycloakUserId)
     {
         try
         {
@@ -171,20 +195,22 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
             if (provider is null)
             {
                 _logger.LogDebug("IUserPermissionProvider henüz kayıtlı değil — permission dönüşümü atlanıyor.");
-                return null;
+                return PermissionLookup.NotFound;
             }
 
             var info = await provider.GetUserPermissionInfoAsync(keycloakUserId);
-            if (info is null) return null;
+            if (info is null) return PermissionLookup.NotFound;
 
-            return new PermissionCacheEntry(
+            return PermissionLookup.Of(new PermissionCacheEntry(
                 info.IsEnabled, info.Roles, info.DirectPermissions, info.BranchCodes,
-                info.InstitutionId, info.LinkedStudentIds ?? [], info.RolesWrittenAt);
+                info.InstitutionId, info.LinkedStudentIds ?? [], info.RolesWrittenAt));
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "UserAccount yüklenirken hata: {KeycloakUserId}", keycloakUserId);
-            return null;
+            // Uyarı DEĞİL hata: bu yol artık erişimi kesiyor, sessizce daraltmıyor.
+            _logger.LogError(ex,
+                "UserAccount okunamadı, istek izinsiz sürüyor: {KeycloakUserId}", keycloakUserId);
+            return PermissionLookup.Failure;
         }
     }
 
