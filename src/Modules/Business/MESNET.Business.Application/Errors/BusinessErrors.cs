@@ -24,6 +24,18 @@ public static class BusinessErrors
             $"Bu vergi kimliğiyle ({taxNumber}) kayıtlı bir işletme zaten var. "
             + "İşletme kataloğu okullar arası paylaşımlıdır — mevcut kaydı listeden seçin.");
 
+    /// <summary>Aynı okul iki kez bildiremez — yeter sayı farklı KURUM üzerinden sayılır (#151).</summary>
+    public static Error ClosureAlreadyReported(Guid businessId) =>
+        new("Business.ClosureAlreadyReported",
+            "Kurumunuz bu işletme için zaten kapatma bildirimi yapmış. Yeter sayı farklı "
+            + "kurumlar üzerinden sayılır; aynı kurumun ikinci bildirimi sayıya eklenmez.");
+
+    /// <summary>Geri çekilecek kendi bildirimi yok (#151).</summary>
+    public static Error ClosureReportNotFound(Guid businessId) =>
+        new("Business.ClosureReportNotFound",
+            "Kurumunuzun bu işletme için kapatma bildirimi yok. Bir okul yalnız KENDİ "
+            + "bildirimini geri çekebilir.");
+
     public static Error NotFound(Guid id) =>
         new("Business.NotFound", $"İşletme bulunamadı: {id}");
 

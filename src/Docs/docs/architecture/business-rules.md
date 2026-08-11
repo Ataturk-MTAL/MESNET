@@ -971,3 +971,47 @@ TASLAK → ZÜMRE_KARARI_ALINDI → MÜDÜR_ONAY_BEKLİYOR → ONAYLANDI / REDDE
 - Müdüre onay gönderilir
 - Müdür onaylarsa dağıtım aktifleşir ve öğretmen-işletme atamaları güncellenir
 - Müdür reddederse alan şefine geri döner, revize edilir
+
+## İşletme kapatma yeter sayısı (#151)
+
+İşletme kataloğu okullar arası **paylaşımlıdır**: bir okulun "bu işletme kapandı" kararı
+**bütün okulları** etkiler. Bu yüzden karar da birden çok okuldan gelmelidir.
+
+**Sayım farklı KURUM üzerinden yapılır, farklı kullanıcı üzerinden değil.** Aynı okuldan iki
+yetkili sayılsaydı tek okul kendi başına küresel kapatma yapabilir ve kuralın amacı boşa
+çıkardı. İkinci bildirim aynı kurumdan gelirse reddedilir (422).
+
+| Eşik | Anlam |
+| --- | --- |
+| `Business:ClosureQuorum` = 1 (varsayılan) | Faz 1 — tek bildirim kapatır, #151 öncesiyle **birebir aynı davranış** |
+| `Business:ClosureQuorum` = 2 | Çok okullu kurulum — iki farklı okul gerekir |
+
+Eşik 0 ya da negatif verilirse **1 kabul edilir**; aksi hâlde "hiç bildirim olmadan kapalı"
+anlamına gelir ve bütün katalog kapanırdı.
+
+### ⚠ Bilinçli asimetri — kapatma yeter sayı ister, açma istemez
+
+Yeniden açmayı **herhangi bir okuldan tek yetkili** yapabilir. Yani **iki okulun kararını tek
+okul geri alabilir.**
+
+Bu hata değildir: yanlış kapatılmış bir işletme, yanlış açık kalandan daha zararlıdır — kapalı
+işletme süzgeçten düşer, öğrenci yerleştirilemez, sözleşme yapılamaz. Sistem **açık kalmaya
+doğru** hata yapmalıdır.
+
+:::danger Bu kural silinirse biri bunu hata olarak açar
+Asimetri kod yorumlarında da duruyor (`BusinessClosurePolicy`, `BusinessStatus` geçiş tablosu).
+:::
+
+Açma bildirimleri **temizler**. Kalsalardı yeter sayı hâlâ dolu olur ve bir sonraki bildirimde
+işletme anında yeniden kapanırdı.
+
+`Kapalı` bu yüzden **terminal durum değildir** — `IsFinal` yalnız `Reddedildi` için doğrudur.
+
+### Geri çekme
+
+Okul **yalnız kendi** bildirimini geri çekebilir (`POST /api/businesses/{id}/close/retract`).
+Başka okulunkini kaldırabilseydi yeter sayı anlamsızlaşırdı: iki okulun kararını üçüncü okul tek
+başına bozardı.
+
+Yeter sayı bildirimlerden **hesaplandığı** için geri çekme sayıyı düşürür; eşiğin altına inerse
+işletme **kendiliğinden** açılır.

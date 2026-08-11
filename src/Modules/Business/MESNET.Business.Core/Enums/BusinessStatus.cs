@@ -17,7 +17,12 @@ public sealed class BusinessStatus : SmartEnum<BusinessStatus>
         Slug = slug;
     }
 
-    public bool IsFinal => this == Closed;
+    /// <summary>
+    /// Geri dönüşü olmayan durum. <b>Kapalı ARTIK BURADA DEĞİL</b> (#151): kapatma yeter sayıyla
+    /// verilir ve bildirim geri çekilebildiği için işletme yeniden açılabilir. Tek terminal durum
+    /// reddedilmiş kayıttır.
+    /// </summary>
+    public bool IsFinal => this == Rejected;
     public bool IsOperational => this == Active;
 
     private static readonly Dictionary<BusinessStatus, HashSet<BusinessStatus>> Transitions = new()
@@ -26,7 +31,12 @@ public sealed class BusinessStatus : SmartEnum<BusinessStatus>
         [Active] = [Inactive, Closed],
         [Rejected] = [],
         [Inactive] = [Active, Closed],
-        [Closed] = []
+        // ⚠ BİLİNÇLİ ASİMETRİ (#151): kapatma farklı okullardan yeter sayı ister, AÇMA tek
+        // yetkiliye yeter — yani iki okulun kararını tek okul geri alabilir. Hata değildir:
+        // yanlış kapatılmış işletme, yanlış açık kalandan daha zararlıdır (süzgeçten düşer,
+        // öğrenci yerleştirilemez, sözleşme yapılamaz). Sistem AÇIK kalmaya doğru hata
+        // yapmalıdır. Kapalı bu yüzden terminal DEĞİLDİR.
+        [Closed] = [Active]
     };
 
     public bool CanTransitionTo(BusinessStatus target)
