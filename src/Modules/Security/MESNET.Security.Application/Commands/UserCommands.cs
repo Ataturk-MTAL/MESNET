@@ -96,6 +96,22 @@ public sealed record GetUserAccount(Guid UserAccountId);
 public sealed record SyncUsersFromKeycloak;
 
 /// <summary>
+/// Keycloak kullanıcılarındaki artık <c>institution_id</c> özniteliğini siler (ADR-0003 adım 3).
+///
+/// <para><b>Öznitelik ATILDIR</b> — kiracı anahtarının tek otoritesi
+/// <c>UserAccount.InstitutionId</c>'dir, token'dan gelen claim her istekte siliniyor (adım 2)
+/// ve hiçbir kod bu özniteliği artık yazmıyor. Tehlike teknik değil <b>insanidir</b>: Keycloak
+/// konsolunda duran bir kopya, ileride birinin onu yeniden otorite sanmasına davetiye çıkarır.
+/// Aynı sebeple ADR "Keycloak'a <c>institution_id</c> YAZILMAZ" diyor; yazılmamışın yanında
+/// <b>durmaması</b> da gerekir.</para>
+///
+/// <para>Silme, öznitelik yazan normal yoldan geçer (gövde taze bir GET'ten kurulur), yani
+/// kullanıcının adı, e-postası ve diğer öznitelikleri kaybolmaz — bkz.
+/// <c>KeycloakUserWritePolicy</c>.</para>
+/// </summary>
+public sealed record PurgeKeycloakInstitutionAttribute;
+
+/// <summary>
 /// Her <c>UserAccount</c> için <c>UserDisplayNameUpserted</c> anlık görüntüsünü yeniden yayınlar (#137).
 ///
 /// <para>Denetim alanları yalnız kullanıcı kimliğini saklar; adı her modül kendi şemasındaki

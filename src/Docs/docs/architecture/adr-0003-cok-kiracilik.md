@@ -287,10 +287,16 @@ koruma `if (false && …)` ile öldürüldüğünde test yeşil kalıyordu.)
 Uçtan uca doğrulandı: API'den branş değişimi sonrası Keycloak'ta `firstName`, `lastName`,
 `email`, `business_id` yerinde kaldı, `branch_codes` eklendi.
 
-**Kalan artık:** dev realm'inde 8 kullanıcının 6'sı hâlâ `institution_id` özniteliği taşıyor.
-**Atıldır** — o claim her istekte siliniyor (adım 2) ve hiçbir kod onu yazmıyor
-(`InstitutionClaimAuthorityTests`). Ama duran bir kopya, ileride birinin onu yeniden otorite
-sanmasına davetiye çıkarır; temizliği `dagitim-on-kosullari.md`'de.
+**Artık temizlendi.** Dev realm'inde 7 kullanıcının 6'sı hâlâ `institution_id` özniteliği
+taşıyordu. Öznitelik **atıldı** — o claim her istekte siliniyor (adım 2) ve hiçbir kod onu
+yazmıyor (`InstitutionClaimAuthorityTests`) — ama duran bir kopya, ileride birinin onu yeniden
+otorite sanmasına davetiye çıkarır. Yazılmamışın yanında **durmaması** da gerekiyordu.
+
+Silme işi elle yapılamaz: Keycloak konsolundan yalnız `attributes` göndermek kullanıcının adını
+ve e-postasını siler (yukarıdaki tablo). Bu yüzden ayrı bir uç var —
+`POST /api/security/users/purge-institution-attribute` — ve öznitelik yazan normal yoldan geçer.
+Ölçüldü: 6 silindi, profiller ve `branch_codes`/`business_id` yerinde kaldı; ikinci koşu 0 sildi
+(idempotent).
 
 ### Adım 5, ikinci yarı — kapı açıldı
 

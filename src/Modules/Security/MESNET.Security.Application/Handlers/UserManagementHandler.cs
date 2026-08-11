@@ -1,4 +1,5 @@
 using Marten;
+using Microsoft.Extensions.Logging;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
@@ -542,4 +543,70 @@ public static class SyncUsersFromKeycloakHandler
 
     private static bool HasNoInstitution(Guid? institutionId) =>
         institutionId is null || institutionId == Guid.Empty;
+}
+
+/// <summary>
+/// <see cref="PurgeKeycloakInstitutionAttribute"/> sonucu. <c>Skipped</c> özniteliği zaten
+/// olmayan kullanıcılardır; <c>Failed</c> ise Keycloak'ın reddettikleri — <b>sıfırdan farklıysa
+/// bakılmalıdır</b>, çünkü o kullanıcılarda artık duruyor demektir.
+/// </summary>
+public sealed record PurgeInstitutionAttributeResult(int Total, int Purged, int Skipped, int Failed);
+
+/// <summary>
+/// Keycloak'taki artık <c>institution_id</c> özniteliğini siler (ADR-0003 adım 3).
+///
+/// <para><b>Neden ayrı bir uç:</b> öznitelik atıldır ama kendiliğinden kaybolmaz. Silme işi
+/// Keycloak'ta tek tek elle yapılırsa <b>yanlış yapılır</b>: yalnız <c>{"attributes": {...}}</c>
+/// göndermek kullanıcının <c>firstName</c>/<c>email</c> alanlarını 204 dönerek siler (#190).
+/// Buradaki yol öznitelik yazan normal yoldan geçer, gövdeyi taze bir GET'ten kurar.</para>
+///
+/// <para><b>Idempotenttir:</b> ikinci koşuda hiçbir kullanıcıda öznitelik kalmadığı için
+/// <c>Purged = 0</c> döner.</para>
+/// </summary>
+public static class PurgeKeycloakInstitutionAttributeHandler
+{
+    /// <summary>Kiracı anahtarının Keycloak'taki artık öznitelik adı.</summary>
+    private const string InstitutionAttribute = "institution_id";
+
+    public static async Task<PurgeInstitutionAttributeResult> Handle(
+        PurgeKeycloakInstitutionAttribute command,
+        IKeycloakAdminService keycloak,
+        ILogger<PurgeKeycloakInstitutionAttribute> logger,
+        CancellationToken ct)
+    {
+        var users = await keycloak.GetUsersAsync(ct);
+        if (users.IsFailure)
+            throw new DomainException(users.Error);
+
+        int purged = 0, skipped = 0, failed = 0;
+
+        foreach (var user in users.Value)
+        {
+            if (user.InstitutionId is null)
+            {
+                skipped++;
+                continue;
+            }
+
+            // Boş değer listesi özniteliği kaldırır; diğer öznitelikler ve profil alanları korunur.
+            var result = await keycloak.SetUserAttributeValuesAsync(user.Id, InstitutionAttribute, [], ct);
+            if (result.IsFailure)
+            {
+                failed++;
+                logger.LogWarning(
+                    "institution_id özniteliği silinemedi: {Username} ({UserId}) — {Error}",
+                    user.Username, user.Id, result.Error.Description);
+                continue;
+            }
+
+            purged++;
+        }
+
+        logger.LogInformation(
+            "Keycloak institution_id temizliği: {Total} kullanıcı, {Purged} silindi, "
+            + "{Skipped} zaten yoktu, {Failed} başarısız.",
+            users.Value.Count, purged, skipped, failed);
+
+        return new PurgeInstitutionAttributeResult(users.Value.Count, purged, skipped, failed);
+    }
 }

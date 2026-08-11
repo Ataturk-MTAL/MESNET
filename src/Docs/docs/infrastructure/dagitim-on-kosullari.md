@@ -308,17 +308,29 @@ ileride birinin onu yeniden otorite sanmasına davetiye çıkarır. Aynı sebepl
 `institution_id` YAZILMAZ" diyor.
 :::
 
-Temizlik, öznitelik yazan ucun kendi yolundan yapılır (gövde taze GET'ten kurulur, başka alan
-kaybolmaz). Boş değer listesi özniteliği siler:
-
-```bash
-# Her kullanıcı için, kiracı anahtarı olmayan bir hesapla:
-POST /api/security/users/{id}/branches   # branch_codes yazarken merge yolu çalışır
+```
+POST /api/security/users/purge-institution-attribute      (user:roles:manage)
 ```
 
-Doğrudan Keycloak Admin API ile yapılacaksa **gövde tam temsil olmalıdır** — yalnız
-`{"attributes": {...}}` göndermek `firstName`/`email` alanlarını siler ve **204 döner**
-(ölçüldü, Keycloak 26.7.0). Bkz. `KeycloakUserWritePolicy`.
+Uç tüm Keycloak kullanıcılarını tarar ve özniteliği **öznitelik yazan normal yoldan** siler:
+gövde taze bir GET'ten kurulduğu için ad, e-posta ve diğer öznitelikler kaybolmaz.
+**Idempotenttir** — ikinci koşuda `purged = 0` döner.
+
+Yanıt dört sayı verir; **`failed` sıfırdan farklıysa bakın**, o kullanıcılarda artık duruyor
+demektir. Dev ortamında ölçüldü:
+
+```
+1. koşu: 7 kullanıcı tarandı: 6 özniteliği silindi, 1 zaten temizdi, 0 başarısız
+2. koşu: 7 kullanıcı tarandı: 0 özniteliği silindi, 7 zaten temizdi, 0 başarısız
+```
+
+Silme sonrası profiller ve diğer öznitelikler (`branch_codes`, `business_id`) yerinde kaldı.
+
+:::warning Keycloak konsolundan elle silmeyin
+Admin API'ye yalnız `{"attributes": {...}}` göndermek `firstName`/`email` alanlarını siler ve
+**204 döner** (ölçüldü, Keycloak 26.7.0). Gövde tam temsil olmalıdır — bkz.
+`KeycloakUserWritePolicy`.
+:::
 
 ## Sırayı bozmayın
 
