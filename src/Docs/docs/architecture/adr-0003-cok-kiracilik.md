@@ -56,8 +56,9 @@ unutulunca "her şeyi görürsün" yerine "hiçbir şey görmezsin".
 [ADR-0001](./adr-0001-yetkilendirme-permission-bazli.md)'in `branch_codes` için koyduğu kural
 kiracı anahtarı için de geçerlidir ve gerekçesi ölçülmüştür:
 
-- Keycloak'a kısmi PUT gövdesi, gövdede geçmeyen profil alanlarını **siler** ve yine **204**
-  döner — sessiz veri kaybı (#190)
+- Keycloak'a `attributes` içeren bir PUT gövdesi, gövdede geçmeyen profil alanlarını
+  (`firstName`, `email`) **siler** ve yine **204** döner — sessiz veri kaybı (#190).
+  Kuralın tam ölçümü aşağıda, "Adım 3" bölümünde
 - Realm import **tek seferliktir**: depoya sonradan eklenen rol/politika mevcut kaba hiç
   ulaşmaz. Ölçüldü: depoda 11 realm rolü, çalışan realm'de 6 (#195)
 
@@ -137,10 +138,10 @@ Sıralama ilkesi: **geri alınabilir işler önce, tek yönlü kapı en sonda ve
 | ---: | --- | --- | --- | --- |
 | 0 | Belge sınıflandırması + drift kilidi | — | — | ✅ Tamamlandı (#201) |
 | 1 | Dört `MissingKey` görünüme `InstitutionId` + backfill | Düşük | Evet | ✅ Tamamlandı (#203) |
-| 2 | Kiracı otoritesinin kalan boşlukları | Orta | Evet, iki PR | ✅ Tamamlandı (#223 + bu PR) |
-| 3 | Keycloak sertleştirme: realm drift denetimi + user PUT'ları GET+merge'den geçsin | Düşük | Evet | Drift denetimi CI/smoke'ta yeşil; merge davranışı testli |
+| 2 | Kiracı otoritesinin kalan boşlukları | Orta | Evet, iki PR | ✅ Tamamlandı (#223 + #224) |
+| 3 | Keycloak sertleştirme: realm drift denetimi + user PUT semantiği | Düşük | Evet | ✅ Tamamlandı (#195 drift + yazma semantiği bu PR) |
 | 4 | `Business.InstitutionId` → provenance (`RegisteredByInstitutionId`) | Orta, davranış farkı **sıfır** | Evet | ✅ Tamamlandı |
-| 5 | **Marten conjoined açılışı** | Yüksek | **TEK YÖNLÜ KAPI** | ✅ Tamamlandı (#226 hat + bu PR kapı) |
+| 5 | **Marten conjoined açılışı** | Yüksek | **TEK YÖNLÜ KAPI** | ✅ Tamamlandı (#226 hat + #227 kapı) |
 | 6 | İkinci okul kontrol listesi | — | — | İzolasyon smoke'u iki gerçek okulla geçti |
 
 ### Adım 2'nin iç sırası (bozulmamalı) — tamamlandı
@@ -255,6 +256,41 @@ Tehlike modu: mesaj tenant'sız yayınlanır → tüketici varsayılan kiracı s
 3. **`tenant_id = *DEFAULT*` satır sayısı sürekli sıfır** — basit SQL smoke
 4. **İki sahte kiracıyla izolasyon paketi** CI'da kalıcı — tek seferlik geçiş testi değil
 5. **Kuyruk boşken deploy** — geçiş anında bekleyen tenant'sız zarflar en sinsi durum
+
+### Adım 3 — ölçülen kural, tahmin edilenden farklı çıktı
+
+Planda "user PUT'ları GET+merge'den geçsin" yazıyordu. Ölçüm bunu **daraltıyor**: sorun kısmi
+gövde değil, gövdede **`attributes`** bulunması. Aynı kullanıcıda arka arkaya (Keycloak 26.7.0):
+
+| Gövde | `firstName` | `email` | öznitelik haritası | HTTP |
+| --- | --- | --- | --- | ---: |
+| `{"enabled": false}` | korundu | korundu | korundu | 204 |
+| `{"email","firstName","lastName"}` | yazıldı | yazıldı | korundu | 204 |
+| `{"attributes": {...}}` | **NULL** | **NULL** | **tümüyle değişti** | 204 |
+
+`attributes` gövdeye girdiği anda Keycloak'ın *declarative user profile* sağlayıcısı isteği tam
+profil yazımı sayıyor. **Üç istek de 204 dönüyor**; kayıp ne çağıranda ne logda görünüyor —
+#190'da haftalar sonra "personel listesinde ad sütunu boş" diye ortaya çıkmıştı.
+
+Bu yüzden **her PUT'u GET+merge'e çevirmek yanlış olurdu**: kısmi yazma hem daha ucuz hem
+eşzamanlılıkta daha güvenli (iki farklı alanı aynı anda güncelleyen iki istek birbirini ezmez).
+Doğru ayrım semantiktedir ve kodda iki yola oturur:
+
+- **Profil alanı** → `PatchUserFieldsAsync` (kısmi gövde; `attributes` görürse **fırlatır**)
+- **Öznitelik** → `MergeUserAttributesAsync` (gövde taze bir GET'ten kurulur)
+
+Kural yorumda değil, fırlatan bir sınıfta: `KeycloakUserWritePolicy`. Kilitleyen test
+`KeycloakUserWriteDriftTests` — kuralın kendisi davranışsal ölçülüyor, çağrı yerinde durduğu
+ayrıca kontrol ediliyor. (İlk sürüm yalnız kaynak taramasıydı ve negatif kontrolde **yakalamadı**:
+koruma `if (false && …)` ile öldürüldüğünde test yeşil kalıyordu.)
+
+Uçtan uca doğrulandı: API'den branş değişimi sonrası Keycloak'ta `firstName`, `lastName`,
+`email`, `business_id` yerinde kaldı, `branch_codes` eklendi.
+
+**Kalan artık:** dev realm'inde 8 kullanıcının 6'sı hâlâ `institution_id` özniteliği taşıyor.
+**Atıldır** — o claim her istekte siliniyor (adım 2) ve hiçbir kod onu yazmıyor
+(`InstitutionClaimAuthorityTests`). Ama duran bir kopya, ileride birinin onu yeniden otorite
+sanmasına davetiye çıkarır; temizliği `dagitim-on-kosullari.md`'de.
 
 ### Adım 5, ikinci yarı — kapı açıldı
 

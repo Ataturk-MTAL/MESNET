@@ -295,6 +295,31 @@ ya da veritabanı yedekten geri yüklenir. Aynı kural geliştirme makineleri i�
 göç edilmiş bir yerel veritabanına eski daldan API bağlamayın.
 :::
 
+## Keycloak'ta artık kalan `institution_id` özniteliği (ADR-0003 adım 3)
+
+Kiracı anahtarı artık **yalnız `UserAccount.InstitutionId`**'dir; token'daki `institution_id`
+claim'i her istekte siliniyor ve hiçbir kod onu Keycloak'a yazmıyor (`InstitutionClaimAuthorityTests`).
+
+Ama **eski kayıtlar duruyor.** Dev realm'inde ölçüldü: 8 kullanıcının 6'sında öznitelik hâlâ var.
+
+:::note Zararsız ama temizlenmeli
+Öznitelik **atıldır** — okunmuyor, yazılmıyor. Tehlike teknik değil insani: duran bir kopya,
+ileride birinin onu yeniden otorite sanmasına davetiye çıkarır. Aynı sebeple ADR "Keycloak'a
+`institution_id` YAZILMAZ" diyor.
+:::
+
+Temizlik, öznitelik yazan ucun kendi yolundan yapılır (gövde taze GET'ten kurulur, başka alan
+kaybolmaz). Boş değer listesi özniteliği siler:
+
+```bash
+# Her kullanıcı için, kiracı anahtarı olmayan bir hesapla:
+POST /api/security/users/{id}/branches   # branch_codes yazarken merge yolu çalışır
+```
+
+Doğrudan Keycloak Admin API ile yapılacaksa **gövde tam temsil olmalıdır** — yalnız
+`{"attributes": {...}}` göndermek `firstName`/`email` alanlarını siler ve **204 döner**
+(ölçüldü, Keycloak 26.7.0). Bkz. `KeycloakUserWritePolicy`.
+
 ## Sırayı bozmayın
 
 Bir adım başka bir adımın verisini üretiyorsa sıra önemlidir. Örnek: koordinasyon zinciri
