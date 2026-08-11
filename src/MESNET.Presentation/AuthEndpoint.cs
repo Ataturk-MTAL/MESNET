@@ -46,6 +46,9 @@ public static class AuthEndpoint
         // (token'da yoksa DB fallback — 5dk cache)
         var institutionId = user.FindFirst("institution_id")?.Value;
         var businessId = user.FindFirst("business_id")?.Value;
+        // #230 — kapsam claim'lerinin üçü de burada görünür olmalı; studentId eksikti ve
+        // eksikliği kapsamın doğru çözülüp çözülmediğini gözlenemez kılıyordu.
+        var studentId = user.FindFirst("student_id")?.Value;
 
         // Alan (branş) kapsamı da claim'den okunur (#126): PermissionClaimsTransformation
         // token'da branch_codes yoksa personel kaydından doldurur. Rol adına bakılmaz —
@@ -65,6 +68,7 @@ public static class AuthEndpoint
                     ?? user.FindFirst(ClaimTypes.Surname)?.Value,
                 institutionId,
                 businessId,
+                studentId,
                 // Geriye uyumluluk: tek alan bekleyen istemciler için ilk kod.
                 branchCode = branchCodes.Count > 0 ? branchCodes[0] : null,
                 branchCodes,

@@ -29,7 +29,9 @@ public static class ResyncStudentProjectionsHandler
                 s.StudentNumber ?? "",
                 s.HasJourneymanQualification,
                 s.BirthDate,
-                s.Category.Name));
+                s.Category.Name,
+                // #230 — mevcut öğrencilerin StudentId otoritesi bu resync ile dolar.
+                s.KeycloakUserId));
         }
 
         return new ResyncStudentProjectionsResult(students.Count);

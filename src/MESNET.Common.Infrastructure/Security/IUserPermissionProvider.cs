@@ -42,5 +42,7 @@ public sealed record UserPermissionInfo(
     Guid? InstitutionId = null,
     /// <summary>İşletme kapsamı — otorite kayıttır, token değil (#229).</summary>
     Guid? BusinessId = null,
+    /// <summary>Öğrencinin kendi profili — otorite kayıttır, token değil (#230).</summary>
+    Guid? StudentId = null,
     IReadOnlyList<Guid>? LinkedStudentIds = null,
     DateTime RolesWrittenAt = default);

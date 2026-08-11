@@ -709,7 +709,15 @@ her istekte silinir ve `UserAccount.BusinessId`'den yeniden kurulur; Keycloak'a 
 senkronizasyon kaydı ezmez. Tek yazma yolu: `POST /api/security/users/{id}/business`.
 Kilitleyen test: `BusinessClaimAuthorityTests`.
 
-**Kalan borç:** `student_id` (#230) — otoritesi **hiç yok**, `UserAccount.StudentId` ölü alan.
+**`student_id` de aynı disiplinden geçti (#230).** Otoritesi <b>hiç yoktu</b>:
+`UserAccount.StudentId` ölü alandı (11 hesabın 0'ında dolu). Artık `StudentRegistered`
+olayından doluyor (`StudentAccountSyncConsumer`) ve claim oradan üretiliyor.
+**Dağıtımda `POST /api/students/resync-projections` ZORUNLUDUR** — atlanırsa öğrenciler
+kapsamsız kalır ve hata değil **boş sonuç** görürler.
+
+Kapsam anahtarlarının üçü de artık kayıttan üretiliyor; token'daki değer hiçbirinde kabul
+edilmiyor. Kilitleyen testler: `InstitutionClaimAuthorityTests`, `BusinessClaimAuthorityTests`,
+`StudentClaimAuthorityTests`.
 
 ### Alan (branş) kapsamı kuralları (#126)
 

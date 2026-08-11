@@ -457,7 +457,8 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
                     roles,
                     ParseGuidJsonAttr(u, "institution_id"),
                     ParseGuidJsonAttr(u, "business_id"),
-                    ParseStringListAttr(u, "branch_codes")));
+                    ParseStringListAttr(u, "branch_codes"),
+                    ParseGuidJsonAttr(u, "student_id")));
             }
 
             return Result<List<KeycloakUserInfo>>.Success(result);

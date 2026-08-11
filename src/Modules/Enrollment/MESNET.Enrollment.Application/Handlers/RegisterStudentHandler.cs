@@ -64,6 +64,6 @@ public static class RegisterStudentHandler
 
         session.Store(student);
 
-        return (student.ToDto(), new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.AcademicPeriodId, student.BranchCode, student.ClassYear, educationType.Name, student.StudentNumber ?? "", student.HasJourneymanQualification, student.BirthDate, student.Category.Name));
+        return (student.ToDto(), new StudentRegistered(student.Id, student.FullName, student.InstitutionId, student.AcademicPeriodId, student.BranchCode, student.ClassYear, educationType.Name, student.StudentNumber ?? "", student.HasJourneymanQualification, student.BirthDate, student.Category.Name, student.KeycloakUserId));
     }
 }

@@ -611,9 +611,10 @@ public static class PurgeKeycloakInstitutionAttributeHandler
     /// <summary>
     /// Keycloak'ta artık kalan <b>kapsam anahtarı</b> öznitelikleri. İkisi de otoritesini
     /// <c>UserAccount</c>'a bıraktı — <c>institution_id</c> ADR-0003 adım 2 ile,
-    /// <c>business_id</c> #229 ile — ve hiçbir kod artık onları yazmıyor.
+    /// <c>business_id</c> #229 ile, <c>student_id</c> #230 ile — ve hiçbir kod artık onları
+    /// yazmıyor. <c>student_id</c> zaten koddan hiç yazılmıyordu; realm tohum verisinde duruyor.
     /// </summary>
-    private static readonly string[] ScopeAttributes = ["institution_id", "business_id"];
+    private static readonly string[] ScopeAttributes = ["institution_id", "business_id", "student_id"];
 
     public static async Task<PurgeInstitutionAttributeResult> Handle(
         PurgeKeycloakInstitutionAttribute command,
@@ -629,7 +630,7 @@ public static class PurgeKeycloakInstitutionAttributeHandler
 
         foreach (var user in users.Value)
         {
-            if (user.InstitutionId is null && user.BusinessId is null)
+            if (user.InstitutionId is null && user.BusinessId is null && user.StudentId is null)
             {
                 skipped++;
                 continue;
