@@ -1,5 +1,6 @@
 using MESNET.Common.Shared;
 
+using MESNET.Institution.Application.Security;
 namespace MESNET.Institution.Application.Commands;
 
 public sealed record UpdateInstitution(
@@ -15,4 +16,4 @@ public sealed record UpdateInstitution(
     // İlçe adı (TurkishDistricts) — null = değiştirme.
     string? DistrictName = null,
     // MEB kurum kodu — null = değiştirme. Kayıtta girilir, sonradan düzeltilebilir.
-    int? InstitutionCode = null);
+    int? InstitutionCode = null) : IInstitutionScoped;

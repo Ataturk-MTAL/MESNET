@@ -219,6 +219,23 @@ taşır ve satır düzeyinde süzülür. Kiracısız session **yasaktır**
   Marten'ın kendisiyle çelişen deltası yüzünden API'yi öldürür. Elden iki betik:
   `src/Docs/docs/infrastructure/sql/` + sıra: `dagitim-on-kosullari.md`.
 
+#### Kurum kapsamı (KESİN KURAL — ADR-0003 adım 6)
+
+Kiracılık satırları süzer ama **`Institution` belgesini süzmez**: o belge kiracının kendisidir
+ve kiracı damgası taşımaz. Kurum kimliğini **istekten** alan her uç ayrıca kapsam kontrolünden
+geçmelidir.
+
+- Kurum kimliği taşıyan command/query **`IInstitutionScoped`** uygular; kontrol
+  `InstitutionScopeGuardMiddleware` içinde tek yerde çalışır (`IContractPeriodScoped` ile aynı
+  idiom). Kilitleyen test: `InstitutionScopeDriftTests`
+- Karar saf `InstitutionScopePolicy`'dedir; guard yalnız claim'den girdi toplar
+- **Okumada da çalışır.** Alan (branş) kapsamında okuma bilerek açıktı; başka *okulun* kaydı
+  öyle değil — ölçüldü, kontrol yokken bir müdür diğer okulun **personel listesini** okuyordu
+- **Kurum üstü işler** `platform:tenant:manage` ister (yeni okul açmak, bir kullanıcıyı
+  herhangi bir okula bağlamak). `platform:` öneki hiçbir okul rolünde yoktur
+- Kullanıcı oluşturmada da kapsam kontrol edilir: gövdedeki `InstitutionId` **hedeftir, yetki
+  değildir** (`UserInstitutionScopePolicy.CanAssign`)
+
 #### Şema İzolasyonu (Schema Isolation)
 
 Her modül kendi PostgreSQL schema'sına sahiptir. Bu izolasyon, modüllerin bağımsız deploy edilebilirliğini ve microservice'e geçiş yolunu garanti eder.

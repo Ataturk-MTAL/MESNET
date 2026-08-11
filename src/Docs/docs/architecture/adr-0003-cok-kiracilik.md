@@ -56,8 +56,9 @@ unutulunca "her şeyi görürsün" yerine "hiçbir şey görmezsin".
 [ADR-0001](./adr-0001-yetkilendirme-permission-bazli.md)'in `branch_codes` için koyduğu kural
 kiracı anahtarı için de geçerlidir ve gerekçesi ölçülmüştür:
 
-- Keycloak'a kısmi PUT gövdesi, gövdede geçmeyen profil alanlarını **siler** ve yine **204**
-  döner — sessiz veri kaybı (#190)
+- Keycloak'a `attributes` içeren bir PUT gövdesi, gövdede geçmeyen profil alanlarını
+  (`firstName`, `email`) **siler** ve yine **204** döner — sessiz veri kaybı (#190).
+  Kuralın tam ölçümü aşağıda, "Adım 3" bölümünde
 - Realm import **tek seferliktir**: depoya sonradan eklenen rol/politika mevcut kaba hiç
   ulaşmaz. Ölçüldü: depoda 11 realm rolü, çalışan realm'de 6 (#195)
 
@@ -137,11 +138,11 @@ Sıralama ilkesi: **geri alınabilir işler önce, tek yönlü kapı en sonda ve
 | ---: | --- | --- | --- | --- |
 | 0 | Belge sınıflandırması + drift kilidi | — | — | ✅ Tamamlandı (#201) |
 | 1 | Dört `MissingKey` görünüme `InstitutionId` + backfill | Düşük | Evet | ✅ Tamamlandı (#203) |
-| 2 | Kiracı otoritesinin kalan boşlukları | Orta | Evet, iki PR | ✅ Tamamlandı (#223 + bu PR) |
-| 3 | Keycloak sertleştirme: realm drift denetimi + user PUT'ları GET+merge'den geçsin | Düşük | Evet | Drift denetimi CI/smoke'ta yeşil; merge davranışı testli |
+| 2 | Kiracı otoritesinin kalan boşlukları | Orta | Evet, iki PR | ✅ Tamamlandı (#223 + #224) |
+| 3 | Keycloak sertleştirme: realm drift denetimi + user PUT semantiği | Düşük | Evet | ✅ Tamamlandı (#195 drift + yazma semantiği bu PR) |
 | 4 | `Business.InstitutionId` → provenance (`RegisteredByInstitutionId`) | Orta, davranış farkı **sıfır** | Evet | ✅ Tamamlandı |
-| 5 | **Marten conjoined açılışı** | Yüksek | **TEK YÖNLÜ KAPI** | ✅ Tamamlandı (#226 hat + bu PR kapı) |
-| 6 | İkinci okul kontrol listesi | — | — | İzolasyon smoke'u iki gerçek okulla geçti |
+| 5 | **Marten conjoined açılışı** | Yüksek | **TEK YÖNLÜ KAPI** | ✅ Tamamlandı (#226 hat + #227 kapı) |
+| 6 | İkinci okul kontrol listesi | Orta | Evet | ✅ Tamamlandı — izolasyon üç gerçek okulla ölçüldü |
 
 ### Adım 2'nin iç sırası (bozulmamalı) — tamamlandı
 
@@ -256,6 +257,47 @@ Tehlike modu: mesaj tenant'sız yayınlanır → tüketici varsayılan kiracı s
 4. **İki sahte kiracıyla izolasyon paketi** CI'da kalıcı — tek seferlik geçiş testi değil
 5. **Kuyruk boşken deploy** — geçiş anında bekleyen tenant'sız zarflar en sinsi durum
 
+### Adım 3 — ölçülen kural, tahmin edilenden farklı çıktı
+
+Planda "user PUT'ları GET+merge'den geçsin" yazıyordu. Ölçüm bunu **daraltıyor**: sorun kısmi
+gövde değil, gövdede **`attributes`** bulunması. Aynı kullanıcıda arka arkaya (Keycloak 26.7.0):
+
+| Gövde | `firstName` | `email` | öznitelik haritası | HTTP |
+| --- | --- | --- | --- | ---: |
+| `{"enabled": false}` | korundu | korundu | korundu | 204 |
+| `{"email","firstName","lastName"}` | yazıldı | yazıldı | korundu | 204 |
+| `{"attributes": {...}}` | **NULL** | **NULL** | **tümüyle değişti** | 204 |
+
+`attributes` gövdeye girdiği anda Keycloak'ın *declarative user profile* sağlayıcısı isteği tam
+profil yazımı sayıyor. **Üç istek de 204 dönüyor**; kayıp ne çağıranda ne logda görünüyor —
+#190'da haftalar sonra "personel listesinde ad sütunu boş" diye ortaya çıkmıştı.
+
+Bu yüzden **her PUT'u GET+merge'e çevirmek yanlış olurdu**: kısmi yazma hem daha ucuz hem
+eşzamanlılıkta daha güvenli (iki farklı alanı aynı anda güncelleyen iki istek birbirini ezmez).
+Doğru ayrım semantiktedir ve kodda iki yola oturur:
+
+- **Profil alanı** → `PatchUserFieldsAsync` (kısmi gövde; `attributes` görürse **fırlatır**)
+- **Öznitelik** → `MergeUserAttributesAsync` (gövde taze bir GET'ten kurulur)
+
+Kural yorumda değil, fırlatan bir sınıfta: `KeycloakUserWritePolicy`. Kilitleyen test
+`KeycloakUserWriteDriftTests` — kuralın kendisi davranışsal ölçülüyor, çağrı yerinde durduğu
+ayrıca kontrol ediliyor. (İlk sürüm yalnız kaynak taramasıydı ve negatif kontrolde **yakalamadı**:
+koruma `if (false && …)` ile öldürüldüğünde test yeşil kalıyordu.)
+
+Uçtan uca doğrulandı: API'den branş değişimi sonrası Keycloak'ta `firstName`, `lastName`,
+`email`, `business_id` yerinde kaldı, `branch_codes` eklendi.
+
+**Artık temizlendi.** Dev realm'inde 7 kullanıcının 6'sı hâlâ `institution_id` özniteliği
+taşıyordu. Öznitelik **atıldı** — o claim her istekte siliniyor (adım 2) ve hiçbir kod onu
+yazmıyor (`InstitutionClaimAuthorityTests`) — ama duran bir kopya, ileride birinin onu yeniden
+otorite sanmasına davetiye çıkarır. Yazılmamışın yanında **durmaması** da gerekiyordu.
+
+Silme işi elle yapılamaz: Keycloak konsolundan yalnız `attributes` göndermek kullanıcının adını
+ve e-postasını siler (yukarıdaki tablo). Bu yüzden ayrı bir uç var —
+`POST /api/security/users/purge-institution-attribute` — ve öznitelik yazan normal yoldan geçer.
+Ölçüldü: 6 silindi, profiller ve `branch_codes`/`business_id` yerinde kaldı; ikinci koşu 0 sildi
+(idempotent).
+
 ### Adım 5, ikinci yarı — kapı açıldı
 
 Kapı açıldı: `DocumentTenancyPolicy` (haritadan damga), `Events.TenancyStyle = Conjoined`,
@@ -321,6 +363,85 @@ satır `*DEFAULT*` kovasında kalmaz, `mt_streams` PK'sı `(tenant_id, id)`, sı
 iki yönde de yansır), `TenantlessSessionDriftTests` (argümansız session açma yok; istek dışında
 çalışan sınıfa session enjekte edilmez), `AnonymousEndpointDriftTests`,
 `IdentityLayerTenancyTests`.
+
+### Adım 6 — ikinci okul gerçekten açıldı, üç sızıntı çıktı
+
+Kiracılık kapısı (adım 5) satırları ayırıyor. Adım 6, ikinci bir okulu **gerçekten açıp** iki
+müdürle bakmakla başladı ve kiracılığın **koruyamadığı** bir yüzey buldu.
+
+**Kiracılık tarafı temiz.** Üç okul, üç müdür:
+
+| Müdür | Öğrenci | Sözleşme | Gördüğü kurum |
+| --- | ---: | ---: | ---: |
+| Atatürk MTAL | 121 | 4 | 1 |
+| Gazi MTAL | 2 | 0 | 1 |
+| Cumhuriyet MTAL | 0 | 0 | 1 |
+
+Kimlikle çapraz erişim iki yönde de 404; işletme kataloğu (paylaşımlı) üçünde de 100.
+
+**Ama `Institution` belgesi kiracının KENDİSİDİR ve damga taşımaz** — conjoined onu süzmez.
+`/api/institutions/{institutionId}` altındaki uçlar hedefi **istekten** alıyordu ve kimse
+aktörün kapsamıyla karşılaştırmıyordu. Gazi'nin müdürüyle ölçüldü:
+
+| İstek | Sonuç (önce) | Sonuç (sonra) |
+| --- | --- | --- |
+| `GET /api/institutions/{Atatürk}` | **200** — kayıt + **7 kişilik personel listesi** | 422 |
+| `PATCH /api/institutions/{Atatürk}` | **200** — okulun **adı değişti** | 422 |
+| `POST /api/institutions/{Atatürk}/staff` | **201** — personel **eklendi** (7→8) | 422 |
+| `GET /api/institutions` | iki okul | 1 okul |
+| `POST /api/security/users` + yabancı `institutionId` | **201** | 422 |
+
+Sonuncusu ADR-0001'in kendi cümlesinin ihlaliydi: *izin erişimi açar, kapsamı belirlemez.*
+`ChangeUserInstitution` `UserInstitutionScopePolicy` ile korunuyordu ama **oluşturma açıktı** —
+kilitli kapının yanındaki açık pencere.
+
+**Çözüm kapsamdadır, izinde değil.** Karar saf `InstitutionScopePolicy` içinde; uygulanışı
+`IInstitutionScoped` + Wolverine middleware (`IContractPeriodScoped` ile aynı idiom). Kontrol
+mesaj **tipine** bağlı olduğu için yeni bir uç eklemek yetmez, mesajın arayüzü taşıması gerekir;
+kalan boşluğu `InstitutionScopeDriftTests` kapatır.
+
+**Okumada da çalışır** — alan (branş) kapsamının aksine. Alan şefinin başka alanın dağıtımını
+görmesi bilinçli olarak açıktı; başka *okulun* personel listesini görmek değildir.
+
+### Kiracı ekseni tek noktada (#148)
+
+#148 `ITenantContext` + merkezî bir Marten session factory istiyordu; gerekçesi *"her yeni
+handler kiracı-kör yazılıyor, retrofit maliyeti doğrusal birikiyor"* idi. Retrofit yapılınca
+ölçüldü: **219 çağrı yerinin hiçbirine dokunulmadı.** Kiracıyı tek middleware
+`IMessageBus.TenantId` üzerine koydu, Wolverine handler'lara ve cascading mesajlara devretti,
+Marten conjoined satırları süzdü. Session factory'ye ihtiyaç olmadı — önerilen mekanizma bugün
+ölü ağırlık olurdu.
+
+**Ama issue'nun KURALI yaşıyor:** *"hiçbir kod `tenantId == institutionId` anlamsal varsayımı
+yapmayacak"*. Çevrim iki ayrı yerde duruyordu — istek yolunda ve arka plan kiracı dizininde.
+Biri değişip diğeri kalsaydı zamanlanmış işler **hiçbir verinin kullanmadığı** bir kiracıda
+koşardı; sonuç istisna değil **boş sonuç** olurdu: rapor üretilmez, maaş dönemi açılmaz, log
+temiz kalır.
+
+1:1 eşleşme artık yalnız `TenantResolution.ForInstitution` içinde. Kiracı ekseni bir gün okuldan
+başka bir şeye taşınırsa değişecek yer orasıdır; çağıranların hiçbiri okul kimliği taşıdığını
+varsaymaz. Kilit: `TenantIdentityMappingTests`.
+
+### İkinci okul nasıl açılır (kontrol listesi)
+
+Delik kapanınca yeni bir sorun çıktı: `CanAssign`'ın üç kuralı birlikte okunduğunda
+**ikinci okulun ilk kullanıcısını bağlayabilecek kimse yoktu** — kapsamsız aktör yazamaz,
+A'nın müdürü B'ye yazamaz. Kural doğruydu, eksik olan **bilinçli bir istisnaydı**:
+
+`platform:tenant:manage` — kurum sınırının üstünde çalışma. `platform:` öneki hiçbir okul
+rolünde yoktur (`PlatformScopeMappingTests`), bugün yalnız `SystemAdmin`'dedir ve bireysel
+atanamaz.
+
+1. **Okulu aç:** `POST /api/institutions` — artık `institution:manage` değil
+   `platform:tenant:manage` ister. Yeni okul açmak kurum İÇİ bir iş değildir; ölçüldü, eski
+   hâliyle bir okul müdürü ikinci okulu kendisi yaratabiliyordu
+2. **İlk müdürü oluştur:** `POST /api/security/users` + `institutionId` = yeni okul.
+   Kapsam muafiyeti burada devreye girer
+3. **Doğrula:** yeni müdür giriş yapınca `tenantId` yeni okuldur, öğrenci/sözleşme sayısı
+   **0**, kurum listesi **1**
+
+`SystemAdmin` bu iş için kurum verisi yetkisi ALMAZ: `institution:view/manage` verilmedi, yani
+okul listesini bile görmez. Bağlama yetkisi izinden değil kapsam muafiyetinden gelir.
 
 ## Sonuçlar
 

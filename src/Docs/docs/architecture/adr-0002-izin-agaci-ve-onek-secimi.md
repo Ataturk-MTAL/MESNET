@@ -122,7 +122,7 @@ Wildcard'lar genişletilmiş hâliyle.
 | İşletme İnsan Kaynakları (`CompanyHR`) | 8 | — |
 | Öğrenci (`Student`) | 11 | — |
 | Veli (`Parent`) | 9 | — |
-| Sistem Yöneticisi (`SystemAdmin`) | 2 | — |
+| Sistem Yöneticisi (`SystemAdmin`) | 5 | — |
 
 ### Domainler
 
@@ -134,7 +134,7 @@ Wildcard'lar genişletilmiş hâliyle.
 | `internship:` | 8 | Kurum Müdürü |
 | `attendance:` | 12 | Kurum Müdürü |
 | `salary:` | 6 | Kurum Müdürü |
-| `platform:` | 1 | — (her rol tek tek alır) |
+| `platform:` | 2 | — (her rol tek tek alır) |
 | `coordinator:` | 5 | Kurum Müdürü |
 | `department:` | 5 | Kurum Müdürü, Müdür Yardımcısı, Alan Şefi |
 | `document:` | 6 | Kurum Müdürü |
@@ -208,6 +208,7 @@ Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kay
 | `salary:parameter:view` | ○ | ● | · | · | · | · | · | · | · | · | ● |
 | **`platform:`** |  |  |  |  |  |  |  |  |  |  |  |
 | `platform:parameter:manage` | · | · | · | · | · | · | · | · | · | · | ● |
+| `platform:tenant:manage` | · | · | · | · | · | · | · | · | · | · | ● |
 | **`coordinator:`** |  |  |  |  |  |  |  |  |  |  |  |
 | `coordinator:assign` | ○ | · | · | · | · | · | · | · | · | · | · |
 | `coordinator:schedule:manage` | ○ | · | · | ● | ● | · | · | · | · | · | · |
@@ -234,10 +235,10 @@ Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kay
 | `communication:issue:manage` | ○ | · | · | · | · | · | ○ | · | · | · | · |
 | **`user:`** |  |  |  |  |  |  |  |  |  |  |  |
 | `user:view` | ○ | ○ | · | · | · | · | · | · | · | · | · |
-| `user:create` | ○ | ○ | · | · | · | · | · | · | · | · | · |
+| `user:create` | ○ | ○ | · | · | · | · | · | · | · | · | ● |
 | `user:update` | ○ | ○ | · | · | · | · | · | · | · | · | · |
 | `user:delete` | ○ | ○ | · | · | · | · | · | · | · | · | · |
-| `user:roles:manage` | ○ | ○ | · | · | · | · | · | · | · | · | · |
+| `user:roles:manage` | ○ | ○ | · | · | · | · | · | · | · | · | ● |
 | `user:approve` | ○ | ○ | · | · | · | · | · | · | · | · | · |
 
 ### Bireysel (direct) atanamayan izinler
@@ -251,6 +252,7 @@ Hiçbir yapılandırmayla tek bir kullanıcıya verilemez —
 - `institution:distribution:all-branches`
 - `platform:parameter:manage`
 
+<!-- END generated: permission-matrix -->
 <!-- END generated: permission-matrix -->
 
 ## Sonuçlar

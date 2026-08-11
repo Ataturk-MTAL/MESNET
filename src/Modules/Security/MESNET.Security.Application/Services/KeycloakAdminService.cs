@@ -18,6 +18,13 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
     private readonly string _clientSecret;
     private readonly ILogger<KeycloakAdminService> _logger;
 
+    /// <summary>
+    /// Öznitelik haritasının anahtarı. Bu anahtarın gövdede bulunup bulunmaması, isteğin
+    /// <i>kısmi güncelleme</i> mi <i>tam profil yazımı</i> mı sayılacağını belirler —
+    /// kural ve gerekçesi <see cref="KeycloakUserWritePolicy"/> içinde, testle kilitli.
+    /// </summary>
+    private const string AttributesKey = KeycloakUserWritePolicy.AttributesKey;
+
     // Admin API token cache'i — servis Scoped (request başına yeni instance); bir istek
     // içindeki çok sayıda Admin API çağrısı için tek token yeter.
     private string? _cachedAdminToken;
@@ -134,21 +141,50 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
         }
     }
 
+    /// <summary>
+    /// Kullanıcının <b>yalnız verilen alanlarını</b> günceller. Gövdede geçmeyen alanlar
+    /// Keycloak'ta olduğu gibi kalır — ölçüldü (Keycloak 26.7.0): <c>{"enabled": false}</c>
+    /// gönderildiğinde <c>firstName</c>, <c>email</c> ve öznitelikler korunuyor.
+    ///
+    /// <para><b><c>attributes</c> BU YOLDAN GÖNDERİLEMEZ.</b> Gövdede <c>attributes</c> bulunması
+    /// isteği <i>tam profil yazımına</i> çevirir: gövdede geçmeyen <c>firstName</c>/<c>email</c>
+    /// silinir ve öznitelik haritası <b>tümüyle</b> gönderilenle değişir. İstek yine
+    /// <b>204 döner</b> — hata yok, sessiz veri kaybı var (#190). Ölçüldü, aynı kullanıcıda
+    /// arka arkaya:</para>
+    /// <code>
+    /// PUT {"enabled":false}                       → firstName=Deneme  email=a@…  attrs=2 alan
+    /// PUT {"attributes":{"branch_codes":["EET"]}} → firstName=NULL    email=NULL attrs=1 alan
+    /// </code>
+    ///
+    /// <para>Öznitelik yazmak için <see cref="MergeUserAttributesAsync"/> kullanılır: o yol
+    /// gövdeyi taze bir GET'ten kurar, dolayısıyla silinecek alan kalmaz. Ayrım
+    /// <c>KeycloakUserWriteDriftTests</c> ile kilitlidir.</para>
+    /// </summary>
+    /// <exception cref="ArgumentException">
+    /// Alanlar arasında <c>attributes</c> varsa — çağrı yanlış yolu kullanıyordur.
+    /// </exception>
+    private async Task<Result> PatchUserFieldsAsync(
+        string keycloakUserId, Dictionary<string, object?> fields, CancellationToken ct)
+    {
+        KeycloakUserWritePolicy.EnsureSafePartialBody(fields.Keys);
+
+        using var resp = await SendAdminAsync(HttpMethod.Put, $"/users/{keycloakUserId}", fields, ct);
+        resp.EnsureSuccessStatusCode();
+        return Result.Success();
+    }
+
     public async Task<Result> UpdateUserAsync(
         string keycloakUserId, string email, string firstName, string lastName,
         CancellationToken ct = default)
     {
         try
         {
-            var payload = new Dictionary<string, object?>
+            return await PatchUserFieldsAsync(keycloakUserId, new Dictionary<string, object?>
             {
                 ["email"] = email,
                 ["firstName"] = firstName,
                 ["lastName"] = lastName,
-            };
-            using var resp = await SendAdminAsync(HttpMethod.Put, $"/users/{keycloakUserId}", payload, ct);
-            resp.EnsureSuccessStatusCode();
-            return Result.Success();
+            }, ct);
         }
         catch (Exception ex)
         {
@@ -162,10 +198,8 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
     {
         try
         {
-            var payload = new Dictionary<string, object?> { ["enabled"] = enabled };
-            using var resp = await SendAdminAsync(HttpMethod.Put, $"/users/{keycloakUserId}", payload, ct);
-            resp.EnsureSuccessStatusCode();
-            return Result.Success();
+            return await PatchUserFieldsAsync(
+                keycloakUserId, new Dictionary<string, object?> { ["enabled"] = enabled }, ct);
         }
         catch (Exception ex)
         {
@@ -341,7 +375,7 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
 
             // Mevcut attribute'ları koru, yenileri üzerine yaz
             var merged = new Dictionary<string, List<string>>();
-            if (existing.TryGetProperty("attributes", out var existingAttrs)
+            if (existing.TryGetProperty(AttributesKey, out var existingAttrs)
                 && existingAttrs.ValueKind == JsonValueKind.Object)
             {
                 foreach (var prop in existingAttrs.EnumerateObject())
@@ -365,7 +399,7 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
             var payload = new Dictionary<string, object?>();
             foreach (var prop in existing.EnumerateObject())
                 payload[prop.Name] = prop.Value;
-            payload["attributes"] = merged;
+            payload[AttributesKey] = merged;
 
             using var putResp = await SendAdminAsync(HttpMethod.Put, $"/users/{keycloakUserId}", payload, ct);
             putResp.EnsureSuccessStatusCode();

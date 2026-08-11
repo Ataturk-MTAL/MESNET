@@ -33,6 +33,9 @@ public sealed class InstitutionTenantDirectory : ITenantDirectory
             .Select(i => i.Id)
             .ToListAsync(cancellationToken);
 
-        return ids.Select(id => id.ToString()).ToList();
+        // Çevrim burada TEKRARLANMAZ: 1:1 eşleşme TenantResolution'da tek noktada yaşar (#148).
+        // Kopyalansaydı, istek yolu değişip burası kalınca arka plan işleri hiçbir verinin
+        // kullanmadığı bir kiracıda koşardı — istisna değil, sessiz boş sonuç.
+        return ids.Select(TenantResolution.ForInstitution).ToList();
     }
 }

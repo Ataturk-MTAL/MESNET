@@ -1,3 +1,4 @@
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Institution.Application.Commands;
@@ -25,7 +26,10 @@ public static class InstitutionEndpoints
 
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Institution.View);
         group.MapGet("/{institutionId:guid}", Get).RequireAuthorization(Permissions.Institution.View);
-        group.MapPost("/", Post).RequireAuthorization(Permissions.Institution.Manage);
+        // Yeni okul açmak KURUM ÜSTÜ bir iştir (ADR-0003 adım 6): institution:manage "kurum
+        // yönetebilir" der, "yeni kiracı açabilir" demez. Ölçüldü: bu uç institution:manage
+        // ile açıkken A okulunun müdürü ikinci bir okul yaratabiliyordu.
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Platform.TenantManage);
         group.MapPatch("/{institutionId:guid}", Patch).RequireAuthorization(Permissions.Institution.Manage);
         group.MapPost("/{institutionId:guid}/staff", PostStaff).RequireAuthorization(Permissions.Institution.Staff);
         group.MapPut("/{institutionId:guid}/schedule-config", PutScheduleConfig).RequireAuthorization(Permissions.Institution.Manage);
@@ -44,9 +48,21 @@ public static class InstitutionEndpoints
     /// kullanıcı kapsamını doldurur (#126). Alanı olmayan personel atlanır — bu beklenen
     /// durumdur, eksik değildir.
     /// </summary>
-    private static async Task<IResult> PostResyncStaffBranchCodes(IMessageBus bus)
+    /// <summary>
+    /// Hedef kurum <b>aktörün claim'inden</b> gelir; kurum üstü aktör (<c>platform:tenant:manage</c>)
+    /// <c>institutionId</c> sorgu parametresiyle başka okulu hedefleyebilir. Kapsam kararı
+    /// <c>InstitutionScopeGuardMiddleware</c>'de: kendi okulu olmayan bir aktörün ya da yabancı
+    /// hedef verenin isteği 422 döner.
+    /// </summary>
+    private static async Task<IResult> PostResyncStaffBranchCodes(
+        Guid? institutionId, ICurrentUserService currentUser, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<ResyncStaffBranchCodesResult>(new ResyncStaffBranchCodes());
+        var target = institutionId
+            ?? currentUser.GetCurrentUser()?.InstitutionId
+            ?? Guid.Empty;
+
+        var result = await bus.InvokeAsync<ResyncStaffBranchCodesResult>(
+            new ResyncStaffBranchCodes(target));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result)

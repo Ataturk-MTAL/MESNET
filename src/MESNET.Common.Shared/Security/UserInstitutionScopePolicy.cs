@@ -30,9 +30,24 @@ public static class UserInstitutionScopePolicy
     /// <param name="actorInstitutionId">İşlemi yapanın kurum kapsamı — token claim'inden.</param>
     /// <param name="currentInstitutionId">Hedef kullanıcının bugünkü kurum bağı.</param>
     /// <param name="targetInstitutionId">Yazılmak istenen bağ; <c>null</c> = bağı çöz.</param>
+    /// <param name="hasPlatformScope">
+    /// <c>platform:tenant:manage</c> — kurum sınırının üstünde çalışma yetkisi (ADR-0003 adım 6).
+    ///
+    /// <para><b>Bu parametre olmadan ikinci okul HİÇ açılamazdı.</b> Üç kural birlikte
+    /// okunduğunda: kapsamsız aktör yazamaz, kendi kurumu olan aktör başka kuruma yazamaz —
+    /// yani yeni bir okulun ilk kullanıcısını bağlayabilecek kimse yoktur. Kural doğruydu, eksik
+    /// olan <b>bilinçli</b> bir istisnaydı. Ölçüldü: istisna yokken boşluk <c>CreateUser</c>
+    /// üzerinden kapatılmamıştı ve A okulunun müdürü B okuluna kullanıcı yaratabiliyordu.</para>
+    /// </param>
     public static bool CanAssign(
-        Guid? actorInstitutionId, Guid? currentInstitutionId, Guid? targetInstitutionId)
+        Guid? actorInstitutionId, Guid? currentInstitutionId, Guid? targetInstitutionId,
+        bool hasPlatformScope = false)
     {
+        // Sıra önemli: muafiyet ÖNCE. Platform aktörünün kendi kurumu yoktur; alttaki kurallara
+        // girseydi ilk satırda elenirdi.
+        if (hasPlatformScope)
+            return true;
+
         if (Normalize(actorInstitutionId) is not { } actor)
             return false;
 

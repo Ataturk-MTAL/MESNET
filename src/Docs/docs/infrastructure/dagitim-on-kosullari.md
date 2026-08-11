@@ -117,8 +117,26 @@ Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden 
 | `POST /api/businesses/resync-projections` | Tüm işletmeler için `BusinessUpdated` yeniden yayınlanır — diğer modüllerin işletme görünümleri |
 | `POST /api/coordination/teachers/resync-views` | Koordinasyon görünümlerini kurum bazında yeniden kurar |
 | `POST /api/coordination/weekly-visits/resync` | Haftalık ziyaret olaylarını yeniden yayınlar |
-| `POST /api/institutions/staff/resync-branch-codes` | Personel kaydından kullanıcı hesabına **kurum (kiracı anahtarı) ve alan kapsamı** backfill'i — **uydurmaz, üzerine yazmaz**; yalnız boş alanı doldurur |
+| `POST /api/institutions/staff/resync-branch-codes` | Personel kaydından kullanıcı hesabına **kurum (kiracı anahtarı) ve alan kapsamı** backfill'i — **uydurmaz, üzerine yazmaz**; yalnız boş alanı doldurur. **Yalnız çağıranın kendi okulu** için çalışır (#131); kurum üstü aktör `?institutionId=` ile hedef verir |
 | `POST /api/security/users/resync-display-names` | Kullanıcı görünen adlarını tazeler |
+
+### Personel backfill'i tek okulludur (#131)
+
+`resync-branch-codes` eskiden **bütün kurumların** personelini tarıyordu; kodda "Faz 1 tek
+kurumlu olduğu için pratik etkisi yok" diyen bir TODO vardı. O varsayım ikinci okulla birlikte
+çöktü ve ölçüldü: kendi okulunda **1** personeli olan bir müdür ucu çağırdığında **9** personel
+işlendi — üç okulun tamamı. Yayınlanan olaylar okuma değil, Security tarafında kullanıcı
+**kapsamı** yazıyor.
+
+Artık hedef aktörün claim'inden gelir. Çok okullu bir kurulumda **her okul için ayrı
+çalıştırın**; kurum üstü aktör hepsini sırayla hedefleyebilir:
+
+```
+POST /api/institutions/staff/resync-branch-codes                      → kendi okulu
+POST /api/institutions/staff/resync-branch-codes?institutionId=<id>   → platform:tenant:manage
+```
+
+Yabancı hedef veren okul aktörü **422** alır.
 
 ### Yerleştirme resync'i: atlanan kayıtlar
 
@@ -293,6 +311,43 @@ sütunu boş (`*DEFAULT*`) olarak yeniden yaratır. Tek çözüm yedekten dönme
 Pratik sonuç: bu dağıtımdan sonra **eski imaja dönülmez**. Sorun çıkarsa ileri düzeltme yapılır
 ya da veritabanı yedekten geri yüklenir. Aynı kural geliştirme makineleri için de geçerlidir —
 göç edilmiş bir yerel veritabanına eski daldan API bağlamayın.
+:::
+
+## Keycloak'ta artık kalan `institution_id` özniteliği (ADR-0003 adım 3)
+
+Kiracı anahtarı artık **yalnız `UserAccount.InstitutionId`**'dir; token'daki `institution_id`
+claim'i her istekte siliniyor ve hiçbir kod onu Keycloak'a yazmıyor (`InstitutionClaimAuthorityTests`).
+
+Ama **eski kayıtlar duruyor.** Dev realm'inde ölçüldü: 8 kullanıcının 6'sında öznitelik hâlâ var.
+
+:::note Zararsız ama temizlenmeli
+Öznitelik **atıldır** — okunmuyor, yazılmıyor. Tehlike teknik değil insani: duran bir kopya,
+ileride birinin onu yeniden otorite sanmasına davetiye çıkarır. Aynı sebeple ADR "Keycloak'a
+`institution_id` YAZILMAZ" diyor.
+:::
+
+```
+POST /api/security/users/purge-institution-attribute      (user:roles:manage)
+```
+
+Uç tüm Keycloak kullanıcılarını tarar ve özniteliği **öznitelik yazan normal yoldan** siler:
+gövde taze bir GET'ten kurulduğu için ad, e-posta ve diğer öznitelikler kaybolmaz.
+**Idempotenttir** — ikinci koşuda `purged = 0` döner.
+
+Yanıt dört sayı verir; **`failed` sıfırdan farklıysa bakın**, o kullanıcılarda artık duruyor
+demektir. Dev ortamında ölçüldü:
+
+```
+1. koşu: 7 kullanıcı tarandı: 6 özniteliği silindi, 1 zaten temizdi, 0 başarısız
+2. koşu: 7 kullanıcı tarandı: 0 özniteliği silindi, 7 zaten temizdi, 0 başarısız
+```
+
+Silme sonrası profiller ve diğer öznitelikler (`branch_codes`, `business_id`) yerinde kaldı.
+
+:::warning Keycloak konsolundan elle silmeyin
+Admin API'ye yalnız `{"attributes": {...}}` göndermek `firstName`/`email` alanlarını siler ve
+**204 döner** (ölçüldü, Keycloak 26.7.0). Gövde tam temsil olmalıdır — bkz.
+`KeycloakUserWritePolicy`.
 :::
 
 ## Sırayı bozmayın

@@ -38,6 +38,11 @@ public static class UserManagementEndpoints
         group.MapPost("/sync", SyncUsers).RequireAuthorization(Permissions.UserManagement.Create);
         group.MapPost("/resync-display-names", ResyncDisplayNames).RequireAuthorization(Permissions.UserManagement.Create);
 
+        // Keycloak'taki artık institution_id özniteliğini siler (ADR-0003 adım 3). Kiracı
+        // anahtarını yazan uçla aynı yetki seviyesi: ikisi de kiracı kapsamına dokunur.
+        group.MapPost("/purge-institution-attribute", PurgeInstitutionAttribute)
+            .RequireAuthorization(Permissions.UserManagement.RolesManage);
+
         // Rol → atanabilir yetki domain kapsamı (yapılandırılabilir guardrail)
         var scopes = app.MapGroup("/api/security/permission-scopes").WithTags("PermissionScope");
         scopes.MapGet("/", GetScopes).RequireAuthorization(Permissions.UserManagement.RolesManage);
@@ -59,9 +64,15 @@ public static class UserManagementEndpoints
     }
 
     private static async Task<IResult> CreateUser(
-        CreateUser command, IMessageBus bus)
+        CreateUser command, ICurrentUserService currentUser, IMessageBus bus)
     {
-        var userId = await bus.InvokeAsync<Guid>(command);
+        // Kapsam istekten ALINMAZ: aktörün kurumu claim'den, platform muafiyeti izinden gelir
+        // (ADR-0003 adım 6). Gövdedeki InstitutionId yalnız HEDEFTİR, yetki değil.
+        var userId = await bus.InvokeAsync<Guid>(command with
+        {
+            ActorInstitutionId = currentUser.GetCurrentUser()?.InstitutionId,
+            ActorHasPlatformScope = currentUser.HasPermission(Permissions.Platform.TenantManage)
+        });
 
         return Results.Created(
             $"/api/security/users/{userId}",
@@ -194,6 +205,25 @@ public static class UserManagementEndpoints
     /// var olan kullanıcılar için hiç ad olayı yayınlanmadığından denetim satırları adsız kalır.
     /// Tekrar çalıştırmak güvenlidir.
     /// </summary>
+    /// <summary>
+    /// Keycloak'taki artık <c>institution_id</c> özniteliğini siler. Idempotenttir; ikinci
+    /// koşuda <c>purged = 0</c> döner.
+    /// </summary>
+    private static async Task<IResult> PurgeInstitutionAttribute(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<PurgeInstitutionAttributeResult>(
+            new PurgeKeycloakInstitutionAttribute());
+
+        // Başarısızlık sayısı mesaja KOYULUR: sıfırdan farklıysa o kullanıcılarda artık duruyor
+        // demektir ve sessiz kalması, temizliği yapılmış sanmaya yol açar.
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage(
+                $"{result.Total} Keycloak kullanıcısı tarandı: {result.Purged} özniteliği silindi, "
+                + $"{result.Skipped} zaten temizdi, {result.Failed} başarısız.")
+            .Build());
+    }
+
     private static async Task<IResult> ResyncDisplayNames(IMessageBus bus)
     {
         var result = await bus.InvokeAsync<ResyncUserDisplayNamesResult>(new ResyncUserDisplayNames());
