@@ -6,6 +6,26 @@ title: Attendance Modülü
 
 Devamsızlık kaydı, doğrulama, limit kontrolü, iş takvimi.
 
+:::warning Diyagramlar KAVRAMSAL — kodun bugünkü hâli değildir
+
+Bu sayfadaki sınıf/sıra diyagramları modülün ilk tasarımını gösterir ve koddan **üretilmez**;
+sapmayı yakalayan bir test de yoktur. Bilinen farklar:
+
+- **API katmanı ASP.NET Minimal API'dir** (`MapGet`/`MapPost` → `bus.InvokeAsync`).
+  `[WolverinePost]`/`[WolverineGet]` attribute'leri kodun **hiçbir yerinde kullanılmaz**;
+  diyagramlardaki `POST`/`GET` etiketleri yalnız HTTP fiilini gösterir.
+- **Enum'lar SmartEnum'dur** (`Name` İngilizce = serialize, `Slug` Türkçe = arayüz).
+  Diyagramlardaki `MAZERETLI`, `ONAY_BEKLIYOR` gibi büyük harfli Türkçe değerler kodda
+  bulunmaz.
+- **Denetim aktörleri kimlik taşır, ad değil** (#139): `MarkedBy` → `MarkedById` (`Guid`).
+  Ad okuma anında `UserNameView`'dan çözülür.
+- Kiracı damgası, kapsam guard'ları ve onay zincirlerinin bugünkü hâli diyagramlarda yoktur.
+
+Bir davranışın **bugünkü** kuralı için sırasıyla: `CLAUDE.md` → ilgili ADR →
+[İş Kuralları](../architecture/business-rules.md) / [İzin Matrisi](../actors/permissions.md) →
+kilitleyen test.
+:::
+
 ## Class Diagram
 
 ```plantuml
@@ -14,14 +34,14 @@ left to right direction
 
 package "MESNET.Attendance.Api" {
     class AttendanceEndpoints {
-        +[WolverinePost] MarkAttendance(command)
-        +[WolverinePost] VerifyAttendance(command)
-        +[WolverinePost] CorrectAttendance(command)
-        +[WolverinePost] AttachHealthReport(command)
-        +[WolverinePost] UpdateWorkCalendar(command)
-        +[WolverineGet] GetStudentAttendance(studentId)
-        +[WolverineGet] GetWorkCalendar(query)
-        +[WolverineGet] ListAttendance(query)
+        +POST MarkAttendance(command)
+        +POST VerifyAttendance(command)
+        +POST CorrectAttendance(command)
+        +POST AttachHealthReport(command)
+        +POST UpdateWorkCalendar(command)
+        +GET GetStudentAttendance(studentId)
+        +GET GetWorkCalendar(query)
+        +GET ListAttendance(query)
     }
 }
 

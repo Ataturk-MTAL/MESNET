@@ -57,6 +57,7 @@ public sealed class UserPermissionProvider : IUserPermissionProvider
             account.BranchCodes.AsReadOnly(),
             account.InstitutionId,
             account.BusinessId,
+            account.StudentId,
             account.LinkedStudentIds.AsReadOnly(),
             // Kaydın son yazılma anı (#208) — hiç güncellenmemişse oluşturulma anı.
             account.UpdatedAt ?? account.CreatedAt);

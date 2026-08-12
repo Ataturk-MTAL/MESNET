@@ -3,13 +3,13 @@ left to right direction
 
 package "MESNET.Contract.Api" {
     class ContractEndpoints {
-        +[WolverinePost] CreateContract(command)
-        +[WolverinePost] SignContract(command)
-        +[WolverinePost] ActivateContract(command)
-        +[WolverinePost] SuspendContract(command)
-        +[WolverinePost] TerminateContract(command)
-        +[WolverinePost] CompleteContract(command)
-        +[WolverineGet] GetContract(contractId)
+        +POST CreateContract(command)
+        +POST SignContract(command)
+        +POST ActivateContract(command)
+        +POST SuspendContract(command)
+        +POST TerminateContract(command)
+        +POST CompleteContract(command)
+        +GET GetContract(contractId)
     }
 }
 

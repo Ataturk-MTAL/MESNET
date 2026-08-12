@@ -92,8 +92,9 @@ Hangi entity'nin hangi pattern'ı kullandığı, her modülün "Storage tipi" b�
 
 **Kimlik Doğrulama Altyapısı:**
 - Keycloak (OAuth2 / OIDC, PKCE flow) — frontend public client, API confidential client
-- Realm rolleri (6): `InstitutionManager`, `InstitutionStaff`, `Teacher`, `Student`, `DepartmentHead`, `CompanyManager` (`MESNET.Common.Shared/Security/MesnetRoles.cs`)
-- Custom user attributes: `institution_id`, `business_id`, `direct_permissions`
+- Realm rolleri (11): `InstitutionManager`, `DeputyDirector`, `InstitutionStaff`, `DepartmentHead`, `Teacher`, `CompanyManager`, `MasterTrainer`, `CompanyHR`, `Student`, `Parent`, `SystemAdmin` (`MESNET.Common.Shared/Security/MesnetRoles.cs` — tek doğruluk kaynağı, `RoleModelDriftTests` ile kilitli)
+- Custom user attributes: `direct_permissions` (+ Keycloak'ta *unmanaged* olarak duran `business_id`, `student_id`, `branch_codes`)
+- **Kapsam anahtarları token'dan OKUNMAZ (ADR-0003 adım 2):** `institution_id`, `business_id`, `student_id` ve `linked_student_ids` claim'leri her istekte silinir ve `UserAccount` kaydından yeniden kurulur. `institution_id` Keycloak'a hiç **yazılmaz**. Kilitleyen testler: `InstitutionClaimAuthorityTests`, `BusinessClaimAuthorityTests`, `StudentClaimAuthorityTests`
 - İzin sabitleri `MESNET.Common.Shared/Security/Permissions.cs`'te tanımlı; Keycloak rolleri + doğrudan izinler `PermissionClaimsTransformation` (`MESNET.Common.Infrastructure`) ile JWT claim'lerine çevrilir
 
 **Davet Akışı:** `CreateInvitation` (davet oluştur) → `ApproveInvitation` (onayla; +7 gün geçerlilik + e-posta) → `CompleteInvitation` (Keycloak'a kullanıcı oluştur, rol/attribute ata, `UserAccount` kaydet) → `InvitationCompleted` + `UserCreated` cascade event'leri.
@@ -377,7 +378,16 @@ Hangi entity'nin hangi pattern'ı kullandığı, her modülün "Storage tipi" b�
 
 ### 8. Tenant (Üst Yönetim) — ⚠️ PHASE 2
 
-> **Bu modül Phase 2'ye ertelenmiştir.** Phase 1'de tek kurum senaryosu ile çalışılacak. Çoklu kurum desteği gerektiğinde bu modül aktifleştirilecektir.
+> **Bu modül Phase 2'ye ertelenmiştir** — ama **çok kiracılık ertelenmedi.**
+>
+> ADR-0003 (#149) ile Marten **conjoined kiracılık AÇIK**: kiracı = okul, kiracıya ait belgeler
+> `tenant_id` taşır ve satır düzeyinde süzülür; kiracısız session yasaktır
+> (`DefaultTenantUsageEnabled = false`). Yani çoklu okul izolasyonu **bugün çalışıyor** ve
+> ayrı bir modül gerektirmiyor — kiracı kimliği `Institution` belgesinin kendisidir.
+>
+> Bu bölümdeki `Tenant` aggregate'i **kurum üstü yönetim yüzeyi** (kurum ekleme ekranı, çapraz
+> kurum raporu) içindir; kiracı ayrımının kendisi için değil. Ayrıntı:
+> [ADR-0003](./adr-0003-cok-kiracilik.md).
 
 **Bounded Context:** Çoklu kurum yönetimi, sistem geneli yapılandırma.
 

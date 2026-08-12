@@ -6,6 +6,26 @@ title: Reporting Modülü
 
 PDF rapor üretimi (QuestPDF), denormalize veri, tüm modül event'lerini dinler.
 
+:::warning Diyagramlar KAVRAMSAL — kodun bugünkü hâli değildir
+
+Bu sayfadaki sınıf/sıra diyagramları modülün ilk tasarımını gösterir ve koddan **üretilmez**;
+sapmayı yakalayan bir test de yoktur. Bilinen farklar:
+
+- **API katmanı ASP.NET Minimal API'dir** (`MapGet`/`MapPost` → `bus.InvokeAsync`).
+  `[WolverinePost]`/`[WolverineGet]` attribute'leri kodun **hiçbir yerinde kullanılmaz**;
+  diyagramlardaki `POST`/`GET` etiketleri yalnız HTTP fiilini gösterir.
+- **Enum'lar SmartEnum'dur** (`Name` İngilizce = serialize, `Slug` Türkçe = arayüz).
+  Diyagramlardaki `MAZERETLI`, `ONAY_BEKLIYOR` gibi büyük harfli Türkçe değerler kodda
+  bulunmaz.
+- **Denetim aktörleri kimlik taşır, ad değil** (#139): `MarkedBy` → `MarkedById` (`Guid`).
+  Ad okuma anında `UserNameView`'dan çözülür.
+- Kiracı damgası, kapsam guard'ları ve onay zincirlerinin bugünkü hâli diyagramlarda yoktur.
+
+Bir davranışın **bugünkü** kuralı için sırasıyla: `CLAUDE.md` → ilgili ADR →
+[İş Kuralları](../architecture/business-rules.md) / [İzin Matrisi](../actors/permissions.md) →
+kilitleyen test.
+:::
+
 ## Class Diagram
 
 ```plantuml
@@ -14,16 +34,16 @@ left to right direction
 
 package "MESNET.Reporting.Api" {
     class ReportingEndpoints {
-        +[WolverineGet] GetAttendanceReport(query)
-        +[WolverineGet] GetPaymentReport(query)
-        +[WolverineGet] GetInternshipStatusReport(query)
-        +[WolverineGet] GetInstitutionStatistics(query)
-        +[WolverinePost] GeneratePdfReport(command)
-        +[WolverinePost] GenerateTerminationReport(command)
-        +[WolverinePost] GenerateBulkExport(command)
-        +[WolverinePost] GenerateCoordinatorDailyForm(command)
-        +[WolverinePost] GenerateCoordinatorMonthlyForm(command)
-        +[WolverinePost] GenerateAttendanceSheet(command)
+        +GET GetAttendanceReport(query)
+        +GET GetPaymentReport(query)
+        +GET GetInternshipStatusReport(query)
+        +GET GetInstitutionStatistics(query)
+        +POST GeneratePdfReport(command)
+        +POST GenerateTerminationReport(command)
+        +POST GenerateBulkExport(command)
+        +POST GenerateCoordinatorDailyForm(command)
+        +POST GenerateCoordinatorMonthlyForm(command)
+        +POST GenerateAttendanceSheet(command)
     }
 }
 

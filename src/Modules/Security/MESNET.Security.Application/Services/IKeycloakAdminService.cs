@@ -55,4 +55,6 @@ public sealed record KeycloakUserInfo(
     string Id, string Username, string Email,
     string FirstName, string LastName, bool Enabled,
     List<string> Roles, Guid? InstitutionId, Guid? BusinessId,
-    List<string> BranchCodes);
+    List<string> BranchCodes,
+    /// <summary>Realm tohum verisinde kalan artık öznitelik (#230) — temizlik için okunur.</summary>
+    Guid? StudentId = null);

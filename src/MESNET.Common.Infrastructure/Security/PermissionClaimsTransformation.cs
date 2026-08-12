@@ -28,6 +28,9 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     /// <summary>İşletme kapsam claim'i (#229). Otoritesi <c>UserAccount.BusinessId</c>'dir.</summary>
     private const string BusinessClaimType = "business_id";
 
+    /// <summary>Öğrenci kapsam claim'i (#230). Otoritesi <c>UserAccount.StudentId</c>'dir.</summary>
+    private const string StudentClaimType = "student_id";
+
     /// <summary>
     /// Institution staff tablosundan keycloakId ile kurum ID'si bulan raw SQL.
     /// Modül entity referansı kullanmaz — schema izolasyonuna uyar.
@@ -134,6 +137,13 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         // öğrencisine not girebilir. institution_id ile aynı disiplin (ADR-0003 adım 2).
         EnrichBusinessClaim(principal, entry?.BusinessId);
 
+        // ── Öğrenci kapsamı claim enrichment (#230) ──
+        // Otoritesi UserAccount.StudentId'dir ve o alan #230 öncesinde HİÇ yazılmıyordu:
+        // claim doğrudan token'dan geliyordu. Sahte bir değer başka öğrencinin devamsızlık/
+        // staj/ücret verisini açar, ONUN ADINA izin başvurusu yaptırır ve ona giden
+        // bildirimleri yönlendirirdi (SseConnectionManager.MatchesTarget).
+        EnrichStudentClaim(principal, entry?.StudentId);
+
         EnrichLinkedStudentClaims(principal, entry?.LinkedStudentIds);
 
         // Permission claim'lerini ekle
@@ -213,7 +223,8 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
 
             return PermissionLookup.Of(new PermissionCacheEntry(
                 info.IsEnabled, info.Roles, info.DirectPermissions, info.BranchCodes,
-                info.InstitutionId, info.BusinessId, info.LinkedStudentIds ?? [], info.RolesWrittenAt));
+                info.InstitutionId, info.BusinessId, info.StudentId,
+                info.LinkedStudentIds ?? [], info.RolesWrittenAt));
         }
         catch (Exception ex)
         {
@@ -391,6 +402,48 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
                 {
                     _logger.LogWarning(ex,
                         "Token'daki business_id claim'i kaldırılamadı: {ClaimValue}. "
+                        + "Kayıt otoritesi bu istekte uygulanamayabilir.", claim.Value);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// <c>student_id</c> claim'ini <b>kullanıcı kaydından</b> kurar (#230). Token'daki değer
+    /// her durumda silinir — kayıt boş olsa bile; "kaynak yoksa token'a düş" kullanıcıya
+    /// <b>başka öğrenciyi</b> seçtirirdi.
+    ///
+    /// <para><c>LinkedStudentIds</c> (veli–öğrenci bağı, #174) ile karıştırılmamalıdır: bu alan
+    /// öğrencinin <b>kendi</b> profilidir.</para>
+    /// </summary>
+    private void EnrichStudentClaim(ClaimsPrincipal principal, Guid? accountStudentId)
+    {
+        if (principal.Identity is not ClaimsIdentity identity)
+            return;
+
+        RemoveStudentClaims(principal);
+
+        if (accountStudentId is not { } studentId || studentId == Guid.Empty)
+            return;
+
+        identity.AddClaim(new Claim(StudentClaimType, studentId.ToString()));
+    }
+
+    /// <summary>Token'daki <c>student_id</c> claim'lerini siler; silinemezse loglanır.</summary>
+    private void RemoveStudentClaims(ClaimsPrincipal principal)
+    {
+        foreach (var identity in principal.Identities)
+        {
+            foreach (var claim in identity.FindAll(StudentClaimType).ToList())
+            {
+                try
+                {
+                    identity.RemoveClaim(claim);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Token'daki student_id claim'i kaldırılamadı: {ClaimValue}. "
                         + "Kayıt otoritesi bu istekte uygulanamayabilir.", claim.Value);
                 }
             }
@@ -725,6 +778,7 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         IReadOnlyList<string> BranchCodes,
         Guid? InstitutionId,
         Guid? BusinessId,
+        Guid? StudentId,
         IReadOnlyList<Guid> LinkedStudentIds,
         DateTime RolesWrittenAt);
 }

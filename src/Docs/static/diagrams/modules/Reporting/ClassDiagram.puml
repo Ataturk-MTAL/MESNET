@@ -3,16 +3,16 @@ left to right direction
 
 package "MESNET.Reporting.Api" {
     class ReportingEndpoints {
-        +[WolverineGet] GetAttendanceReport(query)
-        +[WolverineGet] GetPaymentReport(query)
-        +[WolverineGet] GetInternshipStatusReport(query)
-        +[WolverineGet] GetInstitutionStatistics(query)
-        +[WolverinePost] GeneratePdfReport(command)
-        +[WolverinePost] GenerateTerminationReport(command)
-        +[WolverinePost] GenerateBulkExport(command)
-        +[WolverinePost] GenerateCoordinatorDailyForm(command)
-        +[WolverinePost] GenerateCoordinatorMonthlyForm(command)
-        +[WolverinePost] GenerateAttendanceSheet(command)
+        +GET GetAttendanceReport(query)
+        +GET GetPaymentReport(query)
+        +GET GetInternshipStatusReport(query)
+        +GET GetInstitutionStatistics(query)
+        +POST GeneratePdfReport(command)
+        +POST GenerateTerminationReport(command)
+        +POST GenerateBulkExport(command)
+        +POST GenerateCoordinatorDailyForm(command)
+        +POST GenerateCoordinatorMonthlyForm(command)
+        +POST GenerateAttendanceSheet(command)
     }
 }
 

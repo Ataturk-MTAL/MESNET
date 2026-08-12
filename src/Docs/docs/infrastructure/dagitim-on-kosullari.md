@@ -384,6 +384,36 @@ FROM business.mt_doc_business;
 
 Alan dolduruldukça kısıt kendiliğinden devreye girer; ayrı bir göç adımı gerekmez.
 
+## Öğrenci kapsam otoritesi — resync ZORUNLU (#230)
+
+`student_id` claim'i artık `UserAccount.StudentId`'den üretiliyor. O alan #230 öncesinde
+**hiçbir yerde yazılmıyordu** — ölçüldü: 11 hesabın **0**'ında doluydu.
+
+:::danger Sıra bozulursa öğrenciler kapsamsız kalır
+Yeni kod token'daki `student_id`'yi **siler**. Otorite doldurulmadan dağıtılırsa her öğrenci
+kendi devamsızlığını, stajını ve ücretini göremez; ücretli izin başvurusu yapamaz; bildirimleri
+ulaşmaz. Hata da almazlar — **boş** sonuç görürler.
+:::
+
+Dağıtımdan **hemen sonra**:
+
+```
+POST /api/students/resync-projections      (student:manage)
+```
+
+`StudentRegistered` yeniden yayınlanır; Security tüketicisi öğrencinin Keycloak kimliğiyle
+eşleşen hesabı bulup `UserAccount.StudentId`'yi doldurur. Doğrulama:
+
+```sql
+SELECT count(*) FILTER (WHERE data->>'studentId' IS NOT NULL) AS dolu,
+       count(*)                                               AS toplam
+FROM security.mt_doc_useraccount WHERE data->'roles' ? 'Student';
+```
+
+**Eşleşmeyen öğrenci normaldir:** öğrenci profili gerçek bir Keycloak kullanıcısına bağlı
+değilse (dev tohum verisinde çoğu böyledir) tüketici sessizce atlar — uydurmaz. Bu öğrencilerin
+sistemde hesabı yoktur, dolayısıyla kapsam da gerekmez.
+
 ## Sırayı bozmayın
 
 Bir adım başka bir adımın verisini üretiyorsa sıra önemlidir. Örnek: koordinasyon zinciri
