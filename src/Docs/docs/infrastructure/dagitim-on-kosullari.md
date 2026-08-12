@@ -18,6 +18,7 @@ Bu sayfa o adımların tamamını tek yerde tutar.
 | Yeni **read-model** (denormalize görünüm) eklendi | İlgili resync ucu çağrılır |
 | Var olan read-model'e **yeni alan** eklendi | İlgili resync ucu çağrılır |
 | Realm'e yeni **rol / politika / client** eklendi | Realm doğrulaması (aşağıya bakınız) |
+| Yeni **unique index** eklendi | Mevcut kopyalar **önce** temizlenir (aşağıya bakınız) |
 
 Ortak kök neden: olay-beslemeli read-model'ler yalnız **bundan sonra** gelen olayları yazar.
 Seeder idempotent olduğu için kaynağı yeniden yaratmaz, yani olay bir daha yayınlanmaz ve mevcut
@@ -103,6 +104,60 @@ Yanlış alarm üretmemesi için iki koşul aranır:
 
 > **Üçüncü katman hâlâ elle.** Senkronizasyon izin önbelleğini temizlemiyor (#209); düzeltmenin
 > etkisi 5 dakikaya kadar gecikebilir. "İşe yaramadı" sanıp geri almayın.
+
+## Yeni unique index — kopyalar önce temizlenir (#237)
+
+`StudentProfile`'a doğal anahtar kısıtı eklendi:
+**`(AcademicPeriodId, StudentNumber)`**, kısmi (numarası olanlar) ve **kiracı başına**.
+
+:::danger Kopya varsa index OLUŞMAZ
+
+PostgreSQL, mevcut satırlar kısıtı ihlal ediyorsa unique index'i **yaratmaz** — hata verir.
+Development'ta `AutoCreate.All` bunu açılışta dener; üretimde göç elden yapılır (bkz.
+`ApplyAllDatabaseChangesOnStartup` neden kullanılmıyor).
+
+Bu tam da beklenen durum: kısıt **zaten kopya olduğu için** eklendi. #204'te ölçülmüştü —
+**122 öğrenci → 774 kayıt**, bazıları 24 kopya.
+:::
+
+**Önce sayın:**
+
+```sql
+SELECT tenant_id,
+       data ->> 'academicPeriodId' AS donem,
+       data ->> 'studentNumber'    AS numara,
+       count(*)                    AS kopya
+FROM   enrollment.mt_doc_studentprofile
+WHERE  data ->> 'studentNumber' IS NOT NULL
+GROUP  BY 1, 2, 3
+HAVING count(*) > 1
+ORDER  BY kopya DESC;
+```
+
+Sıfır dönerse index sorunsuz oluşur. Dönmezse temizlik **elle** yapılır ve karar veri sahibinindir:
+hangi kopyanın kalacağı (en eskisi mi, en çok ilişkisi olan mı) otomatik verilemez — kopyaların
+sözleşmesi, devamsızlığı ve maaş dönemi de doğmuş olabilir.
+
+> **Silmeden önce bağlı kayıtları sayın.** Kopya öğrenciye bağlı sözleşme/devamsızlık/ödeme
+> varsa silme, o kayıtları öksüz bırakır. Bağı olan kopya tutulur, olmayan silinir.
+
+**Sonra index'i uygulayın** (üretimde; development'ta Marten kendisi yaratır):
+
+```sql
+CREATE UNIQUE INDEX CONCURRENTLY idx_studentprofile_period_number
+ON enrollment.mt_doc_studentprofile (
+       tenant_id,
+       (data ->> 'academicPeriodId'),
+       (data ->> 'studentNumber'))
+WHERE data ->> 'studentNumber' IS NOT NULL;
+```
+
+`tenant_id` index'te **bulunmak zorunda**: öğrenci numarası okul içinde benzersizdir, iki okulun
+aynı numarayı kullanması normaldir. Marten tarafında bunun karşılığı
+`x.TenancyScope = TenancyScope.PerTenant`'tır ve **varsayılan `Global`'dir** — yazılmazsa kısıt
+okullar arası uygulanır ve ikinci okul kendi `1101`'ini kaydedemez.
+
+---
 
 ## Resync / backfill uçları
 
