@@ -57,25 +57,31 @@ yazabilir (#126).
   `ICurrentUserService.GetBranchCodes()` taşır; koordinasyon **yazma** handler'ları
   `BranchScopeGuard` ile kontrol eder. Ayrıntı: [Alan (Branş) Kapsamı Kontrolü](#alan-branş-kapsamı-kontrolü)
 
-### Bu ilkenin bilinen istisnaları (teknik borç)
+### Bilinen istisna KALMADI (#172, #184, #192)
 
-Aşağıdaki nokta veri kapsamı kararını rol adına bakarak veriyor; permission'a taşınmalıdır:
+Borç listesi kapandı: **rol adına bakan kapsam kararı yoktur.** `IsInRole` çağrısı modül
+kodunun tamamında bulunmaz (arayüz `ICurrentUserService`'te durur, çağıranı yoktur) ve
+frontend'de rol adına bakan computed kalmadı.
 
-- `src/Modules/Enrollment/MESNET.Enrollment.Application/Handlers/PlacementQueryScope.cs:23-34`
+| Eski borç | Yerine geçen | Kapatan |
+|---|---|---|
+| `MarkAttendanceHandler` işletme girişini `IsInRole(CompanyManager \|\| MasterTrainer)` ile ayırıyordu | `attendance:direct-entry` izni — bkz. [Sağlık Raporu Onay Zinciri](#sağlık-raporu-onay-zinciri--giriş-geniş-hüküm-dar-172) | #172 |
+| `PlacementQueryScope` üç ayrı `IsInRole` çağrısıyla yamalanmıştı | Saf `PlacementScopePolicy` — kapsam merdiveni: `institution:view` → `business_id` claim'i → öğretmen kaydı → **boş** | #184 |
+| `auth.ts` → `isDepartmentHead` / `isManager` computed'ları | `canManageAllBranches` / `writableBranchCodes` (permission bazlı) | #126, #192 |
 
-`MarkAttendanceHandler`'daki rol adı kontrolü #172 ile kapatıldı — karar artık
-`attendance:direct-entry` iznine bakar. Ayrıntı:
-[Sağlık Raporu Onay Zinciri](#sağlık-raporu-onay-zinciri--giriş-geniş-hüküm-dar-172)
+`isDepartmentHead` ve `isManager` **kaldırıldı** — ikisinin de tüketicisi kalmamıştı;
+`TeacherSchedulePage` alan ön-seçimindeki `isDepartmentHead && user.branchCode` koşulu
+`branchCode` #126 ile `null` atandığından zaten **hiç tutmuyordu**.
 
-`src/WebUI/src/stores/auth.ts` kapsam kararı #126 ile permission bazlına geçti
-(`canManageAllBranches` / `writableBranchCodes`); `isDepartmentHead` yalnız kapsam dışı
-görünürlük için kalmıştır.
+Kilitleyen testler: `tests/MESNET.Enrollment.UnitTests/PlacementScopePolicyTests.cs`,
+`tests/MESNET.Security.UnitTests/RoleNameScopeDriftTests.cs`,
+`src/WebUI/src/stores/roleNameScope.spec.ts` (yasak desen taraması).
 
 ## Ana Roller ve İzinler
 
 ### Temel Roller
 
-Phase 1'de **9 realm rolü** vardır. Tek doğruluk kaynağı
+Phase 1'de **11 realm rolü** vardır. Tek doğruluk kaynağı
 `src/MESNET.Common.Shared/Security/MesnetRoles.cs`'tir; Keycloak realm tanımı
 (`src/MESNET.AppHost/keycloak/mesnet-realm.json` → `roles.realm`) ve rol-izin haritası
 (`RolePermissionMap.cs`) bu listeyle **birebir** aynı olmak zorundadır — sapmayı kilitleyen
@@ -92,12 +98,12 @@ testler: `tests/MESNET.Security.UnitTests/RoleModelDriftTests.cs`.
 | `MasterTrainer` | Usta Öğretici | Usta Öğretici |
 | `CompanyHR` | İşletme İnsan Kaynakları | İşletme İnsan Kaynakları |
 | `Student` | Öğrenci | Öğrenci |
+| `Parent` | Veli | Veli (#174) |
+| `SystemAdmin` | Sistem Yöneticisi | — (ulusal parametre girişi, geçici taşıyıcı — #147) |
 
-#### Planlanan roller — henüz YOK
-
-| Planlanan rol | Aktör | Neden henüz yok |
-|---|---|---|
-| `Parent` | Veli | Yeni aktör: kimlik doğrulama + öğrenciyle **bağ kaydı** gerekiyor. Kapsam kararı permission'la değil bu bağla verilir. #172'den ayrıldı; kendi issue'sunda ele alınacak |
+`SystemAdmin` bir okul aktörü **değildir**: kurum verisine hiçbir yetkisi yoktur, yalnız
+`platform:parameter:manage` ve `salary:parameter:view` taşır. Bkz.
+[Ulusal (Platform) Parametreler](#ulusal-platform-parametreler--bakanlık-katmanı-147).
 
 Velinin niteliği: **girdiği kayıt doğrudan hüküm doğurmaz.** Sağlık raporu dahil her girişi
 koordinatör öğretmen onayından geçer (#172). Okul tarafı — koordinatör öğretmen, müdür

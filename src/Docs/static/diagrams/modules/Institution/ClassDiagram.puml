@@ -3,18 +3,18 @@ left to right direction
 
 package "MESNET.Institution.Api" {
     class InstitutionEndpoints {
-        +[WolverineGet] GetInstitution(institutionId)
-        +[WolverinePost] CreateInstitution(command)
-        +[WolverinePut] UpdateInstitution(command)
-        +[WolverinePost] AuthorizeStaff(command)
-        +[WolverinePut] UpdateMinimumWage(command)
+        +GET GetInstitution(institutionId)
+        +POST CreateInstitution(command)
+        +PUT UpdateInstitution(command)
+        +POST AuthorizeStaff(command)
+        +PUT UpdateMinimumWage(command)
     }
 
     class FieldCatalogEndpoints {
-        +[WolverineGet] GetFieldCatalog(educationType)
-        +[WolverinePost] ActivateBranch(command)
-        +[WolverinePost] DeactivateBranch(command)
-        +[WolverinePut] UpdateBranchSpecializations(command)
+        +GET GetFieldCatalog(educationType)
+        +POST ActivateBranch(command)
+        +POST DeactivateBranch(command)
+        +PUT UpdateBranchSpecializations(command)
     }
 }
 

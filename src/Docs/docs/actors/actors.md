@@ -7,7 +7,7 @@ title: Aktör Tanımları
 > **Kapsam Notu:** Blockchain aktörleri (Blockchain Sistem Yöneticisi, Doğrulayıcı) ve Tenant Yöneticisi Phase 2 kapsamındadır.
 > Phase 1'de bu aktörler ve ilgili yetkiler implementasyona alınmayacaktır.
 
-> **Kimlik ve Yetki Altyapısı (Security Modülü):** Aşağıdaki tüm aktörlerin kimlik doğrulaması ve yetkilendirmesi **Security modülü** üzerinden yürür. Hesaplar Keycloak'ta (OAuth2/OIDC, PKCE) tutulur; her aktörün rolü **8 realm rolünden** birine eşlenir (`InstitutionManager`, `DeputyDirector`, `InstitutionStaff`, `DepartmentHead`, `Teacher`, `CompanyManager`, `MasterTrainer`, `Student`). Aktörler sisteme **davet akışı** ile eklenir: yetkili kullanıcı davet oluşturur → Kurum Müdürü/Müdür Yardımcısı onaylar → davet edilen kişi hesabını tamamlar (`UserCreated` event'i ile ilgili profil — öğretmen, öğrenci, işletme yetkilisi — otomatik oluşur). Rol bazlı yetkiler ve doğrudan izinler için bkz. [Claims ve Permissions](#claims-ve-permissions) bölümü.
+> **Kimlik ve Yetki Altyapısı (Security Modülü):** Aşağıdaki tüm aktörlerin kimlik doğrulaması ve yetkilendirmesi **Security modülü** üzerinden yürür. Hesaplar Keycloak'ta (OAuth2/OIDC, PKCE) tutulur; her aktörün rolü **11 realm rolünden** birine eşlenir (`InstitutionManager`, `DeputyDirector`, `InstitutionStaff`, `DepartmentHead`, `Teacher`, `CompanyManager`, `MasterTrainer`, `CompanyHR`, `Student`, `Parent`, `SystemAdmin`). Aktörler sisteme **davet akışı** ile eklenir: yetkili kullanıcı davet oluşturur → Kurum Müdürü/Müdür Yardımcısı onaylar → davet edilen kişi hesabını tamamlar (`UserCreated` event'i ile ilgili profil — öğretmen, öğrenci, işletme yetkilisi — otomatik oluşur). Rol bazlı yetkiler ve doğrudan izinler için bkz. [Claims ve Permissions](#claims-ve-permissions) bölümü.
 
 > **Rol modeli değişikliği (#129):** **Müdür Yardımcısı** ve **Usta Öğretici** artık kendi realm rollerine sahiptir (`DeputyDirector`, `MasterTrainer`). Önceden müdür yardımcısının karşılığı `InstitutionStaff` sayılıyordu; bu, "Kurum Yetkilendirdiği Personel" aktörüyle aynı role sıkışmak demekti ve realm rol açıklamasıyla (`InstitutionManager` = "Müdür / Müdür Yardımcısı") çelişiyordu. Ayrım netleşti:
 >
@@ -20,7 +20,10 @@ title: Aktör Tanımları
 > | Öğretmen (Koordinatör) | `Teacher` |
 > | İşletme Yöneticisi | `CompanyManager` |
 > | Usta Öğretici | `MasterTrainer` |
+> | İşletme İnsan Kaynakları | `CompanyHR` (#172 — zorunlu değil) |
 > | Öğrenci | `Student` |
+> | Veli | `Parent` (#174) |
+> | — (kurum üstü) | `SystemAdmin` (#147 — ulusal parametre girişi) |
 >
 > Program Koordinatörü ve Eğitmen aktörlerinin ayrı realm rolü **yoktur**; sorumluluklarına göre `DeputyDirector` veya `Teacher` ile temsil edilirler. Rol adları ve Türkçe etiketleri tek yerdedir: `src/MESNET.Common.Shared/Security/MesnetRoles.cs` — arayüz listesini `GET /api/security/roles` ucundan alır, elle liste tutmaz.
 

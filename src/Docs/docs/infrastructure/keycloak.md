@@ -32,14 +32,22 @@ Backend (.NET API)
 
 ### Realm Roller
 
+**11 rol** vardır. Tek doğruluk kaynağı `MESNET.Common.Shared/Security/MesnetRoles.cs`'tir;
+realm tanımı ondan **sapamaz** (`RoleModelDriftTests`).
+
 | Rol | Açıklama |
 | --- | --- |
-| `InstitutionManager` | Kurum yöneticisi (Müdür / Müdür Yardımcısı) |
-| `InstitutionStaff` | Kurum personeli |
-| `Teacher` | Koordinatör öğretmen |
-| `Student` | Öğrenci |
+| `InstitutionManager` | Okul müdürü |
+| `DeputyDirector` | Müdür yardımcısı (#129 — önceden `InstitutionStaff`'a sıkışmıştı) |
+| `InstitutionStaff` | Kurum personeli — yürütür, onaylamaz |
 | `DepartmentHead` | Alan şefi |
+| `Teacher` | Koordinatör öğretmen |
 | `CompanyManager` | İşletme yetkilisi |
+| `MasterTrainer` | Usta öğretici (#129) |
+| `CompanyHR` | İşletme insan kaynakları (#172 — zorunlu değil) |
+| `Student` | Öğrenci |
+| `Parent` | Veli (#174) |
+| `SystemAdmin` | Ulusal parametre girişi (#147) — kurum verisine yetkisi yok |
 
 ### Token Claim'leri
 
@@ -48,9 +56,28 @@ Hem `mesnet-web` hem `mesnet-api` client'larında aşağıdaki custom claim'ler 
 | Claim | User Attribute | Açıklama |
 | --- | --- | --- |
 | `realm_access.roles` | — | Realm rolleri (dizi) |
-| `institution_id` | `institution_id` | Kullanıcının bağlı olduğu kurum |
-| `business_id` | `business_id` | İşletme yetkilisi için işletme ID |
-| `student_id` | `student_id` | Öğrenci kullanıcı için öğrenci ID |
+| `institution_id` | `institution_id` | Kurum (kiracı) kapsamı — **token değeri kabul EDİLMEZ**, bkz. aşağısı |
+| `business_id` | `business_id` | İşletme kapsamı — token değeri kabul edilmez (#229) |
+| `student_id` | `student_id` | Öğrenci kapsamı — token değeri kabul edilmez (#230) |
+| `branch_codes` | `branch_codes` | Alan (branş) kapsamı — çok değerli (#126) |
+
+:::danger Mapper var diye claim otorite değildir
+
+Yukarıdaki protokol mapper'ları token'a alan **basar**, ama uygulama onları
+**okumaz**: `PermissionClaimsTransformation` her istekte `institution_id`, `business_id`,
+`student_id` ve `linked_student_ids` claim'lerini **siler** ve `UserAccount` kaydından
+yeniden kurar (ADR-0003 adım 2, #229, #230).
+
+Gerekçe: bu öznitelikler Keycloak'ta *unmanaged*'dır. Realm politikası yanlış kurulursa
+kullanıcı varsayılan `manage-account` rolüyle kendi Account konsolundan **kendi kapsamını
+yazabilir**. Token'ın imzalı olması, içeriğin kullanıcı tarafından belirlenmediği anlamına
+gelmez. `institution_id` Keycloak'a hiç **yazılmaz** — oradaki bir kopya, ileride birinin onu
+yeniden otorite sanmasına davetiye çıkarır.
+
+İkinci katman realm'dedir: `unmanagedAttributePolicy: ADMIN_EDIT` — unmanaged öznitelikler
+yalnız admin bağlamında görünür/yazılır. Uygulamanın yazma yolu etkilenmez
+(`KeycloakAdminService` servis hesabı token'ıyla admin API'ye yazar).
+:::
 
 ---
 
@@ -169,7 +196,7 @@ Realm JSON'da brute-force koruma aktiftir:
 
 | Token | Süre | Açıklama |
 | --- | --- | --- |
-| Access token | 5 dk | Kısa ömür — güvenlik için |
+| Access token | 30 dk | `accessTokenLifespan: 1800` |
 | SSO session idle | 30 dk | İnaktif oturum zaman aşımı |
 | SSO session max | 8 saat | Maksimum oturum süresi |
 | Offline session idle | 30 gün | Offline token idle |
@@ -204,12 +231,31 @@ Tema dosyaları bind mount ile bağlı olduğundan, CSS değişiklikleri **sayfa
 
 :::
 
+:::danger Depoya yazmak yetmez — çalışan realm'e ulaştığını doğrulayın (#195)
+
+Realm import **tek seferliktir**. `mesnet-realm.json`'a sonradan eklenen rol, politika ya da
+client ayarı mevcut bir kaba **hiç ulaşmaz** ve bunu hiçbir birim testi göremez — testler
+depodaki dosyayı okur, çalışan realm'i değil.
+
+Gerçekten yaşandı: dev realm'inde `unmanagedAttributePolicy` `ENABLED` kaldı ve **5 rol hiç
+oluşmadı**. Açılışta `RealmVerificationHostedService` çalışan realm'i `RealmInvariants` ile
+karşılaştırır:
+
+- **Development:** sapma **açılışı durdurur**
+- Diğer ortamlar: `LogCritical`
+- Keycloak'a ulaşılamaması sapma sayılmaz — kontrol atlanır
+
+CI, kontrolün gerçekten koştuğunu log satırını arayarak doğrular (`ci.yml` → "Realm doğrulama
+çıktısı"): "doğrulandı" ile "okunamadı, sessiz geçildi" aynı görünür.
+:::
+
 ### Test Kullanıcıları
 
 | Kullanıcı | Şifre | Rol |
 | --- | --- | --- |
-| `admin` | `admin` | InstitutionManager |
-| `teacher1` | `teacher1` | Teacher |
+| `admin` | `admin` | InstitutionManager + SystemAdmin |
+| `viceprincipal` | `viceprincipal` | InstitutionManager |
+| `teacher1` / `teacher2` / `teacher3` | kullanıcı adıyla aynı | Teacher |
 | `student1` | `student1` | Student |
 
 :::info Seeder Kullanıcıları

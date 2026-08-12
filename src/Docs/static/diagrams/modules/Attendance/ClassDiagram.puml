@@ -3,14 +3,14 @@ left to right direction
 
 package "MESNET.Attendance.Api" {
     class AttendanceEndpoints {
-        +[WolverinePost] MarkAttendance(command)
-        +[WolverinePost] VerifyAttendance(command)
-        +[WolverinePost] CorrectAttendance(command)
-        +[WolverinePost] AttachHealthReport(command)
-        +[WolverinePost] UpdateWorkCalendar(command)
-        +[WolverineGet] GetStudentAttendance(studentId)
-        +[WolverineGet] GetWorkCalendar(query)
-        +[WolverineGet] ListAttendance(query)
+        +POST MarkAttendance(command)
+        +POST VerifyAttendance(command)
+        +POST CorrectAttendance(command)
+        +POST AttachHealthReport(command)
+        +POST UpdateWorkCalendar(command)
+        +GET GetStudentAttendance(studentId)
+        +GET GetWorkCalendar(query)
+        +GET ListAttendance(query)
     }
 }
 

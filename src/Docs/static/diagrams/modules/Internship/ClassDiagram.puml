@@ -3,9 +3,9 @@ left to right direction
 
 package "MESNET.Internship.Api" {
     class InternshipEndpoints {
-        +[WolverineGet] GetInternshipSummary(studentId)
-        +[WolverineGet] ListActiveInternships(query)
-        +[WolverinePost] RequestTermination(command)
+        +GET GetInternshipSummary(studentId)
+        +GET ListActiveInternships(query)
+        +POST RequestTermination(command)
     }
 }
 

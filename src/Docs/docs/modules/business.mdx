@@ -6,6 +6,26 @@ title: Business Modülü
 
 İşletme kaydı, onay, belge yönetimi, konum ve sektör yönetimi.
 
+:::warning Diyagramlar KAVRAMSAL — kodun bugünkü hâli değildir
+
+Bu sayfadaki sınıf/sıra diyagramları modülün ilk tasarımını gösterir ve koddan **üretilmez**;
+sapmayı yakalayan bir test de yoktur. Bilinen farklar:
+
+- **API katmanı ASP.NET Minimal API'dir** (`MapGet`/`MapPost` → `bus.InvokeAsync`).
+  `[WolverinePost]`/`[WolverineGet]` attribute'leri kodun **hiçbir yerinde kullanılmaz**;
+  diyagramlardaki `POST`/`GET` etiketleri yalnız HTTP fiilini gösterir.
+- **Enum'lar SmartEnum'dur** (`Name` İngilizce = serialize, `Slug` Türkçe = arayüz).
+  Diyagramlardaki `MAZERETLI`, `ONAY_BEKLIYOR` gibi büyük harfli Türkçe değerler kodda
+  bulunmaz.
+- **Denetim aktörleri kimlik taşır, ad değil** (#139): `MarkedBy` → `MarkedById` (`Guid`).
+  Ad okuma anında `UserNameView`'dan çözülür.
+- Kiracı damgası, kapsam guard'ları ve onay zincirlerinin bugünkü hâli diyagramlarda yoktur.
+
+Bir davranışın **bugünkü** kuralı için sırasıyla: `CLAUDE.md` → ilgili ADR →
+[İş Kuralları](../architecture/business-rules.md) / [İzin Matrisi](../actors/permissions.md) →
+kilitleyen test.
+:::
+
 ## Class Diagram
 
 ```plantuml
@@ -14,18 +34,18 @@ left to right direction
 
 package "MESNET.Business.Api" {
     class BusinessEndpoints {
-        +[WolverineGet] GetBusinessInfo(businessId)
-        +[WolverinePost] RegisterBusiness(command)
-        +[WolverinePost] SelfRegisterBusiness(command)
-        +[WolverinePut] UpdateBusinessInfo(command)
-        +[WolverinePost] ApproveBusiness(command)
-        +[WolverinePost] RejectBusiness(command)
-        +[WolverinePost] DeactivateBusiness(command)
-        +[WolverinePost] ActivateBusiness(command)
-        +[WolverinePost] CloseBusiness(command)
-        +[WolverinePost] UploadDocument(command)
-        +[WolverinePost] UpdateCapacity(command)
-        +[WolverinePost] RequestTermination(command)
+        +GET GetBusinessInfo(businessId)
+        +POST RegisterBusiness(command)
+        +POST SelfRegisterBusiness(command)
+        +PUT UpdateBusinessInfo(command)
+        +POST ApproveBusiness(command)
+        +POST RejectBusiness(command)
+        +POST DeactivateBusiness(command)
+        +POST ActivateBusiness(command)
+        +POST CloseBusiness(command)
+        +POST UploadDocument(command)
+        +POST UpdateCapacity(command)
+        +POST RequestTermination(command)
     }
 }
 
