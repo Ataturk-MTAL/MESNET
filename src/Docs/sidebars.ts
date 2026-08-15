@@ -10,6 +10,7 @@ const sidebars: SidebarsConfig = {
         'architecture/adr-0001-yetkilendirme-permission-bazli',
         'architecture/adr-0002-izin-agaci-ve-onek-secimi',
         'architecture/adr-0003-cok-kiracilik',
+        'architecture/adr-0004-isletme-kimlik-iliski-ayrimi',
         'architecture/project-scope',
         'architecture/module-design',
         'architecture/business-rules',
