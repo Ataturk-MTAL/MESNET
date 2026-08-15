@@ -16,6 +16,16 @@ public static class EnrollmentErrors
     public static Error BusinessNotFound(Guid id) =>
         new("Enrollment.BusinessNotFound", $"İşletme bulunamadı: {id}");
 
+    /// <summary>
+    /// Doğal anahtar çakışması (#237). Kısıt veritabanında da var (kısmi unique index); bu hata
+    /// kullanıcıya <b>anlaşılır</b> mesaj döndürmek için, arkadaki index ise yarış durumlarına
+    /// karşı emniyet kemeri. <c>BusinessErrors.TaxNumberAlreadyRegistered</c> (#150) ile aynı
+    /// desen.
+    /// </summary>
+    public static Error StudentNumberAlreadyRegistered(string studentNumber) =>
+        new("Enrollment.StudentNumberAlreadyRegistered",
+            $"Bu dönemde '{studentNumber}' numaralı bir öğrenci zaten kayıtlı.");
+
     public static Error InvalidTransition(string entity, string from, string to) =>
         new("Enrollment.InvalidTransition", $"{entity} '{from}' durumundan '{to}' durumuna geçirilemez.");
 
