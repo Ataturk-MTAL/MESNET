@@ -19,6 +19,7 @@ Bu sayfa o adımların tamamını tek yerde tutar.
 | Var olan read-model'e **yeni alan** eklendi | İlgili resync ucu çağrılır |
 | Realm'e yeni **rol / politika / client** eklendi | Realm doğrulaması (aşağıya bakınız) |
 | Yeni **unique index** eklendi | Mevcut kopyalar **önce** temizlenir (aşağıya bakınız) |
+| Projeksiyonun **kimliği** değişti | Görünüm yeniden inşa edilir (aşağıya bakınız) |
 
 Ortak kök neden: olay-beslemeli read-model'ler yalnız **bundan sonra** gelen olayları yazar.
 Seeder idempotent olduğu için kaynağı yeniden yaratmaz, yani olay bir daha yayınlanmaz ve mevcut
@@ -156,6 +157,48 @@ WHERE data ->> 'studentNumber' IS NOT NULL;
 aynı numarayı kullanması normaldir. Marten tarafında bunun karşılığı
 `x.TenancyScope = TenancyScope.PerTenant`'tır ve **varsayılan `Global`'dir** — yazılmazsa kısıt
 okullar arası uygulanır ve ikinci okul kendi `1101`'ini kaydedemez.
+
+---
+
+## Devamsızlık sayacı yeniden inşası (#242)
+
+`AttendanceView` projeksiyonunun **kimliği değişti**: eskiden `StudentId` (öğrenci başına tek
+satır), şimdi `{studentId}:{academicPeriodId}`. Görünüme `AcademicPeriodId` alanı eklendi.
+
+:::danger Mevcut satırlar yanlış kimlikte — yeniden inşa ZORUNLU
+
+Eski satırlar `Guid` kimlikli ve dönem bilgisiz. Yeniden inşa edilmezse sayaç eski satırları
+**hiç bulamaz**, her öğrenci sıfırdan başlar ve devamsızlık limiti (fesih tetikleyicisi) bir
+dönem boyunca **hiç dolmaz**. Belirti yok: hata çıkmaz, log temiz kalır.
+:::
+
+Projeksiyon `Async` yaşam döngüsünde (`ProjectionLifecycle.Async`) ve `MultiStreamProjection`
+olduğu için Marten async daemon'ı ile yeniden kurulabilir:
+
+```bash
+# Uygulama dururken ya da daemon devredeyken tek seferlik
+dotnet run --project src/MESNET.Presentation -- projections rebuild --projection AttendanceViewProjection
+```
+
+> Marten'ın komut satırı entegrasyonu kuruluysa yukarıdaki komut yeterlidir. Değilse eski tablo
+> boşaltılıp daemon'ın akışı baştan işlemesi sağlanır:
+>
+> ```sql
+> TRUNCATE attendance.mt_doc_attendanceview;
+> DELETE FROM shared.mt_event_progression WHERE name = 'AttendanceViewProjection';
+> ```
+>
+> Olay akışı kaynaktır; görünüm ondan yeniden üretilir, veri kaybı olmaz.
+
+**Doğrulama** — yeniden inşa sonrası her satırın kimliği `:` içermeli ve dönem dolu olmalı:
+
+```sql
+SELECT count(*) FILTER (WHERE id NOT LIKE '%:%')      AS eski_kimlik,
+       count(*) FILTER (WHERE data ->> 'academicPeriodId' IS NULL) AS donemsiz
+FROM   attendance.mt_doc_attendanceview;
+```
+
+İkisi de **0** olmalı.
 
 ---
 
