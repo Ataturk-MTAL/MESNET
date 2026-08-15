@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import type Keycloak from 'keycloak-js'
 import api from 'boot/axios'
 import { classifyAuthFailure, decodeTokenExp } from 'src/utils/authFailure'
+import { logger } from '../utils/logger'
 
 /**
  * `loadPermissions` sonucu (#136). Yönlendirme kararı çağırana bırakılır: yeniden giriş
@@ -192,17 +193,17 @@ export const useAuthStore = defineStore('auth', () => {
 
         if (action === 'retry') {
           const delay = attempt * 1500 // 1.5s, 3s, 4.5s, 6s
-          console.warn(`[Auth] /auth/me henüz hazır değil (durum: ${status ?? 'ağ'}), ${delay / 1000}s sonra tekrar... (${attempt}/${maxRetries})`)
+          logger.warn(`[Auth] /auth/me henüz hazır değil (durum: ${status ?? 'ağ'}), ${delay / 1000}s sonra tekrar... (${attempt}/${maxRetries})`)
           await new Promise((resolve) => setTimeout(resolve, delay))
           continue
         }
 
         if (action === 'reauth') {
-          console.warn(`[Auth] Token reddedildi (durum: ${status ?? 'ağ'}) — yeniden giriş gerekiyor.`)
+          logger.warn(`[Auth] Token reddedildi (durum: ${status ?? 'ağ'}) — yeniden giriş gerekiyor.`)
           return 'reauth'
         }
 
-        console.error('[Auth] Permission yüklenemedi:', err)
+        logger.error('[Auth] Permission yüklenemedi:', err)
         return 'give-up'
       }
     }

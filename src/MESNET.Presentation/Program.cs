@@ -252,6 +252,16 @@ try
         });
 
         // SSE endpoint'i — bağlantı başına uzun süreli, düşük limit (.RequireRateLimiting ile uygulanıyor)
+        // İstemci telemetrisi (#144) — uç ANONİM olduğu için global limitten daha dar.
+        // İstemci hata döngüsüne girse bile (#136'daki gibi saniyede bir) sunucu boğulmamalı.
+        // Aşan istek 429 alır ve istemci TEKRAR DENEMEZ, kayıt sessizce düşer: telemetri
+        // kaybı kabul edilebilir, telemetrinin kendi kendine DoS'u değil.
+        options.AddFixedWindowLimiter("ClientTelemetry", limiterOptions =>
+        {
+            limiterOptions.PermitLimit = 30;
+            limiterOptions.Window = TimeSpan.FromMinutes(1);
+        });
+
         options.AddFixedWindowLimiter("SseConnections", limiterOptions =>
         {
             limiterOptions.PermitLimit = 5;
@@ -543,6 +553,8 @@ try
 
     // ──── Modül Endpoint Registrations ────
     // Institution
+    app.MapTelemetryEndpoints();
+
     app.MapInstitutionEndpoints();
     app.MapFieldCatalogEndpoints();
     app.MapAcademicPeriodEndpoints();

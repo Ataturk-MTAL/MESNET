@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useAuthStore } from 'stores/auth'
+import { logger } from '../utils/logger'
 
 export interface SseNotification {
   /**
@@ -55,7 +56,7 @@ export const useNotificationStore = defineStore('notifications', () => {
       })
 
       if (!response.ok || !response.body) {
-        console.warn(`[SSE] Bağlantı başarısız: ${response.status}`)
+        logger.warn(`[SSE] Bağlantı başarısız: ${response.status}`)
         // 401/403 — token geçersiz veya yetki yok, tekrar deneme
         return
       }
@@ -96,7 +97,7 @@ export const useNotificationStore = defineStore('notifications', () => {
       }
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        console.warn('[SSE] Stream hatası:', err)
+        logger.warn('[SSE] Stream hatası:', err)
       }
     } finally {
       connected.value = false

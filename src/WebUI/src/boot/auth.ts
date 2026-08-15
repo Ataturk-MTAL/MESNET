@@ -3,6 +3,7 @@ import { useAuthStore } from 'stores/auth'
 import { useNotificationStore } from 'stores/notifications'
 import { decideReauth, recordReauth } from 'src/utils/authFailure'
 import { showSessionExpiredScreen } from './sessionExpiredScreen'
+import { logger } from '../utils/logger'
 
 // Keycloak instance — singleton, uygulama boyunca tek
 let _keycloak: Keycloak | null = null
@@ -69,7 +70,7 @@ export function reauthenticate(reason: string): void {
   const log = readReauthLog()
 
   if (decideReauth(log, now) === 'halt') {
-    console.error(`[Auth] Yeniden giriş döngüsü kırıldı (${reason}) — oturum ekranı gösteriliyor.`)
+    logger.error(`[Auth] Yeniden giriş döngüsü kırıldı (${reason}) — oturum ekranı gösteriliyor.`)
     clearReauthLog()
     showSessionExpiredScreen({
       detail: 'Yeniden giriş birkaç kez denendi ancak oturum doğrulanamadı.',
@@ -81,7 +82,7 @@ export function reauthenticate(reason: string): void {
   }
 
   writeReauthLog(recordReauth(log, now))
-  console.warn(`[Auth] Yeniden giriş yapılıyor (${reason})...`)
+  logger.warn(`[Auth] Yeniden giriş yapılıyor (${reason})...`)
 
   // login() tam sayfa yönlendirmedir; döndüğü promise ASLA settle olmaz.
   // await edilirse çağıran sonsuza kadar askıda kalır — #136'daki beyaz ekranın
@@ -120,7 +121,7 @@ export async function bootAuth(): Promise<void> {
   try {
     const refreshed = await keycloak.updateToken(60) // 60 sn'den az kaldıysa yenile
     if (refreshed) {
-      console.info('[Auth] Token boot sırasında yenilendi')
+      logger.info('[Auth] Token boot sırasında yenilendi')
     }
   } catch {
     // Refresh başarısız — eski session geçersiz, yeniden giriş gerekli

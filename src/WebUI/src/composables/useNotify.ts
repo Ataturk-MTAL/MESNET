@@ -1,5 +1,6 @@
 import { Notify } from 'quasar'
 import type { AxiosError } from 'axios'
+import { logger } from '../utils/logger'
 
 /**
  * Backend ApiResponse hata yapısından kullanıcıya gösterilecek mesajı çıkarır.
@@ -22,7 +23,7 @@ export function extractApiError(err: unknown, fallback: string): string {
 function logApiError(err: unknown) {
   const axiosErr = err as AxiosError<{ message?: string; code?: number | string }>
   const res = axiosErr?.response
-  console.error('[API Hatası]', {
+  logger.error('[API Hatası]', {
     status: res?.status,
     method: axiosErr?.config?.method?.toUpperCase(),
     url: axiosErr?.config?.url,
