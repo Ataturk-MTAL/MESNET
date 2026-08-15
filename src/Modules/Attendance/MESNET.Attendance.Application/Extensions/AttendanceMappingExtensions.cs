@@ -77,6 +77,7 @@ public static class AttendanceMappingExtensions
     public static AttendanceViewDto ToDto(this AttendanceView view) => new(
         view.Id,
         view.StudentId,
+        view.AcademicPeriodId,
         view.BusinessId,
         view.TotalAbsenceDays,
         view.ExcusedDays,
