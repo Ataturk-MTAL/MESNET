@@ -194,10 +194,26 @@ Sistem, devamsızlık girişi yapılmak istenen tarihi `WorkCalendar` ile kontro
 belirler" diyordu, kod ise sabit `20` taşıyordu; ikisi de yanlıştı ve 20 hiçbir hükümle
 eşleşmiyordu.
 
-| Eğitim türü | Sınır | Dayanak |
-| --- | --- | --- |
-| **Örgün** | **10** mazeretsiz gün | Md. 36 (5): *"Devamsızlık süresi **özürsüz 10 günü**, toplamda 30 günü aşan öğrenciler… başarısız sayılır"* |
-| **MESEM** | **60** mazeretsiz gün | Md. 36 (5): işletmede *"3308'e göre kullanabileceği **ücretli ve ücretsiz izin toplamından** fazla olamaz"* → 3308 md. 26: 1 ay ücretli + 1 aya kadar ücretsiz; SGK usulü 30 günlük ayla (§6.2.1) 30 + 30 |
+**Kural İKİ BOYUTLUDUR: eğitim türü × devamsızlık türü.** Md. 36 (5) örgün için **iki eşik
+birden** koyar; ikisi de ayrı ayrı bağlayıcıdır ve **hangisi önce dolarsa** fesih onunla
+tetiklenir.
+
+| Eğitim türü | Özürsüz | Toplam | Dayanak |
+| --- | --- | --- | --- |
+| **Örgün** | **10** gün | **30** gün | Md. 36 (5): *"Devamsızlık süresi **özürsüz 10 günü**, **toplamda 30 günü** aşan öğrenciler… başarısız sayılır"* |
+| **MESEM** | *(yok)* | **60** gün | Md. 36 (5): işletmede *"3308'e göre kullanabileceği **ücretli ve ücretsiz izin toplamından** fazla olamaz"* → 3308 md. 26: 1 ay ücretli + 1 aya kadar ücretsiz; SGK usulü 30 günlük ayla (§6.2.1) 30 + 30 |
+
+**Toplam ayak neden şart:** yalnız mazeretsizi saymak, **29 gün raporlu + 9 gün mazeretsiz**
+olan öğrenciyi sınırın *dışında* bırakır — oysa toplam ayağı çoktan dolmuştur.
+
+**MESEM'in özürsüz karşılığı bilerek YOKTUR.** Yönetmelik işletme eğitimini yalnız izin hakkı
+toplamıyla karşılaştırır, devamsızlık türüne bakmaz. Simetri uğruna oraya bir sayı koymak,
+mevzuatta karşılığı olmayan bir **fesih eşiği** yaratırdı.
+
+**Hangi tür hangi sayaca yazılır:** yalnız `Unexcused` mazeretsizdir. Sağlık raporu, mazeretli
+devamsızlık, ücretli ve ücretsiz izin **mazeretli** sayaca gider. Bu ayrım **ücret kesintisi**
+ayrımıyla (`AbsenceType.AffectsSalary`) karıştırılmamalı: ücretsiz izinde ücret kesilir ama
+devamsızlık mazeretsiz değildir — iki karar farklı hükümlerden gelir.
 
 **Sayılar PARAMETRİKTİR — mevzuat değişirse kod değişmez.** Yürürlükteki değerler
 `AttendanceLimitConfig` belgesinden gelir; kodda duran sabitler yalnız **başlangıç
@@ -220,14 +236,14 @@ Karar `AttendanceLimitPolicy` içindedir ve testle kilitlidir. Sınır aşılın
 `AttendanceLimitExceeded` yayınlanır, Internship saga otomatik fesih sürecini başlatır —
 yönetmeliğin öngördüğü sonuçla aynı: *"sözleşmeleri fesih edilerek sigorta çıkışları yapılır"*.
 
-:::warning İki bilinçli türetim
+:::warning Bir bilinçli türetim
 **Örgün için işletme sınırı yönetmelikte YOK.** Md. 36 (5) okul devamını düzenliyor; örgün
-öğrencinin işletmedeki devamsızlığı için ayrı hüküm getirilmemiş. Sistem yalnız mazeretsiz
-günleri saydığı için fıkranın **özürsüz** ayağı (10) alındı.
+öğrencinin işletmedeki devamsızlığı için ayrı hüküm getirilmemiş. Fıkranın **iki ayağı da**
+(özürsüz 10 / toplam 30) işletme devamsızlığına uygulandı.
 
-**MESEM sınırı toplam devamsızlığa konmuş, sayaç yalnız mazeretsizi sayıyor.** Yani gerçek
-sınır 60'tan erken dolabilir. Seçim bilerek **öğrenci lehine** (geç tetikleyen) yöndedir —
-yanlış fesih, geç fesihten pahalıdır.
+*(Önceki metinde ikinci bir türetim daha vardı: "MESEM sınırı toplam devamsızlığa konmuş, sayaç
+yalnız mazeretsizi sayıyor." Bu artık geçersiz — sayaç iki boyutu da tutuyor ve MESEM ayağı
+doğru sayaca, toplama bağlandı.)*
 :::
 
 > **Sahibin verdiği "6 gün" bu sınır değildir.** O, md. 36'nın **teorik ders** için koyduğu
@@ -239,7 +255,8 @@ yanlış fesih, geç fesihten pahalıdır.
 - **Kayıp yetenek:** md. 36 (4) işletme devamsızlığında **5., 15. ve 25.** günlerde yasal
   temsilciye ve işletmeye bildirim zorunlu kılıyor; sistemde kademeli bildirim yok, yalnız
   eşikte fesih var
-- Sağlık raporu ile belgelenen devamsızlıklar özürsüz devamsızlığa dahil edilmez
+- Sağlık raporu ile belgelenen devamsızlıklar **özürsüz** sayaca dahil edilmez — ama **toplam**
+  sayaca girer ve 30 günlük ayağı doldurabilir
 
 ### 5.4 İşletmede Mesleki Eğitim Süreleri
 

@@ -22,11 +22,23 @@ public sealed class AttendanceLimitConfig
 
     public Guid Id { get; set; } = SingletonId;
 
-    /// <summary>Örgün ortaöğretim — mazeretsiz gün sınırı.</summary>
+    /// <summary>
+    /// Örgün — <b>özürsüz</b> gün sınırı. Md. 36 (5) birinci ayak.
+    /// </summary>
     public int FormalUnexcusedDayLimit { get; set; }
 
-    /// <summary>MESEM — mazeretsiz gün sınırı.</summary>
-    public int MesemUnexcusedDayLimit { get; set; }
+    /// <summary>
+    /// Örgün — <b>toplam</b> gün sınırı (mazeretli, raporlu ve izinli dâhil). Md. 36 (5) ikinci
+    /// ayak. İki ayak <b>ayrı ayrı</b> bağlayıcıdır: hangisi önce dolarsa fesih onunla tetiklenir.
+    /// </summary>
+    public int FormalTotalDayLimit { get; set; }
+
+    /// <summary>
+    /// MESEM — <b>toplam</b> gün sınırı. Yönetmelik işletme eğitimini yalnız 3308 izin hakkı
+    /// toplamıyla karşılaştırır; devamsızlık türüne bakmaz. Bu yüzden MESEM'in <b>özürsüz
+    /// karşılığı yoktur</b> ve simetri olsun diye uydurulmamıştır.
+    /// </summary>
+    public int MesemTotalDayLimit { get; set; }
 
     public Guid UpdatedById { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

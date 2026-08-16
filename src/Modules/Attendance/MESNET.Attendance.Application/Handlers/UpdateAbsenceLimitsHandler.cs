@@ -19,14 +19,23 @@ public static class UpdateAbsenceLimitsHandler
     {
         // Sıfır ya da negatif sınır "her öğrenci ilk devamsızlıkta feshedilir" demektir.
         // Bu bir fesih tetikleyicisi; yapılandırma onu sessizce sıfıra çekememeli.
-        if (command.FormalUnexcusedDayLimit <= 0 || command.MesemUnexcusedDayLimit <= 0)
+        if (command.FormalUnexcusedDayLimit <= 0
+            || command.FormalTotalDayLimit <= 0
+            || command.MesemTotalDayLimit <= 0)
+            throw new DomainException(AttendanceErrors.InvalidAbsenceLimit());
+
+        // Toplam ayak mazeretsiz ayağı KAPSAR: her mazeretsiz gün aynı zamanda toplam bir gündür.
+        // Toplamı mazeretsizin altına çekmek, mazeretsiz eşiğini erişilemez kılardı — o ayak
+        // sessizce ölür ve idare 10 günlük sınırı uyguladığını sanmaya devam ederdi (#183).
+        if (command.FormalTotalDayLimit < command.FormalUnexcusedDayLimit)
             throw new DomainException(AttendanceErrors.InvalidAbsenceLimit());
 
         var config = await session.LoadAsync<AttendanceLimitConfig>(AttendanceLimitConfig.SingletonId)
                      ?? new AttendanceLimitConfig();
 
         config.FormalUnexcusedDayLimit = command.FormalUnexcusedDayLimit;
-        config.MesemUnexcusedDayLimit = command.MesemUnexcusedDayLimit;
+        config.FormalTotalDayLimit = command.FormalTotalDayLimit;
+        config.MesemTotalDayLimit = command.MesemTotalDayLimit;
         config.UpdatedById = currentUser.GetUserId();
         config.UpdatedAt = DateTime.UtcNow;
 

@@ -41,4 +41,19 @@ public static class AttendanceCounterScope
     /// Bugünkü davranış budur; #242 sayacın <i>kapsamını</i> düzeltir, eşik semantiğini değil.
     /// </summary>
     public static bool IsExceeded(int total, int limit) => total >= limit;
+
+    /// <summary>
+    /// Bu devamsızlık türü <b>mazeretsiz</b> sayaca mı yazılır (#183).
+    ///
+    /// <para>Yalnız <c>AbsenceType.Unexcused</c> mazeretsizdir. Sağlık raporu, mazeretli
+    /// devamsızlık, ücretli ve ücretsiz izin <b>mazeretli</b> sayaca gider — ücret kesintisi
+    /// ayrımıyla (<c>AbsenceType.AffectsSalary</c>) karıştırılmamalı: ücretsiz izinde ücret
+    /// kesilir ama devamsızlık mazeretsiz değildir.</para>
+    ///
+    /// <para><b>Neden burada:</b> aynı karar hem <c>AttendanceViewProjection</c>'da (sayacı
+    /// artırırken) hem <c>CheckAttendanceLimitHandler</c>'da (henüz yansımamış olayı sayarken)
+    /// veriliyor. İkisi ayrışırsa sınır yanlış ayaktan tetiklenir ve bu <b>fesih</b> demektir.</para>
+    /// </summary>
+    public static bool CountsAsUnexcused(string? absenceType)
+        => string.Equals(absenceType, "Unexcused", StringComparison.OrdinalIgnoreCase);
 }

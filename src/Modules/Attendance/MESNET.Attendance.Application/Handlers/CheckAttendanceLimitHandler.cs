@@ -31,13 +31,25 @@ public static class CheckAttendanceLimitHandler
         // Kayıt yoksa ya da bozuksa politika mevzuattan türetilmiş başlangıç değerine düşer —
         // "yapılandırma yok" sınırın kalkması anlamına gelemez.
         var config = await session.LoadAsync<AttendanceLimitConfig>(AttendanceLimitConfig.SingletonId);
-        var limit = AttendanceLimitPolicy.LimitFor(student?.EducationType, config);
-        var total = (view?.UnexcusedDays ?? 0) + 1;
 
-        if (AttendanceCounterScope.IsExceeded(total, limit))
+        // İKİ AYAK birden değerlendirilir (#183). Md. 36 (5) örgünde "özürsüz 10 günü,
+        // toplamda 30 günü" der; yalnız mazeretsizi saymak, 29 gün raporlu + 9 gün mazeretsiz
+        // olan öğrenciyi sınırın DIŞINDA bırakıyordu — oysa toplam ayağı çoktan dolmuştu.
+        //
+        // +1: görünüm asenkron güncellenir, bu olay ona henüz yansımadı. Hangi sayaca
+        // yazılacağı projeksiyonla AYNI politikadan sorulur; ayrışırlarsa sınır yanlış ayaktan
+        // tetiklenir ve sonucu fesihtir.
+        var isUnexcused = AttendanceCounterScope.CountsAsUnexcused(@event.AbsenceType);
+        var unexcusedDays = (view?.UnexcusedDays ?? 0) + (isUnexcused ? 1 : 0);
+        var totalDays = (view?.TotalAbsenceDays ?? 0) + 1;
+
+        var decision = AttendanceLimitPolicy.Evaluate(
+            student?.EducationType, unexcusedDays, totalDays, config);
+
+        if (decision.IsExceeded)
             return new AttendanceLimitExceeded(
-                @event.StudentId, @event.InstitutionId, @event.BusinessId, total, limit,
-                @event.AcademicPeriodId);
+                @event.StudentId, @event.InstitutionId, @event.BusinessId,
+                decision.Days, decision.Limit, @event.AcademicPeriodId, decision.Kind);
 
         return null;
     }

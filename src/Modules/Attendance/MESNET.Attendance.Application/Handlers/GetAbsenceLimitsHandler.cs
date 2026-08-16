@@ -15,9 +15,12 @@ public static class GetAbsenceLimitsHandler
         // Değerler politikadan okunur, config'ten DEĞİL: bozuk/eksik kayıtta hangi sınırın fiilen
         // uygulandığını göstermek gerekir. Arayüzün gösterdiği sayı ile handler'ın uyguladığı
         // sayı ayrışırsa idare yanlış sınıra göre karar verir.
+        var limits = AttendanceLimitPolicy.EffectiveLimits(config);
+
         return new AbsenceLimitsDto(
-            AttendanceLimitPolicy.LimitFor("Formal", config),
-            AttendanceLimitPolicy.LimitFor("Mesem", config),
+            limits.FormalUnexcusedDayLimit,
+            limits.FormalTotalDayLimit,
+            limits.MesemTotalDayLimit,
             config is not null,
             config?.UpdatedAt);
     }
