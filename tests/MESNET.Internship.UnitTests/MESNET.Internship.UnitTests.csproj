@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Modules/Internship/MESNET.Internship.Core/MESNET.Internship.Core.csproj" />
+    <ProjectReference Include="../../src/Modules/Internship/MESNET.Internship.Application/MESNET.Internship.Application.csproj" />
   </ItemGroup>
 
 </Project>
