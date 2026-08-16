@@ -11,6 +11,16 @@ public static class AttendanceErrors
     public static Error InvalidAbsenceLimit() =>
         new("Attendance.InvalidAbsenceLimit", "Devamsızlık sınırı en az 1 gün olmalıdır.");
 
+    /// <summary>
+    /// Toplam ayak mazeretsiz ayağı kapsar (#183): her mazeretsiz gün aynı zamanda toplam bir
+    /// gündür. Ayrı mesaj — "en az 1 gün" uyarısı bu hatayı hiç anlatmıyor ve idare neyi
+    /// düzelteceğini bilemiyordu.
+    /// </summary>
+    public static Error TotalLimitBelowUnexcused(int totalLimit, int unexcusedLimit) =>
+        new("Attendance.TotalLimitBelowUnexcused",
+            $"Toplam devamsızlık sınırı ({totalLimit} gün), özürsüz sınırından "
+            + $"({unexcusedLimit} gün) küçük olamaz — özürsüz günler toplama da dâhildir.");
+
     public static Error NotFound(Guid id) =>
         new("Attendance.NotFound", $"Devamsızlık kaydı bulunamadı: {id}");
 

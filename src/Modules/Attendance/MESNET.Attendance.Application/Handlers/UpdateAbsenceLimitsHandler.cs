@@ -28,7 +28,8 @@ public static class UpdateAbsenceLimitsHandler
         // Toplamı mazeretsizin altına çekmek, mazeretsiz eşiğini erişilemez kılardı — o ayak
         // sessizce ölür ve idare 10 günlük sınırı uyguladığını sanmaya devam ederdi (#183).
         if (command.FormalTotalDayLimit < command.FormalUnexcusedDayLimit)
-            throw new DomainException(AttendanceErrors.InvalidAbsenceLimit());
+            throw new DomainException(AttendanceErrors.TotalLimitBelowUnexcused(
+                command.FormalTotalDayLimit, command.FormalUnexcusedDayLimit));
 
         var config = await session.LoadAsync<AttendanceLimitConfig>(AttendanceLimitConfig.SingletonId)
                      ?? new AttendanceLimitConfig();
