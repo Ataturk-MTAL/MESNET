@@ -199,6 +199,23 @@ eşleşmiyordu.
 | **Örgün** | **10** mazeretsiz gün | Md. 36 (5): *"Devamsızlık süresi **özürsüz 10 günü**, toplamda 30 günü aşan öğrenciler… başarısız sayılır"* |
 | **MESEM** | **60** mazeretsiz gün | Md. 36 (5): işletmede *"3308'e göre kullanabileceği **ücretli ve ücretsiz izin toplamından** fazla olamaz"* → 3308 md. 26: 1 ay ücretli + 1 aya kadar ücretsiz; SGK usulü 30 günlük ayla (§6.2.1) 30 + 30 |
 
+**Sayılar PARAMETRİKTİR — mevzuat değişirse kod değişmez.** Yürürlükteki değerler
+`AttendanceLimitConfig` belgesinden gelir; kodda duran sabitler yalnız **başlangıç
+değerleridir** (kayıt hiç girilmemişken kullanılır).
+
+| Uç | İzin |
+| --- | --- |
+| `GET /api/attendance/config/absence-limits` | `attendance:view` — okul rolleri hangi sınıra göre çalıştıklarını **görür** |
+| `PUT /api/attendance/config/absence-limits` | `platform:parameter:manage` — **hiçbir okul rolünde yoktur** |
+
+Belge kiracı damgası **taşımaz** (`DocumentTenancyMap` → `Shared`): sınır md. 36'dan türer, okul
+başına değişemez. Asgari ücretin aksine **sürüm geçmişi yoktur** — sınır devamsızlık girildiği
+*an* değerlendirilir, geriye dönük hesap yoktur.
+
+> **Bozuk yapılandırma sınırı kaldırmaz.** 0 ya da negatif değer "her öğrenci ilk devamsızlıkta
+> feshedilir" demek olurdu; hem yazma ucu reddeder (422) hem politika başlangıç değerine düşer.
+> #151'in yeter sayı eşiğinde aynı tuzak aynı gerekçeyle kapatılmıştı.
+
 Karar `AttendanceLimitPolicy` içindedir ve testle kilitlidir. Sınır aşılınca
 `AttendanceLimitExceeded` yayınlanır, Internship saga otomatik fesih sürecini başlatır —
 yönetmeliğin öngördüğü sonuçla aynı: *"sözleşmeleri fesih edilerek sigorta çıkışları yapılır"*.

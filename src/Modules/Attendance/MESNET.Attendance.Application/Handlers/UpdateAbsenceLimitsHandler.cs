@@ -1,0 +1,35 @@
+using Marten;
+using MESNET.Attendance.Application.Commands;
+using MESNET.Attendance.Application.Errors;
+using MESNET.Attendance.Core.Entities;
+using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Shared;
+
+namespace MESNET.Attendance.Application.Handlers;
+
+/// <summary>
+/// Devamsızlık sınırlarını yazar (#183). Tek satırlık ulusal parametre — sürüm geçmişi yok,
+/// çünkü sınır devamsızlık girildiği AN değerlendirilir (asgari ücretin aksine geriye dönük
+/// hesap yoktur).
+/// </summary>
+public static class UpdateAbsenceLimitsHandler
+{
+    public static async Task Handle(
+        UpdateAbsenceLimits command, IDocumentSession session, ICurrentUserService currentUser)
+    {
+        // Sıfır ya da negatif sınır "her öğrenci ilk devamsızlıkta feshedilir" demektir.
+        // Bu bir fesih tetikleyicisi; yapılandırma onu sessizce sıfıra çekememeli.
+        if (command.FormalUnexcusedDayLimit <= 0 || command.MesemUnexcusedDayLimit <= 0)
+            throw new DomainException(AttendanceErrors.InvalidAbsenceLimit());
+
+        var config = await session.LoadAsync<AttendanceLimitConfig>(AttendanceLimitConfig.SingletonId)
+                     ?? new AttendanceLimitConfig();
+
+        config.FormalUnexcusedDayLimit = command.FormalUnexcusedDayLimit;
+        config.MesemUnexcusedDayLimit = command.MesemUnexcusedDayLimit;
+        config.UpdatedById = currentUser.GetUserId();
+        config.UpdatedAt = DateTime.UtcNow;
+
+        session.Store(config);
+    }
+}

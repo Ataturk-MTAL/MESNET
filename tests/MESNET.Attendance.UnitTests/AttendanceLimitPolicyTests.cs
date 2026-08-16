@@ -1,3 +1,4 @@
+using MESNET.Attendance.Core.Entities;
 using MESNET.Attendance.Core.Policies;
 using Shouldly;
 using Xunit;
@@ -64,6 +65,48 @@ public sealed class AttendanceLimitPolicyTests
     {
         AttendanceLimitPolicy.MesemUnexcusedDayLimit
             .ShouldBeGreaterThan(AttendanceLimitPolicy.FormalUnexcusedDayLimit);
+    }
+
+    // ─── Parametrik: mevzuat değişirse kod değişmez ──────────────────────────────────
+
+    /// <summary>
+    /// <b>Asıl kazanım.</b> Yürürlükteki değer kayıttan gelir; mevzuat değişince kod değil
+    /// <b>kayıt</b> değişir (#183, ulusal parametre — #147 deseni).
+    /// </summary>
+    [Fact]
+    public void Yapilandirilmis_deger_sabiti_ezer()
+    {
+        var config = new AttendanceLimitConfig { FormalUnexcusedDayLimit = 12, MesemUnexcusedDayLimit = 45 };
+
+        AttendanceLimitPolicy.LimitFor("Formal", config).ShouldBe(12);
+        AttendanceLimitPolicy.LimitFor("Mesem", config).ShouldBe(45);
+    }
+
+    /// <summary>
+    /// Kayıt yoksa mevzuattan türetilmiş başlangıç değeri kullanılır — "yapılandırma yok"
+    /// sınırın kalkması anlamına gelemez.
+    /// </summary>
+    [Fact]
+    public void Kayit_yoksa_baslangic_degerine_duser()
+    {
+        AttendanceLimitPolicy.LimitFor("Formal", null).ShouldBe(AttendanceLimitPolicy.FormalUnexcusedDayLimit);
+        AttendanceLimitPolicy.LimitFor("Mesem", null).ShouldBe(AttendanceLimitPolicy.MesemUnexcusedDayLimit);
+    }
+
+    /// <summary>
+    /// <b>Bozuk yapılandırma sınırı KALDIRMAZ.</b> 0 ya da negatif değer "her öğrenci ilk
+    /// devamsızlıkta feshedilir" demek olurdu; politika başlangıç değerine düşer.
+    /// (#151'in yeter sayı eşiğinde aynı tuzak aynı gerekçeyle kapatılmıştı.)
+    /// </summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public void Bozuk_deger_baslangic_degerine_duser(int bozuk)
+    {
+        var config = new AttendanceLimitConfig { FormalUnexcusedDayLimit = bozuk, MesemUnexcusedDayLimit = bozuk };
+
+        AttendanceLimitPolicy.LimitFor("Formal", config).ShouldBe(AttendanceLimitPolicy.FormalUnexcusedDayLimit);
+        AttendanceLimitPolicy.LimitFor("Mesem", config).ShouldBe(AttendanceLimitPolicy.MesemUnexcusedDayLimit);
     }
 
     /// <summary>

@@ -17,6 +17,15 @@ public static class AttendanceEndpoints
     {
         var group = app.MapGroup("/api/attendance").RequireAuthorization();
 
+        // Devamsızlık sınırları — ULUSAL PARAMETRE (#183, #147 deseni).
+        // Okuma okul rollerine açık: hangi sınıra göre çalıştıklarını görmeliler.
+        // Yazma platform:parameter:manage ister ve HİÇBİR okul rolünde yoktur — sınır
+        // MEB Yönetmeliği md. 36'dan türer, okul başına değişemez.
+        group.MapGet("/config/absence-limits", GetAbsenceLimits)
+            .RequireAuthorization(Permissions.Attendance.View);
+        group.MapPut("/config/absence-limits", PutAbsenceLimits)
+            .RequireAuthorization(Permissions.Platform.ParameterManage);
+
         group.MapPost("/", Post).RequireAuthorization(Permissions.Attendance.Manage);
         group.MapPost("/{attendanceId:guid}/approve", PostApprove).RequireAuthorization(Permissions.Attendance.Approve);
         group.MapPost("/{attendanceId:guid}/verify", PostVerify).RequireAuthorization(Permissions.Attendance.Approve);
@@ -44,6 +53,18 @@ public static class AttendanceEndpoints
         // devamsızlığını, veli bağlı olduğu öğrencininkini görür. Daraltmayı handler yapar.
         group.MapGet("/{attendanceId:guid}", Get).RequireAuthorization(PermissionPolicies.AttendanceViewOrOwn);
         group.MapGet("/", GetAll).RequireAuthorization(PermissionPolicies.AttendanceViewOrOwn);
+    }
+
+    private static async Task<IResult> GetAbsenceLimits(IMessageBus bus)
+    {
+        var dto = await bus.InvokeAsync<AbsenceLimitsDto>(new GetAbsenceLimits());
+        return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
+    }
+
+    private static async Task<IResult> PutAbsenceLimits(UpdateAbsenceLimits command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command);
+        return Results.Ok(ResponseBuilder.Success().AddMessage("Devamsızlık sınırları güncellendi.").Build());
     }
 
     private static async Task<IResult> Post(

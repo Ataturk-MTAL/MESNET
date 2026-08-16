@@ -127,6 +127,9 @@ public static class DocumentTenancyMap
         ["PermissionScopeConfig"] = Shared,
         // Asgari ücret ve 3308 oranları — kurum ÜSTÜ ulusal parametre katmanı
         ["SalaryCalculationConfig"] = Shared,
+        // Devamsızlık sınırları da ulusal parametredir (#183): MEB Yönetmeliği md. 36'dan
+        // türer, okul başına değişemez. Damgalanırsa her okul kendi sınırını belirlerdi.
+        ["AttendanceLimitConfig"] = Shared,
         // Kullanıcı adı çözümlemesi — kimlik katmanı (Keycloak), kiracıya ait değil
         ["UserNameView"] = Shared,
 

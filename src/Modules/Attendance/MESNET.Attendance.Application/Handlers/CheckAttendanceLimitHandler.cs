@@ -26,7 +26,12 @@ public static class CheckAttendanceLimitHandler
         // Öğrenci kaydı bulunamazsa tür bilinmez ve politika DAHA DÜŞÜK eşiğe düşer; eksik
         // veri sınırı gevşetmemeli.
         var student = await session.LoadAsync<StudentNameView>(@event.StudentId);
-        var limit = AttendanceLimitPolicy.LimitFor(student?.EducationType);
+
+        // Sınır ULUSAL PARAMETREDİR (#183): mevzuat değişirse kod değil kayıt değişir.
+        // Kayıt yoksa ya da bozuksa politika mevzuattan türetilmiş başlangıç değerine düşer —
+        // "yapılandırma yok" sınırın kalkması anlamına gelemez.
+        var config = await session.LoadAsync<AttendanceLimitConfig>(AttendanceLimitConfig.SingletonId);
+        var limit = AttendanceLimitPolicy.LimitFor(student?.EducationType, config);
         var total = (view?.UnexcusedDays ?? 0) + 1;
 
         if (AttendanceCounterScope.IsExceeded(total, limit))

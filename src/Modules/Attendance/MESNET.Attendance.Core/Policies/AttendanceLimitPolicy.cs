@@ -1,3 +1,5 @@
+using MESNET.Attendance.Core.Entities;
+
 namespace MESNET.Attendance.Core.Policies;
 
 /// <summary>
@@ -12,10 +14,14 @@ namespace MESNET.Attendance.Core.Policies;
 /// <para><b>Önceki hâli:</b> <c>const int limit = 20</c> — mevzuatta karşılığı <b>hiçbir
 /// hükümle eşleşmeyen</b> uydurulmuş bir sayıydı: ne 10, ne 30, ne 1/6, ne izin toplamı.</para>
 ///
-/// <para><b>Bu sınıf mevzuat türevidir, kurum ayarı DEĞİLDİR.</b> Okul başına değişmemeli;
-/// değişmesi gerekiyorsa mevzuat değişmiştir ve tek yer burasıdır. (#183'te kararlaştırılan
-/// yön ulusal parametre katmanıydı — #147 deseni; oraya taşınana kadar sabitler burada, tek
-/// noktada ve gerekçeli durur.)</para>
+/// <para><b>PARAMETRİKTİR — mevzuat değişirse kod değişmez.</b> Yürürlükteki değerler
+/// <see cref="AttendanceLimitConfig"/> belgesinden gelir; belge <b>ulusal parametredir</b>
+/// (<c>platform:parameter:manage</c>, #147 deseni) ve kurum ayarı değildir — sınır md. 36'dan
+/// türer, okul başına değişemez.</para>
+///
+/// <para>Aşağıdaki sabitler yalnız <b>başlangıç değerleridir</b>: kayıt hiç girilmemişken
+/// kullanılır. Sistem parametresiz de doğru davranmalı — "kayıt yok" hâli sınırın sessizce
+/// kalkması anlamına gelemez.</para>
 /// </summary>
 public static class AttendanceLimitPolicy
 {
@@ -66,8 +72,17 @@ public static class AttendanceLimitPolicy
     /// tetikleme. Eksik veri yüzünden sınırın sessizce gevşemesi, öğrencinin sınırsız
     /// devamsızlık yapabilmesi demek olurdu.</para>
     /// </summary>
-    public static int LimitFor(string? educationTypeName) =>
-        string.Equals(educationTypeName, "Mesem", StringComparison.OrdinalIgnoreCase)
-            ? MesemUnexcusedDayLimit
-            : FormalUnexcusedDayLimit;
+    public static int LimitFor(string? educationTypeName, AttendanceLimitConfig? config = null)
+    {
+        var isMesem = string.Equals(educationTypeName, "Mesem", StringComparison.OrdinalIgnoreCase);
+
+        var configured = isMesem ? config?.MesemUnexcusedDayLimit : config?.FormalUnexcusedDayLimit;
+
+        // Bozuk/eksik yapılandırma sınırı KALDIRMAZ, başlangıç değerine düşer. 0 ya da negatif
+        // bir sınır "her öğrenci ilk devamsızlıkta feshedilir" demek olurdu — BusinessClosure
+        // yeter sayısında (#151) aynı tuzak aynı gerekçeyle kapatılmıştı.
+        if (configured is > 0) return configured.Value;
+
+        return isMesem ? MesemUnexcusedDayLimit : FormalUnexcusedDayLimit;
+    }
 }
