@@ -33,6 +33,11 @@ public sealed class AnonymousEndpointDriftTests
     private static readonly HashSet<string> Allowed = new(StringComparer.Ordinal)
     {
         "Modules/Security/MESNET.Security.Api/InvitationEndpoints.cs:/{invitationId:guid}/complete",
+        // İstemci hata telemetrisi (#144). Kiracı riski YOKTUR: uç hiçbir Marten belgesine
+        // dokunmaz, yalnız ILogger'a yazar (Serilog → OTLP). Anonim olması bilinçli — token
+        // isteyen bir uç, oturumun hiç kurulamadığı durumda (#136) tam da en çok ihtiyaç
+        // duyulan anda çalışmazdı. Hız sınırı: "ClientTelemetry" politikası.
+        "MESNET.Presentation/TelemetryEndpoints.cs:/client-errors",
     };
 
     private static readonly Regex AnonymousMapping = new(

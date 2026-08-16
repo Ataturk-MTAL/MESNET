@@ -4,6 +4,7 @@ import { enrollmentApi } from 'src/api/enrollment'
 import { useInstitutionStore } from 'stores/institution'
 import { useEntityOptionsStore } from 'stores/entityOptions'
 import type { PagedResponse } from 'src/types/pagination'
+import { logger } from '../utils/logger'
 
 export interface SelectOption {
   label: string
@@ -308,7 +309,7 @@ export function useBranchOptions() {
       options.value = allOptions.value
       loaded = true
     } catch (err) {
-      console.error('[useBranchOptions] Alan seçenekleri yüklenirken hata:', err)
+      logger.error('[useBranchOptions] Alan seçenekleri yüklenirken hata:', err)
     } finally {
       loading.value = false
     }

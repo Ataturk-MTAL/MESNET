@@ -14,6 +14,12 @@ import router from './router'
 import { bootAuth } from './boot/auth'
 
 const pinia = createPinia()
+import { logger, installGlobalErrorHandlers } from './utils/logger'
+
+// Yakalanmamış hataları TOPLA — uygulama kurulmadan önce takılır, yoksa boot sırasındaki
+// çökme (bugün tamamen sessiz kaybolan sınıf) yakalanamaz (#144).
+installGlobalErrorHandlers()
+
 const app = createApp(App)
 
 app.use(pinia)
@@ -37,7 +43,7 @@ bootAuth()
     app.mount('#app')
   })
   .catch((err: unknown) => {
-    console.error('[Auth] Başlatma başarısız:', err)
+    logger.error('[Auth] Başlatma başarısız:', err)
     import('./boot/sessionExpiredScreen')
       .then(({ showSessionExpiredScreen }) => {
         showSessionExpiredScreen({
