@@ -1,12 +1,11 @@
 using MESNET.Common.Infrastructure.Security;
-using MESNET.Attendance.Shared.Events;
-using MESNET.Contract.Shared.Events;
 using MESNET.Enrollment.Shared.Events;
 using MESNET.Internship.Application.Commands;
 using MESNET.Common.Shared;
 using MESNET.Internship.Application.Errors;
 using MESNET.Internship.Core.Enums;
 using MESNET.Internship.Core.Policies;
+using MESNET.Internship.Core.Services;
 using MESNET.Internship.Core.ValueObjects;
 using MESNET.Internship.Shared.Events;
 using Wolverine;
@@ -44,7 +43,10 @@ public class InternshipSaga : Saga
 
     public static (InternshipSaga, InternshipStarted) Start(StudentPlaced e)
     {
-        var id = Guid.NewGuid();
+        // Kimlik yerleştirmeden DETERMİNİSTİK türer (#251). Guid.NewGuid() olsaydı aynı
+        // StudentPlaced tekrar yayınlandığında ikinci bir saga daha doğardı — ölçüldü,
+        // 2248 saga yalnız 95 yerleştirmeye karşılık geliyordu. Gerekçe: InternshipSagaId.
+        var id = InternshipSagaId.For(e.PlacementId);
         var saga = new InternshipSaga
         {
             Id = id,
@@ -62,23 +64,21 @@ public class InternshipSaga : Saga
     }
 
     // ─── HANDLE: Sözleşme Aktifleşti ───
-    public void Handle(ContractActivated e)
+    //
+    // Girdi Contract modülünün ContractActivated'ı DEĞİL, Internship'in kendi komutudur (#248).
+    // Saga kimliği mesajın alan adından çözülür (InternshipId); başka modülün olayı o adı
+    // taşımadığı için doğrudan bağlanamaz — IndeterminateSagaStateIdException ile ölü mektuba
+    // düşerdi ve fiilen düşüyordu: 2248 saga'nın hiçbirinde contractId yazılı değildi.
+    // Çeviriyi SagaRelayConsumer yapar.
+    public void Handle(LinkInternshipContract e)
     {
         ContractId = e.ContractId;
         Phase = InternshipPhase.Active;
     }
 
-    // ─── HANDLE: Devamsızlık Limiti Aşıldı → Otomatik Fesih Başlat ───
-    public InternshipTerminationApprovalChainStarted Handle(AttendanceLimitExceeded e)
-    {
-        Phase = InternshipPhase.TerminationInProgress;
-        TerminationReason = $"Devamsızlık limiti aşıldı: {e.TotalAbsenceDays}/{e.Limit} gün";
-        TerminationReasonType = "AttendanceLimitExceeded";
-        RequiresParentApproval = false;
-        ApprovalChain = new TerminationApprovalChain();
-
-        return new InternshipTerminationApprovalChainStarted(Id, StudentId, RequiresParentApproval);
-    }
+    // Devamsızlık sınırı aşıldığında ayrı bir giriş noktası YOKTUR (#248): aktarıcı
+    // InternshipTerminationRequested üretir ve manuel fesihle aynı yola girer. İkinci bir
+    // giriş noktası ikinci bir sessiz kırılma yüzeyi demek olurdu.
 
     // ─── HANDLE: Manuel Fesih Talebi ───
     public InternshipTerminationApprovalChainStarted Handle(InternshipTerminationRequested e)
@@ -145,18 +145,20 @@ public class InternshipSaga : Saga
         return messages;
     }
 
-    // ─── HANDLE: Sözleşme Feshedildi (Contract modülünden) ───
-    public InternshipReplacementRequested Handle(ContractTerminated e)
+    // ─── HANDLE: Sözleşme Feshedildi ───
+    // Girdi Contract modülünün olayı değil, aktarıcının ürettiği komuttur (#248) — bkz. yukarısı.
+    public InternshipReplacementRequested Handle(TerminateInternshipContract e)
     {
         Phase = InternshipPhase.Terminated;
         MarkCompleted();
 
         return new InternshipReplacementRequested(
-            StudentId, BusinessIdForContractFlow, InstitutionId, string.Empty);
+            StudentId, BusinessIdForContractFlow, InstitutionId, e.Reason);
     }
 
     // ─── HANDLE: Sözleşme Tamamlandı ───
-    public InternshipCompleted Handle(ContractCompleted e)
+    // Girdi Contract modülünün olayı değil, aktarıcının ürettiği komuttur (#248).
+    public InternshipCompleted Handle(CompleteInternshipContract e)
     {
         Phase = InternshipPhase.Completed;
         MarkCompleted();

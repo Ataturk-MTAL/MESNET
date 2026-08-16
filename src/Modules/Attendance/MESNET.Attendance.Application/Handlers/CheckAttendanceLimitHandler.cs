@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Entities;
 using MESNET.Attendance.Core.ReadModels;
 using MESNET.Attendance.Core.Policies;
@@ -6,6 +7,28 @@ using MESNET.Attendance.Shared.Events;
 
 namespace MESNET.Attendance.Application.Handlers;
 
+/// <summary>
+/// Devamsızlık sınırını değerlendirir ve aşıldığında fesih zincirini tetikler.
+///
+/// <para><b>Sayaç ASENKRON GÖRÜNÜMDEN OKUNMAZ (#249).</b> Eskiden <c>AttendanceView</c>
+/// okunuyordu; o projeksiyon <c>ProjectionLifecycle.Async</c>'tir ve işlenmekte olan olay için
+/// yalnız <c>+1</c> telafisi vardı. Ardışık girişte daemon birden çok olay geride kalıyor,
+/// sayaç eksik okunuyor ve <b>sınır sessizce atlanıyordu</b>. Ölçüldü: 3 senaryonun 17 kaydı
+/// arka arkaya girildiğinde hiçbiri tetiklemedi; görünüm oturduktan sonra tek kayıt eklenince
+/// ikisi de anında tetikledi. Okul haftalık devamsızlığı tek oturumda girer — yani bu, kenar
+/// durum değil <b>normal kullanım</b>dı.</para>
+///
+/// <para><b>Neden <see cref="AttendanceRecord"/>:</b> anlık görüntüsü <c>Inline</c>'dır, yani
+/// devamsızlığın yazıldığı transaction'da güncellenir. Bu handler cascading mesajla, o
+/// transaction commit olduktan SONRA çalışır — kayıt kesinlikle görünürdür. Bayatlık ihtimali
+/// ortadan kalkar, <c>+1</c> telafisine de gerek kalmaz.</para>
+///
+/// <para><b>Yan kazanç:</b> düzeltilen ve silinen kayıtlar da doğru sayılır. Görünüm
+/// <c>AttendanceCorrected</c>/<c>AttendanceDeleted</c> olaylarını uygulayamıyor (olaylar
+/// <c>AcademicPeriodId</c> taşımıyor, düzeltme eski türü taşımıyor), bu yüzden yanlış girilip
+/// sonra düzeltilen devamsızlık sayaçta kalıyordu. Aggregate'te tür ve <c>IsDeleted</c>
+/// günceldir.</para>
+/// </summary>
 public static class CheckAttendanceLimitHandler
 {
     // Marten 9 senkron veri erişimini kaldırdı — .FirstOrDefault() burada
@@ -14,16 +37,23 @@ public static class CheckAttendanceLimitHandler
     public static async Task<AttendanceLimitExceeded?> Handle(
         AttendanceMarked @event, IQuerySession session)
     {
-        // Sayaç öğrenci + akademik dönem başınadır (#242). Eskiden sorgu BusinessId ile
-        // eşleşiyordu; öğrenci işletme değiştirince satır bulunamıyor, total hep 1 kalıyor ve
-        // limit BİR DAHA HİÇ tetiklenmiyordu — fesih→yeni yerleştirme akışından geçen her
-        // öğrencide kalıcı olarak.
-        var key = AttendanceCounterScope.KeyFor(@event.StudentId, @event.AcademicPeriodId);
-        var view = await session.LoadAsync<AttendanceView>(key);
+        // Kapsam öğrenci + akademik dönem başınadır (#242). İşletme anahtara GİRMEZ: girseydi
+        // öğrenci işletme değiştirince sayaç sıfırlanır ve yıl içinde iki işletmede biriken
+        // devamsızlık hiçbir eşiğe takılmazdı.
+        var records = await session.Query<AttendanceRecord>()
+            .Where(r => r.StudentId == @event.StudentId
+                        && r.AcademicPeriodId == @event.AcademicPeriodId
+                        && !r.IsDeleted)
+            .ToListAsync();
 
-        // Sınır artık EĞİTİM TÜRÜNE göre ve MEVZUATTAN türetiliyor (#183) — eski sabit 20
-        // hiçbir hükümle eşleşmiyordu. Gerekçe ve dayanak: AttendanceLimitPolicy.
-        // Öğrenci kaydı bulunamazsa tür bilinmez ve politika DAHA DÜŞÜK eşiğe düşer; eksik
+        // Tür ayrımı bellekte yapılır: AbsenceType bir SmartEnum ve Marten LINQ'inde
+        // r.Type.Name → data->'type'->>'Name' üretip her zaman NULL döner (bkz. CLAUDE.md).
+        // Küme bir öğrencinin bir eğitim yılıdır — sınırlı ve seyrek okunur.
+        var totalDays = records.Count;
+        var unexcusedDays = records.Count(r => AttendanceCounterScope.CountsAsUnexcused(r.Type.Name));
+
+        // Sınır artık EĞİTİM TÜRÜNE ve DEVAMSIZLIK TÜRÜNE göre, mevzuattan türetiliyor (#183).
+        // Öğrenci kaydı bulunamazsa tür bilinmez ve politika DAHA DAR eşiklere düşer; eksik
         // veri sınırı gevşetmemeli.
         var student = await session.LoadAsync<StudentNameView>(@event.StudentId);
 
@@ -31,17 +61,6 @@ public static class CheckAttendanceLimitHandler
         // Kayıt yoksa ya da bozuksa politika mevzuattan türetilmiş başlangıç değerine düşer —
         // "yapılandırma yok" sınırın kalkması anlamına gelemez.
         var config = await session.LoadAsync<AttendanceLimitConfig>(AttendanceLimitConfig.SingletonId);
-
-        // İKİ AYAK birden değerlendirilir (#183). Md. 36 (5) örgünde "özürsüz 10 günü,
-        // toplamda 30 günü" der; yalnız mazeretsizi saymak, 29 gün raporlu + 9 gün mazeretsiz
-        // olan öğrenciyi sınırın DIŞINDA bırakıyordu — oysa toplam ayağı çoktan dolmuştu.
-        //
-        // +1: görünüm asenkron güncellenir, bu olay ona henüz yansımadı. Hangi sayaca
-        // yazılacağı projeksiyonla AYNI politikadan sorulur; ayrışırlarsa sınır yanlış ayaktan
-        // tetiklenir ve sonucu fesihtir.
-        var isUnexcused = AttendanceCounterScope.CountsAsUnexcused(@event.AbsenceType);
-        var unexcusedDays = (view?.UnexcusedDays ?? 0) + (isUnexcused ? 1 : 0);
-        var totalDays = (view?.TotalAbsenceDays ?? 0) + 1;
 
         var decision = AttendanceLimitPolicy.Evaluate(
             student?.EducationType, unexcusedDays, totalDays, config);
