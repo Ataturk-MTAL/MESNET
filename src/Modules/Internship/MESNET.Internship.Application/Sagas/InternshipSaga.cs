@@ -5,6 +5,7 @@ using MESNET.Common.Shared;
 using MESNET.Internship.Application.Errors;
 using MESNET.Internship.Core.Enums;
 using MESNET.Internship.Core.Policies;
+using MESNET.Internship.Core.Services;
 using MESNET.Internship.Core.ValueObjects;
 using MESNET.Internship.Shared.Events;
 using Wolverine;
@@ -42,7 +43,10 @@ public class InternshipSaga : Saga
 
     public static (InternshipSaga, InternshipStarted) Start(StudentPlaced e)
     {
-        var id = Guid.NewGuid();
+        // Kimlik yerleştirmeden DETERMİNİSTİK türer (#251). Guid.NewGuid() olsaydı aynı
+        // StudentPlaced tekrar yayınlandığında ikinci bir saga daha doğardı — ölçüldü,
+        // 2248 saga yalnız 95 yerleştirmeye karşılık geliyordu. Gerekçe: InternshipSagaId.
+        var id = InternshipSagaId.For(e.PlacementId);
         var saga = new InternshipSaga
         {
             Id = id,

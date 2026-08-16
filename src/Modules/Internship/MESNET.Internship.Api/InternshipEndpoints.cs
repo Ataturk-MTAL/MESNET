@@ -30,6 +30,24 @@ public static class InternshipEndpoints
         group.MapPost("/{internshipId:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/director", PostApproveDirector).RequireAuthorization(Permissions.Internship.Manage);
         group.MapPost("/{internshipId:guid}/approve/override", PostOverride).RequireAuthorization(Permissions.Internship.Manage);
+
+        // Tek seferlik geçiş adımı (#251): kopya saga'ları birleştirir. Kurum üstü bir bakım
+        // işidir — bir okulun müdürü kendi verisinin saga kimliklerini yeniden yazamamalı.
+        group.MapPost("/resync-sagas", PostResyncSagas).RequireAuthorization(Permissions.Platform.TenantManage);
+    }
+
+    /// <summary>
+    /// Kopya staj saga'larını tek satıra indirir (#251). Gerekçe ve "hangi kopya korunur"
+    /// kararı <c>ResyncInternshipSagasHandler</c>'da. Kiracı başına çalışır.
+    /// </summary>
+    private static async Task<IResult> PostResyncSagas(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ResyncInternshipSagasResult>(new ResyncInternshipSagas());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.Placements} yerleştirme tekilleştirildi, {result.Merged} kopya silindi.")
+            .Build());
     }
 
     private static async Task<IResult> Get(

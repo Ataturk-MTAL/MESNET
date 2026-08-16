@@ -518,3 +518,33 @@ Bir adım başka bir adımın verisini üretiyorsa sıra önemlidir. Örnek: koo
 dağıtımında önce **yetki backfill'i**, sonra **görünüm resync'i** gerekir — ters sırada
 yerleştirme tümden durur. Aynı biçimde kiracı anahtarında önce **backfill**, sonra
 **token yolunun kapatılması** gelir.
+
+## Staj saga'sı: kopya birleştirme + sözleşme bağlama (#248, #251)
+
+**Sıra bozulmaz — önce tekilleştirme, sonra bağlama.** Kopyalar dururken sözleşme bağlamak,
+24 kardeşten rastgele birine bağlamak demektir.
+
+```bash
+# 1) Kopya saga'ları birleştir — kiracı başına, platform:tenant:manage
+curl -X POST /api/internships/resync-sagas
+
+# 2) Aktif sözleşmeleri saga'ya yeniden bağla — kiracı başına, platform:tenant:manage
+curl -X POST /api/contracts/resync-internship-links
+```
+
+**Neden gerekli:** saga'nın modüller arası yarısı çalışmıyordu (#248) — `ContractActivated`,
+`ContractTerminated`, `ContractCompleted` ve `AttendanceLimitExceeded` saga kimliği
+çözülemediği için ölü mektup kuyruğuna düşüyordu. Ölçüm: **2248 saga'nın hiçbirinde**
+`contractId` yazılı değildi. Ayrıca kimlik `Guid.NewGuid()` ile üretildiği için tekrar
+yayınlanan `StudentPlaced` her seferinde yeni saga doğuruyordu (#251): 2248 saga, yalnız
+95 yerleştirme.
+
+Kod düzeltildi ama **geçmiş kendiliğinden düzelmez**; olaylar bir daha yayınlanmaz.
+
+- Adım 1 kopyaları siler, **en ileri fazdaki** kazanır — yürüyen fesih zincirini iptal etmemek için
+- Adım 2 yalnız **aktif** sözleşmeler için `ContractActivated` yeniden yayınlar.
+  `Terminated`/`Completed` **bilerek atlanır**: yeniden yayınlansaydı yeniden yerleştirme
+  talebi ve staj kapanışı **ikinci kez** tetiklenirdi
+
+> **Atlanırsa:** stajlar sözleşmeleriyle bağlanmaz, `AwaitingContract`'ta çakılı kalır ve
+> hangi saga'nın gerçek olduğu belirsizdir. Hata görünmez — yalnız fesih ve kapanış hiç çalışmaz.

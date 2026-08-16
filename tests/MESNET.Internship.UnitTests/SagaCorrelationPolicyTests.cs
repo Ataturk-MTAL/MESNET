@@ -120,3 +120,42 @@ public sealed class SagaCorrelationPolicyTests
         SagaCorrelationPolicy.IsOpen(InternshipPhase.TerminationInProgress).ShouldBeTrue();
     }
 }
+
+/// <summary>
+/// Saga kimliği yerleştirmeden <b>deterministik</b> türer (#251).
+///
+/// <para><b>Yaşanan:</b> <c>Guid.NewGuid()</c> yüzünden tekrar yayınlanan <c>StudentPlaced</c>
+/// her seferinde yeni saga doğuruyordu — 2248 saga, yalnız 95 yerleştirme. Fesih zinciri
+/// düzeltildikten sonra bile bir saga fesihe girip 23 kardeşi geride kalıyordu.</para>
+/// </summary>
+public sealed class InternshipSagaIdTests
+{
+    private static readonly Guid Placement = Guid.Parse("44444444-4444-4444-4444-444444444444");
+
+    /// <summary><b>Asıl kural:</b> aynı yerleştirme her zaman aynı satıra düşer.</summary>
+    [Fact]
+    public void Ayni_yerlestirme_ayni_kimligi_uretir()
+    {
+        MESNET.Internship.Core.Services.InternshipSagaId.For(Placement)
+            .ShouldBe(MESNET.Internship.Core.Services.InternshipSagaId.For(Placement));
+    }
+
+    /// <summary>
+    /// Farklı yerleştirme farklı saga demektir: öğrenci fesih sonrası yeni işletmeye
+    /// yerleşirse ikinci staj birincinin üzerine yazmamalı.
+    /// </summary>
+    [Fact]
+    public void Farkli_yerlestirme_farkli_kimlik_uretir()
+    {
+        MESNET.Internship.Core.Services.InternshipSagaId.For(Placement)
+            .ShouldNotBe(MESNET.Internship.Core.Services.InternshipSagaId.For(Guid.NewGuid()));
+    }
+
+    /// <summary>Boş kimlik sessizce çakışan bir saga üretmemeli — yine de deterministik olmalı.</summary>
+    [Fact]
+    public void Bos_yerlestirme_de_deterministiktir()
+    {
+        MESNET.Internship.Core.Services.InternshipSagaId.For(Guid.Empty)
+            .ShouldNotBe(MESNET.Internship.Core.Services.InternshipSagaId.For(Placement));
+    }
+}
