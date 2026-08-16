@@ -13,6 +13,11 @@ public class AttendanceMartenConfig : IConfigureMarten
         options.Schema.For<WorkCalendar>().Index(x => x.InstitutionId);
 
         // Read model schema (projection Application'da register edilir)
+        // Devamsızlık sınırları — ULUSAL parametre (#183). Tek satır; kiracı damgası YOK
+        // (DocumentTenancyMap → Shared), çünkü sınır MEB Yönetmeliği md. 36'dan türer ve okul
+        // başına değişemez.
+        options.Schema.For<AttendanceLimitConfig>().DatabaseSchemaName("attendance");
+
         options.Schema.For<AttendanceView>().DatabaseSchemaName("attendance");
         options.Schema.For<AttendanceView>().Index(x => x.StudentId);
         options.Schema.For<AttendanceView>().Index(x => x.BusinessId);

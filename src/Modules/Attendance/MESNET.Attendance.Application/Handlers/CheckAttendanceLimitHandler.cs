@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Attendance.Core.Entities;
+using MESNET.Attendance.Core.ReadModels;
 using MESNET.Attendance.Core.Policies;
 using MESNET.Attendance.Shared.Events;
 
@@ -20,17 +21,35 @@ public static class CheckAttendanceLimitHandler
         var key = AttendanceCounterScope.KeyFor(@event.StudentId, @event.AcademicPeriodId);
         var view = await session.LoadAsync<AttendanceView>(key);
 
-        // TODO(#183): limit sabit kodlanmış. Karar verildi — ulusal parametre katmanından
-        // (platform:parameter:manage, #147 deseni) çözülecek ve eğitim türüne göre değişebilir.
-        // Mevzuat teyidi (MEB Yönetmeliği md. 36 + MESEM yönergesi) bekleniyor; teyit gelmeden
-        // sayı değiştirilmiyor çünkü bu değer doğrudan fesih tetikleyicisidir.
-        const int limit = 20;
-        var total = (view?.UnexcusedDays ?? 0) + 1;
+        // Sınır artık EĞİTİM TÜRÜNE göre ve MEVZUATTAN türetiliyor (#183) — eski sabit 20
+        // hiçbir hükümle eşleşmiyordu. Gerekçe ve dayanak: AttendanceLimitPolicy.
+        // Öğrenci kaydı bulunamazsa tür bilinmez ve politika DAHA DÜŞÜK eşiğe düşer; eksik
+        // veri sınırı gevşetmemeli.
+        var student = await session.LoadAsync<StudentNameView>(@event.StudentId);
 
-        if (AttendanceCounterScope.IsExceeded(total, limit))
+        // Sınır ULUSAL PARAMETREDİR (#183): mevzuat değişirse kod değil kayıt değişir.
+        // Kayıt yoksa ya da bozuksa politika mevzuattan türetilmiş başlangıç değerine düşer —
+        // "yapılandırma yok" sınırın kalkması anlamına gelemez.
+        var config = await session.LoadAsync<AttendanceLimitConfig>(AttendanceLimitConfig.SingletonId);
+
+        // İKİ AYAK birden değerlendirilir (#183). Md. 36 (5) örgünde "özürsüz 10 günü,
+        // toplamda 30 günü" der; yalnız mazeretsizi saymak, 29 gün raporlu + 9 gün mazeretsiz
+        // olan öğrenciyi sınırın DIŞINDA bırakıyordu — oysa toplam ayağı çoktan dolmuştu.
+        //
+        // +1: görünüm asenkron güncellenir, bu olay ona henüz yansımadı. Hangi sayaca
+        // yazılacağı projeksiyonla AYNI politikadan sorulur; ayrışırlarsa sınır yanlış ayaktan
+        // tetiklenir ve sonucu fesihtir.
+        var isUnexcused = AttendanceCounterScope.CountsAsUnexcused(@event.AbsenceType);
+        var unexcusedDays = (view?.UnexcusedDays ?? 0) + (isUnexcused ? 1 : 0);
+        var totalDays = (view?.TotalAbsenceDays ?? 0) + 1;
+
+        var decision = AttendanceLimitPolicy.Evaluate(
+            student?.EducationType, unexcusedDays, totalDays, config);
+
+        if (decision.IsExceeded)
             return new AttendanceLimitExceeded(
-                @event.StudentId, @event.InstitutionId, @event.BusinessId, total, limit,
-                @event.AcademicPeriodId);
+                @event.StudentId, @event.InstitutionId, @event.BusinessId,
+                decision.Days, decision.Limit, @event.AcademicPeriodId, decision.Kind);
 
         return null;
     }

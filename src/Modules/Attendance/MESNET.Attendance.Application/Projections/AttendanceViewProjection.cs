@@ -66,7 +66,9 @@ public partial class AttendanceViewProjection : MultiStreamProjection<Attendance
     {
         view.TotalAbsenceDays++;
 
-        if (absenceType.Equals("Unexcused", StringComparison.OrdinalIgnoreCase))
+        // Ayrım politikadan gelir: aynı karar CheckAttendanceLimitHandler'da da veriliyor
+        // (henüz yansımamış olayı sayarken). İkisi ayrışırsa sınır yanlış ayaktan tetiklenir (#183).
+        if (AttendanceCounterScope.CountsAsUnexcused(absenceType))
             view.UnexcusedDays++;
         else
             view.ExcusedDays++;

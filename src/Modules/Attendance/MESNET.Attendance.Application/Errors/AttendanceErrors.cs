@@ -4,6 +4,23 @@ namespace MESNET.Attendance.Application.Errors;
 
 public static class AttendanceErrors
 {
+    /// <summary>
+    /// Sıfır ya da negatif sınır, "her öğrenci ilk devamsızlıkta feshedilir" demektir (#183).
+    /// Yapılandırma bir fesih tetikleyicisini sessizce sıfıra çekememeli.
+    /// </summary>
+    public static Error InvalidAbsenceLimit() =>
+        new("Attendance.InvalidAbsenceLimit", "Devamsızlık sınırı en az 1 gün olmalıdır.");
+
+    /// <summary>
+    /// Toplam ayak mazeretsiz ayağı kapsar (#183): her mazeretsiz gün aynı zamanda toplam bir
+    /// gündür. Ayrı mesaj — "en az 1 gün" uyarısı bu hatayı hiç anlatmıyor ve idare neyi
+    /// düzelteceğini bilemiyordu.
+    /// </summary>
+    public static Error TotalLimitBelowUnexcused(int totalLimit, int unexcusedLimit) =>
+        new("Attendance.TotalLimitBelowUnexcused",
+            $"Toplam devamsızlık sınırı ({totalLimit} gün), özürsüz sınırından "
+            + $"({unexcusedLimit} gün) küçük olamaz — özürsüz günler toplama da dâhildir.");
+
     public static Error NotFound(Guid id) =>
         new("Attendance.NotFound", $"Devamsızlık kaydı bulunamadı: {id}");
 
