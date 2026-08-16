@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Attendance.Core.Entities;
+using MESNET.Attendance.Core.ReadModels;
 using MESNET.Attendance.Core.Policies;
 using MESNET.Attendance.Shared.Events;
 
@@ -20,11 +21,12 @@ public static class CheckAttendanceLimitHandler
         var key = AttendanceCounterScope.KeyFor(@event.StudentId, @event.AcademicPeriodId);
         var view = await session.LoadAsync<AttendanceView>(key);
 
-        // TODO(#183): limit sabit kodlanmış. Karar verildi — ulusal parametre katmanından
-        // (platform:parameter:manage, #147 deseni) çözülecek ve eğitim türüne göre değişebilir.
-        // Mevzuat teyidi (MEB Yönetmeliği md. 36 + MESEM yönergesi) bekleniyor; teyit gelmeden
-        // sayı değiştirilmiyor çünkü bu değer doğrudan fesih tetikleyicisidir.
-        const int limit = 20;
+        // Sınır artık EĞİTİM TÜRÜNE göre ve MEVZUATTAN türetiliyor (#183) — eski sabit 20
+        // hiçbir hükümle eşleşmiyordu. Gerekçe ve dayanak: AttendanceLimitPolicy.
+        // Öğrenci kaydı bulunamazsa tür bilinmez ve politika DAHA DÜŞÜK eşiğe düşer; eksik
+        // veri sınırı gevşetmemeli.
+        var student = await session.LoadAsync<StudentNameView>(@event.StudentId);
+        var limit = AttendanceLimitPolicy.LimitFor(student?.EducationType);
         var total = (view?.UnexcusedDays ?? 0) + 1;
 
         if (AttendanceCounterScope.IsExceeded(total, limit))

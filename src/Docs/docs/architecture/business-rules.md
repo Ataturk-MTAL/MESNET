@@ -190,9 +190,38 @@ Sistem, devamsızlık girişi yapılmak istenen tarihi `WorkCalendar` ile kontro
 
 **Yasal Dayanak:** MEB Ortaöğretim Kurumları Yönetmeliği Madde 36
 
-- Kurum yönetimi tarafından belirlenen devamsızlık limiti aşıldığında `AttendanceLimitExceeded` event'i tetiklenir
-- Bu event Internship saga tarafından yakalanır ve otomatik fesih süreci başlatılır
-- Özürsüz devamsızlık limiti: Kurum tarafından belirlenir (genellikle toplam iş günlerinin belirli bir yüzdesi)
+**Limit kurum tarafından belirlenmez — mevzuat türevidir (#183).** Önceki metin "kurum
+belirler" diyordu, kod ise sabit `20` taşıyordu; ikisi de yanlıştı ve 20 hiçbir hükümle
+eşleşmiyordu.
+
+| Eğitim türü | Sınır | Dayanak |
+| --- | --- | --- |
+| **Örgün** | **10** mazeretsiz gün | Md. 36 (5): *"Devamsızlık süresi **özürsüz 10 günü**, toplamda 30 günü aşan öğrenciler… başarısız sayılır"* |
+| **MESEM** | **60** mazeretsiz gün | Md. 36 (5): işletmede *"3308'e göre kullanabileceği **ücretli ve ücretsiz izin toplamından** fazla olamaz"* → 3308 md. 26: 1 ay ücretli + 1 aya kadar ücretsiz; SGK usulü 30 günlük ayla (§6.2.1) 30 + 30 |
+
+Karar `AttendanceLimitPolicy` içindedir ve testle kilitlidir. Sınır aşılınca
+`AttendanceLimitExceeded` yayınlanır, Internship saga otomatik fesih sürecini başlatır —
+yönetmeliğin öngördüğü sonuçla aynı: *"sözleşmeleri fesih edilerek sigorta çıkışları yapılır"*.
+
+:::warning İki bilinçli türetim
+**Örgün için işletme sınırı yönetmelikte YOK.** Md. 36 (5) okul devamını düzenliyor; örgün
+öğrencinin işletmedeki devamsızlığı için ayrı hüküm getirilmemiş. Sistem yalnız mazeretsiz
+günleri saydığı için fıkranın **özürsüz** ayağı (10) alındı.
+
+**MESEM sınırı toplam devamsızlığa konmuş, sayaç yalnız mazeretsizi sayıyor.** Yani gerçek
+sınır 60'tan erken dolabilir. Seçim bilerek **öğrenci lehine** (geç tetikleyen) yöndedir —
+yanlış fesih, geç fesihten pahalıdır.
+:::
+
+> **Sahibin verdiği "6 gün" bu sınır değildir.** O, md. 36'nın **teorik ders** için koyduğu
+> *"devam etmesi gereken sürenin altıda biri"* kuralının, haftada bir gün okulu olan MESEM
+> öğrencisinde ~36 ders gününe uygulanmasıyla çıkar. Teorik ders devamı **okul** devamıdır ve
+> bu sistemin ölçtüğü şey değildir (e-Okul'un alanı).
+
+- **Eksik veri sınırı gevşetmez:** eğitim türü bilinmiyorsa örgün sayılır, yani daha düşük eşik
+- **Kayıp yetenek:** md. 36 (4) işletme devamsızlığında **5., 15. ve 25.** günlerde yasal
+  temsilciye ve işletmeye bildirim zorunlu kılıyor; sistemde kademeli bildirim yok, yalnız
+  eşikte fesih var
 - Sağlık raporu ile belgelenen devamsızlıklar özürsüz devamsızlığa dahil edilmez
 
 ### 5.4 İşletmede Mesleki Eğitim Süreleri
