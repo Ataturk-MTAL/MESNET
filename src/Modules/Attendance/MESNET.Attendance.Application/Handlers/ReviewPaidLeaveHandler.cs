@@ -7,6 +7,7 @@ using MESNET.Attendance.Core.Services;
 using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
+using Wolverine;
 using Wolverine.Marten;
 
 namespace MESNET.Attendance.Application.Handlers;
@@ -59,8 +60,22 @@ public static class BusinessApprovePaidLeaveHandler
 /// </summary>
 public static class ApprovePaidLeaveHandler
 {
+    /// <summary>
+    /// Olay hem <b>akışa yazılır</b> hem <b>mesaj olarak yayınlanır</b> (#254).
+    ///
+    /// <para><b>Zincirin sonucu buna bağlıydı.</b> <c>[AggregateHandler]</c> dönüşü cascading
+    /// mesaj değildir; olay yalnız <c>IEventStream&lt;T&gt;.AppendOne</c> ile akışa yazılır.
+    /// Başvuru <c>Resmileşti</c> durumuna geçiyor ama <c>PaidLeaveAttendanceConsumer</c> hiç
+    /// çağrılmadığı için <b>hiçbir devamsızlık kaydı doğmuyordu</b> — iki taraflı onay zinciri
+    /// (#177) sonuçsuz kalıyordu. Ücretli izin komut yolundan da girilemediği için
+    /// (<c>AbsenceTypePolicy.RequiresApprovedRequest</c>) <c>PaidLeave</c> türü sisteme
+    /// <b>hiçbir yoldan</b> girmiyordu.</para>
+    ///
+    /// <para><b>Ters yön:</b> ret (<c>PaidLeaveRejected</c>) onaydan ÖNCE gerçekleşir ve geri
+    /// alınacak bir kayıt yoktur; tüketicisi de yoktur. Simetri gereği bir şey canlandırılmaz.</para>
+    /// </summary>
     [AggregateHandler]
-    public static async Task<PaidLeaveApproved> Handle(
+    public static async Task<(Events, OutgoingMessages)> Handle(
         ApprovePaidLeave command, PaidLeaveRequest? request,
         ICurrentUserService currentUser, IQuerySession session)
     {
@@ -80,7 +95,7 @@ public static class ApprovePaidLeaveHandler
 
         await BusinessApprovePaidLeaveHandler.EnsurePeriodActiveAsync(session, target);
 
-        return new PaidLeaveApproved(
+        var approved = new PaidLeaveApproved(
             target.Id,
             target.StudentId,
             target.BusinessId,
@@ -91,6 +106,8 @@ public static class ApprovePaidLeaveHandler
             target.Reason,
             schoolApproverId,
             DateTime.UtcNow);
+
+        return (new Events { approved }, new OutgoingMessages { approved });
     }
 }
 

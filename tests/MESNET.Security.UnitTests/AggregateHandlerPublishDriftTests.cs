@@ -51,16 +51,12 @@ public sealed class AggregateHandlerPublishDriftTests
     /// ve refleks tersine döner — yeni bir <c>[AggregateHandler]</c> tüketicisi olan olayı
     /// yayınlamadan geçemez.
     ///
-    /// <para><c>ReviewPaidLeaveHandler</c> → <c>PaidLeaveApproved</c>: #177'nin iki taraflı onay
-    /// zinciri sonunda hiçbir devamsızlık kaydı üretmiyor, çünkü
-    /// <c>PaidLeaveAttendanceConsumer</c> hiç çağrılmıyor. Ayrı iş: <b>#254</b>. Bu PR'da
-    /// düzeltilmedi çünkü canlandırılması <c>PaidLeave</c> devamsızlık kaydı üretimini başlatır
-    /// — ölçülmemiş bir davranış değişikliği.</para>
+    /// <para><b>Liste şu an BOŞ</b> — #254 ile son satır da düştü
+    /// (<c>ReviewPaidLeaveHandler</c> → <c>PaidLeaveApproved</c>). Boş kalması hedeftir; buraya
+    /// satır eklemek, sessizce çalışmayan bir tüketiciyi kabul etmek demektir ve gerekçesi
+    /// yazılmalıdır.</para>
     /// </summary>
-    private static readonly HashSet<string> KnownDebt = new(StringComparer.Ordinal)
-    {
-        "ReviewPaidLeaveHandler.cs:PaidLeaveApproved",
-    };
+    private static readonly HashSet<string> KnownDebt = new(StringComparer.Ordinal);
 
     [Fact]
     public void Tuketicisi_olan_olay_aggregate_handler_tarafindan_yayinlanmali()
