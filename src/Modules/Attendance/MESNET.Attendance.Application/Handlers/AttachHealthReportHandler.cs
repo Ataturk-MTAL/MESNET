@@ -9,6 +9,7 @@ using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Wolverine;
 using Wolverine.Marten;
 
 namespace MESNET.Attendance.Application.Handlers;
@@ -49,8 +50,16 @@ public static class AttachHealthReportHandler
         ["image/png"] = "png"
     };
 
+    /// <summary>
+    /// Olay hem akışa yazılır hem <b>mesaj olarak yayınlanır</b> (#252). <c>[AggregateHandler]</c>
+    /// dönüşü cascading mesaj DEĞİLDİR — gerekçe: <see cref="ApproveAttendanceHandler"/>.
+    /// ///
+    /// <para><b>Okul doğrudan girdiğinde kesintiyi KALDIRIR</b>
+    /// (<c>RequiresApproval == false</c>); onay bekleyen yüklemede tüketici hiçbir şey
+    /// yapmaz (#172).</para>
+    /// </summary>
     [AggregateHandler]
-    public static async Task<HealthReportAttached> Handle(
+    public static async Task<(Events, OutgoingMessages)> Handle(
         AttachHealthReport command,
         AttendanceRecord? record,
         ICurrentUserService currentUser,
@@ -101,8 +110,10 @@ public static class AttachHealthReportHandler
             throw new DomainException(uploadResult.Error);
         }
 
-        return new HealthReportAttached(
+        var attached = new HealthReportAttached(
             record.Id, record.StudentId, objectPath, DateTime.UtcNow, attachedById, requiresApproval);
+
+        return (new Events { attached }, new OutgoingMessages { attached });
     }
 
     /// <summary>Boyut, MIME türü ve magic byte doğrulaması. Geçerli içerik türünü döndürür.</summary>

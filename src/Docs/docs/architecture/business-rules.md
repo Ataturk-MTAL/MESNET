@@ -215,6 +215,41 @@ devamsızlık, ücretli ve ücretsiz izin **mazeretli** sayaca gider. Bu ayrım 
 ayrımıyla (`AbsenceType.AffectsSalary`) karıştırılmamalı: ücretsiz izinde ücret kesilir ama
 devamsızlık mazeretsiz değildir — iki karar farklı hükümlerden gelir.
 
+**Hangi DURUMDAKİ kayıt sayılır (#252):** tür ekseni kaydın *hangi ayağa* yazılacağını söyler,
+durum ekseni *sayılıp sayılmayacağını*. **Onay bekleyen (`Pending`) kayıt fesih sayacına girmez;
+koordinatör öğretmen onayladığı anda girer.** İşletme yetkilisi, işletme İK ve usta öğretici
+devamsızlığı *bildirir* (`attendance:upload`) — hüküm öğretmenin onayıyla doğar.
+
+Bu, §6.2'nin ücret kesintisi için koyduğu kuralın aynısıdır (*"Yalnız **onaylanmış** kayıtlar
+sayılır — işletmenin girdiği ve henüz öğretmence onaylanmamış (`Pending`) devamsızlık öğrencinin
+ücretini kesmez"*) ve ikisi de tek bir ilkeden gelir: **giriş geniş, hüküm dar** (#172). Ödemeyi
+yapan taraf kendi kesintisini tek taraflı koyamıyorsa, sözleşmenin feshini de tek taraflı
+başlatamaz — oysa sayaç duruma bakmazken işletme, öğretmen hiç dokunmadan fesih onay zincirini
+başlatabiliyordu; **en ağır hüküm, hükmü olmayan girdiden çıkıyordu**.
+
+- **Kara liste, beyaz liste değil — yalnız `Pending` dışlanır.** `Recorded`, `Verified` ve
+  `Corrected` sayılır; tanınmayan ya da boş durum da **sayılır**. Beyaz liste
+  (`Recorded` + `Verified`) yazılsaydı `Corrected` sessizce sayaçtan düşerdi — düzeltilen kayıt
+  hâlâ geçerli bir devamsızlıktır ve `Corrected` durumu `Pending`'e geri dönmez; ileride eklenen
+  her yeni durum da aynı sessizlikle yutulurdu. Yön bu bölümün geri kalanıyla aynı: **eksik
+  veri sınırı gevşetemez**. Silinmiş (`IsDeleted`) kayıt her hâlükârda elenir.
+- **Sayan sorgu durum eksenine bakmak ZORUNDADIR — kalıcı kural.** Sayılabilir küme her
+  değiştiğinde sınır yeniden ölçülür: kayıt **girildiğinde**, **onaylandığında** ve
+  **düzeltildiğinde** (`AttendanceMarked` / `AttendanceApproved` / `AttendanceCorrected`).
+  Yalnız girişi dinlemek, `Pending` dışlamasıyla birleşince ters yönde bir açık açar: işletmenin
+  bildirdiği devamsızlık onaylandıktan sonra da **hiç sayılmaz** ve mevzuatın emrettiği fesih
+  **sessizce hiç tetiklenmez**. Düzeltme de sınırı doldurabilir; tür değişimi (mazeretli →
+  mazeretsiz) mazeretsiz ayağını 10 günde doldurur.
+- **Süzme bellekte yapılır, LINQ'te değil.** `StatusName`/`IsDeleted` alanları belgeye sonradan
+  eklendi; alanı taşımayan eski snapshot'ta SQL karşılaştırması `NULL` üretir ve satırı
+  **sessizce eler** — sayaç eksik kalır, limit hiç tetiklenmez. Küme bir öğrencinin bir eğitim
+  yılıdır: sınırlı ve seyrek okunur.
+- **Onay tek kapıdır — süre dolunca kendiliğinden onay YOKTUR.** §5.7'de tarif edilen otomatik
+  onay yazılmamıştır; `Pending` kayıt onaylanana kadar `Pending` kalır ve sayaca hiç girmez.
+
+Durum ekseninin kararı tek yerdedir ve testle kilitlidir: `AttendanceCounterScope.CountsTowardLimit`
+ile `AttendanceCounterScope.Tally`.
+
 **Sayılar PARAMETRİKTİR — mevzuat değişirse kod değişmez.** Yürürlükteki değerler
 `AttendanceLimitConfig` belgesinden gelir; kodda duran sabitler yalnız **başlangıç
 değerleridir** (kayıt hiç girilmemişken kullanılır).
@@ -293,6 +328,13 @@ Her devamsızlık kaydı, aktif `InternshipPlacement`'taki öğrenci-işletme e�
 - **Koordinatör öğretmen** devamsızlık girdiğinde → doğrudan `Recorded` (onay gerekmez)
 - **Kurum müdürü/personeli** devamsızlık girdiğinde → doğrudan `Recorded`
 
+> **`Pending` durumunun hükmü yoktur (#252).** Onay bekleyen kayıt ne **ücret kesintisine**
+> girer (§6.2) ne de **fesih sayacına** (§5.3). Öğretmen onayladığı anda ikisine birden girer —
+> ve eşik tam o anda dolabileceği için onay, devamsızlık sınırını yeniden ölçtürür (öğretmen
+> haftanın biriken bildirimlerini toplu onayladığında bu sıradan bir durumdur). Süre dolunca
+> kendiliğinden onay **yoktur** (§5.7): onaylanmayan kayıt süresiz `Pending` kalır ve hiçbir
+> hüküm doğurmaz.
+
 #### Backend Doğrulama Zinciri
 
 1. Akademik dönem aktif mi? (`AcademicPeriodView`)
@@ -312,15 +354,33 @@ Her devamsızlık kaydı, aktif `InternshipPlacement`'taki öğrenci-işletme e�
 
 **Hata kodu:** `ATTENDANCE_OUTSIDE_CURRENT_WEEK`
 
-### 5.7 Otomatik Onay ve Uyarı Mekanizması
+### 5.7 Otomatik Onay ve Uyarı Mekanizması *(planlanan — UYGULANMADI)*
 
-İşletme tarafından girilen ancak koordinatör öğretmen tarafından **7 gün içinde onaylanmamış** devamsızlık kayıtları (`Pending` durumunda) için:
+:::danger Bu bölüm planı anlatır, bugünkü davranışı değil
+`AutoApproveExpiredAttendance` **kodda yazılmamıştır** — ne komut, ne zamanlanmış iş, ne de
+bildirim vardır. Aşağıdaki 7 günlük mekanizma bir **tasarım kararıdır ve uygulanmayı bekler**.
+Bölüm plan olarak duruyor; bugünkü davranış diye okunmamalıdır.
+
+**Bugünkü davranış:** onay bekleyen (`Pending`) kayıt **süresiz bekler**. Kendiliğinden
+`Recorded`'a geçmez, müdür yardımcısına bildirim gitmez, gecikme kayıt altına alınmaz. Yani
+**koordinatör öğretmenin onayı, fesih sayacının (§5.3) ve ücret kesintisinin (§6.2) tek
+kapısıdır**: öğretmen onaylamazsa işletmenin bildirdiği devamsızlık ne ücreti keser, ne feshi
+tetikler, ne de zaman aşımıyla hükme dönüşür.
+
+Bu, işletmenin tek taraflı hüküm doğurmasını engeller (#172 — giriş geniş, hüküm dar), ama
+karşılığında **ihmalle sessizce kaybolan devamsızlık** riskini açık bırakır: onaylanmayan
+bildirim mevzuatın emrettiği fesih eşiğine hiç ulaşmaz. Mekanizma yazılana kadar bekleyen
+kayıtların takibi **elle** yapılır — panodaki "Bekleyen İşlem" kartı `Pending` devamsızlıkları
+sayar.
+:::
+
+**Planlanan mekanizma:** İşletme tarafından girilen ancak koordinatör öğretmen tarafından **7 gün içinde onaylanmamış** devamsızlık kayıtları (`Pending` durumunda) için:
 
 1. **7. günün başlangıcında** (UTC 00:00) kayıt otomatik olarak `Recorded` durumuna geçirilir
 2. İlgili **müdür yardımcısına** bildirim gönderilir: "X öğrencisinin Y tarihli devamsızlığı otomatik onaylandı — koordinatör öğretmen tarafından zamanında onaylanmadı"
 3. Geç bildirim durumu kayıt altına alınır
 
-**Teknik:** Wolverine durable scheduled messaging ile günlük çalışan `AutoApproveExpiredAttendance` komutu
+**Planlanan teknik:** Wolverine durable scheduled messaging ile günlük çalışan `AutoApproveExpiredAttendance` komutu — **henüz yazılmadı**. Yazıldığında otomatik onayın da sınırı yeniden ölçtürmesi gerekir (§5.3): onay, kaydı fesih sayacına **sokan** olaydır.
 
 ---
 

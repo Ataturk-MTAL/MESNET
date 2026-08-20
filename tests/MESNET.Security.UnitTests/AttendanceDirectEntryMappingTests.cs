@@ -131,6 +131,28 @@ public sealed class AttendanceDirectEntryMappingTests
             .ShouldContain(Permissions.Attendance.HealthReportDirect);
     }
 
+    /// <summary>
+    /// <c>attendance:approve</c> de bir hüküm iznidir (#252) — onay, devamsızlığı <b>fesih
+    /// sayacına sokan</b> adımdır. Bireysel atanabilir kalsaydı bir işletme kullanıcısına
+    /// verilip kendi bildirdiği devamsızlığı onaylatabilirdi ve #252'nin kapattığı tek taraflı
+    /// fesih yolu aynen geri açılırdı.
+    /// </summary>
+    [Fact]
+    public void Onay_izni_de_bireysel_atanamaz()
+    {
+        AssignablePermissionScope.NeverDirectlyAssignable
+            .ShouldContain(Permissions.Attendance.Approve);
+    }
+
+    [Theory]
+    [MemberData(nameof(NonSchoolRoles))]
+    public void Isletme_kullanicisina_onay_izni_bireysel_atanamaz(string role)
+    {
+        AssignablePermissionScope.CanAssign(
+                AssignablePermissionScope.Defaults, [role], Permissions.Attendance.Approve)
+            .ShouldBeFalse("İşletme kullanıcısı kendi bildirdiği devamsızlığı onaylayamamalı.");
+    }
+
     [Theory]
     [MemberData(nameof(NonSchoolRoles))]
     public void Isletme_kullanicisina_hukum_izni_bireysel_atanamaz(string role)

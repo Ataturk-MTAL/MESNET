@@ -129,6 +129,14 @@ public static class AssignablePermissionScope
             Permissions.Attendance.DirectEntry,
             Permissions.Attendance.HealthReportDirect,
             Permissions.Attendance.LeaveApprove,
+            // #252 ile hüküm doğuran izinler sınıfına GEÇTİ: onay bekleyen devamsızlık artık
+            // fesih sayacına girmiyor, yani `attendance:approve` kaydı sayaca SOKAN adımın
+            // kapısıdır. Bireysel atanabilir kalsaydı bir işletme kullanıcısına verilip
+            // kendi bildirdiği devamsızlığı onaylatabilir ve #252'nin kapattığı tek taraflı
+            // fesih yolu aynen geri açılırdı — işletme rollerinin atanabilir domain listesinde
+            // `attendance:` vardır. Rol üzerinden dağıtım etkilenmez: koordinatör öğretmen,
+            // müdür yardımcısı ve müdür bu izni RolePermissionMap'ten almaya devam eder.
+            Permissions.Attendance.Approve,
         };
 
     /// <summary>

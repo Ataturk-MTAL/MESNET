@@ -20,6 +20,7 @@ Bu sayfa o adımların tamamını tek yerde tutar.
 | Realm'e yeni **rol / politika / client** eklendi | Realm doğrulaması (aşağıya bakınız) |
 | Yeni **unique index** eklendi | Mevcut kopyalar **önce** temizlenir (aşağıya bakınız) |
 | Projeksiyonun **kimliği** değişti | Görünüm yeniden inşa edilir (aşağıya bakınız) |
+| Devamsızlık **sayma / eşik** kuralı değişti | Geçmiş tetiklemeler **elden** denetlenir — otomatik düzeltme yoktur (aşağıya bakınız) |
 
 Ortak kök neden: olay-beslemeli read-model'ler yalnız **bundan sonra** gelen olayları yazar.
 Seeder idempotent olduğu için kaynağı yeniden yaratmaz, yani olay bir daha yayınlanmaz ve mevcut
@@ -199,6 +200,104 @@ FROM   attendance.mt_doc_attendanceview;
 ```
 
 İkisi de **0** olmalı.
+
+---
+
+## Devamsızlık sayacı: onay bekleyen kayıtlar sayılmaz (#252)
+
+Fesih sayacı artık **onay bekleyen** (`Pending`) devamsızlık kayıtlarını saymıyor
+(`AttendanceCounterScope.CountsTowardLimit`). Dışlama listesi bilerek dardır: yalnız `Pending`
+dışlanır; `Recorded`, `Verified`, `Corrected` ve **tanınmayan** durum sayılır — eksik veri
+sınırı gevşetmemelidir.
+
+Buna karşılık sınır artık **üç** olayda yeniden ölçülür: `AttendanceMarked`,
+`AttendanceApproved`, `AttendanceCorrected`. Yani `Pending` kayıt onaylandığında sayaca o anda
+girer.
+
+:::danger Atlanırsa ne olur
+Düzeltmeden önce işletmenin **tek taraflı** girdiği `Pending` kayıtlar sayaca giriyor ve fesih
+**onay zincirini** başlatabiliyordu. (Feshin kendisi otomatik değildir: `TerminateContract`
+yalnız `POST /api/contracts/{id}/terminate` ucundan gelir. Otomatik olan, yalnız onay zincirinin
+başlatılmasıdır.)
+
+Zincir başlamış olabilir ve **kod bunu geri alamaz**: `AttendanceLimitExceeded` hiçbir olay
+akışına append edilmiyor, yalnız cascading mesaj olarak geçiyor — geriye dönük sorgulanacak bir
+iz yok. Geçmiş tetiklemeler bu yüzden **elden** denetlenir.
+:::
+
+`Pending` bir kayıt kendiliğinden onaylanmaz: `AutoApproveExpiredAttendance` **kodda yoktur**,
+yalnız `business-rules.md` içinde yazılıdır. Onay gelene kadar kayıt `Pending` kalır.
+
+### Denetim — resync değil, okuma
+
+Devamsızlık gerekçesiyle işaretlenmiş sözleşmeleri listeleyin:
+
+```sql
+select data->>'studentId', data->>'businessId',
+       data->>'terminationReason', data->>'statusName'
+from   contract.mt_doc_internshipcontract
+where  data->>'terminationReasonType' = 'AttendanceLimitExceeded';
+```
+
+Gerekçe metni `"Devamsızlık limiti aşıldı: {gün}/{limit} gün"` biçimindedir. Çıkan her satır
+için sayının **onaylanmış** kayıtlardan mı, yoksa işletmenin tek taraflı girdiği `Pending`
+kayıtlardan mı doğduğu elden kontrol edilir.
+
+### Yürüyen fesih zincirleri de teyit edilmeli
+
+`InternshipSaga` artık yürüyen bir zinciri **yeniden başlatmıyor**
+(`TerminationChainPolicy.CanStart`); önce her `InternshipTerminationRequested` olayında
+koşulsuz `ApprovalChain = new(...)` yazıyor ve toplanmış öğretmen / müdür yardımcısı / müdür
+onaylarını **siliyordu**.
+
+İkinci tetikleme artık zinciri sıfırlamıyor; ama **geçmişte sıfırlanmış** zincirlerde onaylar
+kaybolmuş olabilir ve zincirde **kimin onayladığı saklanmadığı** için bu kayıt üzerinden tespit
+edilemez. Yürüyen fesihler elden teyit edilmelidir.
+
+:::warning Yeni resync ucu YOK — eklenmemeli
+Fesih sayacı için backfill **gerekmez**: `CheckAttendanceLimitHandler` sayacı görünümden değil
+`AttendanceRecord` agregasından okur, yani düzeltme yürürlüğe girdiği an doğru sayar.
+`AttendanceMarked` olaylarını yeniden yayınlamak ise **limiti tekrar tetikler**, yani fesih onay
+zincirini yeniden başlatır. Bu iş için aşağıdaki "Resync / backfill uçları" tablosuna satır
+**eklenmez**.
+:::
+
+### Payment'ın devamsızlık görünümü geçmişe dönük EKSİK — düzeltme onu iyileştirmez
+
+Aynı düzeltmede altı `[AggregateHandler]` olayı **ilk kez** mesaj olarak yayınlanır hâle geldi
+(`AttendanceApproved`, `AttendanceCorrected`, `AttendanceVerified`, `AttendanceDeleted`,
+`HealthReportApproved`, `HealthReportAttached`). Bunlar bugüne kadar **hiç teslim edilmiyordu**:
+`[AggregateHandler]` dönüşü yalnız olay akışına yazılır, hiçbir tüketiciye yönlendirilmez.
+
+Sonucu Payment'ın yerel kaydında görülür: `payment.mt_doc_studentabsenceview` satırları
+`AttendanceMarked` anındaki durumda **donmuş**tur. Agregada `Recorded` olan kayıt görünümde
+`Pending` kalmış, onaylanan sağlık raporu görünümde `Unexcused` kalmış, silinen kayıt
+görünümden hiç silinmemiş olabilir.
+
+- **İleriye dönük** davranış düzeltmeden sonra doğrudur — yeni onay/düzeltme/silme işlenir
+- **Geriye dönük** satırlar kendiliğinden düzelmez ve bu iş için **hazır bir uç yoktur**
+- Etkisi **iki yönlüdür**: eksik kesinti (görünüm `Pending` donmuş) ya da **fazla kesinti**
+  (onaylanmış raporu görünüme işlenmemiş). İkincisi öğrenci aleyhinedir
+
+Denetim sorgusu — agrega ile görünümün ayrıştığı satırlar:
+
+```sql
+select a.id,
+       a.data->>'statusName'      as agrega_durum,
+       p.data->>'statusName'      as gorunum_durum,
+       a.data->'type'             as agrega_tur,
+       p.data->>'absenceTypeName' as gorunum_tur
+from   attendance.mt_doc_attendancerecord a
+join   payment.mt_doc_studentabsenceview  p on p.id = a.id
+where  a.data->>'statusName'  is distinct from p.data->>'statusName'
+   or  (a.data->>'isDeleted')::boolean is true;
+```
+
+Çıkan satırlar **elden** değerlendirilmelidir; toplu bir düzeltme ucu yazmak ayrı bir iştir.
+
+**Ölçüt: üretimde ölçün.** Dev ortamında `Pending` kayıt sayısı **0**, `AttendanceApproved` olay
+sayısı **0** çıktı. Bu, düzeltmenin etkisiz olduğunu göstermez — yalnız dev tohum verisinin
+işletme giriş yolunu hiç çalıştırmadığını gösterir. Ölçüm üretim verisinde tekrarlanmalıdır.
 
 ---
 

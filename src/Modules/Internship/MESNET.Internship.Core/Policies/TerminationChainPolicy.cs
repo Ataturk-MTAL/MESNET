@@ -98,6 +98,27 @@ public static class TerminationChainPolicy
              + $"'{step.Slug}' adımının sırası henüz gelmedi.";
     }
 
+    /// <summary>
+    /// Fesih onay zinciri <b>şimdi başlatılabilir mi</b> (#252).
+    ///
+    /// <para><b>Yürüyen zincir yeniden başlatılmaz.</b> Saga zinciri koşulsuz kuruyordu
+    /// (<c>ApprovalChain = new(...)</c>); ikinci bir fesih talebi toplanmış öğretmen / müdür
+    /// yardımcısı / müdür onaylarını <b>sessizce siliyordu</b>. Talebi üreten iki yol da
+    /// tekrarlanabilir: aktarıcı her <c>AttendanceLimitExceeded</c>'de bir tane üretir ve sayaç
+    /// dönem içinde <b>sıfırlanmadığı</b> için sınır dolduktan sonraki her kayıt/onay yeniden
+    /// tetikler; manuel uç da ikinci kez çağrılabilir.</para>
+    ///
+    /// <para><b>Zincir <c>null</c>'a geri dönmez:</b> ne tamamlanma, ne override, ne de
+    /// fesih onu temizler — dolayısıyla "zincir var" = "bu staj için fesih süreci bir kez
+    /// başlatılmış" demektir ve tek kontrol yeterlidir.</para>
+    ///
+    /// <para><b>Neden faz değil zincir sorulur:</b> <c>SagaCorrelationPolicy.IsOpen</c>
+    /// <c>TerminationInProgress</c>'i bilerek <b>açık</b> sayar (sözleşme olayları zincirin
+    /// devamıdır) ve daraltılamaz — daraltılırsa <c>ContractTerminated</c> saga'yı bulamaz,
+    /// staj sonsuza kadar fesih sürecinde asılı kalır.</para>
+    /// </summary>
+    public static bool CanStart(TerminationApprovalChain? chain) => chain is null;
+
     private static bool IsApproved(TerminationApprovalChain chain, TerminationStep step) =>
         step.Name switch
         {

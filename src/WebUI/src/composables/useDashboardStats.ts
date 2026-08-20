@@ -188,7 +188,10 @@ export function useDashboardStats(options: UseDashboardStatsOptions) {
 
     if (authStore.hasPermission(Permissions.Attendance.View)) {
       tasks.push(
-        attendanceApi.list({ status: 'Recorded', pageSize: 1 })
+        // 'Recorded' onaylanmış kayıttır — bekleyen iş değildir; sayaç yanlış satırı sayıyordu.
+        // İşletmenin bildirdiği kayıt 'Pending' doğar ve onaylanana kadar fesih sayacına da
+        // girmez (#252), yani öğretmenin onay kuyruğu artık hükmün tek kapısıdır.
+        attendanceApi.list({ status: 'Pending', pageSize: 1 })
           .then((res) => { total += res.data?.totalCount ?? 0 })
           .catch(() => {}),
       )

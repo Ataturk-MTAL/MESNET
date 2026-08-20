@@ -6,14 +6,20 @@ using MESNET.Attendance.Core.Services;
 using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
+using Wolverine;
 using Wolverine.Marten;
 
 namespace MESNET.Attendance.Application.Handlers;
 
 public static class CorrectAttendanceHandler
 {
+    /// <summary>
+    /// Düzeltme hem akışa yazılır hem mesaj olarak yayınlanır (#252) — gerekçe:
+    /// <see cref="ApproveAttendanceHandler"/>. Tür değişimi devamsızlık sınırını doldurabilir
+    /// ve <c>[AggregateHandler]</c> dönüşü tek başına hiçbir handler'a ulaşmaz.
+    /// </summary>
     [AggregateHandler]
-    public static AttendanceCorrected Handle(
+    public static (Events, OutgoingMessages) Handle(
         CorrectAttendance command, AttendanceRecord? record, ICurrentUserService currentUser)
     {
         if (record is null)
@@ -34,8 +40,10 @@ public static class CorrectAttendanceHandler
         if (AbsenceTypePolicy.RequiresApprovedRequest(newType))
             throw new DomainException(AttendanceErrors.PaidLeaveRequiresApprovedRequest());
 
-        return new AttendanceCorrected(
+        var corrected = new AttendanceCorrected(
             record.Id, record.StudentId, currentUser.GetFullName(),
             command.NewAbsenceType, command.Reason, DateTime.UtcNow);
+
+        return (new Events { corrected }, new OutgoingMessages { corrected });
     }
 }
