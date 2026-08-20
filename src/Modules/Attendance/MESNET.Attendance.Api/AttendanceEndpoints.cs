@@ -26,6 +26,16 @@ public static class AttendanceEndpoints
         group.MapPut("/config/absence-limits", PutAbsenceLimits)
             .RequireAuthorization(Permissions.Platform.ParameterManage);
 
+        // Yerel görünüm onarımı (#256) — kayıtların bugünkü hâlini yeniden yayınlar.
+        //
+        // İzin BİLEREK "attendance:manage" DEĞİL: o izin işletme yetkilisi, usta öğretici ve
+        // işletme İK rollerinde de vardır ve bu uç toplu maaş yeniden hesabı tetikleyebilir —
+        // ödemeyi yapan taraf kendi kesintisini toplu olarak oynatabilirdi (#172 ilkesi).
+        // "attendance:report" yalnız okul rollerindedir; uç zaten devamsızlık verisi
+        // üretmiyor, var olan durumu diğer modüllere RAPORLUYOR.
+        group.MapPost("/resync-snapshots", PostResyncSnapshots)
+            .RequireAuthorization(Permissions.Attendance.Report);
+
         group.MapPost("/", Post).RequireAuthorization(Permissions.Attendance.Manage);
         group.MapPost("/{attendanceId:guid}/approve", PostApprove).RequireAuthorization(Permissions.Attendance.Approve);
         group.MapPost("/{attendanceId:guid}/verify", PostVerify).RequireAuthorization(Permissions.Attendance.Approve);
@@ -65,6 +75,23 @@ public static class AttendanceEndpoints
     {
         await bus.InvokeAsync(command);
         return Results.Ok(ResponseBuilder.Success().AddMessage("Devamsızlık sınırları güncellendi.").Build());
+    }
+
+    /// <summary>
+    /// Kiracının devamsızlık kayıtlarının bugünkü hâlini yeniden yayınlar (#256).
+    /// Dönem verilirse yalnız o dönem yayılır.
+    /// </summary>
+    private static async Task<IResult> PostResyncSnapshots(Guid? academicPeriodId, IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ResyncAttendanceSnapshotsResult>(
+            new ResyncAttendanceSnapshots(academicPeriodId));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(new { recordCount = result.RecordCount, deletedCount = result.DeletedCount })
+            .AddMessage(
+                $"{result.RecordCount} devamsızlık kaydı yeniden yayınlandı "
+                + $"({result.DeletedCount} tanesi silinmiş kayıt).")
+            .Build());
     }
 
     private static async Task<IResult> Post(
