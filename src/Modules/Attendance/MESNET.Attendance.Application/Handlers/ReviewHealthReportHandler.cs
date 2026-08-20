@@ -4,6 +4,7 @@ using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
+using Wolverine;
 using Wolverine.Marten;
 
 namespace MESNET.Attendance.Application.Handlers;
@@ -14,14 +15,25 @@ namespace MESNET.Attendance.Application.Handlers;
 /// </summary>
 public static class ApproveHealthReportHandler
 {
+    /// <summary>
+    /// Olay hem akışa yazılır hem <b>mesaj olarak yayınlanır</b> (#252). <c>[AggregateHandler]</c>
+    /// dönüşü cascading mesaj DEĞİLDİR — gerekçe: <see cref="ApproveAttendanceHandler"/>.
+    /// ///
+    /// <para><b>Bu yol kesintiyi KALDIRIR</b> — <c>AbsenceTallyConsumer</c> türü
+    /// <c>HealthReport</c>'a çevirir ve o tür ücret kesintisine tabi değildir (#172). Onay
+    /// yayınlanmazken kesintiyi <i>koyan</i> yol yayınlanırsa, geçerli raporu olan öğrencinin
+    /// ücreti kesilir ve hiçbir arayüzden geri alınamaz.</para>
+    /// </summary>
     [AggregateHandler]
-    public static HealthReportApproved Handle(
+    public static (Events, OutgoingMessages) Handle(
         ApproveHealthReport command, AttendanceRecord? record, ICurrentUserService currentUser)
     {
         var target = EnsureReviewable(command.AttendanceId, record);
 
-        return new HealthReportApproved(
+        var approved = new HealthReportApproved(
             target.Id, target.StudentId, currentUser.GetUserId(), DateTime.UtcNow);
+
+        return (new Events { approved }, new OutgoingMessages { approved });
     }
 
     /// <summary>Rapor var mı ve onay bekliyor mu. Zaten onaylanmış rapor ikinci kez işlenemez.</summary>

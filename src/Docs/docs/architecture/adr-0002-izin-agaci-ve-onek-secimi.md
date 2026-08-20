@@ -246,13 +246,13 @@ Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kay
 Hiçbir yapılandırmayla tek bir kullanıcıya verilemez —
 `AssignablePermissionScope.NeverDirectlyAssignable` sabit listesi yapılandırmayı ezer.
 
+- `attendance:approve`
 - `attendance:direct-entry`
 - `attendance:health-report:direct`
 - `attendance:leave:approve`
 - `institution:distribution:all-branches`
 - `platform:parameter:manage`
 
-<!-- END generated: permission-matrix -->
 <!-- END generated: permission-matrix -->
 
 ## Sonuçlar

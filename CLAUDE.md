@@ -70,6 +70,20 @@ public static class OrderEndpoint
 - Handler'dan handler'a doğrudan `InvokeAsync()` çağırma, cascading message veya `PublishAsync()` kullan
 - Durable local queue'ları aktif et: `opts.Policies.UseDurableLocalQueues()`
 
+**`[AggregateHandler]` dönüşü cascading mesaj DEĞİLDİR (#252).** Aggregate iş akışında
+Wolverine.Marten handler'ın dönüş eylemini `EventCaptureActionSource` ile değiştirir: dönen
+olay yalnız `IEventStream<T>.AppendOne` ile akışa yazılır, **hiçbir handler'a yönlendirilmez**.
+Olay yönlendirmesi (`EventForwardingToWolverine()`) bu projede **kapalıdır ve açılmamalıdır** —
+elle yayınlanan olaylar (ör. `AttendanceMarked`) çift işlenirdi.
+
+- Olayı hem akışa yazıp hem yayınlamak için tuple döndür:
+  `public static (Events, OutgoingMessages) Handle(...)` — ilki akışa, ikincisi mesaj yoluna
+- **Ölçüldü:** `AttendanceApproved` / `AttendanceCorrected` / `ContractActivated` bu yüzden
+  hiçbir tüketiciye ulaşmıyordu; `AbsenceTallyConsumer` ve `SagaRelayConsumer`'ın o
+  aşırı yüklemeleri **ölü**ydü ve hata vermeden sessizce çalışmıyordu (dead letter'da bile iz yok)
+- Derlenmesi ve testin yeşil olması yetmez: bir olayın **yönlendirildiğini** imza taraması
+  kanıtlamaz. Kilitleyen test: `AttendanceLimitRecheckCoverageTests`
+
 ### Marten (MartenDB)
 
 PostgreSQL üzerinde document database ve event store olarak çalışır. Entity Framework KULLANILMAZ.
@@ -764,16 +778,27 @@ permission'larla verilir. Sağlık raporunu işletme yetkilisi, işletme İK, us
 kadar devamsızlık türünü değiştirmez — yani **ücret kesintisini kaldırmaz**. Ödemeyi yapan
 taraf kendi kesintisini tek taraflı iptal edemez.
 
-- `attendance:direct-entry` — girilen **devamsızlık** kaydı onay beklemez (okul rolleri)
+- `attendance:direct-entry` — girilen **devamsızlık** kaydı onay beklemez (okul rolleri);
+  onay beklemeyen kayıt **fesih sayacına girer**, onay bekleyen (`Pending`) girmez (#252)
 - `attendance:health-report:direct` — girilen **sağlık raporu** onay beklemez
   (`InstitutionManager`, `DeputyDirector`, `Teacher` — kurum personeli ALMAZ)
 - İkisi de `AssignablePermissionScope.NeverDirectlyAssignable`: bireysel atanamaz, çünkü
   işletme rollerinin atanabilir domain listesinde `attendance:` vardır
-- Kilitleyen test: `tests/MESNET.Security.UnitTests/AttendanceDirectEntryMappingTests.cs`
+- Kilitleyen testler: `tests/MESNET.Security.UnitTests/AttendanceDirectEntryMappingTests.cs`,
+  `tests/MESNET.Attendance.UnitTests/PendingAttendanceExclusionTests.cs` +
+  `AttendanceLimitRecheckCoverageTests.cs`,
+  `tests/MESNET.Internship.UnitTests/TerminationChainRestartTests.cs`
 
 **Tür değiştiren her uç para uçudur.** `POST /api/attendance/{id}/correct` devamsızlık türünü
 değiştirdiği için `attendance:manage` değil `attendance:direct-entry` ister — önceden işletme
 yetkilisi o uçtan onay zincirini tümden atlayabiliyordu.
+
+**Sayan her sorgu hüküm sorgusudur (#252).** İzin katmanı doğru olsa bile sayan sorgu duruma
+bakmazsa hüküm yine tek taraflı doğar: fesih sayacı (`AttendanceCounterScope`) `Pending` kaydı
+saymaz — ücret kesintisi de saymıyordu (`PaymentSaga`), ikisi aynı ilkedir; kara liste dar tutulur,
+yalnız `Pending` dışlanır ve bilinmeyen durum sayılır (**eksik veri sınırı gevşetemez**). **Sayacı
+besleyen olay kümesi değişince yeniden ölçüm giriş noktaları da güncellenir** — kayıt girildiğinde,
+onaylandığında ve düzeltildiğinde; yalnız girişi dinlemek, açığı kapatırken zinciri sessizce öldürür.
 
 ### İki taraflı onay kapsamla kurulur, izinle değil (#177)
 

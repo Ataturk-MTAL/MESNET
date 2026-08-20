@@ -8,6 +8,7 @@ using MESNET.Internship.Core.Policies;
 using MESNET.Internship.Core.Services;
 using MESNET.Internship.Core.ValueObjects;
 using MESNET.Internship.Shared.Events;
+using Microsoft.Extensions.Logging;
 using Wolverine;
 
 namespace MESNET.Internship.Application.Sagas;
@@ -81,8 +82,33 @@ public class InternshipSaga : Saga
     // giriş noktası ikinci bir sessiz kırılma yüzeyi demek olurdu.
 
     // ─── HANDLE: Manuel Fesih Talebi ───
-    public InternshipTerminationApprovalChainStarted Handle(InternshipTerminationRequested e)
+    /// <summary>
+    /// Fesih onay zincirini başlatır — <b>yalnız bir kez</b> (#252).
+    ///
+    /// <para><b>Tekrar eden talep durumu HİÇ değiştirmez.</b> Bu metot zinciri koşulsuz
+    /// kuruyordu ve ikinci bir talep, toplanmış öğretmen / müdür yardımcısı / müdür onaylarını
+    /// sessizce siliyordu. Talep iki yoldan da tekrar gelebilir: aktarıcı her
+    /// <c>AttendanceLimitExceeded</c>'de bir tane üretir — devamsızlık sayacı dönem içinde
+    /// sıfırlanmadığı için sınır dolduktan sonraki her yeni ya da <b>onaylanan</b> kayıt
+    /// yeniden tetikler — ve manuel uç ikinci kez çağrılabilir.</para>
+    ///
+    /// <para><b>Neden <c>throw</c> değil sessiz <c>null</c>:</b> bu mesaj cascading olarak,
+    /// durable local queue üzerinden <b>asenkron</b> işlenir; uç çoktan 200 dönmüştür.
+    /// <c>DomainException</c> kullanıcıya 422 olarak ulaşmaz, yalnız mesajı dead letter'a
+    /// düşürürdü. Karar saf <see cref="TerminationChainPolicy.CanStart"/> içindedir.</para>
+    /// </summary>
+    public InternshipTerminationApprovalChainStarted? Handle(
+        InternshipTerminationRequested e, ILogger logger)
     {
+        if (!TerminationChainPolicy.CanStart(ApprovalChain))
+        {
+            logger.LogInformation(
+                "Fesih talebi yok sayıldı — onay zinciri zaten yürüyor. Staj: {SagaId}, "
+                + "öğrenci: {StudentId}, yeni gerekçe: {Reason} ({ReasonType}).",
+                Id, StudentId, e.Reason, e.ReasonType);
+            return null;
+        }
+
         Phase = InternshipPhase.TerminationInProgress;
         TerminationReason = e.Reason;
         TerminationReasonType = e.ReasonType;
