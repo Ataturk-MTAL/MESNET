@@ -20,6 +20,12 @@
   <ItemGroup>
     <ProjectReference Include="../../src/MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
     <ProjectReference Include="../../src/Modules/Reporting/MESNET.Reporting.Core/MESNET.Reporting.Core.csproj" />
+    <!--
+      Resmî devamsızlık formunun tüketici kapsamı (#257) reflection ile okunur: düzeltme ve
+      silme olaylarının BOŞ NO-OP olmadığı, kaydın hâlini değiştiren her olayın tüketildiği
+      kilitleniyor. Application katmanı bu yüzden gereklidir.
+    -->
+    <ProjectReference Include="../../src/Modules/Reporting/MESNET.Reporting.Application/MESNET.Reporting.Application.csproj" />
   </ItemGroup>
 
 </Project>

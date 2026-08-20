@@ -350,6 +350,31 @@ için ikinci kayıt açmaz — ama `PaidLeaveNotificationConsumer` de uyanır ve
 
 ---
 
+## Resmî devamsızlık formu: onay bekleyen kayıtlar (#257)
+
+Resmî MEB aylık devamsızlık formu, işletmenin girdiği ve **okul onayı bekleyen** kayıtları
+devamsızlık olarak gösteriyordu (`D` sembolü + `UnexcusedAbsences` sütunu). Ayrıca
+`AttendanceCorrected` ve `AttendanceDeleted` tüketicileri **boş no-op**'tu: yanlış girilip
+düzeltilen ya da silinen devamsızlık formda **kalıcı** hâle geliyordu.
+
+:::danger Atlanırsa ne olur
+Form, velinin ve idarenin gördüğü **resmî belgedir**. Onaylanmamış bir bildirim orada devamsızlık
+olarak görünüyor, düzeltilen kayıt düzelmiyor, silinen kayıt silinmiyordu.
+:::
+
+Düzeltme `AbsentDayEntry`'ye iki alan ekliyor: `AttendanceId` (artımlı olaylar tarih taşımadığı
+için kayıt ancak kimlikten bulunabiliyor) ve `StatusName`. **İkisi de sona ve varsayılanlı
+eklendi** — eski belgeler bozulmadan deserialize olur.
+
+**Ama eski satırlar bu alanları taşımaz.** Durumu bilinmeyen satır formda **gösterilmeye devam
+eder** (gizlemek var olan formdan veri silmek olurdu) ve kimliği olmayan satır artımlı olaylarla
+güncellenemez.
+
+**Onarım zorunludur:** `POST /api/attendance/resync-snapshots` (#256). Aynı uç hem Payment'ın hem
+Reporting'in görünümünü onarır.
+
+---
+
 ## Resync / backfill uçları
 
 Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden çok kez
@@ -357,7 +382,7 @@ Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden 
 
 | Uç | Ne yapar |
 | --- | --- |
-| `POST /api/attendance/resync-snapshots` | Devamsızlık kayıtlarının **bugünkü hâlini** yeniden yayınlar (#256). Payment'ın `StudentAbsenceView` satırlarını onarır: donmuş `Pending` durumlar, işlenmemiş sağlık raporu onayları, silinmemiş satırlar. `attendance:report` ister (`attendance:manage` **değil** — o izin işletme rollerinde de var). İsteğe bağlı `?academicPeriodId=` ile daraltılır. **Kiracı başına** çağrılır. `AttendanceMarked` yayınlamaz, fesih zinciri tetiklenmez |
+| `POST /api/attendance/resync-snapshots` | Devamsızlık kayıtlarının **bugünkü hâlini** yeniden yayınlar (#256). Payment'ın `StudentAbsenceView` **ve** Reporting'in `StudentAttendanceReportView` satırlarını onarır: donmuş `Pending` durumlar, işlenmemiş sağlık raporu onayları, silinmemiş satırlar (#256, #257). `attendance:report` ister (`attendance:manage` **değil** — o izin işletme rollerinde de var). İsteğe bağlı `?academicPeriodId=` ile daraltılır. **Kiracı başına** çağrılır. `AttendanceMarked` yayınlamaz, fesih zinciri tetiklenmez |
 | `POST /api/students/resync-projections` | Tüm öğrenciler için `StudentRegistered` yeniden yayınlanır — Attendance/Contract `StudentNameView`, Reporting ve Payment görünümlerini tazeler |
 | `POST /api/placements/resync-projections` | Tüm **aktif** yerleştirmeler için `StudentPlaced` yeniden yayınlanır — Payment `PlacementView`, Coordination not giriş görünümleri |
 | `POST /api/placements/backfill-branch-authorizations` | İşletmelerin alan yetkilerini mevcut yerleştirmelerden doldurur |

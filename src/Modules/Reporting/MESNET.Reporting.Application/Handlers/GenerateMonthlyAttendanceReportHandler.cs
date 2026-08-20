@@ -238,7 +238,11 @@ public static class GenerateMonthlyAttendanceReportHandler
 
         if (attendance is not null)
         {
-            foreach (var entry in attendance.AbsentDays)
+            // Onay bekleyen kayıt resmî forma YAZILMAZ (#257): işletmenin tek taraflı
+            // bildirimi, koordinatör öğretmen onaylamadan velinin ve idarenin gördüğü belgede
+            // devamsızlık olarak görünemez. Aynı ilke ücret kesintisinde (§6.2) ve fesih
+            // sayacında (#252) da uygulanıyor.
+            foreach (var entry in attendance.AbsentDays.Where(e => e.IsOfficial))
             {
                 var symbol = MapAbsenceTypeToSymbol(entry.AbsenceType);
 
