@@ -82,7 +82,11 @@ elle yayınlanan olaylar (ör. `AttendanceMarked`) çift işlenirdi.
   hiçbir tüketiciye ulaşmıyordu; `AbsenceTallyConsumer` ve `SagaRelayConsumer`'ın o
   aşırı yüklemeleri **ölü**ydü ve hata vermeden sessizce çalışmıyordu (dead letter'da bile iz yok)
 - Derlenmesi ve testin yeşil olması yetmez: bir olayın **yönlendirildiğini** imza taraması
-  kanıtlamaz. Kilitleyen test: `AttendanceLimitRecheckCoverageTests`
+  kanıtlamaz. Depo geneli kilit: `AggregateHandlerPublishDriftTests` — tüketicisi olan bir olayı
+  yayınlamayan her `[AggregateHandler]`'ı kırmızıya çevirir, bilinen borç donduruldu (#254)
+- **Ters yöndeki olayı da canlandır.** Yalnız durumu ilerleten yolu yayınlamak net zararlı
+  olabilir: #252'de kesintiyi *koyan* yol açılıp *kaldıran* yollar (rapor onayı, silme) ölü
+  kalsaydı, geçerli raporu olan öğrencinin ücreti kesilip geri alınamazdı
 
 ### Marten (MartenDB)
 
