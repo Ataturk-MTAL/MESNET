@@ -5,6 +5,8 @@ using MESNET.Payment.Application.Services;
 using MESNET.Payment.Core.ReadModels;
 using MESNET.Payment.Core.Services;
 using Microsoft.Extensions.Logging;
+using Wolverine.Configuration;
+using Wolverine.Transports.Local;
 
 namespace MESNET.Payment.Application.Consumers;
 
@@ -31,8 +33,35 @@ namespace MESNET.Payment.Application.Consumers;
 /// <c>Verified</c>'a geçmek tutarı etkilemez; her olayda komut yayınlamak saga'yı gereksiz
 /// eşzamanlı çağrılarla döverdi.</para>
 /// </remarks>
-public static class AbsenceTallyConsumer
+/// <remarks>
+/// <para><b>Neden <c>static class</c> DEĞİL (#262):</b> kuyruk yapılandırması
+/// <c>IConfigureLocalQueue</c> ile yapılıyor ve statik sınıf arayüz uygulayamaz. Metotlar
+/// statik kalır; Wolverine statik handler metotlarını örnek oluşturmadan çağırır.</para>
+/// </remarks>
+public sealed class AbsenceTallyConsumer : IConfigureLocalQueue
 {
+    /// <summary>
+    /// Bu tüketicinin yerel kuyruğu <b>sıralı</b> çalışır (#262).
+    ///
+    /// <para><b>Neden:</b> <c>MultipleHandlerBehavior.Separated</c> her handler tipine ayrı bir
+    /// "sticky" yerel kuyruk verir, ama o kuyruk varsayılan olarak <b>paralel ve sırasızdır</b>
+    /// (<c>maxDegreeOfParallelism = ProcessorCount</c>). Bu sınıfın metotlarının hepsi aynı
+    /// kuyruğa düşer, yani aynı devamsızlık kaydına ait olaylar birbirini geçebilir.</para>
+    ///
+    /// <para><b>Kırılma:</b> <c>AttendanceApproved</c>, kaydı <b>kuran</b>
+    /// <c>AttendanceMarked</c>'ı geçerse yerel satır henüz yoktur; güncelleme sessizce düşer ve
+    /// kayıt kalıcı olarak <c>Pending</c> kalır. Onaylanmış bir devamsızlık bir daha hiçbir olay
+    /// üretmediği için kendiliğinden düzelmez. <c>UseDurableLocalQueues()</c> dayanıklılık verir,
+    /// <b>sıra vermez</b>.</para>
+    ///
+    /// <para><c>Sequential()</c> hem tek iş parçacığı hem FIFO garantisi verir. Devamsızlık olay
+    /// hacmi düşüktür; verim kaybı, sessiz veri kaybının yanında önemsizdir.</para>
+    /// </summary>
+    public static void Configure(LocalQueueConfiguration configuration)
+    {
+        configuration.Sequential();
+    }
+
     public static async Task<RecalculateMonthlySalary?> Consume(
         AttendanceMarked @event, IDocumentSession session)
     {
