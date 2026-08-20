@@ -301,6 +301,50 @@ işletme giriş yolunu hiç çalıştırmadığını gösterir. Ölçüm üretim
 
 ---
 
+## Ücretli izin: resmîleşmiş başvurular devamsızlık kaydı üretmemiş (#254)
+
+`ApprovePaidLeaveHandler` olayı yalnız olay akışına yazıyordu, mesaj olarak yayınlamıyordu
+(#253 ile aynı kök neden). Sonuç: başvuru **Resmileşti** durumuna geçiyor ama
+`PaidLeaveAttendanceConsumer` hiç çağrılmadığı için o günler için **hiçbir devamsızlık kaydı
+doğmuyordu**. Ücretli izin komut yolundan da girilemediği için `PaidLeave` türü sisteme hiçbir
+yoldan girmemiş durumda.
+
+Düzeltme **ileriye dönüktür**. Daha önce onaylanmış başvurular için kayıtlar kendiliğinden
+doğmaz.
+
+:::danger Atlanırsa ne olur
+Resmîleşmiş izin günleri sistemde **devamsızlık olarak hiç görünmez**: ücret kesintisi hesabına
+da girmez, MESEM'in toplam gün sınırına (`MesemTotalDayLimit`, 3308 md. 26 izin hakkı) da
+sayılmaz. Öğrenci izin hakkını kullanmış ama sistem kullanmamış gibi davranır.
+:::
+
+Tespit sorgusu — resmîleşmiş ama karşılığında `PaidLeave` kaydı olmayan başvurular:
+
+```sql
+select r.id,
+       r.data->>'studentId'  as ogrenci,
+       r.data->>'startDate'  as baslangic,
+       r.data->>'endDate'    as bitis
+from   attendance.mt_doc_paidleaverequest r
+where  r.data->>'statusName' = 'Approved'
+   and not exists (
+         select 1
+         from   attendance.mt_doc_attendancerecord a
+         where  a.data->>'studentId' = r.data->>'studentId'
+           and  a.data->'type'->>'Name' is null          -- tür düz string serialize edilir
+           and  a.data->>'type' = 'PaidLeave'
+           and  (a.data->>'date')::date
+                between (r.data->>'startDate')::date and (r.data->>'endDate')::date
+       );
+```
+
+**Hazır bir backfill ucu YOK.** `PaidLeaveApproved`'ı toplu yeniden yayınlamak kayıt üretimi
+açısından güvenlidir — `PaidLeaveAttendanceConsumer` yeniden çalıştırmaya dayanıklıdır, aynı gün
+için ikinci kayıt açmaz — ama `PaidLeaveNotificationConsumer` de uyanır ve **eski onaylar için
+şimdi bildirim gider**. Toplu düzeltme yapılacaksa bildirimsiz bir yol yazılmalıdır.
+
+---
+
 ## Resync / backfill uçları
 
 Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden çok kez
