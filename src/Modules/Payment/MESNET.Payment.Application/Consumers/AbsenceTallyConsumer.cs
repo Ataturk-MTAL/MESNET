@@ -132,6 +132,55 @@ public static class AbsenceTallyConsumer
     }
 
     /// <summary>
+    /// Geçmişe dönük onarım (#256): kaydın <b>bugünkü tam hâli</b> gelir, yerel satır ona
+    /// eşitlenir.
+    ///
+    /// <para><b>Neden gerekli:</b> <c>AttendanceApproved</c> ve kardeşleri uzun süre hiç teslim
+    /// edilmedi (#253), dolayısıyla bu satırlar <c>AttendanceMarked</c> anındaki hâlde donmuş
+    /// olabilir — agregada <c>Recorded</c> olan kayıt burada <c>Pending</c>, onaylanmış raporlu
+    /// gün hâlâ <c>Unexcused</c>, silinen kayıt hiç silinmemiş.</para>
+    ///
+    /// <para><b>Gün anlık görüntüden alınır</b>, yerel satırdan değil: yerel satır #154 öncesi
+    /// yazılmışsa tarihsizdir ve onarımın amacı tam da onu düzeltmektir.</para>
+    /// </summary>
+    public static async Task<RecalculateMonthlySalary?> Consume(
+        AttendanceSnapshotResynced @event, IDocumentSession session)
+    {
+        var view = await session.LoadAsync<StudentAbsenceView>(@event.AttendanceId);
+
+        var before = view is not null
+            && AbsenceDeductionPolicy.CountsTowardDeduction(view.AbsenceTypeName, view.StatusName);
+
+        bool after;
+
+        if (@event.IsDeleted)
+        {
+            if (view is not null) session.Delete<StudentAbsenceView>(@event.AttendanceId);
+            after = false;
+        }
+        else
+        {
+            session.Store(new StudentAbsenceView
+            {
+                Id = @event.AttendanceId,
+                InstitutionId = @event.InstitutionId,
+                StudentId = @event.StudentId,
+                BusinessId = @event.BusinessId,
+                Month = @event.Date.ToString("yyyy-MM"),
+                Date = @event.Date.Date,
+                AbsenceTypeName = @event.AbsenceType,
+                StatusName = @event.Status
+            });
+
+            after = AbsenceDeductionPolicy.CountsTowardDeduction(@event.AbsenceType, @event.Status);
+        }
+
+        return before == after
+            ? null
+            : await SalaryRecalculationTrigger.ForDayAsync(session, @event.StudentId, @event.Date);
+    }
+
+    /// <summary>
     /// Görünümü günceller ve <b>yalnız sayılabilirlik değiştiyse</b> yeniden hesap ister.
     /// </summary>
     private static async Task<RecalculateMonthlySalary?> UpdateAsync(

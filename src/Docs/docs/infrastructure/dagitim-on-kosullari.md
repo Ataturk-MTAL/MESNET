@@ -275,7 +275,7 @@ Sonucu Payment'ın yerel kaydında görülür: `payment.mt_doc_studentabsencevie
 görünümden hiç silinmemiş olabilir.
 
 - **İleriye dönük** davranış düzeltmeden sonra doğrudur — yeni onay/düzeltme/silme işlenir
-- **Geriye dönük** satırlar kendiliğinden düzelmez ve bu iş için **hazır bir uç yoktur**
+- **Geriye dönük** satırlar kendiliğinden düzelmez — onarım ucu: `POST /api/attendance/resync-snapshots` (#256)
 - Etkisi **iki yönlüdür**: eksik kesinti (görünüm `Pending` donmuş) ya da **fazla kesinti**
   (onaylanmış raporu görünüme işlenmemiş). İkincisi öğrenci aleyhinedir
 
@@ -293,7 +293,12 @@ where  a.data->>'statusName'  is distinct from p.data->>'statusName'
    or  (a.data->>'isDeleted')::boolean is true;
 ```
 
-Çıkan satırlar **elden** değerlendirilmelidir; toplu bir düzeltme ucu yazmak ayrı bir iştir.
+Çıkan satırlar `POST /api/attendance/resync-snapshots` ile onarılır (#256). Uç kaydın **bugünkü
+hâlini** ayrı bir olayla (`AttendanceSnapshotResynced`) yeniden yayınlar; `AttendanceMarked`
+yayınlamaz, yani devamsızlık sınırını ölçtürmez ve fesih onay zincirini **başlatmaz**.
+
+Onarım, sayılabilirlik değişen kayıtlar için maaşı da yeniden hesaplatır — ama yalnız
+`AwaitingReceipt` fazındaki dönemleri; dekont yüklenmiş ödemelerin tutarı bilerek **donuktur**.
 
 **Ölçüt: üretimde ölçün.** Dev ortamında `Pending` kayıt sayısı **0**, `AttendanceApproved` olay
 sayısı **0** çıktı. Bu, düzeltmenin etkisiz olduğunu göstermez — yalnız dev tohum verisinin
@@ -352,6 +357,7 @@ Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden 
 
 | Uç | Ne yapar |
 | --- | --- |
+| `POST /api/attendance/resync-snapshots` | Devamsızlık kayıtlarının **bugünkü hâlini** yeniden yayınlar (#256). Payment'ın `StudentAbsenceView` satırlarını onarır: donmuş `Pending` durumlar, işlenmemiş sağlık raporu onayları, silinmemiş satırlar. `attendance:report` ister (`attendance:manage` **değil** — o izin işletme rollerinde de var). İsteğe bağlı `?academicPeriodId=` ile daraltılır. **Kiracı başına** çağrılır. `AttendanceMarked` yayınlamaz, fesih zinciri tetiklenmez |
 | `POST /api/students/resync-projections` | Tüm öğrenciler için `StudentRegistered` yeniden yayınlanır — Attendance/Contract `StudentNameView`, Reporting ve Payment görünümlerini tazeler |
 | `POST /api/placements/resync-projections` | Tüm **aktif** yerleştirmeler için `StudentPlaced` yeniden yayınlanır — Payment `PlacementView`, Coordination not giriş görünümleri |
 | `POST /api/placements/backfill-branch-authorizations` | İşletmelerin alan yetkilerini mevcut yerleştirmelerden doldurur |
