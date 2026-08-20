@@ -11,12 +11,46 @@ using MESNET.Payment.Core.ReadModels;
 using MESNET.Payment.Core.Services;
 using MESNET.Payment.Shared.Events;
 using Wolverine;
+using Wolverine.ErrorHandling;
 using Wolverine.Persistence.Sagas;
+using Wolverine.Runtime.Handlers;
 
 namespace MESNET.Payment.Application.Sagas;
 
 public class PaymentSaga : Saga
 {
+    /// <summary>
+    /// Eşzamanlı yeniden hesap istekleri saga'yı dead letter'a düşürmesin (#255).
+    ///
+    /// <para><b>Neden gerekli:</b> tek bir işlem aynı döneme <b>birden çok</b> komut
+    /// doğurabiliyor — <c>PaidLeaveAttendanceConsumer</c> izin aralığındaki <b>her gün</b> için
+    /// ayrı olay yayınlıyor (5 günlük izin = 5 olay), toplu onay da aynı fan-out'u üretiyor.
+    /// Wolverine saga belgesini iyimser eşzamanlılıkla korur; kaybeden çağrı
+    /// <c>SagaConcurrencyException</c> fırlatır ve politika yoksa varsayılan 3 deneme
+    /// (bekleme YOK) burst hâlinde üçü de çakışıp <b>yeniden hesabı düşürür</b> — tutar sessizce
+    /// eski kalır.</para>
+    ///
+    /// <para>Bekleme süreli yeniden deneme, çakışan çağrıyı taze state ile tekrarlatır. Desen
+    /// deponun kendi emsalinden: <c>StudentRegisteredCountConsumer.Configure</c>.</para>
+    /// </summary>
+    public static void Configure(HandlerChain chain)
+    {
+        chain.OnException<SagaConcurrencyException>()
+            .RetryWithCooldown(
+                TimeSpan.FromMilliseconds(50),
+                TimeSpan.FromMilliseconds(200),
+                TimeSpan.FromMilliseconds(500));
+    }
+
+    /// <summary>
+    /// Saga silinmişken (fesih/tamamlanma sonrası) gelen gecikmiş yeniden hesap isteği sessizce
+    /// düşer — <c>UnknownSagaException</c> ile dead letter'a gitmesin. İlk kapı
+    /// <see cref="SalaryRecalculationTrigger"/>'daki faz kontrolüdür; bu ikinci katmandır.
+    /// </summary>
+    public static void NotFound(RecalculateMonthlySalary command)
+    {
+    }
+
     public Guid Id { get; set; }
 
     /// <summary>
@@ -276,10 +310,12 @@ public class PaymentSaga : Saga
             .CountAsync();
     }
 
-    // AbsenceType.AffectsSalary ile aynı küme. SmartEnum Marten LINQ'te kullanılamadığı için
-    // düz string (bkz. CLAUDE.md — SmartEnum LINQ kuralları).
-    private static readonly string[] DeductibleAbsenceTypes = ["Unexcused", "UnpaidLeave"];
-    private const string PendingStatus = "Pending";
+    // Tür ve durum ekseninin TEK karar noktası AbsenceDeductionPolicy'dir (#255). Kopya
+    // tutulsaydı, tetikleyici (AbsenceTallyConsumer) ile buradaki sayım sessizce ayrışırdı:
+    // tetik "değişmedi" der, hesap hiç koşmaz, tutar eski kalır — ne hata ne log.
+    private static readonly string[] DeductibleAbsenceTypes =
+        AbsenceDeductionPolicy.DeductibleAbsenceTypes;
+    private const string PendingStatus = AbsenceDeductionPolicy.PendingStatus;
 
     // ─── HANDLE: İşletme dekontu yükledi ───
     // Saga korelasyonu: olaylar anahtarı `SalaryPeriodId` adıyla taşıyor. Wolverine'in varsayılan

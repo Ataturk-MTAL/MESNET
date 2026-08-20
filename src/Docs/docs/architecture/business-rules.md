@@ -426,6 +426,27 @@ sayar.
 
 Özürsüz devamsızlık ve ücretsiz izin günlerinde ücret kesilir.
 
+> **Sayım iki eksenlidir ve kararı tek yerdedir (#255):** `AbsenceDeductionPolicy`.
+> **Tür** ekseni yalnız `Unexcused` ve `UnpaidLeave`'i keser; sağlık raporu, mazeretli
+> devamsızlık ve ücretli izin kesmez. **Durum** ekseni onay bekleyen (`Pending`) kaydı
+> saymaz — §5.5 ile aynı ilke.
+>
+> **Bilinmeyen tür SAYILMAZ.** Kesinti öğrenci aleyhine bir hükümdür ve tanınmayan veriden
+> doğamaz. Bu, devamsızlık *sınırının* (§5.3) yönünün bilerek tersidir: orada bilinmeyen durum
+> **sayılır**, çünkü orada eksik veri sınırı gevşetmemeli. Biri parayı keser, diğeri mevzuat
+> eşiğini korur.
+>
+> **Tutar, kesinti kümesi her değiştiğinde yeniden hesaplanır.** Devamsızlık girildiğinde,
+> **onaylandığında**, düzeltildiğinde, silindiğinde ve sağlık raporu onaylandığında.
+> Tetikleyici, sayacı güncelleyen tüketicinin **dönüşüdür** (`AbsenceTallyConsumer`) — ayrı bir
+> tüketici olamaz: aynı mesajı işleyen iki tüketici arasında sıra garantisi yoktur ve tetikleyici
+> önde koşarsa hesap bayat sayaç okur, "tutar değişmedi" deyip susar ve dönem bir daha hiç
+> tetiklenmez.
+>
+> **Dekont yüklendikten sonra tutar DONAR** (`Phase != AwaitingReceipt`): öğrenci, öğretmen ve
+> müdür yardımcısı onayladıkları rakamdan başkasını almamalı. O andan sonra gelen onay/düzeltme
+> tutarı değiştirmez.
+
 **Formül:**
 
 ```
