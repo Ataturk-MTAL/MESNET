@@ -17,6 +17,15 @@ public class UserInvitation
     public required string TargetRole { get; set; }
     public Guid? InstitutionId { get; set; }
     public Guid? BusinessId { get; set; }
+
+    /// <summary>
+    /// Velinin bağlı olacağı öğrenciler (#271) — davet kabul edilince
+    /// <c>UserAccount.LinkedStudentIds</c>'e yazılır.
+    ///
+    /// <para><b>Sona eklendi ve varsayılanı boş:</b> bu alandan önce yazılmış davetler
+    /// bozulmadan deserialize olur.</para>
+    /// </summary>
+    public List<Guid> StudentIds { get; set; } = [];
     private InvitationStatus _status = InvitationStatus.PendingApproval;
     public InvitationStatus Status
     {

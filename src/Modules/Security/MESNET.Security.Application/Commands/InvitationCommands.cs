@@ -14,7 +14,24 @@ public sealed record CreateInvitation(
     string TargetRole,
     Guid? InstitutionId = null,
     Guid? BusinessId = null,
-    Dictionary<string, string>? Metadata = null);
+    Dictionary<string, string>? Metadata = null,
+    /// <summary>
+    /// Velinin bağlı olacağı öğrenciler (#271). Davet <b>kabul edildiğinde</b>
+    /// <c>UserAccount.LinkedStudentIds</c>'e yazılır ve Keycloak özniteliği kurulur.
+    ///
+    /// <para><b>Neden davet anında:</b> veli–öğrenci bağını dolduran başka hiçbir otomatik yol
+    /// yoktu — ne consumer, ne seeder, ne backfill. Tek yazma yolu elle
+    /// <c>POST /api/security/users/{id}/students</c>'ti. Bağ kurulmadan md. 36 (4) tebligatı
+    /// (#247) veliye <b>hiç ulaşmıyor</b>.</para>
+    ///
+    /// <para><b>Neden otomatik eşleştirme değil:</b> ortak anahtar yok. <c>UserAccount</c>'ta TC
+    /// alanı bulunmuyor ve <c>StudentRegistered</c> veli bilgisi taşımıyor; ad eşleştirmesi
+    /// güvenilmez. Kapsam anahtarını davete koymak, <c>InstitutionId</c> ve <c>BusinessId</c>
+    /// ile <b>birebir aynı</b> yerleşik desendir.</para>
+    ///
+    /// <para><b>Yalnız veli rolünde anlamlıdır</b> — başka rolde verilirse doğrulama reddeder.</para>
+    /// </summary>
+    IReadOnlyList<Guid>? StudentIds = null);
 
 public sealed record ApproveInvitation(Guid InvitationId);
 

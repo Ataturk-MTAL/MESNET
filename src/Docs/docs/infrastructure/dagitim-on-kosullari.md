@@ -404,15 +404,19 @@ doldurmuşsa — **öğrencinin kendisi**. Veli ve işletme ayakları md. 36 (4)
 emrettiği alıcılardır.
 
 :::danger Veli bağı kurulmamışsa tebligat boş kümeye gider
-`UserAccount.LinkedStudentIds`'i dolduran **otomatik hiçbir yol yoktur**: ne consumer, ne seeder,
-ne backfill ucu. Tek yol elle `POST /api/security/users/{id}/students`.
+**Yeni veliler** davet anında bağlanır (#271): `CreateInvitation.StudentIds` verilir, davet kabul
+edilince `UserAccount.LinkedStudentIds` ve Keycloak özniteliği kurulur. Bağ **yalnız veli
+rolünde** kurulabilir.
 
-Karşılaştırın: `StudentId` için `StudentAccountSyncConsumer` var (#230), `BranchCodes` için
-`resync-branch-codes` var. Veli bağının karşılığı **yok**.
+**Mevcut veliler için otomatik yol YOKTUR** ve olamaz: ortak anahtar yok — `UserAccount`'ta TC
+alanı bulunmuyor, `StudentRegistered` veli bilgisi taşımıyor, ad eşleştirmesi güvenilmez. Onlar
+elle bağlanır: `POST /api/security/users/{id}/students`.
 
-Bağlar kurulmadan özellik açılırsa veliye hiçbir tebligat ulaşmaz. Kod bunu artık **sessiz
-bırakmıyor** — alıcı bulunamadığında `LogWarning` yazılır — ama log okunmazsa yükümlülük yerine
-getirilmemiş olur.
+**Eksiği ölçün:** `GET /api/security/users/guardian-links/missing` velisi bağlı olmayan
+öğrencileri ve sayısını döner. O öğrencilerin velisine devamsızlık tebligatı **ulaşmaz**.
+
+Kod bunu ayrıca **sessiz bırakmıyor** — alıcı bulunamadığında `LogWarning` yazılır — ama log
+okunmazsa yükümlülük yerine getirilmemiş olur.
 :::
 
 **Öğrenci ayağı da bir ön koşula bağlı:** `UserAccount.StudentId` #230 öncesinde hiç

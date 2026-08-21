@@ -41,6 +41,14 @@ public static class UserManagementEndpoints
         group.MapPost("/sync", SyncUsers).RequireAuthorization(Permissions.UserManagement.Create);
         group.MapPost("/resync-display-names", ResyncDisplayNames).RequireAuthorization(Permissions.UserManagement.Create);
 
+        // Velisi bağlı olmayan öğrenciler (#271) — eksiği ölçülebilir kılar. Bağ kurulmadan
+        // md. 36 (4) tebligatı (#247) veliye hiç ulaşmıyor ve bu sessiz.
+        //
+        // İzin daveti oluşturabilenlerdedir: listenin karşılığı bir eylemdir — eksik veliyi
+        // davet etmek ya da elle bağlamak.
+        group.MapGet("/guardian-links/missing", GetStudentsWithoutGuardian)
+            .RequireAuthorization(Permissions.UserManagement.Create);
+
         // Keycloak'taki artık institution_id özniteliğini siler (ADR-0003 adım 3). Kiracı
         // anahtarını yazan uçla aynı yetki seviyesi: ikisi de kiracı kapsamına dokunur.
         group.MapPost("/purge-institution-attribute", PurgeInstitutionAttribute)
@@ -236,6 +244,22 @@ public static class UserManagementEndpoints
             .AddMessage(
                 $"{result.Total} Keycloak kullanıcısı tarandı: {result.Purged} özniteliği silindi, "
                 + $"{result.Skipped} zaten temizdi, {result.Failed} başarısız.")
+            .Build());
+    }
+
+    /// <summary>
+    /// Velisi bağlı olmayan öğrenciler (#271). Sayı asıl ölçüttür — liste eylem içindir.
+    /// </summary>
+    private static async Task<IResult> GetStudentsWithoutGuardian(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<GuardianLinkGapResult>(new GetStudentsWithoutGuardian());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage(result.MissingCount == 0
+                ? "Tüm öğrencilerin velisi bağlı."
+                : $"{result.TotalStudents} öğrencinin {result.MissingCount} tanesinde veli bağı yok — "
+                  + "bu öğrencilerin velisine devamsızlık tebligatı ULAŞMAZ.")
             .Build());
     }
 

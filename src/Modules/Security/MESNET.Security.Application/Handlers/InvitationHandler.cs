@@ -4,6 +4,7 @@ using MESNET.Common.Infrastructure.Pagination;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Pagination;
+using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Errors;
 using MESNET.Security.Application.Events;
@@ -37,6 +38,8 @@ public static class CreateInvitationHandler
             TargetRole = command.TargetRole,
             InstitutionId = command.InstitutionId,
             BusinessId = command.BusinessId,
+            // Veli–öğrenci bağı (#271) — kabul anında UserAccount'a yazılır.
+            StudentIds = ParentScopePolicy.Normalize(command.StudentIds ?? []).ToList(),
             // Aktör token'dan gelir, istekten DEĞİL (#137).
             CreatedById = currentUser.GetUserId(),
             Metadata = command.Metadata ?? [],
@@ -163,6 +166,16 @@ public static class CompleteInvitationHandler
                 keycloakUserId, BranchCodeClaims.ClaimType, branchCodes);
         }
 
+        // Veli–öğrenci bağı (#271). Keycloak özniteliği de kurulur — claim OTORİTER DEĞİLDİR
+        // (PermissionClaimsTransformation her istekte kayıttan yeniden yazar), ama öznitelik
+        // yoksa kullanıcı yönetimi ekranında bağ görünmez ve tutarsızlık doğar.
+        if (invitation.StudentIds.Count > 0)
+        {
+            await keycloak.SetUserAttributeValuesAsync(
+                keycloakUserId, LinkedStudentClaims.ClaimType,
+                [.. invitation.StudentIds.Select(id => id.ToString())]);
+        }
+
         var account = new UserAccount
         {
             Id = Guid.NewGuid(),
@@ -174,7 +187,8 @@ public static class CompleteInvitationHandler
             Roles = [invitation.TargetRole],
             InstitutionId = invitation.InstitutionId,
             BusinessId = invitation.BusinessId,
-            BranchCodes = branchCodes
+            BranchCodes = branchCodes,
+            LinkedStudentIds = invitation.StudentIds
         };
         session.Store(account);
 

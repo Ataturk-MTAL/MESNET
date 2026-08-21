@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Security.Core.Entities;
+using MESNET.Security.Core.ReadModels;
 
 namespace MESNET.Security.Persistence;
 
@@ -20,5 +21,9 @@ public class SecurityMartenConfig : IConfigureMarten
 
         // Rol → atanabilir yetki domain kapsamı (singleton, yapılandırılabilir)
         options.Schema.For<PermissionScopeConfig>().DatabaseSchemaName("security");
+
+        // Veli bağı eksik ölçümü (#271) — Enrollment'ın StudentRegistered olayından beslenir.
+        options.Schema.For<GuardianLinkView>().DatabaseSchemaName("security");
+        options.Schema.For<GuardianLinkView>().Index(x => x.InstitutionId);
     }
 }
