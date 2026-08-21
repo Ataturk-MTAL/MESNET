@@ -20,6 +20,13 @@ public static class CreateInvitationHandler
     public static async Task<(Guid, InvitationCreated)> Handle(
         CreateInvitation command, IDocumentSession session, ICurrentUserService currentUser)
     {
+        var studentIds = ParentScopePolicy.Normalize(command.StudentIds ?? []).ToList();
+
+        // KAPSAM İSTEKTEN ALINMAZ (#271). Öğrenci kimlikleri istek gövdesinden geliyor; kontrol
+        // olmadan bir okulun yöneticisi başka okulun öğrencisini kendi kullanıcısına
+        // bağlayabilir ve ParentScopeGuard o listeye sorgusuz güvenir.
+        await GuardianLinkScopeGuard.EnsureInScopeAsync(session, studentIds);
+
         var existing = await session.Query<UserInvitation>()
             .Where(i => i.Email == command.Email
                         && i.TargetRole == command.TargetRole
@@ -39,7 +46,7 @@ public static class CreateInvitationHandler
             InstitutionId = command.InstitutionId,
             BusinessId = command.BusinessId,
             // Veli–öğrenci bağı (#271) — kabul anında UserAccount'a yazılır.
-            StudentIds = ParentScopePolicy.Normalize(command.StudentIds ?? []).ToList(),
+            StudentIds = studentIds,
             // Aktör token'dan gelir, istekten DEĞİL (#137).
             CreatedById = currentUser.GetUserId(),
             Metadata = command.Metadata ?? [],

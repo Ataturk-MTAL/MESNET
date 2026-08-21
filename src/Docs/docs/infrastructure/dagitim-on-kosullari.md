@@ -415,6 +415,16 @@ elle bağlanır: `POST /api/security/users/{id}/students`.
 **Eksiği ölçün:** `GET /api/security/users/guardian-links/missing` velisi bağlı olmayan
 öğrencileri ve sayısını döner. O öğrencilerin velisine devamsızlık tebligatı **ulaşmaz**.
 
+:::warning `resync-projections` ZORUNLU — yoksa bağ kurulamaz
+Veli bağı artık kiracı kontrolünden geçiyor (#271): istenen öğrenci kimliği, kiracının
+`GuardianLinkView` görünümünde **bulunmak zorunda**. Görünüm `StudentRegistered`'dan beslenir ve
+mevcut öğrenciler için **boştur**.
+
+`POST /api/students/resync-projections` çalıştırılmadan **hiçbir veli bağı kurulamaz** — ne
+davetten ne elle. Kontrol bilerek kapalı tarafa düşüyor: kapsamsız kalmak, yanlış kapsama
+düşmekten iyidir (ADR-0003 adım 2 ile aynı yön). Hata mesajı operatörü bu uca yönlendirir.
+:::
+
 Kod bunu ayrıca **sessiz bırakmıyor** — alıcı bulunamadığında `LogWarning` yazılır — ama log
 okunmazsa yükümlülük yerine getirilmemiş olur.
 :::
