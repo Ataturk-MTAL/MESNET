@@ -18,6 +18,12 @@ public class AttendanceMartenConfig : IConfigureMarten
         // başına değişemez.
         options.Schema.For<AttendanceLimitConfig>().DatabaseSchemaName("attendance");
 
+        // Kademeli bildirim gönderim defteri (#247) — öğrenci + dönem başına tek satır.
+        // Kimlik okunabilir bileşik anahtardır (AttendanceCounterScope.KeyFor).
+        options.Schema.For<AbsenceNotificationLog>().DatabaseSchemaName("attendance");
+        options.Schema.For<AbsenceNotificationLog>().Index(x => x.StudentId);
+        options.Schema.For<AbsenceNotificationLog>().Index(x => x.InstitutionId);
+
         options.Schema.For<AttendanceView>().DatabaseSchemaName("attendance");
         options.Schema.For<AttendanceView>().Index(x => x.StudentId);
         options.Schema.For<AttendanceView>().Index(x => x.BusinessId);
