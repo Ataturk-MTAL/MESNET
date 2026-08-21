@@ -58,13 +58,21 @@ public static class ReceiptOverdueConsumer
         // Hedefleme izin üzerinden: Payment modülü koordinatör öğretmenin kimliğini bilmiyor,
         // öğrenci-öğretmen eşleşmesi Coordination modülünde ve modüller arası doğrudan sorgu
         // yasak. İzin bazlı hedefleme bu sınırı aşmadan doğru kitleye ulaşıyor.
+        //
+        // KURUM DARALTMASI ZORUNLU (#266): izin ölçütü kiracı sınırını korumaz. Daraltma yokken
+        // bir okulun dekont gecikmesi, ÖĞRENCİ ADI payload'da olacak şekilde, salary:approve
+        // iznine sahip TÜM okulların onaycılarına gidiyordu.
         await notifications.PublishAsync(
             new SseNotification(
                 EventType: "payment.receipt-overdue.approver",
                 Module: "Payment",
                 Payload: payload,
                 OccurredAt: DateTime.UtcNow),
-            new NotificationTarget { RequiredPermission = Permissions.Salary.Approve },
+            new NotificationTarget
+            {
+                InstitutionId = summary.InstitutionId,
+                RequiredPermission = Permissions.Salary.Approve
+            },
             cancellationToken);
     }
 }

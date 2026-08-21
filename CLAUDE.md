@@ -810,6 +810,15 @@ taraf kendi kesintisini tek taraflı iptal edemez.
 değiştirdiği için `attendance:manage` değil `attendance:direct-entry` ister — önceden işletme
 yetkilisi o uçtan onay zincirini tümden atlayabiliyordu.
 
+**Bildirim hedefi de kapsam kararıdır (#266).** `NotificationTarget` ölçütleri iki sınıftır:
+**tanımlayıcı** (`UserIds`, `StudentIds`, `GuardianOfStudentIds`, `BusinessIds`) evrensel
+benzersizdir ve kiracı sınırını kendiliğinden korur; **geniş** (`Roles`, `RequiredPermission`)
+korumaz ve **`InstitutionId` ile daraltılmak zorundadır**. Daraltmasız geniş hedef kimseye
+ulaşmaz ve uyarı loglanır. Ölçüldü: daraltma yokken bir okulun dekont gecikmesi, öğrenci adı
+payload'da olacak şekilde tüm okulların onaycılarına gidiyordu. Hedeflemede **rol adı
+kullanılmaz**, izne bakılır. Kilitleyen testler: `NotificationTargetPolicyTests`,
+`NotificationTargetScopeDriftTests`
+
 **Sayan her sorgu hüküm sorgusudur (#252).** İzin katmanı doğru olsa bile sayan sorgu duruma
 bakmazsa hüküm yine tek taraflı doğar: fesih sayacı (`AttendanceCounterScope`) `Pending` kaydı
 saymaz — ücret kesintisi de saymıyordu (`PaymentSaga`), ikisi aynı ilkedir; kara liste dar tutulur,
