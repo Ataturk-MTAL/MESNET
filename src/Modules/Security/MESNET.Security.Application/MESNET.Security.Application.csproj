@@ -9,6 +9,12 @@
     <!-- #230: öğrenci kapsam otoritesi StudentRegistered olayından dolar. YALNIZ Shared katmanı — CLAUDE.md modül referans kuralı. -->
 
     <ProjectReference Include="../../Enrollment/MESNET.Enrollment.Shared/MESNET.Enrollment.Shared.csproj" />
+    <!--
+      Kademeli devamsızlık tebligatının e-posta ayağı (#247). Alıcı adresleri UserAccount'ta,
+      yani Security şemasında; Attendance oraya sorgu ATAMAZ. Bu yüzden gönderim tüketicisi
+      Security'de yaşar ve Attendance'ın YALNIZCA Shared katmanını referans eder.
+    -->
+    <ProjectReference Include="../../Attendance/MESNET.Attendance.Shared/MESNET.Attendance.Shared.csproj" />
 
     <ProjectReference Include="../MESNET.Security.Core/MESNET.Security.Core.csproj" />
     <ProjectReference Include="../MESNET.Security.Shared/MESNET.Security.Shared.csproj" />

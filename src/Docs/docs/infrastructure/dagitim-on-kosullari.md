@@ -397,6 +397,41 @@ dönem ortasında açarken bunu hesaba katın.
 
 ---
 
+## Kademeli bildirim teslimatı: veli bağı ZORUNLU ön koşul (#247)
+
+Tebligat üç alıcıya gider: **veli** (koşulsuz), **işletme** (koşulsuz) ve — 18 yaşını
+doldurmuşsa — **öğrencinin kendisi**. Veli ve işletme ayakları md. 36 (4)'ün doğrudan
+emrettiği alıcılardır.
+
+:::danger Veli bağı kurulmamışsa tebligat boş kümeye gider
+`UserAccount.LinkedStudentIds`'i dolduran **otomatik hiçbir yol yoktur**: ne consumer, ne seeder,
+ne backfill ucu. Tek yol elle `POST /api/security/users/{id}/students`.
+
+Karşılaştırın: `StudentId` için `StudentAccountSyncConsumer` var (#230), `BranchCodes` için
+`resync-branch-codes` var. Veli bağının karşılığı **yok**.
+
+Bağlar kurulmadan özellik açılırsa veliye hiçbir tebligat ulaşmaz. Kod bunu artık **sessiz
+bırakmıyor** — alıcı bulunamadığında `LogWarning` yazılır — ama log okunmazsa yükümlülük yerine
+getirilmemiş olur.
+:::
+
+**Öğrenci ayağı da bir ön koşula bağlı:** `UserAccount.StudentId` #230 öncesinde hiç
+yazılmıyordu. `POST /api/students/resync-projections` çalıştırılmazsa öğrenci de hata değil
+**sessiz boş** alır. (Aynı uç `StudentNameView.BirthDate`'i de doldurur — yukarı bakınız.)
+
+### Kanallar ve hukuki ağırlıkları
+
+| Kanal | Kalıcı mı | Tebligat kanıtı olur mu |
+| --- | --- | --- |
+| Uygulama içi (SSE) | **Hayır** — bağlı olmayan kullanıcının bildirimi düşer, sunucuda hiçbir yere yazılmaz, yeniden bağlanma yok | **Hayır** — kolaylıktır |
+| E-posta | Evet — SMTP gönderimi ve log kaydı | **Evet** — "yazılı bildirim" gereğini bu karşılar |
+| Yazdırılabilir tebligat | Talep üzerine, koordinatör isterse | İmzalatılırsa en güçlü iz |
+
+SMTP ayarları: `SmtpSettings:*` (dev'de Mailpit, `localhost:1025`, TLS yok). Ayar eksikse
+gönderim **başarısız olur ve loglanır** — sessiz düşmez.
+
+---
+
 ## Resync / backfill uçları
 
 Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden çok kez
