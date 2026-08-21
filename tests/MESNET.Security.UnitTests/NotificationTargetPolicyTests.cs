@@ -158,22 +158,120 @@ public sealed class NotificationTargetPolicyTests
             .ShouldBeFalse();
     }
 
+    // ─── Geniş ölçütler kiracıyla DARALTILIR (#266) ──────────────────────────────────
+
+    private static readonly Guid BaskaKurum = Guid.Parse("99999999-9999-9999-9999-999999999999");
+
     /// <summary>
-    /// <b>Bilinen sınır — #266.</b> Ölçütler OR mantığındadır: <c>Roles</c> ve
-    /// <c>RequiredPermission</c> kiracı sınırını KORUMAZ. Bu test o davranışı <b>onaylamıyor</b>,
-    /// var olduğunu kayda geçiriyor; düzeltme #266'da. Davranış değişince bu test kırılacak ve
-    /// bu istenen sonuçtur.
+    /// <b>Asıl sızıntı regresyonu.</b> Ölçütler eskiden saf OR'du: <c>InstitutionId</c> ile
+    /// birlikte konan <c>Roles</c> kurum süzgecini <b>tümden etkisiz</b> bırakıyor ve bir okulun
+    /// bildirimi her okulun müdürüne gidiyordu.
     /// </summary>
     [Fact]
-    public void BILINEN_SINIR_rol_olcutu_kurum_suzgecini_etkisiz_kiliyor()
+    public void Rol_olcutu_baska_kurumun_kullanicisina_ulasmaz()
     {
-        var baskaOkulunMuduru = Kullanici(
-            institutionId: Guid.Parse("99999999-9999-9999-9999-999999999999"),
-            roles: ["InstitutionManager"]);
+        var baskaOkulunMuduru = Kullanici(institutionId: BaskaKurum, roles: ["InstitutionManager"]);
 
         NotificationTargetPolicy.Matches(
                 baskaOkulunMuduru,
                 new NotificationTarget { InstitutionId = Kurum, Roles = ["InstitutionManager"] })
-            .ShouldBeTrue("#266: OR mantığı kurum süzgecini etkisiz kılıyor — kayda geçirilmiş sızıntı.");
+            .ShouldBeFalse("Kurum süzgeci rol ölçütünü daraltmalı, OR'lanmamalı.");
+    }
+
+    /// <summary>
+    /// Payment'taki hâli: bir okulun dekont gecikmesi, <b>öğrenci adı payload'da</b> olacak
+    /// şekilde tüm okulların onaycılarına gidiyordu.
+    /// </summary>
+    [Fact]
+    public void Izin_olcutu_baska_kurumun_kullanicisina_ulasmaz()
+    {
+        var baskaOkulunOnaycisi = Kullanici(institutionId: BaskaKurum, permissions: ["salary:approve"]);
+
+        NotificationTargetPolicy.Matches(
+                baskaOkulunOnaycisi,
+                new NotificationTarget { InstitutionId = Kurum, RequiredPermission = "salary:approve" })
+            .ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Ayni_kurumun_izinli_kullanicisi_alir()
+    {
+        var onayci = Kullanici(institutionId: Kurum, permissions: ["salary:approve"]);
+
+        NotificationTargetPolicy.Matches(
+                onayci,
+                new NotificationTarget { InstitutionId = Kurum, RequiredPermission = "salary:approve" })
+            .ShouldBeTrue("Doğru kurumun izinli kullanıcısı bildirimi almalı.");
+    }
+
+    /// <summary>Aynı kurumda olmak yetmez — geniş ölçütün kendisi de tutmalı.</summary>
+    [Fact]
+    public void Ayni_kurumda_ama_izinsiz_kullanici_almaz()
+    {
+        var izinsiz = Kullanici(institutionId: Kurum, permissions: ["attendance:view"]);
+
+        NotificationTargetPolicy.Matches(
+                izinsiz,
+                new NotificationTarget { InstitutionId = Kurum, RequiredPermission = "salary:approve" })
+            .ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// <b>Kiracısız geniş hedef KİMSEYE ulaşmaz.</b> Sızdırmaktansa göndermemek doğrudur; hedef
+    /// ayrıca <see cref="NotificationTarget.LeaksWithoutInstitutionScope"/> ile işaretlenir ve
+    /// servis uyarı yazar — sessiz kalmaz.
+    /// </summary>
+    [Fact]
+    public void Kiracisiz_genis_hedef_kimseye_ulasmaz()
+    {
+        var hedef = new NotificationTarget { RequiredPermission = "salary:approve" };
+
+        NotificationTargetPolicy.Matches(
+                Kullanici(institutionId: Kurum, permissions: ["salary:approve"]), hedef)
+            .ShouldBeFalse("Kurum daraltması olmadan izin hedefi tüm okullara sızardı.");
+
+        hedef.LeaksWithoutInstitutionScope.ShouldBeTrue("Hata sessiz kalmamalı.");
+    }
+
+    [Fact]
+    public void Kiracili_genis_hedef_sizinti_isaretlenmez()
+    {
+        new NotificationTarget { InstitutionId = Kurum, RequiredPermission = "salary:approve" }
+            .LeaksWithoutInstitutionScope.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// <b>Tanımlayıcı ölçütler daraltılmaz.</b> Öğrenci/veli/işletme kimlikleri evrensel
+    /// benzersizdir ve kiracı sınırını kendiliğinden korur; kurum daraltması istemek onları
+    /// gereksizce kırardı — modüller bildirim gönderirken kurumu hep bilmiyor.
+    /// </summary>
+    [Fact]
+    public void Tanimlayici_olcutler_kurum_daraltmasi_istemez()
+    {
+        NotificationTargetPolicy.Matches(
+                Kullanici(studentId: Ogrenci, institutionId: BaskaKurum),
+                new NotificationTarget { StudentIds = [Ogrenci] })
+            .ShouldBeTrue("Öğrenci kimliği evrensel benzersizdir, daraltma gerektirmez.");
+    }
+
+    /// <summary>
+    /// Geniş ölçüt varken tanımlayıcı ölçüt hâlâ çalışır: hedefte hem ilgili öğretmen hem
+    /// kurumun izinli kullanıcıları olabilir (belge bildirimi deseni).
+    /// </summary>
+    [Fact]
+    public void Karisik_hedefte_tanimlayici_olcut_yine_calisir()
+    {
+        var ogretmenId = Guid.Parse("77777777-7777-7777-7777-777777777777");
+        var ogretmen = Kullanici(institutionId: BaskaKurum) with { UserId = ogretmenId };
+
+        NotificationTargetPolicy.Matches(
+                ogretmen,
+                new NotificationTarget
+                {
+                    UserIds = [ogretmenId],
+                    InstitutionId = Kurum,
+                    RequiredPermission = "document:view"
+                })
+            .ShouldBeTrue("Doğrudan hedeflenen kullanıcı geniş ölçütten bağımsız almalı.");
     }
 }

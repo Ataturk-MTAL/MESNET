@@ -50,7 +50,26 @@ public sealed record NotificationTarget
     public IReadOnlyList<string>? Roles { get; init; }
 
     /// <summary>
-    /// Belirli permission'a sahip kullanıcılar
+    /// Belirli permission'a sahip kullanıcılar.
+    ///
+    /// <para><b>Kiracı sınırını KORUMAZ</b> — <see cref="InstitutionId"/> ile birlikte
+    /// kullanılmak zorundadır (#266).</para>
     /// </summary>
     public string? RequiredPermission { get; init; }
+
+    /// <summary>
+    /// <b>Geniş</b> ölçüt taşıyor mu — çok kullanıcıya uyan ve kiracı sınırını kendiliğinden
+    /// korumayan ölçütler (#266).
+    /// </summary>
+    public bool HasBroadCriteria =>
+        Roles is { Count: > 0 } || !string.IsNullOrEmpty(RequiredPermission);
+
+    /// <summary>
+    /// <b>Sızıntı riski taşıyan hedef:</b> geniş ölçüt var ama kiracı daraltması yok.
+    ///
+    /// <para>Böyle bir hedef hiç kimseye ulaşmaz (<c>NotificationTargetPolicy</c> onu reddeder) —
+    /// sızdırmaktansa göndermemek doğrudur. Ama <b>sessiz kalmaz</b>: servis uyarı yazar, çünkü
+    /// bu neredeyse her zaman çağıranın hatasıdır.</para>
+    /// </summary>
+    public bool LeaksWithoutInstitutionScope => HasBroadCriteria && !InstitutionId.HasValue;
 }

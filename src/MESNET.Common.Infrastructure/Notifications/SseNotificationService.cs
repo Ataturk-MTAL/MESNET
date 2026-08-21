@@ -25,6 +25,18 @@ internal sealed class SseNotificationService : ISseNotificationService
         NotificationTarget target,
         CancellationToken ct = default)
     {
+        // Geniş ölçüt (rol/izin) kiracı daraltması olmadan verilmişse hedef KİMSEYE ulaşmaz
+        // (#266) — sızdırmaktansa göndermemek doğrudur, ama bu neredeyse her zaman çağıranın
+        // hatasıdır ve sessiz kalmamalı.
+        if (target.LeaksWithoutInstitutionScope)
+        {
+            _logger.LogWarning(
+                "Bildirim hedefi KİRACI DARALTMASI OLMADAN geniş ölçüt taşıyor ve kimseye "
+                + "ulaşmayacak: EventType={EventType}, Module={Module}. Rol/izin hedefleri "
+                + "InstitutionId ile birlikte verilmelidir (#266).",
+                notification.EventType, notification.Module);
+        }
+
         var connections = _connectionManager.GetMatchingConnections(target);
 
         if (connections.Count == 0)
