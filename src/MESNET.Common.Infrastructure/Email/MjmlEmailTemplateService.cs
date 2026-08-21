@@ -25,9 +25,12 @@ public sealed class MjmlEmailTemplateService : IEmailTemplateService
     public string RenderInvitation(string fullName, string targetRole, string registrationLink)
     {
         return _invitationHtmlTemplate.Value
-            .Replace("{{FullName}}", fullName)
-            .Replace("{{TargetRole}}", targetRole)
-            .Replace("{{RegistrationLink}}", registrationLink);
+            .Replace("{{FullName}}", HtmlEscape(fullName))
+            .Replace("{{TargetRole}}", HtmlEscape(targetRole))
+            // Bağlantı sistemin kendi ürettiği URL'dir ama yine kaçışlanır: tek satırlık bir
+            // istisna bırakmak, bir sonraki geliştiriciye "burada kaçışlamak isteğe bağlı"
+            // mesajı verirdi.
+            .Replace("{{RegistrationLink}}", HtmlEscape(registrationLink));
     }
 
     /// <summary>
@@ -47,13 +50,43 @@ public sealed class MjmlEmailTemplateService : IEmailTemplateService
               + " gün bildirimleri zamanında yapılamamıştır.";
 
         return _absenceNotificationHtmlTemplate.Value
-            .Replace("{{RecipientName}}", recipientName)
-            .Replace("{{StudentName}}", studentName)
-            .Replace("{{StepLabel}}", stepLabel)
-            .Replace("{{LegLabel}}", legLabel)
+            .Replace("{{RecipientName}}", HtmlEscape(recipientName))
+            .Replace("{{StudentName}}", HtmlEscape(studentName))
+            .Replace("{{StepLabel}}", HtmlEscape(stepLabel))
+            .Replace("{{LegLabel}}", HtmlEscape(legLabel))
             .Replace("{{Days}}", days.ToString())
-            .Replace("{{SkippedNotice}}", skippedNotice);
+            // skippedNotice sistemin ürettiği metindir (sayılar + sabit ifade), ama aynı
+            // gerekçeyle o da kaçışlanır.
+            .Replace("{{SkippedNotice}}", HtmlEscape(skippedNotice));
     }
+
+    /// <summary>
+    /// Yer tutucuya konan değeri HTML bağlamı için güvenli hâle getirir.
+    ///
+    /// <para><b>Neden gerekli:</b> şablon MJML'den HTML'e derlendikten SONRA yer tutucular düz
+    /// metin değiştirmeyle doluyor. Değerlerin bir kısmı <b>kullanıcı kontrollüdür</b> —
+    /// <c>RecipientName</c> ve <c>StudentName</c> <c>UserAccount.FullName</c>'den, yani
+    /// kayıt sırasında girilen ad-soyaddan geliyor. Kaçışlanmazsa adına
+    /// <c>&lt;img src=x onerror=...&gt;</c> yazan bir kullanıcı, velinin ve işletmenin aldığı
+    /// e-postanın gövdesine <b>kendi işaretlemesini</b> sokar: düzen bozulur, sahte bağlantı ya
+    /// da izleme pikseli gömülebilir. Alıcı, iletinin okuldan geldiğini varsayar — bu yüzden
+    /// oltalama için elverişli bir yüzey.</para>
+    ///
+    /// <para><b>Neden <c>WebUtility.HtmlEncode</c> değil:</b> o, ASCII dışı karakterleri de
+    /// sayısal varlığa çevirir (<c>ç</c> → <c>&amp;#231;</c>). Doğru render eder ama ham gövde
+    /// okunmaz hâle gelir ve bu depoda Türkçe karakterler bilinçli olarak korunuyor. Burada
+    /// yalnız HTML'de anlam taşıyan beş karakter kaçışlanır; Türkçe harfler olduğu gibi kalır.
+    /// <c>&amp;</c> İLK sırada olmak zorunda — sonra gelseydi kendi ürettiği varlıkları yeniden
+    /// kaçışlardı.</para>
+    /// </summary>
+    private static string HtmlEscape(string? value) => value is null
+        ? string.Empty
+        : value
+            .Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal)
+            .Replace("\"", "&quot;", StringComparison.Ordinal)
+            .Replace("'", "&#39;", StringComparison.Ordinal);
 
     public byte[] GetLogoBytes() => _logoBytes.Value;
 
