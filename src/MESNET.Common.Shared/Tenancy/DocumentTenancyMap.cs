@@ -55,6 +55,8 @@ public static class DocumentTenancyMap
         ["AttendanceView"] = Tenant,
         ["StudentAbsenceView"] = Tenant,
         ["StudentNameView"] = Tenant,
+        // Veli bağı eksik ölçümü (#271) — öğrenci okulun verisidir, kiracı sınırını aşamaz.
+        ["GuardianLinkView"] = Tenant,
         ["StudentPaymentProfile"] = Tenant,
 
         ["AttendanceRecord"] = Tenant,

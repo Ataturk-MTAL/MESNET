@@ -76,4 +76,15 @@ public static class SecurityErrors
     public static Error InvalidInvitationStatus(Guid id, string currentStatus, string expectedStatus) =>
         new("Security.InvalidInvitationStatus",
             $"Davet durumu geçersiz: {id}. Mevcut: {currentStatus}, Beklenen: {expectedStatus}");
+
+    /// <summary>
+    /// Veli–öğrenci bağı kiracı sınırını aşamaz (#271). Mesaj <c>resync-projections</c>'a
+    /// yönlendirir: en olası sebep öğrenci görünümünün hiç doldurulmamış olmasıdır ve o hâlde
+    /// hata "yetkisiz" gibi görünüp operatörü yanlış yere bakmaya iter.
+    /// </summary>
+    public static Error GuardianLinkOutOfScope(IReadOnlyList<Guid> studentIds) =>
+        new("Security.GuardianLinkOutOfScope",
+            $"Şu öğrenciler bu kuruma ait değil ya da öğrenci görünümü henüz doldurulmamış: "
+            + $"{string.Join(", ", studentIds)}. Görünüm boşsa "
+            + "POST /api/students/resync-projections çalıştırılmalıdır.");
 }

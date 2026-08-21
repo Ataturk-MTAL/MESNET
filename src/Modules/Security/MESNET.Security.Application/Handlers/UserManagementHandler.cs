@@ -237,6 +237,12 @@ public static class ChangeUserStudentsHandler
         var previous = account.LinkedStudentIds.ToList();
         var studentIds = ParentScopePolicy.Normalize(command.StudentIds);
 
+        // KAPSAM İSTEKTEN ALINMAZ (#271). Bu yolda da kontrol YOKTU: bir okulun yöneticisi
+        // başka okulun öğrenci kimliğini vererek kendi kullanıcısına o öğrencinin verisine
+        // erişim açabiliyordu. ParentScopeGuard yalnız LinkedStudentIds'e bakar, listenin nasıl
+        // dolduğunu sorgulamaz.
+        await GuardianLinkScopeGuard.EnsureInScopeAsync(session, studentIds);
+
         // Boş liste özniteliği siler — bağı kaldırmak geçerli bir işlemdir.
         var kcResult = await keycloak.SetUserAttributeValuesAsync(
             account.KeycloakUserId,
