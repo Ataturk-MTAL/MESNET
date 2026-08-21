@@ -81,6 +81,19 @@ elle yayınlanan olaylar (ör. `AttendanceMarked`) çift işlenirdi.
 - **Ölçüldü:** `AttendanceApproved` / `AttendanceCorrected` / `ContractActivated` bu yüzden
   hiçbir tüketiciye ulaşmıyordu; `AbsenceTallyConsumer` ve `SagaRelayConsumer`'ın o
   aşırı yüklemeleri **ölü**ydü ve hata vermeden sessizce çalışmıyordu (dead letter'da bile iz yok)
+**Sticky yerel kuyruk varsayılan olarak PARALEL ve SIRASIZDIR (#262).**
+`MultipleHandlerBehavior.Separated` her handler tipine ayrı kuyruk verir; o kuyruk içinde aynı
+kayda ait olaylar birbirini geçebilir. Ölçüldü (Wolverine 6.15.0): yapılandırılmamış kuyrukta
+`MaxDegreeOfParallelism = 12`, `Sequential()` uygulananda `= 1`. `UseDurableLocalQueues()`
+dayanıklılık verir, **sıra vermez**.
+
+- Aynı kaydı olay olay güncelleyen tüketici (yerel görünüm besleyen consumer) **sıralı**
+  olmalıdır: sınıf `IConfigureLocalQueue` uygular ve
+  `public static void Configure(LocalQueueConfiguration c) => c.Sequential();` yazar
+- Statik sınıf arayüz uygulayamaz → sınıf `sealed class` olur, **metotlar statik kalır**.
+  Wolverine statik handler metotlarını örnek oluşturmadan çağırır (ölçüldü)
+- Belirti: "kaydı kuran olay geç kaldı" → `LoadAsync` null döner, güncelleme sessizce düşer
+
 - Derlenmesi ve testin yeşil olması yetmez: bir olayın **yönlendirildiğini** imza taraması
   kanıtlamaz. Depo geneli kilit: `AggregateHandlerPublishDriftTests` — tüketicisi olan bir olayı
   yayınlamayan her `[AggregateHandler]`'ı kırmızıya çevirir, bilinen borç donduruldu (#254)
