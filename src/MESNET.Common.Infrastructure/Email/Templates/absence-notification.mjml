@@ -1,0 +1,45 @@
+<mjml>
+  <mj-head>
+    <mj-title>MESNET — Devamsızlık Bildirimi</mj-title>
+    <mj-attributes>
+      <mj-all font-family="Helvetica, Arial, sans-serif" />
+      <mj-text font-size="14px" line-height="22px" color="#2c3e50" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f4f6f8">
+    <mj-section background-color="#ffffff" padding="24px">
+      <mj-column>
+        <mj-image src="cid:mesnet-logo" width="120px" align="left" padding-bottom="16px" />
+
+        <mj-text font-size="18px" font-weight="bold" color="#b60205">
+          Devamsızlık Bildirimi — {{StepLabel}}
+        </mj-text>
+
+        <mj-text>Sayın {{RecipientName}},</mj-text>
+
+        <mj-text>
+          <strong>{{StudentName}}</strong> adlı öğrencinin işletmede mesleki eğitim
+          devamsızlığı <strong>{{Days}} güne</strong> ulaşmıştır ({{LegLabel}}).
+        </mj-text>
+
+        <mj-text>
+          Bu bildirim, Millî Eğitim Bakanlığı Ortaöğretim Kurumları Yönetmeliği
+          <strong>madde 36, dördüncü fıkra</strong> uyarınca yapılmaktadır.
+        </mj-text>
+
+        <mj-text color="#b60205" font-weight="bold">{{SkippedNotice}}</mj-text>
+
+        <mj-text color="#7f8c8d" font-size="12px" padding-top="16px">
+          Devamsızlığın artması hâlinde aynı yönetmeliğin beşinci fıkrası uyarınca sözleşmenin
+          feshi ve sigorta çıkışı gündeme gelebilir. Bilgilerinize sunulur.
+        </mj-text>
+
+        <mj-divider border-width="1px" border-color="#ecf0f1" padding-top="16px" />
+
+        <mj-text color="#95a5a6" font-size="11px">
+          Bu ileti MESNET tarafından otomatik olarak üretilmiştir.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

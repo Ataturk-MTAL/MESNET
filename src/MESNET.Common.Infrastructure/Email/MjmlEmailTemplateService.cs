@@ -8,6 +8,7 @@ public sealed class MjmlEmailTemplateService : IEmailTemplateService
 {
     private readonly ILogger<MjmlEmailTemplateService> _logger;
     private readonly Lazy<string> _invitationHtmlTemplate;
+    private readonly Lazy<string> _absenceNotificationHtmlTemplate;
     private readonly Lazy<byte[]> _logoBytes;
 
     private static readonly Assembly ResourceAssembly = typeof(MjmlEmailTemplateService).Assembly;
@@ -16,6 +17,8 @@ public sealed class MjmlEmailTemplateService : IEmailTemplateService
     {
         _logger = logger;
         _invitationHtmlTemplate = new Lazy<string>(CompileInvitationTemplate);
+        _absenceNotificationHtmlTemplate = new Lazy<string>(
+            () => CompileTemplate("absence-notification", "devamsızlık bildirimi"));
         _logoBytes = new Lazy<byte[]>(LoadLogoBytes);
     }
 
@@ -27,11 +30,38 @@ public sealed class MjmlEmailTemplateService : IEmailTemplateService
             .Replace("{{RegistrationLink}}", registrationLink);
     }
 
+    /// <summary>
+    /// Kademeli devamsızlık bildirimi (#247). Atlanan kademeler varsa ileti bunu <b>açıkça</b>
+    /// söyler — zamanında yapılamamış tebligat sessizce gizlenmemeli.
+    /// </summary>
+    public string RenderAbsenceNotification(
+        string recipientName, string studentName, string stepLabel, string legLabel,
+        int days, IReadOnlyList<int> skippedSteps)
+    {
+        // DÜZ METİN: şablon MJML'den HTML'e ÖNCE derleniyor, yer tutucular sonra doluyor.
+        // Buraya mjml etiketi koymak render edilmemiş metin bırakırdı.
+        var skippedNotice = skippedSteps.Count == 0
+            ? string.Empty
+            : "Not: "
+              + string.Join(", ", skippedSteps.Select(s => $"{s}."))
+              + " gün bildirimleri zamanında yapılamamıştır.";
+
+        return _absenceNotificationHtmlTemplate.Value
+            .Replace("{{RecipientName}}", recipientName)
+            .Replace("{{StudentName}}", studentName)
+            .Replace("{{StepLabel}}", stepLabel)
+            .Replace("{{LegLabel}}", legLabel)
+            .Replace("{{Days}}", days.ToString())
+            .Replace("{{SkippedNotice}}", skippedNotice);
+    }
+
     public byte[] GetLogoBytes() => _logoBytes.Value;
 
-    private string CompileInvitationTemplate()
+    private string CompileInvitationTemplate() => CompileTemplate("invitation", "davet");
+
+    private string CompileTemplate(string name, string aciklama)
     {
-        var mjml = ReadEmbeddedResource("MESNET.Common.Infrastructure.Email.Templates.invitation.mjml");
+        var mjml = ReadEmbeddedResource($"MESNET.Common.Infrastructure.Email.Templates.{name}.mjml");
         var renderer = new MjmlRenderer();
 
         var (html, errors) = renderer.Render(mjml, new MjmlOptions { Beautify = false });
@@ -39,10 +69,11 @@ public sealed class MjmlEmailTemplateService : IEmailTemplateService
         if (errors.Count > 0)
         {
             foreach (var error in errors)
-                _logger.LogWarning("MJML template hatası: {Error}", error);
+                _logger.LogWarning("MJML template hatası ({Sablon}): {Error}", name, error);
         }
 
-        _logger.LogInformation("MJML invitation template derlendi ({Length} karakter HTML)", html.Length);
+        _logger.LogInformation(
+            "MJML {Aciklama} template derlendi ({Length} karakter HTML)", aciklama, html.Length);
         return html;
     }
 
