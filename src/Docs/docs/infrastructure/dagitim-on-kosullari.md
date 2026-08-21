@@ -375,6 +375,28 @@ Reporting'in görünümünü onarır.
 
 ---
 
+## Kademeli bildirim: doğum tarihi ve ilk açılış (#247)
+
+18 yaş kuralı için `StudentNameView.BirthDate` gerekiyor. Alan #247 ile eklendi; **olay şekli
+değişmedi** — `StudentRegistered` bu alanı zaten taşıyordu (#85), Attendance'ın tüketicisi okuyup
+atıyordu.
+
+- **Mevcut satırlar boştur.** `POST /api/students/resync-projections` ile dolar; alanı yayınlayan
+  kod o uçta zaten var, **yeni uç yazılmadı**.
+- Atlanırsa: doğum tarihi `null` kalır ve **öğrencilere bildirim yine gider**
+  (`AbsenceNotificationPolicy.ShouldNotifyStudent` bilinmeyen tarihte gönderme yönünde karar
+  verir). Yani atlamak sessiz bir kayıp üretmez, yalnız 18 altı öğrencilere fazladan bildirim
+  gider.
+
+:::warning İlk açılışta sıçrama
+Özellik açıldığında eşiği **zaten geçmiş** öğrenciler için defter boştur. Politika bu durumda
+yalnız **en yüksek** kademeyi bildirir (5/15/25'in üçünü değil), atlananları `SkippedSteps` ile
+kayda geçirir. Yine de ilk devamsızlık girişi/onayı dalgasında toplu bildirim beklenir — özelliği
+dönem ortasında açarken bunu hesaba katın.
+:::
+
+---
+
 ## Resync / backfill uçları
 
 Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden çok kez

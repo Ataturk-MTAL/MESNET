@@ -305,6 +305,38 @@ doğru sayaca, toplama bağlandı.)*
   - Saat **22:00'yi** geçemez
 - Yoğunlaştırılmış eğitimde haftalık azami çalışma saatini geçmemek şartıyla **haftada 6 gün** planlanabilir (veli/öğrenci isteği gerekli)
 
+### 5.4b Kademeli Bildirim — md. 36 (4) *(#247)*
+
+İşletmede mesleki eğitimde devamsızlığın **5., 15. ve 25.** gününde **veliye ve işletmeye**
+yazılı bildirim yapılır; **18 yaşından büyük** öğrencide **öğrencinin kendisine de**. Fıkranın
+amacı ailenin, §5.3'teki fesih gelmeden önce durumu öğrenmesidir.
+
+**Bu bir TEBLİGAT gereğidir, hüküm değil.** Fesih zinciriyle (md. 36 (5)) aynı sayaçtan beslenir
+ama ayrı sonuç doğurur ve ayrı yoldan yürür.
+
+- **İki ayak AYRI takip edilir.** Hem **mazeretsiz** hem **toplam** devamsızlık için ayrı kademe
+  ve ayrı bildirim. Yalnız mazeretsiz sayılsaydı, raporlu ve mazeretli günlerle 25 günü geçen
+  öğrencinin ailesi hiç uyarılmazdı — oysa toplam ayak 30'da fesih getiriyor (§5.3).
+- **Aynı kademe iki kez bildirilmez.** Sayaç dönem içinde sıfırlanmadığı için, defter olmasa
+  eşik dolduktan sonraki **her** kayıt/onay aynı bildirimi yeniden üretirdi. Defter:
+  `AbsenceNotificationLog`, öğrenci + dönem başına tek satır, ayak başına tek monoton kademe.
+- **Sıçramada yalnız EN YÜKSEK kademe bildirilir.** Haftalık toplu giriş ya da biriken kayıtların
+  toplu onayı sayacı bir hamlede birden çok kademeden geçirebilir. 27 günü olan öğrenciye
+  5/15/25'in üçünü birden göndermek gürültüdür ve 5. gün uyarısı o noktada anlamsızdır.
+  Atlananlar kayda geçer (`SkippedSteps`), böylece tebligatta *"5. ve 15. gün bildirimleri
+  zamanında yapılamadı"* bilgisi görünebilir.
+- **Kademe GERİ ALINMAZ.** Sayaç düzeltme, silme ya da sağlık raporu onayıyla düşebilir; yapılmış
+  bir tebligat yapılmamış sayılamaz. Sayaç düşüp yeniden aynı kademeye çıkarsa ikinci bildirim
+  gitmez.
+- **Doğum tarihi bilinmiyorsa öğrenciye DE gönderilir.** `StudentProfile.BirthDate` nullable ve
+  kayıtta zorunlu değil — bilinmeyen doğum tarihi kenar durum değil, yaygın hâl. Gönderme yönü
+  güvenlidir: veli ve işletme ayakları koşulsuzdur, öğrenci ayağı yalnız bir alıcı **ekler**.
+- **Kademeler (5/15/25) sabittir**, parametrik değil: sayı doğrudan fıkranın lafzıdır ve okul
+  başına değişmez. §5.3'ün parametrik yaptığı şey *sınırlardı*; burada sayı hükmün kendisidir.
+
+Karar tek yerde: `AbsenceNotificationPolicy`. Teslimat (uygulama içi bildirim, e-posta ve
+koordinatör isterse yazdırılabilir tebligat belgesi) ayrı bir katmandır.
+
 ### 5.5 Devamsızlık Girişi Yetkilendirme Kuralları
 
 #### Öğrenci-İşletme Bağlantısı

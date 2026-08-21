@@ -58,6 +58,9 @@ public static class DocumentTenancyMap
         ["StudentPaymentProfile"] = Tenant,
 
         ["AttendanceRecord"] = Tenant,
+        // Kademeli bildirim gönderim defteri (#247) — okulun kendi öğrencisine yaptığı tebligatın
+        // kaydı; kiracı sınırını aşamaz.
+        ["AbsenceNotificationLog"] = Tenant,
         // Saga durumu kiracıya aittir — süreç tek okulun içinde yürür
         ["PaymentSaga"] = Tenant,
         ["InternshipSaga"] = Tenant,

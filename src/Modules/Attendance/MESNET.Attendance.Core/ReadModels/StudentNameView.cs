@@ -29,4 +29,17 @@ public class StudentNameView
     /// <c>POST /api/enrollment/students/resync-projections</c> ile doldurulur.</para>
     /// </summary>
     public string? EducationType { get; set; }
+
+    /// <summary>
+    /// Doğum tarihi — md. 36 (4)'ün "18 yaşından büyük öğrenciye de bildirim" kuralı için (#247).
+    ///
+    /// <para><b>Olay şekli değişmedi:</b> <c>StudentRegistered</c> bu alanı zaten taşıyordu
+    /// (#85, Payment için eklenmiş); Attendance'ın tüketicisi okuyup atıyordu.</para>
+    ///
+    /// <para>Bu alandan önce yazılmış satırlarda <c>null</c>'dur ve o öğrencilere bildirim
+    /// <b>yine gider</b> (<c>AbsenceNotificationPolicy.ShouldNotifyStudent</c>) — eksik veri
+    /// alıcıyı düşürmemeli. Doldurmak için
+    /// <c>POST /api/students/resync-projections</c>.</para>
+    /// </summary>
+    public DateTime? BirthDate { get; set; }
 }
