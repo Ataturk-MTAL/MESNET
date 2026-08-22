@@ -1,5 +1,9 @@
 # CI entegrasyon testleri için bağımlılık yığını (#67).
 #
+# PORTLAR PARAMETRİK: GitHub Actions bu değişkenleri set ETMEZ, yani varsayılanlar devreye girer
+# ve CI davranışı birebir aynı kalır. Yerelde `scripts/ci-local.sh` onları başka portlara alır —
+# geliştirme yığını 5432/5672/9000'i zaten tutuyor ve iki yığın aynı anda ayakta durabilmeli.
+#
 # GitHub Actions'ın `services:` bloğu konteynerin CMD'ini değiştiremiyor; Keycloak
 # `start-dev --import-realm`, MinIO ise `server /data` ile başlamak zorunda. Bu yüzden
 # compose kullanılıyor.
@@ -21,7 +25,7 @@ services:
       POSTGRES_PASSWORD: mesnet_dev
       POSTGRES_DB: mesnet
     ports:
-      - '5432:5432'
+      - '${CI_PG_PORT:-5432}:5432'
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U mesnet -d mesnet']
       interval: 5s
@@ -34,7 +38,7 @@ services:
       RABBITMQ_DEFAULT_USER: mesnet
       RABBITMQ_DEFAULT_PASS: mesnet_dev
     ports:
-      - '5672:5672'
+      - '${CI_RABBIT_PORT:-5672}:5672'
     healthcheck:
       test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
       interval: 10s
@@ -52,7 +56,7 @@ services:
       # Testler realm'deki admin kullanıcısı + mesnet-api client'ı (direct grant) ile token alır.
       - ../src/MESNET.AppHost/keycloak/mesnet-realm.json:/opt/keycloak/data/import/mesnet-realm.json:ro
     ports:
-      - '8080:8080'
+      - '${CI_KEYCLOAK_PORT:-8080}:8080'
 
   minio:
     image: minio/minio:latest
@@ -61,4 +65,4 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - '9000:9000'
+      - '${CI_MINIO_PORT:-9000}:9000'

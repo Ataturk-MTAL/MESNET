@@ -1,0 +1,17 @@
+# YEREL uyarlamalar — yalnız `scripts/ci-local.sh` bu dosyayı ekler.
+#
+# GitHub Actions bu dosyayı KULLANMAZ; CI davranışı değişmez. Buraya yalnız Docker ile
+# Podman arasındaki gerçek farklar yazılır, tercih değil.
+services:
+  rabbitmq:
+    # ROOTLESS PODMAN: konteyner `/var/lib/rabbitmq/.erlang.cookie` dosyasını okuyamıyor ve
+    # açılış "BOOT FAILED ... eacces" ile düşüyor. Sebep uid eşlemesi — imajdaki dizin
+    # rabbitmq (999) kullanıcısına ait, rootless eşlemede erişilemiyor.
+    #
+    # tmpfs yazılabilir bir dizin verir. Veri kalıcılığı CI için zaten gereksiz: yığın her
+    # koşuda `down -v` ile siliniyor.
+    # notmpcopyup ŞART: podman varsayılan olarak tmpcopyup uygular ve orijinal dizini
+    # (kök sahipli .erlang.cookie dahil) tmpfs'e kopyalar — izin sorunu aynen sürer.
+    # Ölçüldü: yalnız mode=0777 ile konteyner yine "BOOT FAILED / eacces" ile düştü.
+    tmpfs:
+      - /var/lib/rabbitmq:rw,mode=0777,notmpcopyup
