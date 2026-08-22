@@ -5,6 +5,13 @@ namespace MESNET.Payment.Core.Entities;
 public class PaymentSummary
 {
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// Dönemin sözleşmesi (#154). Ay içi fesihte aynı öğrenci/ay için iki özet satırı oluşur;
+    /// ayırt edici alan budur.
+    /// </summary>
+    public Guid ContractId { get; set; }
+
     public Guid StudentId { get; set; }
     public Guid BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
@@ -15,6 +22,12 @@ public class PaymentSummary
     public decimal NetAmount { get; set; }
     public decimal GovernmentContribution { get; set; }
     public decimal EmployerPayment { get; set; }
+
+    /// <summary>
+    /// Tutarın kaç istihdam günü üzerinden hesaplandığı (#154). Tam ay 30'dur; ay ortası
+    /// fesih/başlangıçta fiilî gün sayısıdır.
+    /// </summary>
+    public int EmployedDays { get; set; } = Core.Services.EmploymentDays.FullMonthDays;
     private PaymentPhase _phase = PaymentPhase.Calculated;
     public PaymentPhase Phase
     {

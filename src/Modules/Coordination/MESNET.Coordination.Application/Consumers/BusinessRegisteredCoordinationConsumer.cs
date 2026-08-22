@@ -4,13 +4,17 @@ using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Application.Services;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.ReadModels;
+using Microsoft.Extensions.Logging;
 
 namespace MESNET.Coordination.Application.Consumers;
 
 /// <summary>
-/// İşletme kaydedildiğinde (kurum tarafından, doğrudan Active) coordination view oluşturur.
-/// Self-register işletmeler PendingApproval ile başlar — onlar BusinessApproved'da eklenir.
+/// İşletme kaydedildiğinde (kurum tarafından, doğrudan Active) işletme düzeyi <b>temel satırı</b>
+/// oluşturur. Self-register işletmeler PendingApproval ile başlar — onlar BusinessApproved'da eklenir.
 /// Lokasyon varsa otomatik mesafe hesaplar (OSRM → Haversine fallback).
+///
+/// Alan (branş) satırları burada oluşturulmaz; ilk öğrenci yerleştiğinde
+/// <see cref="StudentPlacedConsumer"/> temel satırdan türeterek oluşturur.
 /// </summary>
 public static class BusinessRegisteredCoordinationConsumer
 {
@@ -18,23 +22,30 @@ public static class BusinessRegisteredCoordinationConsumer
         BusinessRegistered @event,
         IDocumentSession session,
         IOsrmDistanceService osrmService,
+        ILogger<BusinessCoordinationView> logger,
         CancellationToken cancellationToken)
     {
         // Self-register işletmeler PendingApproval durumunda — haritada gösterilmez
         if (@event.Source == "SelfRegistered") // RegistrationSource.SelfRegistered.Name
             return;
 
-        var existing = await session.LoadAsync<BusinessCoordinationView>(@event.BusinessId, cancellationToken);
+        var baseId = CoordinationViewId.Base(@event.BusinessId);
+        var existing = await session.LoadAsync<BusinessCoordinationView>(baseId, cancellationToken);
         if (existing is not null) return;
+
+        var scopeInstitutionId = BusinessScopeOrigin.Resolve(
+            @event.RegisteredByInstitutionId, @event.BusinessId, logger);
 
         var view = new BusinessCoordinationView
         {
-            Id = @event.BusinessId,
+            Id = baseId,
+            BusinessId = @event.BusinessId,
             Name = @event.Name,
             Address = @event.Address,
             District = AddressHelper.ExtractDistrict(@event.Address),
             Location = @event.Location,
-            InstitutionId = @event.TenantId,
+            // Provenance → kapsam çevirimi ve bugünkü yaklaşımın sınırı BusinessScopeOrigin'de.
+            InstitutionId = scopeInstitutionId,
             ActiveStudentCount = 0,
         };
 
@@ -42,7 +53,7 @@ public static class BusinessRegisteredCoordinationConsumer
         if (@event.Location is not null)
         {
             await DistanceHelper.CalculateAndSetDistanceAsync(
-                view, @event.TenantId, session, osrmService, cancellationToken);
+                view, scopeInstitutionId, session, osrmService, cancellationToken);
         }
 
         session.Store(view);

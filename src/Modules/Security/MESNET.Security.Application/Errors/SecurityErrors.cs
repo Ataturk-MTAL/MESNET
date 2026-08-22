@@ -19,10 +19,41 @@ public static class SecurityErrors
     public static Error InvalidRole(string role) =>
         new("Security.InvalidRole", $"Geçersiz rol: {role}");
 
+    /// <summary>
+    /// İstenen rol adı/adları Keycloak realm'inde bulunamadı (#129).
+    ///
+    /// <para>Bu hata <b>sessiz veri bozulmasının</b> yerine geçer: eskiden çözülemeyen roller
+    /// filtrelenir ve işlem başarı dönerdi; kullanıcı sıfır realm rolüyle açılır, hiçbir izin
+    /// almaz ve hata da görmezdi. Rol adı geçerli görünüp realm'de yoksa realm tanımı
+    /// (<c>mesnet-realm.json</c>) ile <c>MesnetRoles</c> arasında sapma vardır.</para>
+    /// </summary>
+    public static Error RealmRolesUnresolved(IEnumerable<string> roles) =>
+        new("Security.RealmRolesUnresolved",
+            $"Şu rol(ler) kimlik sunucusunda tanımlı değil: {string.Join(", ", roles)}. " +
+            "İşlem yapılmadı — kullanıcı yetkisiz kalmasın diye yarım uygulanmaz.");
+
     public static Error PermissionNotAssignableToRole(string roles, string permissions) =>
         new("Security.PermissionNotAssignableToRole",
             $"Bu yetkiler kullanıcının rolüne ({roles}) atanamaz: {permissions}. " +
             "Yetki, rolün kapsamı dışında olamaz (ör. işletme kullanıcısına kurum-yönetimi yetkisi verilemez).");
+
+    /// <summary>
+    /// Kapsam muafiyeti izni bireysel olarak atanmak istendi (#126).
+    /// Bu izinler yapılandırmadan bağımsız olarak reddedilir; yalnız rol üzerinden gelebilirler.
+    /// </summary>
+    public static Error PermissionNeverDirectlyAssignable(string permissions) =>
+        new("Security.PermissionNeverDirectlyAssignable",
+            $"Bu yetkiler hiçbir kullanıcıya bireysel olarak atanamaz: {permissions}. " +
+            "Veri kapsamını genişleten muafiyet izinleridir ve yalnız rol üzerinden verilebilir.");
+
+    /// <summary>
+    /// Kurum (kiracı) bağı, aktörün kendi kurum kapsamı dışına yazılmak istendi
+    /// (ADR-0003 adım 2). Karar <c>UserInstitutionScopePolicy</c> içindedir.
+    /// </summary>
+    public static Error InstitutionScopeNotAllowed() =>
+        new("Security.InstitutionScopeNotAllowed",
+            "Kullanıcının kurum bağı yalnız kendi kurumunuza yazılabilir. " +
+            "Başka bir kuruma bağlı kullanıcının bağı, o kurum tarafından çözülmelidir.");
 
     public static Error CannotDeleteSelf() =>
         new("Security.CannotDeleteSelf", "Kendi hesabınızı silemezsiniz.");
@@ -45,4 +76,15 @@ public static class SecurityErrors
     public static Error InvalidInvitationStatus(Guid id, string currentStatus, string expectedStatus) =>
         new("Security.InvalidInvitationStatus",
             $"Davet durumu geçersiz: {id}. Mevcut: {currentStatus}, Beklenen: {expectedStatus}");
+
+    /// <summary>
+    /// Veli–öğrenci bağı kiracı sınırını aşamaz (#271). Mesaj <c>resync-projections</c>'a
+    /// yönlendirir: en olası sebep öğrenci görünümünün hiç doldurulmamış olmasıdır ve o hâlde
+    /// hata "yetkisiz" gibi görünüp operatörü yanlış yere bakmaya iter.
+    /// </summary>
+    public static Error GuardianLinkOutOfScope(IReadOnlyList<Guid> studentIds) =>
+        new("Security.GuardianLinkOutOfScope",
+            $"Şu öğrenciler bu kuruma ait değil ya da öğrenci görünümü henüz doldurulmamış: "
+            + $"{string.Join(", ", studentIds)}. Görünüm boşsa "
+            + "POST /api/students/resync-projections çalıştırılmalıdır.");
 }

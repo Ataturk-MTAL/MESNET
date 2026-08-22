@@ -7,7 +7,25 @@ title: Aktör Tanımları
 > **Kapsam Notu:** Blockchain aktörleri (Blockchain Sistem Yöneticisi, Doğrulayıcı) ve Tenant Yöneticisi Phase 2 kapsamındadır.
 > Phase 1'de bu aktörler ve ilgili yetkiler implementasyona alınmayacaktır.
 
-> **Kimlik ve Yetki Altyapısı (Security Modülü):** Aşağıdaki tüm aktörlerin kimlik doğrulaması ve yetkilendirmesi **Security modülü** üzerinden yürür. Hesaplar Keycloak'ta (OAuth2/OIDC, PKCE) tutulur; her aktörün rolü 6 realm rolünden birine eşlenir (`InstitutionManager`, `InstitutionStaff`, `Teacher`, `Student`, `DepartmentHead`, `CompanyManager`). Aktörler sisteme **davet akışı** ile eklenir: yetkili kullanıcı davet oluşturur → Kurum Müdürü/Müdür Yardımcısı onaylar → davet edilen kişi hesabını tamamlar (`UserCreated` event'i ile ilgili profil — öğretmen, öğrenci, işletme yetkilisi — otomatik oluşur). Rol bazlı yetkiler ve doğrudan izinler için bkz. [Claims ve Permissions](#claims-ve-permissions) bölümü.
+> **Kimlik ve Yetki Altyapısı (Security Modülü):** Aşağıdaki tüm aktörlerin kimlik doğrulaması ve yetkilendirmesi **Security modülü** üzerinden yürür. Hesaplar Keycloak'ta (OAuth2/OIDC, PKCE) tutulur; her aktörün rolü **11 realm rolünden** birine eşlenir (`InstitutionManager`, `DeputyDirector`, `InstitutionStaff`, `DepartmentHead`, `Teacher`, `CompanyManager`, `MasterTrainer`, `CompanyHR`, `Student`, `Parent`, `SystemAdmin`). Aktörler sisteme **davet akışı** ile eklenir: yetkili kullanıcı davet oluşturur → Kurum Müdürü/Müdür Yardımcısı onaylar → davet edilen kişi hesabını tamamlar (`UserCreated` event'i ile ilgili profil — öğretmen, öğrenci, işletme yetkilisi — otomatik oluşur). Rol bazlı yetkiler ve doğrudan izinler için bkz. [Claims ve Permissions](#claims-ve-permissions) bölümü.
+
+> **Rol modeli değişikliği (#129):** **Müdür Yardımcısı** ve **Usta Öğretici** artık kendi realm rollerine sahiptir (`DeputyDirector`, `MasterTrainer`). Önceden müdür yardımcısının karşılığı `InstitutionStaff` sayılıyordu; bu, "Kurum Yetkilendirdiği Personel" aktörüyle aynı role sıkışmak demekti ve realm rol açıklamasıyla (`InstitutionManager` = "Müdür / Müdür Yardımcısı") çelişiyordu. Ayrım netleşti:
+>
+> | Aktör | Realm rolü |
+> |---|---|
+> | Kurum Müdürü | `InstitutionManager` |
+> | Müdür Yardımcısı | `DeputyDirector` |
+> | Kurum Yetkilendirdiği Personel | `InstitutionStaff` |
+> | Alan Şefi (Bölüm Başkanı) | `DepartmentHead` |
+> | Öğretmen (Koordinatör) | `Teacher` |
+> | İşletme Yöneticisi | `CompanyManager` |
+> | Usta Öğretici | `MasterTrainer` |
+> | İşletme İnsan Kaynakları | `CompanyHR` (#172 — zorunlu değil) |
+> | Öğrenci | `Student` |
+> | Veli | `Parent` (#174) |
+> | — (kurum üstü) | `SystemAdmin` (#147 — ulusal parametre girişi) |
+>
+> Program Koordinatörü ve Eğitmen aktörlerinin ayrı realm rolü **yoktur**; sorumluluklarına göre `DeputyDirector` veya `Teacher` ile temsil edilirler. Rol adları ve Türkçe etiketleri tek yerdedir: `src/MESNET.Common.Shared/Security/MesnetRoles.cs` — arayüz listesini `GET /api/security/roles` ucundan alır, elle liste tutmaz.
 
 ## ~~Üst Yönetim (Tenant) Aktörleri~~ (Phase 2)
 
@@ -56,6 +74,21 @@ title: Aktör Tanımları
   - Performans değerlendirmesi
   - Devam takibi
   - Beceri eğitimi
+  - Sağlık raporu tarayıp sisteme girme (girişi okul onayına tabidir)
+
+- **İşletme İnsan Kaynakları** (#172) — realm rolü: `CompanyHR`, **zorunlu değil**
+  - İşletme adına belge yükleme
+  - Sağlık raporu tarayıp sisteme girme
+  - Öğrenci devam bilgisinin işletme tarafındaki kaydı
+
+  > İşletme yöneticisinin geniş demetini ALMAZ: öğrenci talebi, dekont yükleme, işletme belge
+  > yönetimi, dönem notu girişi ve maaş süreçleri yöneticide kalır. Girdiği kayıtlar okul
+  > onayına tabidir — koordinatör öğretmen onaylamadan hüküm doğurmaz.
+  >
+  > Her işletmede ayrı bir İK bulunmaz; bu rol yalnız ayrı bir İK personeli varsa atanır.
+  > Yoksa sağlık raporunu işletme yöneticisi ya da **usta öğretici** girer — ikisinin de
+  > girişi aynı şekilde onaya tabidir. Bir kişi birden çok rol taşıyabilir (işletme sahibi
+  > aynı zamanda usta öğretici olabilir); roller birleşse de onay muafiyeti doğmaz.
 
 ## Eğitim Personeli Aktörleri
 
@@ -85,6 +118,22 @@ title: Aktör Tanımları
   - Maaş onayı
   - İşletme değerlendirme
   - Sertifika takibi
+  - Kendi sağlık raporunu yükleme (okul onayına tabidir)
+
+- **Veli** (`Parent`, #174)
+  - Öğrencinin devam durumunu görüntüleme
+  - Öğrencinin sağlık raporunu yükleme (okul onayına tabidir)
+  - MESEM ücretli izin başvurusu açma (işletme ve okul onayından geçer, #177)
+  - Fesih **talep edebilir**; onay zincirinde yer almaz (#218 — onaylar okul tarafında)
+
+  > **Kapsamı tek öğrencidir:** veli yalnız bağlı olduğu öğrencinin verisini görür. Kapsam
+  > kararı permission'la değil, veliyle öğrenci arasındaki **bağ kaydıyla** verilir — kurum
+  > kapsamı `institution_id` claim'inden okunduğu gibi (bkz. ADR-0001). Bağ kaydı
+  > `UserAccount.LinkedStudentIds`'tir ve **otoriter olan kayıttır** — token'dan gelen
+  > `linked_student_ids` claim'i her istekte silinir ve yerine kayıt konur.
+  >
+  > **Yazma yetkisi yoktur:** veli girdiği hiçbir kayıt doğrudan hüküm doğurmaz; sağlık raporu
+  > dahil her girişi koordinatör öğretmen onayından geçer.
 
 ## ~~Blockchain Aktörleri~~ (Phase 2)
 

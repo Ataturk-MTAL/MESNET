@@ -43,4 +43,14 @@ public static class ReportingErrors
     public static Error TermGradesNotFound(Guid studentId) =>
         new("Reporting.TermGradesNotFound",
             $"Bu öğrenci için gönderilmiş dönem notu bulunamadı; fiş üretilemez: {studentId}");
+
+    /// <summary>
+    /// Okulda staj (#171) — Dönem Not Fişi üretilmez. Fiş işletme adı ve iki işletme imzası
+    /// ister; işverensiz staj için MEB'in tanımladığı ayrı bir form yoktur. Not kaydı tutulur,
+    /// belge üretilmez.
+    /// </summary>
+    public static Error TermGradeSlipNotAvailableForSchoolPlacement(Guid studentId) =>
+        new("Reporting.TermGradeSlipNotAvailableForSchoolPlacement",
+            "Okulda staj yapan öğrenci için Dönem Not Fişi üretilmez; not kaydı tutulur, " +
+            $"belge düzenlenmez: {studentId}");
 }

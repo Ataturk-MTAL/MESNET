@@ -25,6 +25,6 @@ public static class ApproveBusinessHandler
 
         session.Store(business);
 
-        return new BusinessApproved(business.Id, business.TenantId, business.Name, business.Address, business.Location, currentUser.GetFullName(), business.ApprovedAt.Value);
+        return new BusinessApproved(business.Id, business.RegisteredByInstitutionId, business.Name, business.Address, business.Location, currentUser.GetFullName(), business.ApprovedAt.Value);
     }
 }

@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Coordination.Application.Dtos;
+using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Application.Queries;
 using MESNET.Coordination.Core.ReadModels;
 
@@ -12,8 +13,10 @@ public static class ListBusinessesForAssignmentHandler
         IQuerySession session,
         CancellationToken cancellationToken)
     {
+        // İşletme düzeyi temel satırlar (boş alan kodu) dağıtım listesinde yer almaz —
+        // liste alan bazlıdır (#114).
         IQueryable<BusinessCoordinationView> queryable = session.Query<BusinessCoordinationView>()
-            .Where(v => v.InstitutionId == query.InstitutionId);
+            .Where(v => v.InstitutionId == query.InstitutionId && v.BranchCode != "");
 
         if (!string.IsNullOrWhiteSpace(query.BranchCode))
             queryable = queryable.Where(v => v.BranchCode == query.BranchCode);
@@ -31,8 +34,14 @@ public static class ListBusinessesForAssignmentHandler
 
         var views = await queryable.ToListAsync(cancellationToken);
 
+        // Aktör adı saklanmaz, okuma anında çözülür (#137).
+        var names = await UserNameResolver.ResolveAsync(
+            session,
+            views.Select(v => v.LastModifiedById ?? Guid.Empty),
+            cancellationToken);
+
         return views.Select(v => new BusinessAssignmentDto(
-            v.Id,
+            v.ResolveBusinessId(),
             v.Name,
             v.Address,
             v.District,
@@ -40,6 +49,7 @@ public static class ListBusinessesForAssignmentHandler
             v.IsManualDistance,
             v.MaxCoordinationHours,
             v.AssignedHours,
+            v.IsHonoraryVisit,
             v.AssignedTeacherId,
             v.AssignedTeacherName,
             v.AssignedDay,
@@ -49,7 +59,8 @@ public static class ListBusinessesForAssignmentHandler
             v.BranchName,
             v.AssignedSlots.Select(s => new AssignedSlotInfoDto(s.Day, s.PeriodNumber)).ToList(),
             v.LastModifiedAt,
-            v.LastModifiedBy
+            v.LastModifiedById,
+            names.NameOf(v.LastModifiedById)
         )).ToList();
     }
 }

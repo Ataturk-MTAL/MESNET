@@ -1,9 +1,10 @@
-import { ref, computed } from 'vue'
+import { ref, computed, unref, type MaybeRef } from 'vue'
 import { watchThrottled } from '@vueuse/core'
 import { enrollmentApi } from 'src/api/enrollment'
 import { useInstitutionStore } from 'stores/institution'
 import { useEntityOptionsStore } from 'stores/entityOptions'
 import type { PagedResponse } from 'src/types/pagination'
+import { logger } from '../utils/logger'
 
 export interface SelectOption {
   label: string
@@ -33,28 +34,54 @@ async function fetchAllItems<T>(
   return all
 }
 
+export interface BusinessOption extends SelectOption {
+  /** İşletmenin öğrenci alabildiği AKTİF alan kodları (#119). Boş liste = hiçbir alandan alamaz. */
+  authorizedBranches: string[]
+}
+
+/**
+ * Öğrencinin alanından öğrenci almaya yetkili işletmeleri süzer (#119).
+ * `branchCode` verilmezse liste olduğu gibi döner (yetki bağlamı olmayan ekranlar).
+ */
+export function filterBusinessesByBranch(
+  businesses: BusinessOption[],
+  branchCode?: string | null,
+): BusinessOption[] {
+  if (!branchCode) return businesses
+  const needle = branchCode.trim().toLocaleLowerCase('tr')
+  if (!needle) return businesses
+  return businesses.filter((b) =>
+    b.authorizedBranches.some((c) => c.trim().toLocaleLowerCase('tr') === needle),
+  )
+}
+
+export interface UseBusinessOptionsOptions {
+  /** Verilirse yalnız bu alandan öğrenci almaya yetkili işletmeler listelenir. */
+  branchCode?: MaybeRef<string | null | undefined>
+}
+
 // ── İşletme Seçimi ── (store-backed cache, per-component filtrelenmiş görünüm)
-export function useBusinessOptions() {
+export function useBusinessOptions(opts: UseBusinessOptionsOptions = {}) {
   const store = useEntityOptionsStore()
-  const options = ref<SelectOption[]>([])
-  const allOptions = computed(() => store.businesses)
+  const options = ref<BusinessOption[]>([])
+  const allOptions = computed(() => filterBusinessesByBranch(store.businesses, unref(opts.branchCode)))
   const loading = computed(() => store.businessesLoading)
 
   async function load() {
     await store.loadBusinesses()
-    options.value = store.businesses
+    options.value = allOptions.value
   }
 
   function filter(val: string, update: (fn: () => void) => void) {
     update(() => {
       const needle = val.toLowerCase()
       options.value = needle
-        ? store.businesses.filter(
+        ? allOptions.value.filter(
             (o) =>
               o.label.toLowerCase().includes(needle) ||
               (o.caption?.toLowerCase().includes(needle) ?? false),
           )
-        : store.businesses
+        : allOptions.value
     })
   }
 
@@ -282,7 +309,7 @@ export function useBranchOptions() {
       options.value = allOptions.value
       loaded = true
     } catch (err) {
-      console.error('[useBranchOptions] Alan seçenekleri yüklenirken hata:', err)
+      logger.error('[useBranchOptions] Alan seçenekleri yüklenirken hata:', err)
     } finally {
       loading.value = false
     }

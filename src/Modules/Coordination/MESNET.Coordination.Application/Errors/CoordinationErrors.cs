@@ -1,4 +1,7 @@
+using System.Globalization;
 using MESNET.Common.Shared;
+using MESNET.Coordination.Core.Enums;
+using MESNET.Coordination.Core.Services;
 
 namespace MESNET.Coordination.Application.Errors;
 
@@ -105,10 +108,36 @@ public static class CoordinationErrors
         new("Coordination.StudentTermGradeAlreadySubmitted",
             $"Bu dönem notu zaten gönderilmiş, düzenlenemez: {id}");
 
+    // ─── Okulda staj dönem notu (#171) ───
+
+    public static Error StudentNotPlacedAtSchool(Guid studentId) =>
+        new("Coordination.StudentNotPlacedAtSchool",
+            $"Bu öğrencinin kurumunuzda okulda staj yerleştirmesi yok; notu bu yoldan giremezsiniz: {studentId}");
+
+    public static Error StudentTermGradeBelongsToBusiness(Guid id) =>
+        new("Coordination.StudentTermGradeBelongsToBusiness",
+            $"Bu dönem notu bir işletme stajına aittir; okulda staj yolundan işlenemez: {id}");
+
+    public static Error StudentTermGradeBelongsToSchool(Guid id) =>
+        new("Coordination.StudentTermGradeBelongsToSchool",
+            $"Bu dönem notu okulda staja aittir; işletme yolundan işlenemez: {id}");
+
+    public static Error SchoolGradeInstitutionScopeMissing() =>
+        new("Coordination.SchoolGradeInstitutionScopeMissing",
+            "Kurum bilgisi çözülemedi; okulda staj notu girilemez.");
+
     // Coordination Assignment
     public static Error BusinessNotFound(Guid businessId) =>
         new("Coordination.BusinessNotFound",
             $"İşletme koordinasyon kaydı bulunamadı: {businessId}");
+
+    /// <summary>
+    /// Koordinasyon satırı alan bazlıdır (#114) — işletme kayıtlı olsa bile istenen
+    /// alan/dönem için satır olmayabilir.
+    /// </summary>
+    public static Error BusinessBranchNotFound(Guid businessId, string branchCode) =>
+        new("Coordination.BusinessBranchNotFound",
+            $"İşletmenin bu alandaki koordinasyon kaydı bulunamadı: İşletme={businessId}, Alan={(string.IsNullOrWhiteSpace(branchCode) ? "—" : branchCode)}");
 
     public static Error AssignedHoursExceedMax(int assigned, int max) =>
         new("Coordination.AssignedHoursExceedMax",
@@ -150,6 +179,49 @@ public static class CoordinationErrors
         new("Coordination.WorkloadPoolExceeded",
             $"Toplam takdir edilen saat ({totalAssigned}) ders yükü havuzunu ({pool}) aşamaz.");
 
+    // ── Toplu (atomik) saat kaydı (#117) ──
+
+    /// <summary>
+    /// Politikanın döndürdüğü kısıt ihlalini HTTP 422'ye taşınacak hataya çevirir.
+    /// Kod tekil uç noktanınkiyle aynı ailededir (<c>Coordination.{Kind}</c>) — frontend
+    /// ayrı bir eşleme tablosu tutmaz. Metin hem kırılan kısıtı hem işletmeyi söyler.
+    /// </summary>
+    public static Error BranchHoursConstraintViolated(BranchHoursViolation violation) =>
+        new($"Coordination.{violation.Kind.Name}", violation.Describe());
+
+    public static Error EmptyBranchHoursBatch() =>
+        new("Coordination.EmptyBranchHoursBatch",
+            "Kaydedilecek işletme saati bulunamadı — istek en az bir satır içermelidir.");
+
+    public static Error DuplicateBranchHoursItem(Guid businessId) =>
+        new("Coordination.DuplicateBranchHoursItem",
+            $"Aynı işletme toplu istekte birden çok kez geçemez: {businessId}");
+
+    /// <summary>
+    /// Kullanıcı bu alanın verisine yazmaya yetkili değil (#126).
+    ///
+    /// <para>Permission erişimi açar, kapsamı belirlemez: alan şefi koordinasyonu yönetebilir
+    /// ama yalnız <b>kendi</b> alan(lar)ında. Kurum geneli muafiyeti olan (müdür / müdür
+    /// yardımcısı) bu hataya düşmez.</para>
+    /// </summary>
+    public static Error BranchScopeDenied(string requestedBranchCode, IReadOnlyList<string> userBranchCodes) =>
+        new("Coordination.BranchScopeDenied",
+            userBranchCodes.Count == 0
+                ? $"'{requestedBranchCode}' alanına yazma yetkiniz yok: hesabınızda sorumlu olduğunuz alan tanımlı değil."
+                : $"'{requestedBranchCode}' alanına yazma yetkiniz yok. Sorumlu olduğunuz alanlar: {string.Join(", ", userBranchCodes)}");
+
+    public static Error BranchScopeRequired() =>
+        new("Coordination.BranchScopeRequired",
+            "Toplu saat kaydı için alan kodu ve akademik dönem zorunludur.");
+
+    /// <summary>
+    /// Kilitli satır listesi çözülemedi (#116). Sessizce atlamak koordinatörün elle
+    /// girdiği saati yok ederdi; istek tümden reddedilir.
+    /// </summary>
+    public static Error InvalidPinnedHoursSelection(string reason) =>
+        new("Coordination.InvalidPinnedHoursSelection",
+            $"Kilitli satırlar okunamadı: {reason}");
+
     public static Error BranchWorkloadConfigNotFound(string branchCode) =>
         new("Coordination.BranchWorkloadConfigNotFound",
             $"Alan ders yükü yapılandırması bulunamadı: {branchCode}");
@@ -157,6 +229,70 @@ public static class CoordinationErrors
     public static Error TeacherHoursExceedMax(Guid teacherId, int totalHours, int maxHours) =>
         new("Coordination.TeacherHoursExceedMax",
             $"Öğretmenin toplam koordinatörlük saati ({totalHours}) azami limiti ({maxHours}) aşıyor. Öğretmen: {teacherId}");
+
+    // ── Kurum koordinasyon yapılandırması (#134) ──
+
+    /// <summary>
+    /// Politikanın döndürdüğü yapılandırma ihlalini HTTP 422'ye taşınacak hataya çevirir.
+    /// Kod ailesi <c>Coordination.{Kind}</c>'dir — frontend tek eşleme tablosu tutar.
+    /// </summary>
+    public static Error CoordinationConfigInvalid(CoordinationConfigViolation violation)
+    {
+        var kind = violation.Kind;
+
+        if (kind == CoordinationConfigViolationKind.EmptyDistanceHourRules)
+            return EmptyDistanceHourRules();
+
+        if (kind == CoordinationConfigViolationKind.InvalidDistanceHourRuleDistance)
+            return InvalidDistanceHourRuleDistance(violation.DistanceKm ?? 0);
+
+        if (kind == CoordinationConfigViolationKind.InvalidDistanceHourRuleHours)
+            return InvalidDistanceHourRuleHours(violation.DistanceKm ?? 0, violation.Hours ?? 0);
+
+        if (kind == CoordinationConfigViolationKind.DuplicateDistanceHourRule)
+            return DuplicateDistanceHourRule(violation.DistanceKm ?? 0);
+
+        if (kind == CoordinationConfigViolationKind.MissingUnlimitedDistanceHourRule)
+            return MissingUnlimitedDistanceHourRule();
+
+        return InvalidMaxWeeklyExtraHours(violation.Hours ?? 0);
+    }
+
+    public static Error EmptyDistanceHourRules() =>
+        new("Coordination.EmptyDistanceHourRules",
+            "Mesafe-saat tablosu boş olamaz — en az bir kural tanımlanmalıdır.");
+
+    public static Error InvalidDistanceHourRuleDistance(double maxDistanceKm) =>
+        new("Coordination.InvalidDistanceHourRuleDistance",
+            $"Geçersiz mesafe sınırı: {FormatDistance(maxDistanceKm)} km. Mesafe sınırı 0'dan büyük olmalıdır.");
+
+    public static Error InvalidDistanceHourRuleHours(double maxDistanceKm, int hours) =>
+        new("Coordination.InvalidDistanceHourRuleHours",
+            $"{FormatDistance(maxDistanceKm)} km kuralının saati geçersiz: {hours}. " +
+            $"Saat {CoordinationConfigPolicy.MinHours} ile {CoordinationConfigPolicy.MaxHours} arasında olmalıdır.");
+
+    public static Error DuplicateDistanceHourRule(double maxDistanceKm) =>
+        new("Coordination.DuplicateDistanceHourRule",
+            $"Aynı mesafe sınırı tabloda birden çok kez tanımlanamaz: {FormatDistance(maxDistanceKm)} km.");
+
+    public static Error MissingUnlimitedDistanceHourRule() =>
+        new("Coordination.MissingUnlimitedDistanceHourRule",
+            "Mesafe-saat tablosunda \"üzeri (sınırsız)\" kuralı bulunmak zorundadır — " +
+            "aksi hâlde en uzak işletmeler için verilebilecek saat tanımsız kalır.");
+
+    public static Error InvalidMaxWeeklyExtraHours(int hours) =>
+        new("Coordination.InvalidMaxWeeklyExtraHours",
+            $"Geçersiz azami haftalık ek ders saati: {hours}. " +
+            $"Değer {CoordinationConfigPolicy.MinHours} ile {CoordinationConfigPolicy.MaxHours} arasında olmalıdır.");
+
+    /// <summary>
+    /// Catch-all kuralın sınırı <c>double.MaxValue</c>'dur; kullanıcıya 1,79E+308 değil
+    /// "sınırsız" gösterilir.
+    /// </summary>
+    private static string FormatDistance(double maxDistanceKm) =>
+        double.IsPositiveInfinity(maxDistanceKm) || maxDistanceKm >= double.MaxValue
+            ? "sınırsız"
+            : maxDistanceKm.ToString("0.##", CultureInfo.InvariantCulture);
 
     // WeeklyVisit
     public static Error WeeklyVisitPlanNotFound(Guid planId) =>

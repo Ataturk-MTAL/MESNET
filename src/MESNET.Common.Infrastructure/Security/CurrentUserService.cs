@@ -34,8 +34,12 @@ public sealed class CurrentUserService : ICurrentUserService
 
         var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
         var permissions = user.FindAll("permissions").Select(c => c.Value).ToList();
+        var branchCodes = BranchCodeClaims.Read(user);
+        var linkedStudentIds = LinkedStudentClaims.Read(user);
 
-        _cachedContext = new UserContext(userId, fullName, institutionId, businessId, studentId, roles, permissions);
+        _cachedContext = new UserContext(
+            userId, fullName, institutionId, businessId, studentId, roles, permissions,
+            branchCodes, linkedStudentIds);
         return _cachedContext;
     }
 
@@ -63,5 +67,15 @@ public sealed class CurrentUserService : ICurrentUserService
         if (ctx?.Roles is null) return false;
 
         return ctx.Roles.Contains(role, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public IReadOnlyList<string> GetBranchCodes()
+    {
+        return GetCurrentUser()?.BranchCodes ?? [];
+    }
+
+    public IReadOnlyList<Guid> GetLinkedStudentIds()
+    {
+        return GetCurrentUser()?.LinkedStudentIds ?? [];
     }
 }

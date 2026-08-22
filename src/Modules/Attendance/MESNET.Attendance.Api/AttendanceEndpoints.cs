@@ -17,14 +17,81 @@ public static class AttendanceEndpoints
     {
         var group = app.MapGroup("/api/attendance").RequireAuthorization();
 
+        // Devamsızlık sınırları — ULUSAL PARAMETRE (#183, #147 deseni).
+        // Okuma okul rollerine açık: hangi sınıra göre çalıştıklarını görmeliler.
+        // Yazma platform:parameter:manage ister ve HİÇBİR okul rolünde yoktur — sınır
+        // MEB Yönetmeliği md. 36'dan türer, okul başına değişemez.
+        group.MapGet("/config/absence-limits", GetAbsenceLimits)
+            .RequireAuthorization(Permissions.Attendance.View);
+        group.MapPut("/config/absence-limits", PutAbsenceLimits)
+            .RequireAuthorization(Permissions.Platform.ParameterManage);
+
+        // Yerel görünüm onarımı (#256) — kayıtların bugünkü hâlini yeniden yayınlar.
+        //
+        // İzin BİLEREK "attendance:manage" DEĞİL: o izin işletme yetkilisi, usta öğretici ve
+        // işletme İK rollerinde de vardır ve bu uç toplu maaş yeniden hesabı tetikleyebilir —
+        // ödemeyi yapan taraf kendi kesintisini toplu olarak oynatabilirdi (#172 ilkesi).
+        // "attendance:report" yalnız okul rollerindedir; uç zaten devamsızlık verisi
+        // üretmiyor, var olan durumu diğer modüllere RAPORLUYOR.
+        group.MapPost("/resync-snapshots", PostResyncSnapshots)
+            .RequireAuthorization(Permissions.Attendance.Report);
+
         group.MapPost("/", Post).RequireAuthorization(Permissions.Attendance.Manage);
         group.MapPost("/{attendanceId:guid}/approve", PostApprove).RequireAuthorization(Permissions.Attendance.Approve);
         group.MapPost("/{attendanceId:guid}/verify", PostVerify).RequireAuthorization(Permissions.Attendance.Approve);
-        group.MapPost("/{attendanceId:guid}/correct", PostCorrect).RequireAuthorization(Permissions.Attendance.Manage);
-        group.MapPost("/{attendanceId:guid}/health-report", PostHealthReport).RequireAuthorization(Permissions.Attendance.Manage);
+        // Düzeltme devamsızlık TÜRÜNÜ değiştirir, yani doğrudan para sonucu doğurur: kaydı
+        // "Mazeretsiz"den "Sağlık Raporu"na çevirmek kesintiyi kaldırır. Bu yüzden uç
+        // "attendance:manage" değil "attendance:direct-entry" ister (#172) — o izin yalnız okul
+        // rollerindedir. Önceden işletme yetkilisi bu uçtan onay zincirini tümden atlayarak
+        // türü değiştirebiliyordu.
+        group.MapPost("/{attendanceId:guid}/correct", PostCorrect).RequireAuthorization(Permissions.Attendance.DirectEntry);
+
+        // Sağlık raporu girişi bilinçli olarak GENİŞTİR (#172): işletme yetkilisi, işletme İK,
+        // usta öğretici ve öğrenci de yükleyebilir. Hüküm doğurup doğurmadığına handler karar
+        // verir; yükleyende "attendance:health-report:direct" yoksa rapor onaya düşer.
+        group.MapPost("/{attendanceId:guid}/health-report", PostHealthReport)
+            .RequireAuthorization(Permissions.Attendance.Upload)
+            .DisableAntiforgery();
+
+        // Onay zincirinin 1. adımı — koordinatör öğretmen (müdür yardımcısı ve müdürde de var).
+        group.MapPost("/{attendanceId:guid}/health-report/approve", PostApproveHealthReport)
+            .RequireAuthorization(Permissions.Attendance.Approve);
+        group.MapPost("/{attendanceId:guid}/health-report/reject", PostRejectHealthReport)
+            .RequireAuthorization(Permissions.Attendance.Approve);
         group.MapDelete("/{attendanceId:guid}", Delete).RequireAuthorization(Permissions.Attendance.Delete);
-        group.MapGet("/{attendanceId:guid}", Get).RequireAuthorization(Permissions.Attendance.View);
-        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Attendance.View);
+        // Liste hem okul tarafına hem veri sahibine açıktır (#182): öğrenci kendi
+        // devamsızlığını, veli bağlı olduğu öğrencininkini görür. Daraltmayı handler yapar.
+        group.MapGet("/{attendanceId:guid}", Get).RequireAuthorization(PermissionPolicies.AttendanceViewOrOwn);
+        group.MapGet("/", GetAll).RequireAuthorization(PermissionPolicies.AttendanceViewOrOwn);
+    }
+
+    private static async Task<IResult> GetAbsenceLimits(IMessageBus bus)
+    {
+        var dto = await bus.InvokeAsync<AbsenceLimitsDto>(new GetAbsenceLimits());
+        return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
+    }
+
+    private static async Task<IResult> PutAbsenceLimits(UpdateAbsenceLimits command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command);
+        return Results.Ok(ResponseBuilder.Success().AddMessage("Devamsızlık sınırları güncellendi.").Build());
+    }
+
+    /// <summary>
+    /// Kiracının devamsızlık kayıtlarının bugünkü hâlini yeniden yayınlar (#256).
+    /// Dönem verilirse yalnız o dönem yayılır.
+    /// </summary>
+    private static async Task<IResult> PostResyncSnapshots(Guid? academicPeriodId, IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ResyncAttendanceSnapshotsResult>(
+            new ResyncAttendanceSnapshots(academicPeriodId));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(new { recordCount = result.RecordCount, deletedCount = result.DeletedCount })
+            .AddMessage(
+                $"{result.RecordCount} devamsızlık kaydı yeniden yayınlandı "
+                + $"({result.DeletedCount} tanesi silinmiş kayıt).")
+            .Build());
     }
 
     private static async Task<IResult> Post(
@@ -70,13 +137,63 @@ public static class AttendanceEndpoints
             .Build());
     }
 
+    // ────────────────────────────────────────────────────────────────────────────────
+    // POST /api/attendance/{attendanceId}/health-report — Sağlık raporu yükle (#172)
+    // Form alanı: ReportFile (IFormFile) — PDF, JPEG veya PNG
+    // ────────────────────────────────────────────────────────────────────────────────
     private static async Task<IResult> PostHealthReport(
-        Guid attendanceId, AttachHealthReport command, IMessageBus bus)
+        Guid attendanceId, HttpRequest request, IMessageBus bus)
+    {
+        if (!request.HasFormContentType)
+            return Results.BadRequest(ResponseBuilder.Fail()
+                .AddMessage("Multipart form-data bekleniyor.")
+                .Build());
+
+        // Bozuk ya da boş multipart gövde ReadFormAsync'te istisna atar (parçasız gövdede
+        // "Unexpected end of Stream"). Bu bir istemci hatasıdır — 500 değil 400 dönmelidir.
+        IFormCollection form;
+        try
+        {
+            form = await request.ReadFormAsync();
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException)
+        {
+            return Results.BadRequest(ResponseBuilder.Fail()
+                .AddMessage("Multipart form-data gövdesi okunamadı.")
+                .Build());
+        }
+
+        var reportFile = form.Files["ReportFile"] ?? form.Files.FirstOrDefault();
+
+        if (reportFile is null)
+            return Results.BadRequest(ResponseBuilder.Fail()
+                .AddMessage("Sağlık raporu dosyası (ReportFile) eksik.")
+                .Build());
+
+        await bus.InvokeAsync(new AttachHealthReport(attendanceId, reportFile));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Sağlık raporu yüklendi.")
+            .Build());
+    }
+
+    private static async Task<IResult> PostApproveHealthReport(
+        Guid attendanceId, IMessageBus bus)
+    {
+        await bus.InvokeAsync(new ApproveHealthReport(attendanceId));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Sağlık raporu onaylandı.")
+            .Build());
+    }
+
+    private static async Task<IResult> PostRejectHealthReport(
+        Guid attendanceId, RejectHealthReport command, IMessageBus bus)
     {
         await bus.InvokeAsync(command with { AttendanceId = attendanceId });
 
         return Results.Ok(ResponseBuilder.Success()
-            .AddMessage("Sağlık raporu ilişkilendirildi.")
+            .AddMessage("Sağlık raporu reddedildi.")
             .Build());
     }
 

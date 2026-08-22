@@ -1,5 +1,7 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Coordination.Application.Commands;
+using MESNET.Coordination.Application.Security;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.ReadModels;
 using MESNET.Coordination.Core.Services;
@@ -11,8 +13,13 @@ public static class UpsertBranchWorkloadConfigHandler
     public static async Task Handle(
         UpsertBranchWorkloadConfig command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
+        // Alan ders yükü havuzu, o alanın tüm saat dağıtımının tavanını belirler —
+        // yazma kapsamı alan şefinin kendi alanıyla sınırlıdır (#126).
+        BranchScopeGuard.EnsureCanWrite(currentUser, command.BranchCode);
+
         // Öğrenci sayılarını BranchStudentCountView'dan al
         var countViewId = BranchStudentCountView.CreateId(
             command.InstitutionId, command.AcademicPeriodId, command.BranchCode, command.EducationType);
@@ -49,7 +56,8 @@ public static class UpsertBranchWorkloadConfigHandler
             existing.WorkshopHeadHours = command.WorkshopHeadHours;
             existing.ClassLevels = classLevels;
             existing.UpdatedAt = DateTime.UtcNow;
-            existing.UpdatedBy = command.UpdatedBy;
+            // Aktör token'dan gelir, istekten DEĞİL (#137).
+            existing.UpdatedById = currentUser.GetUserId();
             existing.Recalculate();
             session.Store(existing);
         }
@@ -68,7 +76,7 @@ public static class UpsertBranchWorkloadConfigHandler
                 WorkshopHeadHours = command.WorkshopHeadHours,
                 ClassLevels = classLevels,
                 UpdatedAt = DateTime.UtcNow,
-                UpdatedBy = command.UpdatedBy,
+                UpdatedById = currentUser.GetUserId(),
             };
             config.Recalculate();
             session.Store(config);

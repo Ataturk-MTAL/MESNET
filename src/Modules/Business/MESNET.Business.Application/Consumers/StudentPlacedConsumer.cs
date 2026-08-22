@@ -11,11 +11,15 @@ public static class StudentPlacedConsumer
     public static async Task<BusinessCapacityChanged?> Consume(
         StudentPlaced @event, IDocumentSession session)
     {
+        // Okulda staj (#159): işletme yok — kapasite tüketilmez, işletmeye bağlı yerleştirme
+        // kaydı da oluşmaz. Bu modülün bu olayla yapacağı hiçbir şey kalmıyor.
+        if (@event.BusinessId is not { } businessId) return null;
+
         var view = new PlacedStudentView
         {
             Id = @event.PlacementId,
             StudentId = @event.StudentId,
-            BusinessId = @event.BusinessId,
+            BusinessId = businessId,
             InstitutionId = @event.InstitutionId,
             PlacedAt = @event.PlacedAt,
             IsActive = true
@@ -23,11 +27,11 @@ public static class StudentPlacedConsumer
 
         session.Store(view);
 
-        var business = await session.LoadAsync<Core.Entities.Business>(@event.BusinessId);
+        var business = await session.LoadAsync<Core.Entities.Business>(businessId);
         if (business is null) return null;
 
         var activeCount = await session.Query<PlacedStudentView>()
-            .Where(p => p.BusinessId == @event.BusinessId && p.IsActive)
+            .Where(p => p.BusinessId == businessId && p.IsActive)
             .CountAsync();
 
         // +1 for the current placement that hasn't been committed yet

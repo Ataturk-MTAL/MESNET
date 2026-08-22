@@ -3,14 +3,14 @@ left to right direction
 
 package "MESNET.Enrollment.Api" {
     class EnrollmentEndpoints {
-        +[WolverinePost] RegisterStudent(command)
-        +[WolverinePost] RegisterTeacher(command)
-        +[WolverinePost] ApplyForInternship(command)
-        +[WolverinePost] RequestStudent(command)
-        +[WolverinePost] PlaceStudent(command)
-        +[WolverinePost] TransferStudent(command)
-        +[WolverineGet] GetStudentProfile(studentId)
-        +[WolverineGet] ListPlacements(query)
+        +POST RegisterStudent(command)
+        +POST RegisterTeacher(command)
+        +POST ApplyForInternship(command)
+        +POST RequestStudent(command)
+        +POST PlaceStudent(command)
+        +POST TransferStudent(command)
+        +GET GetStudentProfile(studentId)
+        +GET ListPlacements(query)
     }
 }
 

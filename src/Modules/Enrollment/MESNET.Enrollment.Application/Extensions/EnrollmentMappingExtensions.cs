@@ -53,5 +53,7 @@ public static class EnrollmentMappingExtensions
         entity.Status.Slug,
         entity.Source.Name,
         entity.Source.Slug,
-        entity.PlacedAt);
+        entity.PlacedAt,
+        entity.Type.Name,
+        entity.Type.Slug);
 }

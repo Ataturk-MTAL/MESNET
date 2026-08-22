@@ -1,19 +1,76 @@
 using Marten;
-using MESNET.Attendance.Shared.Events;
+using MESNET.Common.Shared;
+using MESNET.Common.Shared.Enums;
+using MESNET.Payment.Application.Commands;
+using MESNET.Payment.Application.Errors;
+using MESNET.Payment.Application.Messages;
+using MESNET.Payment.Application.Services;
 using MESNET.Payment.Core.Entities;
 using MESNET.Payment.Core.Enums;
+using MESNET.Payment.Core.ReadModels;
+using MESNET.Payment.Core.Services;
 using MESNET.Payment.Shared.Events;
 using Wolverine;
+using Wolverine.ErrorHandling;
+using Wolverine.Persistence.Sagas;
+using Wolverine.Runtime.Handlers;
 
 namespace MESNET.Payment.Application.Sagas;
 
 public class PaymentSaga : Saga
 {
+    /// <summary>
+    /// Eşzamanlı yeniden hesap istekleri saga'yı dead letter'a düşürmesin (#255).
+    ///
+    /// <para><b>Neden gerekli:</b> tek bir işlem aynı döneme <b>birden çok</b> komut
+    /// doğurabiliyor — <c>PaidLeaveAttendanceConsumer</c> izin aralığındaki <b>her gün</b> için
+    /// ayrı olay yayınlıyor (5 günlük izin = 5 olay), toplu onay da aynı fan-out'u üretiyor.
+    /// Wolverine saga belgesini iyimser eşzamanlılıkla korur; kaybeden çağrı
+    /// <c>SagaConcurrencyException</c> fırlatır ve politika yoksa varsayılan 3 deneme
+    /// (bekleme YOK) burst hâlinde üçü de çakışıp <b>yeniden hesabı düşürür</b> — tutar sessizce
+    /// eski kalır.</para>
+    ///
+    /// <para>Bekleme süreli yeniden deneme, çakışan çağrıyı taze state ile tekrarlatır. Desen
+    /// deponun kendi emsalinden: <c>StudentRegisteredCountConsumer.Configure</c>.</para>
+    /// </summary>
+    public static void Configure(HandlerChain chain)
+    {
+        chain.OnException<SagaConcurrencyException>()
+            .RetryWithCooldown(
+                TimeSpan.FromMilliseconds(50),
+                TimeSpan.FromMilliseconds(200),
+                TimeSpan.FromMilliseconds(500));
+    }
+
+    /// <summary>
+    /// Saga silinmişken (fesih/tamamlanma sonrası) gelen gecikmiş yeniden hesap isteği sessizce
+    /// düşer — <c>UnknownSagaException</c> ile dead letter'a gitmesin. İlk kapı
+    /// <see cref="SalaryRecalculationTrigger"/>'daki faz kontrolüdür; bu ikinci katmandır.
+    /// </summary>
+    public static void NotFound(RecalculateMonthlySalary command)
+    {
+    }
+
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// Dönemin sözleşmesi (#154). Kimlik (sözleşme, ay) ikilisinden türediği için yeniden
+    /// hesap yolunun gün oranını bulabilmesi buna bağlıdır.
+    /// </summary>
+    public Guid ContractId { get; set; }
+
     public Guid StudentId { get; set; }
     public Guid BusinessId { get; set; }
     public Guid InstitutionId { get; set; }
     public Guid AcademicPeriodId { get; set; }
+
+    /// <summary>
+    /// Hesabın yapıldığı sınıf yılı (#161). Katkı kaydı onay tamamlandığında yazılır; o an
+    /// öğrencinin profili bir sonraki sınıfa geçmiş olabilir, bu yüzden sınıf yılı hesap
+    /// anında dondurulur.
+    /// </summary>
+    public int ClassYear { get; set; }
+
     public string Month { get; set; } = default!;
     public decimal BaseWage { get; set; }
     public decimal DeductionAmount { get; set; }
@@ -27,53 +84,247 @@ public class PaymentSaga : Saga
     public bool TeacherApproved { get; set; }
     public bool DeputyApproved { get; set; }
 
-    // ─── START: Attendance'dan maaş hesaplama tetiklenir ───
-    public static (PaymentSaga, SalaryCalculated, ReceiptUploadRequested) Start(
-        AttendanceMarked @event,
+    // ─── START: CalculateMonthlySalary ile maaş dönemi açılır ───
+    // Giriş mesajı bilinçli olarak AttendanceMarked DEĞİL: doğrudan devamsızlık olayıyla
+    // başlayınca her giriş yeni bir saga açıyordu (#62). Artık SalaryTriggerConsumer araya
+    // giriyor, kimliği (öğrenci, ay) ikilisinden deterministik üretiyor ve kayıt zaten varsa
+    // hiç tetiklemiyor. Aynı komut #63'teki aylık zamanlayıcının da giriş noktası olacak.
+    //
+    // Marten 9 senkron veri erişimini kaldırdı; .FirstOrDefault() burada
+    // "As of Marten 9.0, only asynchronous data access is supported" fırlatıyordu (#73).
+    // Birden çok cascading mesaj `OutgoingMessages` ile döndürülmeli — 3'lü tuple'da Wolverine
+    // yalnız 1. elemanı saga olarak alıp diğerlerini sessizce düşürüyordu.
+    // Async başlangıcın konvansiyondaki adı StartAsync.
+    public static async Task<(PaymentSaga, OutgoingMessages)> StartAsync(
+        CalculateMonthlySalary command,
         IDocumentSession session)
     {
-        var salaryId = Guid.NewGuid();
-        var month = @event.Date.ToString("yyyy-MM");
+        var (result, classYear) = await CalculateAsync(command, session);
 
-        // SalaryCalculationConfig'den parametreleri al
-        var config = session.Query<SalaryCalculationConfig>()
-            .Where(c => c.InstitutionId == @event.InstitutionId)
-            .Where(c => c.EffectiveFrom <= @event.Date && (c.EffectiveTo == null || c.EffectiveTo >= @event.Date))
-            .FirstOrDefault();
-
-        // 3308 Madde 25 formülü (placeholder — gerçek implementasyonda business size, MEM durumu, devamsızlık hesabı yapılacak)
-        decimal baseWage = config?.MinimumWage ?? 6631.40m;
-        decimal deduction = 0m;             // TODO: Devamsızlık × günlük ücret
-        decimal netAmount = baseWage - deduction;
-        decimal govContrib = netAmount * 0.3333m;  // TODO: Devlet katkısı oranı (config'den)
+        // business-rules.md §6.6: ücret her ayın 8'ine kadar yatırılır — çalışılan ayın DEĞİL,
+        // TAKİP EDEN ayın 8'i. Maaş ay sonunda hesaplandığı için referans ayın 8'i kullanılsaydı
+        // son ödeme günü daha doğduğu anda geçmişte kalırdı (#63).
+        var nextMonth = new DateTime(command.ReferenceDate.Year, command.ReferenceDate.Month, 1)
+            .AddMonths(1);
+        var receiptDueDate = new DateTime(nextMonth.Year, nextMonth.Month, 8, 23, 59, 59);
 
         var saga = new PaymentSaga
         {
-            Id = salaryId,
-            StudentId = @event.StudentId,
-            BusinessId = @event.BusinessId,
-            InstitutionId = @event.InstitutionId,
-            AcademicPeriodId = @event.AcademicPeriodId,
-            Month = month,
-            BaseWage = baseWage,
-            DeductionAmount = deduction,
-            NetAmount = netAmount,
-            GovernmentContribution = govContrib,
+            Id = command.SalaryPeriodId,
+            ContractId = command.ContractId,
+            StudentId = command.StudentId,
+            BusinessId = command.BusinessId,
+            InstitutionId = command.InstitutionId,
+            AcademicPeriodId = command.AcademicPeriodId,
+            ClassYear = classYear,
+            Month = command.Month,
+            BaseWage = result.BaseWage,
+            DeductionAmount = result.Deduction,
+            NetAmount = result.NetAmount,
+            GovernmentContribution = result.GovernmentContribution,
             Phase = PaymentPhase.AwaitingReceipt,
-            ReceiptDueDate = new DateTime(@event.Date.Year, @event.Date.Month, 8, 23, 59, 59)
+            ReceiptDueDate = receiptDueDate
         };
 
-        var salaryCalculated = new SalaryCalculated(
-            salaryId, @event.StudentId, @event.AcademicPeriodId, month, netAmount, baseWage, deduction, govContrib);
+        var messages = new OutgoingMessages
+        {
+            new SalaryCalculated(
+                command.SalaryPeriodId, command.ContractId, command.StudentId, command.BusinessId,
+                command.InstitutionId, command.AcademicPeriodId, command.Month,
+                result.NetAmount, result.BaseWage, result.Deduction,
+                result.GovernmentContribution, receiptDueDate, result.EmployedDays),
+            new ReceiptUploadRequested(
+                command.SalaryPeriodId, command.StudentId, command.BusinessId, receiptDueDate)
+        };
 
-        var receiptUploadRequested = new ReceiptUploadRequested(
-            salaryId, @event.StudentId, @event.BusinessId, saga.ReceiptDueDate);
+        // Son ödeme gününde dekont hâlâ yoksa uyarı gitsin (#69). ReceiptOverdueConsumer
+        // tetiklendiğinde PaymentSummary'ye bakıp dekont gelmişse sessizce yutar —
+        // zamanlanmış mesaj sonradan iptal edilemiyor.
+        //
+        // Geçmişte kalan son ödeme günü için zamanlama YAPILMAZ: Wolverine geçmiş tarihli
+        // mesajı anında teslim eder, bu da geriye dönük seed edilen aylarda anlamsız
+        // bildirim yağmuruna yol açardı.
+        if (receiptDueDate > DateTime.UtcNow)
+        {
+            messages.Add(new ReceiptOverdue(
+                    command.SalaryPeriodId, command.StudentId, command.BusinessId,
+                    command.InstitutionId, command.Month, receiptDueDate)
+                .ScheduledAt(new DateTimeOffset(receiptDueDate, TimeSpan.Zero)));
+        }
 
-        return (saga, salaryCalculated, receiptUploadRequested);
+        return (saga, messages);
     }
 
+    // ─── HANDLE: Ay içinde yeni devamsızlık geldi, tutarı yeniden hesapla ───
+    // Kesinti ancak ay boyunca biriken devamsızlıkla doğru olur. Tetikleyici ayın ilk
+    // devamsızlığı olduğu için ilk hesap hep tek gün üzerinden çıkar; sonraki her giriş
+    // bu handler'la tutarı günceller. Yalnız dekont beklenirken geçerli — onay süreci
+    // başladıysa (dekont yüklendi, öğrenci/öğretmen onayladı) tutar dondurulur.
+    public async Task<SalaryRecalculated?> Handle(
+        [SagaIdentityFrom(nameof(RecalculateMonthlySalary.SalaryPeriodId))] RecalculateMonthlySalary command,
+        IQuerySession session)
+    {
+        // Onay süreci başladıysa tutar dondurulur — dekont yüklenmiş bir ödemenin tutarı
+        // sonradan değişirse öğrenci/öğretmen/müdür yrd. onayladıkları rakamdan başkasını almış olur.
+        if (Phase != PaymentPhase.AwaitingReceipt) return null;
+
+        var (result, _) = await CalculateAsync(
+            new CalculateMonthlySalary(
+                Id, ContractId, StudentId, BusinessId, InstitutionId, AcademicPeriodId, Month,
+                command.ReferenceDate),
+            session);
+
+        if (result.NetAmount == NetAmount && result.Deduction == DeductionAmount) return null;
+
+        BaseWage = result.BaseWage;
+        DeductionAmount = result.Deduction;
+        NetAmount = result.NetAmount;
+        GovernmentContribution = result.GovernmentContribution;
+
+        return new SalaryRecalculated(
+            Id, StudentId, Month,
+            result.NetAmount, result.BaseWage, result.Deduction, result.GovernmentContribution);
+    }
+
+    /// <returns>
+    /// Hesap sonucu ve hesabın yapıldığı sınıf yılı. Sınıf yılı saga'da saklanır (#161):
+    /// katkı kaydı onay tamamlandığında yazılır ve o an öğrencinin profili bir sonraki sınıfa
+    /// geçmiş olabilir — kayıt, katkının FİİLEN alındığı sınıf yılına yazılmalıdır.
+    /// </returns>
+    private static async Task<(SalaryCalculator.Result Result, int ClassYear)> CalculateAsync(
+        CalculateMonthlySalary command, IQuerySession session)
+    {
+        // Yürürlük seçimi HESAPLANAN AYDAN türetilir, hesabın koştuğu andan değil — asgari ücret
+        // yıl içinde birden fazla kez artabilir ve "şu an" ile seçim geçmiş aya yeni ücreti
+        // uygular. Gerekçenin tamamı: SalaryMonth.ConfigReferenceDate.
+        var configDate = SalaryMonth.ConfigReferenceDate(command.Month, command.ReferenceDate);
+
+        // Kurum filtresi YOK (#147) — parametre ulusaldır.
+        var config = await session.Query<SalaryCalculationConfig>()
+            .Where(c => c.EffectiveFrom <= configDate
+                        && (c.EffectiveTo == null || c.EffectiveTo >= configDate))
+            // Birden fazla kayıt eşleşirse en yenisi geçerlidir; sıralama olmadan hangisinin
+            // geleceği belirsizdi ve tutar çalıştırmadan çalıştırmaya değişebilirdi (#75).
+            .OrderByDescending(c => c.EffectiveFrom)
+            .FirstOrDefaultAsync();
+
+        // Config yoksa sessizce eski bir sabitle hesaplamak yanlış tutar üretir (#64) — hata ver.
+        if (config is null)
+            throw new DomainException(PaymentErrors.SalaryConfigMissing(command.Month));
+
+        var business = await session.LoadAsync<BusinessPaymentProfile>(command.BusinessId);
+        var student = await session.LoadAsync<StudentPaymentProfile>(command.StudentId);
+
+        // Dönemin sözleşmesi: hem taahhüt edilen ücretin (#84) hem de gün oranlamasının (#154)
+        // kaynağı. Kayıt öğrenci başına değil SÖZLEŞME başına tutulur — ay içinde işletme
+        // değiştiren öğrencide her dönem kendi sözleşmesinin ücretini görür.
+        var contract = await session.LoadAsync<ContractEmploymentView>(command.ContractId);
+        if (contract is null)
+            throw new DomainException(PaymentErrors.ContractEmploymentMissing(command.ContractId, command.Month));
+
+        // İstihdam günü: ay tam çalışıldıysa 30, ay ortası fesih/başlangıçta fiilî gün (#154).
+        var employedDays = SalaryMonth.TryParse(command.Month, out var year, out var month)
+            ? EmploymentDays.InMonth(contract.StartDate, contract.EndDate, year, month)
+            : EmploymentDays.FullMonthDays;
+
+        // Devamsızlık yalnız bu sözleşmenin istihdam penceresine düşen günlerden sayılır.
+        // Öğrenci bazında sayılsaydı ay içi devirde aynı devamsızlık her iki işletmeden de
+        // kesilirdi — öğrenci bir günü iki kez kaybederdi.
+        var deductibleDays = await CountDeductibleAbsenceDaysAsync(
+            session, command.StudentId, command.Month, contract.StartDate, contract.EndDate);
+
+        // Sınıf tekrarı katkı blokesi (#161). Karar saf politikada; hesaplayıcı geçmişe bakmaz.
+        // Sınıf yılı bilinmiyorsa (profil eksik, ClassYear 0) bloke UYGULANMAZ: eksik veri
+        // yüzünden işletmeye sessizce tam ücret yükü bindirilmemeli.
+        var classYearClaim = student is { ClassYear: > 0 }
+            ? await session.LoadAsync<ClassYearContributionClaim>(
+                ContributionClaimId.For(command.StudentId, student.ClassYear))
+            : null;
+
+        var classYearExhausted = ClassYearContributionPolicy.IsExhausted(
+            classYearClaim, command.AcademicPeriodId);
+
+        var result = SalaryCalculator.Calculate(
+            config,
+            business?.PersonnelCount ?? 0,
+            student?.EducationTypeName ?? "",
+            student?.ClassYear ?? 0,
+            student?.HasJourneymanQualification ?? false,
+            deductibleDays,
+            contract.AgreedMonthlyWage,
+            CalculateAge(student?.BirthDate, command.ReferenceDate),
+            IsApprenticeCategory(student?.CategoryName),
+            // Kamu kurumuna devlet katkısı ödenmez (#157). Profil yoksa false — özel işletme
+            // varsayımı bugünkü davranışı korur; eksik veri yüzünden katkı sessizce sıfırlanmaz.
+            business?.IsPublicInstitution ?? false,
+            employedDays,
+            classYearExhausted);
+
+        return (result, student?.ClassYear ?? 0);
+    }
+
+    /// <summary>
+    /// Öğrencinin hesap tarihindeki tam yaşı (#85). Doğum tarihi bilinmiyorsa null döner ve
+    /// yaşa bakılmaksızın genel asgari ücret uygulanır.
+    /// </summary>
+    private static int? CalculateAge(DateTime? birthDate, DateTime referenceDate)
+    {
+        if (birthDate is not { } birth) return null;
+
+        var age = referenceDate.Year - birth.Year;
+        if (referenceDate.Month < birth.Month
+            || (referenceDate.Month == birth.Month && referenceDate.Day < birth.Day))
+            age--;
+
+        return age < 0 ? null : age;
+    }
+
+    // SmartEnum Marten LINQ'te kullanılamadığı için read model düz string tutuyor.
+    private static bool IsApprenticeCategory(string? categoryName)
+        => StudentCategory.TryFromName(categoryName ?? "", ignoreCase: true, out var category)
+           && category.IsApprentice;
+
+    /// <summary>
+    /// Onaylanmış, ücret kesintisine tabi devamsızlık günü sayısı — mazeretsiz devamsızlık ve
+    /// ücretsiz izin (<c>AbsenceType.AffectsSalary</c>). <c>Pending</c> sayılmaz: işletmenin tek
+    /// taraflı girişi öğretmen onayı olmadan öğrencinin ücretini kesemez.
+    /// </summary>
+    /// <remarks>
+    /// Pencere daraltması #154 ile eklendi: sayım sözleşmenin istihdam günlerine sınırlıdır.
+    /// Üst uç yoksa (sözleşme sürüyor) ay sonuna kadar sayılır.
+    /// </remarks>
+    private static Task<int> CountDeductibleAbsenceDaysAsync(
+        IQuerySession session, Guid studentId, string month,
+        DateTime windowStart, DateTime? windowEnd)
+    {
+        var start = windowStart.Date;
+        var end = (windowEnd ?? DateTime.MaxValue).Date;
+
+        return session.Query<StudentAbsenceView>()
+            .Where(a => a.StudentId == studentId
+                        && a.Month == month
+                        && a.Date >= start
+                        && a.Date <= end
+                        && DeductibleAbsenceTypes.Contains(a.AbsenceTypeName)
+                        && a.StatusName != PendingStatus)
+            .CountAsync();
+    }
+
+    // Tür ve durum ekseninin TEK karar noktası AbsenceDeductionPolicy'dir (#255). Kopya
+    // tutulsaydı, tetikleyici (AbsenceTallyConsumer) ile buradaki sayım sessizce ayrışırdı:
+    // tetik "değişmedi" der, hesap hiç koşmaz, tutar eski kalır — ne hata ne log.
+    private static readonly string[] DeductibleAbsenceTypes =
+        AbsenceDeductionPolicy.DeductibleAbsenceTypes;
+    private const string PendingStatus = AbsenceDeductionPolicy.PendingStatus;
+
     // ─── HANDLE: İşletme dekontu yükledi ───
-    public void Handle(ReceiptUploadedByBusiness @event)
+    // Saga korelasyonu: olaylar anahtarı `SalaryPeriodId` adıyla taşıyor. Wolverine'in varsayılan
+    // konvansiyonu ({SagaTipi}Id / SagaId / Id) bu adı tanımadığı için korelasyon kurulamıyordu ve
+    // saga'daki sıra kontrolleri hiç çalışmıyordu. Alternatif olan [SagaIdentity] attribute'ü olay
+    // record'una konurdu — ama o zaman Payment.Shared'e WolverineFx bağımlılığı girer ve bu olayları
+    // tüketen tüm modüllere yayılırdı. [SagaIdentityFrom] handler tarafında kalır, Shared temiz kalır.
+    public void Handle(
+        [SagaIdentityFrom(nameof(ReceiptUploadedByBusiness.SalaryPeriodId))] ReceiptUploadedByBusiness @event)
     {
         ReceiptId = @event.ReceiptId;
         Phase = PaymentPhase.ReceiptUploaded;
@@ -81,7 +332,8 @@ public class PaymentSaga : Saga
     }
 
     // ─── HANDLE: Öğrenci dekontu yükledi (fallback — 8. günde işletme yüklemediyse) ───
-    public void Handle(ReceiptUploadedByStudent @event)
+    public void Handle(
+        [SagaIdentityFrom(nameof(ReceiptUploadedByStudent.SalaryPeriodId))] ReceiptUploadedByStudent @event)
     {
         ReceiptId = @event.ReceiptId;
         Phase = PaymentPhase.ReceiptUploaded;
@@ -89,46 +341,55 @@ public class PaymentSaga : Saga
     }
 
     // ─── HANDLE: Öğrenci "aldım" dedi (1. adım — öğrenci parayı almalı) ───
-    public void Handle(SalaryConfirmedByStudent @event)
+    public void Handle(
+        [SagaIdentityFrom(nameof(SalaryConfirmedByStudent.SalaryPeriodId))] SalaryConfirmedByStudent @event)
     {
         if (Phase != PaymentPhase.ReceiptUploaded)
-            throw new InvalidOperationException($"Geçersiz durum. Mevcut: {Phase.Slug}, Gerekli: {PaymentPhase.ReceiptUploaded.Slug}");
+            throw new DomainException(PaymentErrors.InvalidPhase(Phase.Slug, PaymentPhase.ReceiptUploaded.Slug));
 
         StudentConfirmed = true;
         Phase = PaymentPhase.StudentConfirmed;
     }
 
     // ─── HANDLE: Koordinatör öğretmen onayladı (2. adım) ───
-    public void Handle(ReceiptApprovedByTeacher @event)
+    public void Handle(
+        [SagaIdentityFrom(nameof(ReceiptApprovedByTeacher.SalaryPeriodId))] ReceiptApprovedByTeacher @event)
     {
         if (!StudentConfirmed)
-            throw new InvalidOperationException("Önce öğrenci maaşı aldığını onaylamalı.");
+            throw new DomainException(PaymentErrors.ApprovalRequired("Öğrenci"));
 
         if (Phase != PaymentPhase.StudentConfirmed)
-            throw new InvalidOperationException($"Geçersiz durum. Mevcut: {Phase.Slug}, Gerekli: {PaymentPhase.StudentConfirmed.Slug}");
+            throw new DomainException(PaymentErrors.InvalidPhase(Phase.Slug, PaymentPhase.StudentConfirmed.Slug));
 
         TeacherApproved = true;
         Phase = PaymentPhase.TeacherApproved;
     }
 
     // ─── HANDLE: Müdür yardımcısı onayladı (3. adım — son yetkili) ───
-    public PaymentCompleted Handle(ReceiptApprovedByDeputy @event)
+    public PaymentCompleted Handle(
+        [SagaIdentityFrom(nameof(ReceiptApprovedByDeputy.SalaryPeriodId))] ReceiptApprovedByDeputy @event)
     {
-        if (!StudentConfirmed || !TeacherApproved)
-            throw new InvalidOperationException("Öğrenci ve koordinatör öğretmen onayı gerekli.");
+        if (!StudentConfirmed)
+            throw new DomainException(PaymentErrors.ApprovalRequired("Öğrenci"));
+
+        if (!TeacherApproved)
+            throw new DomainException(PaymentErrors.ApprovalRequired("Koordinatör öğretmen"));
 
         if (Phase != PaymentPhase.TeacherApproved)
-            throw new InvalidOperationException($"Geçersiz durum. Mevcut: {Phase.Slug}, Gerekli: {PaymentPhase.TeacherApproved.Slug}");
+            throw new DomainException(PaymentErrors.InvalidPhase(Phase.Slug, PaymentPhase.TeacherApproved.Slug));
 
         DeputyApproved = true;
         Phase = PaymentPhase.Completed;
         MarkCompleted();
 
-        return new PaymentCompleted(Id, StudentId, Month, NetAmount);
+        return new PaymentCompleted(
+            Id, StudentId, Month, NetAmount,
+            AcademicPeriodId, ClassYear, GovernmentContribution);
     }
 
     // ─── HANDLE: Dekont reddedildi ───
-    public void Handle(ReceiptRejected @event)
+    public void Handle(
+        [SagaIdentityFrom(nameof(ReceiptRejected.SalaryPeriodId))] ReceiptRejected @event)
     {
         ReceiptId = null;
         StudentConfirmed = false;

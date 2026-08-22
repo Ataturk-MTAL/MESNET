@@ -15,6 +15,12 @@ export interface PaymentSummaryDto {
   netAmount: number
   governmentContribution: number
   employerPayment: number
+  /**
+   * Tutarın kaç istihdam günü üzerinden hesaplandığı (#154). Tam ay 30'dur. Ay ortasında
+   * işletme değiştiren öğrencide aynı ay için iki satır oluşur; her satır kendi sözleşmesinin
+   * günlerini taşır.
+   */
+  employedDays: number
   phase: string
   phaseSlug: string
   receiptId: string | null
@@ -27,6 +33,36 @@ export interface PaymentSummaryDto {
   lastUpdated: string
 }
 
+/**
+ * Bir asgari ücret yürürlük dönemi. Asgari ücret yıl içinde birden fazla kez artabildiği için
+ * kayıtlar tarih aralıklı tutulur ve maaş hesabı ayın içinde yürürlükte olanı seçer.
+ */
+export interface SalaryConfigDto {
+  id: string
+  minimumWage: number
+  minimumWageUnder16: number | null
+  effectiveFrom: string
+  effectiveTo: string | null
+  /** Bugün yürürlükte olan dönem. */
+  isCurrent: boolean
+  /** Yürürlüğü henüz başlamamış (ileri tarihli) dönem. */
+  isScheduled: boolean
+  updatedById: string
+  updatedBy: string | null
+  smallBusinessRate: number
+  largeBusinessRate: number
+  personnelThreshold: number
+  apprenticeRate: number
+  mem12thGradeRate: number
+  govContribSmallNonMEM: number
+  govContribLargeNonMEM: number
+  govContribMEM: number
+}
+
+export interface SalaryConfigHistoryDto {
+  items: SalaryConfigDto[]
+}
+
 export const PAYMENT_PHASES = [
   { label: 'Hesaplandı', value: 'Calculated' },
   { label: 'Dekont Bekleniyor', value: 'AwaitingReceipt' },
@@ -37,6 +73,18 @@ export const PAYMENT_PHASES = [
   { label: 'Tamamlandı', value: 'Completed' },
   { label: 'Reddedildi', value: 'Rejected' },
 ] as const
+
+/**
+ * Sınıf tekrarı nedeniyle devlet katkısı bloke olan öğrenci (#161). Öğrencinin ÜCRETİ
+ * etkilenmez; yükselen şey işveren payıdır (Net − Katkı).
+ */
+export interface ContributionBlockDto {
+  studentId: string
+  /** Tekrar edilen ve katkısı tükenmiş sınıf yılı. */
+  classYear: number
+  /** Katkının ilk alındığı ay (`yyyy-MM`) — gerekçe izi. */
+  firstClaimedMonth: string
+}
 
 export const paymentApi = {
   list: (params?: { studentId?: string; businessId?: string; institutionId?: string; academicPeriodId?: string; phase?: string; month?: string; branchCode?: string; monthFrom?: string; monthTo?: string } & PaginationParams) =>
@@ -73,6 +121,38 @@ export const paymentApi = {
   reject: (paymentId: string, reason: string) =>
     api.post(`/payments/${paymentId}/reject`, { reason }),
 
-  updateMinimumWage: (amount: number, effectiveDate: string) =>
-    api.put('/payments/config/minimum-wage', { amount, effectiveDate }),
+  /**
+   * Asgari ücret güncelleme. Alan adları backend'deki UpdateMinimumWage komutuyla birebir
+   * olmalı — önceki hâli `{ amount, effectiveDate }` gönderiyordu ve hiçbir alan eşleşmiyordu.
+   * minimumWageUnder16: 16 yaşından küçükler için yaşa uygun asgari ücret (#85).
+   */
+  /**
+   * Asgari ücret yürürlük geçmişi — geçmiş, yürürlükteki ve ileri tarihli dönemler.
+   * Kurum kapsamı parametre olarak GİTMEZ; backend token'daki institution_id'den okur.
+   */
+  salaryConfigHistory: () =>
+    api.get<SalaryConfigHistoryDto>('/payments/config/minimum-wage'),
+
+  /**
+   * Sınıf tekrarı nedeniyle devlet katkısı bloke olan öğrenciler (#161).
+   * Sözleşme/yerleştirme ekranı bunu okur: katkı işletmeye ödenir, bloke edilince işletmenin
+   * maliyeti yükselir ve bunu ayın sonunda dekont gelirken değil, öğrenciyi kabul ederken
+   * bilmelidir.
+   */
+  contributionBlocks: () =>
+    api.get<ContributionBlockDto[]>('/payments/contribution-blocks'),
+
+  // Kurum kimliği GÖNDERİLMEZ (#147): asgari ücret ulusal parametredir. Eskiden gövdeden
+  // geliyordu ve yetkili bir kullanıcı başka kurumun ücretini değiştirebiliyordu.
+  updateMinimumWage: (
+    newMinimumWage: number,
+    effectiveFrom: string,
+    newMinimumWageUnder16?: number,
+  ) =>
+    api.put('/payments/config/minimum-wage', {
+      newMinimumWage,
+      newMinimumWageUnder16: newMinimumWageUnder16 ?? null,
+      effectiveFrom,
+      // updatedBy gönderilmez — aktör token'dan damgalanır (#137)
+    }),
 }

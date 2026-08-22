@@ -1,0 +1,68 @@
+# CI entegrasyon testleri için bağımlılık yığını (#67).
+#
+# PORTLAR PARAMETRİK: GitHub Actions bu değişkenleri set ETMEZ, yani varsayılanlar devreye girer
+# ve CI davranışı birebir aynı kalır. Yerelde `scripts/ci-local.sh` onları başka portlara alır —
+# geliştirme yığını 5432/5672/9000'i zaten tutuyor ve iki yığın aynı anda ayakta durabilmeli.
+#
+# GitHub Actions'ın `services:` bloğu konteynerin CMD'ini değiştiremiyor; Keycloak
+# `start-dev --import-realm`, MinIO ise `server /data` ile başlamak zorunda. Bu yüzden
+# compose kullanılıyor.
+#
+# Kimlik bilgileri src/MESNET.Presentation/appsettings.Development.json ile birebir aynı
+# tutuldu — böylece CI'da connection-string override'ı gerekmiyor. Bunlar tek kullanımlık
+# CI konteynerlerine ait dev değerleri, gerçek bir sır değil.
+services:
+  postgres:
+    # docker-compose.yml ve MESNET.AppHost ile AYNI imaj — CI'ın dev'den farklı bir PostgreSQL
+    # sürümünde koşması, dev'de görünmeyen hatayı CI'da (ya da tersini) doğurur. Önceden CI
+    # PostgreSQL 17, dev 18 idi.
+    #
+    # kartoza/postgis:18-3.6 → Debian 13 (trixie), PostgreSQL 18.4, PostGIS 3.6. Resmî
+    # postgis/postgis'te trixie etiketi yok ve 18-3.6'nın arm64 imajı da yok (yerelde çalışmaz).
+    image: kartoza/postgis:18-3.6
+    environment:
+      POSTGRES_USER: mesnet
+      POSTGRES_PASSWORD: mesnet_dev
+      POSTGRES_DB: mesnet
+    ports:
+      - '${CI_PG_PORT:-5432}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mesnet -d mesnet']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: mesnet
+      RABBITMQ_DEFAULT_PASS: mesnet_dev
+    ports:
+      - '${CI_RABBIT_PORT:-5672}:5672'
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.0
+    command: ['start-dev', '--import-realm']
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: 'true'
+    volumes:
+      # Testler realm'deki admin kullanıcısı + mesnet-api client'ı (direct grant) ile token alır.
+      - ../src/MESNET.AppHost/keycloak/mesnet-realm.json:/opt/keycloak/data/import/mesnet-realm.json:ro
+    ports:
+      - '${CI_KEYCLOAK_PORT:-8080}:8080'
+
+  minio:
+    image: minio/minio:latest
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - '${CI_MINIO_PORT:-9000}:9000'

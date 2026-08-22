@@ -1,9 +1,14 @@
 <template>
   <div class="assignment-grid">
-    <table class="full-width" aria-label="Ders programı ve işletme atama tablosu. Hücreler gün ve saate göre düzenlenmiştir; her hücre dolu (ders), boş veya atanmış işletme durumunu gösterir.">
+    <table
+      class="full-width"
+      aria-label="Ders programı ve işletme atama tablosu. Hücreler gün ve saate göre düzenlenmiştir; her hücre dolu (ders), boş veya atanmış işletme durumunu gösterir."
+    >
       <thead>
         <tr>
-          <th class="period-header text-caption text-grey-7">Saat</th>
+          <th class="period-header text-caption text-grey-7">
+            Saat
+          </th>
           <th
             v-for="day in days"
             :key="day.value"
@@ -14,8 +19,13 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="period in periodCount" :key="period">
-          <td class="period-label text-weight-medium text-grey-8">{{ period }}.</td>
+        <tr
+          v-for="period in periodCount"
+          :key="period"
+        >
+          <td class="period-label text-weight-medium text-grey-8">
+            {{ period }}.
+          </td>
           <td
             v-for="day in days"
             :key="day.value"
@@ -24,8 +34,15 @@
             :aria-label="cellLabel(day.label, day.value, period)"
           >
             <!-- Dolu hücre — sürükleme kabul etmez -->
-            <div v-if="isOccupied(day.value, period)" class="occupied-cell">
-              <q-icon name="menu_book" size="14px" color="grey-5" />
+            <div
+              v-if="isOccupied(day.value, period)"
+              class="occupied-cell"
+            >
+              <q-icon
+                name="menu_book"
+                size="14px"
+                color="grey-5"
+              />
               <span class="text-caption text-grey-6">
                 {{ getCourseName(day.value, period) || 'Ders' }}
               </span>
@@ -34,27 +51,61 @@
             <!-- Boş + atanmamış — Drop Zone -->
             <div
               v-else-if="!getAssignedBusinessId(day.value, period)"
-              :ref="(el) => registerDropZone(el as HTMLElement, day.value, period)"
               class="drop-zone"
-              :class="{ 'drop-zone--disabled': disabled }"
+              :class="{
+                'drop-zone--disabled': disabled,
+                'drop-zone--target': !disabled && selected !== null,
+                'drop-zone--active': activeDropZone === dropZoneKey(day.value, period),
+              }"
+              role="button"
+              tabindex="0"
+              :aria-disabled="disabled"
+              :aria-label="dropZoneLabel(day.label, period)"
+              @dragover="onDropZoneDragOver($event, day.value, period)"
+              @dragleave="onDropZoneDragLeave(day.value, period)"
+              @drop="onDropZoneDrop($event, day.value, period)"
+              @keydown.enter.prevent="onDropZoneKey(day.value, period)"
+              @keydown.space.prevent="onDropZoneKey(day.value, period)"
+              @keydown.esc.prevent="emit('selection-cancelled')"
             >
-              <q-icon name="add_circle_outline" size="16px" color="green-4" />
-              <span class="text-caption text-green-6">Boş</span>
+              <q-icon
+                name="add_circle_outline"
+                size="16px"
+                color="positive"
+              />
+              <!-- -strong ton şart: düz `text-positive` (#2e7d5b) .cell-free zemininde
+                   (#e2ede8) 4,17:1 veriyor — metin eşiği 4,5:1'in altında. -strong 5,38:1. -->
+              <span class="text-caption text-positive-strong">Boş</span>
             </div>
 
             <!-- Boş + atanmış — İşletme chip -->
+            <!-- Fare için sürükle-bırak, klavye için seç-taşı akışı (#88): Enter/Space seçer,
+              hedef hücrede Enter bırakır, Escape iptal eder. -->
             <div
               v-else
               class="assigned-slot"
+              :class="{ 'assigned-slot--selected': isSelected(day.value, period) }"
+              role="button"
+              tabindex="0"
+              :aria-disabled="disabled"
+              :aria-pressed="isSelected(day.value, period)"
+              :aria-label="assignedSlotLabel(day.value, day.label, period)"
               :draggable="!disabled"
               :data-business-id="getAssignedBusinessId(day.value, period)"
               :data-from-day="day.value"
               :data-from-period="period"
               @dragstart="onDragStart($event, day.value, period)"
+              @keydown.enter.prevent="onAssignedKey(day.value, period)"
+              @keydown.space.prevent="onAssignedKey(day.value, period)"
+              @keydown.esc.prevent="emit('selection-cancelled')"
             >
               <div class="business-chip">
-                <q-icon name="business" size="14px" color="blue-7" />
-                <span class="text-caption text-blue-9 ellipsis chip-label">
+                <q-icon
+                  name="business"
+                  size="14px"
+                  color="info"
+                />
+                <span class="text-caption text-info-strong ellipsis chip-label">
                   {{ getBusinessName(day.value, period) }}
                 </span>
                 <q-btn
@@ -64,7 +115,7 @@
                   dense
                   icon="close"
                   size="8px"
-                  color="red-5"
+                  color="negative"
                   class="remove-btn"
                   :aria-label="`${getBusinessName(day.value, period)} atamasını kaldır`"
                   @click.stop="onRemoveClick(day.value, period)"
@@ -80,13 +131,31 @@
 
     <!-- Özet Chip'leri -->
     <div class="row q-mt-md q-gutter-sm">
-      <q-chip icon="menu_book" color="grey-2" text-color="grey-8" dense size="sm">
+      <q-chip
+        icon="menu_book"
+        color="grey-2"
+        text-color="grey-8"
+        dense
+        size="sm"
+      >
         Dolu: {{ occupiedCount }}
       </q-chip>
-      <q-chip icon="event_available" color="green-1" text-color="green-8" dense size="sm">
+      <q-chip
+        icon="event_available"
+        color="positive-soft"
+        text-color="positive-strong"
+        dense
+        size="sm"
+      >
         Boş: {{ freeCount }}
       </q-chip>
-      <q-chip icon="business" color="blue-1" text-color="blue-8" dense size="sm">
+      <q-chip
+        icon="business"
+        color="info-soft"
+        text-color="info-strong"
+        dense
+        size="sm"
+      >
         Atanmış: {{ assignedCount }}
       </q-chip>
     </div>
@@ -94,19 +163,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from 'vue'
+import { computed, ref } from 'vue'
 import type { DailyScheduleDto, PeriodSlotDto } from 'src/api/coordination'
+import type { AssignmentSelection } from 'src/composables/useKeyboardAssignment'
 
 const props = defineProps<{
   schedule: DailyScheduleDto[]
   periodCount: number
   disabled: boolean
   businessNameMap: Record<string, string>
+  /** Klavye akışında seçili olan işletme (#88); sayfa sahibi tutar. */
+  selected: AssignmentSelection | null
 }>()
 
 const emit = defineEmits<{
   (e: 'business-dropped', payload: { businessId: string; day: string; periodNumber: number }): void
   (e: 'business-removed', payload: { businessId: string; day: string; periodNumber: number }): void
+  (e: 'business-selected', payload: AssignmentSelection): void
+  (e: 'selection-cancelled'): void
 }>()
 
 const days = [
@@ -197,56 +271,108 @@ function onDragStart(event: DragEvent, day: string, period: number) {
   event.dataTransfer.effectAllowed = 'move'
 }
 
-// Drop zone'ları kaydetmek için native event listener kullanıyoruz
-const dropZoneCleanups: (() => void)[] = []
+// Drop zone olayları şablonda bildirimsel olarak bağlanır (@dragover/@dragleave/@drop).
+//
+// Daha önce burada bir `:ref="(el) => registerDropZone(el, ...)"` geri çağrısı vardı ve
+// içinde el.addEventListener çağrılıyordu. Vue, FONKSİYON tipindeki template ref'i her
+// yamada yeniden çalıştırır ve satır içi ok fonksiyonu her render'da yeni kimlik aldığı
+// için eskisi hiç null ile çağrılmaz — yani her render aynı DOM düğümüne 3 listener daha
+// ekliyordu, temizlik ise yalnız onBeforeUnmount'ta yapılıyordu. Ölçüm: mount'ta 30
+// listener, 5 prop güncellemesinden sonra 165. Sonuç: tek bırakma işleminde
+// business-dropped/business-removed olayları defalarca yayılabiliyordu.
+// Şablon bağlaması bu riski tamamen ortadan kaldırır — Vue listener kimliğini kendi yönetir.
 
-function registerDropZone(el: HTMLElement | null, day: string, period: number) {
-  if (!el) return
+/** Sürükleme sırasında vurgulanan hücre; classList yerine reaktif durum. */
+const activeDropZone = ref<string | null>(null)
 
-  const onDragOver = (e: DragEvent) => {
-    if (props.disabled) return
-    e.preventDefault()
-    e.dataTransfer!.dropEffect = 'move'
-    el.classList.add('drop-zone--active')
+function dropZoneKey(day: string, period: number): string {
+  return `${day}-${period}`
+}
+
+function onDropZoneDragOver(event: DragEvent, day: string, period: number) {
+  if (props.disabled) return
+  // preventDefault YALNIZ etkin hücrede: aksi halde devre dışı hücre de bırakmayı kabul eder.
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  activeDropZone.value = dropZoneKey(day, period)
+}
+
+function onDropZoneDragLeave(day: string, period: number) {
+  // Yalnız AYRILAN hücre hâlâ vurguluysa temizle. Hücreden hücreye geçerken tarayıcı
+  // dragover(yeni) olayını dragleave(eski) olayından önce yayabilir; koşulsuz silmek
+  // yeni hücrenin vurgusunu anında söndürür (eski classList'li kodda bu olmuyordu,
+  // çünkü her hücre kendi sınıfını yönetiyordu).
+  if (activeDropZone.value === dropZoneKey(day, period)) {
+    activeDropZone.value = null
+  }
+}
+
+function onDropZoneDrop(event: DragEvent, day: string, period: number) {
+  event.preventDefault()
+  activeDropZone.value = null
+  if (props.disabled) return
+
+  const businessId = event.dataTransfer?.getData('application/business-id')
+  const fromDay = event.dataTransfer?.getData('application/from-day')
+  const fromPeriod = event.dataTransfer?.getData('application/from-period')
+
+  if (!businessId) return
+
+  // Eski konumdan kaldır (grid'den grid'e taşıma)
+  if (fromDay && fromPeriod) {
+    emit('business-removed', {
+      businessId,
+      day: fromDay,
+      periodNumber: parseInt(fromPeriod),
+    })
   }
 
-  const onDragLeave = () => {
-    el.classList.remove('drop-zone--active')
-  }
+  // Yeni konuma ata
+  emit('business-dropped', { businessId, day, periodNumber: period })
+}
 
-  const onDrop = (e: DragEvent) => {
-    e.preventDefault()
-    el.classList.remove('drop-zone--active')
-    if (props.disabled) return
+// ── Klavye erişilebilirliği (#88) ──
 
-    const businessId = e.dataTransfer?.getData('application/business-id')
-    const fromDay = e.dataTransfer?.getData('application/from-day')
-    const fromPeriod = e.dataTransfer?.getData('application/from-period')
+function isSelected(day: string, period: number): boolean {
+  return props.selected?.fromDay === day && props.selected?.fromPeriod === period
+}
 
-    if (!businessId) return
+function assignedSlotLabel(day: string, dayLabel: string, period: number): string {
+  return `${getBusinessName(day, period)}, ${dayLabel} ${period}. ders. Taşımak için Enter'a basın.`
+}
 
-    // Eski konumdan kaldır (grid'den grid'e taşıma)
-    if (fromDay && fromPeriod) {
-      emit('business-removed', {
-        businessId,
-        day: fromDay,
-        periodNumber: parseInt(fromPeriod),
-      })
-    }
+function dropZoneLabel(dayLabel: string, period: number): string {
+  return props.selected
+    ? `Boş: ${dayLabel} ${period}. ders. ${props.selected.businessName} işletmesini buraya atamak için Enter'a basın.`
+    : `Boş: ${dayLabel} ${period}. ders. Önce bir işletme seçin.`
+}
 
-    // Yeni konuma ata
-    emit('business-dropped', { businessId, day, periodNumber: period })
-  }
+function onAssignedKey(day: string, period: number) {
+  if (props.disabled) return
+  const businessId = getAssignedBusinessId(day, period)
+  if (!businessId) return
 
-  el.addEventListener('dragover', onDragOver)
-  el.addEventListener('dragleave', onDragLeave)
-  el.addEventListener('drop', onDrop)
-
-  dropZoneCleanups.push(() => {
-    el.removeEventListener('dragover', onDragOver)
-    el.removeEventListener('dragleave', onDragLeave)
-    el.removeEventListener('drop', onDrop)
+  emit('business-selected', {
+    businessId,
+    businessName: getBusinessName(day, period),
+    fromDay: day,
+    fromPeriod: period,
   })
+}
+
+function onDropZoneKey(day: string, period: number) {
+  if (props.disabled || !props.selected) return
+
+  // Izgaradan alındıysa önce eski konumdan kaldır — sürükle-bırak yolundaki davranışın aynısı.
+  if (props.selected.fromDay !== undefined && props.selected.fromPeriod !== undefined) {
+    emit('business-removed', {
+      businessId: props.selected.businessId,
+      day: props.selected.fromDay,
+      periodNumber: props.selected.fromPeriod,
+    })
+  }
+
+  emit('business-dropped', { businessId: props.selected.businessId, day, periodNumber: period })
 }
 
 function onRemoveClick(day: string, period: number) {
@@ -255,10 +381,6 @@ function onRemoveClick(day: string, period: number) {
     emit('business-removed', { businessId, day, periodNumber: period })
   }
 }
-
-onBeforeUnmount(() => {
-  dropZoneCleanups.forEach((fn) => fn())
-})
 </script>
 
 <style scoped>
@@ -298,12 +420,15 @@ onBeforeUnmount(() => {
   background: #f5f5f5;
 }
 
+/* Ham Material tonları yerine tema türevi (#104): tema değişince hücre zeminleri de kayar. */
 .cell-free {
-  background: #e8f5e9;
+  background: #e2ede8;
+  background: color-mix(in srgb, var(--q-positive) 14%, #fff);
 }
 
 .cell-assigned {
-  background: #e3f2fd;
+  background: #e8edf1;
+  background: color-mix(in srgb, var(--q-info) 12%, #fff);
 }
 
 .occupied-cell {
@@ -314,6 +439,17 @@ onBeforeUnmount(() => {
   opacity: 0.6;
 }
 
+/* Klavyeyle seçili chip ve seçim varken vurgulanan boş hücreler (#88) */
+.assigned-slot--selected {
+  outline: 2px solid var(--q-primary);
+  outline-offset: 1px;
+}
+
+.drop-zone--target {
+  border-style: dashed;
+  border-color: var(--q-primary);
+}
+
 .drop-zone {
   min-height: 40px;
   display: flex;
@@ -322,18 +458,25 @@ onBeforeUnmount(() => {
   gap: 4px;
   border: 2px dashed transparent;
   border-radius: 4px;
-  transition: all 0.2s;
+  /* transition: all yerine değişen özellikler — tarayıcı her özelliği izlemesin,
+     layout özellikleri yanlışlıkla animasyonlanmasın. */
+  transition-property: border-color, background-color, opacity;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-out;
   opacity: 0.6;
 }
 
 .drop-zone:not(.drop-zone--disabled):hover {
-  border-color: #a5d6a7;
+  border-color: #a1c4b5;
+  border-color: color-mix(in srgb, var(--q-positive) 45%, #fff);
   opacity: 1;
 }
 
 .drop-zone--active {
-  border-color: #66bb6a !important;
-  background: #c8e6c9 !important;
+  border-color: #77aa94 !important;
+  border-color: color-mix(in srgb, var(--q-positive) 65%, #fff) !important;
+  background: #cbded6 !important;
+  background: color-mix(in srgb, var(--q-positive) 25%, #fff) !important;
   opacity: 1 !important;
 }
 
@@ -353,7 +496,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: #bbdefb;
+  background: #d5dee5;
+  background: color-mix(in srgb, var(--q-info) 22%, #fff);
   border-radius: 6px;
   padding: 4px 8px;
   min-height: 32px;
@@ -368,5 +512,10 @@ onBeforeUnmount(() => {
 
 .remove-btn {
   margin-left: auto;
+  /* İkon 8px kalıyor (hücre dar) ama dokunma hedefi WCAG 2.2 SC 2.5.8'in istediği
+     24x24 CSS px'e çıkarılıyor. Görünmez pseudo-element yerine butonun kendisi
+     büyütüldü: genişletilmiş hedef chip etiketiyle çakışıp yanlış tıklama üretmesin. */
+  min-width: 24px;
+  min-height: 24px;
 }
 </style>

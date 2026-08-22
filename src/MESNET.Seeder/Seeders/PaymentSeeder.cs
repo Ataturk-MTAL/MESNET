@@ -11,10 +11,10 @@ public static class PaymentSeeder
 
         var result = await api.PutAsync("/api/payments/config/minimum-wage", new
         {
-            institutionId = ctx.Get("Institution"),
+            // institutionId GÖNDERİLMEZ (#147) — asgari ücret ulusal parametredir.
             newMinimumWage = 22104.00m,
-            effectiveFrom = new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc),
-            updatedBy = "Sistem"
+            effectiveFrom = new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc)
+            // updatedBy gönderilmez — aktör artık token'dan damgalanır (#137).
         });
 
         if (result is not null)

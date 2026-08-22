@@ -17,15 +17,32 @@ public static class PaymentEndpoints
     {
         var group = app.MapGroup("/api/payments").RequireAuthorization();
 
-        group.MapGet("/{id:guid}", Get).RequireAuthorization(Permissions.Salary.View);
-        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Salary.View);
+        // Liste hem okul tarafına hem veri sahibine açıktır (#182).
+        group.MapGet("/{id:guid}", Get).RequireAuthorization(PermissionPolicies.SalaryViewOrOwn);
+        group.MapGet("/", GetAll).RequireAuthorization(PermissionPolicies.SalaryViewOrOwn);
         group.MapPost("/{id:guid}/upload-receipt/business", PostUploadReceiptByBusiness).RequireAuthorization(Permissions.Company.UploadReceipt);
         group.MapPost("/{id:guid}/upload-receipt/student", PostUploadReceiptByStudent).RequireAuthorization(Permissions.Salary.Receipt);
         group.MapPost("/{id:guid}/confirm", PostConfirm).RequireAuthorization(Permissions.Salary.Receipt);
         group.MapPost("/{id:guid}/approve/teacher", PostApproveTeacher).RequireAuthorization(Permissions.Salary.Approve);
         group.MapPost("/{id:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Salary.Approve);
         group.MapPost("/{id:guid}/reject", PostReject).RequireAuthorization(Permissions.Salary.Approve);
-        group.MapPut("/config/minimum-wage", PutMinimumWage).RequireAuthorization(Permissions.Salary.Parameter);
+        // Okuma okullara açık, YAZMA ulusal izin ister (#147) — aynı ucun iki farklı izni.
+        group.MapGet("/config/minimum-wage", GetMinimumWageHistory)
+            .RequireAuthorization(Permissions.Salary.ParameterView);
+        group.MapPut("/config/minimum-wage", PutMinimumWage)
+            .RequireAuthorization(Permissions.Platform.ParameterManage);
+        group.MapPost("/open-monthly-periods", PostOpenMonthlyPeriods).RequireAuthorization(Permissions.Salary.Calculate);
+        // Sınıf tekrarı nedeniyle katkısı bloke öğrenciler (#161) — yerleştirme/sözleşme
+        // ekranları okur, işletme maliyeti ayın sonunda değil kabul anında bilinsin.
+        group.MapGet("/contribution-blocks", GetContributionBlocks)
+            .RequireAuthorization(Permissions.Salary.View);
+    }
+
+    private static async Task<IResult> GetContributionBlocks(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ContributionBlockedStudentsResult>(
+            new GetContributionBlockedStudents());
+        return Results.Ok(ResponseBuilder.Success().AddData(result.Items).Build());
     }
 
     private static async Task<IResult> Get(Guid id, IMessageBus bus)
@@ -139,6 +156,16 @@ public static class PaymentEndpoints
         return Results.Ok(ResponseBuilder.Success().AddMessage("Dekont reddedildi.").Build());
     }
 
+    /// <summary>
+    /// Asgari ücret yürürlük geçmişi — geçmiş, yürürlükteki ve ileri tarihli dönemler.
+    /// Kurum kapsamı handler'da token'dan okunur, sorgu dizesinden alınmaz.
+    /// </summary>
+    private static async Task<IResult> GetMinimumWageHistory(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<SalaryConfigHistoryDto>(new GetSalaryConfigHistory());
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
+    }
+
     private static async Task<IResult> PutMinimumWage(UpdateMinimumWage command, IMessageBus bus)
     {
         await bus.InvokeAsync(command);
@@ -146,4 +173,27 @@ public static class PaymentEndpoints
             .AddMessage("Asgari ücret güncellendi.")
             .Build());
     }
+
+    /// <summary>
+    /// Verilen ay için maaş dönemlerini elle açar. Normalde ay sonunda zamanlayıcı yapar;
+    /// bu endpoint kaçırılmış koşu, sisteme geçişin ilk ayı veya sonradan eklenen yerleştirmeler
+    /// içindir. Zaten kaydı olan öğrenciler atlanır, tekrar çalıştırmak güvenlidir (#63).
+    /// </summary>
+    private static async Task<IResult> PostOpenMonthlyPeriods(
+        OpenMonthlyPeriodsRequest? request, IMessageBus bus)
+    {
+        var referenceDate = request?.ReferenceDate ?? DateTime.UtcNow;
+        var month = request?.Month ?? referenceDate.ToString("yyyy-MM");
+
+        var result = await bus.InvokeAsync<OpenMonthlySalaryPeriodsResult>(
+            new OpenMonthlySalaryPeriods(month, referenceDate));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.Opened} maaş dönemi açıldı, {result.Skipped} kayıt zaten vardı.")
+            .Build());
+    }
 }
+
+/// <summary>Gövde boş bırakılırsa içinde bulunulan ay ve şu an kullanılır.</summary>
+public sealed record OpenMonthlyPeriodsRequest(string? Month, DateTime? ReferenceDate);

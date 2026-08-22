@@ -8,22 +8,17 @@ public static class BusinessSeeder
         Console.WriteLine("── İşletmeler ─────────────────────");
 
         if (!ctx.Has("Institution")) return;
-        var tenantId = ctx.Get("Institution");
 
         // Mevcut işletmeleri yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
-        // pageSize=500 ile tüm işletmeleri tek istekte çek
-        var existing = await api.GetAsync("/api/businesses?pageSize=500");
+        // Tüm işletmeler — sayfa sayfa. Tek istekte pageSize=500 istemek işe yaramaz:
+        // sunucu 100'e kırpar ve fazlası sessizce düşer (bkz. GetAllPagedAsync).
+        var existing = await api.GetAllPagedAsync("/api/businesses");
         var existingByName = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-        if (existing is { } pagedResult
-            && pagedResult.TryGetProperty("items", out var itemsEl)
-            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+        foreach (var item in existing)
         {
-            foreach (var item in itemsEl.EnumerateArray())
-            {
-                var name = item.GetProperty("name").GetString() ?? "";
-                var id = item.GetProperty("id").GetGuid();
-                existingByName[name] = id;
-            }
+            var name = item.GetProperty("name").GetString() ?? "";
+            var id = item.GetProperty("id").GetGuid();
+            existingByName[name] = id;
         }
 
         Console.WriteLine($"  ℹ Mevcut işletme sayısı: {existingByName.Count}");
@@ -41,8 +36,8 @@ public static class BusinessSeeder
         // Business1: Elektrik-Elektronik sektörü (EET alanı için)
         await SeedBusiness(api, ctx, existingByName, "Business1", "Mezitli Elektrik Mühendislik A.Ş.", () => api.PostAsync("/api/businesses", new
         {
-            tenantId,
             name = "Mezitli Elektrik Mühendislik A.Ş.",
+            taxNumber = "1000000007",   // #150 — paylaşımlı kataloğun doğal anahtarı
             address = "Davultepe Mah., Mezitli, Mersin",
             phoneNumber = "0324 444 1001",
             email = "info@mezitlielektrik.com.tr",
@@ -56,8 +51,8 @@ public static class BusinessSeeder
         // Business2: Bilişim sektörü (BT alanı için)
         await SeedBusiness(api, ctx, existingByName, "Business2", "Mersin Bilişim Teknolojileri A.Ş.", () => api.PostAsync("/api/businesses", new
         {
-            tenantId,
             name = "Mersin Bilişim Teknolojileri A.Ş.",
+            taxNumber = "1000000014",   // #150 — paylaşımlı kataloğun doğal anahtarı
             address = "Çiftlikköy Mah., Yenişehir, Mersin",
             phoneNumber = "0324 444 2002",
             email = "info@mersinbt.com",
@@ -71,8 +66,8 @@ public static class BusinessSeeder
         // Business3: Makine sektörü (MTT alanı için)
         await SeedBusiness(api, ctx, existingByName, "Business3", "Toroslar CNC Makine Sanayi A.Ş.", () => api.PostAsync("/api/businesses", new
         {
-            tenantId,
             name = "Toroslar CNC Makine Sanayi A.Ş.",
+            taxNumber = "1000000021",   // #150 — paylaşımlı kataloğun doğal anahtarı
             address = "Arpaçsakarlar Mah., Toroslar, Mersin",
             phoneNumber = "0324 444 3003",
             email = "info@toroslarcnc.com",
@@ -86,8 +81,8 @@ public static class BusinessSeeder
         // Business4: Elektrik + Makine sektörü (EET & MTT alanları için)
         await SeedBusiness(api, ctx, existingByName, "Business4", "Akdeniz Otomasyon ve Makine Ltd. Şti.", () => api.PostAsync("/api/businesses", new
         {
-            tenantId,
             name = "Akdeniz Otomasyon ve Makine Ltd. Şti.",
+            taxNumber = "1000000028",   // #150 — paylaşımlı kataloğun doğal anahtarı
             address = "Kuyuluk Mah., Mezitli, Mersin",
             phoneNumber = "0324 444 4004",
             email = "info@akdenizotomasyon.com",
@@ -100,12 +95,12 @@ public static class BusinessSeeder
         // Business5: Bilişim sektörü (BT alanı için — self-register)
         await SeedBusiness(api, ctx, existingByName, "Business5", "Yeni Nesil Teknoloji", () => api.PostAsync("/api/businesses/self-register", new
         {
-            tenantId,
             keycloakId = "53000000-0000-0000-0000-000000000001",
             fullName = "Can Özkan",
             representativePhone = "0555 123 4567",
             representativeEmail = "can@yeninesitek.com",
             businessName = "Yeni Nesil Teknoloji",
+            taxNumber = "1000000035",   // #150 — paylaşımlı kataloğun doğal anahtarı
             address = "Güneykent Mah., Toroslar, Mersin",
             phoneNumber = "0324 444 5005",
             email = "info@yeninesitek.com",
@@ -118,6 +113,7 @@ public static class BusinessSeeder
         // ── 95 ek işletme — Mersin genelinde gerçekçi dağılım ──────────────────
         var bulkBusinesses = GetBulkBusinessData();
         var createdCount = 0;
+        var bulkIndex = 0;
         var allByName = new Dictionary<string, Guid>(existingByName, StringComparer.OrdinalIgnoreCase);
 
         foreach (var b in bulkBusinesses)
@@ -129,8 +125,10 @@ public static class BusinessSeeder
 
             var data = await api.PostAsync("/api/businesses", new
             {
-                tenantId,
                 name = b.Name,
+                // #150 — paylaşımlı kataloğun doğal anahtarı. Her işletmeye AYRI numara:
+                // sabit değer verilseydi ikinci kayıt benzersizlik kısıtına çarpardı.
+                taxNumber = BulkTaxNumber(++bulkIndex),
                 address = b.Address,
                 phoneNumber = b.Phone,
                 email = b.Email,
@@ -210,9 +208,23 @@ public static class BusinessSeeder
             var bizId = ctx.Get(ctxKey);
             if (!existingByName.ContainsValue(bizId)) continue; // yeni oluşturulan, zaten sektörlü
 
+            // Başarısız çağrıdan sonra başarı satırı basma (#80) — hata satırının hemen
+            // ardından "güncellendi" yazması, 422'lerin gözden kaçmasının başlıca nedeniydi.
+            //
+            // Başarı ölçütü dönüş değeri DEĞİL: bu endpoint 200 ile birlikte `data: null`
+            // döndürüyor, yani PatchAsync başarıda da null verir. FailureCount farkına bak.
+            var failuresBefore = api.FailureCount;
             await api.PatchAsync($"/api/businesses/{bizId}", new { sectors });
-            Console.WriteLine($"  ↻ \"{ctxKey}\" sektörler güncellendi");
+            Console.WriteLine(api.FailureCount == failuresBefore
+                ? $"  ↻ \"{ctxKey}\" sektörler güncellendi"
+                : $"  ✗ \"{ctxKey}\" sektörler güncellenemedi");
         }
+
+        // Read-model'lere yeni alan eklendiğinde (ör. Reporting.BusinessContactReportView —
+        // tel/e-posta/işletme yetkilisi, #99) mevcut işletmeler geriye dönük dolmaz.
+        // BusinessUpdated'ı tüm işletmeler için yeniden yayınla.
+        await api.PostAsync("/api/businesses/resync-projections");
+        Console.WriteLine("  ✓ İşletme read-model'leri yeniden yayınlandı");
 
         // Herhangi bir yeni işletme oluşturulmuşsa, Enrollment modülünün event'i işlemesi için bekle
         if (createdCount > 0)
@@ -220,6 +232,89 @@ public static class BusinessSeeder
             Console.WriteLine("  … Enrollment event consumer bekleniyor (5s)...");
             await Task.Delay(TimeSpan.FromSeconds(5));
         }
+
+        await AuthorizeBranchesAsync(api);
+    }
+
+    /// <summary>
+    /// Sektörden alan yetkisi türetir (#119). Alan yetkisi olmayan işletmeye öğrenci
+    /// yerleştirilemediği için demo verisi bu adım olmadan kural dışı kalırdı.
+    /// </summary>
+    private static readonly Dictionary<string, string> SectorToBranch = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ElectricalAndElectronics"] = "EET",
+        ["Energy"] = "EET",
+        ["InformationTechnology"] = "BT",
+        ["Machinery"] = "MTT",
+        ["Metal"] = "MTT",
+        ["Automotive"] = "MTT",
+    };
+
+    private static async Task AuthorizeBranchesAsync(MesnetApiClient api)
+    {
+        var businesses = await api.GetAllPagedAsync("/api/businesses");
+        var authorizedCount = 0;
+
+        foreach (var b in businesses)
+        {
+            if (!b.TryGetProperty("id", out var idEl) || !idEl.TryGetGuid(out var id)) continue;
+
+            var branchCodes = ReadSectorBranchCodes(b);
+            if (branchCodes.Count == 0) continue;
+
+            // Zaten aynı yetkilere sahipse tekrar yazma — seeder idempotent kalsın.
+            if (HasSameActiveBranches(b, branchCodes)) continue;
+
+            var failuresBefore = api.FailureCount;
+            await api.PutAsync($"/api/businesses/{id}/branch-authorizations", new
+            {
+                branches = branchCodes.Select(c => new { branchCode = c }).ToArray()
+            });
+
+            if (api.FailureCount == failuresBefore) authorizedCount++;
+        }
+
+        Console.WriteLine(authorizedCount > 0
+            ? $"  ✓ {authorizedCount} işletmeye alan yetkisi verildi"
+            : "  → Alan yetkileri zaten güncel");
+
+        if (authorizedCount > 0)
+        {
+            Console.WriteLine("  … Alan yetkisi consumer'ı bekleniyor (5s)...");
+            await Task.Delay(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    private static List<string> ReadSectorBranchCodes(System.Text.Json.JsonElement business)
+    {
+        if (!business.TryGetProperty("sectors", out var sectors)
+            || sectors.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return [];
+
+        return sectors.EnumerateArray()
+            .Select(s => s.TryGetProperty("name", out var n) ? n.GetString() : null)
+            .Where(name => name is not null && SectorToBranch.ContainsKey(name))
+            .Select(name => SectorToBranch[name!])
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static bool HasSameActiveBranches(System.Text.Json.JsonElement business, List<string> expected)
+    {
+        if (!business.TryGetProperty("activeBranchCodes", out var codes)
+            || codes.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return false;
+
+        var current = codes.EnumerateArray()
+            .Select(c => c.GetString())
+            .Where(c => c is not null)
+            .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return current.Count == expected.Count
+            && current.Zip(expected).All(pair =>
+                string.Equals(pair.First, pair.Second, StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task SeedBusiness(
@@ -377,4 +472,10 @@ public static class BusinessSeeder
         int PersonnelCount,
         int TotalSlots,
         string[] Sectors);
+
+    /// <summary>
+    /// Toplu seed işletmeleri için 10 haneli sahte VKN. Elle yazılan beş işletmenin
+    /// numaralarıyla çakışmaması için farklı bir aralıktan üretilir (#150).
+    /// </summary>
+    private static string BulkTaxNumber(int index) => $"2{index:D9}";
 }

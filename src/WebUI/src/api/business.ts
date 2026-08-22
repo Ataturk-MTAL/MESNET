@@ -35,9 +35,24 @@ export interface SectorDto {
   slug: string
 }
 
+/** İşletmenin bir alandan öğrenci alma yetkisi — iptal edilenler de listelenir (#119). */
+export interface BranchAuthorizationDto {
+  branchCode: string
+  basedOnDocumentId: string | null
+  authorizedAt: string
+  authorizedBy: string
+  revokedAt: string | null
+  isActive: boolean
+}
+
+export interface AuthorizeBranchesRequest {
+  branches: { branchCode: string; basedOnDocumentId?: string | null }[]
+}
+
 export interface BusinessDto {
   id: string
   name: string
+  taxNumber?: string | null
   address: string
   phoneNumber: string | null
   email: string | null
@@ -47,34 +62,50 @@ export interface BusinessDto {
   source: string
   sourceSlug: string
   personnelCount: number
+  /**
+   * Kamu kurum/kuruluşu mu (#157). 3308 Geçici Madde 12 gereği kamu kurumlarına devlet
+   * katkısı ödenmez — bu işaret doğrudan maaş/teşvik hesabını etkiler.
+   */
+  isPublicInstitution: boolean
   location: GeoLocation | null
   capacity: BusinessCapacityDto
   representatives: BusinessRepresentativeDto[]
   documents: BusinessDocumentDto[]
   sectors: SectorDto[]
+  authorizedBranches: BranchAuthorizationDto[]
+  /** Yalnız aktif (iptal edilmemiş) alan kodları — boş liste "öğrenci alamaz" demektir. */
+  activeBranchCodes: string[]
   createdAt: string
   approvedAt: string | null
   closedAt: string | null
 }
 
 export interface RegisterBusinessRequest {
+  /** #150 — 10 hane VKN ya da 11 hane TCKN; paylaşımlı kataloğun doğal anahtarı. */
+  taxNumber: string
   name: string
   address: string
   phoneNumber?: string
   email?: string
   website?: string
   personnelCount?: number
+  /** Kamu kurum/kuruluşu mu (#157) — devlet katkısı hesabını etkiler, kayıt anında girilir. */
+  isPublicInstitution?: boolean
   location?: GeoLocation
   sectors?: string[]
 }
 
 export interface UpdateBusinessRequest {
+  /** #150 — düzeltme; gönderilmezse dokunulmaz (kısmi güncelleme). */
+  taxNumber?: string
   name?: string
   address?: string
   phoneNumber?: string
   email?: string
   website?: string
   personnelCount?: number
+  /** Kamu/özel ayrımı düzeltmesi (#157). Gönderilmezse dokunulmaz. */
+  isPublicInstitution?: boolean
   location?: GeoLocation
   sectors?: string[]
 }
@@ -84,7 +115,7 @@ export interface UpdateCapacityRequest {
 }
 
 export const businessApi = {
-  list: (params?: { status?: string; sector?: string } & PaginationParams) =>
+  list: (params?: { status?: string; sector?: string; branchCode?: string } & PaginationParams) =>
     api.get<PagedResponse<BusinessDto>>('/businesses', { params }),
 
   sectors: () => api.get<SectorDto[]>('/businesses/sectors'),
@@ -131,6 +162,10 @@ export const businessApi = {
 
   approveDocument: (businessId: string, documentId: string) =>
     api.post(`/businesses/${businessId}/documents/${documentId}/approve`),
+
+  /** Alan yetkilerini NİHAİ liste olarak yazar — gönderilmeyen mevcut yetkiler iptal edilir. */
+  authorizeBranches: (businessId: string, data: AuthorizeBranchesRequest) =>
+    api.put(`/businesses/${businessId}/branch-authorizations`, data),
 
   searchNearby: (latitude: number, longitude: number, radiusKm: number) =>
     api.get<BusinessDto[]>('/businesses/nearby', { params: { latitude, longitude, radiusKm } }),

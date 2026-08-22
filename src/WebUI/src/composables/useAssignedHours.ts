@@ -5,26 +5,57 @@ import {
   type BranchWorkloadConfigDto,
 } from 'src/api/coordination'
 import type { useNotify } from 'src/composables/useNotify'
+import {
+  isWorkloadPoolUndefined,
+  assignedHoursToneClass,
+  remainingHoursLabel,
+  remainingHoursToneClass,
+} from 'src/utils/workloadPool'
+import { billableTargetHours, isHonorary } from 'src/utils/coordinationHours'
 
 export interface UseAssignedHoursOptions {
   assignments: Ref<BusinessAssignmentDto[]>
   workloadConfig: Ref<BranchWorkloadConfigDto | null>
+  /** Seçili akademik dönem — koordinasyon satırı alan+dönem bazlıdır (#114) */
+  academicPeriodId: Ref<string | null>
+  /** Seçili alan — toplu kayıt tek alanın dağıtımını kapsar (#117) */
+  branchCode: Ref<string | null>
   notify: ReturnType<typeof useNotify>
   loadData: () => Promise<void>
 }
 
 export function useAssignedHours(options: UseAssignedHoursOptions) {
-  const { assignments, workloadConfig, notify, loadData } = options
+  const { assignments, workloadConfig, academicPeriodId, branchCode, notify, loadData } = options
 
   const hoursSaving = ref(false)
   const editedHours = ref<Record<string, number>>({})
+  /** İşletme → fahri ziyaret işareti (#115). Saatten ayrı tutulur: "0 saat" ≠ "fahri". */
+  const editedHonorary = ref<Record<string, boolean>>({})
 
   function initEditedHours() {
-    const map: Record<string, number> = {}
+    const hoursMap: Record<string, number> = {}
+    const honoraryMap: Record<string, boolean> = {}
     for (const a of assignments.value) {
-      map[a.businessId] = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
+      // Fahri satırda giriş 0'dan başlar — tavana düşürmek fahri anlamını yok ederdi.
+      hoursMap[a.businessId] = billableTargetHours(a)
+      honoraryMap[a.businessId] = isHonorary(a)
     }
-    editedHours.value = map
+    editedHours.value = hoursMap
+    editedHonorary.value = honoraryMap
+  }
+
+  /**
+   * Fahri işaretini değiştirir. Fahri seçilince saat girişi 0'a düşer; işaret
+   * kaldırılınca kullanıcı bir saat girene kadar mesafe tavanı önerilir.
+   */
+  function setHonorary(businessId: string, value: boolean) {
+    editedHonorary.value[businessId] = value
+    if (value) {
+      editedHours.value[businessId] = 0
+      return
+    }
+    const biz = assignments.value.find((a) => a.businessId === businessId)
+    editedHours.value[businessId] = biz?.maxCoordinationHours ?? 0
   }
 
   /** Σ MaxCoordinationHours — işletmelerin mesafe bazlı max saatlerinin toplamı (ikincil referans) */
@@ -35,14 +66,47 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
   /** Ders yükü havuzu — birincil kısıt */
   const hoursWorkloadPool = computed(() => workloadConfig.value?.totalWorkloadPool ?? 0)
 
+  /**
+   * Σ Takdir — havuzdan düşen saat. Fahri işaretli satırlar ücret doğurmadığı için
+   * toplama girmez (#115).
+   */
   const hoursTotalAssigned = computed(() =>
-    Object.values(editedHours.value).reduce((sum, h) => sum + h, 0),
+    Object.entries(editedHours.value).reduce(
+      (sum, [businessId, h]) => (editedHonorary.value[businessId] ? sum : sum + h),
+      0,
+    ),
+  )
+
+  /** Fahri işaretli işletme sayısı — havuz dışında kalan satırlar. */
+  const honoraryCount = computed(
+    () => Object.values(editedHonorary.value).filter(Boolean).length,
   )
 
   const hoursRemaining = computed(() => hoursWorkloadPool.value - hoursTotalAssigned.value)
 
+  /**
+   * Havuz hiç hesaplanmamış (#111). `hoursOverLimit` bu durumda bilinçli olarak false —
+   * havuz bilinmeden "aşıyor" demek yanlış olurdu — ama sessiz kalmak da yanlıştı:
+   * sayfa bu bayrağa bakıp ayrı bir "havuz tanımlanmamış" uyarısı gösterir.
+   */
+  const hoursPoolUndefined = computed(() => isWorkloadPoolUndefined(hoursWorkloadPool.value))
+
   const hoursOverLimit = computed(() =>
     hoursWorkloadPool.value > 0 && hoursTotalAssigned.value > hoursWorkloadPool.value,
+  )
+
+  /** Σ Takdir'in anlamsal rengi — havuz tanımsız + saat girilmişse uyarı tonu. */
+  const hoursTotalAssignedClass = computed(() =>
+    assignedHoursToneClass(hoursWorkloadPool.value, hoursTotalAssigned.value),
+  )
+
+  /** Kalan gösterimi — havuz tanımsızken sayı yerine "—". */
+  const hoursRemainingLabel = computed(() =>
+    remainingHoursLabel(hoursWorkloadPool.value, hoursRemaining.value),
+  )
+
+  const hoursRemainingClass = computed(() =>
+    remainingHoursToneClass(hoursWorkloadPool.value, hoursRemaining.value),
   )
 
   const hoursNearLimit = computed(() =>
@@ -51,53 +115,76 @@ export function useAssignedHours(options: UseAssignedHoursOptions) {
     hoursTotalAssigned.value > hoursWorkloadPool.value * 0.9,
   )
 
-  const changedHoursCount = computed(() => {
-    let count = 0
-    for (const a of assignments.value) {
-      const current = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
-      if (editedHours.value[a.businessId] !== current) count++
-    }
-    return count
-  })
+  /** Satır kaydedilmeye değer mi — saat ya da fahri işareti değişmişse evet. */
+  function isRowChanged(a: BusinessAssignmentDto): boolean {
+    const editedIsHonorary = editedHonorary.value[a.businessId] ?? false
+    if (editedIsHonorary !== isHonorary(a)) return true
+    if (editedIsHonorary) return false // fahri satırda saat zaten 0'a sabit
+    const edited = editedHours.value[a.businessId]
+    return edited !== undefined && edited !== billableTargetHours(a)
+  }
 
+  const changedHoursCount = computed(
+    () => assignments.value.filter(isRowChanged).length,
+  )
+
+  /**
+   * Değişen satırların tamamını **tek** çağrıyla kaydeder (#117).
+   *
+   * Önceden satır başına ayrı istek atılıyordu ve backend her istekte havuz kontrolünü
+   * baştan yapıyordu; yeniden dağıtımda (havuz 40, A=20 B=10 → A=10 B=20) B önce giderse
+   * ara toplam havuzu aşıyor ve istek reddediliyordu. Sonuç çağrı sırasına bağlıydı,
+   * kullanıcı "bir kısmı kaydedildi" durumunda kalıyordu. Artık ya hepsi ya hiçbiri —
+   * bu yüzden kısmi başarı/kısmi hata bildirimi de yok.
+   */
   async function saveHours() {
+    const changed = assignments.value.filter(isRowChanged)
+    if (changed.length === 0) return
+
+    const branch = branchCode.value ?? changed[0]?.branchCode ?? ''
+
     hoursSaving.value = true
-    let successCount = 0
-    const errors: string[] = []
-
-    for (const a of assignments.value) {
-      const current = a.assignedHours > 0 ? a.assignedHours : a.maxCoordinationHours
-      const edited = editedHours.value[a.businessId]
-      if (edited === undefined || edited === current) continue
-
-      try {
-        await coordinationApi.updateAssignedHours(a.businessId, { assignedHours: edited })
-        successCount++
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'Bilinmeyen hata'
-        errors.push(`${a.businessName}: ${msg}`)
-      }
+    try {
+      await coordinationApi.updateBranchAssignedHours({
+        branchCode: branch,
+        academicPeriodId: academicPeriodId.value ?? '',
+        items: changed.map((a) => {
+          const honorary = editedHonorary.value[a.businessId] ?? false
+          // Fahri satırda saat her zaman 0 gönderilir; backend de aynı kuralı uygular.
+          return {
+            businessId: a.businessId,
+            assignedHours: honorary ? 0 : (editedHours.value[a.businessId] ?? 0),
+            isHonoraryVisit: honorary,
+          }
+        }),
+      })
+    } catch (e: unknown) {
+      // 422 gövdesi hangi işletmede hangi kısıtın kırıldığını taşır — olduğu gibi göster.
+      notify.apiError(e, 'Saatler kaydedilemedi; hiçbir satır değişmedi.')
+      return
+    } finally {
+      hoursSaving.value = false
     }
 
-    hoursSaving.value = false
-
-    if (successCount > 0) {
-      notify.success(`${successCount} işletmenin takdir edilen saati güncellendi.`)
-      await loadData()
-      initEditedHours()
-    }
-    if (errors.length > 0) {
-      notify.warning(`Hatalar: ${errors.join(', ')}`)
-    }
+    notify.success(`${changed.length} işletmenin takdir edilen saati güncellendi.`)
+    await loadData()
+    initEditedHours()
   }
 
   return {
     editedHours,
+    editedHonorary,
+    honoraryCount,
+    setHonorary,
     hoursSaving,
     hoursTotalMaxHours,
     hoursWorkloadPool,
     hoursTotalAssigned,
+    hoursTotalAssignedClass,
     hoursRemaining,
+    hoursRemainingLabel,
+    hoursRemainingClass,
+    hoursPoolUndefined,
     hoursOverLimit,
     hoursNearLimit,
     changedHoursCount,

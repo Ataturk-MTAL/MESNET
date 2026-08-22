@@ -1,4 +1,6 @@
 using Marten;
+using MESNET.Common.Infrastructure.Tenancy;
+using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Reporting.Application.Commands;
 using MESNET.Reporting.Application.Handlers;
@@ -72,20 +74,60 @@ public class MonthlyReportSchedulerService : BackgroundService
         return lastDayOfMonth;
     }
 
+    /// <summary>
+    /// Rapor üretimi <b>her kiracı için ayrı ayrı</b> çalışır (#149).
+    ///
+    /// <para>Zamanlanmış iş bir isteğe bağlı olmadığı için kiracıyı devralamaz; kiracılık
+    /// açıldıktan sonra kiracısız session <c>DefaultTenantUsageDisabledException</c> fırlatır.
+    /// Bir okulun raporu patlarsa diğerleri üretilmeye devam eder — tek okul yüzünden bütün
+    /// ayın raporlarını kaybetmek, o okulun raporunu kaybetmekten kötüdür.</para>
+    /// </summary>
     private async Task GenerateMonthlyReports(CancellationToken ct)
     {
-        _logger.LogInformation("Aylık rapor üretimi başlıyor (Form 7 + Form 2)...");
+        await using var directoryScope = _scopeFactory.CreateAsyncScope();
+        var tenants = await directoryScope.ServiceProvider
+            .GetRequiredService<ITenantDirectory>()
+            .GetActiveTenantsAsync(ct);
+
+        if (tenants.Count == 0)
+        {
+            _logger.LogWarning("Aylık rapor üretimi atlandı — kayıtlı kiracı yok.");
+            return;
+        }
+
+        foreach (var tenantId in tenants)
+        {
+            try
+            {
+                await GenerateMonthlyReportsForTenant(tenantId, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Aylık rapor üretimi başarısız — Kiracı: {TenantId}", tenantId);
+            }
+        }
+    }
+
+    private async Task GenerateMonthlyReportsForTenant(string tenantId, CancellationToken ct)
+    {
+        _logger.LogInformation(
+            "Aylık rapor üretimi başlıyor (Form 7 + Form 2) — Kiracı: {TenantId}", tenantId);
 
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var session = scope.ServiceProvider.GetRequiredService<IDocumentStore>().QuerySession();
+        var session = scope.ServiceProvider.GetRequiredService<IDocumentStore>().QuerySession(tenantId);
         var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
+
+        // Handler'ların açtığı session'lar kiracıyı buradan devralır; komutları tek tek
+        // etiketlemek, her yeni komutun bunu hatırlamasını gerektirirdi.
+        bus.TenantId = tenantId;
 
         try
         {
             var now = DateTime.UtcNow;
             var year = now.Year;
             var month = now.Month;
-            var academicYear = $"{year - 1} / {year}";
+            var academicYear = AcademicYear.Format(year - 1, year);
             var systemUser = new UserContext(Guid.Empty, "Sistem (Otomatik Rapor)");
 
             // Aktif placement'ı olan tüm kayıtları al
@@ -109,8 +151,11 @@ public class MonthlyReportSchedulerService : BackgroundService
 
                 try
                 {
+                    // Okulda staj yerleştirmesi işletme taşımaz (#159) — işletme başına
+                    // sayfalanan bu rapora girmez.
                     var businessIds = teacherGroup
-                        .Select(p => p.BusinessId)
+                        .Where(p => p.BusinessId.HasValue)
+                        .Select(p => p.BusinessId!.Value)
                         .Distinct()
                         .ToList();
 

@@ -3,18 +3,18 @@ left to right direction
 
 package "MESNET.Business.Api" {
     class BusinessEndpoints {
-        +[WolverineGet] GetBusinessInfo(businessId)
-        +[WolverinePost] RegisterBusiness(command)
-        +[WolverinePost] SelfRegisterBusiness(command)
-        +[WolverinePut] UpdateBusinessInfo(command)
-        +[WolverinePost] ApproveBusiness(command)
-        +[WolverinePost] RejectBusiness(command)
-        +[WolverinePost] DeactivateBusiness(command)
-        +[WolverinePost] ActivateBusiness(command)
-        +[WolverinePost] CloseBusiness(command)
-        +[WolverinePost] UploadDocument(command)
-        +[WolverinePost] UpdateCapacity(command)
-        +[WolverinePost] RequestTermination(command)
+        +GET GetBusinessInfo(businessId)
+        +POST RegisterBusiness(command)
+        +POST SelfRegisterBusiness(command)
+        +PUT UpdateBusinessInfo(command)
+        +POST ApproveBusiness(command)
+        +POST RejectBusiness(command)
+        +POST DeactivateBusiness(command)
+        +POST ActivateBusiness(command)
+        +POST CloseBusiness(command)
+        +POST UploadDocument(command)
+        +POST UpdateCapacity(command)
+        +POST RequestTermination(command)
     }
 }
 

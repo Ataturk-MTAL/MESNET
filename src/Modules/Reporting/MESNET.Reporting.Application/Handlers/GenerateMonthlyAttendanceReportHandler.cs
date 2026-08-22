@@ -65,7 +65,12 @@ public static class GenerateMonthlyAttendanceReportHandler
 
         foreach (var teacherGroup in teacherGroups)
         {
-            var businessIds = teacherGroup.Select(p => p.BusinessId).Distinct();
+            // Rapor işletme başına sayfalanır; okulda staj yerleştirmesinin işletmesi yoktur
+            // (#159) ve bu sayfaya girmez. Okulda staj raporlaması ayrı bir iştir.
+            var businessIds = teacherGroup
+                .Where(p => p.BusinessId.HasValue)
+                .Select(p => p.BusinessId!.Value)
+                .Distinct();
             foreach (var businessId in businessIds)
             {
                 var pageData = await BuildReportData(
@@ -104,7 +109,8 @@ public static class GenerateMonthlyAttendanceReportHandler
             BusinessId = data.BusinessId,
             InstitutionId = data.InstitutionId,
             TeacherId = data.TeacherId,
-            AcademicYear = data.AcademicYear
+            // Tek kanonik biçim "2025-2026" (#112)
+            AcademicYear = AcademicYear.Normalize(data.AcademicYear)
         };
 
         var pdf = new MonthlyAttendanceReportDocument(data);
@@ -208,7 +214,8 @@ public static class GenerateMonthlyAttendanceReportHandler
             BusinessName = businessName,
             BusinessPhone = businessPhone,
             BusinessEmail = businessEmail,
-            AcademicYear = academicYear,
+            // Tek kanonik biçim "2025-2026" (#112)
+            AcademicYear = AcademicYear.Normalize(academicYear),
             Year = year,
             Month = month,
             DocumentDate = DateOnly.FromDateTime(DateTime.UtcNow),
@@ -231,7 +238,11 @@ public static class GenerateMonthlyAttendanceReportHandler
 
         if (attendance is not null)
         {
-            foreach (var entry in attendance.AbsentDays)
+            // Onay bekleyen kayıt resmî forma YAZILMAZ (#257): işletmenin tek taraflı
+            // bildirimi, koordinatör öğretmen onaylamadan velinin ve idarenin gördüğü belgede
+            // devamsızlık olarak görünemez. Aynı ilke ücret kesintisinde (§6.2) ve fesih
+            // sayacında (#252) da uygulanıyor.
+            foreach (var entry in attendance.AbsentDays.Where(e => e.IsOfficial))
             {
                 var symbol = MapAbsenceTypeToSymbol(entry.AbsenceType);
 

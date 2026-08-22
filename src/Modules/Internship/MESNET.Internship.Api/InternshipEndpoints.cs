@@ -18,21 +18,53 @@ public static class InternshipEndpoints
     {
         var group = app.MapGroup("/api/internships").WithTags("Internship").RequireAuthorization();
 
-        group.MapGet("/{internshipId:guid}", Get).RequireAuthorization(Permissions.Internship.View);
-        group.MapGet("/", GetAll).RequireAuthorization(Permissions.Internship.View);
+        // Liste hem okul tarafına hem veri sahibine açıktır (#182).
+        group.MapGet("/{internshipId:guid}", Get).RequireAuthorization(PermissionPolicies.InternshipViewOrOwn);
+        group.MapGet("/", GetAll).RequireAuthorization(PermissionPolicies.InternshipViewOrOwn);
+        // Zincir durumu okuma (#191) — daha önce hiçbir uçtan okunamıyordu.
+        // Veri sahibine de açık: veli/öğrenci kendi sürecini görebilmeli. Kapsam handler'da.
+        group.MapGet("/{internshipId:guid}/termination-chain", GetTerminationChainStatus)
+            .RequireAuthorization(PermissionPolicies.InternshipViewOrOwn);
         group.MapPost("/{internshipId:guid}/terminate", PostRequestTermination).RequireAuthorization(Permissions.Internship.Manage);
-        group.MapPost("/{internshipId:guid}/approve/parent", PostApproveParent).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/teacher", PostApproveTeacher).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/director", PostApproveDirector).RequireAuthorization(Permissions.Internship.Manage);
-        group.MapPost("/{internshipId:guid}/approve/business", PostApproveBusinessRep).RequireAuthorization(Permissions.Company.Student);
         group.MapPost("/{internshipId:guid}/approve/override", PostOverride).RequireAuthorization(Permissions.Internship.Manage);
+
+        // Tek seferlik geçiş adımı (#251): kopya saga'ları birleştirir. Kurum üstü bir bakım
+        // işidir — bir okulun müdürü kendi verisinin saga kimliklerini yeniden yazamamalı.
+        group.MapPost("/resync-sagas", PostResyncSagas).RequireAuthorization(Permissions.Platform.TenantManage);
+    }
+
+    /// <summary>
+    /// Kopya staj saga'larını tek satıra indirir (#251). Gerekçe ve "hangi kopya korunur"
+    /// kararı <c>ResyncInternshipSagasHandler</c>'da. Kiracı başına çalışır.
+    /// </summary>
+    private static async Task<IResult> PostResyncSagas(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ResyncInternshipSagasResult>(new ResyncInternshipSagas());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.Placements} yerleştirme tekilleştirildi, {result.Merged} kopya silindi.")
+            .Build());
     }
 
     private static async Task<IResult> Get(
         Guid internshipId, IMessageBus bus)
     {
         var dto = await bus.InvokeAsync<InternshipSummaryDto>(new GetInternship(internshipId));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(dto)
+            .Build());
+    }
+
+    private static async Task<IResult> GetTerminationChainStatus(
+        Guid internshipId, IMessageBus bus)
+    {
+        var dto = await bus.InvokeAsync<TerminationChainStatusDto>(
+            new GetTerminationChain(internshipId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(dto)
@@ -57,33 +89,27 @@ public static class InternshipEndpoints
             .Build());
     }
 
+    /// <summary>
+    /// Fesih talebi açar. <b>Talebi kimin açtığı token'dan damgalanır</b> (#191): gövdede
+    /// aktör alanı yoktur, dolayısıyla istemci başka birinin adına talep açtığını
+    /// kaydettiremez.
+    /// </summary>
     private static async Task<IResult> PostRequestTermination(
-        Guid internshipId, RequestTermination command, IMessageBus bus)
+        Guid internshipId, RequestTerminationRequest request,
+        ICurrentUserService currentUser, IMessageBus bus)
     {
-        var result = await bus.InvokeAsync<Result>(
-            command with { InternshipId = internshipId });
-
-        if (result.IsFailure)
-        {
-            return Results.BadRequest(ResponseBuilder.Fail(400)
-                .AddMessage(result.Error.Description)
-                .AddErrors(result.Error)
-                .Build());
-        }
+        // InvokeAsync<Result> DEĞİL: handler InternshipTerminationRequested döndürüyor ve
+        // Wolverine özel Result sarmalayıcısını anlamıyor — istek 500 dönüyordu. Fesih fiilen
+        // açılıyor, yalnız yanıt patlıyordu; uç arayüzden hiç çağrılmadığı için görülmemişti.
+        // Hata bildirimi DomainException ile gelir (422), Result ile değil.
+        await bus.InvokeAsync(new RequestTermination(
+            internshipId, request.Reason, request.ReasonType, currentUser.GetFullName()));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Fesih talebi oluşturuldu.")
             .Build());
     }
 
-    private static async Task<IResult> PostApproveParent(
-        Guid internshipId, IMessageBus bus)
-    {
-        await bus.InvokeAsync(new ApproveTerminationByParent(internshipId));
-        return Results.Ok(ResponseBuilder.Success()
-            .AddMessage("Veli onayı verildi.")
-            .Build());
-    }
 
     private static async Task<IResult> PostApproveTeacher(
         Guid internshipId, IMessageBus bus)
@@ -112,19 +138,17 @@ public static class InternshipEndpoints
             .Build());
     }
 
-    private static async Task<IResult> PostApproveBusinessRep(
-        Guid internshipId, IMessageBus bus)
-    {
-        await bus.InvokeAsync(new ApproveTerminationByBusinessRep(internshipId));
-        return Results.Ok(ResponseBuilder.Success()
-            .AddMessage("İşletme yetkilisi onayı verildi.")
-            .Build());
-    }
 
+    /// <summary>
+    /// Onay zincirini atlar. <b>Kimin atladığı token'dan damgalanır</b> (#191) — override,
+    /// zinciri tümüyle geçersizleştiren tek işlemdir; denetim izi istemciden gelemez.
+    /// </summary>
     private static async Task<IResult> PostOverride(
-        Guid internshipId, OverrideTerminationApproval command, IMessageBus bus)
+        Guid internshipId, OverrideTerminationApprovalRequest request,
+        ICurrentUserService currentUser, IMessageBus bus)
     {
-        await bus.InvokeAsync(command with { InternshipId = internshipId });
+        await bus.InvokeAsync(new OverrideTerminationApproval(
+            internshipId, currentUser.GetFullName(), request.Reason));
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Onay zinciri override edildi.")
             .Build());

@@ -195,101 +195,131 @@ CORS sorunu yaşanmaz — tarayıcı her şeyi `localhost:5173`'e istek atıyorm
 
 ## Production Deployment
 
-### Strateji: Ayrı Nginx Container
+### Strateji: Tek Caddy Container (static + reverse proxy)
 
-Frontend ve backend ayrı container'larda çalışır.
+Caddy tek başına hem frontend/docs static dosyalarını sunar hem de reverse proxy görevi görür.
+Let's Encrypt ile **otomatik HTTPS** (ACME) — manuel sertifika yönetimi yok. Alan adları:
+
+- `APP_DOMAIN` — Vue SPA (+ `/api/*` → backend)
+- `docs.APP_DOMAIN` — Docusaurus dokümantasyon sitesi (static)
+- `auth.APP_DOMAIN` — Keycloak (kimlik doğrulama)
 
 ```
-                   ┌─────────────┐
-İnternet  ──────►  │  Nginx Rev  │
-                   │  Proxy      │
-                   └──────┬──────┘
-                          │
-              ┌───────────┴───────────┐
-              ▼                       ▼
-   ┌──────────────────┐   ┌────────────────────┐
-   │  Nginx (Frontend)│   │  MESNET.Presentation│
-   │  static dist/    │   │  .NET 10 API        │
-   │  port: 80/443    │   │  port: 8080          │
-   └──────────────────┘   └────────────────────┘
+                        ┌──────────────────────────┐
+İnternet  ───(443)────► │          Caddy           │
+                        │  otomatik HTTPS (ACME)    │
+                        │  /srv/web  (Vue SPA)      │
+                        │  /srv/docs (Docusaurus)   │
+                        └───┬──────────┬──────────┬─┘
+                  /api/*    │   auth.*  │  docs.*  │ (static)
+                            ▼           ▼
+                 ┌────────────────┐  ┌──────────────┐
+                 │ MESNET API      │  │  Keycloak    │
+                 │ .NET 10 :8080   │  │  :8080       │
+                 └────────────────┘  └──────────────┘
 ```
 
-### Frontend Dockerfile
+Keycloak ve API dış dünyaya **doğrudan port açmaz** — yalnız iç ağdan erişilir, Caddy önlerinde durur.
+
+### Caddy imajı (multi-stage build)
+
+Tek Dockerfile web ve docs'u build edip Caddy imajına gömer — kaynak: `src/caddy/Dockerfile`.
 
 ```dockerfile
-# Stage 1: Build
-FROM node:22-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
+# Stage 1: Web (Vue SPA) build → /web/dist
+FROM node:22-alpine AS web
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+WORKDIR /web
+COPY src/WebUI/package.json src/WebUI/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY src/WebUI/ ./
+RUN pnpm build
 
-# Stage 2: Serve
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+# Stage 2: Docs (Docusaurus) build → /docs/build
+FROM node:22-alpine AS docs
+RUN npm i -g pnpm@9.15.4
+WORKDIR /docs
+COPY src/Docs/package.json src/Docs/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY src/Docs/ ./
+RUN pnpm build
+
+# Stage 3: Caddy — static'i sun + proxy'le
+FROM caddy:2-alpine
+COPY --from=web /web/dist /srv/web
+COPY --from=docs /docs/build /srv/docs
+COPY src/caddy/Caddyfile /etc/caddy/Caddyfile
 ```
 
-### Nginx Konfigürasyonu (SPA Routing)
+> **Vite public config build zamanında gömülür.** SPA `import.meta.env.VITE_KEYCLOAK_URL`
+> ile Keycloak'a bağlanır; bu değer runtime'da değişmez. Web stage `VITE_KEYCLOAK_URL`
+> (= `https://auth.${APP_DOMAIN}`), `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT_ID` build
+> ARG'larını alıp `.env.production`'a yazar. API adresi `/api` (same-origin) olduğu için
+> domain'e bağlı değildir. docker-compose bu ARG'ları `.env`'den geçirir; CI yayın imajı
+> repo değişkenlerinden.
 
-```nginx
-server {
-    listen 80;
-    root /usr/share/nginx/html;
-    index index.html;
+### Caddyfile (SPA routing + proxy + SSE)
 
-    # Vue Router history mode — tüm route'ları index.html'e yönlendir
-    location / {
-        try_files $uri $uri/ /index.html;
+Kaynak: `src/caddy/Caddyfile`. SPA fallback `try_files … /index.html`, SSE için
+`flush_interval -1` (anlık aktarım, buffering yok).
+
+```caddyfile
+{$APP_DOMAIN} {
+    encode gzip zstd
+
+    # SSE — bildirim akışı (anlık flush)
+    handle /api/notifications/stream {
+        reverse_proxy api:8080 {
+            flush_interval -1
+        }
     }
-
-    # API proxy — aynı origin'den farklı container'a
-    location /api/ {
-        proxy_pass http://mesnet-api:8080/api/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+    handle /api/* {
+        reverse_proxy api:8080
     }
-
-    # SSE için uzun bağlantı
-    location /notifications/ {
-        proxy_pass http://mesnet-api:8080/notifications/;
-        proxy_set_header Connection '';
-        proxy_http_version 1.1;
-        chunked_transfer_encoding on;
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_read_timeout 3600s;
+    # Vue SPA — client-side routing fallback
+    handle {
+        root * /srv/web
+        try_files {path} /index.html
+        file_server
     }
+}
+
+docs.{$APP_DOMAIN} {
+    root * /srv/docs
+    file_server
+}
+
+auth.{$APP_DOMAIN} {
+    reverse_proxy keycloak:8080
 }
 ```
 
 ### docker-compose.yml
 
+`APP_DOMAIN` + `ACME_EMAIL` env'den gelir (`.env.example`'a bak). Caddy sertifikaları
+`caddy-data` volume'unda kalıcıdır (yeniden başlatmada yeniden almaz).
+
 ```yaml
 services:
-  frontend:
+  caddy:
     build:
-      context: ./src/WebUI
-    ports:
-      - "3000:80"
+      context: .
+      dockerfile: src/caddy/Dockerfile
+    ports: ["80:80", "443:443"]
     environment:
-      - VITE_API_URL=/api   # Nginx proxy üzerinden
-    depends_on:
-      - api
+      APP_DOMAIN: ${APP_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [api, keycloak]
 
   api:
     build:
       context: .
       dockerfile: src/MESNET.Presentation/Dockerfile
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__mesnet=Host=postgres;...
-    depends_on:
-      - postgres
-      - rabbitmq
-      - keycloak
+    expose: ["8080"]   # dışa port yok — Caddy /api/* ile proxy'ler
+    depends_on: [postgres, rabbitmq, keycloak]
 ```
 
 ---
@@ -321,7 +351,8 @@ export const useNotificationStore = defineStore('notifications', () => {
 })
 ```
 
-> Nginx'te SSE için proxy_buffering ve chunked transfer ayarları kritiktir (yukarıda nginx.conf'ta mevcut).
+> Caddy'de SSE için `reverse_proxy … { flush_interval -1 }` kritiktir — buffering'i kapatıp
+> her mesajı anında istemciye aktarır (yukarıdaki Caddyfile'da `/api/notifications/stream` bloğu).
 
 ---
 

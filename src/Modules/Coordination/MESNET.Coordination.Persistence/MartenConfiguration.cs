@@ -29,14 +29,25 @@ public static class MartenConfiguration
         options.Schema.For<CoordinationConfig>().DatabaseSchemaName("coordination");
         options.Schema.For<CoordinationConfig>().Index(x => x.InstitutionId);
 
-        // BusinessCoordinationView (işletme-öğretmen atama read model)
+        // BusinessCoordinationView (işletme-öğretmen atama read model — satır başına alan)
         options.Schema.For<BusinessCoordinationView>().DatabaseSchemaName("coordination");
         options.Schema.For<BusinessCoordinationView>().Index(x => x.InstitutionId);
+        options.Schema.For<BusinessCoordinationView>().Index(x => x.BusinessId);
         options.Schema.For<BusinessCoordinationView>().Index(x => x.BranchCode);
         options.Schema.For<BusinessCoordinationView>().Index(x => x.AssignedTeacherId);
         options.Schema.For<BusinessCoordinationView>().Index(x => x.AcademicPeriodId);
         options.Schema.For<BusinessCoordinationView>()
             .Index(x => new { x.InstitutionId, x.BranchCode }, x => x.IsUnique = false);
+        // (BusinessId, BranchCode, AcademicPeriodId) — satır kimliğinin mantıksal karşılığı.
+        // Kimlik zaten bu üçlüden deterministik üretildiği için benzersizlik Id ile garanti
+        // edilir; buradaki index yalnız sorgu içindir. Kısa ad zorunlu (64 karakter sınırı).
+        options.Schema.For<BusinessCoordinationView>()
+            .Index(x => new { x.BusinessId, x.BranchCode, x.AcademicPeriodId },
+                x =>
+                {
+                    x.IsUnique = false;
+                    x.Name = "idx_biz_coord_view_biz_branch_period";
+                });
 
         // MonthlyActivityReport
         options.Schema.For<MonthlyActivityReport>().DatabaseSchemaName("coordination");
@@ -82,6 +93,12 @@ public static class MartenConfiguration
         options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.BusinessId);
         options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.InstitutionId);
         options.Schema.For<CoordinationPlacedStudentView>().Index(x => x.AcademicPeriodId);
+
+        // SchoolPlacedStudentView (okulda staj — işverensiz yerleştirme, #159/#171)
+        options.Schema.For<SchoolPlacedStudentView>().DatabaseSchemaName("coordination");
+        options.Schema.For<SchoolPlacedStudentView>().Index(x => x.StudentId);
+        options.Schema.For<SchoolPlacedStudentView>().Index(x => x.InstitutionId);
+        options.Schema.For<SchoolPlacedStudentView>().Index(x => x.AcademicPeriodId);
 
         // BusinessEvaluation
         options.Schema.For<BusinessEvaluation>().DatabaseSchemaName("coordination");
@@ -139,5 +156,9 @@ public static class MartenConfiguration
 
         // InstitutionView (Institution modülünden InstitutionUpdated event'i ile beslenir)
         options.Schema.For<InstitutionView>().DatabaseSchemaName("coordination");
+
+        // UserNameView (Security.UserDisplayNameUpserted ile beslenir) — denetim alanları
+        // yalnız kullanıcı kimliğini saklar, ad sorgu tarafında buradan çözülür (#137)
+        options.Schema.For<UserNameView>().DatabaseSchemaName("coordination");
     }
 }

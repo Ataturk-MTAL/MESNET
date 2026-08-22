@@ -21,7 +21,12 @@
         </template>
       </q-btn-toggle>
       <PermissionGuard :permission="Permissions.Company.Manage">
-        <q-btn color="primary" icon="add_business" label="İşletme Ekle" @click="router.push('/companies/new')" />
+        <q-btn
+          color="primary"
+          icon="add_business"
+          label="İşletme Ekle"
+          @click="router.push('/companies/new')"
+        />
       </PermissionGuard>
     </PageHeader>
 
@@ -64,8 +69,15 @@
         <template #prepend>
           <q-icon name="search" />
         </template>
-        <template v-if="search" #append>
-          <q-icon name="close" class="cursor-pointer" @click="onSearch('')" />
+        <template
+          v-if="search"
+          #append
+        >
+          <q-icon
+            name="close"
+            class="cursor-pointer"
+            @click="onSearch('')"
+          />
         </template>
       </q-input>
     </div>
@@ -84,12 +96,15 @@
           <q-badge
             v-for="sec in row.sectors"
             :key="sec.name"
-            color="blue-grey-3"
-            text-color="dark"
+            color="neutral-soft"
+            text-color="neutral-strong"
             class="q-mr-xs q-mb-xs"
             :label="sec.slug"
           />
-          <span v-if="row.sectors.length === 0" class="text-grey text-caption">—</span>
+          <span
+            v-if="row.sectors.length === 0"
+            class="text-grey text-caption"
+          >—</span>
         </q-td>
       </template>
       <template #body-cell-statusSlug="{ row }">
@@ -99,39 +114,72 @@
         <q-td>
           <div class="text-caption">
             {{ row.capacity.occupiedSlots }} / {{ row.capacity.totalSlots }}
-            <q-badge v-if="row.capacity.isFull" color="negative" label="Dolu" class="q-ml-xs" />
+            <q-badge
+              v-if="row.capacity.isFull"
+              color="negative"
+              label="Dolu"
+              class="q-ml-xs"
+            />
           </div>
         </q-td>
       </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
-          <q-btn flat round dense icon="visibility" aria-label="Detayları görüntüle" @click="openDetail(row)" />
+          <q-btn
+            flat
+            round
+            dense
+            icon="visibility"
+            aria-label="Detayları görüntüle"
+            @click="openDetail(row)"
+          />
           <PermissionGuard :permission="Permissions.Company.Manage">
             <q-btn
               v-if="row.status === 'PendingApproval'"
-              flat round dense icon="check_circle"
+              flat
+              round
+              dense
+              icon="check_circle"
               color="positive"
+              aria-label="İşletmeyi onayla"
               @click="approve(row)"
-            />
+            >
+              <q-tooltip>Onayla</q-tooltip>
+            </q-btn>
             <q-btn
               v-if="row.status === 'PendingApproval'"
-              flat round dense icon="cancel"
+              flat
+              round
+              dense
+              icon="cancel"
               color="negative"
+              aria-label="İşletmeyi reddet"
               @click="openReject(row)"
-            />
+            >
+              <q-tooltip>Reddet</q-tooltip>
+            </q-btn>
           </PermissionGuard>
         </q-td>
       </template>
 
       <template #empty-action>
         <PermissionGuard :permission="Permissions.Company.Manage">
-          <q-btn color="primary" icon="add_business" label="İlk işletmeyi ekle" unelevated @click="router.push('/companies/new')" />
+          <q-btn
+            color="primary"
+            icon="add_business"
+            label="İlk işletmeyi ekle"
+            unelevated
+            @click="router.push('/companies/new')"
+          />
         </PermissionGuard>
       </template>
     </AppTable>
 
     <!-- Harita Görünümü -->
-    <div v-else class="business-map-container">
+    <div
+      v-else
+      class="business-map-container"
+    >
       <q-inner-loading :showing="loading" />
       <l-map
         ref="businessMapRef"
@@ -155,17 +203,24 @@
         >
           <l-popup>
             <div style="min-width: 200px">
-              <div class="text-weight-bold">{{ biz.name }}</div>
-              <div class="text-caption text-grey-8">{{ biz.address }}</div>
+              <div class="text-weight-bold">
+                {{ biz.name }}
+              </div>
+              <div class="text-caption text-grey-8">
+                {{ biz.address }}
+              </div>
               <div class="text-caption q-mt-xs">
                 <StatusBadge :slug="biz.statusSlug" />
               </div>
-              <div v-if="biz.sectors.length > 0" class="q-mt-xs">
+              <div
+                v-if="biz.sectors.length > 0"
+                class="q-mt-xs"
+              >
                 <q-badge
                   v-for="sec in biz.sectors"
                   :key="sec.name"
-                  color="blue-grey-3"
-                  text-color="dark"
+                  color="neutral-soft"
+                  text-color="neutral-strong"
                   class="q-mr-xs q-mb-xs"
                   :label="sec.slug"
                   style="font-size: 10px"
@@ -175,7 +230,12 @@
                 Kapasite: {{ biz.capacity.occupiedSlots }} / {{ biz.capacity.totalSlots }}
               </div>
               <q-btn
-                flat dense size="sm" color="primary" icon="open_in_new" label="Detay"
+                flat
+                dense
+                size="sm"
+                color="primary"
+                icon="open_in_new"
+                label="Detay"
                 class="q-mt-xs"
                 @click="openDetail(biz)"
               />
@@ -183,139 +243,342 @@
           </l-popup>
         </l-marker>
       </l-map>
-      <div v-if="businessesWithoutLocation.length > 0" class="text-caption text-grey q-mt-sm">
+      <div
+        v-if="businessesWithoutLocation.length > 0"
+        class="text-caption text-grey q-mt-sm"
+      >
         {{ businessesWithoutLocation.length }} işletmenin konum bilgisi bulunmuyor.
       </div>
     </div>
 
     <!-- Detay Panel — sağdan overlay -->
-    <DetailPanel v-model="detailOpen" :has-content="!!selected" :width="480">
-      <template #title>{{ selected?.name }}</template>
+    <DetailPanel
+      v-model="detailOpen"
+      :has-content="!!selected"
+      :width="480"
+    >
+      <template #title>
+        {{ selected?.name }}
+      </template>
       <template #toolbar-actions>
-        <StatusBadge :slug="selected?.statusSlug ?? ''" class="q-mr-sm" />
+        <StatusBadge
+          :slug="selected?.statusSlug ?? ''"
+          class="q-mr-sm"
+        />
         <PermissionGuard :permission="Permissions.Company.Manage">
-          <q-btn flat round dense icon="edit" aria-label="Düzenle" @click="openEditDialog">
+          <q-btn
+            flat
+            round
+            dense
+            icon="edit"
+            aria-label="Düzenle"
+            @click="openEditDialog"
+          >
             <q-tooltip>Düzenle</q-tooltip>
           </q-btn>
         </PermissionGuard>
       </template>
       <template v-if="selected">
         <div class="q-gutter-sm">
-            <InfoItem icon="location_on" label="Adres" :value="selected.address" />
-            <div v-if="selected.location" class="q-px-md q-mt-sm">
-              <MapPicker :model-value="selected.location" readonly height="200px" />
-            </div>
-            <InfoItem icon="phone" label="Telefon" :value="selected.phoneNumber" />
-            <InfoItem icon="email" label="E-posta" :value="selected.email" />
-            <InfoItem icon="groups" label="Personel Sayısı" :value="selected.personnelCount" />
-            <InfoItem icon="category" label="Sektörler">
-              <q-badge
-                v-for="sec in selected.sectors"
-                :key="sec.name"
-                color="blue-grey-3"
-                text-color="dark"
-                class="q-mr-xs q-mb-xs"
-                :label="sec.slug"
-              />
-              <span v-if="selected.sectors.length === 0" class="text-grey">Belirtilmemiş</span>
-            </InfoItem>
+          <InfoItem
+            icon="location_on"
+            label="Adres"
+            :value="selected.address"
+          />
+          <div
+            v-if="selected.location"
+            class="q-px-md q-mt-sm"
+          >
+            <MapPicker
+              :model-value="selected.location"
+              readonly
+              height="200px"
+            />
+          </div>
+          <InfoItem
+            icon="phone"
+            label="Telefon"
+            :value="selected.phoneNumber"
+          />
+          <InfoItem
+            icon="email"
+            label="E-posta"
+            :value="selected.email"
+          />
+          <InfoItem
+            icon="groups"
+            label="Personel Sayısı"
+            :value="selected.personnelCount"
+          />
+          <InfoItem
+            icon="category"
+            label="Sektörler"
+          >
+            <q-badge
+              v-for="sec in selected.sectors"
+              :key="sec.name"
+              color="neutral-soft"
+              text-color="neutral-strong"
+              class="q-mr-xs q-mb-xs"
+              :label="sec.slug"
+            />
+            <span
+              v-if="selected.sectors.length === 0"
+              class="text-grey"
+            >Belirtilmemiş</span>
+          </InfoItem>
 
-            <q-separator spaced />
-            <div class="text-subtitle2 text-weight-medium">Kapasite</div>
+          <q-separator spaced />
+          <div class="row items-center">
+            <div class="text-subtitle2 text-weight-medium">
+              Öğrenci Alabildiği Alanlar
+            </div>
+            <q-space />
             <PermissionGuard :permission="Permissions.Company.Manage">
-              <div class="row items-center q-gutter-sm">
-                <q-input
-                  v-model.number="capacitySlots"
-                  type="number"
-                  label="Toplam Kapasite"
-                  outlined
-                  dense
-                  class="col"
-                />
-                <q-btn color="primary" label="Güncelle" :loading="saving" @click="updateCapacity" />
-              </div>
-            </PermissionGuard>
-            <div class="text-caption text-grey">
-              Dolu: {{ selected.capacity.occupiedSlots }} / {{ selected.capacity.totalSlots }}
-              — Müsait: {{ selected.capacity.availableSlots }}
-            </div>
-
-            <q-separator spaced />
-            <div class="text-subtitle2 text-weight-medium">Belgeler</div>
-            <div v-if="selected.documents.length === 0" class="text-grey text-caption">Belge yok</div>
-            <q-list v-else dense bordered rounded>
-              <q-item v-for="doc in selected.documents" :key="doc.id" dense>
-                <q-item-section>
-                  <q-item-label>{{ doc.typeSlug }}</q-item-label>
-                  <q-item-label caption>{{ doc.fileName }}</q-item-label>
-                </q-item-section>
-                <q-item-section side>
-                  <StatusBadge :slug="doc.statusSlug" />
-                </q-item-section>
-                <q-item-section side>
-                  <div class="row no-wrap">
-                    <q-btn flat dense round icon="visibility" aria-label="Detayları görüntüle" color="primary" @click="previewDoc(doc.id)">
-                      <q-tooltip>Görüntüle</q-tooltip>
-                    </q-btn>
-                    <PermissionGuard :permission="Permissions.Document.Approve">
-                      <q-btn
-                        v-if="doc.status === 'Uploaded'"
-                        flat dense round icon="check"
-                        color="positive"
-                        @click="approveDoc(doc.id)"
-                      >
-                        <q-tooltip>Onayla</q-tooltip>
-                      </q-btn>
-                    </PermissionGuard>
-                    <PermissionGuard :permission="Permissions.Company.Document">
-                      <q-btn flat dense round icon="delete" aria-label="Sil" color="negative" @click="confirmDeleteDoc(doc.id, doc.fileName)">
-                        <q-tooltip>Sil</q-tooltip>
-                      </q-btn>
-                    </PermissionGuard>
-                  </div>
-                </q-item-section>
-              </q-item>
-            </q-list>
-
-            <PermissionGuard :permission="Permissions.Company.Document">
               <q-btn
-                color="secondary"
-                icon="upload"
-                label="Belge Yükle"
-                class="q-mt-sm"
-                @click="docUploadDialog = true"
-              />
+                flat
+                round
+                dense
+                icon="verified"
+                color="primary"
+                aria-label="Alan yetkilerini düzenle"
+                @click="branchAuthDialog = true"
+              >
+                <q-tooltip>Alan Yetkilerini Düzenle</q-tooltip>
+              </q-btn>
             </PermissionGuard>
+          </div>
+          <div v-if="selected.activeBranchCodes.length > 0">
+            <q-badge
+              v-for="code in selected.activeBranchCodes"
+              :key="code"
+              color="primary"
+              class="q-mr-xs q-mb-xs"
+              :label="code"
+            />
+          </div>
+          <div
+            v-else
+            class="text-grey text-caption"
+          >
+            Yetkili alan yok — bu işletmeye hiçbir alandan öğrenci yerleştirilemez.
+          </div>
+          <div
+            v-if="revokedBranches.length > 0"
+            class="text-caption text-grey q-mt-xs"
+          >
+            Kaldırılan yetkiler:
+            <q-badge
+              v-for="code in revokedBranches"
+              :key="code"
+              color="neutral-soft"
+              text-color="neutral-strong"
+              class="q-mr-xs"
+              :label="code"
+            />
+          </div>
 
-            <!-- Durum İşlemleri -->
-            <q-separator spaced />
-            <div class="text-subtitle2 text-weight-medium">İşlemler</div>
-            <PermissionGuard :permission="Permissions.Company.Manage">
-              <div class="q-gutter-sm">
-                <!-- PendingApproval → Onayla / Reddet -->
-                <template v-if="selected.status === 'PendingApproval'">
-                  <q-btn color="positive" icon="check_circle" label="Onayla" :loading="saving" @click="approveFromDrawer" class="full-width" />
-                  <q-btn color="negative" icon="cancel" label="Reddet" :loading="saving" @click="openReject(selected)" class="full-width" />
-                </template>
-                <!-- Active → Pasife Al / Kapat -->
-                <template v-if="selected.status === 'Active'">
-                  <q-btn color="warning" text-color="white" icon="pause_circle" label="Pasife Al" :loading="saving" @click="deactivateBusiness" class="full-width" />
-                  <q-btn outline color="negative" icon="block" label="Kapat" :loading="saving" @click="closeBusiness" class="full-width" />
-                </template>
-                <!-- Inactive → Aktifleştir / Kapat -->
-                <template v-if="selected.status === 'Inactive'">
-                  <q-btn color="positive" icon="play_circle" label="Aktifleştir" :loading="saving" @click="activateBusiness" class="full-width" />
-                  <q-btn outline color="negative" icon="block" label="Kapat" :loading="saving" @click="closeBusiness" class="full-width" />
-                </template>
-              </div>
-            </PermissionGuard>
+          <q-separator spaced />
+          <div class="text-subtitle2 text-weight-medium">
+            Kapasite
+          </div>
+          <PermissionGuard :permission="Permissions.Company.Manage">
+            <div class="row items-center q-gutter-sm">
+              <q-input
+                v-model.number="capacitySlots"
+                type="number"
+                label="Toplam Kapasite"
+                outlined
+                dense
+                class="col"
+              />
+              <q-btn
+                color="primary"
+                label="Güncelle"
+                :loading="saving"
+                @click="updateCapacity"
+              />
+            </div>
+          </PermissionGuard>
+          <div class="text-caption text-grey">
+            Dolu: {{ selected.capacity.occupiedSlots }} / {{ selected.capacity.totalSlots }}
+            — Müsait: {{ selected.capacity.availableSlots }}
+          </div>
+
+          <q-separator spaced />
+          <div class="text-subtitle2 text-weight-medium">
+            Belgeler
+          </div>
+          <div
+            v-if="selected.documents.length === 0"
+            class="text-grey text-caption"
+          >
+            Belge yok
+          </div>
+          <q-list
+            v-else
+            dense
+            bordered
+            rounded
+          >
+            <q-item
+              v-for="doc in selected.documents"
+              :key="doc.id"
+              dense
+            >
+              <q-item-section>
+                <q-item-label>{{ doc.typeSlug }}</q-item-label>
+                <q-item-label caption>
+                  {{ doc.fileName }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <StatusBadge :slug="doc.statusSlug" />
+              </q-item-section>
+              <q-item-section side>
+                <div class="row no-wrap">
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    icon="visibility"
+                    aria-label="Detayları görüntüle"
+                    color="primary"
+                    @click="previewDoc(doc.id)"
+                  >
+                    <q-tooltip>Görüntüle</q-tooltip>
+                  </q-btn>
+                  <PermissionGuard :permission="Permissions.Document.Approve">
+                    <q-btn
+                      v-if="doc.status === 'Uploaded'"
+                      flat
+                      dense
+                      round
+                      icon="check"
+                      color="positive"
+                      aria-label="Belgeyi onayla"
+                      @click="approveDoc(doc.id)"
+                    >
+                      <q-tooltip>Onayla</q-tooltip>
+                    </q-btn>
+                  </PermissionGuard>
+                  <PermissionGuard :permission="Permissions.Company.Document">
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      icon="delete"
+                      aria-label="Sil"
+                      color="negative"
+                      @click="confirmDeleteDoc(doc.id, doc.fileName)"
+                    >
+                      <q-tooltip>Sil</q-tooltip>
+                    </q-btn>
+                  </PermissionGuard>
+                </div>
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+          <PermissionGuard :permission="Permissions.Company.Document">
+            <q-btn
+              color="secondary"
+              icon="upload"
+              label="Belge Yükle"
+              class="q-mt-sm"
+              @click="docUploadDialog = true"
+            />
+          </PermissionGuard>
+
+          <!-- Durum İşlemleri -->
+          <q-separator spaced />
+          <div class="text-subtitle2 text-weight-medium">
+            İşlemler
+          </div>
+          <PermissionGuard :permission="Permissions.Company.Manage">
+            <div class="q-gutter-sm">
+              <!-- PendingApproval → Onayla / Reddet -->
+              <template v-if="selected.status === 'PendingApproval'">
+                <q-btn
+                  color="positive"
+                  icon="check_circle"
+                  label="Onayla"
+                  :loading="saving"
+                  class="full-width"
+                  @click="approveFromDrawer"
+                />
+                <q-btn
+                  color="negative"
+                  icon="cancel"
+                  label="Reddet"
+                  :loading="saving"
+                  class="full-width"
+                  @click="openReject(selected)"
+                />
+              </template>
+              <!-- Active → Pasife Al / Kapat -->
+              <template v-if="selected.status === 'Active'">
+                <q-btn
+                  color="warning"
+                  text-color="white"
+                  icon="pause_circle"
+                  label="Pasife Al"
+                  :loading="saving"
+                  class="full-width"
+                  @click="deactivateBusiness"
+                />
+                <q-btn
+                  outline
+                  color="negative"
+                  icon="block"
+                  label="Kapat"
+                  :loading="saving"
+                  class="full-width"
+                  @click="closeBusiness"
+                />
+              </template>
+              <!-- Inactive → Aktifleştir / Kapat -->
+              <template v-if="selected.status === 'Inactive'">
+                <q-btn
+                  color="positive"
+                  icon="play_circle"
+                  label="Aktifleştir"
+                  :loading="saving"
+                  class="full-width"
+                  @click="activateBusiness"
+                />
+                <q-btn
+                  outline
+                  color="negative"
+                  icon="block"
+                  label="Kapat"
+                  :loading="saving"
+                  class="full-width"
+                  @click="closeBusiness"
+                />
+              </template>
+            </div>
+          </PermissionGuard>
         </div>
       </template>
     </DetailPanel>
 
     <!-- Form Dialogları -->
-    <RejectBusinessForm v-model="rejectDialog" :business-id="selected?.id ?? ''" @saved="afterFormSaved" />
-    <UploadBusinessDocForm v-model="docUploadDialog" :business-id="selected?.id ?? ''" @saved="afterFormSaved" />
+    <RejectBusinessForm
+      v-model="rejectDialog"
+      :business-id="selected?.id ?? ''"
+      @saved="afterFormSaved"
+    />
+    <UploadBusinessDocForm
+      v-model="docUploadDialog"
+      :business-id="selected?.id ?? ''"
+      @saved="afterFormSaved"
+    />
+    <AuthorizeBranchesForm
+      v-model="branchAuthDialog"
+      :business="selected"
+      @saved="afterBranchesAuthorized"
+    />
   </q-page>
 </template>
 
@@ -339,6 +602,7 @@ import DetailPanel from 'components/DetailPanel.vue'
 import { useRouter } from 'vue-router'
 import RejectBusinessForm from 'components/forms/business/RejectBusinessForm.vue'
 import UploadBusinessDocForm from 'components/forms/business/UploadBusinessDocForm.vue'
+import AuthorizeBranchesForm from 'components/forms/business/AuthorizeBranchesForm.vue'
 import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -369,6 +633,7 @@ const selected = ref<BusinessDto | null>(null)
 const detailOpen = ref(false)
 const rejectDialog = ref(false)
 const docUploadDialog = ref(false)
+const branchAuthDialog = ref(false)
 const statusFilter = ref<string | null>(null)
 const sectorFilter = ref<string | null>(null)
 const allSectors = ref<SectorDto[]>([])
@@ -431,6 +696,29 @@ async function loadSectors() {
   }
 }
 
+
+/** İptal edilmiş (aktif olmayan) alan kodları — aktif yetkiye dönmüş olanlar hariç. */
+const revokedBranches = computed(() => {
+  const business = selected.value
+  if (!business) return []
+  const active = new Set(business.activeBranchCodes)
+  return [
+    ...new Set(
+      business.authorizedBranches
+        .filter((a) => !a.isActive && !active.has(a.branchCode))
+        .map((a) => a.branchCode),
+    ),
+  ]
+})
+
+/**
+ * Alan yetkisi değişince işletme seçim listesi cache'i bayatlar — yerleştirme ekranı
+ * yetkisiz işletmeyi göstermeye devam ederdi (#119).
+ */
+async function afterBranchesAuthorized() {
+  entityOptionsStore.invalidateBusinesses()
+  await afterFormSaved()
+}
 
 async function afterFormSaved() {
   await load()
@@ -531,7 +819,7 @@ async function deleteDoc(documentId: string) {
 }
 
 function openEditDialog() {
-  if (selected.value) void router.push(`/companies/${selected.value.id}/edit`)
+  if (selected.value) router.push(`/companies/${selected.value.id}/edit`).catch(() => {})
 }
 
 // ── Durum Aksiyonları ──

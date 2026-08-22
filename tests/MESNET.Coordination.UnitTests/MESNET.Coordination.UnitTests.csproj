@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Test projesinde uyarılar build'i kırmasın -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Modules/Coordination/MESNET.Coordination.Core/MESNET.Coordination.Core.csproj" />
+    <!-- Alan kapsamı kontrolü (#126): BranchScopeGuard + handler imzası regresyon testleri -->
+    <ProjectReference Include="../../src/Modules/Coordination/MESNET.Coordination.Application/MESNET.Coordination.Application.csproj" />
+    <!--
+      Uç noktaların hangi izinle korunduğu (#130) yalnız endpoint metadata'sından okunabilir;
+      kaynak metni değil gerçek kayıt incelenir. Bkz. CoordinationEndpointAuthorizationTests.
+    -->
+    <ProjectReference Include="../../src/Modules/Coordination/MESNET.Coordination.Api/MESNET.Coordination.Api.csproj" />
+    <!--
+      Application referansı MESNET.Business(.Shared) namespace'ini de getirir; mevcut testlerdeki
+      `Business(...)` yardımcı metodu ile çakışır (CS0118). Extern alias ile bu assembly global
+      namespace'ten çıkarılır — testlerin hiçbirinde Business.Shared tipleri kullanılmıyor.
+    -->
+    <ProjectReference Include="../../src/Modules/Business/MESNET.Business.Shared/MESNET.Business.Shared.csproj"
+                      Aliases="businessshared" />
+  </ItemGroup>
+
+</Project>

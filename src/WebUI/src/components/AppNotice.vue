@@ -28,10 +28,10 @@ const props = withDefaults(
 const emit = defineEmits<{ close: [] }>()
 
 const STYLES: Record<NoticeType, { bg: string; text: string; icon: string; iconColor: string }> = {
-  info: { bg: 'bg-blue-1', text: 'text-blue-9', icon: 'info', iconColor: 'blue-7' },
-  warning: { bg: 'bg-orange-1', text: 'text-orange-9', icon: 'warning', iconColor: 'orange-7' },
-  error: { bg: 'bg-red-1', text: 'text-red-9', icon: 'error', iconColor: 'red-7' },
-  success: { bg: 'bg-teal-1', text: 'text-teal-10', icon: 'check_circle', iconColor: 'teal-7' },
+  info: { bg: 'bg-info-soft', text: 'text-info-strong', icon: 'info', iconColor: 'info' },
+  warning: { bg: 'bg-warning-soft', text: 'text-warning-strong', icon: 'warning', iconColor: 'warning' },
+  error: { bg: 'bg-negative-soft', text: 'text-negative-strong', icon: 'error', iconColor: 'negative' },
+  success: { bg: 'bg-positive-soft', text: 'text-positive-strong', icon: 'check_circle', iconColor: 'positive' },
   readonly: { bg: 'bg-grey-2', text: 'text-grey-8', icon: 'lock', iconColor: 'grey-6' },
 }
 
@@ -52,13 +52,27 @@ function dismiss() {
     :class="`${style.bg} ${style.text} rounded-borders`"
   >
     <template #avatar>
-      <q-icon :name="icon ?? style.icon" :color="style.iconColor" />
+      <q-icon
+        :name="icon ?? style.icon"
+        :color="style.iconColor"
+      />
     </template>
 
     <slot>{{ message }}</slot>
 
-    <template v-if="dismissible" #action>
-      <q-btn flat dense round icon="close" aria-label="Kapat" :color="style.iconColor" @click="dismiss" />
+    <template
+      v-if="dismissible"
+      #action
+    >
+      <q-btn
+        flat
+        dense
+        round
+        icon="close"
+        aria-label="Kapat"
+        :color="style.iconColor"
+        @click="dismiss"
+      />
     </template>
   </q-banner>
 </template>

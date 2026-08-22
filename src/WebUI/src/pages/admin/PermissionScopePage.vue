@@ -1,11 +1,28 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-md">
-      <q-btn flat round dense icon="arrow_back" aria-label="Geri" :to="{ name: 'RoleManagement' }" class="q-mr-sm">
+      <q-btn
+        flat
+        round
+        dense
+        icon="arrow_back"
+        aria-label="Geri"
+        :to="{ name: 'RoleManagement' }"
+        class="q-mr-sm"
+      >
         <q-tooltip>Rollere dön</q-tooltip>
       </q-btn>
-      <div class="text-h5 col">Atanabilir Yetki Kapsamı</div>
-      <q-btn unelevated color="primary" icon="save" label="Kaydet" :loading="saving" @click="save" />
+      <h1 class="text-h5 col q-my-none">
+        Atanabilir Yetki Kapsamı
+      </h1>
+      <q-btn
+        unelevated
+        color="primary"
+        icon="save"
+        label="Kaydet"
+        :loading="saving"
+        @click="save"
+      />
     </div>
 
     <AppNotice
@@ -14,12 +31,23 @@
       message="Her role, bireysel (direct) olarak hangi yetki ALANLARININ atanabileceğini belirler. Örn. İşletme rolüne yalnız işletme/devamsızlık/iletişim alanları atanabilsin; kurum-yönetimi atanamasın. '*' = tüm yetkiler."
     />
 
-    <q-card v-if="data" flat bordered>
+    <q-card
+      v-if="data"
+      flat
+      bordered
+    >
       <q-list separator>
-        <q-item v-for="role in data.roles" :key="role">
+        <q-item
+          v-for="role in data.roles"
+          :key="role"
+        >
           <q-item-section style="max-width: 240px">
-            <q-item-label class="text-weight-medium">{{ roleLabel(role) }}</q-item-label>
-            <q-item-label caption>{{ role }}</q-item-label>
+            <q-item-label class="text-weight-medium">
+              {{ roleLabel(role) }}
+            </q-item-label>
+            <q-item-label caption>
+              {{ role }}
+            </q-item-label>
           </q-item-section>
           <q-item-section>
             <q-select
@@ -44,6 +72,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { securityApi, type PermissionScopeData } from 'src/api/security'
 import { useNotify } from 'src/composables/useNotify'
+import { useRoleCatalogStore } from 'stores/roleCatalog'
 import AppNotice from 'components/AppNotice.vue'
 
 const notify = useNotify()
@@ -51,14 +80,10 @@ const data = ref<PermissionScopeData | null>(null)
 const model = reactive<Record<string, string[]>>({})
 const saving = ref(false)
 
-const ROLE_LABELS: Record<string, string> = {
-  InstitutionManager: 'Müdür / Müdür Yardımcısı',
-  InstitutionStaff: 'Kurum Personeli',
-  Teacher: 'Koordinatör Öğretmen',
-  DepartmentHead: 'Alan Şefi',
-  CompanyManager: 'İşletme Yetkilisi',
-  Student: 'Öğrenci',
-}
+// Rol etiketleri rol kataloğundan gelir (#129) — elle harita YOK. Eski harita
+// "InstitutionManager: Müdür / Müdür Yardımcısı" diyordu; müdür yardımcısı artık ayrı roldür.
+const roleCatalog = useRoleCatalogStore()
+
 const DOMAIN_LABELS: Record<string, string> = {
   '*': 'Tüm Yetkiler (*)',
   'institution:': 'Kurum Yönetimi',
@@ -74,7 +99,7 @@ const DOMAIN_LABELS: Record<string, string> = {
   'user:': 'Kullanıcı Yönetimi',
 }
 function roleLabel(r: string) {
-  return ROLE_LABELS[r] ?? r
+  return roleCatalog.labelFor(r)
 }
 function domainLabel(d: string) {
   return DOMAIN_LABELS[d] ?? d
@@ -86,6 +111,8 @@ const domainOptions = computed(() =>
 
 async function load() {
   try {
+    // Rol etiketleri için katalog; kapsam verisiyle birlikte yüklenir (#129).
+    await roleCatalog.load()
     const res = await securityApi.getPermissionScopes()
     data.value = res.data
     for (const role of res.data.roles) {

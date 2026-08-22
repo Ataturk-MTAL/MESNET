@@ -1,3 +1,4 @@
+using MESNET.Business.Shared.Events;
 using MESNET.Business.Application.Commands;
 using MESNET.Business.Application.Dtos;
 using MESNET.Business.Application.Queries;
@@ -25,7 +26,30 @@ public static class BusinessEndpoints
         group.MapPost("/{businessId:guid}/deactivate", PostDeactivate).RequireAuthorization(Permissions.Company.Manage);
         group.MapPost("/{businessId:guid}/activate", PostActivate).RequireAuthorization(Permissions.Company.Manage);
         group.MapPost("/{businessId:guid}/close", PostClose).RequireAuthorization(Permissions.Company.Manage);
+        // Okul kendi kapatma bildirimini geri çeker (#151); sayı eşiğin altına inerse işletme
+        // kendiliğinden açılır.
+        group.MapPost("/{businessId:guid}/close/retract", PostRetractClosure)
+            .RequireAuthorization(Permissions.Company.Manage);
+        group.MapPut("/{businessId:guid}/branch-authorizations", PutBranchAuthorizations)
+            .RequireAuthorization(Permissions.Company.Manage);
+        group.MapPost("/resync-projections", PostResyncProjections).RequireAuthorization(Permissions.Company.Manage);
         return app;
+    }
+
+    /// <summary>
+    /// Tüm işletmeler için BusinessUpdated'ı yeniden yayınlar — diğer modüllerin denormalize
+    /// işletme read-model'lerini tazeler. Read-model'e yeni alan eklendiğinde mevcut kayıtlar
+    /// geriye dönük dolmadığı için gerekli (#77).
+    /// </summary>
+    private static async Task<IResult> PostResyncProjections(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ResyncBusinessProjectionsResult>(
+            new ResyncBusinessProjections());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.BusinessCount} işletme için read-model'ler yeniden yayınlandı.")
+            .Build());
     }
 
     private static async Task<IResult> Get(Guid businessId, IMessageBus bus)
@@ -94,11 +118,51 @@ public static class BusinessEndpoints
             .Build());
     }
 
-    private static async Task<IResult> PostClose(Guid businessId, IMessageBus bus)
+    /// <summary>
+    /// İdare, belge incelemesi sonucunda işletmenin öğrenci alabileceği alanları işaretler (#119).
+    /// Gövdedeki liste NİHAİ listedir — gönderilmeyen mevcut yetkiler iptal edilir.
+    /// </summary>
+    private static async Task<IResult> PutBranchAuthorizations(
+        Guid businessId, AuthorizeBusinessForBranches command, IMessageBus bus)
     {
-        await bus.InvokeAsync(new CloseBusiness(businessId));
+        await bus.InvokeAsync(command with { BusinessId = businessId });
         return Results.Ok(ResponseBuilder.Success()
-            .AddMessage("İşletme kapatıldı.")
+            .AddMessage("İşletmenin alan yetkileri güncellendi.")
             .Build());
     }
+
+    /// <summary>
+    /// Kapatma <b>bildirimi</b> (#151). Tek okulun bildirimi işletmeyi kapatmaz; işletme ancak
+    /// farklı okullardan gelen bildirim sayısı yeter sayıya ulaşınca küresel olarak kapanır.
+    /// Yanıt mesajı hangi durumun gerçekleştiğini söyler — "kapatıldı" demek, bildirimin
+    /// beklemede olduğu durumda yanlış olurdu.
+    /// </summary>
+    private static async Task<IResult> PostClose(
+        Guid businessId, CloseBusinessRequest? request, IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<object>(new CloseBusiness(businessId, request?.Reason));
+
+        var message = result is BusinessClosureReported reported
+            ? $"Kapatma bildiriminiz alındı. Bildirimde bulunan kurum sayısı: {reported.ReportingInstitutionCount}. "
+              + "İşletme, yeter sayıya ulaşıldığında kapanacaktır."
+            : "İşletme kapatıldı.";
+
+        return Results.Ok(ResponseBuilder.Success().AddData(result).AddMessage(message).Build());
+    }
+
+    private static async Task<IResult> PostRetractClosure(
+        Guid businessId, CloseBusinessRequest? request, IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<BusinessClosureRetracted>(
+            new RetractBusinessClosure(businessId, request?.Reason));
+
+        var message = result.Reopened
+            ? "Bildiriminiz geri çekildi ve yeter sayı düştüğü için işletme yeniden açıldı."
+            : $"Bildiriminiz geri çekildi. Kalan bildirimde bulunan kurum sayısı: {result.ReportingInstitutionCount}.";
+
+        return Results.Ok(ResponseBuilder.Success().AddData(result).AddMessage(message).Build());
+    }
+
+    /// <summary>Kapatma bildirimi/geri çekme gerekçesi — isteğe bağlı.</summary>
+    public sealed record CloseBusinessRequest(string? Reason);
 }

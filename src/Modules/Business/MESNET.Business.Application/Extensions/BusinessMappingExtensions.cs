@@ -17,14 +17,26 @@ public static class BusinessMappingExtensions
         entity.Source.Name,
         entity.Source.Slug,
         entity.PersonnelCount,
+        entity.IsPublicInstitution,
         entity.Location,
         entity.Capacity.ToDto(),
         entity.Representatives.Select(r => r.ToDto()).ToList(),
         entity.Documents.Select(d => d.ToDto()).ToList(),
         entity.Sectors.Select(s => s.ToSectorDto()).ToList(),
+        entity.AuthorizedBranches.Select(a => a.ToDto()).ToList(),
+        entity.ActiveBranchCodes.ToList(),
         entity.CreatedAt,
         entity.ApprovedAt,
         entity.ClosedAt);
+
+    /// <summary>
+    /// Olaylarla dışa taşınan "İşletme Yetkilisi" adı — ilk yetkilendirilmiş temsilci (#99).
+    /// Temsilci yoksa null döner; tüketen modüller alanı opsiyonel olarak ele alır.
+    /// </summary>
+    public static string? PrimaryRepresentativeName(this Core.Entities.Business entity) =>
+        entity.Representatives
+            .OrderBy(r => r.AuthorizedAt)
+            .FirstOrDefault()?.FullName;
 
     public static SectorDto ToSectorDto(this string sectorName) =>
         BusinessSector.TryFromName(sectorName, true, out var sector)
@@ -36,6 +48,14 @@ public static class BusinessMappingExtensions
         vo.OccupiedSlots,
         vo.AvailableSlots,
         vo.IsFull);
+
+    public static BranchAuthorizationDto ToDto(this Core.ValueObjects.BranchAuthorization vo) => new(
+        vo.BranchCode,
+        vo.BasedOnDocumentId,
+        vo.AuthorizedAt,
+        vo.AuthorizedBy,
+        vo.RevokedAt,
+        vo.IsActive);
 
     public static BusinessRepresentativeDto ToDto(this Core.ValueObjects.BusinessRepresentative vo) => new(
         vo.Id,

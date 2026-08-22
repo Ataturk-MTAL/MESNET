@@ -1,7 +1,10 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
+using MESNET.Coordination.Application.Helpers;
+using MESNET.Coordination.Application.Security;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.Entities;
 using MESNET.Coordination.Core.Enums;
@@ -15,16 +18,25 @@ public static class AssignBusinessToTeacherHandler
     public static async Task<Coordination.Shared.Events.BusinessAssignedToTeacher> Handle(
         AssignBusinessToTeacher command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
-        var view = await session.LoadAsync<BusinessCoordinationView>(
-            command.BusinessId, cancellationToken);
+        var view = await CoordinationViewLookup.LoadBranchRowAsync(
+            session, command.BusinessId, command.BranchCode, command.AcademicPeriodId, cancellationToken);
 
         if (view is null)
-            throw new DomainException(CoordinationErrors.BusinessNotFound(command.BusinessId));
+        {
+            throw new DomainException(
+                CoordinationErrors.BusinessBranchNotFound(command.BusinessId, command.BranchCode));
+        }
 
-        // Hedef saat: takdir edilen saat > 0 ise onu kullan, yoksa verilebilir saat
-        var targetHours = view.AssignedHours > 0 ? view.AssignedHours : view.MaxCoordinationHours;
+        // Kapsam çözümlenmiş satırdan okunur (#126) — bkz. BranchScopeGuard.
+        BranchScopeGuard.EnsureCanWrite(currentUser, view.BranchCode);
+
+        // Hedef slot sayısı: takdir edilen saat > 0 ise o, yoksa verilebilir saat.
+        // Fahri ziyarette tavana DÜŞÜLMEZ — ücret doğurmadığı hâlde 8 saat tüketiyormuş
+        // gibi sayılıyordu (#115); fahri satır tek ziyaret slotu ister.
+        var targetHours = view.SlotTargetHours();
 
         // Mevcut slot sayısı kontrolü — tüm saatler atanmışsa hata
         if (view.AssignedSlots.Count >= targetHours)
@@ -45,11 +57,15 @@ public static class AssignBusinessToTeacherHandler
             }
         }
 
-        // Öğretmen başına azami koordinatörlük saati kontrolü
-        await ValidateTeacherHourLimit(session, command.TeacherId, command.InstitutionId, view.Id, cancellationToken);
+        // Öğretmen başına azami koordinatörlük saati kontrolü. Fahri ziyaret ek ders
+        // saatine sayılmaz → kotayı tüketmez (#115).
+        await ValidateTeacherHourLimit(
+            session, command.TeacherId, command.InstitutionId,
+            countsTowardLimit: !view.IsHonoraryVisit, cancellationToken);
 
-        // Ders yükü havuzu kontrolü — ilk atamada takdir edilen saat varsa havuzu aşmasın
-        if (view.AssignedSlots.Count == 0 && command.AssignedHours > 0)
+        // Ders yükü havuzu kontrolü — ilk atamada takdir edilen saat varsa havuzu aşmasın.
+        // Fahri satır havuza girmez.
+        if (!view.IsHonoraryVisit && view.AssignedSlots.Count == 0 && command.AssignedHours > 0)
         {
             await ValidateWorkloadPool(session, view, command.AssignedHours, cancellationToken);
         }
@@ -60,8 +76,9 @@ public static class AssignBusinessToTeacherHandler
             view.AssignedTeacherId = command.TeacherId;
             view.AssignedTeacherName = command.TeacherName;
 
-            // Takdir edilen saat henüz girilmemişse, command'dan gelen değeri kullan
-            if (view.AssignedHours == 0 && command.AssignedHours > 0)
+            // Takdir edilen saat henüz girilmemişse, command'dan gelen değeri kullan.
+            // Fahri satırda ASLA saat yazılmaz — yoksa atama anında ücretliye dönerdi.
+            if (!view.IsHonoraryVisit && view.AssignedHours == 0 && command.AssignedHours > 0)
             {
                 view.AssignedHours = command.AssignedHours;
             }
@@ -88,21 +105,23 @@ public static class AssignBusinessToTeacherHandler
             view.AssignedPeriodNumber = firstSlot.PeriodNumber;
         }
 
-        // Audit trail
+        // Audit trail — aktör token'dan gelir, istekten DEĞİL (#137).
+        var assignedById = currentUser.GetUserId();
         var action = view.AssignedSlots.Count == 1 ? "Assigned" : "SlotAdded";
         view.History.Insert(0, new AssignmentHistoryEntry(
             DateTime.UtcNow,
             action,
-            command.AssignedBy,
+            assignedById,
             command.TeacherName,
             command.AssignedDay,
             command.PeriodNumber,
             view.AssignedHours > 0 ? view.AssignedHours : null,
-            action == "Assigned"
+            (action == "Assigned"
                 ? $"{command.TeacherName} öğretmene atandı"
-                : $"{command.AssignedDay} {command.PeriodNumber}. saat eklendi"));
+                : $"{command.AssignedDay} {command.PeriodNumber}. saat eklendi")
+            + (view.IsHonoraryVisit ? " (fahri ziyaret — ek ders saatine sayılmaz)" : string.Empty)));
         view.LastModifiedAt = DateTime.UtcNow;
-        view.LastModifiedBy = command.AssignedBy;
+        view.LastModifiedById = assignedById;
 
         session.Store(view);
 
@@ -112,7 +131,7 @@ public static class AssignBusinessToTeacherHandler
             await AssignToScheduleSlot(
                 session, command.TeacherId, view.AcademicPeriodId,
                 command.AssignedDay, command.PeriodNumber.Value,
-                command.BusinessId, command.AssignedBy, cancellationToken);
+                command.BusinessId, assignedById, cancellationToken);
         }
 
         return new Coordination.Shared.Events.BusinessAssignedToTeacher(
@@ -157,24 +176,35 @@ public static class AssignBusinessToTeacherHandler
         }
     }
 
+    /// <param name="countsTowardLimit">
+    /// Eklenecek slot ek ders kotasını tüketiyor mu? Fahri ziyarette hayır (#115) —
+    /// slot ders programında yerini alır ama ücret doğurmaz.
+    /// </param>
     private static async Task ValidateTeacherHourLimit(
         IDocumentSession session,
         Guid teacherId,
         Guid institutionId,
-        Guid currentBusinessId,
+        bool countsTowardLimit,
         CancellationToken cancellationToken)
     {
+        // Fahri slot kotayı tüketmediğinden kontrol edilecek bir artış yok; kontrol
+        // edilirse yalnızca önceden dolmuş kota yüzünden fahri atama engellenirdi.
+        if (!countsTowardLimit) return;
+
         var config = await session.Query<CoordinationConfig>()
             .FirstOrDefaultAsync(c => c.InstitutionId == institutionId, cancellationToken);
 
         if (config is null) return; // Config yoksa kontrol atlanır
 
-        // Öğretmenin tüm işletmelerdeki mevcut atanmış slot sayısını topla
+        // Öğretmenin tüm işletmelerdeki mevcut atanmış slot sayısını topla —
+        // fahri işletmelerin slotları ek ders saati üretmediği için sayılmaz.
         var teacherBusinesses = await session.Query<BusinessCoordinationView>()
             .Where(b => b.AssignedTeacherId == teacherId)
             .ToListAsync(cancellationToken);
 
-        var teacherTotalSlots = teacherBusinesses.Sum(b => b.AssignedSlots.Count);
+        var teacherTotalSlots = teacherBusinesses
+            .Where(b => !b.IsHonoraryVisit)
+            .Sum(b => b.AssignedSlots.Count);
 
         // +1 çünkü yeni slot eklenmek üzere
         var newTotal = teacherTotalSlots + 1;
@@ -193,7 +223,7 @@ public static class AssignBusinessToTeacherHandler
         string day,
         int periodNumber,
         Guid businessId,
-        string assignedBy,
+        Guid assignedById,
         CancellationToken cancellationToken)
     {
         if (!Enum.TryParse<DayOfWeek>(day, true, out var dayOfWeek))
@@ -220,7 +250,7 @@ public static class AssignBusinessToTeacherHandler
                 d.Day.ToString(),
                 d.Periods.Select(p => new PeriodSlotData(p.PeriodNumber, p.Status.Name, p.CourseName, p.AssignedBusinessId)).ToList()
             )).ToList(),
-            assignedBy,
+            assignedById,
             DateTime.UtcNow);
 
         session.Events.Append(schedule.Id, updateEvent);

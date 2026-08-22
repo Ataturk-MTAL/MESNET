@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Test projesinde uyarılar build'i kırmasın -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/MESNET.Common.Shared/MESNET.Common.Shared.csproj" />
+    <ProjectReference Include="../../src/Modules/Reporting/MESNET.Reporting.Core/MESNET.Reporting.Core.csproj" />
+    <!--
+      Resmî devamsızlık formunun tüketici kapsamı (#257) reflection ile okunur: düzeltme ve
+      silme olaylarının BOŞ NO-OP olmadığı, kaydın hâlini değiştiren her olayın tüketildiği
+      kilitleniyor. Application katmanı bu yüzden gereklidir.
+    -->
+    <ProjectReference Include="../../src/Modules/Reporting/MESNET.Reporting.Application/MESNET.Reporting.Application.csproj" />
+  </ItemGroup>
+
+</Project>

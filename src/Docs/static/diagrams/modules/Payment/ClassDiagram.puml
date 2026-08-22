@@ -3,14 +3,14 @@ left to right direction
 
 package "MESNET.Payment.Api" {
     class PaymentEndpoints {
-        +[WolverinePost] UploadReceipt(command)
-        +[WolverinePost] ApproveReceiptByTeacher(command)
-        +[WolverinePost] ApproveReceiptByInstitution(command)
-        +[WolverinePost] RejectReceipt(command)
-        +[WolverinePost] ConfirmSalary(command)
-        +[WolverinePost] GeneratePaymentList(command)
-        +[WolverineGet] GetReceipt(receiptId)
-        +[WolverineGet] ListReceipts(query)
+        +POST UploadReceipt(command)
+        +POST ApproveReceiptByTeacher(command)
+        +POST ApproveReceiptByInstitution(command)
+        +POST RejectReceipt(command)
+        +POST ConfirmSalary(command)
+        +POST GeneratePaymentList(command)
+        +GET GetReceipt(receiptId)
+        +GET ListReceipts(query)
     }
 }
 

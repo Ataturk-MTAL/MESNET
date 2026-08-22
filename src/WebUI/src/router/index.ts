@@ -36,7 +36,10 @@ const router = createRouter({
           path: 'institution/edit',
           name: 'InstitutionEdit',
           component: () => import('pages/institution/InstitutionFormPage.vue'),
-          meta: { permissions: ['institution:view'], formRoute: true },
+          // Form YAZMA yapar (PATCH /institutions/{id} → institution:manage).
+          // Okuma izniyle korunsaydı yalnız görüntüleme yetkisi olan kullanıcı formu
+          // doldurup Kaydet'te 403 duvarına çarpardı.
+          meta: { permissions: ['institution:manage'], formRoute: true },
         },
 
         // İşletme (Company)
@@ -73,13 +76,15 @@ const router = createRouter({
               path: 'students/new',
               name: 'StudentNew',
               component: () => import('pages/StudentFormPage.vue'),
-              meta: { permissions: ['student:view'], formRoute: true },
+              // POST /students → student:manage
+              meta: { permissions: ['student:manage'], formRoute: true },
             },
             {
               path: 'students/:id/edit',
               name: 'StudentEdit',
               component: () => import('pages/StudentFormPage.vue'),
-              meta: { permissions: ['student:view'], formRoute: true },
+              // PATCH /students/{id} → student:manage
+              meta: { permissions: ['student:manage'], formRoute: true },
             },
             // Phase 2 — MEB Protokolü modülü implement edilince açılacak
             // {
@@ -109,13 +114,31 @@ const router = createRouter({
               component: () => import('pages/contract/ContractFormPage.vue'),
               meta: { permissions: ['internship:contract:manage'], formRoute: true },
             },
+            // Fesih onay zinciri (#191) — okul tarafının adımları.
+            // Görüntüleme internship:view; her adımın butonu KENDİ iznine bakar ve o izin
+            // sunucudan gelen adım tanımından okunur.
+            {
+              path: 'terminations',
+              name: 'InternshipTerminations',
+              component: () => import('pages/internship/TerminationsPage.vue'),
+              meta: { permissions: ['internship:view', 'internship:manage'] },
+            },
+            // Veli ve işletme yetkilisi için fesih DURUM sayfası (#191, #218).
+            // Salt okunur: onaylar okul tarafında verilir. Kapsamı SUNUCU çözer
+            // (veli bağı / işletme kimliği, ikisi de claim'den); rota yalnız kapıyı açar.
+            {
+              path: 'termination-status',
+              name: 'InternshipTerminationStatus',
+              component: () => import('pages/internship/MyApprovalsPage.vue'),
+              meta: { permissions: ['internship:view-own', 'company:student:manage'] },
+            },
             {
               path: 'overview',
               name: 'InternshipOverview',
               component: () => import('pages/internship/InternshipOverviewPage.vue'),
               // internship:view — personel görüntüleyebilir
               // internship:manage — durum değişikliklerini sayfa içi PermissionGuard kontrol eder
-              meta: { permissions: ['internship:view', 'internship:manage'] },
+              meta: { permissions: ['internship:view', 'internship:manage', 'internship:view-own'] },
             },
           ],
         },
@@ -125,13 +148,37 @@ const router = createRouter({
           path: 'attendance',
           name: 'AttendanceList',
           component: () => import('pages/attendance/AttendancePage.vue'),
-          meta: { permissions: ['attendance:view'] },
+          // Öğrenci ve veli de kendi kapsamında görür (#182); daraltmayı sunucu yapar.
+          meta: { permissions: ['attendance:view', 'attendance:view-own'] },
         },
         {
           path: 'attendance/new',
           name: 'AttendanceNew',
           component: () => import('pages/attendance/AttendanceFormPage.vue'),
-          meta: { permissions: ['attendance:view'], formRoute: true },
+          // POST /attendance → attendance:manage. Alan şefi (attendance:view var,
+          // manage yok) bu formu açıp Kaydet'te 403 alıyordu.
+          meta: { permissions: ['attendance:manage'], formRoute: true },
+        },
+
+        // MESEM ücretli izin başvurusu (#177) — zincirin üç tarafı da aynı listeyi görür,
+        // kapsamı sunucu daraltır (öğrenci kendi, işletme kendi öğrencileri, okul kurumu).
+        {
+          path: 'attendance/paid-leave',
+          name: 'PaidLeaveList',
+          component: () => import('pages/attendance/PaidLeavePage.vue'),
+          meta: {
+            permissions: [
+              'attendance:leave:request',
+              'attendance:leave:business-approve',
+              'attendance:leave:approve',
+            ],
+          },
+        },
+        {
+          path: 'attendance/paid-leave/new',
+          name: 'PaidLeaveNew',
+          component: () => import('pages/attendance/PaidLeaveFormPage.vue'),
+          meta: { permissions: ['attendance:leave:request'], formRoute: true },
         },
 
         // Ücret / Maaş (Salary)
@@ -139,7 +186,15 @@ const router = createRouter({
           path: 'salary',
           name: 'SalaryList',
           component: () => import('pages/payment/PaymentPage.vue'),
-          meta: { permissions: ['salary:view'] },
+          meta: { permissions: ['salary:view', 'salary:view-own'] },
+        },
+        {
+          path: 'salary/config',
+          name: 'SalaryConfig',
+          component: () => import('pages/payment/SalaryConfigPage.vue'),
+          // Görme yetkisi burada; DEĞİŞTİRME ayrı ve ULUSAL bir izindir
+          // ('platform:parameter:manage') ve sayfa içinde kontrol edilir (#147).
+          meta: { permissions: ['salary:parameter:view'] },
         },
 
         // İşletme Değerlendirmeleri
@@ -175,6 +230,14 @@ const router = createRouter({
         },
 
         // İşletme Dağıtımı
+        // İşletme Saat Ayarları — dağıtımın ön koşulu (saat takdiri + harita)
+        {
+          path: 'coordination/business-hours',
+          name: 'BusinessHours',
+          component: () => import('pages/coordination/BusinessHoursPage.vue'),
+          meta: { permissions: ['department:distribution:manage'] },
+        },
+
         {
           path: 'coordination/assignments',
           name: 'BusinessAssignment',
@@ -187,6 +250,16 @@ const router = createRouter({
           path: 'coordination/workload-config',
           name: 'WorkloadConfig',
           component: () => import('pages/coordination/WorkloadConfigPage.vue'),
+          meta: { permissions: ['department:distribution:manage'] },
+        },
+
+        // Kurum Koordinasyon Yapılandırması (#134)
+        // Görme yetkisi burada; DEĞİŞTİRME ayrı bir izindir
+        // (`institution:coordination-config:manage`) ve sayfa içinde kontrol edilir (#130).
+        {
+          path: 'coordination/config',
+          name: 'CoordinationConfig',
+          component: () => import('pages/coordination/CoordinationConfigPage.vue'),
           meta: { permissions: ['department:distribution:manage'] },
         },
 
@@ -214,12 +287,13 @@ const router = createRouter({
           meta: { permissions: ['internship:report:manage'] },
         },
 
-        // Dönem Notu Girişi (işletme)
+        // Dönem Notu Girişi — işletmede staj (işletme) + okulda staj (okul, #171).
+        // Sayfa hangi sekmeleri göstereceğine izne bakarak karar verir.
         {
           path: 'term-grades',
           name: 'TermGradeEntry',
           component: () => import('pages/coordination/TermGradeEntryPage.vue'),
-          meta: { permissions: ['company:grade:enter'] },
+          meta: { permissions: ['company:grade:enter', 'institution:school-grade:enter'] },
         },
 
         // Dönem Not Fişleri (koordinatör/okul)

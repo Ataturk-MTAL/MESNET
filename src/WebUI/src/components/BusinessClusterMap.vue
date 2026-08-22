@@ -1,7 +1,10 @@
 <template>
   <div class="cluster-map-wrapper">
     <!-- Küme Özeti Chips -->
-    <div v-if="clusterSummary.length > 0" class="row q-gutter-xs q-mb-sm">
+    <div
+      v-if="clusterSummary.length > 0"
+      class="row q-gutter-xs q-mb-sm"
+    >
       <q-chip
         v-for="c in clusterSummary"
         :key="c.id ?? -1"
@@ -12,7 +15,14 @@
       >
         {{ c.id === null ? 'Tekil' : `Küme ${c.id + 1}` }}: {{ c.count }} işletme
       </q-chip>
-      <q-chip v-if="selectedRoute" dense color="blue-7" text-color="white" icon="route" size="sm">
+      <q-chip
+        v-if="selectedRoute"
+        dense
+        color="info"
+        text-color="white"
+        icon="route"
+        size="sm"
+      >
         {{ selectedRoute.distanceKm.toFixed(1) }} km · {{ formatDuration(selectedRoute.durationSec) }}
       </q-chip>
       <q-btn
@@ -23,8 +33,12 @@
         icon="close"
         size="xs"
         color="grey-6"
+        class="clear-route-btn"
+        aria-label="Rota seçimini temizle"
         @click="clearRoute"
-      />
+      >
+        <q-tooltip>Rota seçimini temizle</q-tooltip>
+      </q-btn>
     </div>
 
     <!-- Harita -->
@@ -84,13 +98,23 @@
         >
           <l-popup>
             <div style="min-width: 180px">
-              <div class="text-weight-bold q-mb-xs">{{ biz.businessName }}</div>
-              <div v-if="biz.district" class="text-caption text-grey-7">{{ biz.district }}</div>
+              <div class="text-weight-bold q-mb-xs">
+                {{ biz.businessName }}
+              </div>
+              <div
+                v-if="biz.district"
+                class="text-caption text-grey-7"
+              >
+                {{ biz.district }}
+              </div>
               <q-separator class="q-my-xs" />
               <div class="text-caption">
                 <span class="text-grey-6">Alan:</span> {{ biz.branchName }}
               </div>
-              <div v-if="biz.distanceToSchoolKm != null" class="text-caption">
+              <div
+                v-if="biz.distanceToSchoolKm != null"
+                class="text-caption"
+              >
                 <span class="text-grey-6">Uzaklık:</span> {{ biz.distanceToSchoolKm.toFixed(1) }} km
               </div>
               <div class="text-caption">
@@ -98,14 +122,26 @@
               </div>
               <div class="text-caption">
                 <span class="text-grey-6">Verilebilir Maks:</span>
-                <strong class="text-green-8">{{ biz.maxCoordinationHours }} saat</strong>
+                <strong class="text-positive-strong">{{ biz.maxCoordinationHours }} saat</strong>
               </div>
               <q-separator class="q-my-xs" />
-              <div v-if="biz.isAssigned" class="text-caption text-positive">
-                <q-icon name="check_circle" size="12px" /> {{ biz.assignedTeacherName }}
+              <div
+                v-if="biz.isAssigned"
+                class="text-caption text-positive"
+              >
+                <q-icon
+                  name="check_circle"
+                  size="12px"
+                /> {{ biz.assignedTeacherName }}
               </div>
-              <div v-else class="text-caption text-negative">
-                <q-icon name="warning" size="12px" /> Atanmamış
+              <div
+                v-else
+                class="text-caption text-negative"
+              >
+                <q-icon
+                  name="warning"
+                  size="12px"
+                /> Atanmamış
               </div>
               <div class="text-caption text-grey-6 q-mt-xs">
                 {{ biz.clusterId === null ? 'Tekil nokta' : `Küme ${biz.clusterId + 1}` }}
@@ -113,7 +149,32 @@
               <!-- Takdir edilen saat girişi -->
               <template v-if="editable">
                 <q-separator class="q-my-xs" />
-                <div class="row items-center q-gutter-xs">
+                <q-toggle
+                  :model-value="isHonoraryVisit(biz.businessId)"
+                  dense
+                  size="sm"
+                  color="primary"
+                  :label="HONORARY_LABEL"
+                  :aria-label="`${biz.businessName} — fahri (ücretsiz) ziyaret`"
+                  @update:model-value="v => emit('update:honorary', biz.businessId, v)"
+                >
+                  <q-tooltip>{{ HONORARY_HINT }}</q-tooltip>
+                </q-toggle>
+                <!-- Fahri satırda saat girişi yok: değer tanım gereği 0 (#115) -->
+                <div
+                  v-if="isHonoraryVisit(biz.businessId)"
+                  class="text-caption q-mt-xs"
+                >
+                  <q-badge
+                    color="neutral-soft"
+                    text-color="neutral-strong"
+                    label="Fahri — 0 saat"
+                  />
+                </div>
+                <div
+                  v-else
+                  class="row items-center q-gutter-xs"
+                >
                   <q-input
                     :model-value="getPopupHours(biz.businessId)"
                     type="number"
@@ -133,10 +194,21 @@
                     icon="check"
                     color="positive"
                     size="sm"
+                    aria-label="Koordinasyon saatini kaydet ve kapat"
                     @click.stop="savePopupHours(biz.businessId)"
                   >
                     <q-tooltip>Kaydet ve kapat</q-tooltip>
                   </q-btn>
+                </div>
+              </template>
+              <template v-else-if="isHonoraryVisit(biz.businessId)">
+                <div class="text-caption">
+                  <span class="text-grey-6">Takdir Edilen:</span>
+                  <q-badge
+                    color="neutral-soft"
+                    text-color="neutral-strong"
+                    label="Fahri — 0 saat"
+                  />
                 </div>
               </template>
               <template v-else-if="assignedHours[biz.businessId]">
@@ -172,6 +244,8 @@ import { LMap, LTileLayer, LMarker, LIcon, LPopup, LCircleMarker, LPolyline } fr
 import type { BusinessClusterDto } from 'src/api/coordination'
 import type { GeoLocation } from 'src/api/institution'
 import { SCHOOL_ICON_URL } from 'src/utils/mapConstants'
+import { clusterColor } from 'src/utils/clusterColors'
+import { HONORARY_LABEL, HONORARY_HINT } from 'src/utils/coordinationHours'
 
 interface RouteState {
   businessId: string
@@ -185,17 +259,31 @@ const props = withDefaults(defineProps<{
   schoolLocation: GeoLocation | null
   height?: string
   assignedHours?: Record<string, number>
+  /** İşletme → fahri (ücretsiz) ziyaret işareti; düzenleme sayfasının canlı state'i (#115) */
+  honoraryVisits?: Record<string, boolean>
   editable?: boolean
 }>(), {
   height: '500px',
   schoolLocation: null,
   assignedHours: () => ({}),
+  honoraryVisits: () => ({}),
   editable: false,
 })
 
 const emit = defineEmits<{
   'update:hours': [businessId: string, hours: number]
+  'update:honorary': [businessId: string, value: boolean]
 }>()
+
+/**
+ * Fahri işareti: önce sayfanın kaydedilmemiş state'i, yoksa sunucudan gelen değer.
+ * Sayfa haritayı kaydedilmemiş düzenlemelerle birlikte gösterir.
+ */
+function isHonoraryVisit(businessId: string): boolean {
+  const edited = props.honoraryVisits[businessId]
+  if (edited !== undefined) return edited
+  return props.businesses.find((b) => b.businessId === businessId)?.isHonoraryVisit === true
+}
 
 // ── Popup saat düzenleme ──
 const popupHoursInput = ref<Record<string, number>>({})
@@ -219,21 +307,9 @@ function savePopupHours(businessId: string) {
   }
 }
 
-// ── Renk Paleti ──
-const CLUSTER_PALETTE = [
-  '#1E88E5', '#43A047', '#FB8C00', '#E53935', '#8E24AA',
-  '#00ACC1', '#F4511E', '#6D4C41', '#00897B', '#C0CA33',
-  '#3949AB', '#D81B60', '#039BE5', '#7CB342', '#FFB300',
-  '#5E35B1', '#0097A7', '#2E7D32', '#BF360C', '#4527A0',
-]
-const NOISE_COLOR = '#9E9E9E'
-
-function clusterColor(clusterId: number | null): string {
-  if (clusterId === null) return NOISE_COLOR
-  return CLUSTER_PALETTE[clusterId % CLUSTER_PALETTE.length] ?? NOISE_COLOR
-}
-
 // ── Küme Özeti ──
+// Renk paleti `utils/clusterColors.ts`'te: özet çipleri ile marker'lar aynı
+// kaynaktan boyanır, küme özetini de yalnız bu bileşen basar (#110).
 const clusterSummary = computed(() => {
   const map = new Map<number | null, number>()
   for (const b of props.businesses) {
@@ -346,5 +422,11 @@ function formatDuration(seconds: number): string {
 <style scoped>
 .cluster-map-wrapper {
   width: 100%;
+}
+
+/* Dokunma hedefi WCAG 2.2 SC 2.5.8 (24x24 CSS px) — size="xs" görsel olarak küçük kalıyor. */
+.clear-route-btn {
+  min-width: 24px;
+  min-height: 24px;
 }
 </style>

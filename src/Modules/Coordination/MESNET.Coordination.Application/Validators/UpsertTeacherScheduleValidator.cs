@@ -12,6 +12,5 @@ public class UpsertTeacherScheduleValidator : AbstractValidator<UpsertTeacherSch
         RuleFor(x => x.AcademicYear).GreaterThan(0).WithMessage("Geçerli bir öğretim yılı belirtilmelidir.");
         RuleFor(x => x.Semester).NotEmpty().WithMessage("Dönem belirtilmelidir.");
         RuleFor(x => x.WeeklySchedule).NotEmpty().WithMessage("Haftalık program belirtilmelidir.");
-        RuleFor(x => x.UpdatedBy).NotEmpty().WithMessage("Güncelleyen kişi belirtilmelidir.");
     }
 }

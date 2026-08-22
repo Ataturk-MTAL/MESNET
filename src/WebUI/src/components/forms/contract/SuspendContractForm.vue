@@ -1,15 +1,26 @@
 <template>
-  <FormDialog v-model="open" title="Sözleşmeyi Askıya Al" icon="pause_circle" color="orange" width="420px" save-label="Askıya Al" :saving="saving" @save="handleSave">
-        <q-input
-          v-model="form.reason"
-          label="Askıya alma gerekçesi"
-          outlined
-          type="textarea"
-          :rows="3"
-          autogrow
-        >
-          <template #prepend><q-icon name="notes" /></template>
-        </q-input>
+  <FormDialog
+    v-model="open"
+    title="Sözleşmeyi Askıya Al"
+    icon="pause_circle"
+    color="warning"
+    width="420px"
+    save-label="Askıya Al"
+    :saving="saving"
+    @save="handleSave"
+  >
+    <q-input
+      v-model="form.reason"
+      label="Askıya alma gerekçesi"
+      outlined
+      type="textarea"
+      :rows="3"
+      autogrow
+    >
+      <template #prepend>
+        <q-icon name="notes" />
+      </template>
+    </q-input>
   </FormDialog>
 </template>
 

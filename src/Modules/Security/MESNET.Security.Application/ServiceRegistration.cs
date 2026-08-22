@@ -20,6 +20,10 @@ public static class ServiceRegistration
         });
         services.AddScoped<IUserPermissionProvider, UserPermissionProvider>();
 
+        // Açılışta realm'in depodaki tanımdan sapmadığını doğrular (#195). Realm import tek
+        // seferlik olduğu için sapmayı görebilecek tek yer, realm'e gerçekten bağlanan süreçtir.
+        services.AddHostedService<RealmVerificationHostedService>();
+
         return services;
     }
 }

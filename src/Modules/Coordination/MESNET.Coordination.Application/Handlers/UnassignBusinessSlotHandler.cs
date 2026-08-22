@@ -1,7 +1,10 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
+using MESNET.Coordination.Application.Helpers;
+using MESNET.Coordination.Application.Security;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.ReadModels;
 using MESNET.Coordination.Shared.Events;
@@ -13,13 +16,20 @@ public static class UnassignBusinessSlotHandler
     public static async Task Handle(
         UnassignBusinessSlot command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
-        var view = await session.LoadAsync<BusinessCoordinationView>(
-            command.BusinessId, cancellationToken);
+        var view = await CoordinationViewLookup.LoadBranchRowAsync(
+            session, command.BusinessId, command.BranchCode, command.AcademicPeriodId, cancellationToken);
 
         if (view is null)
-            throw new DomainException(CoordinationErrors.BusinessNotFound(command.BusinessId));
+        {
+            throw new DomainException(
+                CoordinationErrors.BusinessBranchNotFound(command.BusinessId, command.BranchCode));
+        }
+
+        // Kapsam çözümlenmiş satırdan okunur (#126) — bkz. BranchScopeGuard.
+        BranchScopeGuard.EnsureCanWrite(currentUser, view.BranchCode);
 
         if (!view.AssignedTeacherId.HasValue)
             throw new DomainException(CoordinationErrors.BusinessNotAssigned(command.BusinessId));
@@ -62,7 +72,8 @@ public static class UnassignBusinessSlotHandler
         view.History.Insert(0, new AssignmentHistoryEntry(
             DateTime.UtcNow,
             isFullUnassign ? "Unassigned" : "SlotRemoved",
-            command.UnassignedBy,
+            // Aktör token'dan gelir, istekten DEĞİL (#137).
+            currentUser.GetUserId(),
             teacherName,
             command.Day,
             command.PeriodNumber,
@@ -71,7 +82,7 @@ public static class UnassignBusinessSlotHandler
                 ? $"{teacherName} öğretmenden atama kaldırıldı"
                 : $"{command.Day} {command.PeriodNumber}. saat kaldırıldı"));
         view.LastModifiedAt = DateTime.UtcNow;
-        view.LastModifiedBy = command.UnassignedBy;
+        view.LastModifiedById = currentUser.GetUserId();
 
         session.Store(view);
     }
@@ -98,7 +109,7 @@ public static class UnassignBusinessSlotHandler
         var dailySchedule = schedule.WeeklySchedule.FirstOrDefault(d => d.Day == day);
         var slot = dailySchedule?.Periods.FirstOrDefault(p => p.PeriodNumber == slotPeriodNumber);
 
-        if (slot is not null && slot.AssignedBusinessId == view.Id)
+        if (slot is not null && slot.AssignedBusinessId == view.BusinessId)
         {
             slot.AssignedBusinessId = null;
 
@@ -108,7 +119,9 @@ public static class UnassignBusinessSlotHandler
                     d.Day.ToString(),
                     d.Periods.Select(p => new PeriodSlotData(p.PeriodNumber, p.Status.Name, p.CourseName, p.AssignedBusinessId)).ToList()
                 )).ToList(),
-                "system",
+                // Slot temizliği atama kaldırmanın yan etkisidir, ayrı bir kullanıcı
+                // eylemi değil — sistem damgası (Guid.Empty) bilinçlidir (#137).
+                Guid.Empty,
                 DateTime.UtcNow);
 
             session.Events.Append(schedule.Id, updateEvent);

@@ -97,15 +97,27 @@ PASİF → KAPATILMIŞ (kalıcı kapatma)
 
 ### 4.3 Dijital Onay Zinciri
 
-Fesih kararı şu sırayla dijital onay gerektirir:
+Fesih kararı **sırayla** şu dijital onayları gerektirir:
 
-1. **Öğrenci velisi** (18 yaş altı öğrenciler için zorunlu)
-2. **Koordinatör öğretmen**
-3. **Müdür yardımcısı**
-4. **Müdür**
-5. **İşletme yetkilisi**
+1. **Koordinatör öğretmen**
+2. **Müdür yardımcısı**
+3. **Müdür** — müdür onayında fesih **tamamlanır**
 
-**Takılma Kuralı:** Onay zinciri takılırsa (veli veya öğretmen onaylamıyorsa), yetkili müdür yardımcısı override yetkisiyle formu onaylayıp ıslak imzaya gönderebilir.
+**Veli ve işletme yetkilisi bu zincirde yoktur.** Onlar fesih **talep eder**, onaylamaz:
+
+| Talebi açan | Zincir |
+| --- | --- |
+| İşletme yetkilisi ya da veli | koordinatör öğretmen → müdür yardımcısı → müdür |
+| Okul (tek taraflı fesih) | koordinatör öğretmen **talep eder**, müdür yardımcısı → müdür onaylar |
+
+Her iki durumda da onaycı üçlüsü aynıdır; değişen yalnız talebi kimin açtığıdır ve o bilgi
+`RequestedBy`/`ReasonType` ile kaydedilir.
+
+**Sıra zorunludur:** müdür yardımcısı, koordinatör öğretmen onaylamadan onaylayamaz. Sırası
+gelmemiş adım denenirse istek reddedilir (422) ve hata mesajı hangi adımın beklendiğini söyler.
+
+**Takılma Kuralı:** Onay zinciri takılırsa yetkili müdür yardımcısı override yetkisiyle
+(gerekçe zorunlu) formu onaylayıp ıslak imzaya gönderebilir.
 
 ### 4.4 Islak İmza Süreci
 
@@ -117,8 +129,24 @@ Fesih kararı şu sırayla dijital onay gerektirir:
 
 ### 4.5 Fesih Sonrası
 
-- Feshedilen stajyerin yeni işletmeye yerleştirilmesi Internship saga tarafından koordine edilir
-- `InternshipReplacementRequested` event'i → Enrollment modülü yeni eşleştirme yapar
+Fesih kesinleştiği anda (müdür onayı ya da override) öğrenci **otomatik olarak okula alınır**:
+
+- Eski yerleştirme `Fesih Yapıldı` (`Cancelled`) durumuna geçer
+- Yerine **işverensiz** (okulda staj, #159) bir yerleştirme açılır — aynı alan ve akademik dönem
+- Öğrenci **alan şefinin takibine** girer
+
+**Alan şefi yerleştirmeye kimlik olarak yazılmaz.** Alan şefliği `DepartmentHead` rolü +
+`branch_codes` kapsamıdır (#126); alan şefi bu yerleştirmeyi kendi branş kapsamından görür.
+
+**Alan şefine ek ücret yazılmaz.** Koordinasyon ücreti işletme başına hesaplanır; işverensiz
+yerleştirme hiç işletme üretmediği için ücret de doğmaz.
+
+Öğrenci dönem bitmeden yeni işletme bulamazsa alan şefi not ve devam/devamsızlık sürecini
+takip ederek dönemi tamamlatır. Yeni işletme bulunursa normal yerleştirme akışı işler —
+**doğrudan transfer yoktur**, fesih → yeni sözleşme zinciri geçerlidir.
+
+> Akış olayla taşınır: Internship `InternshipTerminationCompleted` yayınlar, Enrollment
+> tüketir. Modüller arası doğrudan çağrı yoktur.
 
 ---
 
@@ -162,10 +190,108 @@ Sistem, devamsızlık girişi yapılmak istenen tarihi `WorkCalendar` ile kontro
 
 **Yasal Dayanak:** MEB Ortaöğretim Kurumları Yönetmeliği Madde 36
 
-- Kurum yönetimi tarafından belirlenen devamsızlık limiti aşıldığında `AttendanceLimitExceeded` event'i tetiklenir
-- Bu event Internship saga tarafından yakalanır ve otomatik fesih süreci başlatılır
-- Özürsüz devamsızlık limiti: Kurum tarafından belirlenir (genellikle toplam iş günlerinin belirli bir yüzdesi)
-- Sağlık raporu ile belgelenen devamsızlıklar özürsüz devamsızlığa dahil edilmez
+**Limit kurum tarafından belirlenmez — mevzuat türevidir (#183).** Önceki metin "kurum
+belirler" diyordu, kod ise sabit `20` taşıyordu; ikisi de yanlıştı ve 20 hiçbir hükümle
+eşleşmiyordu.
+
+**Kural İKİ BOYUTLUDUR: eğitim türü × devamsızlık türü.** Md. 36 (5) örgün için **iki eşik
+birden** koyar; ikisi de ayrı ayrı bağlayıcıdır ve **hangisi önce dolarsa** fesih onunla
+tetiklenir.
+
+| Eğitim türü | Özürsüz | Toplam | Dayanak |
+| --- | --- | --- | --- |
+| **Örgün** | **10** gün | **30** gün | Md. 36 (5): *"Devamsızlık süresi **özürsüz 10 günü**, **toplamda 30 günü** aşan öğrenciler… başarısız sayılır"* |
+| **MESEM** | *(yok)* | **60** gün | Md. 36 (5): işletmede *"3308'e göre kullanabileceği **ücretli ve ücretsiz izin toplamından** fazla olamaz"* → 3308 md. 26: 1 ay ücretli + 1 aya kadar ücretsiz; SGK usulü 30 günlük ayla (§6.2.1) 30 + 30 |
+
+**Toplam ayak neden şart:** yalnız mazeretsizi saymak, **29 gün raporlu + 9 gün mazeretsiz**
+olan öğrenciyi sınırın *dışında* bırakır — oysa toplam ayağı çoktan dolmuştur.
+
+**MESEM'in özürsüz karşılığı bilerek YOKTUR.** Yönetmelik işletme eğitimini yalnız izin hakkı
+toplamıyla karşılaştırır, devamsızlık türüne bakmaz. Simetri uğruna oraya bir sayı koymak,
+mevzuatta karşılığı olmayan bir **fesih eşiği** yaratırdı.
+
+**Hangi tür hangi sayaca yazılır:** yalnız `Unexcused` mazeretsizdir. Sağlık raporu, mazeretli
+devamsızlık, ücretli ve ücretsiz izin **mazeretli** sayaca gider. Bu ayrım **ücret kesintisi**
+ayrımıyla (`AbsenceType.AffectsSalary`) karıştırılmamalı: ücretsiz izinde ücret kesilir ama
+devamsızlık mazeretsiz değildir — iki karar farklı hükümlerden gelir.
+
+**Hangi DURUMDAKİ kayıt sayılır (#252):** tür ekseni kaydın *hangi ayağa* yazılacağını söyler,
+durum ekseni *sayılıp sayılmayacağını*. **Onay bekleyen (`Pending`) kayıt fesih sayacına girmez;
+koordinatör öğretmen onayladığı anda girer.** İşletme yetkilisi, işletme İK ve usta öğretici
+devamsızlığı *bildirir* (`attendance:upload`) — hüküm öğretmenin onayıyla doğar.
+
+Bu, §6.2'nin ücret kesintisi için koyduğu kuralın aynısıdır (*"Yalnız **onaylanmış** kayıtlar
+sayılır — işletmenin girdiği ve henüz öğretmence onaylanmamış (`Pending`) devamsızlık öğrencinin
+ücretini kesmez"*) ve ikisi de tek bir ilkeden gelir: **giriş geniş, hüküm dar** (#172). Ödemeyi
+yapan taraf kendi kesintisini tek taraflı koyamıyorsa, sözleşmenin feshini de tek taraflı
+başlatamaz — oysa sayaç duruma bakmazken işletme, öğretmen hiç dokunmadan fesih onay zincirini
+başlatabiliyordu; **en ağır hüküm, hükmü olmayan girdiden çıkıyordu**.
+
+- **Kara liste, beyaz liste değil — yalnız `Pending` dışlanır.** `Recorded`, `Verified` ve
+  `Corrected` sayılır; tanınmayan ya da boş durum da **sayılır**. Beyaz liste
+  (`Recorded` + `Verified`) yazılsaydı `Corrected` sessizce sayaçtan düşerdi — düzeltilen kayıt
+  hâlâ geçerli bir devamsızlıktır ve `Corrected` durumu `Pending`'e geri dönmez; ileride eklenen
+  her yeni durum da aynı sessizlikle yutulurdu. Yön bu bölümün geri kalanıyla aynı: **eksik
+  veri sınırı gevşetemez**. Silinmiş (`IsDeleted`) kayıt her hâlükârda elenir.
+- **Sayan sorgu durum eksenine bakmak ZORUNDADIR — kalıcı kural.** Sayılabilir küme her
+  değiştiğinde sınır yeniden ölçülür: kayıt **girildiğinde**, **onaylandığında** ve
+  **düzeltildiğinde** (`AttendanceMarked` / `AttendanceApproved` / `AttendanceCorrected`).
+  Yalnız girişi dinlemek, `Pending` dışlamasıyla birleşince ters yönde bir açık açar: işletmenin
+  bildirdiği devamsızlık onaylandıktan sonra da **hiç sayılmaz** ve mevzuatın emrettiği fesih
+  **sessizce hiç tetiklenmez**. Düzeltme de sınırı doldurabilir; tür değişimi (mazeretli →
+  mazeretsiz) mazeretsiz ayağını 10 günde doldurur.
+- **Süzme bellekte yapılır, LINQ'te değil.** `StatusName`/`IsDeleted` alanları belgeye sonradan
+  eklendi; alanı taşımayan eski snapshot'ta SQL karşılaştırması `NULL` üretir ve satırı
+  **sessizce eler** — sayaç eksik kalır, limit hiç tetiklenmez. Küme bir öğrencinin bir eğitim
+  yılıdır: sınırlı ve seyrek okunur.
+- **Onay tek kapıdır — süre dolunca kendiliğinden onay YOKTUR.** §5.7'de tarif edilen otomatik
+  onay yazılmamıştır; `Pending` kayıt onaylanana kadar `Pending` kalır ve sayaca hiç girmez.
+
+Durum ekseninin kararı tek yerdedir ve testle kilitlidir: `AttendanceCounterScope.CountsTowardLimit`
+ile `AttendanceCounterScope.Tally`.
+
+**Sayılar PARAMETRİKTİR — mevzuat değişirse kod değişmez.** Yürürlükteki değerler
+`AttendanceLimitConfig` belgesinden gelir; kodda duran sabitler yalnız **başlangıç
+değerleridir** (kayıt hiç girilmemişken kullanılır).
+
+| Uç | İzin |
+| --- | --- |
+| `GET /api/attendance/config/absence-limits` | `attendance:view` — okul rolleri hangi sınıra göre çalıştıklarını **görür** |
+| `PUT /api/attendance/config/absence-limits` | `platform:parameter:manage` — **hiçbir okul rolünde yoktur** |
+
+Belge kiracı damgası **taşımaz** (`DocumentTenancyMap` → `Shared`): sınır md. 36'dan türer, okul
+başına değişemez. Asgari ücretin aksine **sürüm geçmişi yoktur** — sınır devamsızlık girildiği
+*an* değerlendirilir, geriye dönük hesap yoktur.
+
+> **Bozuk yapılandırma sınırı kaldırmaz.** 0 ya da negatif değer "her öğrenci ilk devamsızlıkta
+> feshedilir" demek olurdu; hem yazma ucu reddeder (422) hem politika başlangıç değerine düşer.
+> #151'in yeter sayı eşiğinde aynı tuzak aynı gerekçeyle kapatılmıştı.
+
+Karar `AttendanceLimitPolicy` içindedir ve testle kilitlidir. Sınır aşılınca
+`AttendanceLimitExceeded` yayınlanır, Internship saga otomatik fesih sürecini başlatır —
+yönetmeliğin öngördüğü sonuçla aynı: *"sözleşmeleri fesih edilerek sigorta çıkışları yapılır"*.
+
+:::warning Bir bilinçli türetim
+**Örgün için işletme sınırı yönetmelikte YOK.** Md. 36 (5) okul devamını düzenliyor; örgün
+öğrencinin işletmedeki devamsızlığı için ayrı hüküm getirilmemiş. Fıkranın **iki ayağı da**
+(özürsüz 10 / toplam 30) işletme devamsızlığına uygulandı.
+
+*(Önceki metinde ikinci bir türetim daha vardı: "MESEM sınırı toplam devamsızlığa konmuş, sayaç
+yalnız mazeretsizi sayıyor." Bu artık geçersiz — sayaç iki boyutu da tutuyor ve MESEM ayağı
+doğru sayaca, toplama bağlandı.)*
+:::
+
+> **Sahibin verdiği "6 gün" bu sınır değildir.** O, md. 36'nın **teorik ders** için koyduğu
+> *"devam etmesi gereken sürenin altıda biri"* kuralının, haftada bir gün okulu olan MESEM
+> öğrencisinde ~36 ders gününe uygulanmasıyla çıkar. Teorik ders devamı **okul** devamıdır ve
+> bu sistemin ölçtüğü şey değildir (e-Okul'un alanı).
+
+- **Eksik veri sınırı gevşetmez:** eğitim türü bilinmiyorsa örgün sayılır, yani daha düşük eşik
+- **Kayıp yetenek:** md. 36 (4) işletme devamsızlığında **5., 15. ve 25.** günlerde yasal
+  temsilciye ve işletmeye bildirim zorunlu kılıyor; sistemde kademeli bildirim yok, yalnız
+  eşikte fesih var
+- Sağlık raporu ile belgelenen devamsızlıklar **özürsüz** sayaca dahil edilmez — ama **toplam**
+  sayaca girer ve 30 günlük ayağı doldurabilir
 
 ### 5.4 İşletmede Mesleki Eğitim Süreleri
 
@@ -178,6 +304,38 @@ Sistem, devamsızlık girişi yapılmak istenen tarihi `WorkCalendar` ile kontro
   - Günde **8 saati** geçemez
   - Saat **22:00'yi** geçemez
 - Yoğunlaştırılmış eğitimde haftalık azami çalışma saatini geçmemek şartıyla **haftada 6 gün** planlanabilir (veli/öğrenci isteği gerekli)
+
+### 5.4b Kademeli Bildirim — md. 36 (4) *(#247)*
+
+İşletmede mesleki eğitimde devamsızlığın **5., 15. ve 25.** gününde **veliye ve işletmeye**
+yazılı bildirim yapılır; **18 yaşından büyük** öğrencide **öğrencinin kendisine de**. Fıkranın
+amacı ailenin, §5.3'teki fesih gelmeden önce durumu öğrenmesidir.
+
+**Bu bir TEBLİGAT gereğidir, hüküm değil.** Fesih zinciriyle (md. 36 (5)) aynı sayaçtan beslenir
+ama ayrı sonuç doğurur ve ayrı yoldan yürür.
+
+- **İki ayak AYRI takip edilir.** Hem **mazeretsiz** hem **toplam** devamsızlık için ayrı kademe
+  ve ayrı bildirim. Yalnız mazeretsiz sayılsaydı, raporlu ve mazeretli günlerle 25 günü geçen
+  öğrencinin ailesi hiç uyarılmazdı — oysa toplam ayak 30'da fesih getiriyor (§5.3).
+- **Aynı kademe iki kez bildirilmez.** Sayaç dönem içinde sıfırlanmadığı için, defter olmasa
+  eşik dolduktan sonraki **her** kayıt/onay aynı bildirimi yeniden üretirdi. Defter:
+  `AbsenceNotificationLog`, öğrenci + dönem başına tek satır, ayak başına tek monoton kademe.
+- **Sıçramada yalnız EN YÜKSEK kademe bildirilir.** Haftalık toplu giriş ya da biriken kayıtların
+  toplu onayı sayacı bir hamlede birden çok kademeden geçirebilir. 27 günü olan öğrenciye
+  5/15/25'in üçünü birden göndermek gürültüdür ve 5. gün uyarısı o noktada anlamsızdır.
+  Atlananlar kayda geçer (`SkippedSteps`), böylece tebligatta *"5. ve 15. gün bildirimleri
+  zamanında yapılamadı"* bilgisi görünebilir.
+- **Kademe GERİ ALINMAZ.** Sayaç düzeltme, silme ya da sağlık raporu onayıyla düşebilir; yapılmış
+  bir tebligat yapılmamış sayılamaz. Sayaç düşüp yeniden aynı kademeye çıkarsa ikinci bildirim
+  gitmez.
+- **Doğum tarihi bilinmiyorsa öğrenciye DE gönderilir.** `StudentProfile.BirthDate` nullable ve
+  kayıtta zorunlu değil — bilinmeyen doğum tarihi kenar durum değil, yaygın hâl. Gönderme yönü
+  güvenlidir: veli ve işletme ayakları koşulsuzdur, öğrenci ayağı yalnız bir alıcı **ekler**.
+- **Kademeler (5/15/25) sabittir**, parametrik değil: sayı doğrudan fıkranın lafzıdır ve okul
+  başına değişmez. §5.3'ün parametrik yaptığı şey *sınırlardı*; burada sayı hükmün kendisidir.
+
+Karar tek yerde: `AbsenceNotificationPolicy`. Teslimat (uygulama içi bildirim, e-posta ve
+koordinatör isterse yazdırılabilir tebligat belgesi) ayrı bir katmandır.
 
 ### 5.5 Devamsızlık Girişi Yetkilendirme Kuralları
 
@@ -202,6 +360,13 @@ Her devamsızlık kaydı, aktif `InternshipPlacement`'taki öğrenci-işletme e�
 - **Koordinatör öğretmen** devamsızlık girdiğinde → doğrudan `Recorded` (onay gerekmez)
 - **Kurum müdürü/personeli** devamsızlık girdiğinde → doğrudan `Recorded`
 
+> **`Pending` durumunun hükmü yoktur (#252).** Onay bekleyen kayıt ne **ücret kesintisine**
+> girer (§6.2) ne de **fesih sayacına** (§5.3). Öğretmen onayladığı anda ikisine birden girer —
+> ve eşik tam o anda dolabileceği için onay, devamsızlık sınırını yeniden ölçtürür (öğretmen
+> haftanın biriken bildirimlerini toplu onayladığında bu sıradan bir durumdur). Süre dolunca
+> kendiliğinden onay **yoktur** (§5.7): onaylanmayan kayıt süresiz `Pending` kalır ve hiçbir
+> hüküm doğurmaz.
+
 #### Backend Doğrulama Zinciri
 
 1. Akademik dönem aktif mi? (`AcademicPeriodView`)
@@ -221,15 +386,33 @@ Her devamsızlık kaydı, aktif `InternshipPlacement`'taki öğrenci-işletme e�
 
 **Hata kodu:** `ATTENDANCE_OUTSIDE_CURRENT_WEEK`
 
-### 5.7 Otomatik Onay ve Uyarı Mekanizması
+### 5.7 Otomatik Onay ve Uyarı Mekanizması *(planlanan — UYGULANMADI)*
 
-İşletme tarafından girilen ancak koordinatör öğretmen tarafından **7 gün içinde onaylanmamış** devamsızlık kayıtları (`Pending` durumunda) için:
+:::danger Bu bölüm planı anlatır, bugünkü davranışı değil
+`AutoApproveExpiredAttendance` **kodda yazılmamıştır** — ne komut, ne zamanlanmış iş, ne de
+bildirim vardır. Aşağıdaki 7 günlük mekanizma bir **tasarım kararıdır ve uygulanmayı bekler**.
+Bölüm plan olarak duruyor; bugünkü davranış diye okunmamalıdır.
+
+**Bugünkü davranış:** onay bekleyen (`Pending`) kayıt **süresiz bekler**. Kendiliğinden
+`Recorded`'a geçmez, müdür yardımcısına bildirim gitmez, gecikme kayıt altına alınmaz. Yani
+**koordinatör öğretmenin onayı, fesih sayacının (§5.3) ve ücret kesintisinin (§6.2) tek
+kapısıdır**: öğretmen onaylamazsa işletmenin bildirdiği devamsızlık ne ücreti keser, ne feshi
+tetikler, ne de zaman aşımıyla hükme dönüşür.
+
+Bu, işletmenin tek taraflı hüküm doğurmasını engeller (#172 — giriş geniş, hüküm dar), ama
+karşılığında **ihmalle sessizce kaybolan devamsızlık** riskini açık bırakır: onaylanmayan
+bildirim mevzuatın emrettiği fesih eşiğine hiç ulaşmaz. Mekanizma yazılana kadar bekleyen
+kayıtların takibi **elle** yapılır — panodaki "Bekleyen İşlem" kartı `Pending` devamsızlıkları
+sayar.
+:::
+
+**Planlanan mekanizma:** İşletme tarafından girilen ancak koordinatör öğretmen tarafından **7 gün içinde onaylanmamış** devamsızlık kayıtları (`Pending` durumunda) için:
 
 1. **7. günün başlangıcında** (UTC 00:00) kayıt otomatik olarak `Recorded` durumuna geçirilir
 2. İlgili **müdür yardımcısına** bildirim gönderilir: "X öğrencisinin Y tarihli devamsızlığı otomatik onaylandı — koordinatör öğretmen tarafından zamanında onaylanmadı"
 3. Geç bildirim durumu kayıt altına alınır
 
-**Teknik:** Wolverine durable scheduled messaging ile günlük çalışan `AutoApproveExpiredAttendance` komutu
+**Planlanan teknik:** Wolverine durable scheduled messaging ile günlük çalışan `AutoApproveExpiredAttendance` komutu — **henüz yazılmadı**. Yazıldığında otomatik onayın da sınırı yeniden ölçtürmesi gerekir (§5.3): onay, kaydı fesih sayacına **sokan** olaydır.
 
 ---
 
@@ -239,25 +422,174 @@ Her devamsızlık kaydı, aktif `InternshipPlacement`'taki öğrenci-işletme e�
 
 ### 6.1 Taban Ücret Hesabı
 
-| İşletme Tipi | Oran | Formül |
-| ------------ | ---- | ------ |
-| 20+ personel çalıştıran | %30 | Net Asgari Ücret × 0.30 |
-| 20'den az personel çalıştıran | %15 | Net Asgari Ücret × 0.15 |
-| MEM 12. sınıf (kalfalık yeterliği) | %50 | Net Asgari Ücret × 0.50 |
+| Durum | Oran | Formül |
+| ----- | ---- | ------ |
+| Aday çırak / çırak | %30 | **Yaşına uygun** asgari ücret × 0.30 |
+| 20+ personel çalıştıran işletmede öğrenci | %30 | Yaşına uygun asgari ücret × 0.30 |
+| 20'den az personel çalıştıran işletmede öğrenci | %15 | Yaşına uygun asgari ücret × 0.15 |
+| MEM 12. sınıf (kalfalık yeterliği) | %50 | Yaşına uygun asgari ücret × 0.50 |
 
-> **Not:** Bu oranlar yasal asgari değerlerdir. İşletmeler daha yüksek ücret ödeyebilir.
+> **Yaşına uygun asgari ücret** (Madde 25; MEB Ortaöğretim Kurumları Yönetmeliği 6/a): 16
+> yaşından küçükler için ayrı (daha düşük) asgari ücret belirlenir. Sistemde
+> `SalaryCalculationConfig.MinimumWageUnder16` alanı tutulur; tanımlı değilse yaş ayrımı
+> yapılmaz ve genel asgari ücret uygulanır. Yaş, maaşın hesaplandığı aya göre bulunur.
+
+> **Aday çırak / çırak** oranı işletme büyüklüğünden **bağımsızdır**: Madde 25 "aday çırak ve
+> çırağa yaşına uygun asgari ücretin yüzde otuzundan ... aşağı ücret ödenemez" der. Kategori
+> öğrenci kaydında seçilir (`Öğrenci` / `Aday Çırak` / `Çırak`).
+
+> **Not:** Bu oranlar yasal asgari değerlerdir. Madde 25'in ilk cümlesi ücretin **sözleşmeyle**
+> tespit edileceğini söyler; yüzdeler yalnız alt sınırdır. Sistem sözleşmedeki aylık ücreti
+> (`Contract.AgreedMonthlyWage`) kaydeder ve yasal tabandan yüksekse onu esas alır; düşükse
+> tabanı öder. Devlet katkısı matrahı **yasal taban** olarak kalır (Geçici Madde 12:
+> "ödenebilecek en az ücret"), sözleşmedeki fazlası işveren payına eklenir.
+
+> **%50 oranının şartı:** Kanun "**kalfalık yeterliğini kazanan** mesleki eğitim merkezi
+> 12'nci sınıf öğrencileri" diyor. Yeterliği olmayan MESEM 12. sınıf öğrencisi işletme
+> büyüklüğü oranına (%15/%30) tabidir. Bilgi eksikse düşük oran uygulanır.
+
+> **Personel sayısı tanımı** (3308 Madde 24, son fıkra): "görev ve çalışma statüsüne
+> bakılmaksızın işyerinde **1475 sayılı İş Kanununa tabi olarak çalıştırılan** personel sayısı".
+> Stajyer ve çıraklar bu sayıya dâhil değildir — 4857 Madde 4/f çırakları İş Kanunu kapsamı
+> dışında bırakır. Sayı 20 eşiğini geçtiğinde öğrenci ücreti ikiye katlandığı için tanım
+> kritiktir.
 
 ### 6.2 Devamsızlık Kesintisi
 
 Özürsüz devamsızlık ve ücretsiz izin günlerinde ücret kesilir.
 
+> **Sayım iki eksenlidir ve kararı tek yerdedir (#255):** `AbsenceDeductionPolicy`.
+> **Tür** ekseni yalnız `Unexcused` ve `UnpaidLeave`'i keser; sağlık raporu, mazeretli
+> devamsızlık ve ücretli izin kesmez. **Durum** ekseni onay bekleyen (`Pending`) kaydı
+> saymaz — §5.5 ile aynı ilke.
+>
+> **Bilinmeyen tür SAYILMAZ.** Kesinti öğrenci aleyhine bir hükümdür ve tanınmayan veriden
+> doğamaz. Bu, devamsızlık *sınırının* (§5.3) yönünün bilerek tersidir: orada bilinmeyen durum
+> **sayılır**, çünkü orada eksik veri sınırı gevşetmemeli. Biri parayı keser, diğeri mevzuat
+> eşiğini korur.
+>
+> **Tutar, kesinti kümesi her değiştiğinde yeniden hesaplanır.** Devamsızlık girildiğinde,
+> **onaylandığında**, düzeltildiğinde, silindiğinde ve sağlık raporu onaylandığında.
+> Tetikleyici, sayacı güncelleyen tüketicinin **dönüşüdür** (`AbsenceTallyConsumer`) — ayrı bir
+> tüketici olamaz: aynı mesajı işleyen iki tüketici arasında sıra garantisi yoktur ve tetikleyici
+> önde koşarsa hesap bayat sayaç okur, "tutar değişmedi" deyip susar ve dönem bir daha hiç
+> tetiklenmez.
+>
+> **Dekont yüklendikten sonra tutar DONAR** (`Phase != AwaitingReceipt`): öğrenci, öğretmen ve
+> müdür yardımcısı onayladıkları rakamdan başkasını almamalı. O andan sonra gelen onay/düzeltme
+> tutarı değiştirmez.
+
 **Formül:**
 
 ```
-GünlükÜcret = AylıkTabanÜcret / 30
-KesintiBedeli = GünlükÜcret × MazeretsizDevamsızGünSayısı
-ÖdenecekÜcret = AylıkTabanÜcret - KesintiBedeli
+GünlükÜcret     = AylıkTabanÜcret / 30
+OranlıTabanÜcret = GünlükÜcret × İstihdamGünSayısı      (bkz. §6.2.1)
+KesintiBedeli   = GünlükÜcret × KesintiyeTabiGünSayısı
+ÖdenecekÜcret   = OranlıTabanÜcret - KesintiBedeli
 ```
+
+Kesinti **oranlanmış** tutardan düşer ve onu aşamaz — yarım ay çalışan öğrencinin ücreti
+negatife düşemez.
+
+### 6.2.1 İstihdam Günü Oranlaması (kısmi ay)
+
+Öğrenci ay ortasında işletme değiştirebilir (fesih → yeni sözleşme; doğrudan transfer yoktur).
+Bu durumda ücret ve devlet katkısı **her işletmede çalışılan gün oranında bölüşülür**:
+ayrılınan işletme fesih gününe kadar, yeni işletme sözleşme tarihinden ay sonuna kadar.
+
+**Gün sayımı — SGK usulü 30 günlük ay:**
+
+| Durum | İstihdam günü |
+| --- | --- |
+| Ay tam çalışıldı | **30** (ayın gün sayısına bakılmaz — Şubat da 30, Temmuz da 30) |
+| Ay eksik çalışıldı | **Fiilî gün** (iki uç dahil) |
+| Sözleşme ayla hiç kesişmiyor | 0 — maaş dönemi açılmaz |
+
+Devlet katkısı **aynı oranla** hesaplanır (§6.3'teki matrah oranlanır).
+
+> **Kabul edilen sonuç:** 31 günlük ayda bölüşme olduğunda gün toplamı 31 olur ve ödenen toplam
+> tabanı aşar (31/30). Kırpma yapılmaz; her işveren kendi istihdam günü için sabit günlük ücreti
+> öder. Kırpmanın hangi işletmeden düşeceği keyfî bir karar gerektirirdi.
+
+Maaş dönemi kimliği bu yüzden **(sözleşme, ay)** ikilisinden türetilir — (öğrenci, ay) olsaydı
+ayda tek dönem açılabilir ve iki işverenin yükümlülüğü tek kayda sıkışırdı.
+
+Karar kaydı ve gerekçe: issue #154.
+
+**Kesintiye tabi devamsızlık türleri** (`AbsenceType.AffectsSalary`):
+
+| Tür | Kesinti |
+| --- | ------- |
+| Mazeretsiz (`Unexcused`) | **Kesilir** |
+| Ücretsiz İzin (`UnpaidLeave`) | **Kesilir** |
+| Mazeretli (`Excused`) | Kesilmez |
+| Sağlık Raporu (`HealthReport`) | Kesilmez |
+| Ücretli İzin (`PaidLeave`) | Kesilmez |
+
+> Ücretli izin, MEB Ortaöğretim Kurumları Yönetmeliği'nde işletmenin yükümlülüğü olarak
+> tanımlıdır: telafi eğitimi ve okuldaki sınav günleri için, ayrıca ara tatil/yarıyıl/yaz
+> tatilinde toplam bir ay.
+
+> Yalnız **onaylanmış** kayıtlar sayılır — işletmenin girdiği ve henüz öğretmence onaylanmamış
+> (`Pending`) devamsızlık öğrencinin ücretini kesmez.
+
+**Türü seçen taraf, dolaylı olarak kesintiyi seçer (#175).** Bu yüzden tür girişinde iki kural
+vardır:
+
+1. **İşletme resmî izin veremez, yalnız devamsızlık bildirir.** İşletme tarafı (hüküm izni
+   `attendance:direct-entry` olmayan kullanıcı) yalnız **Mazeretsiz** girebilir. Mazeret, izin
+   ve sağlık raporu birer *sınıflandırma kararıdır* ve okul tarafındadır: mazeret veli
+   dilekçesiyle öğrenci işlerinde çözülür, sağlık raporu kendi onay zincirinden geçer (#172),
+   tür değişikliği `/correct` ile yapılır.
+2. **Ücretli izin hakkı yalnız MESEM'dedir.** Örgün eğitimde ücretli izin hakkı yoktur; o
+   günler için sağlık raporu ya da veli izni gerekir. Öğrencinin eğitim türü bilinmiyorsa
+   ücretli izin **reddedilir** — eksik veri sessizce para sonucu doğurmasın.
+
+### Ücretli izin doğrudan girilmez, başvurudan doğar (#177)
+
+MESEM'de ücretli izin bir devamsızlık türü seçimi değil, **iki taraflı onaydan geçen bir
+başvurudur**:
+
+```
+Öğrenci başvurur → İşletme onaylar → Okul (müdür yrd./müdür) onaylar → RESMİLEŞİR
+                                                                        ↓
+                                          o günler için Ücretli İzin devamsızlık kaydı açılır
+```
+
+- Herhangi bir adımda **ret** → başvuru kapanır, devamsızlık kaydı **açılmaz**. Öğrenci aynı
+  tarihler için yeniden başvurabilir.
+- Resmileşince tarih aralığındaki günler için kayıt açılır; **kurum takvimindeki kısıtlı günler
+  atlanır** ve devamsızlık girişindeki "yalnız bu hafta" kısıtı uygulanmaz (izin önceden
+  planlanır). O gün için zaten bir kayıt varsa türü ücretli izne **düzeltilir** — yoksa
+  onaylanmış izne rağmen kesinti sürerdi.
+- **Ücretli izin artık hiçbir uçtan doğrudan girilemez** — okul tarafı da giremez
+  (`POST /api/attendance` ve `/correct` reddeder). Türü seçmek doğrudan para kararı olduğu için,
+  doğrudan giriş açık kalsaydı iki taraflı onay tek komutla atlanabilirdi.
+- Koordinatör öğretmen zincirde adım tutmaz, **bildirim** alır (SSE
+  `attendance.paid-leave-approved`).
+- İşletmesiz yerleştirmede (okulda staj, #159) başvuru açılamaz: onaylayacak işveren yoktur ve
+  o öğrencinin ücreti de yoktur.
+
+> **İki taraflı onay permission ile garanti edilemez.** `InstitutionManager` her domain
+> wildcard'ını taşır; işletme adımının izni ona da gider. Adımı işletmeye bağlayan şey
+> **kapsam**tır: token'daki `business_id` claim'i başvurunun işletmesiyle eşleşmek zorundadır ve
+> okul rollerinde o claim yoktur. Ayrıca **işletme onayını veren kullanıcı okul onayını
+> veremez** — bir kişi iki rolü birden taşıyabilir. Ayrıntı: `actors/permissions.md`.
+
+**Sağlık raporu kesintiyi ancak ONAYLANDIĞINDA kaldırır (#172).** Rapor girişi bilinçli olarak
+geniştir: işletme yetkilisi, işletme İK, usta öğretici ve öğrenci de yükleyebilir. Ama yükleme
+tek başına devamsızlık türünü değiştirmez — koordinatör öğretmen onaylayana kadar tür ne ise
+kesinti ona göre işler. Aksi hâlde **ödemeyi yapan taraf kendi kesintisini tek taraflı
+kaldırabilirdi**.
+
+| Kim yükledi | Sonuç |
+|---|---|
+| İşletme yetkilisi, işletme İK, usta öğretici, öğrenci | `Pending` — tür değişmez, kesinti sürer |
+| Koordinatör öğretmen, müdür yardımcısı, müdür | Doğrudan geçerli — tür `HealthReport`, kesinti kalkar |
+
+Reddedilen rapor türü değiştirmez; kesinti aynen uygulanır. 2. adımda müdür yardımcısı / müdür
+kesinti kararını mevcut dekont onay zincirinde uygular. Ayrıntı:
+[İzin Matrisi → Sağlık Raporu Onay Zinciri](../actors/permissions.md).
 
 **Örnek:** 20+ personel işletmede, asgari ücret 22.104,67 TL ise:
 - Taban ücret = 22.104,67 × 0.30 = 6.631,40 TL
@@ -277,9 +609,119 @@ KesintiBedeli = GünlükÜcret × MazeretsizDevamsızGünSayısı
 **Hesaplama:**
 
 ```
-DevletKatkısı = ÖdenecekÜcret × DevletKatkısıOranı
-İşverenPayı = ÖdenecekÜcret - DevletKatkısı
+DevletKatkısı = AylıkTabanÜcret × DevletKatkısıOranı
+İşverenPayı   = ÖdenecekÜcret - DevletKatkısı
 ```
+
+> **Matrah taban ücrettir, ödenecek ücret değil.** Geçici Madde 12 katkıyı
+> "**ödenebilecek en az ücretin**" oranı olarak tanımlıyor — yani §6.1'deki yasal taban.
+> Devamsızlık kesintisi taban ücreti değil ödenecek ücreti düşürür; dolayısıyla kesinti
+> devlet katkısını azaltmaz, işveren payını azaltır.
+>
+> Oranlar tam kesirdir: `1/3` ve `2/3`. Yaklaşık değer (`0,3333` / `0,6667`) kullanılmaz.
+>
+> Kesintinin katkı matrahını düşürüp düşürmediği kanunda açık değil (Geçici Madde 12:
+> "usul ve esaslar Bakanlık ve Türkiye İş Kurumu tarafından belirlenir"). Uygulamada katkı,
+> fiilen ödenen ücretle sınırlandırılır — aksi halde işveren payı negatife düşerdi.
+
+**Katkının ödenmediği hâller:**
+
+| Hâl | Katkı | Ücret |
+| --- | --- | --- |
+| Kamu kurum/kuruluşu | **0** — Geçici Madde 12: "Kamu kurum ve kuruluşlarına Devlet katkısı ödenmez" | Değişmez |
+| Sınıf tekrarı (§6.3.1) | **0** | Değişmez |
+
+### 6.3.0 Okulda Staj — Ne Ücret Ne Katkı
+
+Staj yeri bulunamayan öğrenci stajını **okulda** yapar. Bu hâlde **ücret de devlet katkısı da
+ödenmez**; 3308 ikisini **ayrı ayrı** kapsam dışı tutuyor:
+
+| Kaynak | Kapsam dışı bıraktığı |
+| --- | --- |
+| **Madde 25**, ücret tabanı fıkrasının son cümlesi | İşletmenin ödeyeceği **ücret** |
+| **Geçici Madde 12**, aynı cümle | **Devlet katkısı** |
+
+> *"Staj yapacak işletme bulunamaması nedeniyle stajını okulda yapan ortaöğretim öğrencileri
+> ... bu fıkra hükmü kapsamı dışındadır."*
+
+**Temsil:** yerleştirmenin `BusinessId` alanı **null**, `PlacementType` = `School`. Kamu kurumu
+işareti (§6.3, `IsPublicInstitution`) bu hâlin çözümü **değildir** — o yalnız katkıyı sıfırlar,
+ücret yükümlülüğünü bırakır (dekont beklenir, gecikme uyarısı gider).
+
+**Sonuçları:**
+
+- Sözleşme kurulmaz → maaş dönemi açılmaz (dönemler sözleşmeden doğar, §6.2.1) → dekont ve
+  gecikme uyarısı doğmaz
+- Koordinasyon saati doğmaz: koordinasyon satırı (işletme, alan, dönem) üçlüsünden üretilir,
+  işletme olmadığı için satır hiç oluşmaz
+- **Staj sürer:** devamsızlık takibi, dönem notu ve mezuniyet akışı işlemeye devam eder
+- Öğrenciye **gözetmen** (alan ya da atölye şefi) atanabilir; bu atama **ücret doğurmaz**
+- İşletme başına üretilen raporlara (aylık devamsızlık, toplu belge) girmez
+
+Karar kaydı: issue #159.
+
+#### Dönem notunu okul girer, fiş üretilmez (#171)
+
+Dönem notu akışının her adımı işletmeye bağlıydı: uç `company:grade:enter` istiyor, işletme
+kimliği `business_id` claim'inden okunuyor, öğrenci listesi işletme kapsamlı görünümden
+geliyordu. Okulda staj yerleştirmesi o görünüme hiç girmediği için öğrenci not giriş ekranında
+**görünmüyor ve notu hiç girilemiyordu** — belirti ancak dönem sonunda "bu öğrencinin notu
+nerede" diye sorulduğunda çıkardı.
+
+| | İşletmede staj | Okulda staj |
+| --- | --- | --- |
+| Notu giren | İşletme yetkilisi | **Alan şefi, müdür yardımcısı, müdür** |
+| İzin | `company:grade:enter` | `institution:school-grade:enter` |
+| Kapsam | `business_id` claim'i | `institution_id` claim'i + okulda staj yerleştirmesi |
+| `StudentTermGrade.BusinessId` | Dolu | **null** |
+| Usta öğretici adı | Girilir | Alan yok (işletme kavramı) |
+| MEB Form 8 (Dönem Not Fişi) | Üretilir | **Üretilmez** |
+
+**Fiş neden üretilmez:** form "İşletmenin Adı" alanı ve iki işletme imzası (usta öğretici,
+işletme yetkilisi) taşır. Sahibin ifadesi: *"Okulda staj için ayrı form yok, hatta form yok
+genel olarak."* Not kaydı yalnız öğrencinin başarı değerlendirmesi için tutulur.
+
+Üretim yolu **üç katmanda** kapalıdır: okul gönderimi `StudentTermGradeSubmitted` olayını
+yayınlamaz (Reporting kayıttan haberdar olmaz), fiş listesi (`GET /submitted`) işletmesiz
+notları filtreler, ve fiş üretim handler'ı işverensiz yerleştirmeyi açık hatayla reddeder.
+
+**İki akış birbirinin üstüne yazamaz:** işletme ucu okulda staj notunu, okul ucu işletme notunu
+düzenleyemez/gönderemez — her iki yönde de ayrı hata döner.
+
+> **Önek notu (ADR-0001):** izin `institution:` öneklidir — okulda staj yapıldığında kurum
+> işverenin yerine geçer, bu kurumun işidir. Önek **kapsamı belirlemez**: "herkes kendi
+> kurumuna göre yetkilenir" kuralı `institution_id` claim'inden gelir ve izinden bağımsızdır.
+> `institution:*` yalnız müdürdedir; müdür yardımcısı ve alan şefi izni **açık satırla** alır.
+
+Karar kaydı: issue #171.
+
+### 6.3.1 Sınıf Yılı Başına Tek Katkı
+
+> Bir öğrenci belirli bir **sınıf yılı** için devlet katkısını **bir kez** alır. O sınıf yılı
+> tekrar edildiğinde katkı hesaplanmaz. Öğrenci katkı alınmamış bir sınıf yılına **terfi
+> ettiğinde** katkı yeniden işler.
+
+**Örnek:** 11. sınıfta kalan öğrenci, 11'i tekrar okuduğu yıl boyunca katkı almaz. 12. sınıfa
+geçtiğinde katkı yeniden başlar — 12 için henüz katkı alınmamıştır.
+
+- Kural **tüm öğrenciler** için geçerlidir, yalnız MESEM için değil
+- **Ücret etkilenmez.** Katkı işletmeye ödenir; öğrenci parasını işletmeden alır. Bloke, öğrencinin
+  ücretini değil **işveren payını** (`ÖdenecekÜcret − DevletKatkısı`) yükseltir. MESEM'de katkı en
+  az ücretin tamamı olduğu için işletmenin maliyeti sıfırdan tam ücrete çıkar
+- Katkı **fiilen ödendiğinde** (onay zinciri tamamlandığında) kaydedilir; reddedilen ödeme bloke
+  üretmez
+- Kayıt, katkının ilk alındığı **akademik dönemi** de tutar. Aynı dönemin sonraki ayları normal
+  işler; bloke yalnız sonraki bir dönemde aynı sınıf yılı görülünce doğar. Bu ayrım olmadan
+  öğrenci ilk yılının ikinci ayından itibaren katkısını kaybederdi
+- Katkısı bloke öğrenci **sözleşme kurulurken** uyarı olarak gösterilir — işletme maliyeti ayın
+  sonunda dekont gelirken öğrenmemelidir
+
+> **Mevzuat notu:** 3308 metninde sınıf tekrarına dair açık bir hüküm **yoktur**; Geçici Madde 12
+> usul ve esasları Bakanlık ve İŞKUR'a bırakıyor. Kural alan bilgisine dayanıyor — MEB genelgesi
+> veya İŞKUR usul ve esaslarından teyit alınması önerilir. Tasarım teyitten bağımsız olarak
+> doğrudur; teyit yalnız eşiğin yerini değiştirebilir.
+
+Karar kaydı ve gerekçe: issue #161.
 
 **İstisnalar:**
 
@@ -299,7 +741,25 @@ DevletKatkısı = ÖdenecekÜcret × DevletKatkısıOranı
 
 - İşletme her ayın **8'ine kadar** öğrenci banka hesabına ücret yatırır
 - Dekont her ayın **25'ine kadar** okula teslim edilir
-- Dekont onay zinciri: İşletme → Öğretmen → Kurum → Öğrenci onayı
+
+**Dekont onay zinciri** (sıra zorunludur, atlanırsa HTTP 422):
+
+| # | Aktör | İşlem | Faz (`PaymentPhase`) |
+|---|-------|-------|----------------------|
+| 1 | İşletme | Dekontu yükler | `ReceiptUploaded` |
+| 2 | **Öğrenci** | Parayı hesabına aldığını onaylar | `StudentConfirmed` |
+| 3 | Koordinatör öğretmen | Dekontu onaylar | `TeacherApproved` |
+| 4 | Müdür yardımcısı | Son onayı verir | `DeputyApproved` → `Completed` |
+
+Öğrenci onayı **ilk sırada** çünkü dekont, ödemenin *yapılmış olduğunun* belgesidir; paranın
+gerçekten hesaba geçtiğini doğrulayabilecek tek taraf öğrencidir. Okul tarafı (öğretmen, müdür
+yardımcısı) bu doğrulamadan önce onay verirse, kimsenin teyit etmediği bir ödemeyi onaylamış olur.
+
+Sıra saga (`PaymentSaga`) içindeki guard'larla ve üç handler'daki faz kontrolüyle zorlanır:
+`ConfirmSalaryHandler`, `ApproveReceiptByTeacherHandler`, `ApproveReceiptByDeputyHandler`.
+
+> Bu tabloda "müdür yardımcısı" denen aktör, eski metinde "Kurum" olarak geçiyordu — kodda
+> karşılığı `ReceiptApprovedByDeputy` / `PaymentPhase.DeputyApproved`'dır (#81).
 
 ---
 
@@ -687,3 +1147,47 @@ TASLAK → ZÜMRE_KARARI_ALINDI → MÜDÜR_ONAY_BEKLİYOR → ONAYLANDI / REDDE
 - Müdüre onay gönderilir
 - Müdür onaylarsa dağıtım aktifleşir ve öğretmen-işletme atamaları güncellenir
 - Müdür reddederse alan şefine geri döner, revize edilir
+
+## İşletme kapatma yeter sayısı (#151)
+
+İşletme kataloğu okullar arası **paylaşımlıdır**: bir okulun "bu işletme kapandı" kararı
+**bütün okulları** etkiler. Bu yüzden karar da birden çok okuldan gelmelidir.
+
+**Sayım farklı KURUM üzerinden yapılır, farklı kullanıcı üzerinden değil.** Aynı okuldan iki
+yetkili sayılsaydı tek okul kendi başına küresel kapatma yapabilir ve kuralın amacı boşa
+çıkardı. İkinci bildirim aynı kurumdan gelirse reddedilir (422).
+
+| Eşik | Anlam |
+| --- | --- |
+| `Business:ClosureQuorum` = 1 (varsayılan) | Faz 1 — tek bildirim kapatır, #151 öncesiyle **birebir aynı davranış** |
+| `Business:ClosureQuorum` = 2 | Çok okullu kurulum — iki farklı okul gerekir |
+
+Eşik 0 ya da negatif verilirse **1 kabul edilir**; aksi hâlde "hiç bildirim olmadan kapalı"
+anlamına gelir ve bütün katalog kapanırdı.
+
+### ⚠ Bilinçli asimetri — kapatma yeter sayı ister, açma istemez
+
+Yeniden açmayı **herhangi bir okuldan tek yetkili** yapabilir. Yani **iki okulun kararını tek
+okul geri alabilir.**
+
+Bu hata değildir: yanlış kapatılmış bir işletme, yanlış açık kalandan daha zararlıdır — kapalı
+işletme süzgeçten düşer, öğrenci yerleştirilemez, sözleşme yapılamaz. Sistem **açık kalmaya
+doğru** hata yapmalıdır.
+
+:::danger Bu kural silinirse biri bunu hata olarak açar
+Asimetri kod yorumlarında da duruyor (`BusinessClosurePolicy`, `BusinessStatus` geçiş tablosu).
+:::
+
+Açma bildirimleri **temizler**. Kalsalardı yeter sayı hâlâ dolu olur ve bir sonraki bildirimde
+işletme anında yeniden kapanırdı.
+
+`Kapalı` bu yüzden **terminal durum değildir** — `IsFinal` yalnız `Reddedildi` için doğrudur.
+
+### Geri çekme
+
+Okul **yalnız kendi** bildirimini geri çekebilir (`POST /api/businesses/{id}/close/retract`).
+Başka okulunkini kaldırabilseydi yeter sayı anlamsızlaşırdı: iki okulun kararını üçüncü okul tek
+başına bozardı.
+
+Yeter sayı bildirimlerden **hesaplandığı** için geri çekme sayıyı düşürür; eşiğin altına inerse
+işletme **kendiliğinden** açılır.

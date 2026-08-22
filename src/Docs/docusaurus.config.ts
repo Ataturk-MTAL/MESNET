@@ -8,11 +8,17 @@ const config: Config = {
   favicon: 'img/favicon.ico',
   url: 'http://localhost',
   baseUrl: '/',
-  onBrokenLinks: 'warn',
+  // CI doküman sitesini derliyor (#186). Bu üç ayar 'warn' kalsaydı iş yeşil geçerdi ve
+  // kontrol yalnız "webpack çöktü mü" sorusunu yanıtlardı — kırık bağlantı sessizce kalırdı.
+  onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
   i18n: { defaultLocale: 'tr', locales: ['tr'] },
 
   markdown: {
     format: 'detect',
+    hooks: {
+      onBrokenMarkdownLinks: 'throw',
+    },
   },
 
   presets: [

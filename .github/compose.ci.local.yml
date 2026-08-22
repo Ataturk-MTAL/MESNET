@@ -1,0 +1,39 @@
+# YEREL uyarlamalar — yalnız `scripts/ci-local.sh` bu dosyayı ekler.
+#
+# GitHub Actions bu dosyayı KULLANMAZ; CI davranışı değişmez. Buraya yalnız Docker ile
+# Podman arasındaki gerçek farklar yazılır, tercih değil.
+#
+# ŞU AN BOŞ: tek gerçek fark RabbitMQ'da ve o compose ile çözülemedi (aşağıya bakınız),
+# bu yüzden script broker'ı hiç başlatmıyor. Dosya, ileride bir uyarlama gerektiğinde
+# yerinde dursun diye korunuyor.
+#
+# RABBITMQ NEDEN YOK:
+#   Rootless podman'da rabbitmq:4-alpine açılışta düşüyor:
+#     "Error when reading /var/lib/rabbitmq/.erlang.cookie: eacces" → BOOT FAILED
+#   Denenen ve YETMEYEN çözümler (hepsi ölçüldü):
+#     • tmpfs /var/lib/rabbitmq:rw,mode=0777          → tmpcopyup kök sahipli dosyayı kopyalıyor
+#     • ... + notmpcopyup                              → yine eacces
+#     • user: root                                     → yine eacces (sorun uid eşlemesi)
+#   `podman run --tmpfs ...` ile ÇALIŞIYOR; fark compose'un volume/tmpfs işlemesinde.
+#
+#   Yerelde broker COMPOSE DIŞINDA, doğrudan `podman run` ile başlatılır (scripts/ci-local.sh).
+#   Aynı imaj, aynı kimlikler, yalnız farklı başlatma yolu. CI'da böyle bir sapma YOK — orada
+#   compose'daki rabbitmq konteyneri normal şekilde koşar.
+#
+#   NOT: geliştirme yığınının broker'ı KULLANILMAZ. Denendi ve Aspire üretilen parolalar
+#   yüzünden ACCESS_REFUSED alındı; ayrıca CI koşusunun geliştirme kuyruklarını kirletmesi
+#   istenmez.
+# ÇÖZÜLEMEDİ — kalan durum (22.08.2026):
+#   `podman run --tmpfs ...` ELLE çalışıyor ("Ping succeeded"), AYNI komut script içinden
+#   koşturulduğunda aynı oturumda eacces veriyor. Yani sorun BELİRSİZ (non-deterministic) ve
+#   komutun kendisinde değil; rootless podman'ın uid eşlemesi/volume durumuyla ilgili.
+#
+#   Sonuç: entegrasyon işi yerelde şu an TAM KOŞMUYOR. Script bunu SESSİZ GEÇMİYOR —
+#   "RabbitMQ 90 sn içinde hazır olmadı" ile durur ve broker logunu basar.
+#
+#   Öneriler (denenmedi):
+#     • Docker Desktop / Linux makinede koşturmak (CI zaten orada çalışıyor)
+#     • podman machine'i --userns ayarıyla yeniden kurmak
+#     • rabbitmq imajını kendi Dockerfile'ıyla, cookie'yi build sırasında yazarak sarmak
+
+services: {}

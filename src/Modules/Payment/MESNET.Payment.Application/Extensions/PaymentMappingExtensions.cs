@@ -16,6 +16,7 @@ public static class PaymentMappingExtensions
         summary.NetAmount,
         summary.GovernmentContribution,
         summary.EmployerPayment,
+        summary.EmployedDays,
         summary.Phase.Name,
         summary.Phase.Slug,
         summary.ReceiptId,

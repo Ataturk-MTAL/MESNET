@@ -16,6 +16,33 @@ public static class PaymentErrors
     public static Error OperationFailed(string operation, string message) =>
         new($"Payment.{operation}Failed", message);
 
+    // Geriye dönük yürürlük, eski config'i kendi başlangıcından önceye kapatır — ters
+    // (imkânsız) aralık üretir ve o dönemin hesabı config bulamaz hale gelir (#75).
+    public static Error SalaryConfigBackdated(DateTime requested, DateTime current) =>
+        new("Payment.SalaryConfigBackdated",
+            $"Yeni yürürlük tarihi ({requested:yyyy-MM-dd}) mevcut ayarın başlangıcından " +
+            $"({current:yyyy-MM-dd}) önce olamaz.");
+
+    // Config yoksa sessizce sabit bir tutarla hesaplamak yanlış para üretir — hata ver (#64).
+    /// <summary>
+    /// Hesaplanan ay için yürürlükte olan ulusal parametre yok (#147). Kurum kimliği
+    /// TAŞIMAZ — parametre ulusaldır, "kuruma ait ayar" diye bir şey yoktur.
+    /// </summary>
+    public static Error SalaryConfigMissing(string month) =>
+        new("Payment.SalaryConfigMissing",
+            $"{month} ayında yürürlükte olan asgari ücret kaydı bulunamadı, ücret hesaplanamıyor.");
+
+    /// <summary>
+    /// Dönemin sözleşme kaydı yok (#154). Gün oranlaması buradan türediği için varsayımla
+    /// devam edilmez: tam ay varsaymak feshedilmiş sözleşmeye fazla ödeme, sıfır varsaymak
+    /// çalışılmış günü sessizce silmek olurdu. <c>SalaryConfigMissing</c> ile aynı duruş —
+    /// eksik veriyle para hesaplanmaz.
+    /// </summary>
+    public static Error ContractEmploymentMissing(Guid contractId, string month) =>
+        new("Payment.ContractEmploymentMissing",
+            $"{month} ayı hesabı için sözleşme kaydı bulunamadı ({contractId}), " +
+            "istihdam gün sayısı belirlenemiyor.");
+
     public static Error AcademicPeriodClosed(Guid id) =>
         new("Payment.AcademicPeriodClosed", $"Bu eğitim dönemi kapatılmıştır, ödeme işlemi yapılamaz: {id}");
 }

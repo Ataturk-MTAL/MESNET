@@ -3,12 +3,12 @@ left to right direction
 
 package "MESNET.Tenant.Api" {
     class TenantEndpoints {
-        +[WolverineGet] GetTenant(tenantId)
-        +[WolverinePost] CreateTenant(command)
-        +[WolverinePut] UpdateTenant(command)
-        +[WolverinePost] RegisterInstitution(command)
-        +[WolverinePost] AssignInstitutionAdmin(command)
-        +[WolverinePut] UpdateSystemParameter(command)
+        +GET GetTenant(tenantId)
+        +POST CreateTenant(command)
+        +PUT UpdateTenant(command)
+        +POST RegisterInstitution(command)
+        +POST AssignInstitutionAdmin(command)
+        +PUT UpdateSystemParameter(command)
     }
 }
 

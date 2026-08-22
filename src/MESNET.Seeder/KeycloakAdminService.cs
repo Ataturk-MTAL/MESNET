@@ -50,46 +50,21 @@ public sealed class KeycloakAdminService
 
     /// <summary>
     /// mesnet realm'daki tüm kullanıcıları döndürür.
+    ///
+    /// <para><c>briefRepresentation=false</c> açıkça istenir: kısa temsil profil alanlarını
+    /// atlar ve <see cref="KeycloakUser.FullName"/> sessizce boş dönerdi. Personel kayıtları
+    /// adını buradan alıyor (#190).</para>
     /// </summary>
     public async Task<List<KeycloakUser>> GetRealmUsersAsync()
     {
         var token = await GetAdminTokenAsync();
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var url = $"{_keycloakBaseUrl}/admin/realms/mesnet/users?max=100";
+        var url = $"{_keycloakBaseUrl}/admin/realms/mesnet/users?max=100&briefRepresentation=false";
         var response = await _http.GetAsync(url);
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<List<KeycloakUser>>(JsonOpts) ?? [];
-    }
-
-    /// <summary>
-    /// mesnet realm'daki tüm kullanıcıların institution_id attribute'unu günceller.
-    /// </summary>
-    public async Task UpdateAllUsersInstitutionIdAsync(Guid institutionId)
-    {
-        var token = await GetAdminTokenAsync();
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        // mesnet realm kullanıcılarını listele
-        var usersUrl = $"{_keycloakBaseUrl}/admin/realms/mesnet/users?max=100";
-        var usersResponse = await _http.GetAsync(usersUrl);
-        usersResponse.EnsureSuccessStatusCode();
-
-        var users = await usersResponse.Content.ReadFromJsonAsync<List<KeycloakUser>>(JsonOpts);
-        if (users is null || users.Count == 0) return;
-
-        foreach (var user in users)
-        {
-            // Mevcut attribute'ları koru, institution_id'yi güncelle
-            var attrs = user.Attributes ?? new Dictionary<string, List<string>>();
-            attrs["institution_id"] = [institutionId.ToString()];
-
-            var updateBody = new { attributes = attrs };
-            var updateUrl = $"{_keycloakBaseUrl}/admin/realms/mesnet/users/{user.Id}";
-            var updateResponse = await _http.PutAsJsonAsync(updateUrl, updateBody);
-            updateResponse.EnsureSuccessStatusCode();
-        }
     }
 
     public sealed class KeycloakUser

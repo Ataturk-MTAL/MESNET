@@ -16,6 +16,16 @@ public static class EnrollmentErrors
     public static Error BusinessNotFound(Guid id) =>
         new("Enrollment.BusinessNotFound", $"İşletme bulunamadı: {id}");
 
+    /// <summary>
+    /// Doğal anahtar çakışması (#237). Kısıt veritabanında da var (kısmi unique index); bu hata
+    /// kullanıcıya <b>anlaşılır</b> mesaj döndürmek için, arkadaki index ise yarış durumlarına
+    /// karşı emniyet kemeri. <c>BusinessErrors.TaxNumberAlreadyRegistered</c> (#150) ile aynı
+    /// desen.
+    /// </summary>
+    public static Error StudentNumberAlreadyRegistered(string studentNumber) =>
+        new("Enrollment.StudentNumberAlreadyRegistered",
+            $"Bu dönemde '{studentNumber}' numaralı bir öğrenci zaten kayıtlı.");
+
     public static Error InvalidTransition(string entity, string from, string to) =>
         new("Enrollment.InvalidTransition", $"{entity} '{from}' durumundan '{to}' durumuna geçirilemez.");
 
@@ -25,6 +35,11 @@ public static class EnrollmentErrors
     public static Error BusinessCapacityFull =>
         new("Enrollment.BusinessCapacityFull", "İşletme kapasitesi dolu, yerleştirme yapılamaz.");
 
+    public static Error BusinessNotAuthorizedForBranch(string businessName, string branchName) =>
+        new("Enrollment.BusinessNotAuthorizedForBranch",
+            $"'{businessName}' işletmesi '{branchName}' alanından öğrenci almak için yetkili değil. " +
+            "Yerleştirme yapılamaz; önce idarenin belge incelemesiyle alan yetkisi vermesi gerekir.");
+
     public static Error AcademicPeriodNotFound(Guid id) =>
         new("Enrollment.AcademicPeriodNotFound", $"Eğitim dönemi bulunamadı: {id}");
 
@@ -33,6 +48,9 @@ public static class EnrollmentErrors
 
     public static Error InvalidEducationType(string value) =>
         new("Enrollment.InvalidEducationType", $"Geçersiz eğitim tipi: '{value}'. Geçerli değerler: Formal, Mesem");
+
+    public static Error InvalidStudentCategory(string value) =>
+        new("Enrollment.InvalidStudentCategory", $"Geçersiz öğrenci kategorisi: '{value}'. Geçerli değerler: Student, CandidateApprentice, Apprentice");
 
     public static Error CannotDeregisterActiveInternship(Guid studentId) =>
         new("Enrollment.CannotDeregisterActiveInternship", $"Aktif stajı olan öğrencinin kaydı silinemez. Önce staj feshedilmelidir: {studentId}");

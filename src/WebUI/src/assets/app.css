@@ -1,0 +1,223 @@
+/*
+ * Uygulama geneli stiller. Quasar'ın kendi CSS'inden SONRA yüklenir (bkz. main.ts),
+ * böylece buradaki kurallar Quasar'ınkileri ezebilir.
+ */
+
+/*
+ * macOS'ta metin varsayılan olarak bir tık kalın çiziliyor; antialiased kesim
+ * arayüz tipografisini olması gereken ağırlığa getirir.
+ */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * Sabit genişlikli rakamlar.
+ *
+ * Orantılı fontta "1" ile "8" farklı genişliktedir; sayı değişince sütun kayar ve
+ * göz zıplar. tabular-nums YALNIZ rakam glifini etkiler, harflere dokunmaz — bu
+ * yüzden karışık içerikli tablo hücrelerinde de güvenle uygulanabilir.
+ *
+ * Kapsam: tablo hücreleri (144 q-td), sayaç kartları ve elle işaretlenen yerler.
+ */
+.q-table th,
+.q-table td,
+.stat-value,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Metin sarma.
+ *
+ * balance → başlıklar ve kısa etiketler; son satırda tek kelime kalmasın.
+ *   Tarayıcılar bunu sınırlı satır sayısında uygular (genelde <= 6), uzun metinde
+ *   kendiliğinden devre dışı kalır.
+ * pretty  → kısa/orta açıklama ve caption metinleri.
+ *
+ * Uzun düz metin, kod ve <pre> içeriğine UYGULANMAZ — oralarda satır kırma
+ * maliyeti faydasından büyük.
+ */
+.text-h3,
+.text-h4,
+.text-h5,
+.text-h6 {
+  text-wrap: balance;
+}
+
+.text-caption,
+.q-item__label--caption {
+  text-wrap: pretty;
+}
+
+/*
+ * Anlamsal yumuşak tonlar (#104).
+ *
+ * Şablonlarda `color="green-1" text-color="green-8"` gibi ham Quasar palet tonları
+ * kullanılıyordu; bunlar temadan (quasar-variables.sass) BAĞIMSIZ kalıyor ve marka
+ * renkleriyle çakışıyordu. Buradaki sınıflar tonu tema renginden TÜRETİR, yani tema
+ * değişkeni değişince bunlar da değişir.
+ *
+ * Quasar marka renklerini `--q-primary`, `--q-positive` ... CSS değişkenleri olarak
+ * yayınlar; color-mix() ile açık zemin ve koyu metin tonu üretiyoruz.
+ *
+ * Kullanım — Quasar `color="X"` prop'u `bg-X`, `text-color="X"` prop'u `text-X`
+ * sınıfını basar, ad doğrulaması yapmaz. Bu yüzden doğrudan prop olarak verilebilir:
+ *   <q-chip color="positive-soft" text-color="positive-strong">
+ * ya da sınıf olarak: class="bg-warning-soft text-warning-strong"
+ *
+ * Kontrast: -strong tonlar kendi -soft zeminleri üzerinde >= 4,5:1 verir (metin eşiği).
+ * Karışım oranları bu yüzden seçildi; değiştirmeden önce kontrastı yeniden ölç.
+ *
+ * Her kuralda color-mix'ten ÖNCE düz hex yedeği var. color-mix() Chrome 111+,
+ * Safari 16.2+, Firefox 113+ gerektirir; desteklenmediğinde bildirim tümüyle
+ * geçersiz sayılır ve arka plan HİÇ uygulanmazdı — beyaz metin beyaz zeminde
+ * kalırdı. Yedek, o tarayıcılarda tonu sabit tutar (tema takibi kaybolur, okunurluk
+ * korunur). Tema rengi değişirse yedekleri de güncelle; değerler mevcut temadan
+ * hesaplandı.
+ */
+.bg-primary-soft {
+  background-color: #e4e7ec;
+  background-color: color-mix(in srgb, var(--q-primary) 12%, #fff);
+}
+.text-primary-strong {
+  color: #1a3354;
+  color: color-mix(in srgb, var(--q-primary) 88%, #000);
+}
+
+.bg-secondary-soft {
+  background-color: #e6ebf2;
+  background-color: color-mix(in srgb, var(--q-secondary) 14%, #fff);
+}
+.text-secondary-strong {
+  color: #3d5b87;
+  color: color-mix(in srgb, var(--q-secondary) 82%, #000);
+}
+
+.bg-positive-soft {
+  background-color: #e2ede8;
+  background-color: color-mix(in srgb, var(--q-positive) 14%, #fff);
+}
+.text-positive-strong {
+  color: #276a4d;
+  color: color-mix(in srgb, var(--q-positive) 85%, #000);
+}
+
+.bg-negative-soft {
+  background-color: #f6e5e4;
+  background-color: color-mix(in srgb, var(--q-negative) 12%, #fff);
+}
+.text-negative-strong {
+  color: #98201a;
+  color: color-mix(in srgb, var(--q-negative) 85%, #000);
+}
+
+.bg-warning-soft {
+  background-color: #efe7d6;
+  background-color: color-mix(in srgb, var(--q-warning) 16%, #fff);
+}
+.text-warning-strong {
+  /* 90%'da kontrast 4,53:1 ile eşiğe teğet kalıyordu; 82% ile 5,20:1. */
+  color: #7e5800;
+  color: color-mix(in srgb, var(--q-warning) 82%, #000);
+}
+
+.bg-info-soft {
+  background-color: #e8edf1;
+  background-color: color-mix(in srgb, var(--q-info) 12%, #fff);
+}
+.text-info-strong {
+  color: #355b74;
+  color: color-mix(in srgb, var(--q-info) 85%, #000);
+}
+
+/*
+ * Nötr ton — anlamsal DURUM taşımayan kategori etiketleri için (sektör, rol, kaynak,
+ * form tipi rozetleri). Bunları positive/info gibi bir role bağlamak yanlış anlam
+ * yükler: "sektör: Metal" ne olumlu ne bilgilendirici bir durumdur.
+ *
+ * Yine de ham `blue-grey` paletinde bırakılmıyor; marka lacivertiyle tonlanmış nötr
+ * üretiliyor — ayraç ve gölgede zaten uygulanan yaklaşımın (bkz. $separator-color)
+ * aynısı. Tema değişince nötr de birlikte kayar.
+ */
+.bg-neutral {
+  background-color: #465a73;
+  background-color: color-mix(in srgb, var(--q-primary) 55%, #78808c); /* beyaz metin 7,1:1 */
+}
+.bg-neutral-soft {
+  background-color: #edeff2;
+  background-color: color-mix(in srgb, var(--q-primary) 8%, #fff);
+}
+.text-neutral-strong {
+  color: #102034;
+  color: color-mix(in srgb, var(--q-primary) 55%, #000); /* soft zeminde 14,3:1 */
+}
+
+/*
+ * Durum rozeti tonları (StatusBadge.vue).
+ *
+ * Rozetler sekiz ayrı aşamayı ayırt ediyor; tema altı anlamsal role sahip. Hepsini
+ * role çökertmek AŞAMA bilgisini kaybettirirdi (ör. "Aktif" ile "Tamamlandı" aynı
+ * yeşile düşerdi), bu yüzden ara tonlar tema renklerinden TÜRETİLİYOR.
+ *
+ * Hepsi beyaz metinle >= 4,5:1 (ölçüldü, en düşük 4,69:1 — status-pending).
+ * Birbirine luminans olarak yakın çiftler (success/done, warning/negative) TON
+ * bakımından ayrışır; ayrıca rozet her zaman metin etiketi taşır, yani renk ikincil
+ * sinyaldir — renk körlüğünde bilgi kaybı olmaz.
+ */
+.bg-status-pending {
+  background-color: var(--q-warning);
+}
+.bg-status-active {
+  background-color: var(--q-positive);
+}
+.bg-status-success {
+  background-color: #225c43;
+  background-color: color-mix(in srgb, var(--q-positive) 74%, #000);
+}
+.bg-status-progress {
+  background-color: #367472;
+  background-color: color-mix(in srgb, var(--q-positive) 50%, var(--q-info));
+}
+.bg-status-info {
+  background-color: var(--q-info);
+}
+.bg-status-warning {
+  background-color: #785300;
+  background-color: color-mix(in srgb, var(--q-warning) 78%, #000);
+}
+.bg-status-negative {
+  background-color: var(--q-negative);
+}
+.bg-status-done {
+  background-color: #355077;
+  background-color: color-mix(in srgb, var(--q-secondary) 72%, #000);
+}
+.bg-status-neutral {
+  background-color: #465a73;
+  background-color: color-mix(in srgb, var(--q-primary) 55%, #78808c);
+}
+
+/*
+ * Hareket azaltma tercihi (WCAG 2.3.3).
+ *
+ * İşletim sistemi düzeyinde "hareketi azalt" seçen kullanıcıya animasyon gönderilmez.
+ * Bu uygulamada hareket az değil: sürükle-bırak geçişleri, drawer açılışı, form
+ * route'larının yönlü kayma animasyonu (slide-left / slide-right) ve Quasar'ın kendi
+ * bileşen geçişleri. Vestibüler duyarlılığı olan kullanıcı için bunlar rahatsız edici.
+ *
+ * Süre sıfırlanmıyor, 0.01ms'e çekiliyor: tam sıfır bazı tarayıcılarda transitionend
+ * olayını hiç tetiklemez ve o olaya bağlı mantık (Quasar'ın bazı bileşenleri dahil)
+ * takılı kalır.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

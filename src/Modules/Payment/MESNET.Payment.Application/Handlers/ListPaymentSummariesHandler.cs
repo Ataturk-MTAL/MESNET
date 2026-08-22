@@ -1,4 +1,6 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Shared.Security;
 using MESNET.Common.Infrastructure.Pagination;
 using MESNET.Common.Shared.Pagination;
 using MESNET.Payment.Application.Dtos;
@@ -11,9 +13,22 @@ namespace MESNET.Payment.Application.Handlers;
 
 public static class ListPaymentSummariesHandler
 {
-    public static async Task<PagedResult<PaymentSummaryDto>> Handle(ListPaymentSummaries query, IQuerySession session)
+    public static async Task<PagedResult<PaymentSummaryDto>> Handle(
+        ListPaymentSummaries query, IQuerySession session, ICurrentUserService currentUser)
     {
         IQueryable<PaymentSummary> q = session.Query<PaymentSummary>();
+
+        // Kapsam merdiveni (#182): geniş görüntüleme izni yoksa kullanıcı yalnız KENDİ verisini
+        // görür — veli bağlı öğrencilerini, öğrenci kendisini. Kapsam çözülemezse boş sonuç.
+        var scope = OwnDataScope.Resolve(currentUser, Permissions.Salary.View);
+        if (scope.IsEmpty)
+            return EmptyPage(query);
+
+        if (!scope.IsUnrestricted)
+        {
+            var scopedStudentIds = scope.StudentIds;
+            q = q.Where(p => scopedStudentIds.Contains(p.StudentId));
+        }
 
         if (query.StudentId.HasValue)
             q = q.Where(p => p.StudentId == query.StudentId.Value);
@@ -47,4 +62,13 @@ public static class ListPaymentSummariesHandler
 
         return await q.ToPagedResultAsync(query, s => s.ToDto());
     }
+
+    /// <summary>Kapsam çözülemedi — sayfa bilgisi korunur, içerik boş döner (#182).</summary>
+    private static PagedResult<PaymentSummaryDto> EmptyPage(ListPaymentSummaries query) => new()
+    {
+        Items = [],
+        TotalCount = 0,
+        Page = query.Page,
+        PageSize = query.PageSize
+    };
 }

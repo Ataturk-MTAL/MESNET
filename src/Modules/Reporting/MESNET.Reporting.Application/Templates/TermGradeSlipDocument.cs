@@ -58,7 +58,7 @@ public class TermGradeSlipDocument : IDocument
             table.Cell().HeaderCellStyle().Text(t => t.Span("Öğretim Yılı").FormSmall().Bold());
             table.Cell().CellStyle().Text(t => t.Span(_data.AcademicYear).FormSmall());
             table.Cell().HeaderCellStyle().Text(t => t.Span("Dönemi").FormSmall().Bold());
-            table.Cell().CellStyle().Text(t => t.Span(_data.Semester).FormSmall());
+            table.Cell().CellStyle().Text(t => t.Span(SemesterLabel(_data.Semester)).FormSmall());
             table.Cell().HeaderCellStyle().Text(t => t.Span("Ders").FormSmall().Bold());
             table.Cell().CellStyle().Text(t => t.Span(_data.CourseName).FormSmall());
 
@@ -173,6 +173,18 @@ public class TermGradeSlipDocument : IDocument
                 "notu belirlenecektir.").FormSmall());
         });
     }
+
+    /// <summary>
+    /// Dönem adını MEB terminolojisiyle Türkçeleştirir. Backend AcademicSemester SmartEnum'ında
+    /// Name = İngilizce (Fall/Spring); resmî basılı belgede İngilizce görünmemeli — çağıran ne
+    /// gönderirse göndersin burada normalize edilir (#60). Tanınmayan değer olduğu gibi basılır.
+    /// </summary>
+    private static string SemesterLabel(string semester) => semester?.Trim() switch
+    {
+        "Fall" => "1. Dönem",
+        "Spring" => "2. Dönem",
+        _ => semester ?? string.Empty
+    };
 
     private static string JoinGrades(List<int> grades) =>
         grades.Count == 0 ? "" : string.Join("   ", grades);

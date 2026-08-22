@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Keycloak.AuthServices.Sdk.Admin.Models;
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -16,6 +17,13 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
     private readonly string _clientId;
     private readonly string _clientSecret;
     private readonly ILogger<KeycloakAdminService> _logger;
+
+    /// <summary>
+    /// Öznitelik haritasının anahtarı. Bu anahtarın gövdede bulunup bulunmaması, isteğin
+    /// <i>kısmi güncelleme</i> mi <i>tam profil yazımı</i> mı sayılacağını belirler —
+    /// kural ve gerekçesi <see cref="KeycloakUserWritePolicy"/> içinde, testle kilitli.
+    /// </summary>
+    private const string AttributesKey = KeycloakUserWritePolicy.AttributesKey;
 
     // Admin API token cache'i — servis Scoped (request başına yeni instance); bir istek
     // içindeki çok sayıda Admin API çağrısı için tek token yeter.
@@ -133,21 +141,50 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
         }
     }
 
+    /// <summary>
+    /// Kullanıcının <b>yalnız verilen alanlarını</b> günceller. Gövdede geçmeyen alanlar
+    /// Keycloak'ta olduğu gibi kalır — ölçüldü (Keycloak 26.7.0): <c>{"enabled": false}</c>
+    /// gönderildiğinde <c>firstName</c>, <c>email</c> ve öznitelikler korunuyor.
+    ///
+    /// <para><b><c>attributes</c> BU YOLDAN GÖNDERİLEMEZ.</b> Gövdede <c>attributes</c> bulunması
+    /// isteği <i>tam profil yazımına</i> çevirir: gövdede geçmeyen <c>firstName</c>/<c>email</c>
+    /// silinir ve öznitelik haritası <b>tümüyle</b> gönderilenle değişir. İstek yine
+    /// <b>204 döner</b> — hata yok, sessiz veri kaybı var (#190). Ölçüldü, aynı kullanıcıda
+    /// arka arkaya:</para>
+    /// <code>
+    /// PUT {"enabled":false}                       → firstName=Deneme  email=a@…  attrs=2 alan
+    /// PUT {"attributes":{"branch_codes":["EET"]}} → firstName=NULL    email=NULL attrs=1 alan
+    /// </code>
+    ///
+    /// <para>Öznitelik yazmak için <see cref="MergeUserAttributesAsync"/> kullanılır: o yol
+    /// gövdeyi taze bir GET'ten kurar, dolayısıyla silinecek alan kalmaz. Ayrım
+    /// <c>KeycloakUserWriteDriftTests</c> ile kilitlidir.</para>
+    /// </summary>
+    /// <exception cref="ArgumentException">
+    /// Alanlar arasında <c>attributes</c> varsa — çağrı yanlış yolu kullanıyordur.
+    /// </exception>
+    private async Task<Result> PatchUserFieldsAsync(
+        string keycloakUserId, Dictionary<string, object?> fields, CancellationToken ct)
+    {
+        KeycloakUserWritePolicy.EnsureSafePartialBody(fields.Keys);
+
+        using var resp = await SendAdminAsync(HttpMethod.Put, $"/users/{keycloakUserId}", fields, ct);
+        resp.EnsureSuccessStatusCode();
+        return Result.Success();
+    }
+
     public async Task<Result> UpdateUserAsync(
         string keycloakUserId, string email, string firstName, string lastName,
         CancellationToken ct = default)
     {
         try
         {
-            var payload = new Dictionary<string, object?>
+            return await PatchUserFieldsAsync(keycloakUserId, new Dictionary<string, object?>
             {
                 ["email"] = email,
                 ["firstName"] = firstName,
                 ["lastName"] = lastName,
-            };
-            using var resp = await SendAdminAsync(HttpMethod.Put, $"/users/{keycloakUserId}", payload, ct);
-            resp.EnsureSuccessStatusCode();
-            return Result.Success();
+            }, ct);
         }
         catch (Exception ex)
         {
@@ -161,10 +198,8 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
     {
         try
         {
-            var payload = new Dictionary<string, object?> { ["enabled"] = enabled };
-            using var resp = await SendAdminAsync(HttpMethod.Put, $"/users/{keycloakUserId}", payload, ct);
-            resp.EnsureSuccessStatusCode();
-            return Result.Success();
+            return await PatchUserFieldsAsync(
+                keycloakUserId, new Dictionary<string, object?> { ["enabled"] = enabled }, ct);
         }
         catch (Exception ex)
         {
@@ -194,7 +229,11 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
     {
         try
         {
-            var rolesToAssign = await ResolveRealmRolesAsync(roles, ct);
+            var resolved = await ResolveRealmRolesAsync(roles, ct);
+            if (resolved.IsFailure)
+                return Result.Failure(resolved.Error);
+
+            var rolesToAssign = resolved.Value;
             if (rolesToAssign.Count == 0)
                 return Result.Success();
 
@@ -215,7 +254,11 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
     {
         try
         {
-            var rolesToRemove = await ResolveRealmRolesAsync(roles, ct);
+            var resolved = await ResolveRealmRolesAsync(roles, ct);
+            if (resolved.IsFailure)
+                return Result.Failure(resolved.Error);
+
+            var rolesToRemove = resolved.Value;
             if (rolesToRemove.Count == 0)
                 return Result.Success();
 
@@ -231,24 +274,96 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
         }
     }
 
-    // Verilen rol adlarını realm'deki RoleRepresentation'lara (id+name gerekli) çevirir.
-    private async Task<List<RoleRepresentation>> ResolveRealmRolesAsync(
+    /// <summary>
+    /// Verilen rol adlarını realm'deki <c>RoleRepresentation</c>'lara (id+name gerekli) çevirir.
+    ///
+    /// <para><b>Çözülemeyen ad sessizce ATLANMAZ (#129).</b> Eskiden eşleşmeyenler filtrelenir,
+    /// liste boşalırsa fonksiyon <c>Result.Success()</c> dönerdi: Keycloak kullanıcısı sıfır realm
+    /// rolüyle açılır, <c>UserAccount.Roles</c> uydurma adı saklar, kullanıcı giriş yapınca hiçbir
+    /// şey göremez ve <b>hata mesajı da almazdı</b>. Artık kısmi çözüm bile hatadır — hangi
+    /// adların çözülemediği çağırana bildirilir.</para>
+    /// </summary>
+    private async Task<Result<List<RoleRepresentation>>> ResolveRealmRolesAsync(
         IEnumerable<string> roles, CancellationToken ct)
     {
+        var requested = roles
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Select(r => r.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (requested.Count == 0)
+            return Result<List<RoleRepresentation>>.Success([]);
+
         using var resp = await SendAdminAsync(HttpMethod.Get, "/roles", null, ct);
         resp.EnsureSuccessStatusCode();
         var allRoles = await resp.Content.ReadFromJsonAsync<List<RoleRepresentation>>(ct) ?? [];
-        return roles
-            .Select(roleName => allRoles.FirstOrDefault(r =>
-                string.Equals(r.Name, roleName, StringComparison.OrdinalIgnoreCase)))
-            .Where(r => r is not null)
-            .Cast<RoleRepresentation>()
-            .ToList();
+
+        var resolved = new List<RoleRepresentation>();
+        var unresolved = new List<string>();
+        foreach (var roleName in requested)
+        {
+            var match = allRoles.FirstOrDefault(r =>
+                string.Equals(r.Name, roleName, StringComparison.OrdinalIgnoreCase));
+            if (match is null)
+                unresolved.Add(roleName);
+            else
+                resolved.Add(match);
+        }
+
+        if (unresolved.Count > 0)
+        {
+            _logger.LogError(
+                "Keycloak realm'inde çözülemeyen rol adı/adları: {Roles}", string.Join(", ", unresolved));
+            return Result<List<RoleRepresentation>>.Failure(
+                Errors.SecurityErrors.RealmRolesUnresolved(unresolved));
+        }
+
+        return Result<List<RoleRepresentation>>.Success(resolved);
     }
 
     // ── Attribute ─────────────────────────────────────────────────────────────────────
-    public async Task<Result> SetUserAttributesAsync(
+    public Task<Result> SetUserAttributesAsync(
         string keycloakUserId, Dictionary<string, string> attributes, CancellationToken ct = default)
+    {
+        var multivalued = attributes.ToDictionary(
+            kv => kv.Key,
+            kv => (IReadOnlyList<string>)new[] { kv.Value });
+
+        return MergeUserAttributesAsync(keycloakUserId, multivalued, ct);
+    }
+
+    public Task<Result> SetUserAttributeValuesAsync(
+        string keycloakUserId, string attributeName, IReadOnlyList<string> values,
+        CancellationToken ct = default)
+    {
+        var cleaned = values
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Select(v => v.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return MergeUserAttributesAsync(
+            keycloakUserId,
+            new Dictionary<string, IReadOnlyList<string>> { [attributeName] = cleaned },
+            ct);
+    }
+
+    /// <summary>
+    /// Mevcut öznitelikleri koruyarak verilenleri üzerine yazar.
+    /// Boş değer listesi özniteliği siler — "hiç yok" geçerli bir durumdur (#126).
+    ///
+    /// <para><b>Gövde, GET'ten dönen temsilin tamamıdır — yalnız <c>attributes</c> değişir.</b>
+    /// Keycloak'ın <i>declarative user profile</i> sağlayıcısı, PUT gövdesinde <c>attributes</c>
+    /// varsa onu <b>managed profil alanlarının tamamı</b> sayar: gövdede geçmeyen
+    /// <c>firstName</c>/<c>lastName</c> silinir, <c>email</c> ise yalnız üst seviye alandan
+    /// okunduğu için o da silinir. İstek yine <b>204 döner</b> — hata yok, sessiz veri kaybı
+    /// var (#190).</para>
+    /// </summary>
+    private async Task<Result> MergeUserAttributesAsync(
+        string keycloakUserId,
+        Dictionary<string, IReadOnlyList<string>> attributes,
+        CancellationToken ct)
     {
         try
         {
@@ -260,7 +375,7 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
 
             // Mevcut attribute'ları koru, yenileri üzerine yaz
             var merged = new Dictionary<string, List<string>>();
-            if (existing.TryGetProperty("attributes", out var existingAttrs)
+            if (existing.TryGetProperty(AttributesKey, out var existingAttrs)
                 && existingAttrs.ValueKind == JsonValueKind.Object)
             {
                 foreach (var prop in existingAttrs.EnumerateObject())
@@ -270,10 +385,22 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
                         : [];
                 }
             }
-            foreach (var (key, value) in attributes)
-                merged[key] = [value];
+            foreach (var (key, values) in attributes)
+            {
+                // Boş liste → özniteliği kaldır. branch_codes zorunlu alan DEĞİLDİR.
+                if (values.Count == 0)
+                    merged.Remove(key);
+                else
+                    merged[key] = [.. values];
+            }
 
-            var payload = new Dictionary<string, object?> { ["attributes"] = merged };
+            // GET temsilini olduğu gibi geri gönder; salt-okunur alanları (id, createdTimestamp,
+            // access…) Keycloak yok sayar. Kısmi gövde göndermek profil alanlarını siler (#190).
+            var payload = new Dictionary<string, object?>();
+            foreach (var prop in existing.EnumerateObject())
+                payload[prop.Name] = prop.Value;
+            payload[AttributesKey] = merged;
+
             using var putResp = await SendAdminAsync(HttpMethod.Put, $"/users/{keycloakUserId}", payload, ct);
             putResp.EnsureSuccessStatusCode();
             return Result.Success();
@@ -329,7 +456,9 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
                     !u.TryGetProperty("enabled", out var enEl) || enEl.GetBoolean(),
                     roles,
                     ParseGuidJsonAttr(u, "institution_id"),
-                    ParseGuidJsonAttr(u, "business_id")));
+                    ParseGuidJsonAttr(u, "business_id"),
+                    ParseStringListAttr(u, "branch_codes"),
+                    ParseGuidJsonAttr(u, "student_id")));
             }
 
             return Result<List<KeycloakUserInfo>>.Success(result);
@@ -339,6 +468,154 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
             _logger.LogError(ex, "Keycloak kullanıcı listesi alma hatası");
             return Result<List<KeycloakUserInfo>>.Failure(
                 Errors.SecurityErrors.KeycloakOperationFailed(ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Çok değerli metin özniteliğini okur — ör. <c>branch_codes: ["EET","MTT"]</c> (#126).
+    /// Öznitelik yoksa boş liste döner; bu bir eksiklik değil, geçerli durumdur.
+    /// Tek değer virgüllü metin olarak yazılmışsa ("EET,MTT") o da ayrıştırılır.
+    /// </summary>
+    private static List<string> ParseStringListAttr(JsonElement user, string key)
+    {
+        if (!user.TryGetProperty("attributes", out var attrs)
+            || attrs.ValueKind != JsonValueKind.Object
+            || !attrs.TryGetProperty(key, out var arr)
+            || arr.ValueKind != JsonValueKind.Array)
+            return [];
+
+        return arr.EnumerateArray()
+            .Select(e => e.GetString())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .SelectMany(s => s!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    // ── Realm yapılandırması (#195) ────────────────────────────────────────────────────
+    /// <inheritdoc />
+    public async Task<Result<RealmSnapshot>> GetRealmSnapshotAsync(CancellationToken ct = default)
+    {
+        // Ulaşılabilirlik ayrı, okunabilirlik ayrı: token alınamıyorsa "sapma yok" DENEMEZ.
+        try
+        {
+            await GetAdminTokenAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Realm anlık görüntüsü alınamadı — Keycloak'a ulaşılamıyor.");
+            return Result<RealmSnapshot>.Failure(
+                Errors.SecurityErrors.KeycloakOperationFailed(ex.Message));
+        }
+
+        var unreadable = new List<string>();
+
+        var policy = await ReadAsync("/users/profile", "unmanagedAttributePolicy", root =>
+            root.TryGetProperty("unmanagedAttributePolicy", out var el) ? el.GetString() : null);
+
+        var roles = await ReadAsync("/roles?briefRepresentation=true&max=200", "realm roles", root =>
+            root.ValueKind != JsonValueKind.Array
+                ? null
+                : (IReadOnlyList<string>)[.. root.EnumerateArray()
+                    .Select(r => r.TryGetProperty("name", out var n) ? n.GetString() : null)
+                    .Where(n => !string.IsNullOrEmpty(n))
+                    .Select(n => n!)]);
+
+        var webClientIsPublic = await ReadAsync(
+            $"/clients?clientId={RealmInvariants.WebClientId}", $"client {RealmInvariants.WebClientId}",
+            root => root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0
+                    && root[0].TryGetProperty("publicClient", out var el)
+                ? el.GetBoolean()
+                : (bool?)null);
+
+        var seedUserRoles = await ReadSeedUserRolesAsync();
+
+        return Result<RealmSnapshot>.Success(
+            new RealmSnapshot(policy, roles, webClientIsPublic, unreadable, seedUserRoles));
+
+        // Rolün var olması yetmez, kullanıcıya atanmış da olmalı (#205). Kullanıcı başına iki
+        // çağrı: önce kimlik, sonra rol eşlemesi.
+        //
+        // Bulunamayan kullanıcı "okunamadı" DEĞİLDİR — üretim realm'inde tohum kullanıcıları
+        // hiç bulunmaz ve her açılışta eksik-bilgi satırı basmak kontrolü gürültüye boğardı.
+        async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>?> ReadSeedUserRolesAsync()
+        {
+            var assignments = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var user in RealmInvariants.ExpectedSeedUserRoles.Keys)
+            {
+                var id = await ReadUserIdAsync(user);
+                if (id is null) continue;
+
+                var roles = await ReadAsync(
+                    $"/users/{id}/role-mappings/realm",
+                    $"kullanıcı {user} rol eşlemesi",
+                    root => root.ValueKind != JsonValueKind.Array
+                        ? null
+                        : (IReadOnlyList<string>)[.. root.EnumerateArray()
+                            .Select(r => r.TryGetProperty("name", out var n) ? n.GetString() : null)
+                            .Where(n => !string.IsNullOrEmpty(n))
+                            .Select(n => n!)]);
+
+                if (roles is not null) assignments[user] = roles;
+            }
+
+            return assignments;
+        }
+
+        // ReadAsync'ten ayrı duruyor çünkü burada "boş sonuç" ayrı bir anlam taşır: kullanıcı
+        // yoksa bu eksik bilgi değil, o realm'de olmaması beklenen bir durumdur. HTTP hatası ise
+        // gerçekten okunamamıştır ve işaretlenir.
+        async Task<string?> ReadUserIdAsync(string user)
+        {
+            var label = $"kullanıcı {user}";
+            try
+            {
+                using var resp = await SendAdminAsync(
+                    HttpMethod.Get, $"/users?username={Uri.EscapeDataString(user)}&exact=true", null, ct);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    unreadable.Add($"{label} (HTTP {(int)resp.StatusCode})");
+                    return null;
+                }
+
+                var root = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+                return root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0
+                       && root[0].TryGetProperty("id", out var el)
+                    ? el.GetString()
+                    : null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Realm ayarı okunamadı: {Label}", label);
+                unreadable.Add($"{label} ({ex.GetType().Name})");
+                return null;
+            }
+        }
+
+        // Tek alanın okunamaması bütün doğrulamayı düşürmez — eksik bilgi olarak işaretlenir.
+        async Task<T?> ReadAsync<T>(string path, string label, Func<JsonElement, T?> select)
+        {
+            try
+            {
+                using var resp = await SendAdminAsync(HttpMethod.Get, path, null, ct);
+                if (!resp.IsSuccessStatusCode)
+                {
+                    unreadable.Add($"{label} (HTTP {(int)resp.StatusCode})");
+                    return default;
+                }
+
+                var value = select(await resp.Content.ReadFromJsonAsync<JsonElement>(ct));
+                if (value is null) unreadable.Add($"{label} (alan yok)");
+                return value;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Realm ayarı okunamadı: {Label}", label);
+                unreadable.Add($"{label} ({ex.GetType().Name})");
+                return default;
+            }
         }
     }
 

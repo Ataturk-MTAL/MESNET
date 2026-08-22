@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Coordination.Application.Dtos;
+using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Application.Queries;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.Enums;
@@ -46,21 +47,21 @@ public static class GetScheduleHistoryHandler
         {
             List<DailyScheduleDto>? weeklySchedule = null;
             string eventType;
-            string updatedBy;
+            Guid updatedById;
             DateTime timestamp;
 
             switch (e.Data)
             {
                 case ScheduleCreated created:
                     eventType = "Oluşturuldu";
-                    updatedBy = created.UpdatedBy;
+                    updatedById = created.UpdatedById;
                     timestamp = created.Timestamp;
                     weeklySchedule = MapWeeklyData(created.WeeklySchedule);
                     break;
 
                 case ScheduleUpdated updated:
                     eventType = "Güncellendi";
-                    updatedBy = updated.UpdatedBy;
+                    updatedById = updated.UpdatedById;
                     timestamp = updated.Timestamp;
                     weeklySchedule = MapWeeklyData(updated.WeeklySchedule);
                     break;
@@ -73,9 +74,18 @@ public static class GetScheduleHistoryHandler
                 (int)e.Version,
                 eventType,
                 timestamp,
-                updatedBy,
+                updatedById,
+                UpdatedByName: null, // aşağıda tek sorguda toplu çözülür
                 weeklySchedule ?? []));
         }
+
+        // Aktör adı saklanmaz, okuma anında çözülür (#137) — versiyon başına ayrı sorgu
+        // atmamak için tüm kimlikler tek LoadMany ile çekilir.
+        var names = await UserNameResolver.ResolveAsync(
+            session, versions.Select(v => v.UpdatedById), cancellationToken);
+
+        for (var i = 0; i < versions.Count; i++)
+            versions[i] = versions[i] with { UpdatedByName = names.NameOf(versions[i].UpdatedById) };
 
         return new ScheduleHistoryDto(
             schedule.Id,
@@ -99,6 +109,12 @@ public static class GetScheduleHistoryHandler
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync(cancellationToken);
 
+        // Aktör adı saklanmaz, okuma anında çözülür (#137).
+        var names = await UserNameResolver.ResolveAsync(
+            session,
+            schedules.SelectMany(s => new[] { s.CreatedById, s.UpdatedById ?? Guid.Empty }),
+            cancellationToken);
+
         return schedules
             .OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt)
             .Select(s => new ScheduleStreamSummaryDto(
@@ -108,8 +124,10 @@ public static class GetScheduleHistoryHandler
                 s.Version,
                 s.CreatedAt,
                 s.UpdatedAt,
-                s.CreatedBy,
-                s.UpdatedBy))
+                s.CreatedById,
+                names.NameOf(s.CreatedById),
+                s.UpdatedById,
+                names.NameOf(s.UpdatedById)))
             .ToList();
     }
 

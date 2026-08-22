@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Marten;
 using MESNET.Common.Infrastructure.Storage;
+using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Reporting.Application.Commands;
 using MESNET.Reporting.Application.Templates;
@@ -191,7 +192,7 @@ public static class GenerateDocumentHandler
         var sample = new TermGradeSlipFormData
         {
             InstitutionName = "ATATÜRK MESLEKİ VE TEKNİK ANADOLU LİSESİ",
-            AcademicYear = "2025 / 2026",
+            AcademicYear = Common.Shared.AcademicYear.Format(2025, 2026),
             Semester = "2. Dönem",
             BusinessName = "DURUM GIDA SAN VE TİC. A. Ş.",
             BusinessPhone = "0324 241 11 11",
@@ -256,7 +257,8 @@ public static class GenerateDocumentHandler
             BusinessId = businessId,
             InstitutionId = institutionId,
             TeacherId = teacherId,
-            AcademicYear = academicYear,
+            // Tek kanonik biçim "2025-2026" (#112) — çağıran ne gönderirse göndersin normalize edilir.
+            AcademicYear = Common.Shared.AcademicYear.Normalize(academicYear),
             Description = description
         };
     }

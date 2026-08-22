@@ -157,6 +157,32 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
+    /// <summary>
+    /// Rol tutarlılık taraması (#129) salt okunurdur; bozuk kayıt bulunması da bulunmaması da
+    /// geçerli sonuçtur. Kimlik sunucusuna ulaşılamazsa rapor "eksik" işaretlenir — 500 değil.
+    /// </summary>
+    [Fact]
+    public async Task Rol_tutarlilik_taramasi_sunucu_hatasi_vermez()
+    {
+        // Given — yetkili istemci
+        // When — tarama istenir
+        var response = await _fixture.Client.GetAsync("/api/security/role-integrity");
+
+        // Then — okuma başarılı olmalı, sunucu hatası DEĞİL
+        response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
+    }
+
+    [Fact]
+    public async Task Rol_tutarlilik_taramasi_token_olmadan_401_doner()
+    {
+        // Given — token'sız istemci
+        // When — tarama istenir
+        var response = await _fixture.Anonymous.GetAsync("/api/security/role-integrity");
+
+        // Then — yetkilendirme gerektiren endpoint 401 döndürmeli
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
     [Fact]
     public async Task Tum_izinler_yetkili_istekte_basariyla_doner()
     {

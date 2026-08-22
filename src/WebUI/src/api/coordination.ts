@@ -123,7 +123,6 @@ export interface UpsertScheduleRequest {
   academicYear: number
   semester: string
   weeklySchedule: DailyScheduleInput[]
-  updatedBy: string
 }
 
 export interface DailyScheduleInput {
@@ -146,15 +145,18 @@ export interface ScheduleStreamSummaryDto {
   versionCount: number
   createdAt: string
   lastUpdatedAt: string | null
-  createdBy: string
-  lastUpdatedBy: string | null
+  createdById: string
+  createdByName: string | null
+  lastUpdatedById: string | null
+  lastUpdatedByName: string | null
 }
 
 export interface ScheduleVersionDto {
   version: number
   eventType: string
   timestamp: string
-  updatedBy: string
+  updatedById: string
+  updatedByName: string | null
   weeklySchedule: DailyScheduleDto[]
 }
 
@@ -181,14 +183,14 @@ export interface CoordinationConfigDto {
   isMetropolitan: boolean
   maxWeeklyExtraHours: number
   updatedAt: string
-  updatedBy: string
+  updatedById: string
+  updatedByName: string | null
 }
 
 export interface UpsertCoordinationConfigRequest {
   distanceHourRules?: DistanceHourRule[]
   isMetropolitan?: boolean
   maxWeeklyExtraHours?: number
-  updatedBy: string
 }
 
 // ── Business Assignment DTOs ──
@@ -207,6 +209,11 @@ export interface BusinessAssignmentDto {
   isManualDistance: boolean
   maxCoordinationHours: number
   assignedHours: number
+  /**
+   * Fahri (ücretsiz) ziyaret (#115). true ise `assignedHours` her zaman 0'dır ve satır
+   * havuz/öğretmen kapasitesi toplamlarına girmez. false + 0 saat = "henüz takdir edilmedi".
+   */
+  isHonoraryVisit: boolean
   assignedTeacherId: string | null
   assignedTeacherName: string | null
   assignedDay: string | null
@@ -216,13 +223,15 @@ export interface BusinessAssignmentDto {
   branchName: string
   assignedSlots: AssignedSlotInfo[]
   lastModifiedAt: string | null
-  lastModifiedBy: string | null
+  lastModifiedById: string | null
+  lastModifiedByName: string | null
 }
 
 export interface AssignmentHistoryEntryDto {
   timestamp: string
   action: string       // "Assigned" | "SlotAdded" | "SlotRemoved" | "Unassigned" | "HoursUpdated"
-  performedBy: string
+  performedById: string
+  performedByName: string | null
   teacherName: string | null
   slotDay: string | null
   slotPeriod: number | null
@@ -232,25 +241,32 @@ export interface AssignmentHistoryEntryDto {
 
 export interface CoordinationSummaryDto {
   totalWorkloadPool: number
+  /** Ücret doğuran toplam saat — fahri ziyaretler dahil DEĞİLDİR (#115) */
   totalAssignedHours: number
   remainingHours: number
   totalMaxHours: number
   assignedBusinessCount: number
   unassignedBusinessCount: number
+  /** Havuza girmeyen fahri ziyaret satırı sayısı */
+  honoraryBusinessCount: number
   teacherWorkloads: TeacherWorkloadSummaryDto[]
 }
 
 export interface TeacherWorkloadSummaryDto {
   teacherId: string
   teacherName: string
+  /** Ücret doğuran saat — fahri ziyaretler hariç (#115) */
   assignedHours: number
   businessCount: number
+  /** Fahri ziyaret edilen işletme sayısı — slot işgal eder, ek ders saatine sayılmaz */
+  honoraryVisitCount: number
 }
 
 export interface TeacherWorkloadDto {
   teacherId: string
   totalAssignedHours: number
   businessCount: number
+  honoraryVisitCount: number
   businesses: TeacherBusinessAssignmentDto[]
 }
 
@@ -259,16 +275,105 @@ export interface TeacherBusinessAssignmentDto {
   businessName: string
   assignedHours: number
   assignedDay: string | null
+  isHonoraryVisit: boolean
 }
 
-export interface AssignBusinessRequest {
+/**
+ * Koordinasyon satırı alan bazlıdır (#114): aynı işletmeye iki farklı alandan
+ * bağımsız atama yapılabildiği için hedef satır
+ * `(businessId, branchCode, academicPeriodId)` üçlüsüyle belirlenir.
+ */
+export interface BranchRowParams {
+  branchCode: string
+  academicPeriodId: string
+}
+
+/** Toplu saat kaydında tek satır (#117). */
+export interface BranchAssignedHoursItem {
+  businessId: string
+  assignedHours: number
+  /** Fahri (ücretsiz) ziyaret (#115) — true ise `assignedHours` 0 kabul edilir. */
+  isHonoraryVisit: boolean
+}
+
+/**
+ * Bir alanın saat dağıtımının tamamı (#117). Backend tüm seti tek transaction'da
+ * doğrular: bir kısıt kırılırsa hiçbir satır yazılmaz, dolayısıyla kısmi başarı olamaz.
+ */
+export interface UpdateBranchAssignedHoursRequest extends BranchRowParams {
+  items: BranchAssignedHoursItem[]
+}
+
+// ── Saat Dağıtım Önerisi (#116) ──
+
+/**
+ * Öneri kovası. Üçü de aynı ağırlık (`w = maxHours × studentCount`) sıralamasını izler.
+ * `AllocationBucket.Name` değerleriyle birebir aynıdır.
+ */
+export type AllocationBucketName = 'InBranchPaid' | 'OutOfBranchSuggested' | 'Honorary'
+
+export interface HoursSuggestionLineDto {
+  businessId: string
+  businessName: string
+  branchCode: string
+  maxHours: number
+  studentCount: number
+  /** `w = maxHours × studentCount` — "neden bu işletmeye N saat" sorusunun cevabı */
+  weight: number
+  /** Önerilen saat; fahri satırlarda 0 */
+  suggestedHours: number
+  /** Koordinatör kilitledi — öneri bu satırı değiştirmedi */
+  isPinned: boolean
+  isHonoraryVisit: boolean
+  bucket: AllocationBucketName
+  /** Kovanın Türkçe etiketi — rozet metni (ayrım yalnız renkle taşınmaz) */
+  bucketLabel: string
+}
+
+/** "Havuz nereye gitti" sorusunun ekrandaki cevabı — hiçbir artık sessizce yutulmaz. */
+export interface HoursSuggestionDiagnosticsDto {
+  /** Ders yükü havuzu (P) */
+  pool: number
+  /** Alan öğretmenlerinin kalan kapasitesi (C) */
+  teacherCapacity: number
+  /** Σ max_i — tüm işletmeler tavanına çıksa gereken saat */
+  sumOfMax: number
+  /** Σ önerilen saat (kilitli satırlar dahil) */
+  totalAllocated: number
+  /** `pool − totalAllocated`. Pozitif → dağıtılamayan artık, negatif → kilitler havuzu aşıyor */
+  undistributed: number
+  honoraryCount: number
+  /** Alan dışı öğretmene önerilen toplam saat */
+  outOfBranchHours: number
+  /** Havuz hesaplanmamış (P ≤ 0) — öneri üretilmedi */
+  isPoolUndefined: boolean
+}
+
+export interface HoursSuggestionDto {
+  lines: HoursSuggestionLineDto[]
+  diagnostics: HoursSuggestionDiagnosticsDto
+}
+
+export interface SuggestAssignedHoursParams extends BranchRowParams {
+  /** Yarıyıl — öğretmen kapasitesi o yarıyılın ders programından hesaplanır */
+  semester: string
+  /** Kilitli satırlar: `"işletmeKimliği:saat,..."`. Boş/undefined → kilit yok. */
+  pinned?: string
+}
+
+export interface AssignBusinessRequest extends BranchRowParams {
   businessId: string
   teacherId: string
   teacherName: string
   assignedHours: number
   assignedDay: string
   periodNumber?: number
-  assignedBy: string
+}
+
+export interface ResyncCoordinationViewsResult {
+  baseRows: number
+  branchRows: number
+  removedLegacyRows: number
 }
 
 // ── Teacher Overview DTOs ──
@@ -277,6 +382,7 @@ export interface TeacherOverviewDto {
   teacherId: string
   totalAssignedHours: number
   businessCount: number
+  honoraryVisitCount: number
   scheduleExists: boolean
   freeSlotsByDay: Record<string, number>   // gün → boş slot sayısı
   totalSlotsByDay: Record<string, number>  // gün → toplam serbest slot
@@ -287,7 +393,12 @@ export interface TeacherSummaryRowDto {
   teacherId: string
   teacherName: string
   businessCount: number
+  /** Ücret doğuran saat — fahri ziyaretler hariç (#115) */
   assignedHours: number
+  /** Fahri ziyaret edilen işletme sayısı */
+  honoraryVisitCount: number
+  /** Fahri ziyaretlerin ders programında işgal ettiği slot sayısı */
+  honorarySlotCount: number
   scheduleExists: boolean
   freeSlotsByDay: Record<string, number>
   assignedSlotsByDay: Record<string, number>
@@ -309,6 +420,8 @@ export interface BusinessClusterDto {
   activeStudentCount: number
   distanceToSchoolKm: number | null
   maxCoordinationHours: number
+  /** Fahri (ücretsiz) ziyaret — saat takdiri yapılmaz (#115) */
+  isHonoraryVisit: boolean
 }
 
 export interface SetManualDistanceRequest {
@@ -340,7 +453,8 @@ export interface BranchWorkloadConfigDto {
   totalTeachingHours: number
   totalWorkloadPool: number
   updatedAt: string
-  updatedBy: string
+  updatedById: string
+  updatedByName: string | null
 }
 
 export interface UpsertBranchWorkloadConfigRequest {
@@ -476,7 +590,6 @@ export const coordinationApi = {
     day: string
     periodNumber: number
     businessId: string
-    assignedBy: string
   }) =>
     api.post(`/coordination/teachers/${teacherId}/assign-business`, data),
 
@@ -505,22 +618,66 @@ export const coordinationApi = {
   getTeacherWorkload: (teacherId: string) =>
     api.get<TeacherWorkloadDto>(`/coordination/teachers/${teacherId}/workload`),
 
-  unassignBusiness: (businessId: string) =>
-    api.delete(`/coordination/teachers/assignments/${businessId}`),
+  unassignBusiness: (businessId: string, params: BranchRowParams) =>
+    api.delete(`/coordination/teachers/assignments/${businessId}`, { params }),
 
-  updateAssignedHours: (businessId: string, data: { assignedHours: number }) =>
-    api.patch(`/coordination/teachers/assignments/${businessId}/hours`, data),
+  /**
+   * Takdir edilen saati günceller. `isHonoraryVisit: true` gönderildiğinde backend
+   * `assignedHours` değerini 0'a sabitler ve havuz/kapasite kısıtlarını uygulamaz (#115).
+   */
+  updateAssignedHours: (
+    businessId: string,
+    data: { assignedHours: number; isHonoraryVisit: boolean },
+    params: BranchRowParams,
+  ) =>
+    api.patch(`/coordination/teachers/assignments/${businessId}/hours`, data, { params }),
 
-  unassignBusinessSlot: (businessId: string, day: string, periodNumber: number) =>
+  /**
+   * Bir alanın saat dağıtımını **tek çağrıda** kaydeder (#117).
+   *
+   * Satır başına ayrı çağrı yapıldığında havuz kontrolü her çağrıda ayrı işlediği için
+   * yeniden dağıtım çağrı sırasına bağlı olarak yarıda kalabiliyordu (havuz 40, A=20 B=10
+   * → A=10 B=20 dönüşümünde B önce giderse ara toplam havuzu aşıyordu). Bu uç tüm seti
+   * birlikte doğrular: geçerse hepsi, geçmezse hiçbiri yazılır.
+   */
+  updateBranchAssignedHours: (data: UpdateBranchAssignedHoursRequest) =>
+    api.patch('/coordination/teachers/assignments/branch-hours', data),
+
+  /**
+   * Havuzun işletmelere dağıtım **önerisini** ister (#116).
+   *
+   * Salt okunur: hiçbir satır yazılmaz. Öneri tabloya doldurulur, kaydetme ayrı ve
+   * atomik adımdır (`updateBranchAssignedHours`) — karar koordinatörde kalır.
+   */
+  suggestAssignedHours: (params: SuggestAssignedHoursParams) =>
+    api.get<HoursSuggestionDto>('/coordination/teachers/assignments/suggest-hours', { params }),
+
+  unassignBusinessSlot: (
+    businessId: string,
+    day: string,
+    periodNumber: number,
+    params: BranchRowParams,
+  ) =>
     api.delete(`/coordination/teachers/assignments/${businessId}/slot`, {
-      params: { day, periodNumber },
+      params: { day, periodNumber, ...params },
     }),
 
-  getAssignmentHistory: (businessId: string) =>
-    api.get<AssignmentHistoryEntryDto[]>(`/coordination/teachers/assignments/${businessId}/history`),
+  getAssignmentHistory: (businessId: string, params: BranchRowParams) =>
+    api.get<AssignmentHistoryEntryDto[]>(
+      `/coordination/teachers/assignments/${businessId}/history`,
+      { params },
+    ),
 
   recalculateDistances: () =>
     api.post('/coordination/teachers/recalculate-distances'),
+
+  /**
+   * Koordinasyon satırlarını çok-alanlı modele göre yeniden kurar (#114).
+   * Eski tek-satır kayıtlarını temizler; alan/dönem satırlarını ve öğrenci
+   * sayaçlarını yeniden üretir. Tekrar çalıştırmak güvenlidir.
+   */
+  resyncCoordinationViews: () =>
+    api.post<ResyncCoordinationViewsResult>('/coordination/teachers/resync-views'),
 
   // ── Teacher Overview ──
 
@@ -589,6 +746,17 @@ export const coordinationApi = {
 
   submitTermGrade: (id: string) =>
     api.post(`/coordination/term-grades/${id}/submit`),
+
+  // Okulda staj (#171) — işverensiz yerleştirmede notu okul girer. Kapsam institution_id
+  // claim'inden gelir; işletme akışından ayrı uçlardır ve fiş ÜRETMEZ.
+  getSchoolStudentsForGrading: (academicPeriodId: string) =>
+    api.get<{ students: StudentGradeRow[] }>('/coordination/term-grades/school-students', { params: { academicPeriodId } }),
+
+  enterSchoolTermGrade: (data: EnterSchoolTermGradeRequest) =>
+    api.post<{ id: string }>('/coordination/term-grades/school', data),
+
+  submitSchoolTermGrade: (id: string) =>
+    api.post(`/coordination/term-grades/school/${id}/submit`),
 }
 
 export interface StudentGradeRow {
@@ -604,6 +772,19 @@ export interface StudentGradeRow {
   experimentGrades: number[]
   masterInstructorName: string | null
   termAverage: number | null
+}
+
+/**
+ * Okulda staj dönem notu (#171). İşletme isteğinden iki farkı var: `masterInstructorName`
+ * yoktur (usta öğretici işletme tarafının kavramı) ve kurum kapsamı token'dan gelir.
+ */
+export interface EnterSchoolTermGradeRequest {
+  studentId: string
+  academicPeriodId: string
+  practiceGrades: number[]
+  serviceGrades: number[]
+  projectGrades: number[]
+  experimentGrades: number[]
 }
 
 export interface EnterTermGradeRequest {

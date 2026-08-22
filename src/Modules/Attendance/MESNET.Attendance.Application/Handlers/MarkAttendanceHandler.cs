@@ -5,6 +5,7 @@ using MESNET.Attendance.Core.Aggregates;
 using MESNET.Attendance.Core.Entities;
 using MESNET.Attendance.Core.Enums;
 using MESNET.Attendance.Core.ReadModels;
+using MESNET.Attendance.Core.Services;
 using MESNET.Attendance.Shared.Events;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
@@ -47,13 +48,35 @@ public static class MarkAttendanceHandler
             throw new DomainException("ATTENDANCE_RESTRICTED_DATE",
                 "Bu tarih kısıtlı bir gündür, devamsızlık girişi yapılamaz.");
 
-        if (!AbsenceType.TryFromName(command.AbsenceType, true, out _))
+        if (!AbsenceType.TryFromName(command.AbsenceType, true, out var absenceType))
             throw new DomainException("ATTENDANCE_INVALID_ABSENCE_TYPE",
                 $"Geçersiz devamsızlık türü: {command.AbsenceType}.");
 
-        var markedBy = currentUser.GetFullName();
-        var isBusinessUser = currentUser.IsInRole(MesnetRoles.CompanyManager);
-        var initialStatus = isBusinessUser
+        // Aktör kimliği saklanır, adı değil (#139) — ad okuma anında UserNameView'dan çözülür.
+        var markedById = currentUser.GetUserId();
+        // İşletme tarafından girilen devamsızlık okul onayı bekler.
+        //
+        // Kontrol #172'ye kadar ROL ADINA bakıyordu (CompanyManager || MasterTrainer) ve
+        // CLAUDE.md'de teknik borç olarak yazılıydı. Artık kararı permission veriyor
+        // (ADR-0001): `attendance:direct-entry` yalnız okul rollerindedir ve
+        // NeverDirectlyAssignable olduğu için bir işletme kullanıcısına bireysel atanamaz.
+        // Rol adı listesi olsaydı #172'de eklenen CompanyHR sessizce dışarıda kalır, o rolün
+        // girdiği kayıt okul girmiş gibi doğrudan "Recorded" olurdu.
+        var hasDirectEntry = currentUser.HasPermission(Permissions.Attendance.DirectEntry);
+        var isPendingEntry = !hasDirectEntry;
+
+        // Ücretli izin DOĞRUDAN GİRİLEMEZ (#177) — okul tarafı da giremez. Yalnız öğrenci
+        // başvurusunun işletme ve okul onayından geçmesiyle doğar; kayıtları
+        // PaidLeaveAttendanceConsumer açar. Kısıt komut yolundadır, olay yolunda değil.
+        if (AbsenceTypePolicy.RequiresApprovedRequest(absenceType))
+            throw new DomainException(AttendanceErrors.PaidLeaveRequiresApprovedRequest());
+
+        // İşletme resmî izin veremez, yalnız devamsızlık bildirir (#175). Sınıflandırma —
+        // mazeret, izin, sağlık raporu — okul tarafındadır ve her biri ücreti etkiler.
+        if (!AbsenceTypePolicy.CanReport(absenceType, hasDirectEntry))
+            throw new DomainException(AttendanceErrors.TypeNotReportableByBusiness(absenceType.Slug));
+
+        var initialStatus = isPendingEntry
             ? AttendanceStatus.Pending.Name
             : AttendanceStatus.Recorded.Name;
 
@@ -61,17 +84,17 @@ public static class MarkAttendanceHandler
         var @event = new AttendanceMarked(
             id, command.StudentId, command.BusinessId,
             command.InstitutionId, command.AcademicPeriodId,
-            command.Date, command.AbsenceType, markedBy, initialStatus);
+            command.Date, command.AbsenceType, markedById, initialStatus);
 
         session.Events.StartStream<AttendanceRecord>(id, @event);
 
         NotifyAttendancePendingApproval? notification = null;
-        if (isBusinessUser && placement.TeacherId is not null)
+        if (isPendingEntry && placement.TeacherId is not null)
         {
             notification = new NotifyAttendancePendingApproval(
                 id, command.StudentId, command.BusinessId,
                 command.InstitutionId, placement.TeacherId.Value,
-                markedBy, command.Date, command.AbsenceType);
+                markedById, command.Date, command.AbsenceType);
         }
 
         return (id, @event, notification);

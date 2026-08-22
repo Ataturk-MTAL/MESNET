@@ -7,6 +7,7 @@ using MESNET.Enrollment.Application.Extensions;
 using MESNET.Enrollment.Core.ReadModels;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.Enums;
+using MESNET.Enrollment.Core.Policies;
 using MESNET.Enrollment.Shared.Events;
 
 namespace MESNET.Enrollment.Application.Handlers;
@@ -26,14 +27,32 @@ public static class PlaceStudentHandler
             throw new DomainException(
                 EnrollmentErrors.InvalidTransition("Öğrenci", student.Status.Slug, StudentStatus.Placed.Slug));
 
-        var business = await session.LoadAsync<BusinessProfileView>(command.BusinessId)
-            ?? throw new DomainException(EnrollmentErrors.BusinessNotFound(command.BusinessId));
+        // İşletme yoksa okulda stajdır (#159): staj yeri bulunamayan öğrenci stajını okulda
+        // yapar. Ücret ve devlet katkısı doğmaz — ikisini de 3308 AYRI AYRI kapsam dışı tutuyor
+        // (Madde 25 ve Geçici Madde 12, aynı cümle). Sözleşme kurulmadığı için maaş dönemi de
+        // açılmaz: dönemler sözleşmeden doğar (#154).
+        var placementType = command.BusinessId.HasValue ? PlacementType.Business : PlacementType.School;
 
-        if (!business.IsActive)
-            throw new DomainException(EnrollmentErrors.BusinessNotActive);
+        // İşletme doğrulamalarının tamamı yalnız işletmeli yerleştirmede geçerlidir.
+        BusinessProfileView? business = null;
+        if (command.BusinessId is { } businessId)
+        {
+            business = await session.LoadAsync<BusinessProfileView>(businessId)
+                ?? throw new DomainException(EnrollmentErrors.BusinessNotFound(businessId));
 
-        if (business.AvailableCapacity <= 0)
-            throw new DomainException(EnrollmentErrors.BusinessCapacityFull);
+            if (!business.IsActive)
+                throw new DomainException(EnrollmentErrors.BusinessNotActive);
+
+            if (business.AvailableCapacity <= 0)
+                throw new DomainException(EnrollmentErrors.BusinessCapacityFull);
+
+            // İşletme yalnız idarece yetkilendirildiği alanlardan öğrenci alabilir (#119).
+            // Yetki iptali geçmiş yerleştirmeleri bozmaz — yalnız YENİ yerleştirme reddedilir.
+            var branchAuthorization = await session.LoadAsync<BusinessBranchAuthorizationView>(businessId);
+            if (!PlacementBranchPolicy.IsBusinessAuthorizedFor(branchAuthorization, student.BranchCode))
+                throw new DomainException(EnrollmentErrors.BusinessNotAuthorizedForBranch(
+                    business.BusinessName, student.BranchName));
+        }
 
         var placement = new InternshipPlacement
         {
@@ -45,7 +64,8 @@ public static class PlaceStudentHandler
             TeacherId = command.TeacherId,
             StudentName = student.FullName,
             BranchCode = student.BranchCode,
-            Source = ApplicationSource.InstitutionAssignment
+            Source = ApplicationSource.InstitutionAssignment,
+            Type = placementType
         };
 
         student.Status = StudentStatus.Placed;
@@ -61,7 +81,8 @@ public static class PlaceStudentHandler
             teacherName = teacher?.FullName;
         }
 
-        return (placement.ToDto(business.BusinessName, teacherName), new StudentPlaced(
+        // Okulda stajda gösterilecek bir işletme adı yok; UI türü kendi metniyle yazar.
+        return (placement.ToDto(business?.BusinessName ?? "", teacherName), new StudentPlaced(
             placement.Id,
             placement.StudentId,
             placement.BusinessId,
@@ -70,8 +91,9 @@ public static class PlaceStudentHandler
             placement.TeacherId,
             placement.PlacedAt,
             StudentName: student.FullName,
-            BusinessName: business.BusinessName,
+            BusinessName: business?.BusinessName ?? "",
             BranchCode: student.BranchCode,
-            BranchName: student.BranchName));
+            BranchName: student.BranchName,
+            PlacementType: placementType.Name));
     }
 }

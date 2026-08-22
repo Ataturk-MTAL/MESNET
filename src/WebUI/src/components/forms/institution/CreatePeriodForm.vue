@@ -1,5 +1,14 @@
 <template>
-  <FormDialog v-model="open" title="Yeni Akademik Dönem" icon="date_range" color="indigo" save-label="Oluştur" :saving="saving" :save-disabled="!form.name || !form.startYear || !form.endYear || !form.startDate || !form.endDate" @save="handleSave">
+  <FormDialog
+    v-model="open"
+    title="Yeni Akademik Dönem"
+    icon="date_range"
+    color="primary"
+    save-label="Oluştur"
+    :saving="saving"
+    :save-disabled="!form.name || !form.startYear || !form.endYear || !form.startDate || !form.endDate"
+    @save="handleSave"
+  >
     <AppNotice
       type="warning"
       dense
@@ -7,21 +16,36 @@
       class="text-caption"
       message="Yeni dönem oluşturulduğunda mevcut aktif dönem otomatik kapatılır."
     />
-    <q-input v-model="form.name" label="Dönem Adı *" outlined hint="Örn: 2025-2026">
+    <q-input
+      v-model="form.name"
+      label="Dönem Adı *"
+      outlined
+      hint="Örn: 2025-2026"
+    >
       <template #prepend>
         <q-icon name="label" />
       </template>
     </q-input>
     <div class="row q-col-gutter-md">
       <div class="col-6">
-        <q-input v-model.number="form.startYear" label="Başlangıç Yılı *" outlined type="number">
+        <q-input
+          v-model.number="form.startYear"
+          label="Başlangıç Yılı *"
+          outlined
+          type="number"
+        >
           <template #prepend>
             <q-icon name="event" />
           </template>
         </q-input>
       </div>
       <div class="col-6">
-        <q-input v-model.number="form.endYear" label="Bitiş Yılı *" outlined type="number">
+        <q-input
+          v-model.number="form.endYear"
+          label="Bitiş Yılı *"
+          outlined
+          type="number"
+        >
           <template #prepend>
             <q-icon name="event" />
           </template>
@@ -30,14 +54,24 @@
     </div>
     <div class="row q-col-gutter-md">
       <div class="col-6">
-        <q-input v-model="form.startDate" label="Başlangıç Tarihi *" outlined type="date">
+        <q-input
+          v-model="form.startDate"
+          label="Başlangıç Tarihi *"
+          outlined
+          type="date"
+        >
           <template #prepend>
             <q-icon name="calendar_today" />
           </template>
         </q-input>
       </div>
       <div class="col-6">
-        <q-input v-model="form.endDate" label="Bitiş Tarihi *" outlined type="date">
+        <q-input
+          v-model="form.endDate"
+          label="Bitiş Tarihi *"
+          outlined
+          type="date"
+        >
           <template #prepend>
             <q-icon name="calendar_today" />
           </template>

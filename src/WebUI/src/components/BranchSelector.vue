@@ -1,7 +1,7 @@
 <template>
-  <!-- Alan Şefi: salt okunur chip -->
+  <!-- Tek alana kilitli kullanıcı (yazma bağlamı): salt okunur chip -->
   <q-field
-    v-if="authStore.isDepartmentHead && !forceSelect"
+    v-if="isLockedToSingleBranch"
     :label="label"
     outlined
     :dense="dense"
@@ -9,17 +9,21 @@
   >
     <template #control>
       <div class="self-center full-width no-outline">
-        <q-icon :name="icon" color="blue-7" class="q-mr-sm" />
+        <q-icon
+          :name="icon"
+          color="info"
+          class="q-mr-sm"
+        />
         {{ displayLabel }}
       </div>
     </template>
   </q-field>
 
-  <!-- Yöneticiler: seçilebilir alan dropdown -->
+  <!-- Seçilebilir alan dropdown'u -->
   <q-select
     v-else
     v-model="model"
-    :options="branchOpts.options.value"
+    :options="visibleOptions"
     :loading="branchOpts.loading.value"
     :label="label"
     outlined
@@ -48,23 +52,53 @@ import { useBranchOptions } from 'src/composables/useEntityOptions'
 import { useAuthStore } from 'stores/auth'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   label?: string
   icon?: string
   dense?: boolean
-  /** true ise isDepartmentHead olsa bile q-select gösterir (filtre amaçlı) */
+  /** true ise kilitli kullanıcıda bile q-select gösterir (filtre amaçlı) */
   forceSelect?: boolean
+  /**
+   * Seçim bir **yazma** işlemini hedefliyor mu? (#126)
+   *
+   * `true` ise kullanıcının yazma yetkisi olmayan alanlar listelenmez — yanlış alan
+   * seçiliyken "Otomatik Dağıt + Kaydet" kazası da böyle engellenir. `false` (varsayılan)
+   * salt görüntüleme/filtre bağlamıdır: alan şefi başka alanın verisini görebilir,
+   * bu bilinçli bir karardır.
+   */
+  writeContext?: boolean
 }>(), {
   label: 'Alan',
   icon: 'school',
   dense: false,
   forceSelect: false,
+  writeContext: false,
 })
 
 const model = defineModel<string | null>({ default: null })
 
 const authStore = useAuthStore()
 const branchOpts = useBranchOptions()
+
+/**
+ * Yazma bağlamında kullanıcının kapsamı. `null` = kısıt yok (kurum geneli muafiyet).
+ * Rol adına bakılmaz; karar permission + `branch_codes` claim'i ile verilir.
+ */
+const scopedCodes = computed<string[] | null>(() =>
+  props.writeContext ? authStore.writableBranchCodes : null,
+)
+
+const visibleOptions = computed(() => {
+  const scope = scopedCodes.value
+  const options = branchOpts.options.value
+  if (scope === null) return options
+  return options.filter((o: { value: string }) => scope.includes(o.value))
+})
+
+/** Yazma bağlamında tek alana kilitli kullanıcıda seçici yerine salt okunur alan gösterilir. */
+const isLockedToSingleBranch = computed(
+  () => !props.forceSelect && scopedCodes.value?.length === 1,
+)
 
 const displayLabel = computed(() => {
   if (!model.value) return ''
@@ -76,9 +110,10 @@ const displayLabel = computed(() => {
 onMounted(async () => {
   await branchOpts.load()
 
-  // Alan Şefi ise kendi branşını otomatik seç
-  if (authStore.isDepartmentHead && authStore.user?.branchCode && !model.value) {
-    model.value = authStore.user.branchCode
+  // Kapsamı tek alansa otomatik seç — kullanıcının seçecek başka alanı yok.
+  const scope = scopedCodes.value
+  if (scope?.length === 1 && !model.value) {
+    model.value = scope[0] ?? null
   }
 })
 

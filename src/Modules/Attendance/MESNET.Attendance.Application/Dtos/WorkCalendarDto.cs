@@ -5,5 +5,7 @@ public sealed record WorkCalendarDto(
     Guid InstitutionId,
     int Year,
     List<CalendarDayDto> RestrictedDays,
-    string UpdatedBy,
+    // Kimlik saklanır, ad okuma anında UserNameView'dan çözülür (#137).
+    Guid UpdatedById,
+    string? UpdatedByName,
     DateTime UpdatedAt);

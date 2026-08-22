@@ -3,7 +3,12 @@
     <table class="full-width">
       <thead>
         <tr>
-          <th class="text-left text-caption text-grey-7" style="width: 60px">Saat</th>
+          <th
+            class="text-left text-caption text-grey-7"
+            style="width: 60px"
+          >
+            Saat
+          </th>
           <th
             v-for="day in days"
             :key="day.value"
@@ -14,8 +19,13 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="period in periodCount" :key="period">
-          <td class="text-center text-weight-medium text-grey-8">{{ period }}.</td>
+        <tr
+          v-for="period in periodCount"
+          :key="period"
+        >
+          <td class="text-center text-weight-medium text-grey-8">
+            {{ period }}.
+          </td>
           <td
             v-for="day in days"
             :key="day.value"
@@ -23,11 +33,30 @@
             :class="cellClass(day.value, period)"
             @click="onCellClick(day.value, period)"
           >
-            <div v-if="isOccupied(day.value, period)" class="text-caption text-grey-8">
-              Dolu
-            </div>
-            <div v-else class="text-caption text-green-8">
-              Boş
+            <!-- Hücre klavyeyle de çevrilebilir (WCAG 2.1.1): Enter/Space fare
+              tıklamasıyla AYNI handler'ı çağırır. Düzenleme kipi dışında
+              aria-disabled ile bildirilir; onCellClick zaten erken döner. -->
+            <div
+              role="button"
+              tabindex="0"
+              :aria-disabled="!editing"
+              :aria-pressed="isOccupied(day.value, period)"
+              :aria-label="cellLabel(day.label, day.value, period)"
+              @keydown.enter.prevent="onCellClick(day.value, period)"
+              @keydown.space.prevent="onCellClick(day.value, period)"
+            >
+              <div
+                v-if="isOccupied(day.value, period)"
+                class="text-caption text-grey-8"
+              >
+                Dolu
+              </div>
+              <div
+                v-else
+                class="text-caption text-positive-strong"
+              >
+                Boş
+              </div>
             </div>
           </td>
         </tr>
@@ -36,13 +65,28 @@
 
     <!-- Özet -->
     <div class="row q-mt-md q-gutter-md">
-      <q-chip icon="event_busy" color="grey-3" text-color="grey-8" dense>
+      <q-chip
+        icon="event_busy"
+        color="grey-3"
+        text-color="grey-8"
+        dense
+      >
         Dolu: {{ occupiedCount }}
       </q-chip>
-      <q-chip icon="event_available" color="green-1" text-color="green-8" dense>
+      <q-chip
+        icon="event_available"
+        color="positive-soft"
+        text-color="positive-strong"
+        dense
+      >
         Boş: {{ freeCount }}
       </q-chip>
-      <q-chip icon="calendar_today" color="blue-1" text-color="blue-8" dense>
+      <q-chip
+        icon="calendar_today"
+        color="info-soft"
+        text-color="info-strong"
+        dense
+      >
         Toplam: {{ totalSlots }}
       </q-chip>
     </div>
@@ -81,10 +125,15 @@ function isOccupied(dayValue: string, periodNumber: number): boolean {
   return slot?.status === 'Occupied'
 }
 
+function cellLabel(dayLabel: string, dayValue: string, periodNumber: number): string {
+  const durum = isOccupied(dayValue, periodNumber) ? 'dolu' : 'boş'
+  return `${dayLabel} ${periodNumber}. ders: ${durum}`
+}
+
 function cellClass(dayValue: string, periodNumber: number): string {
   const occupied = isOccupied(dayValue, periodNumber)
   const base = props.editing ? 'cursor-pointer ' : ''
-  return base + (occupied ? 'bg-grey-2' : 'bg-green-1')
+  return base + (occupied ? 'bg-grey-2' : 'bg-positive-soft')
 }
 
 function onCellClick(dayValue: string, periodNumber: number) {
@@ -144,5 +193,10 @@ const freeCount = computed(() => totalSlots.value - occupiedCount.value)
 
 .schedule-cell.cursor-pointer:hover {
   filter: brightness(0.95);
+}
+
+[role="button"]:focus-visible {
+  outline: 2px solid var(--q-primary);
+  outline-offset: -2px;
 }
 </style>

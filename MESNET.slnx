@@ -78,4 +78,17 @@
     <Project Path="src/Modules/Security/MESNET.Security.Persistence/MESNET.Security.Persistence.csproj"/>
     <Project Path="src/Modules/Security/MESNET.Security.Shared/MESNET.Security.Shared.csproj"/>
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj"/>
+    <Project Path="tests/MESNET.Coordination.UnitTests/MESNET.Coordination.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Reporting.UnitTests/MESNET.Reporting.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Business.UnitTests/MESNET.Business.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Internship.UnitTests/MESNET.Internship.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Enrollment.UnitTests/MESNET.Enrollment.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Security.UnitTests/MESNET.Security.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Attendance.UnitTests/MESNET.Attendance.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Payment.UnitTests/MESNET.Payment.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Institution.UnitTests/MESNET.Institution.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Seeder.UnitTests/MESNET.Seeder.UnitTests.csproj"/>
+  </Folder>
 </Solution>

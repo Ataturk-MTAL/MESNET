@@ -1,0 +1,134 @@
+# Dev imaj kanalı — 'dev' branch'ine HER push'ta deploy edilebilir bileşenlerin imajlarını
+# derler ve GHCR'ye push eder: ghcr.io/<owner>/mesnet-api-dev ve mesnet-caddy-dev.
+# İki etiket üretilir: 'dev' (mutable — hep son) + 'sha-<short>' (kalıcı — o commit'e sabit).
+# Git tag veya GitHub Release OLUŞMAZ. Depo PRIVATE olduğundan imajlar da PRIVATE'tır.
+# Retention: her '-dev' paketi için en yeni ~8 sürüm tutulur (bkz. cleanup job).
+#
+# ÖNEMLİ: '-dev' paketleri, sürüm (release) imajlarından (mesnet-api / mesnet-caddy) AYRIDIR.
+# Böylece dev temizliği yayınlanmış sürüm imajlarına ASLA dokunmaz. Sürüm akışı için ayrı
+# workflow: release-containers.yml. Bkz. VERSIONING.md.
+name: Dev Images
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch: {} # elle tetikleme (dev branch'ten)
+
+# 'dev' etiketi hep son commit'e taşınır. cancel-in-progress KAPALI: her push kendi
+# 'sha-<short>' imajını tamamlar — hızlı ardışık push'larda ara commit imajları kaybolmaz
+# (8'lik retention geçmişi anlamlı kalır). Eşzamanlı push'lar iptal yerine sıraya girer.
+concurrency:
+  group: dev-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api # .NET API (Presentation) — context kök (MESNET.slnx + src/)
+            context: .
+            dockerfile: src/MESNET.Presentation/Dockerfile
+          - name: caddy # Caddy: Vue SPA + Docusaurus static gömülü + reverse proxy — context kök
+            context: .
+            dockerfile: src/caddy/Dockerfile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5 # node24 (v4 node20 deprecate ediliyordu); docker/* action'ları henüz node20 (Docker güncelleyince node24'e geçecek)
+
+      - name: Owner'ı küçük harfe çevir (GHCR küçük harf ister)
+        id: owner
+        run: echo "lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: GHCR'ye giriş
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: İmaj etiketleri (metadata)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # '-dev' soneki: dev imajları sürüm imajlarından ayrı paketlerde tutulur.
+          images: ghcr.io/${{ steps.owner.outputs.lc }}/mesnet-${{ matrix.name }}-dev
+          # 'dev' = mutable (hep son), 'sha-<short>' = o commit'e sabit kalıcı etiket.
+          # İki etiket AYNI image digest'ine yapışır → push başına TEK paket-versiyonu oluşur.
+          tags: |
+            type=raw,value=dev
+            type=sha,prefix=sha-,format=short
+
+      - name: Buildx kur
+        uses: docker/setup-buildx-action@v3
+
+      # Caddy imajı Vite public config'i build zamanında gömer. Domain deploy'a özeldir;
+      # repo değişkenlerinden al (yoksa Dockerfile default'u 'https://auth.localhost').
+      - name: Caddy build-args hesapla
+        id: bargs
+        if: matrix.name == 'caddy'
+        run: |
+          {
+            echo "args<<EOF"
+            echo "VITE_KEYCLOAK_URL=${{ vars.VITE_KEYCLOAK_URL || (vars.APP_DOMAIN && format('https://auth.{0}', vars.APP_DOMAIN)) || 'https://auth.localhost' }}"
+            echo "VITE_KEYCLOAK_REALM=${{ vars.VITE_KEYCLOAK_REALM || 'mesnet' }}"
+            echo "VITE_KEYCLOAK_CLIENT_ID=${{ vars.VITE_KEYCLOAK_CLIENT_ID || 'mesnet-web' }}"
+            echo "VITE_OSRM_URL=${{ vars.VITE_OSRM_URL }}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Derle ve GHCR'ye push (private)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ steps.bargs.outputs.args }}
+          # Rolling dev kanalı: attestation manifest'leri untagged/unknown-unknown kirliliği
+          # yaratır → retention'ı bozar. Kapatıyoruz (izlenebilirlik release imajlarında yeterli).
+          provenance: false
+          sbom: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Retention — SADECE '-dev' paketlerini temizler; en yeni ~8 tagged sürümü tutar, gerisini siler.
+  # Sürüm imajları (mesnet-api / mesnet-caddy) AYRI paketlerde olduğundan buradan ETKİLENMEZ.
+  # dataaxiom/ghcr-cleanup-action MANIFEST-AWARE'dir: multi-arch child'ları ve attestation
+  # referrer'larını doğru ele alır (actions/delete-package-versions manifest-blind'dir ve
+  # paylaşılan child layer'ları silerek DİĞER canlı tag'leri bozabilir — bu yüzden seçilmedi).
+  # 'dev' etiketi her push'ta yeni versiyona taşınır; eski versiyon 'sha-<short>' ile TAGGED
+  # kalır (untagged olmaz), böylece keep-n-tagged deterministiktir. exclude-tags: dev, o an
+  # canlı olan 'dev' sürümünü ayrıca garantiye alır (retention ~8 sha + 1 canlı dev).
+  cleanup:
+    needs: build-push
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write # ÖN KOŞUL: org paketinde silme için paketin ayarlarından (Package → Manage Actions access) bu repoya Admin rolü verilmiş olmalı; yoksa 403 → delete:packages kapsamlı PAT gerekir
+    steps:
+      - name: Owner'ı küçük harfe çevir (GHCR küçük harf ister)
+        id: owner
+        run: echo "lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: GHCR temizliği (en yeni ~8 tagged, manifest-aware)
+        uses: dataaxiom/ghcr-cleanup-action@v1.2.2
+        with:
+          # Normalde GITHUB_TOKEN yeter (paketi bu repo yayınladığı için repo'ya admin erişimi
+          # otomatik verilir). Org politikası kısıtlıysa ve silme 403 alırsa: delete:packages
+          # kapsamlı bir PAT'i GHCR_CLEANUP_PAT secret'ı olarak ekle — kod değişikliği gerekmez.
+          token: ${{ secrets.GHCR_CLEANUP_PAT || secrets.GITHUB_TOKEN }}
+          owner: ${{ steps.owner.outputs.lc }}
+          packages: mesnet-api-dev,mesnet-caddy-dev
+          keep-n-tagged: 8         # en yeni 8 TAGGED sürüm (sha-<short>) tutulur
+          delete-untagged: true    # artık/orphan untagged manifest'leri sil
+          exclude-tags: dev,latest # mutable etiketleri koru (canlı 'dev' asla silinmez)
+          # Önizleme için workflow_dispatch ile geçici olarak true yapıp logları inceleyebilirsin.
+          # Silme geri alınamaz; ancak yalnızca eskimiş '-dev' build imajlarını etkiler.
+          dry-run: false

@@ -7,7 +7,34 @@ namespace MESNET.Payment.Core.ReadModels;
 public class StudentPaymentProfile
 {
     public Guid Id { get; set; }       // StudentId
+
+    /// <summary>
+    /// Kiracı anahtarı (#147). Türetilmiş görünüm olsa da kiracıya ait veri taşır; anahtarsız
+    /// hâlinde çok-okul sorgusu iki okulun satırını ayırt edemezdi.
+    /// </summary>
+    public Guid InstitutionId { get; set; }
     public string FullName { get; set; } = "";
     public string StudentNumber { get; set; } = "";
     public string BranchCode { get; set; } = "";
+
+    // 3308 Madde 25: MESEM 12. sınıf öğrencisi taban ücreti asgari ücretin %50'si (diğerlerinde
+    // işletme büyüklüğüne göre %15/%30). Devlet katkısında ise MESEM öğrencisinin tamamı
+    // karşılanıyor, sınıf şartı yok. StudentRegistered her iki bilgiyi de taşıyordu ama
+    // consumer atıyordu (#64).
+    public int ClassYear { get; set; }
+
+    /// <summary><c>Formal</c> (Örgün) veya <c>Mesem</c> (MESEM).</summary>
+    public string EducationTypeName { get; set; } = "";
+
+    /// <summary>
+    /// Kalfalık yeterliğini kazandı mı — %50 oranının şartı (3308 Madde 25). Varsayılan false;
+    /// eksik veri fazla ödeme üretmesin diye düşük orana düşülür (#83).
+    /// </summary>
+    public bool HasJourneymanQualification { get; set; }
+
+    /// <summary>Yaşa uygun asgari ücret seçimi için (#85). null ise genel asgari ücret uygulanır.</summary>
+    public DateTime? BirthDate { get; set; }
+
+    /// <summary>Student / CandidateApprentice / Apprentice (#85).</summary>
+    public string CategoryName { get; set; } = "Student";
 }

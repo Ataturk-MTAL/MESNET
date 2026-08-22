@@ -63,11 +63,13 @@ const menuDefinition: NavGroup[] = [
     icon: 'work_history',
     permissions: [],
     children: [
-      { title: 'Staj Takibi', icon: 'work_history', to: { name: 'InternshipOverview' }, permissions: ['internship:view', 'internship:manage'] },
+      { title: 'Staj Takibi', icon: 'work_history', to: { name: 'InternshipOverview' }, permissions: ['internship:view', 'internship:manage', 'internship:view-own'] },
       { title: 'Sözleşmeler', icon: 'description', to: { name: 'ContractList' }, permissions: ['internship:manage', 'internship:contract:manage'] },
-      { title: 'Devamsızlık', icon: 'event_available', to: { name: 'AttendanceList' }, permissions: ['attendance:view'] },
-      { title: 'Maaş / Dekont', icon: 'payments', to: { name: 'SalaryList' }, permissions: ['salary:view'] },
-      { title: 'Dönem Notu Girişi', icon: 'edit_note', to: { name: 'TermGradeEntry' }, permissions: ['company:grade:enter'] },
+      { title: 'Devamsızlık', icon: 'event_available', to: { name: 'AttendanceList' }, permissions: ['attendance:view', 'attendance:view-own'] },
+      { title: 'Ücretli İzin', icon: 'event_note', to: { name: 'PaidLeaveList' }, permissions: ['attendance:leave:request', 'attendance:leave:business-approve', 'attendance:leave:approve'] },
+      { title: 'Maaş / Dekont', icon: 'payments', to: { name: 'SalaryList' }, permissions: ['salary:view', 'salary:view-own'] },
+      { title: 'Asgari Ücret', icon: 'price_change', to: { name: 'SalaryConfig' }, permissions: ['salary:parameter:view'] },
+      { title: 'Dönem Notu Girişi', icon: 'edit_note', to: { name: 'TermGradeEntry' }, permissions: ['company:grade:enter', 'institution:school-grade:enter'] },
     ],
   },
   {
@@ -77,8 +79,13 @@ const menuDefinition: NavGroup[] = [
     permissions: [],
     children: [
       { title: 'Ders Programı', icon: 'calendar_month', to: { name: 'TeacherSchedule' }, permissions: ['coordinator:schedule:manage'] },
-      { title: 'İşletme Dağıtımı', icon: 'assignment_ind', to: { name: 'BusinessAssignment' }, permissions: ['department:distribution:manage'] },
+      // Sıra iş akışını yansıtır: havuz hesaplanır -> saat takdir edilir -> dağıtım yapılır.
+      // Saat takdiri dağıtımın ön koşulu; dağıtılabilir saatin üst sınırı havuzdan gelir.
+      // Mesafe-saat mevzuat tablosu havuzdan da önce gelir: işletme saat tavanları buradan türer.
+      { title: 'Koordinasyon Ayarları', icon: 'tune', to: { name: 'CoordinationConfig' }, permissions: ['department:distribution:manage'] },
       { title: 'Ders Yükü Havuzu', icon: 'calculate', to: { name: 'WorkloadConfig' }, permissions: ['department:distribution:manage'] },
+      { title: 'İşletme Saat Ayarları', icon: 'schedule', to: { name: 'BusinessHours' }, permissions: ['department:distribution:manage'] },
+      { title: 'İşletme Dağıtımı', icon: 'assignment_ind', to: { name: 'BusinessAssignment' }, permissions: ['department:distribution:manage'] },
       { title: 'Haftalık Ziyaretler', icon: 'event_note', to: { name: 'WeeklyVisits' }, permissions: ['department:weekly-visit:manage'] },
       { title: 'Değerlendirmeler', icon: 'rate_review', to: { name: 'BusinessEvaluations' }, permissions: ['coordinator:visit:manage'] },
       { title: 'Beceri Sınavları', icon: 'quiz', to: { name: 'SkillExams' }, permissions: ['coordinator:visit:manage'] },
@@ -132,14 +139,39 @@ export function useNavigation() {
       .filter(Boolean) as NavGroup[]
   })
 
-  // Expand state — localStorage ile kalıcı
-  const expandedGroups = ref<Record<string, boolean>>(
-    JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'),
-  )
+  // Expand state — localStorage ile kalıcı.
+  //
+  // Okuma ve yazma korumalı: bu composable MainLayout'un setup'ında senkron çalışır.
+  // Bozuk bir JSON değeri (elle düzenleme, yarım yazma, ileride şema değişikliği) burada
+  // fırlatırsa TÜM ana düzen render edilemez ve kullanıcı localStorage'ı elle temizleyene
+  // kadar uygulamaya giremez. Yazma tarafı da kotayı dolduran ya da özel modda depolamayı
+  // kapatan tarayıcılarda fırlatabilir. Menü açık/kapalı durumu kritik veri değil —
+  // hata yutulmaz, varsayılana düşülür.
+  function loadExpandedGroups(): Record<string, boolean> {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return {}
+      const parsed: unknown = JSON.parse(raw)
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {}
+      return parsed as Record<string, boolean>
+    } catch {
+      return {}
+    }
+  }
+
+  function persistExpandedGroups() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups.value))
+    } catch {
+      // Kalıcılık kaybı kabul edilebilir; menü bu oturumda çalışmaya devam eder.
+    }
+  }
+
+  const expandedGroups = ref<Record<string, boolean>>(loadExpandedGroups())
 
   function toggleGroup(key: string) {
     expandedGroups.value[key] = !expandedGroups.value[key]
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups.value))
+    persistExpandedGroups()
   }
 
   function isExpanded(key: string): boolean {
@@ -163,7 +195,7 @@ export function useNavigation() {
     (key) => {
       if (key && !expandedGroups.value[key]) {
         expandedGroups.value[key] = true
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups.value))
+        persistExpandedGroups()
       }
     },
     { immediate: true },

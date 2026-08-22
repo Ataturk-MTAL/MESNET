@@ -12,21 +12,21 @@ public static class InstitutionSeeder
 
         ctx.Set("Institution", institutionId.Value);
 
-        // Keycloak kullanıcılarının institution_id claim'ini güncelle
-        await SyncKeycloakAsync(keycloak, institutionId.Value);
-
         // Alanlar + dallar
         await EnsureBranchesAsync(api, institutionId.Value);
 
         // Staff — Keycloak'tan gerçek kullanıcı ID'lerini al
         await EnsureStaffAsync(api, keycloak, institutionId.Value);
 
+        // Kurum kapsamı artık personel kaydından türer (ADR-0003 adım 2).
+        await BackfillUserInstitutionScopeAsync(api);
+
         // Ders programı
         await api.PutAsync($"/api/institutions/{institutionId.Value}/schedule-config", new
         {
             institutionId = institutionId.Value,
-            dailyPeriodCount = 8,
-            updatedBy = "Sistem"
+            dailyPeriodCount = 8
+            // updatedBy gönderilmez — aktör artık token'dan damgalanır (#137).
         });
         Console.WriteLine("  ✓ Ders programı (8 ders) ayarlandı");
 
@@ -41,15 +41,19 @@ public static class InstitutionSeeder
         {
             var id = arr[0].GetProperty("id").GetGuid();
             Console.WriteLine($"  → Kurum mevcut (id: {id.ToString()[..8]}...)");
+            await BackfillProvinceDistrictAsync(api, arr[0], id);
             return id;
         }
 
         var data = await api.PostAsync("/api/institutions", new
         {
-            tenantId = Guid.Parse("10000000-0000-0000-0000-000000000001"),
             institutionCode = 967523,
             fullName = "Atatürk Mesleki ve Teknik Anadolu Lisesi",
             address = "Toroslar, Mersin",
+            // MEB il kodu — Mersin = 33 (#147). Zorunlu alan; adresteki serbest metin değil bu
+            // kod kapsam kararında kullanılır. İlçe kapalı listeden gelir (TurkishDistricts).
+            provinceCode = "33",
+            districtName = "Toroslar",
             phoneNumber = "0324 555 0001",
             email = "mersinataturk.mtal@meb.gov.tr",
             webUrl = "https://mersinataturkmtal.meb.k12.tr",
@@ -62,23 +66,88 @@ public static class InstitutionSeeder
         return institutionId;
     }
 
-    private static async Task SyncKeycloakAsync(KeycloakAdminService keycloak, Guid institutionId)
+    private const string VarsayilanIlKodu = "33";        // MEB il kodu — Mersin
+    private const string VarsayilanIlce = "Toroslar";
+
+    /// <summary>
+    /// İl/ilçe alanları (#147) eklenmeden önce oluşturulmuş kurumu tamamlar. Seeder mevcut
+    /// kurumu bulunca erken döndüğü için bu yama olmadan alanlar boş kalır ve kapsam kararının
+    /// anahtarı eksik kalır.
+    ///
+    /// <para><b>Her alan AYRI değerlendirilir (#196).</b> Eskiden yalnız il koduna bakılıp
+    /// doluysa erken dönülüyordu; PATCH gövdesi ikisini birden yazdığı hâlde koruma tek alana
+    /// bakıyordu. Sonuç: il bir kez dolduktan sonra ilçe <b>kalıcı olarak boş kalıyordu</b> ve
+    /// hiçbir koşu onu tamamlamıyordu. Canlı veride tam olarak bu olmuştu — il <c>33</c>,
+    /// ilçe <c>null</c>. Doğrulama da yakalamaz: ilçe yalnız doluysa doğrulanır, boş bırakmak
+    /// geçerlidir.</para>
+    ///
+    /// <para><b>Üzerine YAZILMAZ:</b> yalnız boş alan doldurulur — elle başka bir il/ilçe
+    /// seçilmişse seeder onu geri almamalı. Handler <c>null</c> gelen alanı "değiştirme" sayar.</para>
+    /// </summary>
+    private static async Task BackfillProvinceDistrictAsync(
+        MesnetApiClient api, System.Text.Json.JsonElement institution, Guid institutionId)
     {
-        try
+        var (ilEksik, ilceEksik) = InstitutionBackfillPolicy.MissingFields(institution);
+
+        if (!ilEksik && !ilceEksik) return;
+
+        var fullName = institution.TryGetProperty("fullName", out var name)
+            ? name.GetString()
+            : null;
+
+        // PATCH'te fullName zorunlu (UpdateInstitutionValidator) — mevcut ad geri gönderilir.
+        // Dolu alan gövdeye KONMAZ; handler null'ı "değiştirme" sayar.
+        await api.PatchAsync($"/api/institutions/{institutionId}", new
         {
-            await keycloak.UpdateAllUsersInstitutionIdAsync(institutionId);
-            Console.WriteLine("  ✓ Keycloak institution_id senkronize edildi");
-        }
-        catch (Exception ex)
+            fullName,
+            provinceCode = ilEksik ? VarsayilanIlKodu : null,
+            districtName = ilceEksik ? VarsayilanIlce : null
+        });
+
+        var completed = (ilEksik, ilceEksik) switch
         {
-            Console.WriteLine($"  ⚠ Keycloak senkronizasyon başarısız: {ex.Message}");
+            (true, true) => $"il/ilçe ({VarsayilanIlKodu} — Mersin / {VarsayilanIlce})",
+            (true, false) => $"il ({VarsayilanIlKodu} — Mersin)",
+            _ => $"ilçe ({VarsayilanIlce})",
+        };
+
+        Console.WriteLine($"  ✓ Kurumun {completed} bilgisi tamamlandı");
+    }
+
+    /// <summary>
+    /// Personel kayıtlarından kullanıcı hesaplarına kurum (kiracı) bağını yayar
+    /// (ADR-0003 adım 2 + 2.1).
+    ///
+    /// <para><b>Neden Keycloak özniteliği yerine bu:</b> seeder eskiden realm'daki tüm
+    /// kullanıcılara <c>institution_id</c> özniteliği yazıp token'ı tazeliyordu (#147).
+    /// O yol kapandı — token'dan gelen kurum artık <b>hiç kabul edilmiyor</b>, çünkü
+    /// <c>institution_id</c> Keycloak'ta unmanaged bir özniteliktir ve kiracı anahtarı
+    /// kullanıcının yazabileceği bir kaynaktan gelemez.</para>
+    ///
+    /// <para>Uç <c>StaffAuthorized</c> olaylarını yeniden yayınlar; tüketici hesabın kurum
+    /// alanını doldurur ve permission cache'ini temizler. Yayın <b>asenkron</b> olduğu için
+    /// kısa bir bekleme gerekir — sonraki seeder adımları (işletme kaydı) kurum kapsamı ister.</para>
+    /// </summary>
+    private static async Task BackfillUserInstitutionScopeAsync(MesnetApiClient api)
+    {
+        var result = await api.PostAsync("/api/institutions/staff/resync-branch-codes", new { });
+        if (result is null)
+        {
+            Console.WriteLine("  ⚠ Kurum kapsamı backfill'i başarısız — işletme kaydı 422 verebilir");
+            return;
         }
+
+        // Wolverine durable local queue asenkron işler; tüketici bitmeden devam edilirse
+        // sonraki adım hâlâ kapsamsız token ile çalışır.
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        Console.WriteLine("  ✓ Kullanıcı kurum kapsamı personel kaydından dolduruldu");
     }
 
     private static async Task EnsureBranchesAsync(MesnetApiClient api, Guid institutionId)
     {
-        // Branch aktifleştirme idempotent değil (zaten varsa 422 döner, sorun yok)
-        // Specialization güncelleme idempotent (PUT — üzerine yazar)
+        // Branch aktifleştirme idempotent DEĞİL — zaten aktifse 422 "Alan 'EET' zaten aktif."
+        // döner. Önce mevcut branşları oku, yalnız eksik olanı POST et (#80).
+        // Specialization güncelleme idempotent (PUT — üzerine yazar), her koşuda çalışabilir.
         var branches = new[]
         {
             (Code: "EET", Specs: new[] { "EET-ETD", "EET-EBO" }, Label: "EET (Elektrik Tesisatları, Endüstriyel Bakım Onarım)"),
@@ -86,13 +155,45 @@ public static class InstitutionSeeder
             (Code: "MTT", Specs: new[] { "MTT-BMI", "MTT-MBO" }, Label: "MTT (Bilgisayarlı Makine İmalatı, Makine Bakım Onarım)"),
         };
 
+        var activeCodes = await GetActiveBranchCodesAsync(api, institutionId);
+
         foreach (var (code, specs, label) in branches)
         {
-            await api.PostAsync($"/api/institutions/{institutionId}/branches", new { fieldCode = code });
+            if (activeCodes.Contains(code))
+            {
+                Console.WriteLine($"  → Alan \"{label}\" zaten aktif");
+            }
+            else
+            {
+                var created = await api.PostAsync($"/api/institutions/{institutionId}/branches", new { fieldCode = code });
+                if (created is null)
+                {
+                    Console.WriteLine($"  ✗ Alan \"{label}\" aktifleştirilemedi — dallar atlanıyor");
+                    continue;
+                }
+                Console.WriteLine($"  ✓ Alan \"{label}\" aktif");
+            }
+
             await api.PutAsync($"/api/institutions/{institutionId}/branches/{code}/specializations",
                 new { activeSpecializations = specs });
-            Console.WriteLine($"  ✓ Alan \"{label}\" aktif");
         }
+    }
+
+    private static async Task<HashSet<string>> GetActiveBranchCodesAsync(MesnetApiClient api, Guid institutionId)
+    {
+        var codes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var inst = await api.GetAsync($"/api/institutions/{institutionId}");
+        if (inst is not { } instEl || !instEl.TryGetProperty("branches", out var branchArr)
+            || branchArr.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return codes;
+
+        foreach (var b in branchArr.EnumerateArray())
+        {
+            if (b.TryGetProperty("fieldCode", out var fc) && fc.GetString() is { } code)
+                codes.Add(code);
+        }
+
+        return codes;
     }
 
     private static async Task EnsureStaffAsync(MesnetApiClient api, KeycloakAdminService keycloak, Guid institutionId)
@@ -102,13 +203,26 @@ public static class InstitutionSeeder
         var existingStaffIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (inst is { } instEl)
         {
+            // DTO'da beklenen alan yoksa SESSİZ GEÇME (#190): eskiden buradaki catch,
+            // StaffMemberDto'nun "keycloakId" taşımadığını 41 çalıştırma boyunca yuttu;
+            // her seferinde küme boş kaldı ve aynı 5 kişi yeniden eklendi (205 satır).
+            // Sunucu tarafında da guard var; bu log, kontrolün sessizce devre dışı
+            // kalmasını görünür kılmak içindir.
             try
             {
                 var staffArr = instEl.GetProperty("staff");
                 foreach (var s in staffArr.EnumerateArray())
-                    existingStaffIds.Add(s.GetProperty("keycloakId").GetString() ?? "");
+                {
+                    if (s.TryGetProperty("keycloakId", out var kcId) && kcId.GetString() is { } id)
+                        existingStaffIds.Add(id);
+                    else
+                        Console.WriteLine("  ⚠ Personel kaydında \"keycloakId\" alanı yok — mükerrer kontrolü yapılamıyor");
+                }
             }
-            catch { /* staff property yoksa boş set */ }
+            catch (KeyNotFoundException)
+            {
+                Console.WriteLine("  ⚠ Kurum yanıtında \"staff\" alanı yok — mükerrer kontrolü yapılamıyor");
+            }
         }
 
         // username → (role, branchCode) eşleştirmesi
@@ -160,10 +274,12 @@ public static class InstitutionSeeder
     {
         try
         {
-            var periods = await api.GetAsync($"/api/institutions/{institutionId}/academic-periods");
-            if (periods is { } pArr && pArr.ValueKind == System.Text.Json.JsonValueKind.Array && pArr.GetArrayLength() > 0)
+            // Endpoint PagedResult döndürüyor ({ items: [...] }); eskiden düz dizi bekleniyordu,
+            // bu yüzden kontrol hiç tutmuyor ve her koşuda 422 "Bu dönem zaten mevcut" alınıyordu (#80).
+            var periods = await api.GetListAsync($"/api/institutions/{institutionId}/academic-periods");
+            if (periods.Count > 0)
             {
-                var periodId = pArr[0].GetProperty("id").GetGuid();
+                var periodId = periods[0].GetProperty("id").GetGuid();
                 ctx.Set("AcademicPeriod", periodId);
                 Console.WriteLine($"  → Akademik dönem mevcut (id: {periodId.ToString()[..8]}...)");
                 return;
@@ -179,11 +295,16 @@ public static class InstitutionSeeder
             startDate = "2025-09-08",
             endDate = "2026-06-19"
         });
-        if (data is not null)
+
+        // Başarısız çağrıdan sonra başarı satırı basma (#80) — ayrıca ctx boş kalırsa
+        // sonraki seeder'lar akademik dönemsiz çalışır, sessizce yanlış veri üretirdi.
+        if (data is null)
         {
-            var periodId = data.Value.GetProperty("id").GetGuid();
-            ctx.Set("AcademicPeriod", periodId);
+            Console.WriteLine("  ✗ Akademik dönem \"2025-2026\" oluşturulamadı");
+            return;
         }
+
+        ctx.Set("AcademicPeriod", data.Value.GetProperty("id").GetGuid());
         Console.WriteLine("  ✓ Akademik dönem \"2025-2026\" oluşturuldu");
     }
 }

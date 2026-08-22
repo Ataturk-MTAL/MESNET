@@ -1,3 +1,4 @@
+using MESNET.Business.Core.Services;
 using FluentValidation;
 using MESNET.Business.Application.Commands;
 using MESNET.Business.Core.Enums;
@@ -8,7 +9,6 @@ public class SelfRegisterBusinessValidator : AbstractValidator<SelfRegisterBusin
 {
     public SelfRegisterBusinessValidator()
     {
-        RuleFor(x => x.TenantId).NotEmpty().WithMessage("Kurum (tenant) belirtilmelidir.");
         RuleFor(x => x.KeycloakId).NotEmpty().WithMessage("Kullanıcı kimliği belirtilmelidir.");
         RuleFor(x => x.FullName).NotEmpty().WithMessage("Temsilci adı soyadı belirtilmelidir.");
         RuleFor(x => x.RepresentativePhone).NotEmpty().WithMessage("Temsilci telefonu belirtilmelidir.");
@@ -16,6 +16,9 @@ public class SelfRegisterBusinessValidator : AbstractValidator<SelfRegisterBusin
             .EmailAddress().WithMessage("Geçerli bir e-posta adresi giriniz.");
         RuleFor(x => x.BusinessName).NotEmpty().WithMessage("İşletme adı belirtilmelidir.");
         RuleFor(x => x.Address).NotEmpty().WithMessage("Adres belirtilmelidir.");
+        RuleFor(x => x.TaxNumber)
+            .Must(TaxNumberPolicy.IsValid)
+            .WithMessage(TaxNumberPolicy.FormatMessage);
         RuleFor(x => x.PersonnelCount).GreaterThan(0).WithMessage("Personel sayısı sıfırdan büyük olmalıdır.");
         RuleFor(x => x.TotalSlots).GreaterThan(0).WithMessage("Toplam kontenjan sıfırdan büyük olmalıdır.");
 

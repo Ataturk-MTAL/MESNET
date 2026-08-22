@@ -6,6 +6,19 @@ title: Wolverine Kalıpları
 
 Bu doküman, MESNET projesinde kullanılan ve gelecekte kullanılabilecek Wolverine pattern'lerini içerir.
 
+:::warning Bu sayfadaki iki bölüm artık geçerli DEĞİL
+
+- **Tuple Pattern / `Result<T>`** — `Result<T>` deseni **terk edildi**. Wolverine özel bir
+  `Result` sarmalayıcısını anlamaz; hata yolu artık `DomainException` (→ HTTP 422), başarı yolu
+  düz olay POCO'sudur. Aşağıdaki `(Result, Event)` örnekleri **tarihsel kayıttır**, kopyalanacak
+  desen değildir. Güncel kural: `CLAUDE.md` → "CQRS Kuralları".
+- **Multi-Tenancy → "Phase 2"** — çok kiracılık **Phase 1'de açıldı** (#149, ADR-0003). Marten
+  conjoined kiracılık aktif, kiracısız session yasak. Güncel kural:
+  [ADR-0003](./adr-0003-cok-kiracilik.md) ve `CLAUDE.md` → "Kiracılık".
+
+Sayfanın kalanı (Saga, Event Sourcing, projection tipleri) geçerlidir.
+:::
+
 ## 📋 İçindekiler
 
 1. [Tuple Pattern (Cascading Messages)](#tuple-pattern-cascading-messages)
@@ -289,9 +302,25 @@ public static (Result, ContractCreated) Handle(CreateContract cmd, ...)
 
 ## Multi-Tenancy
 
-### Phase 2 Özelliği
+### Phase 1'de AÇIK (#149, ADR-0003)
 
-**Not:** Multi-tenancy **Phase 2** kapsamında. Phase 1'de single institution (tek kurum) odaklı.
+Kiracı = **okul**. Marten conjoined kiracılık aktiftir; aşağıdaki Wolverine desenleri
+referanstır ama MESNET'te kiracıyı **elle taşımazsınız**:
+
+- `TenantResolutionMiddleware` `IMessageBus.TenantId`'yi koyar; handler'lar, cascading mesajlar
+  ve `PublishAsync` onu devralır. Komutları tek tek etiketlemeyin.
+- Argümansız session açmak **yasaktır** (`store.QuerySession()` / `LightweightSession()`);
+  `Advanced.DefaultTenantUsageEnabled = false` ve ihlalde `DefaultTenantUsageDisabledException`.
+  Kilitleyen test: `TenantlessSessionDriftTests`.
+- Damga tek yerden gelir: `DocumentTenancyMap` (`Tenant` / `Shared` / `Identity`).
+  `AllDocumentsAreMultiTenanted()` **kullanılmaz** — ulusal katalog, paylaşımlı işletme
+  kataloğu ve kimlik katmanı damga almamalıdır.
+- `BackgroundService` / `IHostedService` / kimlik katmanına `IQuerySession`/`IDocumentSession`
+  **enjekte edilmez** (DI'dan gelen session kiracısızdır); `IDocumentStore` alın, arka plan
+  işleri `ITenantDirectory` ile kiracı kiracı dolaşır.
+
+Aşağıdaki bölüm Wolverine'in genel API'sini gösterir; MESNET'teki uygulaması yukarıdaki
+kurallara tabidir.
 
 ### Wolverine Multi-Tenancy Patterns
 
@@ -337,26 +366,29 @@ public static (Result, ContractCreated) Handle(
 }
 ```
 
-### Marten Entegrasyonu
+### Marten Entegrasyonu (MESNET'te uygulanan hâli)
 
-**Conjoined Tenancy (Phase 2 için planlanan):**
 ```csharp
 services.AddMarten(opts => {
     opts.Connection(connectionString);
-    opts.Policies.AllDocumentsAreMultiTenanted();
+    // AllDocumentsAreMultiTenanted() KULLANILMAZ — sınıflandırma tek yerden gelir.
+    opts.Policies.OnDocuments(new DocumentTenancyPolicy());   // DocumentTenancyMap'e bakar
+    opts.Events.TenancyStyle = TenancyStyle.Conjoined;
+    opts.Advanced.DefaultTenantUsageEnabled = false;          // kiracısız session yasak
 });
 
-// Session tenant ile açılır
-var session = store.LightweightSession("institution-123");
+// Session HER ZAMAN kiracıyla açılır; istek bağlamı dışında Platform kullanılır.
+var session = store.LightweightSession(tenantId);
 ```
 
-### Phase 2 Implementasyon Planı
+Sonuç veritabanında da gözlenebilir: `shared.mt_streams` birincil anahtarı `(tenant_id, id)`
+olmalıdır. Kilitleyen test: `tests/MESNET.Api.Tests/Tenancy/TenantStampIntegrityTests.cs` —
+kiracılık bir *süzme* mekanizması olduğu için doğru da yanlış da çalışsa API 200 döner; tek
+güvenilir gözlem noktası tabloların kendisidir.
 
-1. **Tenant Module Aktivasyonu** (`src/Modules/Tenant/`)
-2. **Marten Conjoined Tenancy** konfigürasyonu
-3. **Wolverine TenantId** metadata kullanımı
-4. **Keycloak Organization** mapping
-5. **HTTP Middleware** - tenant resolution (subdomain/header)
+**Var olan veritabanının geçişi açılışta yapılmaz** — `ApplyAllDatabaseChangesOnStartup()`
+Marten'ın kendisiyle çelişen deltası yüzünden API'yi öldürür. Elden iki betik:
+`src/Docs/docs/infrastructure/sql/` + sıra: `dagitim-on-kosullari.md`.
 
 ### Kaynak
 - [Multi-Tenancy](https://wolverinefx.net/guide/handlers/multi-tenancy.html)
@@ -587,9 +619,10 @@ wolverine.wolverine_outgoing_messages
 
 | Pattern | Kullanım | MESNET Phase |
 |---------|----------|--------------|
-| **Tuple Pattern** | Event cascading + Result<T> | Phase 1 ✅ |
-| **FluentValidation** | Automatic validation | Phase 2 🔮 |
-| **Multi-Tenancy** | Institution isolation | Phase 2 🔮 |
+| **Tuple Pattern** | ID + cascading event (`(Guid, Event)`) | Phase 1 ✅ |
+| ~~`Result<T>`~~ | ~~Hata sarmalayıcısı~~ → `DomainException` (422) | **Terk edildi** ❌ |
+| **FluentValidation** | Automatic validation | Phase 1 ✅ (validator'lar mevcut) |
+| **Multi-Tenancy** | Conjoined — kiracı = okul (#149) | Phase 1 ✅ |
 | **Saga** | Workflow orchestration | Phase 1 ✅ |
 | **Event Sourcing** | State transitions (Contract, Attendance, Payment) | Phase 1 ✅ |
 | **Document Store** | CRUD entities (Business, Enrollment, Institution) | Phase 1 ✅ |

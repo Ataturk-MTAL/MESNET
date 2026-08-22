@@ -1,9 +1,9 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Enums;
 using MESNET.Common.Shared.Security;
 using MESNET.Institution.Application.Commands;
 using MESNET.Institution.Application.Dtos;
 using MESNET.Institution.Application.Queries;
-using MESNET.Institution.Core.Enums;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;

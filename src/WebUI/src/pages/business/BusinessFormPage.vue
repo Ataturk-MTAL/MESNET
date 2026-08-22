@@ -1,52 +1,163 @@
 <template>
   <q-page padding>
-    <div class="q-mx-auto" style="max-width: 1100px">
+    <div
+      class="q-mx-auto"
+      style="max-width: 1100px"
+    >
       <div class="row items-center q-mb-lg">
-        <q-btn flat round dense icon="arrow_back" aria-label="İşletmelere dön" class="q-mr-sm" @click="goBack">
+        <q-btn
+          flat
+          round
+          dense
+          icon="arrow_back"
+          aria-label="İşletmelere dön"
+          class="q-mr-sm"
+          @click="goBack"
+        >
           <q-tooltip>İşletmelere dön</q-tooltip>
         </q-btn>
-        <div class="text-h5 text-weight-bold col">{{ isEdit ? 'İşletme Düzenle' : 'Yeni İşletme' }}</div>
+        <h1 class="text-h5 text-weight-bold col q-my-none">
+          {{ isEdit ? 'İşletme Düzenle' : 'Yeni İşletme' }}
+        </h1>
       </div>
 
-      <q-card flat bordered class="relative-position">
+      <q-card
+        flat
+        bordered
+        class="relative-position"
+      >
         <q-inner-loading :showing="loading" />
         <q-card-section>
           <div class="row q-col-gutter-md">
             <!-- Bilgi girişleri: solda (dar ekranda üstte) -->
             <div class="col-12 col-md-6 q-gutter-md">
-              <q-input v-model="form.name" label="İşletme Adı *" outlined :error="!!errors.name" :error-message="errors.name">
-                <template #prepend><q-icon name="business" /></template>
+              <q-input
+                v-model="form.name"
+                label="İşletme Adı *"
+                outlined
+                :error="!!errors.name"
+                :error-message="errors.name"
+              >
+                <template #prepend>
+                  <q-icon name="business" />
+                </template>
               </q-input>
-              <q-input v-model="form.address" label="Adres *" outlined :error="!!errors.address" :error-message="errors.address">
-                <template #prepend><q-icon name="location_on" /></template>
+              <q-input
+                v-model="form.address"
+                label="Adres *"
+                outlined
+                :error="!!errors.address"
+                :error-message="errors.address"
+              >
+                <template #prepend>
+                  <q-icon name="location_on" />
+                </template>
               </q-input>
-              <q-input v-model="form.phoneNumber" label="Telefon" outlined>
-                <template #prepend><q-icon name="phone" /></template>
+              <q-input
+                v-model="form.phoneNumber"
+                label="Telefon"
+                outlined
+              >
+                <template #prepend>
+                  <q-icon name="phone" />
+                </template>
               </q-input>
-              <q-input v-model="form.email" label="E-posta" outlined type="email" :error="!!errors.email" :error-message="errors.email">
-                <template #prepend><q-icon name="email" /></template>
+              <q-input
+                v-model="form.email"
+                label="E-posta"
+                outlined
+                type="email"
+                :error="!!errors.email"
+                :error-message="errors.email"
+              >
+                <template #prepend>
+                  <q-icon name="email" />
+                </template>
               </q-input>
-              <q-input v-if="isEdit" v-model="form.website" label="Web Sitesi" outlined>
-                <template #prepend><q-icon name="language" /></template>
+              <q-input
+                v-if="isEdit"
+                v-model="form.website"
+                label="Web Sitesi"
+                outlined
+              >
+                <template #prepend>
+                  <q-icon name="language" />
+                </template>
               </q-input>
-              <q-input v-model.number="form.personnelCount" label="Personel Sayısı" outlined type="number">
-                <template #prepend><q-icon name="groups" /></template>
+              <q-input
+                v-model="form.taxNumber"
+                label="Vergi Kimlik No *"
+                outlined
+                maxlength="11"
+                mask="###########"
+                unmasked-value
+                hint="10 haneli VKN (tüzel kişi) ya da 11 haneli TC kimlik no (şahıs işletmesi). İşletme kataloğu okullar arası ortaktır; bu numara aynı firmanın iki kez kaydedilmesini engeller."
+                :rules="[(v: string) => /^\d{10}$|^\d{11}$/.test(v ?? '') || 'Vergi kimlik numarası 10 ya da 11 haneli olmalıdır']"
+              >
+                <template #prepend>
+                  <q-icon name="badge" />
+                </template>
               </q-input>
-              <q-select v-model="form.sectors" :options="sectorOptions" label="Sektörler" outlined multiple emit-value map-options use-chips>
-                <template #prepend><q-icon name="category" /></template>
+              <q-input
+                v-model.number="form.personnelCount"
+                label="Personel Sayısı"
+                outlined
+                type="number"
+                hint="İş Kanununa tabi çalıştırılan personel sayısı — stajyer ve çıraklar dâhil edilmez. 20 ve üzeri işletmelerde öğrenci ücreti asgari ücretin %30'u, altında %15'idir."
+              >
+                <template #prepend>
+                  <q-icon name="groups" />
+                </template>
+              </q-input>
+              <q-select
+                v-model="form.sectors"
+                :options="sectorOptions"
+                label="Sektörler"
+                outlined
+                multiple
+                emit-value
+                map-options
+                use-chips
+              >
+                <template #prepend>
+                  <q-icon name="category" />
+                </template>
               </q-select>
+              <q-toggle
+                v-model="form.isPublicInstitution"
+                label="Kamu kurum/kuruluşu"
+                :true-value="true"
+                :false-value="false"
+              />
+              <div class="text-caption text-grey-7 q-ml-sm">
+                3308 sayılı Kanun Geçici Madde 12 gereği kamu kurum ve kuruluşlarına
+                <strong>devlet katkısı ödenmez</strong>. Öğrencinin ücreti işletme tarafından
+                ödenmeye devam eder; yalnız devlet payı hesaplanmaz.
+              </div>
             </div>
 
             <!-- Harita: sağda (dar ekranda altta) -->
             <div class="col-12 col-md-6">
-              <MapPicker :model-value="form.location" height="480px" @update:model-value="(v) => (form.location = v)" />
+              <MapPicker
+                :model-value="form.location"
+                height="480px"
+                @update:model-value="(v) => (form.location = v)"
+              />
             </div>
           </div>
         </q-card-section>
 
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="İptal" color="grey-7" @click="goBack" />
+        <q-card-actions
+          align="right"
+          class="q-pa-md"
+        >
+          <q-btn
+            flat
+            label="İptal"
+            color="grey-7"
+            @click="goBack"
+          />
           <q-btn
             unelevated
             color="primary"
@@ -83,11 +194,15 @@ const saving = ref(false)
 
 const form = reactive({
   name: '',
+  taxNumber: '',
   address: '',
   phoneNumber: '',
   email: '',
   website: '',
   personnelCount: 0,
+  // 3308 Geçici Madde 12 — kamu kurumlarına devlet katkısı ödenmez (#157).
+  // Varsayılan false: özel işletme, sistemdeki çoğunluk.
+  isPublicInstitution: false,
   location: null as { latitude: number; longitude: number } | null,
   sectors: [] as string[],
 })
@@ -111,11 +226,13 @@ async function loadBusiness() {
     const { data: b } = await businessApi.get(businessId.value)
     Object.assign(form, {
       name: b.name,
+      taxNumber: b.taxNumber ?? '',
       address: b.address,
       phoneNumber: b.phoneNumber ?? '',
       email: b.email ?? '',
       website: b.website ?? '',
       personnelCount: b.personnelCount,
+      isPublicInstitution: b.isPublicInstitution,
       location: b.location ? { ...b.location } : null,
       sectors: b.sectors.map((s: SectorDto) => s.name),
     })
@@ -128,7 +245,7 @@ async function loadBusiness() {
 }
 
 function goBack() {
-  void router.push('/companies')
+  router.push('/companies').catch(() => {})
 }
 
 async function handleSave() {
@@ -139,12 +256,17 @@ async function handleSave() {
     saving.value = true
     try {
       await businessApi.update(businessId.value!, {
+        taxNumber: form.taxNumber || undefined,
         name: form.name || undefined,
         address: form.address || undefined,
         phoneNumber: form.phoneNumber || undefined,
         email: form.email || undefined,
         website: form.website || undefined,
         personnelCount: form.personnelCount || undefined,
+        // `|| undefined` KULLANILMAZ: `false || undefined` → undefined olur ve backend bunu
+        // "dokunma" olarak yorumlar (kısmi güncelleme deseni). O zaman bir kez kamu
+        // işaretlenen işletmenin işareti hiç kaldırılamazdı. Boolean her zaman aynen gider.
+        isPublicInstitution: form.isPublicInstitution,
         location: form.location ?? undefined,
         sectors: form.sectors,
       })
@@ -160,11 +282,13 @@ async function handleSave() {
     saving.value = true
     try {
       await businessApi.register({
+        taxNumber: form.taxNumber,
         name: form.name,
         address: form.address,
         phoneNumber: form.phoneNumber || undefined,
         email: form.email || undefined,
         personnelCount: form.personnelCount || undefined,
+        isPublicInstitution: form.isPublicInstitution,
         location: form.location ?? undefined,
         sectors: form.sectors.length > 0 ? form.sectors : undefined,
       })

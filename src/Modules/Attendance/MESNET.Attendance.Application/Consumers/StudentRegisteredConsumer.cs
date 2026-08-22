@@ -15,9 +15,14 @@ public static class StudentRegisteredConsumer
         session.Store(new StudentNameView
         {
             Id = @event.StudentId,
+            InstitutionId = @event.InstitutionId,
             FullName = @event.FullName,
             StudentNumber = string.IsNullOrWhiteSpace(@event.StudentNumber) ? null : @event.StudentNumber,
-            BranchCode = @event.BranchCode
+            BranchCode = @event.BranchCode,
+            // Ücretli izin hakkı eğitim türüne bağlıdır (#175) — örgünde yok, MESEM'de var.
+            EducationType = @event.EducationType,
+            // 18 yaş kuralı için (#247) — olay bu alanı zaten taşıyordu (#85), okunup atılıyordu.
+            BirthDate = @event.BirthDate
         });
     }
 }

@@ -24,6 +24,7 @@ public static class ContractMappingExtensions
         contract.TerminationReasonType?.Name,
         contract.TerminationReasonType?.Slug,
         contract.Documents.Select(d => d.ToDto()).ToList(),
+        contract.AgreedMonthlyWage,
         contract.CreatedAt);
 
     public static SignatureStatusDto ToDto(this SignatureStatus status) => new(

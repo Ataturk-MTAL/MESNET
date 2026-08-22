@@ -43,4 +43,18 @@ public static class DistanceHelper
         view.DistanceToSchoolKm = distance;
         view.MaxCoordinationHours = CoordinationCalculator.CalculateMaxHours(distance, rules);
     }
+
+    /// <summary>
+    /// Mesafeden türeyen alanları bir satırdan diğerine kopyalar.
+    /// Mesafe işletme geneli bir değerdir; azami saat tavanı <b>her alan için ayrı</b>
+    /// uygulanır, bu yüzden aynı tavan her alan satırına kopyalanır.
+    /// </summary>
+    public static void CopyDistanceTo(BusinessCoordinationView source, BusinessCoordinationView target)
+    {
+        if (ReferenceEquals(source, target)) return;
+
+        target.DistanceToSchoolKm = source.DistanceToSchoolKm;
+        target.IsManualDistance = source.IsManualDistance;
+        target.MaxCoordinationHours = source.MaxCoordinationHours;
+    }
 }

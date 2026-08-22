@@ -21,6 +21,8 @@ public sealed record InternshipContract(
     string? TerminationReason,
     TerminationReason? TerminationReasonType,
     IReadOnlyList<ContractDocument> Documents,
+    // Sözleşmede taahhüt edilen aylık ücret (#84). null = belirtilmemiş, yasal taban uygulanır.
+    decimal? AgreedMonthlyWage,
     DateTime CreatedAt)
 {
     // SmartEnum LINQ tuzağı: Status JSON'a düz string serialize edilir; sorgular için düz string kopya.
@@ -30,7 +32,7 @@ public sealed record InternshipContract(
         e.ContractId, e.StudentId, e.BusinessId, e.InstitutionId, e.AcademicPeriodId, e.TeacherId,
         ContractStatus.Draft, e.StartDate, null,
         SignatureStatus.Unsigned, SignatureStatus.Unsigned, SignatureStatus.Unsigned, SignatureStatus.Unsigned,
-        null, null, [], e.CreatedAt);
+        null, null, [], e.AgreedMonthlyWage, e.CreatedAt);
 
     public InternshipContract Apply(ContractSubmittedForSignature _)
         => this with { Status = ContractStatus.AwaitingSignature };

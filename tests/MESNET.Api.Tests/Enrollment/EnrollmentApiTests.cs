@@ -270,6 +270,50 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
         ((int)response.StatusCode).ShouldBeLessThan(500);
     }
 
+    // ──────────────── Yerleştirme projeksiyon backfill'i (#185) ────────────────
+    // POST /api/placements/resync-projections
+    //
+    // Bu uç bir DAĞITIM ADIMIDIR: yeni bir read-model eklendiğinde mevcut kayıtlar ancak
+    // buradan dolar (bkz. Docs → Altyapı → Dağıtım Ön Koşulları). Adım atlanırsa hata çıkmaz,
+    // liste boş gelir. Belgede yazılı yolun kayması da aynı biçimde sessiz olurdu — #185 zaten
+    // YANLIŞ bir yol tahmin etmişti (/api/enrollment/students/resync-projections). Aşağıdaki
+    // testler doğru yolu ve operatörün okuması gereken yanıt alanlarını kilitler.
+
+    [Fact]
+    public async Task Yerlestirme_projeksiyon_resync_ucu_anonim_istekte_401_doner()
+    {
+        // Given — token'sız client
+        // When — backfill ucu çağrılır
+        var response = await _fixture.Anonymous.PostAsync(
+            "/api/placements/resync-projections", EmptyJson());
+
+        // Then — dağıtım adımı da yetki ister
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    /// <summary>
+    /// Uç, belgede yazılı yolda durmalı ve <c>placementCount</c>/<c>skipped</c> döndürmeli.
+    /// Operatöre "skipped sıfırdan büyükse bak" deniyor; alan kaybolursa o yönerge sessizce
+    /// anlamsızlaşır.
+    /// </summary>
+    [Fact]
+    public async Task Yerlestirme_projeksiyon_resync_sayaclariyla_doner()
+    {
+        // Given — yetkili client
+        // When — backfill çağrılır (idempotent: tüketiciler upsert yapar)
+        var response = await _fixture.Client.PostAsync(
+            "/api/placements/resync-projections", EmptyJson());
+
+        // Then — uç bu yolda vardır ve sunucu hatası vermez
+        response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // Then — yanıt iki sayacı da taşır
+        var body = await response.Content.ReadAsStringAsync();
+        body.ShouldContain("placementCount");
+        body.ShouldContain("skipped");
+    }
+
     // ──────────────────── Internship Application endpoints ────────────────────
     // group: /api/internship-applications (RequireAuthorization)
     //   POST /          ApplyForInternship

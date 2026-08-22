@@ -17,6 +17,15 @@ public class UserInvitation
     public required string TargetRole { get; set; }
     public Guid? InstitutionId { get; set; }
     public Guid? BusinessId { get; set; }
+
+    /// <summary>
+    /// Velinin bağlı olacağı öğrenciler (#271) — davet kabul edilince
+    /// <c>UserAccount.LinkedStudentIds</c>'e yazılır.
+    ///
+    /// <para><b>Sona eklendi ve varsayılanı boş:</b> bu alandan önce yazılmış davetler
+    /// bozulmadan deserialize olur.</para>
+    /// </summary>
+    public List<Guid> StudentIds { get; set; } = [];
     private InvitationStatus _status = InvitationStatus.PendingApproval;
     public InvitationStatus Status
     {
@@ -27,11 +36,17 @@ public class UserInvitation
     // SmartEnum LINQ tuzağı: Status JSON'a düz string serialize edilir; sorgular için düz string kopya.
     public string StatusName { get; private set; } = InvitationStatus.PendingApproval.Name;
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
-    public string? CreatedByName { get; set; }
+    /// <summary>
+    /// İşlemi yapan kullanıcıların kimlikleri — token'dan gelir, istekten ALINMAZ (#137).
+    /// Ad sorgu tarafında <c>UserAccount</c>'tan çözülür (Security kendi modülüdür, ayrı
+    /// view gerekmez). Eski <c>createdByName</c>/<c>approvedByName</c>/<c>rejectedByName</c>
+    /// JSON anahtarları (serbest metin ad) bu adlarla artık okunmaz.
+    /// </summary>
+    public Guid? CreatedById { get; set; }
     public DateTime? ApprovedAt { get; set; }
-    public string? ApprovedByName { get; set; }
+    public Guid? ApprovedById { get; set; }
     public DateTime? RejectedAt { get; set; }
-    public string? RejectedByName { get; set; }
+    public Guid? RejectedById { get; set; }
     public string? RejectionReason { get; set; }
     public DateTime? CompletedAt { get; set; }
     public DateTime ExpiresAt { get; set; }

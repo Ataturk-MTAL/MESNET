@@ -18,6 +18,8 @@ public sealed record InternshipContractDto(
     string? TerminationReasonType,
     string? TerminationReasonTypeSlug,
     IReadOnlyList<ContractDocumentDto> Documents,
+    /// <summary>Sözleşmede taahhüt edilen aylık ücret; null ise yasal taban geçerli (#84).</summary>
+    decimal? AgreedMonthlyWage,
     DateTime CreatedAt);
 
 public sealed record SignatureStatusDto(bool IsSigned, string? SignedBy, DateTime? SignedAt);

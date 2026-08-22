@@ -7,9 +7,39 @@ namespace MESNET.Attendance.Core.ReadModels;
 public class StudentNameView
 {
     public Guid Id { get; set; } // = StudentId
+
+    /// <summary>
+    /// Kiracı anahtarı (#147). Türetilmiş görünüm olsa da kiracıya ait veri taşır; anahtarsız
+    /// hâlinde çok-okul sorgusu iki okulun satırını ayırt edemezdi.
+    /// </summary>
+    public Guid InstitutionId { get; set; }
     public string FullName { get; set; } = default!;
     public string? StudentNumber { get; set; }
 
     /// <summary>Öğrencinin alan (branş) kodu — devamsızlık listesinde server-side alan filtresi için.</summary>
     public string? BranchCode { get; set; }
+
+    /// <summary>
+    /// <c>Formal</c> (örgün) veya <c>Mesem</c> (#175). Ücretli izin hakkı yalnız MESEM'dedir;
+    /// tür doğrulaması bu alandan yapılır ve modüller arası doğrudan sorgu yasak olduğu için
+    /// burada denormalize tutulur.
+    ///
+    /// <para>Alan #175 ile eklendi; daha önce yazılmış satırlarda <c>null</c>'dur ve o
+    /// öğrencilerde ücretli izin girişi reddedilir.
+    /// <c>POST /api/enrollment/students/resync-projections</c> ile doldurulur.</para>
+    /// </summary>
+    public string? EducationType { get; set; }
+
+    /// <summary>
+    /// Doğum tarihi — md. 36 (4)'ün "18 yaşından büyük öğrenciye de bildirim" kuralı için (#247).
+    ///
+    /// <para><b>Olay şekli değişmedi:</b> <c>StudentRegistered</c> bu alanı zaten taşıyordu
+    /// (#85, Payment için eklenmiş); Attendance'ın tüketicisi okuyup atıyordu.</para>
+    ///
+    /// <para>Bu alandan önce yazılmış satırlarda <c>null</c>'dur ve o öğrencilere bildirim
+    /// <b>yine gider</b> (<c>AbsenceNotificationPolicy.ShouldNotifyStudent</c>) — eksik veri
+    /// alıcıyı düşürmemeli. Doldurmak için
+    /// <c>POST /api/students/resync-projections</c>.</para>
+    /// </summary>
+    public DateTime? BirthDate { get; set; }
 }

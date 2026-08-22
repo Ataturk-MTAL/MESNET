@@ -1,3 +1,4 @@
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Institution.Application.Commands;
@@ -17,15 +18,71 @@ public static class InstitutionEndpoints
         var group = app.MapGroup("/api/institutions")
             .WithTags("Institution").RequireAuthorization();
 
+        // Ulusal referans verisi — kurum kapsamı yok, /{institutionId:guid} kalıbından ÖNCE
+        // kaydedilir ki "provinces" bir Guid gibi ele alınmaya çalışılmasın.
+        group.MapGet("/provinces", GetProvinceList).RequireAuthorization(Permissions.Institution.View);
+        group.MapGet("/provinces/{provinceCode}/districts", GetDistrictList)
+            .RequireAuthorization(Permissions.Institution.View);
+
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Institution.View);
         group.MapGet("/{institutionId:guid}", Get).RequireAuthorization(Permissions.Institution.View);
-        group.MapPost("/", Post).RequireAuthorization(Permissions.Institution.Manage);
+        // Yeni okul açmak KURUM ÜSTÜ bir iştir (ADR-0003 adım 6): institution:manage "kurum
+        // yönetebilir" der, "yeni kiracı açabilir" demez. Ölçüldü: bu uç institution:manage
+        // ile açıkken A okulunun müdürü ikinci bir okul yaratabiliyordu.
+        group.MapPost("/", Post).RequireAuthorization(Permissions.Platform.TenantManage);
         group.MapPatch("/{institutionId:guid}", Patch).RequireAuthorization(Permissions.Institution.Manage);
         group.MapPost("/{institutionId:guid}/staff", PostStaff).RequireAuthorization(Permissions.Institution.Staff);
         group.MapPut("/{institutionId:guid}/schedule-config", PutScheduleConfig).RequireAuthorization(Permissions.Institution.Manage);
         group.MapGet("/{institutionId:guid}/schedule-config", GetScheduleConfig).RequireAuthorization(Permissions.Institution.View);
+        // Mevcut kullanıcıların alan kapsamı için tek seferlik geçiş adımı (#126) — idempotent
+        // Personel kaydından kullanıcı hesabına backfill: alan kapsamı (#126) VE kurum
+        // (kiracı anahtarı, ADR-0003 adım 2.1). Olay yeniden yayınlanır, Security tüketir —
+        // modüller arası doğrudan veri yazma yoktur.
+        group.MapPost("/staff/resync-branch-codes", PostResyncStaffBranchCodes).RequireAuthorization(Permissions.Institution.Staff);
 
         return app;
+    }
+
+    /// <summary>
+    /// Personel kayıtlarındaki alan bilgisini yeniden yayınlar; Security modülü tüketip
+    /// kullanıcı kapsamını doldurur (#126). Alanı olmayan personel atlanır — bu beklenen
+    /// durumdur, eksik değildir.
+    /// </summary>
+    /// <summary>
+    /// Hedef kurum <b>aktörün claim'inden</b> gelir; kurum üstü aktör (<c>platform:tenant:manage</c>)
+    /// <c>institutionId</c> sorgu parametresiyle başka okulu hedefleyebilir. Kapsam kararı
+    /// <c>InstitutionScopeGuardMiddleware</c>'de: kendi okulu olmayan bir aktörün ya da yabancı
+    /// hedef verenin isteği 422 döner.
+    /// </summary>
+    private static async Task<IResult> PostResyncStaffBranchCodes(
+        Guid? institutionId, ICurrentUserService currentUser, IMessageBus bus)
+    {
+        var target = institutionId
+            ?? currentUser.GetCurrentUser()?.InstitutionId
+            ?? Guid.Empty;
+
+        var result = await bus.InvokeAsync<ResyncStaffBranchCodesResult>(
+            new ResyncStaffBranchCodes(target));
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage(
+                $"{result.TotalStaff} personel incelendi, {result.Published} kayıt için alan bilgisi yayınlandı " +
+                $"({result.SkippedNoBranch} personelin alanı yok — normal, " +
+                $"{result.SkippedNoKeycloakId} personel eşleştirilemedi).")
+            .Build());
+    }
+
+    private static async Task<IResult> GetProvinceList(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ProvinceListDto>(new GetProvinces());
+        return Results.Ok(ResponseBuilder.Success().AddData(result.Items).Build());
+    }
+
+    private static async Task<IResult> GetDistrictList(string provinceCode, IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<DistrictListDto>(new GetDistricts(provinceCode));
+        return Results.Ok(ResponseBuilder.Success().AddData(result.Items).Build());
     }
 
     private static async Task<IResult> GetAll(IMessageBus bus)

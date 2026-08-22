@@ -5,6 +5,7 @@ import {
   type DailyScheduleDto,
 } from 'src/api/coordination'
 import type { useNotify } from 'src/composables/useNotify'
+import { billableTargetHours, slotTargetHours, isHonorary } from 'src/utils/coordinationHours'
 
 export interface PendingChange {
   type: 'assign' | 'unassign'
@@ -19,16 +20,17 @@ export interface UseAssignmentDnDOptions {
   rawSchedule: Ref<DailyScheduleDto[]>
   selectedTeacherId: Ref<string | null>
   selectedTeacherName: ComputedRef<string>
+  /** Seçili akademik dönem — koordinasyon satırı alan+dönem bazlıdır (#114) */
+  academicPeriodId: Ref<string | null>
   notify: ReturnType<typeof useNotify>
-  authStore: { user: { fullName?: string } | null }
   loadData: () => Promise<void>
   loadTeacherSchedule: (teacherId: string) => Promise<void>
 }
 
 export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
   const {
-    assignments, rawSchedule, selectedTeacherId, selectedTeacherName,
-    notify, authStore, loadData, loadTeacherSchedule,
+    assignments, rawSchedule, selectedTeacherId, selectedTeacherName, academicPeriodId,
+    notify, loadData, loadTeacherSchedule,
   } = options
 
   const pendingChanges = ref<PendingChange[]>([])
@@ -66,7 +68,8 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
     const result: BusinessAssignmentDto[] = []
 
     for (const biz of assignments.value) {
-      const targetHours = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
+      // Fahri ziyaret tek slot ister; tavana düşmez (#115)
+      const targetHours = slotTargetHours(biz)
       const backendSlots = biz.assignedSlots?.length ?? 0
 
       const pendingAssigns = pendingChanges.value.filter(
@@ -115,7 +118,7 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
   })
 
   function slotProgress(biz: BusinessAssignmentDto): { current: number; target: number } {
-    const target = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
+    const target = slotTargetHours(biz)
     const backendSlots = biz.assignedSlots?.length ?? 0
     const pendingAssigns = pendingChanges.value.filter(
       (c) => c.businessId === biz.businessId && c.type === 'assign',
@@ -149,7 +152,7 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
     )
     if (existing) return
 
-    const targetHours = biz.assignedHours > 0 ? biz.assignedHours : biz.maxCoordinationHours
+    const targetHours = slotTargetHours(biz)
     const backendSlots = biz.assignedSlots?.length ?? 0
     const pendingAssigns = pendingChanges.value.filter(
       (c) => c.businessId === biz.businessId && c.type === 'assign',
@@ -160,7 +163,10 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
     const currentSlots = backendSlots + pendingAssigns - pendingUnassigns
 
     if (currentSlots >= targetHours) {
-      notify.warning(`${biz.businessName}: Tüm saatler atanmış (${currentSlots}/${targetHours}).`)
+      const limitLabel = isHonorary(biz)
+        ? `Fahri ziyaret slotu dolu (${currentSlots}/${targetHours}).`
+        : `Tüm saatler atanmış (${currentSlots}/${targetHours}).`
+      notify.warning(`${biz.businessName}: ${limitLabel}`)
       return
     }
 
@@ -227,9 +233,16 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
 
     for (const change of [...pendingChanges.value]) {
       try {
+        // Hedef satır alan bazlıdır — alan kodu listedeki işletme satırından okunur (#114)
+        const biz = assignments.value.find((a) => a.businessId === change.businessId)
+        const branchRow = {
+          branchCode: biz?.branchCode ?? '',
+          academicPeriodId: academicPeriodId.value ?? '',
+        }
+
         if (change.type === 'assign') {
-          const biz = assignments.value.find((a) => a.businessId === change.businessId)
-          const hours = biz?.assignedHours || biz?.maxCoordinationHours || 0
+          // Fahri satırda 0 gider — tavanı göndermek atamayı ücretliye çevirirdi (#115)
+          const hours = biz ? billableTargetHours(biz) : 0
           await coordinationApi.assignBusiness({
             businessId: change.businessId,
             teacherId: selectedTeacherId.value!,
@@ -237,11 +250,12 @@ export function useAssignmentDnD(options: UseAssignmentDnDOptions) {
             assignedHours: hours,
             assignedDay: change.day,
             periodNumber: change.periodNumber,
-            assignedBy: authStore.user?.fullName ?? '',
+            // assignedBy gönderilmez — aktör token'dan damgalanır (#137)
+            ...branchRow,
           })
         } else {
           await coordinationApi.unassignBusinessSlot(
-            change.businessId, change.day, change.periodNumber,
+            change.businessId, change.day, change.periodNumber, branchRow,
           )
         }
         successCount++

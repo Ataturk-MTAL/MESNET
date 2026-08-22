@@ -4,6 +4,38 @@ namespace MESNET.Business.Application.Errors;
 
 public static class BusinessErrors
 {
+    /// <summary>
+    /// Kurum kapsamı token'dan gelir; claim yoksa işletmenin hangi okula bağlanacağı
+    /// belirsizdir. İstekten kurum almak yerine hata vermek gerekir — aksi hâlde kapsam
+    /// istemciye geçer ve yetkili bir kullanıcı başka okulun adına işletme kaydeder (#147).
+    /// </summary>
+    public static Error InstitutionScopeMissing() =>
+        new("Business.InstitutionScopeMissing",
+            "Kullanıcının kurum bilgisi bulunamadı, işletme kaydedilemiyor.");
+
+    /// <summary>
+    /// Aynı vergi kimliğiyle ikinci kayıt (#150). İşletme kataloğu okullar arası
+    /// <b>paylaşımlıdır</b>: firma zaten kayıtlıysa yeniden kaydedilmez, listeden seçilir.
+    /// Kopya kayıtları sonradan birleştirmek — sözleşmelerin, koordinasyon görünümlerinin ve
+    /// devamsızlık kayıtlarının yeniden yönlendirilmesi — çok daha pahalıdır.
+    /// </summary>
+    public static Error TaxNumberAlreadyRegistered(string taxNumber) =>
+        new("Business.TaxNumberAlreadyRegistered",
+            $"Bu vergi kimliğiyle ({taxNumber}) kayıtlı bir işletme zaten var. "
+            + "İşletme kataloğu okullar arası paylaşımlıdır — mevcut kaydı listeden seçin.");
+
+    /// <summary>Aynı okul iki kez bildiremez — yeter sayı farklı KURUM üzerinden sayılır (#151).</summary>
+    public static Error ClosureAlreadyReported(Guid businessId) =>
+        new("Business.ClosureAlreadyReported",
+            "Kurumunuz bu işletme için zaten kapatma bildirimi yapmış. Yeter sayı farklı "
+            + "kurumlar üzerinden sayılır; aynı kurumun ikinci bildirimi sayıya eklenmez.");
+
+    /// <summary>Geri çekilecek kendi bildirimi yok (#151).</summary>
+    public static Error ClosureReportNotFound(Guid businessId) =>
+        new("Business.ClosureReportNotFound",
+            "Kurumunuzun bu işletme için kapatma bildirimi yok. Bir okul yalnız KENDİ "
+            + "bildirimini geri çekebilir.");
+
     public static Error NotFound(Guid id) =>
         new("Business.NotFound", $"İşletme bulunamadı: {id}");
 
@@ -35,6 +67,17 @@ public static class BusinessErrors
 
     public static Error HasActiveStudents(Guid id) =>
         new("Business.HasActiveStudents", $"İşletmede aktif stajyerler var. Önce fesih yapılmalıdır: {id}");
+
+    public static Error BranchCodeRequired() =>
+        new("Business.BranchCodeRequired", "Alan kodu boş olamaz.");
+
+    public static Error BranchNotOffered(string branchCode) =>
+        new("Business.BranchNotOffered",
+            $"Kurumda açık olmayan alan için yetki verilemez: {branchCode}");
+
+    public static Error ClosedBusinessNotAuthorizable(Guid id) =>
+        new("Business.ClosedBusinessNotAuthorizable",
+            $"Kapatılmış işletmenin alan yetkileri düzenlenemez: {id}");
 
     public static Error HasAssignedTeacher(Guid id) =>
         new("Business.HasAssignedTeacher", $"İşletmeye atanmış öğretmen var. Önce atama kaldırılmalıdır: {id}");

@@ -174,6 +174,12 @@ public static class DocumentQueryHandler
         if (formType == MebFormType.BusinessEvaluation)
             return new BusinessEvaluationFormDocument(JsonSerializer.Deserialize<BusinessEvaluationFormData>(json)!);
 
+        // #60 ile eklenen Form 8'in dalı unutulmuştu (#267): MinIO nesnesi erişilemez olduğunda
+        // devreye giren "talep üzerine yeniden üretim" yolu bu tipte patlıyordu. Kalıcı olan
+        // FormDataJson'dur; MinIO snapshot'ı bir kolaylıktır.
+        if (formType == MebFormType.TermGradeSlip)
+            return new TermGradeSlipDocument(JsonSerializer.Deserialize<TermGradeSlipFormData>(json)!);
+
         throw new InvalidOperationException($"Bilinmeyen form tipi: {formType.Name}");
     }
 
@@ -194,7 +200,9 @@ public static class DocumentQueryHandler
         ReturnedByName = doc.ReturnedByName,
         ArchivedAt = doc.ArchivedAt,
         ArchivedByName = doc.ArchivedByName,
-        AcademicYear = doc.AcademicYear,
+        // Eski kayıtlar "2025 / 2026" gibi karışık biçimlerde yazılmış olabilir; DB migration
+        // yerine okuma tarafında kanonikleştiriyoruz — liste tek biçim gösterir (#112).
+        AcademicYear = AcademicYear.Normalize(doc.AcademicYear),
         Description = doc.Description
     };
 }

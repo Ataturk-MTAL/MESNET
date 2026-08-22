@@ -13,9 +13,21 @@
       :style="$q.screen.gt.xs ? `width: ${width}; max-width: 95vw` : ''"
     >
       <q-toolbar :class="`bg-${color} text-white`">
-        <q-icon v-if="icon" :name="icon" class="q-mr-sm" />
+        <q-icon
+          v-if="icon"
+          :name="icon"
+          class="q-mr-sm"
+        />
         <q-toolbar-title>{{ title }}</q-toolbar-title>
-        <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
+        <q-btn
+          v-close-popup
+          flat
+          round
+          dense
+          icon="close"
+          aria-label="Kapat"
+          color="white"
+        />
       </q-toolbar>
 
       <!-- İçerik: kalan yüksekliği alır ve uzun formlarda kendi içinde kayar -->
@@ -24,9 +36,17 @@
       </q-card-section>
 
       <q-separator />
-      <q-card-actions align="right" class="q-pa-md">
+      <q-card-actions
+        align="right"
+        class="q-pa-md"
+      >
         <slot name="actions">
-          <q-btn flat label="İptal" color="grey-7" v-close-popup />
+          <q-btn
+            v-close-popup
+            flat
+            label="İptal"
+            color="grey-7"
+          />
           <q-btn
             unelevated
             :color="saveColor ?? color"

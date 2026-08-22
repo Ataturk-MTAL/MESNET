@@ -7,6 +7,9 @@ export const teacherOverviewColumns = [
   { name: 'teacherName', label: 'Öğretmen', field: 'teacherId', align: 'left' as const, sortable: false },
   { name: 'businessCount', label: 'İşletme', field: 'businessCount', align: 'center' as const, sortable: true },
   { name: 'assignedHours', label: 'Saat', field: 'assignedHours', align: 'center' as const, sortable: true },
+  // Fahri ziyaretler "Saat" sütununa girmez ama programda slot işgal eder — ayrı
+  // gösterilmezse öğretmenin gerçek yükü olduğundan az görünür (#115).
+  { name: 'honorary', label: 'Fahri', field: 'honoraryVisitCount', align: 'center' as const, sortable: true },
   { name: 'monday', label: 'Pzt', field: 'freeSlotsByDay', align: 'center' as const, sortable: false },
   { name: 'tuesday', label: 'Sal', field: 'freeSlotsByDay', align: 'center' as const, sortable: false },
   { name: 'wednesday', label: 'Çar', field: 'freeSlotsByDay', align: 'center' as const, sortable: false },

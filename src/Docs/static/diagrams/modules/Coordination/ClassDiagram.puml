@@ -3,18 +3,18 @@ left to right direction
 
 package "MESNET.Coordination.Api" {
     class CoordinationEndpoints {
-        +[WolverinePost] AssignTeacherToBusiness(command)
-        +[WolverinePost] CreateVisitSchedule(command)
-        +[WolverineGet] GetVisitSchedule(teacherId)
-        +[WolverinePost] CompleteVisit(command)
-        +[WolverinePost] GenerateReport(command)
-        +[WolverinePost] DeliverDocument(command)
-        +[WolverinePost] UploadTeacherSchedule(command)
-        +[WolverinePost] CreateDepartmentDistribution(command)
-        +[WolverinePost] ApproveDepartmentDistribution(command)
-        +[WolverinePost] RejectDepartmentDistribution(command)
-        +[WolverineGet] CalculateWorkload(teacherId)
-        +[WolverineGet] GetTeacherSchedule(teacherId)
+        +POST AssignTeacherToBusiness(command)
+        +POST CreateVisitSchedule(command)
+        +GET GetVisitSchedule(teacherId)
+        +POST CompleteVisit(command)
+        +POST GenerateReport(command)
+        +POST DeliverDocument(command)
+        +POST UploadTeacherSchedule(command)
+        +POST CreateDepartmentDistribution(command)
+        +POST ApproveDepartmentDistribution(command)
+        +POST RejectDepartmentDistribution(command)
+        +GET CalculateWorkload(teacherId)
+        +GET GetTeacherSchedule(teacherId)
     }
 }
 

@@ -79,7 +79,11 @@
     "realm": [
       {
         "name": "InstitutionManager",
-        "description": "Kurum yöneticisi (Müdür / Müdür Yardımcısı)"
+        "description": "Okul müdürü"
+      },
+      {
+        "name": "DeputyDirector",
+        "description": "Müdür yardımcısı"
       },
       {
         "name": "InstitutionStaff",
@@ -94,12 +98,28 @@
         "description": "Öğrenci"
       },
       {
+        "name": "Parent",
+        "description": "Veli — bağlı olduğu öğrencinin devam ve staj sürecini izler, girişleri okul onayına tabidir"
+      },
+      {
         "name": "DepartmentHead",
         "description": "Alan şefi"
       },
       {
         "name": "CompanyManager",
         "description": "İşletme yetkilisi"
+      },
+      {
+        "name": "MasterTrainer",
+        "description": "Usta öğretici"
+      },
+      {
+        "name": "CompanyHR",
+        "description": "İşletme insan kaynakları — belge ve sağlık raporu girer, girişleri okul onayına tabidir"
+      },
+      {
+        "name": "SystemAdmin",
+        "description": "Sistem yöneticisi — ulusal parametreler (asgari ücret, 3308 oranları)"
       }
     ]
   },
@@ -191,6 +211,22 @@
             "claim.name": "student_id",
             "jsonType.label": "String"
           }
+        },
+        {
+          "name": "branch_codes",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "branch_codes",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "branch_codes",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "aggregate.attrs": "true"
+          }
         }
       ]
     },
@@ -279,6 +315,22 @@
             "claim.name": "student_id",
             "jsonType.label": "String"
           }
+        },
+        {
+          "name": "branch_codes",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "branch_codes",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "branch_codes",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "aggregate.attrs": "true"
+          }
         }
       ]
     }
@@ -299,7 +351,8 @@
         }
       ],
       "realmRoles": [
-        "InstitutionManager"
+        "InstitutionManager",
+        "SystemAdmin"
       ]
     },
     {
@@ -428,6 +481,19 @@
           "query-users",
           "manage-realm"
         ]
+      }
+    ]
+  },
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}],\"unmanagedAttributePolicy\":\"ADMIN_EDIT\"}"
+          ]
+        }
       }
     ]
   }

@@ -14,16 +14,32 @@ public sealed record BusinessDto(
     string Source,
     string SourceSlug,
     int PersonnelCount,
+    /// <summary>
+    /// Kamu kurum/kuruluşu mu (#157). 3308 Geçici Madde 12 gereği kamu kurumlarına devlet
+    /// katkısı ödenmez; arayüzde işaretlenebilmesi ve düzeltilebilmesi için DTO'da taşınır.
+    /// </summary>
+    bool IsPublicInstitution,
     Location? Location,
     BusinessCapacityDto Capacity,
     List<BusinessRepresentativeDto> Representatives,
     List<BusinessDocumentDto> Documents,
     List<SectorDto> Sectors,
+    List<BranchAuthorizationDto> AuthorizedBranches,
+    List<string> ActiveBranchCodes,
     DateTime CreatedAt,
     DateTime? ApprovedAt,
     DateTime? ClosedAt);
 
 public sealed record SectorDto(string Name, string Slug);
+
+/// <summary>İşletmenin öğrenci alabileceği alan yetkisi — iptal edilenler de listelenir (#119).</summary>
+public sealed record BranchAuthorizationDto(
+    string BranchCode,
+    Guid? BasedOnDocumentId,
+    DateTime AuthorizedAt,
+    string AuthorizedBy,
+    DateTime? RevokedAt,
+    bool IsActive);
 
 public sealed record BusinessCapacityDto(
     int TotalSlots,

@@ -70,6 +70,37 @@ public static class OrderEndpoint
 - Handler'dan handler'a doğrudan `InvokeAsync()` çağırma, cascading message veya `PublishAsync()` kullan
 - Durable local queue'ları aktif et: `opts.Policies.UseDurableLocalQueues()`
 
+**`[AggregateHandler]` dönüşü cascading mesaj DEĞİLDİR (#252).** Aggregate iş akışında
+Wolverine.Marten handler'ın dönüş eylemini `EventCaptureActionSource` ile değiştirir: dönen
+olay yalnız `IEventStream<T>.AppendOne` ile akışa yazılır, **hiçbir handler'a yönlendirilmez**.
+Olay yönlendirmesi (`EventForwardingToWolverine()`) bu projede **kapalıdır ve açılmamalıdır** —
+elle yayınlanan olaylar (ör. `AttendanceMarked`) çift işlenirdi.
+
+- Olayı hem akışa yazıp hem yayınlamak için tuple döndür:
+  `public static (Events, OutgoingMessages) Handle(...)` — ilki akışa, ikincisi mesaj yoluna
+- **Ölçüldü:** `AttendanceApproved` / `AttendanceCorrected` / `ContractActivated` bu yüzden
+  hiçbir tüketiciye ulaşmıyordu; `AbsenceTallyConsumer` ve `SagaRelayConsumer`'ın o
+  aşırı yüklemeleri **ölü**ydü ve hata vermeden sessizce çalışmıyordu (dead letter'da bile iz yok)
+**Sticky yerel kuyruk varsayılan olarak PARALEL ve SIRASIZDIR (#262).**
+`MultipleHandlerBehavior.Separated` her handler tipine ayrı kuyruk verir; o kuyruk içinde aynı
+kayda ait olaylar birbirini geçebilir. Ölçüldü (Wolverine 6.15.0): yapılandırılmamış kuyrukta
+`MaxDegreeOfParallelism = 12`, `Sequential()` uygulananda `= 1`. `UseDurableLocalQueues()`
+dayanıklılık verir, **sıra vermez**.
+
+- Aynı kaydı olay olay güncelleyen tüketici (yerel görünüm besleyen consumer) **sıralı**
+  olmalıdır: sınıf `IConfigureLocalQueue` uygular ve
+  `public static void Configure(LocalQueueConfiguration c) => c.Sequential();` yazar
+- Statik sınıf arayüz uygulayamaz → sınıf `sealed class` olur, **metotlar statik kalır**.
+  Wolverine statik handler metotlarını örnek oluşturmadan çağırır (ölçüldü)
+- Belirti: "kaydı kuran olay geç kaldı" → `LoadAsync` null döner, güncelleme sessizce düşer
+
+- Derlenmesi ve testin yeşil olması yetmez: bir olayın **yönlendirildiğini** imza taraması
+  kanıtlamaz. Depo geneli kilit: `AggregateHandlerPublishDriftTests` — tüketicisi olan bir olayı
+  yayınlamayan her `[AggregateHandler]`'ı kırmızıya çevirir, bilinen borç donduruldu (#254)
+- **Ters yöndeki olayı da canlandır.** Yalnız durumu ilerleten yolu yayınlamak net zararlı
+  olabilir: #252'de kesintiyi *koyan* yol açılıp *kaldıran* yollar (rapor onayı, silme) ölü
+  kalsaydı, geçerli raporu olan öğrencinin ücreti kesilip geri alınamazdı
+
 ### Marten (MartenDB)
 
 PostgreSQL üzerinde document database ve event store olarak çalışır. Entity Framework KULLANILMAZ.
@@ -191,6 +222,50 @@ Document.Create(container =>
 - Her modülün kendi PostgreSQL schema'sı vardır — **şema izolasyonu** modüler monolit mimarisinin temel taşıdır
 - Wolverine message storage paylaşımlıdır: `opts.Durability.MessageStorageSchemaName = "wolverine"`
 - Marten event stream'leri varsayılan schema'da (`shared`) tutulur — inline snapshot document'ları modül schema'sında
+
+#### Kiracılık (KESİN KURAL — #149, ADR-0003)
+
+**Kiracı = okul.** Marten conjoined kiracılık AÇIKTIR: kiracıya ait belgeler `tenant_id`
+taşır ve satır düzeyinde süzülür. Kiracısız session **yasaktır**
+(`Advanced.DefaultTenantUsageEnabled = false`) ve `DefaultTenantUsageDisabledException` atar.
+
+- **Damga tek yerden gelir:** `DocumentTenancyMap` (`Tenant` / `Shared` / `Identity`).
+  `AllDocumentsAreMultiTenanted()` KULLANILMAZ — ulusal katalog, ulusal parametreler, kimlik
+  katmanı ve paylaşımlı işletme kataloğu damga almamalıdır. Damgayı geri almak tablo yeniden
+  inşası demektir. Yeni belge eklerken sınıflandırma **zorunludur**, test kırılır.
+- **İstek bağlamında kiracıyı taşımak için hiçbir şey yapmayın.**
+  `TenantResolutionMiddleware` `IMessageBus.TenantId`'yi koyar; handler'lar, cascading
+  mesajlar ve `PublishAsync` onu devralır. Komutları tek tek etiketlemeyin.
+- **Argümansız session açmak YASAK:** `store.QuerySession()` / `LightweightSession()`.
+  Kiracıyı açıkça verin. İstek bağlamı dışında (arka plan işi, kimlik katmanı) hiçbir okula
+  ait olmayan işler `TenantResolution.Platform` kullanır.
+  Kilitleyen test: `TenantlessSessionDriftTests`.
+- **`BackgroundService`/`IHostedService`/kimlik katmanına `IQuerySession`/`IDocumentSession`
+  ENJEKTE EDİLMEZ** — DI'dan gelen session kiracısızdır. `IDocumentStore` alın; arka plan
+  işleri `ITenantDirectory` ile kiracı kiracı dolaşır.
+- **Anonim uç eklemeyin.** Anonim istek `platform` kiracısında çalışır; kiracıya ait belgeye
+  dokunursa sonuç sessizce **boş** döner, yazarsa satır platform damgasıyla doğar ve onu yazan
+  okul bir daha göremez. Liste `AnonymousEndpointDriftTests` ile kapalıdır.
+- **Var olan veritabanının geçişi açılışta yapılmaz** — `ApplyAllDatabaseChangesOnStartup()`
+  Marten'ın kendisiyle çelişen deltası yüzünden API'yi öldürür. Elden iki betik:
+  `src/Docs/docs/infrastructure/sql/` + sıra: `dagitim-on-kosullari.md`.
+
+#### Kurum kapsamı (KESİN KURAL — ADR-0003 adım 6)
+
+Kiracılık satırları süzer ama **`Institution` belgesini süzmez**: o belge kiracının kendisidir
+ve kiracı damgası taşımaz. Kurum kimliğini **istekten** alan her uç ayrıca kapsam kontrolünden
+geçmelidir.
+
+- Kurum kimliği taşıyan command/query **`IInstitutionScoped`** uygular; kontrol
+  `InstitutionScopeGuardMiddleware` içinde tek yerde çalışır (`IContractPeriodScoped` ile aynı
+  idiom). Kilitleyen test: `InstitutionScopeDriftTests`
+- Karar saf `InstitutionScopePolicy`'dedir; guard yalnız claim'den girdi toplar
+- **Okumada da çalışır.** Alan (branş) kapsamında okuma bilerek açıktı; başka *okulun* kaydı
+  öyle değil — ölçüldü, kontrol yokken bir müdür diğer okulun **personel listesini** okuyordu
+- **Kurum üstü işler** `platform:tenant:manage` ister (yeni okul açmak, bir kullanıcıyı
+  herhangi bir okula bağlamak). `platform:` öneki hiçbir okul rolünde yoktur
+- Kullanıcı oluşturmada da kapsam kontrol edilir: gövdedeki `InstitutionId` **hedeftir, yetki
+  değildir** (`UserInstitutionScopePolicy.CanAssign`)
 
 #### Şema İzolasyonu (Schema Isolation)
 
@@ -593,3 +668,194 @@ Tam kural: `VERSIONING.md`. Özet: SemVer `vMAJOR.MINOR.PATCH` + **minör parite
 (`v0.2.0`, `v0.4.0`). Akış: geliştirme `dev`'de → `dev → main` **PR ile** birleşir → tag
 `vX.Y.Z` **main**'de açılır → GitHub Release (tek minörde `--prerelease`). Tag push'u, imajları
 (API/WebUI/nginx/Docs) GHCR'ye **private** push eden CI'ı tetikler (public yayınlanmaz).
+
+## Yetkilendirme (KESİN KURAL)
+
+**Tüm yetkilendirme permission bazlıdır, rol bazlı DEĞİLDİR.** Roller yalnızca bir
+permission demetine verilen isimdir; erişim kararı her zaman permission'a (ya da kapsam
+için claim'e) bakar. **Rol adına bakan yeni kontrol yazılmaz** — roller gelip geçer,
+izinler kalır.
+
+> Karar kaydı: `src/Docs/docs/architecture/adr-0001-yetkilendirme-permission-bazli.md`
+> (ADR-0001) — gerekçe, wildcard önek tuzağı, bilinen borç satırları ve çözümleri.
+>
+> **Yeni izin tanımlarken önce ADR-0002'ye bak:**
+> `src/Docs/docs/architecture/adr-0002-izin-agaci-ve-onek-secimi.md` — gruplama ekseni, önek
+> seçim kuralı ve **koddan üretilen tam izin matrisi** (hangi rol hangi öneki wildcard'la
+> yutuyor). Matris `PermissionMatrixDocTests` ile kilitli; yeni izin eklendiğinde test kırmızı
+> olur ve doğru metni dosyaya yazar.
+
+- Uç noktalar `RequireAuthorization(Permissions.X.Y)` ile korunur — `RequireRole` KULLANILMAZ
+- Handler içinde karar gerekiyorsa `ICurrentUserService.HasPermission(...)` kullanılır
+- Frontend'de buton/menü görünürlüğü permission'a bakar, rol adına değil
+- Rol → permission eşleşmesi tek yerde: `src/MESNET.Common.Shared/Security/RolePermissionMap.cs`
+  (wildcard destekli, ör. `department:*`). Kaynak doküman: `src/Docs/docs/actors/permissions.md`
+- Yeni bir yetki gerektiğinde **yeni permission** tanımlanır ve ilgili rollerin listesine
+  eklenir; koda rol adı gömülmez
+
+**Aynı permission'a sahip roller aynı işi yapabilir.** Örnek: işletme koordinatörlük saati
+takdiri `department:distribution:manage` ister; bu izin `InstitutionManager` (okul müdürü),
+`DeputyDirector` (müdür yardımcısı) ve `DepartmentHead` (alan şefi) rollerinin hepsinde
+`department:*` ile bulunur — üçü de tam yetkilidir. `InstitutionStaff` (kurum yetkilendirdiği
+personel) bu izni **almaz**; o rol yürütür, onaylamaz (#129).
+
+**Bunun tersi de doğru: erişimi açan permission, kurum geneli ayarı değiştirme yetkisi
+vermez.** Kurum koordinasyon yapılandırması (mesafe-saat kuralları, `MaxWeeklyExtraHours`)
+ayrı bir izin ister: `institution:coordination-config:manage` — yalnız `InstitutionManager`
+ve `DeputyDirector`'da bulunur. Alan şefi yapılandırmayı **görür, değiştiremez**; aksi hâlde
+doğrudan yazamadığı alanları kurum geneli parametreyle dolaylı olarak etkilerdi (#130).
+
+**Permission erişimi açar, KAPSAMI belirlemez.** "Hangi kurumun/alanın verisi" sorusu ayrı bir
+kontroldür ve kapsam istekten ALINMAZ:
+
+- **Kurum kapsamı:** `institution_id` claim'i — **kullanıcı kaydından üretilir**, token'dan
+  gelen değer HİÇ kabul edilmez (ADR-0003 adım 2, aşağıya bak)
+- **Alan (branş) kapsamı:** `branch_codes` claim'i — liste (#126)
+
+### Kiracı anahtarı token'dan okunmaz (ADR-0003 adım 2)
+
+`institution_id` **kiracı anahtarıdır**; bu yüzden `branch_codes`'tan katı bir kuralı vardır.
+Kaynak ikiye indi ve ikisi de sunucu tarafında: **kullanıcı kaydı** (`UserAccount.InstitutionId`,
+otorite) → **personel kaydı yedeği** (`staff[]` eşleşmesi, geçiş adımı) → **boş**.
+
+- **Token'daki `institution_id` her istekte silinir** — kayıt boş olsa bile. "Kaynak yoksa
+  token'a düş" davranışı, kaydı olmayan kullanıcıya kendi kiracısını seçtirirdi. Öznitelik
+  Keycloak'ta *unmanaged*'dır; realm politikası yanlış kurulursa kullanıcı `manage-account`
+  ile onu kendi yazar. **Kapsamsız kalmak, yanlış kiracıya düşmekten iyidir**
+- **Keycloak'a `institution_id` YAZILMAZ** — ne `CreateUser`, ne davet kabulü, ne de kurum
+  değiştirme ucu. Oradaki bir kopya, ileride birinin onu yeniden otorite sanmasına davetiye
+  çıkarır. Kilitleyen test: `InstitutionClaimAuthorityTests` (kaynak taraması)
+- **`SyncUsersFromKeycloak` kurum bağı KURMAZ.** Dışarıdan gelen kullanıcı kapsamsız doğar;
+  sonuçtaki `WithoutInstitution` sayısı boşluğu görünür kılar
+- **Tek yazma yolu:** `POST /api/security/users/{id}/institution` (`user:roles:manage`).
+  Kapsam kararı `UserInstitutionScopePolicy`'de: aktör yalnız **kendi kurumuna** bağlar, başka
+  kuruma bağlı kullanıcıyı devralamaz, kendi kullanıcısının bağını çözebilir
+- **Ön koşul — sıra bozulmaz:** token yolu kapatılmadan önce backfill çalışmalı
+  (`POST /api/institutions/staff/resync-branch-codes`), yoksa mevcut kullanıcılar kilitlenir
+
+**`business_id` de aynı disiplinden geçti (#229).** Kiracı anahtarı değildir — işletme
+kataloğu okullar arası paylaşımlıdır — ama bir **yetki kapsamıdır**:
+`PaidLeaveApprovalPolicy.CanBusinessApprove` yalnız ona bakar (#177). Artık token'daki değer
+her istekte silinir ve `UserAccount.BusinessId`'den yeniden kurulur; Keycloak'a yazılmaz;
+senkronizasyon kaydı ezmez. Tek yazma yolu: `POST /api/security/users/{id}/business`.
+Kilitleyen test: `BusinessClaimAuthorityTests`.
+
+**`student_id` de aynı disiplinden geçti (#230).** Otoritesi <b>hiç yoktu</b>:
+`UserAccount.StudentId` ölü alandı (11 hesabın 0'ında dolu). Artık `StudentRegistered`
+olayından doluyor (`StudentAccountSyncConsumer`) ve claim oradan üretiliyor.
+**Dağıtımda `POST /api/students/resync-projections` ZORUNLUDUR** — atlanırsa öğrenciler
+kapsamsız kalır ve hata değil **boş sonuç** görürler.
+
+Kapsam anahtarlarının üçü de artık kayıttan üretiliyor; token'daki değer hiçbirinde kabul
+edilmiyor. Kilitleyen testler: `InstitutionClaimAuthorityTests`, `BusinessClaimAuthorityTests`,
+`StudentClaimAuthorityTests`.
+
+### Alan (branş) kapsamı kuralları (#126)
+
+- Alan bilgisi **kayıt sırasında** girilir (`CreateUser.BranchCodes`), sistem türetmez.
+  Değişiklik: `ChangeUserBranches` (`POST /api/security/users/{id}/branches`)
+- Kapsam kararı saf `BranchScopePolicy.CanWrite(...)` içindedir; koordinasyon **yazma**
+  handler'ları `BranchScopeGuard.EnsureCanWrite(...)` çağırır → ihlalde `DomainException` (422)
+- **Karar sırası: önce muafiyet, sonra liste.** Muafiyet izni
+  `institution:distribution:all-branches` varsa alan listesine HİÇ bakılmaz
+- **Boş `branch_codes` hata değildir.** Okul müdürü ve müdür yardımcısı hiçbir alana bağlı
+  değildir; doğrulama hatası üretilmez, uyarı gösterilmez. Yalnız muafiyeti olmayan
+  kullanıcıyı (branşı girilmemiş alan şefi) kısıtlar
+- **Muafiyet izni `department:` önekiyle adlandırılamaz** — üç rolün de `department:*`
+  wildcard'ı vardır, o önekteki izin alan şefine de geçer ve kontrol sessizce hiç çalışmaz.
+  Kilitleyen test: `tests/MESNET.Coordination.UnitTests/BranchScopeExemptionMappingTests.cs`
+- **Okuma açık, yazma kapalı:** alan şefi başka alanın dağıtımını görebilir, değiştiremez.
+  Satır bazlı uçlarda kapsam istekten değil **çözümlenmiş satırdan** okunur
+- Alan zorunluluğu permission'dan türetilir (`BranchRequirement`), rol adından DEĞİL
+- **`UserAccount.BranchCodes` OTORİTERDİR, token claim'i değil.** Kayıt doluysa token'daki
+  `branch_codes` claim'leri silinir ve yerine kayıt konur. `branch_codes` Keycloak'ta
+  *unmanaged* özniteliktir; politika `ENABLED` olsaydı kullanıcı `manage-account` ile kendi
+  Account konsolundan kendine alan ekleyip kapsamı aşabilirdi. **Token'ın imzalı olması
+  içeriğin kullanıcı tarafından belirlenmediği anlamına gelmez** — bu sırayı ters çevirmeyin.
+  İkinci katman: realm'de `unmanagedAttributePolicy: ADMIN_EDIT`
+- **Realm ayarı depoya yazmak yetmez — çalışan realm'e ulaştığını doğrulayın (#195).** Keycloak
+  realm import **tek seferliktir**: `mesnet-realm.json`'a sonradan eklenen rol/politika/client
+  ayarı mevcut bir kaba **hiç ulaşmaz** ve bunu hiçbir birim testi göremez (testler depodaki
+  dosyayı okur, çalışan realm'i değil). Gerçekten yaşandı: dev realm'inde politika `ENABLED`
+  kaldı ve **5 rol hiç oluşmadı**. Açılışta `RealmVerificationHostedService` çalışan realm'i
+  `RealmInvariants` ile karşılaştırır — Development'ta sapma **açılışı durdurur**, diğer
+  ortamlarda `LogCritical`. Keycloak'a ulaşılamaması sapma sayılmaz, kontrol atlanır
+- **Kapsam muafiyeti izinleri bireysel (direct) ASLA atanamaz** —
+  `AssignablePermissionScope.NeverDirectlyAssignable` sabit listesi yapılandırmayı ezer.
+  Rol → domain haritası çalışma zamanında değiştirilebildiği için (`user:roles:manage`),
+  yalnız yapılandırmaya güvenmek yetmez
+
+Ayrıntı: `src/Docs/docs/actors/permissions.md` → "Alan (Branş) Kapsamı Kontrolü"
+
+### Giriş geniş, hüküm dar (#172)
+
+Bir veriyi **girebilmek** ile o girişin **hüküm doğurması** ayrı kararlardır ve ayrı
+permission'larla verilir. Sağlık raporunu işletme yetkilisi, işletme İK, usta öğretici ve
+öğrenci de yükler (`attendance:upload`); ama girdikleri kayıt koordinatör öğretmen onaylayana
+kadar devamsızlık türünü değiştirmez — yani **ücret kesintisini kaldırmaz**. Ödemeyi yapan
+taraf kendi kesintisini tek taraflı iptal edemez.
+
+- `attendance:direct-entry` — girilen **devamsızlık** kaydı onay beklemez (okul rolleri);
+  onay beklemeyen kayıt **fesih sayacına girer**, onay bekleyen (`Pending`) girmez (#252)
+- `attendance:health-report:direct` — girilen **sağlık raporu** onay beklemez
+  (`InstitutionManager`, `DeputyDirector`, `Teacher` — kurum personeli ALMAZ)
+- İkisi de `AssignablePermissionScope.NeverDirectlyAssignable`: bireysel atanamaz, çünkü
+  işletme rollerinin atanabilir domain listesinde `attendance:` vardır
+- Kilitleyen testler: `tests/MESNET.Security.UnitTests/AttendanceDirectEntryMappingTests.cs`,
+  `tests/MESNET.Attendance.UnitTests/PendingAttendanceExclusionTests.cs` +
+  `AttendanceLimitRecheckCoverageTests.cs`,
+  `tests/MESNET.Internship.UnitTests/TerminationChainRestartTests.cs`
+
+**Tür değiştiren her uç para uçudur.** `POST /api/attendance/{id}/correct` devamsızlık türünü
+değiştirdiği için `attendance:manage` değil `attendance:direct-entry` ister — önceden işletme
+yetkilisi o uçtan onay zincirini tümden atlayabiliyordu.
+
+**Bildirim hedefi de kapsam kararıdır (#266).** `NotificationTarget` ölçütleri iki sınıftır:
+**tanımlayıcı** (`UserIds`, `StudentIds`, `GuardianOfStudentIds`, `BusinessIds`) evrensel
+benzersizdir ve kiracı sınırını kendiliğinden korur; **geniş** (`Roles`, `RequiredPermission`)
+korumaz ve **`InstitutionId` ile daraltılmak zorundadır**. Daraltmasız geniş hedef kimseye
+ulaşmaz ve uyarı loglanır. Ölçüldü: daraltma yokken bir okulun dekont gecikmesi, öğrenci adı
+payload'da olacak şekilde tüm okulların onaycılarına gidiyordu. Hedeflemede **rol adı
+kullanılmaz**, izne bakılır. Kilitleyen testler: `NotificationTargetPolicyTests`,
+`NotificationTargetScopeDriftTests`
+
+**Sayan her sorgu hüküm sorgusudur (#252).** İzin katmanı doğru olsa bile sayan sorgu duruma
+bakmazsa hüküm yine tek taraflı doğar: fesih sayacı (`AttendanceCounterScope`) `Pending` kaydı
+saymaz — ücret kesintisi de saymıyordu (`PaymentSaga`), ikisi aynı ilkedir; kara liste dar tutulur,
+yalnız `Pending` dışlanır ve bilinmeyen durum sayılır (**eksik veri sınırı gevşetemez**). **Sayacı
+besleyen olay kümesi değişince yeniden ölçüm giriş noktaları da güncellenir** — kayıt girildiğinde,
+onaylandığında ve düzeltildiğinde; yalnız girişi dinlemek, açığı kapatırken zinciri sessizce öldürür.
+
+### İki taraflı onay kapsamla kurulur, izinle değil (#177)
+
+MESEM ücretli izni öğrenci başvurusuyla başlar, **işletme** ve **okul** onayından geçerek
+resmîleşir; ancak o zaman `PaidLeave` devamsızlık kaydı doğar (`PaidLeaveAttendanceConsumer`).
+`PaidLeave` artık hiçbir komut ucundan doğrudan girilemez — okul tarafı da giremez.
+
+`InstitutionManager` **her domain wildcard'ını** taşır, yani işletme adımının izni de ona gider
+ve `platform:` dışında serbest önek yoktur. Zinciri ayakta tutan iki kural izinde değil
+kapsamdadır (`Attendance.Core/Services/PaidLeaveApprovalPolicy.cs`):
+
+- İşletme adımı `business_id` claim'inin başvurunun `BusinessId`'siyle eşleşmesini ister;
+  okul rollerinde o claim yoktur
+- **İşletme onayını veren okul onayını veremez** — bir kullanıcı iki rolü birden taşıyabilir
+- `attendance:leave:approve` `NeverDirectlyAssignable`'dır; işletme rollerinin atanabilir
+  domain listesinde `attendance:` vardır
+
+Kilitleyen testler: `tests/MESNET.Attendance.UnitTests/PaidLeaveApprovalPolicyTests.cs`,
+`tests/MESNET.Security.UnitTests/PaidLeaveApprovalMappingTests.cs`
+
+### Bilinen istisna KALMADI — rol adına bakan kapsam kararı yoktur (#184, #192)
+
+Borç listesi kapandı. `IsInRole` çağrısı modül kodunun tamamında **yoktur**; frontend'de
+rol adına bakan computed **yoktur** (`isManager` ve `isDepartmentHead` kaldırıldı, ikisinin de
+tüketicisi kalmamıştı).
+
+- `MarkAttendanceHandler` → `attendance:direct-entry` iznine bakar (#172)
+- `PlacementQueryScope` → kapsam merdiveni: `institution:view` → `business_id` claim'i →
+  öğretmen kaydı → **boş**. Karar `PlacementScopePolicy`'de ve testle kilitli (#184)
+- `TeacherSchedulePage` alan ön-seçimi → `writableBranchCodes` (#192). Eski koşul
+  `isDepartmentHead && user.branchCode` idi ve **hiç tutmuyordu**: `branchCode` #126 ile
+  deprecate edilip `null` atanıyordu, yani özellik sessizce çalışmıyordu
+
+**Yeni rol-adı kontrolü eklenmez.** Kapsam kararı izne, claim'e ya da kayda bakar.

@@ -20,6 +20,9 @@ public static class PlacementEndpoints
 
         group.MapPost("/", Post).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{placementId:guid}/mark-failed", PostMarkFailed).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapPost("/resync-projections", PostResyncProjections).RequireAuthorization(Permissions.Internship.Manage);
+        group.MapPost("/backfill-branch-authorizations", PostBackfillBranchAuthorizations)
+            .RequireAuthorization(Permissions.Internship.Manage);
         group.MapGet("/status-counts", GetStatusCounts).RequireAuthorization(Permissions.Student.View);
         group.MapGet("/{placementId:guid}", Get).RequireAuthorization(Permissions.Student.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Student.View);
@@ -45,6 +48,38 @@ public static class PlacementEndpoints
         await bus.InvokeAsync(new MarkAsFailedToComplete(placementId, institutionId));
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Staj 'Tamamlayamadı' olarak işaretlendi.")
+            .Build());
+    }
+
+    /// <summary>
+    /// Sonlanmamış yerleştirmeler için StudentPlaced'i yeniden yayınlar — diğer modüllerin
+    /// denormalize yerleştirme read-model'lerini tazeler. Yeni bir read-model eklendiğinde
+    /// mevcut kayıtlar geriye dönük dolmadığı için gerekli (#77).
+    /// </summary>
+    private static async Task<IResult> PostResyncProjections(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ResyncPlacementProjectionsResult>(
+            new ResyncPlacementProjections());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.PlacementCount} yerleştirme için read-model'ler yeniden yayınlandı." +
+                        (result.Skipped > 0 ? $" {result.Skipped} kayıt eksik veri nedeniyle atlandı." : ""))
+            .Build());
+    }
+
+    /// <summary>
+    /// Geçiş dolgusu (#119): mevcut fiilî yerleştirmelerden işletmelerin alan yetkilerini üretir.
+    /// Alan yetkisi kuralı devreye alınırken bir kez çalıştırılır; tekrar çalıştırmak güvenlidir.
+    /// </summary>
+    private static async Task<IResult> PostBackfillBranchAuthorizations(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<BackfillBusinessBranchAuthorizationsResult>(
+            new BackfillBusinessBranchAuthorizations());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.BusinessCount} işletme için {result.BranchCount} alan yetkisi dolgusu yayınlandı.")
             .Build());
     }
 

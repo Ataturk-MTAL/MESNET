@@ -25,8 +25,13 @@ public sealed record TeacherSchedule(
     List<DailySchedule> WeeklySchedule,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
-    string CreatedBy,
-    string? UpdatedBy,
+    /// <summary>
+    /// İşlemi yapan kullanıcının kimliği — token'dan gelir, istekten ALINMAZ (#137).
+    /// Ad sorgu tarafında <c>UserNameView</c>'dan çözülür. Eski <c>createdBy</c> /
+    /// <c>updatedBy</c> JSON anahtarları (serbest metin ad) bu adla artık okunmaz.
+    /// </summary>
+    Guid CreatedById,
+    Guid? UpdatedById,
     int Version)
 {
     /// <summary>
@@ -44,7 +49,7 @@ public sealed record TeacherSchedule(
         MapWeeklySchedule(e.WeeklySchedule),
         e.Timestamp,
         null,
-        e.UpdatedBy,
+        e.UpdatedById,
         null,
         Version: 1);
 
@@ -55,7 +60,7 @@ public sealed record TeacherSchedule(
     {
         WeeklySchedule = MapWeeklySchedule(e.WeeklySchedule),
         UpdatedAt = e.Timestamp,
-        UpdatedBy = e.UpdatedBy,
+        UpdatedById = e.UpdatedById,
         Version = Version + 1
     };
 

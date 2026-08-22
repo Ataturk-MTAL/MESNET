@@ -1,5 +1,6 @@
 using Marten;
 using MESNET.Coordination.Application.Dtos;
+using MESNET.Coordination.Application.Helpers;
 using MESNET.Coordination.Application.Queries;
 using MESNET.Coordination.Core.Aggregates;
 using MESNET.Coordination.Core.Enums;
@@ -33,6 +34,10 @@ public static class GetCurrentScheduleHandler
 
         if (schedule is null) return new CurrentScheduleResult(null);
 
+        // Aktör adı saklanmaz, okuma anında çözülür (#137).
+        var names = await UserNameResolver.ResolveAsync(
+            session, [schedule.CreatedById], cancellationToken);
+
         return new CurrentScheduleResult(new TeacherScheduleDto(
             schedule.Id,
             schedule.TeacherId,
@@ -51,7 +56,8 @@ public static class GetCurrentScheduleHandler
             )).ToList(),
             schedule.CreatedAt,
             schedule.UpdatedAt,
-            schedule.CreatedBy,
+            schedule.CreatedById,
+            names.NameOf(schedule.CreatedById),
             schedule.Version));
     }
 }

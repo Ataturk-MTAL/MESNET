@@ -1,5 +1,14 @@
 <template>
-  <FormDialog v-model="open" title="Alan Ekle" icon="add_circle" color="green" save-label="Aktifleştir" :saving="saving" :save-disabled="!form.fieldCode" @save="handleSave">
+  <FormDialog
+    v-model="open"
+    title="Alan Ekle"
+    icon="add_circle"
+    color="primary"
+    save-label="Aktifleştir"
+    :saving="saving"
+    :save-disabled="!form.fieldCode"
+    @save="handleSave"
+  >
     <q-select
       v-model="form.educationType"
       :options="educationTypeOptions"
@@ -35,7 +44,12 @@
         <q-item v-bind="itemProps">
           <q-item-section>
             <q-item-label>{{ opt.label }}</q-item-label>
-            <q-item-label v-if="opt.caption" caption>{{ opt.caption }}</q-item-label>
+            <q-item-label
+              v-if="opt.caption"
+              caption
+            >
+              {{ opt.caption }}
+            </q-item-label>
           </q-item-section>
         </q-item>
       </template>

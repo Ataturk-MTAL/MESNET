@@ -1,20 +1,47 @@
-using Marten;
 using MESNET.Common.Infrastructure.Pagination;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared.Pagination;
+using MESNET.Common.Shared.Security;
 using MESNET.Internship.Application.Dtos;
 using MESNET.Internship.Application.Extensions;
 using MESNET.Internship.Application.Queries;
 using MESNET.Internship.Core.Entities;
 using MESNET.Internship.Core.Enums;
+using Marten;
 
 namespace MESNET.Internship.Application.Handlers;
 
 public static class ListInternshipsHandler
 {
     public static async Task<PagedResult<InternshipSummaryDto>> Handle(
-        ListInternships query, IQuerySession session)
+        ListInternships query, IQuerySession session, ICurrentUserService currentUser)
     {
         IQueryable<InternshipSummary> queryable = session.Query<InternshipSummary>();
+        // Kapsam merdiveni (#182): geniş görüntüleme izni yoksa kullanıcı yalnız KENDİ verisini
+        // görür — veli bağlı öğrencilerini, öğrenci kendisini. Kapsam çözülemezse boş sonuç;
+        // kapsamsız kullanıcıya tüm kurumun verisini açmaktansa hiçbir şey göstermek doğrudur.
+        //
+        // İşletme basamağı burada AÇIK (#191): işletme yetkilisi fesih onay adımını yapabilmek
+        // için kendi stajlarını görebilmeli. CompanyManager'da internship:view yok, bu basamak
+        // olmadan liste boş dönerdi. Basamak opt-in'dir — devamsızlık ve ücret listeleri onu
+        // istemez, orada aynı genişleme talep edilmedi.
+        var scope = OwnDataScope.Resolve(
+            currentUser, Permissions.Internship.View, includeBusinessScope: true);
+
+        if (scope.IsEmpty)
+            return EmptyPage(query);
+
+        if (!scope.IsUnrestricted)
+        {
+            // Kapsamlar BİRLEŞİR: hem veli hem işletme yetkilisi olan kullanıcı ikisini de
+            // görür. Tek filtreye indirgeseydik o kullanıcı sessizce yarısını kaybederdi.
+            var scopedStudentIds = scope.StudentIds;
+            var scopedBusinessId = scope.BusinessId;
+
+            queryable = queryable.Where(s =>
+                scopedStudentIds.Contains(s.StudentId)
+                || (scopedBusinessId != null && s.BusinessId == scopedBusinessId));
+        }
 
         if (query.StudentId.HasValue)
             queryable = queryable.Where(s => s.StudentId == query.StudentId.Value);
@@ -44,4 +71,13 @@ public static class ListInternshipsHandler
 
         return await queryable.ToPagedResultAsync(query, s => s.ToDto(s.StudentName, s.BusinessName));
     }
+
+    /// <summary>Kapsam çözülemedi — sayfa bilgisi korunur, içerik boş döner (#182).</summary>
+    private static PagedResult<InternshipSummaryDto> EmptyPage(ListInternships query) => new()
+    {
+        Items = [],
+        TotalCount = 0,
+        Page = query.Page,
+        PageSize = query.PageSize
+    };
 }

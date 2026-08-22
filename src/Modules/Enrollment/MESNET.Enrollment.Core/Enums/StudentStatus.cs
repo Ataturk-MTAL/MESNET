@@ -25,8 +25,11 @@ public sealed class StudentStatus : SmartEnum<StudentStatus>
     {
         [Registered] = [Applied, Placed, Deregistered],
         [Applied] = [Placed, Deregistered],
-        [Placed] = [ActiveInternship, Registered, Deregistered],
-        [ActiveInternship] = [Completed],
+        // Fesih sonrası okula atama (#220): öğrenci feshedilince okulda staja yerleştirilir,
+        // yani doğrudan yeniden Placed olur. Bu geçişler olmadan durum makinesi otomatik
+        // atamayı engeller ve öğrenci hiçbir yere bağlı kalmaz.
+        [Placed] = [ActiveInternship, Placed, Registered, Deregistered],
+        [ActiveInternship] = [Placed, Completed],
         [Completed] = [],
         [Deregistered] = []
     };

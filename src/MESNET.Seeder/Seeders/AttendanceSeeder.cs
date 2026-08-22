@@ -17,21 +17,16 @@ public static class AttendanceSeeder
         var periodId = ctx.Has("AcademicPeriod") ? ctx.Get("AcademicPeriod") : Guid.Empty;
 
         // Mevcut devamsızlık kayıtlarını yükle — GetAsync → envelope.Data = PagedResult { items: [...] }
-        var existing = await api.GetAsync($"/api/attendance?institutionId={institutionId}&pageSize=100");
+        var existing = await api.GetAllPagedAsync($"/api/attendance?institutionId={institutionId}");
         var existingKeys = new Dictionary<string, Guid>(); // "studentId|date" → attendanceId
-        if (existing is { } pagedResult
-            && pagedResult.TryGetProperty("items", out var itemsEl)
-            && itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+        foreach (var item in existing)
         {
-            foreach (var item in itemsEl.EnumerateArray())
-            {
-                var sid = item.GetProperty("studentId").GetGuid();
-                var dateStr = item.GetProperty("date").GetString() ?? "";
-                // Sadece tarih kısmını al (yyyy-MM-dd)
-                var dateKey = dateStr.Length >= 10 ? dateStr[..10] : dateStr;
-                var attendanceId = item.GetProperty("id").GetGuid();
-                existingKeys[$"{sid}|{dateKey}"] = attendanceId;
-            }
+            var sid = item.GetProperty("studentId").GetGuid();
+            var dateStr = item.GetProperty("date").GetString() ?? "";
+            // Sadece tarih kısmını al (yyyy-MM-dd)
+            var dateKey = dateStr.Length >= 10 ? dateStr[..10] : dateStr;
+            var attendanceId = item.GetProperty("id").GetGuid();
+            existingKeys[$"{sid}|{dateKey}"] = attendanceId;
         }
 
         string DateKey(Guid studentId, DateTime date) =>

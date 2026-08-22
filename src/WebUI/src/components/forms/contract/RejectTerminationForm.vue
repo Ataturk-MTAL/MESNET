@@ -1,26 +1,44 @@
 <template>
-  <FormDialog v-model="open" title="Fesih Talebini Reddet" icon="thumb_down" color="teal" width="440px" save-label="Talebi Reddet" :saving="saving" :save-disabled="!form.rejectedBy" @save="handleSave">
-        <AppNotice
-          type="success"
-          icon="info"
-          dense
-          message="Red edildiğinde sözleşme aktif duruma geri dönecektir."
-        />
+  <FormDialog
+    v-model="open"
+    title="Fesih Talebini Reddet"
+    icon="thumb_down"
+    color="positive"
+    width="440px"
+    save-label="Talebi Reddet"
+    :saving="saving"
+    :save-disabled="!form.rejectedBy"
+    @save="handleSave"
+  >
+    <AppNotice
+      type="success"
+      icon="info"
+      dense
+      message="Red edildiğinde sözleşme aktif duruma geri dönecektir."
+    />
 
-        <q-input
-          v-model="form.rejectionNote"
-          label="Red Gerekçesi (opsiyonel)"
-          outlined
-          type="textarea"
-          :rows="3"
-          autogrow
-        >
-          <template #prepend><q-icon name="notes" /></template>
-        </q-input>
+    <q-input
+      v-model="form.rejectionNote"
+      label="Red Gerekçesi (opsiyonel)"
+      outlined
+      type="textarea"
+      :rows="3"
+      autogrow
+    >
+      <template #prepend>
+        <q-icon name="notes" />
+      </template>
+    </q-input>
 
-        <q-input v-model="form.rejectedBy" label="Reddeden *" outlined>
-          <template #prepend><q-icon name="person" /></template>
-        </q-input>
+    <q-input
+      v-model="form.rejectedBy"
+      label="Reddeden *"
+      outlined
+    >
+      <template #prepend>
+        <q-icon name="person" />
+      </template>
+    </q-input>
   </FormDialog>
 </template>
 

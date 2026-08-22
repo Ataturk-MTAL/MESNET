@@ -2,38 +2,47 @@ using Marten;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared.Security;
 using MESNET.Enrollment.Core.Entities;
+using MESNET.Enrollment.Core.Policies;
 
 namespace MESNET.Enrollment.Application.Handlers;
 
 /// <summary>
-/// Yerleştirme sorgularının yetki-kapsam daraltması (kurum + rol bazlı). Liste ve sayım
-/// handler'larının AYNI kapsamı uygulaması için tek kaynak — kapsam kuralı değişirse tek yerde.
+/// Yerleştirme sorgularının kapsam daraltması. Liste ve sayım handler'larının AYNI kapsamı
+/// uygulaması için tek kaynak.
+///
+/// <para>Karar <see cref="PlacementScopePolicy"/>'dedir ve testle kilitlidir (#184); burada
+/// yalnız G/Ç yapılır — izin okuma, claim okuma, öğretmen kaydı arama.</para>
 /// </summary>
 internal static class PlacementQueryScope
 {
-    public static async Task<(Guid? InstitutionId, Guid? TeacherId, Guid? EffectiveBusinessId)> ResolveAsync(
+    /// <summary>
+    /// Kapsamı çözer. <c>null</c> dönerse kullanıcının göreceği kayıt <b>yoktur</b> — çağıran
+    /// boş sonuç döndürmelidir.
+    /// </summary>
+    public static async Task<PlacementScope?> ResolveAsync(
         ICurrentUserService currentUser, IQuerySession session, Guid? businessIdFilter)
     {
         var user = currentUser.GetCurrentUser();
-        var institutionId = user?.InstitutionId;
 
-        // Teacher (kurum yöneticisi/personeli değilse) yalnız koordine ettiği öğrencileri görür.
-        Guid? teacherId = null;
-        if (user is not null
-            && currentUser.IsInRole(MesnetRoles.Teacher)
-            && !currentUser.IsInRole(MesnetRoles.InstitutionManager)
-            && !currentUser.IsInRole(MesnetRoles.InstitutionStaff))
+        // `institution:view` okul yönetimi kümesini tam olarak tanımlar: müdür (wildcard),
+        // müdür yardımcısı ve kurum personeli. Öğretmende yoktur.
+        var hasInstitutionWideView = currentUser.HasPermission(Permissions.Institution.View);
+
+        // Öğretmen kaydı yalnız üst basamaklar tutmadığında aranır — karar sırası
+        // PlacementScopePolicy'de, buradaki atlama yalnız gereksiz sorguyu önler.
+        Guid? coordinatorTeacherId = null;
+        if (!hasInstitutionWideView && user is not null && user.BusinessId is null)
         {
             var teacher = await session.Query<TeacherProfile>()
                 .FirstOrDefaultAsync(t => t.KeycloakUserId == user.UserId);
-            teacherId = teacher?.Id;
+            coordinatorTeacherId = teacher?.Id;
         }
 
-        // CompanyManager yalnız kendi işletmesini görür (kullanıcı filtresini override eder).
-        var effectiveBusinessId = businessIdFilter;
-        if (currentUser.IsInRole(MesnetRoles.CompanyManager) && user?.BusinessId.HasValue == true)
-            effectiveBusinessId = user.BusinessId;
-
-        return (institutionId, teacherId, effectiveBusinessId);
+        return PlacementScopePolicy.Resolve(
+            hasInstitutionWideView,
+            user?.InstitutionId,
+            user?.BusinessId,
+            businessIdFilter,
+            coordinatorTeacherId);
     }
 }

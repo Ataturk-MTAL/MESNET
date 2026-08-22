@@ -1,7 +1,7 @@
 using System.Security.Claims;
-using MESNET.Common.Shared;
-using MESNET.Institution.Application.Queries;
 using Wolverine;
+using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Shared;
 
 namespace MESNET.Presentation;
 
@@ -18,7 +18,13 @@ public static class AuthEndpoint
         return app;
     }
 
-    private static async Task<IResult> GetCurrentUser(ClaimsPrincipal user, IMessageBus bus)
+    /// <summary>
+    /// <paramref name="bus"/> yalnız <b>çözülmüş kiracıyı okumak</b> için alınır (#149).
+    /// Kiracıyı istek başına <c>TenantResolutionMiddleware</c> koyar; buradan yansıtmak, hattın
+    /// gerçekten çalıştığını dışarıdan görülebilir kılar. Aksi hâlde middleware sessizce
+    /// çalışmasa da hiçbir şey fark etmezdi — kiracılık açılana kadar.
+    /// </summary>
+    private static IResult GetCurrentUser(ClaimsPrincipal user, IMessageBus bus)
     {
         var sub = user.FindFirst("sub")?.Value
             ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -40,16 +46,14 @@ public static class AuthEndpoint
         // (token'da yoksa DB fallback — 5dk cache)
         var institutionId = user.FindFirst("institution_id")?.Value;
         var businessId = user.FindFirst("business_id")?.Value;
-        string? branchCode = null;
+        // #230 — kapsam claim'lerinin üçü de burada görünür olmalı; studentId eksikti ve
+        // eksikliği kapsamın doğru çözülüp çözülmediğini gözlenemez kılıyordu.
+        var studentId = user.FindFirst("student_id")?.Value;
 
-        // DepartmentHead → kendi branş kodu (alan şefi kendi alanını görür).
-        // Çözümleme Institution modülünün query handler'ında (cross-module Core entity'sine
-        // doğrudan host'tan sorgu atılmaz — schema/modül izolasyonu).
-        if (roles.Contains("DepartmentHead", StringComparer.OrdinalIgnoreCase))
-        {
-            var result = await bus.InvokeAsync<StaffBranchCodeResult>(new GetStaffBranchCode(sub));
-            branchCode = result.BranchCode;
-        }
+        // Alan (branş) kapsamı da claim'den okunur (#126): PermissionClaimsTransformation
+        // token'da branch_codes yoksa personel kaydından doldurur. Rol adına bakılmaz —
+        // kapsam kararı rolden değil claim'den gelir.
+        var branchCodes = BranchCodeClaims.Read(user);
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(new
@@ -64,9 +68,14 @@ public static class AuthEndpoint
                     ?? user.FindFirst(ClaimTypes.Surname)?.Value,
                 institutionId,
                 businessId,
-                branchCode,
+                studentId,
+                // Geriye uyumluluk: tek alan bekleyen istemciler için ilk kod.
+                branchCode = branchCodes.Count > 0 ? branchCodes[0] : null,
+                branchCodes,
                 roles,
-                permissions
+                permissions,
+                // Kiracı = okul (ADR-0003). null ise kullanıcı kapsamsızdır.
+                tenantId = bus.TenantId
             })
             .Build());
     }

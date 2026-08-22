@@ -39,6 +39,10 @@ appsettings.*.local.json
 .aspire/
 src/MESNET.AppHost/appsettings.json
 
+## Gerçek kimlik bilgileri içerir — yanındaki .sample.json'dan kopyalanır (#66)
+src/MESNET.Seeder/appsettings.json
+src/MESNET.Presentation/appsettings.Development.json
+
 ## OSRM data (200 MB+ — her geliştirici prepare-mersin.sh ile oluşturur)
 src/MESNET.AppHost/osrm/data/
 
@@ -54,7 +58,12 @@ src/Docs/build/
 src/Docs/.docusaurus/
 
 ## PlantUML generated SVG output
-src/Arch/out/
+# Kaynak .puml dosyaları izlenir; render çıktısı izlenmez.
+# Doküman sitesi diyagramları remark-kroki ile MDX'ten CANLI render eder —
+# bu klasördeki SVG'lerin hiçbir tüketicisi yoktur (yol ve dosya adı taraması: 0 referans).
+# NOT: src/Arch/ silinip dokümanlar src/Docs/'a taşındığında bu kayıt güncellenmemişti;
+# 42 SVG o yüzden depoya girmişti.
+src/Docs/static/diagrams/out/
 
 # Production secrets
 .env

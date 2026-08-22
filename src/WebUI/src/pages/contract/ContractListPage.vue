@@ -2,12 +2,23 @@
   <q-page padding>
     <PageHeader title="Sözleşmeler">
       <PermissionGuard :permission="Permissions.Internship.Contract">
-        <q-btn :disable="periodStore.isReadOnly" color="primary" icon="add" label="Yeni Sözleşme" unelevated @click="openCreateDialog" />
+        <q-btn
+          :disable="periodStore.isReadOnly"
+          color="primary"
+          icon="add"
+          label="Yeni Sözleşme"
+          unelevated
+          @click="openCreateDialog"
+        />
       </PermissionGuard>
     </PageHeader>
 
-    <AppNotice v-if="periodStore.isReadOnly" type="readonly" class="q-mb-md"
-      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir." />
+    <AppNotice
+      v-if="periodStore.isReadOnly"
+      type="readonly"
+      class="q-mb-md"
+      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir."
+    />
 
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md">
@@ -24,11 +35,22 @@
       />
     </div>
 
-    <AppTable :rows="contracts" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
+    <AppTable
+      :rows="contracts"
+      :columns="columns"
+      :loading="loading"
+      :pagination="pagination"
+      @request="onRequest"
+    >
       <template #body-cell-student="{ row }">
         <q-td>
-          <div class="text-weight-medium">{{ studentMap[row.studentId]?.fullName ?? '—' }}</div>
-          <div v-if="studentMap[row.studentId]?.info" class="text-caption text-grey-6">
+          <div class="text-weight-medium">
+            {{ studentMap[row.studentId]?.fullName ?? '—' }}
+          </div>
+          <div
+            v-if="studentMap[row.studentId]?.info"
+            class="text-caption text-grey-6"
+          >
             {{ studentMap[row.studentId].info }}
           </div>
         </q-td>
@@ -46,261 +68,375 @@
         <q-td>
           <q-icon
             :name="row.institutionSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.institutionSignature.isSigned ? 'green-7' : 'grey-4'"
+            :color="row.institutionSignature.isSigned ? 'positive' : 'grey-4'"
             size="xs"
-          ><q-tooltip>Kurum{{ row.institutionSignature.signedBy ? ': ' + row.institutionSignature.signedBy : '' }}</q-tooltip></q-icon>
+          >
+            <q-tooltip>Kurum{{ row.institutionSignature.signedBy ? ': ' + row.institutionSignature.signedBy : '' }}</q-tooltip>
+          </q-icon>
           <q-icon
             :name="row.businessSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.businessSignature.isSigned ? 'green-7' : 'grey-4'"
+            :color="row.businessSignature.isSigned ? 'positive' : 'grey-4'"
             size="xs"
             class="q-ml-xs"
-          ><q-tooltip>İşletme{{ row.businessSignature.signedBy ? ': ' + row.businessSignature.signedBy : '' }}</q-tooltip></q-icon>
+          >
+            <q-tooltip>İşletme{{ row.businessSignature.signedBy ? ': ' + row.businessSignature.signedBy : '' }}</q-tooltip>
+          </q-icon>
           <q-icon
             :name="row.studentSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.studentSignature.isSigned ? 'green-7' : 'grey-4'"
+            :color="row.studentSignature.isSigned ? 'positive' : 'grey-4'"
             size="xs"
             class="q-ml-xs"
-          ><q-tooltip>Öğrenci{{ row.studentSignature.signedBy ? ': ' + row.studentSignature.signedBy : '' }}</q-tooltip></q-icon>
+          >
+            <q-tooltip>Öğrenci{{ row.studentSignature.signedBy ? ': ' + row.studentSignature.signedBy : '' }}</q-tooltip>
+          </q-icon>
           <q-icon
             :name="row.parentSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.parentSignature.isSigned ? 'green-7' : 'grey-4'"
+            :color="row.parentSignature.isSigned ? 'positive' : 'grey-4'"
             size="xs"
             class="q-ml-xs"
-          ><q-tooltip>Veli{{ row.parentSignature.signedBy ? ': ' + row.parentSignature.signedBy : '' }}</q-tooltip></q-icon>
+          >
+            <q-tooltip>Veli{{ row.parentSignature.signedBy ? ': ' + row.parentSignature.signedBy : '' }}</q-tooltip>
+          </q-icon>
         </q-td>
       </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
           <PermissionGuard :permission="Permissions.Document.Upload">
             <q-btn
-              flat round dense
+              flat
+              round
+              dense
               icon="upload_file"
               color="secondary"
               aria-label="Evrak yükle"
               @click.stop="openUploadDialog(row)"
-            ><q-tooltip>Evrak yükle</q-tooltip></q-btn>
+            >
+              <q-tooltip>Evrak yükle</q-tooltip>
+            </q-btn>
           </PermissionGuard>
           <q-btn
-            flat round dense
+            flat
+            round
+            dense
             icon="folder_open"
             color="grey-7"
             aria-label="Evrakları aç"
             :badge="row.documents?.length > 0 ? String(row.documents.length) : undefined"
             badge-color="primary"
             @click.stop="openDocumentsDialog(row)"
-          ><q-tooltip>Evrakları aç</q-tooltip></q-btn>
-          <q-btn flat round dense icon="open_in_new" aria-label="Detayı aç" @click="openDetail(row)" />
+          >
+            <q-tooltip>Evrakları aç</q-tooltip>
+          </q-btn>
+          <q-btn
+            flat
+            round
+            dense
+            icon="open_in_new"
+            aria-label="Detayı aç"
+            @click="openDetail(row)"
+          />
         </q-td>
       </template>
     </AppTable>
 
     <!-- Detay Panel -->
-    <DetailPanel v-model="detailOpen" title="Sözleşme Detayı" :has-content="!!selected" :width="520">
+    <DetailPanel
+      v-model="detailOpen"
+      title="Sözleşme Detayı"
+      :has-content="!!selected"
+      :width="520"
+    >
       <template v-if="selected">
-            <!-- Durum & Tarih -->
-            <div class="row items-center q-mb-md q-gutter-sm">
-              <StatusBadge :slug="selected.statusSlug" />
-              <q-chip icon="calendar_today" dense outline color="grey-7">
-                {{ formatDate(selected.startDate) }}
-                <span v-if="selected.endDate"> – {{ formatDate(selected.endDate) }}</span>
-              </q-chip>
-            </div>
+        <!-- Durum & Tarih -->
+        <div class="row items-center q-mb-md q-gutter-sm">
+          <StatusBadge :slug="selected.statusSlug" />
+          <q-chip
+            icon="calendar_today"
+            dense
+            outline
+            color="grey-7"
+          >
+            {{ formatDate(selected.startDate) }}
+            <span v-if="selected.endDate"> – {{ formatDate(selected.endDate) }}</span>
+          </q-chip>
+        </div>
 
-            <!-- İmza durumu -->
-            <q-card flat bordered class="q-mb-md">
-              <q-card-section class="q-pb-sm">
-                <div class="text-subtitle2 text-weight-medium q-mb-sm">İmza Durumu</div>
-                <div class="row q-gutter-md justify-start">
-                  <div v-for="sig in signatureList" :key="sig.label" class="text-center">
-                    <q-icon
-                      :name="sig.dto.isSigned ? 'check_circle' : 'pending'"
-                      :color="sig.dto.isSigned ? 'green-7' : 'grey-4'"
-                      size="36px"
-                    />
-                    <div class="text-caption text-weight-medium q-mt-xs">{{ sig.label }}</div>
-                    <div v-if="sig.dto.signedBy" class="text-caption text-grey-7">{{ sig.dto.signedBy }}</div>
-                    <div v-if="sig.dto.signedAt" class="text-caption text-grey-6">
-                      {{ formatDate(sig.dto.signedAt) }}
-                    </div>
-                  </div>
+        <!-- İmza durumu -->
+        <q-card
+          flat
+          bordered
+          class="q-mb-md"
+        >
+          <q-card-section class="q-pb-sm">
+            <div class="text-subtitle2 text-weight-medium q-mb-sm">
+              İmza Durumu
+            </div>
+            <div class="row q-gutter-md justify-start">
+              <div
+                v-for="sig in signatureList"
+                :key="sig.label"
+                class="text-center"
+              >
+                <q-icon
+                  :name="sig.dto.isSigned ? 'check_circle' : 'pending'"
+                  :color="sig.dto.isSigned ? 'positive' : 'grey-4'"
+                  size="36px"
+                />
+                <div class="text-caption text-weight-medium q-mt-xs">
+                  {{ sig.label }}
                 </div>
-              </q-card-section>
-            </q-card>
-
-            <!-- Yüklü Evraklar -->
-            <q-card v-if="selected.documents?.length" flat bordered class="q-mb-md">
-              <q-card-section class="q-pb-sm">
-                <div class="text-subtitle2 text-weight-medium q-mb-sm">Yüklü Evraklar</div>
-                <q-list dense separator>
-                  <q-item v-for="doc in selected.documents" :key="doc.documentId" class="q-px-none">
-                    <q-item-section avatar>
-                      <q-icon name="picture_as_pdf" color="red-7" />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label class="text-weight-medium">{{ doc.documentTypeSlug }}</q-item-label>
-                      <q-item-label v-if="doc.description" caption>{{ doc.description }}</q-item-label>
-                      <q-item-label caption class="text-grey-6">
-                        {{ doc.uploadedBy }} · {{ formatDate(doc.uploadedAt) }}
-                      </q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-              </q-card-section>
-            </q-card>
-
-            <!-- Fesih talebi bekliyor banner -->
-            <q-banner
-              v-if="selected.status === 'TerminationRequested'"
-              class="q-mb-md text-white bg-deep-orange-9 rounded-borders"
-              dense
-            >
-              <template #avatar><q-icon name="pending_actions" /></template>
-              <div class="text-caption text-weight-bold">FESİH TALEBİ BEKLEMEDE</div>
-              <div class="text-caption q-mt-xs">
-                <span v-if="selected.terminationReasonTypeSlug">{{ selected.terminationReasonTypeSlug }}</span>
-                <span v-if="selected.terminationReason"> — {{ selected.terminationReason }}</span>
+                <div
+                  v-if="sig.dto.signedBy"
+                  class="text-caption text-grey-7"
+                >
+                  {{ sig.dto.signedBy }}
+                </div>
+                <div
+                  v-if="sig.dto.signedAt"
+                  class="text-caption text-grey-6"
+                >
+                  {{ formatDate(sig.dto.signedAt) }}
+                </div>
               </div>
-            </q-banner>
-
-            <!-- Feshedildi bilgisi -->
-            <q-banner
-              v-if="selected.terminationReason && selected.status === 'Terminated'"
-              class="q-mb-md text-white bg-deep-orange-7 rounded-borders"
-              dense
-            >
-              <template #avatar>
-                <q-icon name="gavel" />
-              </template>
-              <div class="text-caption text-weight-medium">{{ selected.terminationReasonTypeSlug }}</div>
-              <div class="text-body2">{{ selected.terminationReason }}</div>
-            </q-banner>
-
-            <!-- Eylemler -->
-            <div class="text-subtitle2 text-weight-medium q-mb-sm">İşlemler</div>
-            <div class="column q-gutter-sm">
-              <PermissionGuard :permission="Permissions.Internship.Contract">
-                <q-btn
-                  v-if="selected.status === 'Draft'"
-                  color="primary"
-                  icon="send"
-                  label="İmzaya Gönder"
-                  unelevated
-                  :loading="saving"
-                  @click="doSubmit"
-                />
-                <q-btn
-                  v-if="selected.status === 'AwaitingSignature'"
-                  color="teal"
-                  icon="draw"
-                  label="İmzala"
-                  unelevated
-                  :loading="saving"
-                  @click="signDialog = true"
-                />
-                <q-btn
-                  v-if="selected.status === 'AwaitingSignature'"
-                  color="green"
-                  icon="play_arrow"
-                  label="Aktifleştir"
-                  unelevated
-                  :loading="saving"
-                  @click="doActivate"
-                />
-              </PermissionGuard>
-
-              <PermissionGuard :permission="Permissions.Internship.Manage">
-                <q-btn
-                  v-if="selected.status === 'Active'"
-                  color="orange"
-                  icon="pause"
-                  label="Askıya Al"
-                  unelevated
-                  :loading="saving"
-                  @click="suspendDialog = true"
-                />
-                <q-btn
-                  v-if="selected.status === 'Suspended'"
-                  color="green"
-                  icon="play_arrow"
-                  label="Devam Ettir"
-                  unelevated
-                  :loading="saving"
-                  @click="doResume"
-                />
-                <q-btn
-                  v-if="selected.status === 'Active' || selected.status === 'Suspended'"
-                  color="negative"
-                  icon="cancel"
-                  label="Feshet"
-                  unelevated
-                  :loading="saving"
-                  @click="terminateDialog = true"
-                />
-                <q-btn
-                  v-if="selected.status === 'Active'"
-                  color="purple"
-                  icon="done_all"
-                  label="Tamamla"
-                  unelevated
-                  :loading="saving"
-                  @click="doComplete"
-                />
-              </PermissionGuard>
-
-              <!-- Fesih talebi onay/red — Müdür / Müdür Yardımcısı -->
-              <PermissionGuard :permission="Permissions.Internship.Approve">
-                <template v-if="selected.status === 'TerminationRequested'">
-                  <q-btn
-                    color="negative"
-                    icon="gavel"
-                    label="Feshi Onayla"
-                    unelevated
-                    :loading="saving"
-                    @click="terminateDialog = true"
-                  />
-                  <q-btn
-                    color="teal"
-                    icon="thumb_down"
-                    label="Talebi Reddet"
-                    unelevated
-                    :loading="saving"
-                    @click="rejectTerminateDialog = true"
-                  />
-                </template>
-              </PermissionGuard>
-
-              <!-- İşletme fesih talebi — CompanyManager -->
-              <PermissionGuard :permission="Permissions.Company.Student">
-                <q-btn
-                  v-if="selected.status === 'Active' || selected.status === 'Suspended'"
-                  color="deep-orange"
-                  icon="report"
-                  label="Fesih Talebi Oluştur"
-                  outline
-                  :loading="saving"
-                  @click="requestTerminateDialog = true"
-                />
-              </PermissionGuard>
-
-              <PermissionGuard :permission="Permissions.Document.Upload">
-                <q-btn
-                  color="secondary"
-                  icon="upload_file"
-                  label="Evrak Yükle"
-                  outline
-                  @click="openUploadDialog(selected)"
-                />
-              </PermissionGuard>
             </div>
+          </q-card-section>
+        </q-card>
+
+        <!-- Yüklü Evraklar -->
+        <q-card
+          v-if="selected.documents?.length"
+          flat
+          bordered
+          class="q-mb-md"
+        >
+          <q-card-section class="q-pb-sm">
+            <div class="text-subtitle2 text-weight-medium q-mb-sm">
+              Yüklü Evraklar
+            </div>
+            <q-list
+              dense
+              separator
+            >
+              <q-item
+                v-for="doc in selected.documents"
+                :key="doc.documentId"
+                class="q-px-none"
+              >
+                <q-item-section avatar>
+                  <q-icon
+                    name="picture_as_pdf"
+                    color="negative"
+                  />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-medium">
+                    {{ doc.documentTypeSlug }}
+                  </q-item-label>
+                  <q-item-label
+                    v-if="doc.description"
+                    caption
+                  >
+                    {{ doc.description }}
+                  </q-item-label>
+                  <q-item-label
+                    caption
+                    class="text-grey-6"
+                  >
+                    {{ doc.uploadedBy }} · {{ formatDate(doc.uploadedAt) }}
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-card-section>
+        </q-card>
+
+        <!-- Fesih talebi bekliyor banner -->
+        <q-banner
+          v-if="selected.status === 'TerminationRequested'"
+          class="q-mb-md text-white bg-warning rounded-borders"
+          dense
+        >
+          <template #avatar>
+            <q-icon name="pending_actions" />
+          </template>
+          <div class="text-caption text-weight-bold">
+            FESİH TALEBİ BEKLEMEDE
+          </div>
+          <div class="text-caption q-mt-xs">
+            <span v-if="selected.terminationReasonTypeSlug">{{ selected.terminationReasonTypeSlug }}</span>
+            <span v-if="selected.terminationReason"> — {{ selected.terminationReason }}</span>
+          </div>
+        </q-banner>
+
+        <!-- Feshedildi bilgisi -->
+        <q-banner
+          v-if="selected.terminationReason && selected.status === 'Terminated'"
+          class="q-mb-md text-white bg-negative rounded-borders"
+          dense
+        >
+          <template #avatar>
+            <q-icon name="gavel" />
+          </template>
+          <div class="text-caption text-weight-medium">
+            {{ selected.terminationReasonTypeSlug }}
+          </div>
+          <div class="text-body2">
+            {{ selected.terminationReason }}
+          </div>
+        </q-banner>
+
+        <!-- Eylemler -->
+        <div class="text-subtitle2 text-weight-medium q-mb-sm">
+          İşlemler
+        </div>
+        <div class="column q-gutter-sm">
+          <PermissionGuard :permission="Permissions.Internship.Contract">
+            <q-btn
+              v-if="selected.status === 'Draft'"
+              color="primary"
+              icon="send"
+              label="İmzaya Gönder"
+              unelevated
+              :loading="saving"
+              @click="doSubmit"
+            />
+            <q-btn
+              v-if="selected.status === 'AwaitingSignature'"
+              color="positive"
+              icon="draw"
+              label="İmzala"
+              unelevated
+              :loading="saving"
+              @click="signDialog = true"
+            />
+            <q-btn
+              v-if="selected.status === 'AwaitingSignature'"
+              color="positive"
+              icon="play_arrow"
+              label="Aktifleştir"
+              unelevated
+              :loading="saving"
+              @click="doActivate"
+            />
+          </PermissionGuard>
+
+          <PermissionGuard :permission="Permissions.Internship.Manage">
+            <q-btn
+              v-if="selected.status === 'Active'"
+              color="warning"
+              icon="pause"
+              label="Askıya Al"
+              unelevated
+              :loading="saving"
+              @click="suspendDialog = true"
+            />
+            <q-btn
+              v-if="selected.status === 'Suspended'"
+              color="positive"
+              icon="play_arrow"
+              label="Devam Ettir"
+              unelevated
+              :loading="saving"
+              @click="doResume"
+            />
+            <q-btn
+              v-if="selected.status === 'Active' || selected.status === 'Suspended'"
+              color="negative"
+              icon="cancel"
+              label="Feshet"
+              unelevated
+              :loading="saving"
+              @click="terminateDialog = true"
+            />
+            <q-btn
+              v-if="selected.status === 'Active'"
+              color="secondary"
+              icon="done_all"
+              label="Tamamla"
+              unelevated
+              :loading="saving"
+              @click="doComplete"
+            />
+          </PermissionGuard>
+
+          <!-- Fesih talebi onay/red — Müdür / Müdür Yardımcısı -->
+          <PermissionGuard :permission="Permissions.Internship.Approve">
+            <template v-if="selected.status === 'TerminationRequested'">
+              <q-btn
+                color="negative"
+                icon="gavel"
+                label="Feshi Onayla"
+                unelevated
+                :loading="saving"
+                @click="terminateDialog = true"
+              />
+              <q-btn
+                color="positive"
+                icon="thumb_down"
+                label="Talebi Reddet"
+                unelevated
+                :loading="saving"
+                @click="rejectTerminateDialog = true"
+              />
+            </template>
+          </PermissionGuard>
+
+          <!-- İşletme fesih talebi — CompanyManager -->
+          <PermissionGuard :permission="Permissions.Company.Student">
+            <q-btn
+              v-if="selected.status === 'Active' || selected.status === 'Suspended'"
+              color="negative"
+              icon="report"
+              label="Fesih Talebi Oluştur"
+              outline
+              :loading="saving"
+              @click="requestTerminateDialog = true"
+            />
+          </PermissionGuard>
+
+          <PermissionGuard :permission="Permissions.Document.Upload">
+            <q-btn
+              color="secondary"
+              icon="upload_file"
+              label="Evrak Yükle"
+              outline
+              @click="openUploadDialog(selected)"
+            />
+          </PermissionGuard>
+        </div>
       </template>
     </DetailPanel>
 
-    <SignContractForm v-model="signDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
-    <SuspendContractForm v-model="suspendDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
-    <TerminateContractForm v-model="terminateDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
-    <RequestTerminationForm v-model="requestTerminateDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
-    <RejectTerminationForm v-model="rejectTerminateDialog" :contract-id="selected?.id ?? ''" @saved="refreshSelected" />
-    <UploadContractDocForm v-model="uploadDialog" :contract-id="uploadTarget?.id ?? ''" @saved="afterUploadSaved" />
+    <SignContractForm
+      v-model="signDialog"
+      :contract-id="selected?.id ?? ''"
+      @saved="refreshSelected"
+    />
+    <SuspendContractForm
+      v-model="suspendDialog"
+      :contract-id="selected?.id ?? ''"
+      @saved="refreshSelected"
+    />
+    <TerminateContractForm
+      v-model="terminateDialog"
+      :contract-id="selected?.id ?? ''"
+      @saved="refreshSelected"
+    />
+    <RequestTerminationForm
+      v-model="requestTerminateDialog"
+      :contract-id="selected?.id ?? ''"
+      @saved="refreshSelected"
+    />
+    <RejectTerminationForm
+      v-model="rejectTerminateDialog"
+      :contract-id="selected?.id ?? ''"
+      @saved="refreshSelected"
+    />
+    <UploadContractDocForm
+      v-model="uploadDialog"
+      :contract-id="uploadTarget?.id ?? ''"
+      @saved="afterUploadSaved"
+    />
 
     <!-- ── Evraklar Dialog ── -->
     <q-dialog
@@ -311,28 +447,72 @@
     >
       <q-card :style="$q.screen.gt.xs ? 'width: 520px; max-width: 95vw' : ''">
         <q-toolbar class="bg-grey-8 text-white">
-          <q-icon name="folder_open" class="q-mr-sm" />
+          <q-icon
+            name="folder_open"
+            class="q-mr-sm"
+          />
           <q-toolbar-title>Yüklü Evraklar</q-toolbar-title>
-          <q-btn flat round dense icon="close" aria-label="Kapat" color="white" v-close-popup />
+          <q-btn
+            v-close-popup
+            flat
+            round
+            dense
+            icon="close"
+            aria-label="Kapat"
+            color="white"
+          />
         </q-toolbar>
 
         <q-card-section>
-          <div v-if="!documentsTarget?.documents?.length" class="text-center q-py-lg text-grey-6">
-            <q-icon name="folder_off" size="48px" class="q-mb-sm" />
+          <div
+            v-if="!documentsTarget?.documents?.length"
+            class="text-center q-py-lg text-grey-6"
+          >
+            <q-icon
+              name="folder_off"
+              size="48px"
+              class="q-mb-sm"
+            />
             <div>Henüz evrak yüklenmemiş.</div>
           </div>
-          <q-list v-else separator>
-            <q-item v-for="doc in documentsTarget?.documents" :key="doc.documentId">
+          <q-list
+            v-else
+            separator
+          >
+            <q-item
+              v-for="doc in documentsTarget?.documents"
+              :key="doc.documentId"
+            >
               <q-item-section avatar>
-                <q-avatar color="red-1" text-color="red-8" icon="picture_as_pdf" />
+                <q-avatar
+                  color="negative-soft"
+                  text-color="negative-strong"
+                  icon="picture_as_pdf"
+                />
               </q-item-section>
               <q-item-section>
-                <q-item-label class="text-weight-medium">{{ doc.documentTypeSlug }}</q-item-label>
-                <q-item-label v-if="doc.description" caption>{{ doc.description }}</q-item-label>
-                <q-item-label caption class="text-grey-6">
-                  <q-icon name="person" size="12px" /> {{ doc.uploadedBy }}
+                <q-item-label class="text-weight-medium">
+                  {{ doc.documentTypeSlug }}
+                </q-item-label>
+                <q-item-label
+                  v-if="doc.description"
+                  caption
+                >
+                  {{ doc.description }}
+                </q-item-label>
+                <q-item-label
+                  caption
+                  class="text-grey-6"
+                >
+                  <q-icon
+                    name="person"
+                    size="12px"
+                  /> {{ doc.uploadedBy }}
                   &nbsp;·&nbsp;
-                  <q-icon name="schedule" size="12px" /> {{ formatDate(doc.uploadedAt) }}
+                  <q-icon
+                    name="schedule"
+                    size="12px"
+                  /> {{ formatDate(doc.uploadedAt) }}
                 </q-item-label>
               </q-item-section>
             </q-item>
@@ -340,7 +520,10 @@
         </q-card-section>
 
         <q-separator />
-        <q-card-actions align="right" class="q-pa-md">
+        <q-card-actions
+          align="right"
+          class="q-pa-md"
+        >
           <PermissionGuard :permission="Permissions.Document.Upload">
             <q-btn
               unelevated
@@ -350,7 +533,12 @@
               @click="() => { documentsDialog = false; if (documentsTarget) openUploadDialog(documentsTarget) }"
             />
           </PermissionGuard>
-          <q-btn flat label="Kapat" color="grey-7" v-close-popup />
+          <q-btn
+            v-close-popup
+            flat
+            label="Kapat"
+            color="grey-7"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -471,7 +659,7 @@ function formatDate(iso: string | null | undefined) {
 }
 
 function openCreateDialog() {
-  void router.push('/internship/contracts/new')
+  router.push('/internship/contracts/new').catch(() => {})
 }
 
 function openDetail(row: InternshipContractDto) {

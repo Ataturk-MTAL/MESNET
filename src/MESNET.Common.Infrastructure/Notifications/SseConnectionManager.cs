@@ -47,26 +47,13 @@ internal sealed class SseConnectionManager
 
     public int ConnectionCount => _connections.Count;
 
+    /// <summary>
+    /// Karar saf <see cref="NotificationTargetPolicy"/> içindedir; burada yalnız uygulaması var.
+    /// Hedefleme sessiz bir yüzeydir (boş hedef hata değil, yalnız <c>LogDebug</c>) — bu yüzden
+    /// testlenebilir olmak zorunda (#247).
+    /// </summary>
     private static bool MatchesTarget(SseUserContext user, NotificationTarget target)
-    {
-        // Doğrudan userId eşleşme
-        if (target.UserIds is { Count: > 0 } && target.UserIds.Contains(user.UserId))
-            return true;
-
-        // InstitutionId eşleşme
-        if (target.InstitutionId.HasValue && user.InstitutionId == target.InstitutionId.Value)
-            return true;
-
-        // Rol eşleşme (OR: herhangi biri yeterli)
-        if (target.Roles is { Count: > 0 } && user.Roles.Any(r => target.Roles.Contains(r)))
-            return true;
-
-        // Permission eşleşme
-        if (!string.IsNullOrEmpty(target.RequiredPermission) && user.Permissions.Contains(target.RequiredPermission))
-            return true;
-
-        return false;
-    }
+        => NotificationTargetPolicy.Matches(user, target);
 
     private static UserConnection CreateConnection(SseUserContext userContext)
     {

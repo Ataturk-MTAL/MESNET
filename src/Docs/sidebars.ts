@@ -7,9 +7,14 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Mimari',
       items: [
+        'architecture/adr-0001-yetkilendirme-permission-bazli',
+        'architecture/adr-0002-izin-agaci-ve-onek-secimi',
+        'architecture/adr-0003-cok-kiracilik',
+        'architecture/adr-0004-isletme-kimlik-iliski-ayrimi',
         'architecture/project-scope',
         'architecture/module-design',
         'architecture/business-rules',
+        'architecture/3308-kanun-ozeti',
         'architecture/wolverine-patterns',
         'architecture/user-onboarding',
         'architecture/web-ui',
@@ -27,6 +32,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'infrastructure/keycloak',
         'infrastructure/gis-osrm',
+        'infrastructure/dagitim-on-kosullari',
       ],
     },
     {

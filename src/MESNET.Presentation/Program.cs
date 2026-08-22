@@ -1,4 +1,5 @@
 using JasperFx;
+using JasperFx.MultiTenancy;
 using JasperFx.Events.Daemon;
 using Marten;
 using Weasel.Core;
@@ -24,6 +25,7 @@ using Wolverine.Marten;
 using Keycloak.AuthServices.Sdk;
 using MESNET.Common.Infrastructure.Email;
 using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Security.Api;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
@@ -56,8 +58,18 @@ try
             outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}{NewLine}  {Message:lj}{NewLine}{Exception}")
         .WriteTo.OpenTelemetry(otel =>
         {
-            otel.Endpoint = context.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://localhost:4317";
+            // OpenObserve yapılandırılmışsa oraya, değilse Aspire dashboard'un OTLP ucuna.
+            // İkisi de OTLP konuşur; değişen yalnız hedef ve kimlik başlıkları.
+            otel.Endpoint = context.Configuration["OpenObserve:Endpoint"]
+                ?? context.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
+                ?? "http://localhost:4317";
             otel.Protocol = Serilog.Sinks.OpenTelemetry.OtlpProtocol.Grpc;
+
+            var headers = OpenObserveHeaders.Build(context.Configuration);
+            if (headers is not null)
+            {
+                otel.Headers = headers;
+            }
         }));
 
     // Aspire Service Defaults (telemetry, health checks, resilience)
@@ -82,8 +94,37 @@ try
             EnumStorage.AsString,
             Casing.CamelCase,
             configure: o => o.Converters.Add(new SmartEnumJsonConverterFactory()));
+
+        // ── Kiracılık (#149, ADR-0003 adım 5) ────────────────────────────────────────
+        // Damga DocumentTenancyMap'ten gelir; AllDocumentsAreMultiTenanted() KULLANILMAZ —
+        // ulusal katalog, ulusal parametreler, kimlik katmanı ve paylaşımlı işletme kataloğu
+        // damga almamalı. Damgayı geri almak tablo yeniden inşası demektir.
+        opts.Policies.OnDocuments<DocumentTenancyPolicy>();
+
+        // Olay akışları da kiracıya ait: mt_streams PK'sı (tenant_id, id), mt_events benzersiz
+        // indeksi (tenant_id, stream_id, version) olur.
+        opts.Events.TenancyStyle = TenancyStyle.Conjoined;
+
+        // ZORLAMANIN TAMAMI BU SATIRDAN GELİYOR. Varsayılan true'dur: kapsamsız bir session
+        // sessizce "*DEFAULT*" kiracısında çalışır — öldürmeye çalıştığımız sessiz sızıntının
+        // kılık değiştirmiş hâli. false iken kapsamsız session FIRLATIR ve unutmak ilk
+        // entegrasyon testinde çöker.
+        opts.Advanced.DefaultTenantUsageEnabled = false;
     })
     .InitializeWith(new FieldOfStudySeedData())
+    // ── ApplyAllDatabaseChangesOnStartup() BİLEREK YOK (#149) ───────────────────────────
+    // Kiracılık geçişinde denendi ve API'yi AÇILIŞTA ÖLDÜRDÜ. Sebep Marten'ın ürettiği göç
+    // betiğinin kendisiyle çelişmesi: conjoined deltası aynı yabancı anahtarı İKİ KEZ ekliyor
+    // ve ikincisi patlıyor —
+    //   MartenSchemaException: DDL Execution for 'All Configured Changes' Failed!
+    //   42710: constraint "fkey_mt_events_stream_id_tenant_id" for relation "mt_events" already exists
+    // Var olan bir veritabanının kiracılığa geçişi bu yüzden AÇILIŞTA yapılmaz; elden uygulanan
+    // ve gözden geçirilebilen bir betikle yapılır:
+    //   src/Docs/docs/infrastructure/sql/149-conjoined-kiracilik.sql (şema)
+    //   src/Docs/docs/infrastructure/sql/149-kiraci-damgalama.sql   (mevcut satırların damgası)
+    // Sıra ve gerekçe: src/Docs/docs/infrastructure/dagitim-on-kosullari.md
+    // Yeni (boş) veritabanı bu betiklere ihtiyaç duymaz — AutoCreate tabloları zaten kiracılı
+    // yaratır; kıran şey yalnız var olan tablonun DELTASIDIR.
     .IntegrateWithWolverine()
     .AddAsyncDaemon(DaemonMode.HotCold);
 
@@ -103,6 +144,12 @@ try
 
     // Email (MJML template + MailKit SMTP)
     builder.Services.AddEmailServices();
+
+    // Kiracılık sınıflandırması eksiksiz mi — modüller kaydolduktan SONRA (#149).
+    // Kaynak taraması bildirilmemiş belge tipini göremez; bu kontrol Marten'ın gerçekten
+    // tanıdığı tiplere bakar.
+    builder.Services.AddHostedService<
+        MESNET.Common.Infrastructure.Tenancy.DocumentTenancyVerificationHostedService>();
 
     // ────────────────────────────────────────────────────────────────────────────────
     // Authentication + Authorization
@@ -205,6 +252,16 @@ try
         });
 
         // SSE endpoint'i — bağlantı başına uzun süreli, düşük limit (.RequireRateLimiting ile uygulanıyor)
+        // İstemci telemetrisi (#144) — uç ANONİM olduğu için global limitten daha dar.
+        // İstemci hata döngüsüne girse bile (#136'daki gibi saniyede bir) sunucu boğulmamalı.
+        // Aşan istek 429 alır ve istemci TEKRAR DENEMEZ, kayıt sessizce düşer: telemetri
+        // kaybı kabul edilebilir, telemetrinin kendi kendine DoS'u değil.
+        options.AddFixedWindowLimiter("ClientTelemetry", limiterOptions =>
+        {
+            limiterOptions.PermitLimit = 30;
+            limiterOptions.Window = TimeSpan.FromMinutes(1);
+        });
+
         options.AddFixedWindowLimiter("SseConnections", limiterOptions =>
         {
             limiterOptions.PermitLimit = 5;
@@ -249,6 +306,13 @@ try
         opts.Policies.ForMessagesOfType<MESNET.Attendance.Application.Guards.IAttendancePeriodScoped>()
             .AddMiddleware(typeof(MESNET.Attendance.Application.Guards.AttendancePeriodGuardMiddleware));
 
+        // Kurum kapsamı koruması (ADR-0003 adım 6) — hedef kurumu İSTEKTEN alan her
+        // command/query. Kiracılık bunu koruyamaz: Institution belgesi kiracının kendisidir
+        // ve damga taşımaz. Ölçüldü: kontrol yokken bir okul müdürü diğer okulun kaydını
+        // okuyor, adını değiştiriyor ve personel listesine kayıt ekleyebiliyordu.
+        opts.Policies.ForMessagesOfType<MESNET.Institution.Application.Security.IInstitutionScoped>()
+            .AddMiddleware(typeof(MESNET.Institution.Application.Security.InstitutionScopeGuardMiddleware));
+
         // Modül Application assembly'lerini handler keşfi için tanıt
         // Wolverine varsayılan olarak sadece host assembly'yi tarar
         opts.Discovery.IncludeAssembly(typeof(MESNET.Institution.Application.Commands.CreateInstitution).Assembly);
@@ -275,6 +339,16 @@ try
                 rabbit.HostName = builder.Configuration["RabbitMQ:HostName"] ?? "localhost";
                 rabbit.UserName = builder.Configuration["RabbitMQ:UserName"] ?? "guest";
                 rabbit.Password = builder.Configuration["RabbitMQ:Password"] ?? "guest";
+
+                // Port YAPILANDIRILABİLİR olmalı: diğer üç bağımlılığın portu zaten
+                // değiştirilebiliyor (Postgres bağlantı dizesinde, Keycloak URL'de, MinIO
+                // Endpoint'te) — yalnız broker sabit 5672'ye bağlanıyordu. Sonuç: aynı makinede
+                // ikinci bir yığın (yerel CI koşusu) ayağa kaldırılamıyordu; API varsayılan
+                // porttaki BAŞKA broker'a bağlanmaya çalışıp açılışta düşüyordu.
+                //
+                // Varsayılan korunur — mevcut dağıtımlar etkilenmez.
+                if (int.TryParse(builder.Configuration["RabbitMQ:Port"], out var rabbitPort))
+                    rabbit.Port = rabbitPort;
             }).AutoProvision();
         }
     });
@@ -481,10 +555,16 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
+    // Kiracı çözümü kimlik doğrulamadan SONRA gelmeli: kaynağı institution_id claim'idir ve
+    // o claim izin dönüşümünde üretilir (#149, ADR-0003 adım 2).
+    app.UseMiddleware<MESNET.Common.Infrastructure.Tenancy.TenantResolutionMiddleware>();
+
     app.MapWolverineEndpoints();
 
     // ──── Modül Endpoint Registrations ────
     // Institution
+    app.MapTelemetryEndpoints();
+
     app.MapInstitutionEndpoints();
     app.MapFieldCatalogEndpoints();
     app.MapAcademicPeriodEndpoints();
@@ -503,6 +583,7 @@ try
     // Attendance
     app.MapAttendanceEndpoints();
     app.MapWorkCalendarEndpoints();
+    app.MapPaidLeaveEndpoints();
     // Payment
     app.MapPaymentEndpoints();
     // Coordination
@@ -522,6 +603,7 @@ try
     app.MapUserManagementEndpoints();
     app.MapInvitationEndpoints();
     app.MapRoleEndpoints();
+    app.MapRoleIntegrityEndpoints();
 
     // Auth (kullanıcı bilgileri + permission listesi)
     app.MapAuthEndpoint();

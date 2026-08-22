@@ -1,26 +1,62 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">Maaş / Dekont</div>
+    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
+      Maaş / Dekont
+    </h1>
 
-    <AppNotice v-if="periodStore.isReadOnly" type="readonly" class="q-mb-md"
-      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir." />
+    <AppNotice
+      v-if="periodStore.isReadOnly"
+      type="readonly"
+      class="q-mb-md"
+      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir."
+    />
 
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md items-center">
-      <BranchSelector v-model="branchCodeFilter" dense force-select style="min-width: 200px" />
-      <SearchInput v-model="searchFilter" label="Öğrenci Adı veya Numarası" style="min-width: 220px" />
+      <BranchSelector
+        v-model="branchCodeFilter"
+        dense
+        force-select
+        style="min-width: 200px"
+      />
+      <SearchInput
+        v-model="searchFilter"
+        label="Öğrenci Adı veya Numarası"
+        style="min-width: 220px"
+      />
       <q-select
         v-model="phaseFilter"
         :options="phaseOptions"
         label="Aşama"
-        outlined dense emit-value map-options clearable
+        outlined
+        dense
+        emit-value
+        map-options
+        clearable
         style="min-width: 200px"
       />
-      <q-input v-model="monthFromFilter" label="Başlangıç Ayı" outlined dense clearable readonly style="min-width: 150px">
-        <template #prepend><q-icon name="calendar_month" /></template>
+      <q-input
+        v-model="monthFromFilter"
+        label="Başlangıç Ayı"
+        outlined
+        dense
+        clearable
+        readonly
+        style="min-width: 150px"
+      >
+        <template #prepend>
+          <q-icon name="calendar_month" />
+        </template>
         <template #append>
-          <q-icon name="event" class="cursor-pointer">
-            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+          <q-icon
+            name="event"
+            class="cursor-pointer"
+          >
+            <q-popup-proxy
+              cover
+              transition-show="scale"
+              transition-hide="scale"
+            >
               <q-date
                 v-model="monthFromFilter"
                 emit-immediately
@@ -30,18 +66,40 @@
                 :options="(d) => !monthToFilter || d <= monthToFilter"
               >
                 <div class="row items-center justify-end">
-                  <q-btn v-close-popup label="Tamam" color="primary" flat />
+                  <q-btn
+                    v-close-popup
+                    label="Tamam"
+                    color="primary"
+                    flat
+                  />
                 </div>
               </q-date>
             </q-popup-proxy>
           </q-icon>
         </template>
       </q-input>
-      <q-input v-model="monthToFilter" label="Bitiş Ayı" outlined dense clearable readonly style="min-width: 150px">
-        <template #prepend><q-icon name="calendar_month" /></template>
+      <q-input
+        v-model="monthToFilter"
+        label="Bitiş Ayı"
+        outlined
+        dense
+        clearable
+        readonly
+        style="min-width: 150px"
+      >
+        <template #prepend>
+          <q-icon name="calendar_month" />
+        </template>
         <template #append>
-          <q-icon name="event" class="cursor-pointer">
-            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+          <q-icon
+            name="event"
+            class="cursor-pointer"
+          >
+            <q-popup-proxy
+              cover
+              transition-show="scale"
+              transition-hide="scale"
+            >
               <q-date
                 v-model="monthToFilter"
                 emit-immediately
@@ -51,44 +109,89 @@
                 :options="(d) => !monthFromFilter || d >= monthFromFilter"
               >
                 <div class="row items-center justify-end">
-                  <q-btn v-close-popup label="Tamam" color="primary" flat />
+                  <q-btn
+                    v-close-popup
+                    label="Tamam"
+                    color="primary"
+                    flat
+                  />
                 </div>
               </q-date>
             </q-popup-proxy>
           </q-icon>
         </template>
       </q-input>
-      <q-btn color="primary" icon="search" label="Ara" @click="load" />
+      <q-btn
+        color="primary"
+        icon="search"
+        label="Ara"
+        @click="load"
+      />
     </div>
 
-    <AppTable :rows="payments" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
+    <AppTable
+      :rows="payments"
+      :columns="columns"
+      :loading="loading"
+      :pagination="pagination"
+      @request="onRequest"
+    >
       <template #body-cell-phaseSlug="{ row }">
         <q-td><StatusBadge :slug="row.phaseSlug" /></q-td>
       </template>
       <template #body-cell-amounts="{ row }">
         <q-td>
-          <div class="text-body2 text-weight-medium">{{ formatCurrency(row.netAmount) }}</div>
-          <div class="text-caption text-grey">Brüt: {{ formatCurrency(row.baseWage) }}</div>
+          <div class="text-body2 text-weight-medium">
+            {{ formatCurrency(row.netAmount) }}
+          </div>
+          <div class="text-caption text-grey">
+            Brüt: {{ formatCurrency(row.baseWage) }}
+          </div>
+          <!--
+            Ay ortasında işletme değişen öğrencide aynı ay için iki satır oluşur (#154).
+            Kısmi ay yalnız burada görünür olmazsa tutar "eksik hesaplanmış" gibi okunur.
+          -->
+          <div v-if="row.employedDays < FULL_MONTH_DAYS" class="text-caption text-orange-8">
+            Kısmi ay: {{ row.employedDays }} gün
+          </div>
         </q-td>
       </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
-          <q-btn flat round dense icon="visibility" aria-label="Detayları görüntüle" @click="openDetail(row)" />
+          <q-btn
+            flat
+            round
+            dense
+            icon="visibility"
+            aria-label="Detayları görüntüle"
+            @click="openDetail(row)"
+          />
         </q-td>
       </template>
     </AppTable>
 
     <!-- Detay Panel -->
-    <DetailPanel v-model="detailOpen" title="Ödeme Detayı" :has-content="!!selected">
+    <DetailPanel
+      v-model="detailOpen"
+      title="Ödeme Detayı"
+      :has-content="!!selected"
+    >
       <template v-if="selected">
         <div class="q-gutter-sm">
           <div class="row items-center q-mb-sm">
-            <StatusBadge :slug="selected.phaseSlug" class="q-mr-sm" />
+            <StatusBadge
+              :slug="selected.phaseSlug"
+              class="q-mr-sm"
+            />
             <span class="text-caption">{{ selected.month }}</span>
           </div>
 
           <!-- Ödeme tablosu -->
-          <q-card flat bordered class="q-mb-sm">
+          <q-card
+            flat
+            bordered
+            class="q-mb-sm"
+          >
             <q-card-section>
               <div class="row justify-between q-mb-xs">
                 <span class="text-caption">Baz Ücret:</span>
@@ -115,8 +218,14 @@
           </q-card>
 
           <!-- Onay zinciri -->
-          <div class="text-subtitle2 q-mb-xs">Onay Zinciri</div>
-          <q-timeline color="primary" layout="dense" class="q-mt-xs">
+          <div class="text-subtitle2 q-mb-xs">
+            Onay Zinciri
+          </div>
+          <q-timeline
+            color="primary"
+            layout="dense"
+            class="q-mt-xs"
+          >
             <q-timeline-entry
               icon="upload"
               :color="selected.receiptObjectPath ? 'positive' : 'grey-4'"
@@ -280,6 +389,9 @@ const columns: QTableProps['columns'] = [
   { name: 'phaseSlug', label: 'Aşama', field: 'phaseSlug', align: 'left' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ]
+
+/** Tam ay gün sayısı — backend `EmploymentDays.FullMonthDays` ile aynı (SGK usulü 30 günlük ay). */
+const FULL_MONTH_DAYS = 30
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })

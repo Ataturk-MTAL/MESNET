@@ -2,12 +2,22 @@
   <q-page padding>
     <PageHeader title="Devamsızlık">
       <PermissionGuard :permission="Permissions.Attendance.Manage">
-        <q-btn :disable="periodStore.isReadOnly" color="primary" icon="add" label="Devamsızlık Ekle" @click="openAddDialog" />
+        <q-btn
+          :disable="periodStore.isReadOnly"
+          color="primary"
+          icon="add"
+          label="Devamsızlık Ekle"
+          @click="openAddDialog"
+        />
       </PermissionGuard>
     </PageHeader>
 
-    <AppNotice v-if="periodStore.isReadOnly" type="readonly" class="q-mb-md"
-      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir." />
+    <AppNotice
+      v-if="periodStore.isReadOnly"
+      type="readonly"
+      class="q-mb-md"
+      message="Bu dönem kapatılmıştır — yalnızca görüntüleme yapılabilir."
+    />
 
     <!-- Filtreler -->
     <div class="row q-gutter-sm q-mb-md">
@@ -33,7 +43,12 @@
           <q-item v-bind="itemProps">
             <q-item-section>
               <q-item-label>{{ opt.label }}</q-item-label>
-              <q-item-label caption v-if="opt.caption">{{ opt.caption }}</q-item-label>
+              <q-item-label
+                v-if="opt.caption"
+                caption
+              >
+                {{ opt.caption }}
+              </q-item-label>
             </q-item-section>
           </q-item>
         </template>
@@ -45,7 +60,11 @@
         v-model="statusFilter"
         :options="statusOptions"
         label="Durum"
-        outlined dense emit-value map-options clearable
+        outlined
+        dense
+        emit-value
+        map-options
+        clearable
         style="min-width: 150px"
         @update:model-value="load"
       />
@@ -53,7 +72,11 @@
         v-model="monthFilter"
         :options="monthOptions"
         label="Ay"
-        outlined dense emit-value map-options clearable
+        outlined
+        dense
+        emit-value
+        map-options
+        clearable
         style="min-width: 130px"
         @update:model-value="load"
       />
@@ -61,7 +84,11 @@
         v-model="yearFilter"
         :options="yearOptions"
         label="Yıl"
-        outlined dense emit-value map-options clearable
+        outlined
+        dense
+        emit-value
+        map-options
+        clearable
         style="min-width: 100px"
         @update:model-value="load"
       />
@@ -74,11 +101,22 @@
       />
     </div>
 
-    <AppTable :rows="records" :columns="columns" :loading="loading" :pagination="pagination" @request="onRequest">
+    <AppTable
+      :rows="records"
+      :columns="columns"
+      :loading="loading"
+      :pagination="pagination"
+      @request="onRequest"
+    >
       <template #body-cell-student="{ row }">
         <q-td>
-          <div class="text-weight-medium">{{ studentMap[row.studentId]?.fullName ?? '—' }}</div>
-          <div v-if="studentMap[row.studentId]?.info" class="text-caption text-grey-6">
+          <div class="text-weight-medium">
+            {{ studentMap[row.studentId]?.fullName ?? '—' }}
+          </div>
+          <div
+            v-if="studentMap[row.studentId]?.info"
+            class="text-caption text-grey-6"
+          >
             {{ studentMap[row.studentId].info }}
           </div>
         </q-td>
@@ -95,41 +133,119 @@
       <template #body-cell-statusSlug="{ row }">
         <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
       </template>
+      <template #body-cell-healthReport="{ row }">
+        <q-td>
+          <StatusBadge
+            v-if="row.healthReportStatus !== 'None'"
+            :slug="row.healthReportStatusSlug"
+          />
+          <span
+            v-else
+            class="text-grey-6"
+          >—</span>
+          <q-tooltip v-if="row.healthReportRejectionReason">
+            {{ row.healthReportRejectionReason }}
+          </q-tooltip>
+        </q-td>
+      </template>
       <template #body-cell-actions="{ row }">
         <q-td class="text-right">
+          <PermissionGuard :permission="Permissions.Attendance.Upload">
+            <q-btn
+              v-if="row.healthReportStatus !== 'Pending'"
+              :disable="periodStore.isReadOnly"
+              flat
+              round
+              dense
+              icon="medical_information"
+              aria-label="Sağlık raporu yükle"
+              @click="openHealthReportUpload(row)"
+            >
+              <q-tooltip>Sağlık raporu yükle</q-tooltip>
+            </q-btn>
+          </PermissionGuard>
+          <PermissionGuard :permission="Permissions.Attendance.Approve">
+            <q-btn
+              v-if="row.healthReportStatus === 'Pending'"
+              flat
+              round
+              dense
+              icon="fact_check"
+              color="positive"
+              aria-label="Sağlık raporunu onayla"
+              @click="approveHealthReport(row)"
+            >
+              <q-tooltip>Sağlık raporunu onayla</q-tooltip>
+            </q-btn>
+          </PermissionGuard>
+          <PermissionGuard :permission="Permissions.Attendance.Approve">
+            <q-btn
+              v-if="row.healthReportStatus === 'Pending'"
+              flat
+              round
+              dense
+              icon="report_off"
+              color="negative"
+              aria-label="Sağlık raporunu reddet"
+              @click="openHealthReportReject(row)"
+            >
+              <q-tooltip>Sağlık raporunu reddet</q-tooltip>
+            </q-btn>
+          </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Approve">
             <q-btn
               v-if="row.status === 'Pending'"
-              flat round dense icon="thumb_up"
+              flat
+              round
+              dense
+              icon="thumb_up"
               color="primary"
               aria-label="Onayla"
               @click="approve(row)"
-            ><q-tooltip>Onayla</q-tooltip></q-btn>
+            >
+              <q-tooltip>Onayla</q-tooltip>
+            </q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Approve">
             <q-btn
               v-if="row.status === 'Recorded'"
-              flat round dense icon="check"
+              flat
+              round
+              dense
+              icon="check"
               color="positive"
               aria-label="Doğrula"
               @click="verify(row)"
-            ><q-tooltip>Doğrula</q-tooltip></q-btn>
+            >
+              <q-tooltip>Doğrula</q-tooltip>
+            </q-btn>
           </PermissionGuard>
-          <PermissionGuard :permission="Permissions.Attendance.Manage">
+          <!-- Düzeltme türü değiştirir, yani kesintiyi kaldırabilir: okul tarafı izni (#172). -->
+          <PermissionGuard :permission="Permissions.Attendance.DirectEntry">
             <q-btn
-              flat round dense icon="edit"
+              flat
+              round
+              dense
+              icon="edit"
               aria-label="Düzelt"
               @click="openCorrect(row)"
-            ><q-tooltip>Düzelt</q-tooltip></q-btn>
+            >
+              <q-tooltip>Düzelt</q-tooltip>
+            </q-btn>
           </PermissionGuard>
           <PermissionGuard :permission="Permissions.Attendance.Delete">
             <q-btn
               v-if="isWithinDeleteWindow(row.date)"
-              flat round dense icon="delete"
+              flat
+              round
+              dense
+              icon="delete"
               color="negative"
               aria-label="Sil"
               @click="confirmDelete(row)"
-            ><q-tooltip>Sil</q-tooltip></q-btn>
+            >
+              <q-tooltip>Sil</q-tooltip>
+            </q-btn>
           </PermissionGuard>
         </q-td>
       </template>
@@ -140,6 +256,19 @@
       :record-id="selected?.id ?? ''"
       :absence-type="selected?.absenceType ?? 'Unexcused'"
       :reason="selected?.reason ?? ''"
+      @saved="load"
+    />
+
+    <HealthReportUploadForm
+      v-model="healthReportDialog"
+      :record-id="selected?.id ?? ''"
+      :requires-approval="!canEnterHealthReportDirectly"
+      @saved="load"
+    />
+
+    <HealthReportRejectForm
+      v-model="healthReportRejectDialog"
+      :record-id="selected?.id ?? ''"
       @saved="load"
     />
   </q-page>
@@ -164,17 +293,28 @@ import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useRouter } from 'vue-router'
 import CorrectAttendanceForm from 'components/forms/attendance/CorrectAttendanceForm.vue'
+import HealthReportUploadForm from 'components/forms/attendance/HealthReportUploadForm.vue'
+import HealthReportRejectForm from 'components/forms/attendance/HealthReportRejectForm.vue'
 import AppNotice from 'components/AppNotice.vue'
+import { useAuthStore } from 'stores/auth'
 
 const notify = useNotify()
 const router = useRouter()
 const confirmDialog = useConfirmDialog()
 const periodStore = useAcademicPeriodStore()
+const authStore = useAuthStore()
 const filterStudentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
 const saving = ref(false)
 const selected = ref<AttendanceRecordDto | null>(null)
 const correctDialog = ref(false)
+const healthReportDialog = ref(false)
+const healthReportRejectDialog = ref(false)
+
+// Yükleyende bu izin yoksa rapor onaya düşer (#172) — kullanıcıya yükleme formunda söylenir.
+const canEnterHealthReportDirectly = computed(() =>
+  authStore.hasPermission(Permissions.Attendance.HealthReportDirect),
+)
 const studentIdFilter = ref('')
 const statusFilter = ref<string | null>(null)
 const monthFilter = ref<number | null>(null)
@@ -246,6 +386,7 @@ const columns: QTableProps['columns'] = [
   { name: 'business', label: 'İşletme', field: 'businessId', align: 'left' },
   { name: 'absenceTypeSlug', label: 'Tür', field: 'absenceTypeSlug', align: 'left' },
   { name: 'statusSlug', label: 'Durum', field: 'statusSlug', align: 'left' },
+  { name: 'healthReport', label: 'Sağlık Raporu', field: 'healthReportStatusSlug', align: 'left' },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ]
 
@@ -282,7 +423,7 @@ function confirmDelete(row: AttendanceRecordDto) {
 
 
 function openAddDialog() {
-  void router.push('/attendance/new')
+  router.push('/attendance/new').catch(() => {})
 }
 
 async function approve(row: AttendanceRecordDto) {
@@ -314,6 +455,29 @@ async function verify(row: AttendanceRecordDto) {
 function openCorrect(row: AttendanceRecordDto) {
   selected.value = row
   correctDialog.value = true
+}
+
+function openHealthReportUpload(row: AttendanceRecordDto) {
+  selected.value = row
+  healthReportDialog.value = true
+}
+
+function openHealthReportReject(row: AttendanceRecordDto) {
+  selected.value = row
+  healthReportRejectDialog.value = true
+}
+
+async function approveHealthReport(row: AttendanceRecordDto) {
+  saving.value = true
+  try {
+    await attendanceApi.approveHealthReport(row.id)
+    notify.success('Sağlık raporu onaylandı — bu gün için ücret kesintisi uygulanmayacak.')
+    await load()
+  } catch (e) {
+    notify.apiError(e, 'Onaylama sırasında bir hata oluştu.')
+  } finally {
+    saving.value = false
+  }
 }
 
 watch(() => periodStore.selectedPeriodId, () => load())

@@ -13,7 +13,14 @@ public static class UserCreatedConsumer
     {
         if (!@event.InstitutionId.HasValue) return;
 
-        // Teacher, Coordinator, DepartmentHead, InstitutionStaff rollerini dinle
+        // Realm rolü → kurum kadro rolü (StaffRole). Sıra önemlidir: sonraki eşleşme öncekini
+        // ezer, yani en yetkili rol kazanır.
+        //
+        // #129: müdür yardımcısı artık ayrı realm rolüdür (DeputyDirector). Öncesinde
+        // InstitutionManager → VicePrincipal eşleniyordu; okul müdürünü müdür yardımcısı
+        // kadrosuna yazan bu satır, #129'un düzelttiği "müdür/müdür yardımcısı aynı rol"
+        // karışıklığının aynısıydı. DeputyDirector eklenmeseydi, o role sahip kullanıcı için
+        // HİÇBİR kadro kaydı oluşmaz ve kişi kurum personeli listesinde görünmezdi.
         StaffRole? staffRole = null;
 
         if (@event.Roles.Contains(MesnetRoles.Teacher))
@@ -22,8 +29,10 @@ public static class UserCreatedConsumer
             staffRole = StaffRole.DepartmentHead;
         if (@event.Roles.Contains(MesnetRoles.InstitutionStaff))
             staffRole = StaffRole.Staff;
-        if (@event.Roles.Contains(MesnetRoles.InstitutionManager))
+        if (@event.Roles.Contains(MesnetRoles.DeputyDirector))
             staffRole = StaffRole.VicePrincipal;
+        if (@event.Roles.Contains(MesnetRoles.InstitutionManager))
+            staffRole = StaffRole.Principal;
 
         // Metadata'da StaffRole belirtilmişse onu kullan
         if (@event.Metadata.TryGetValue("StaffRole", out var staffRoleName)

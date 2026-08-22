@@ -12,14 +12,15 @@ public static class CreateInstitutionHandler
         var institution = new Core.Entities.Institution
         {
             Id = command.Id ?? Guid.NewGuid(),
-            TenantId = command.TenantId,
             InstitutionCode = command.InstitutionCode,
             FullName = command.FullName,
             Address = command.Address,
             PhoneNumber = command.PhoneNumber,
             Email = command.Email,
             WebUrl = command.WebUrl,
-            Location = command.Location
+            Location = command.Location,
+            ProvinceCode = command.ProvinceCode,
+            DistrictName = command.DistrictName
         };
 
         session.Store(institution);

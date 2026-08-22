@@ -1,17 +1,42 @@
 <template>
-  <FormDialog v-model="open" title="Uzmanlıkları Düzenle" icon="tune" color="secondary" :saving="saving" @save="handleSave">
-    <div class="text-subtitle2 q-mb-sm">{{ fieldName }}</div>
-    <div v-if="allSpecializations.length === 0" class="text-grey q-pa-md text-center">
+  <FormDialog
+    v-model="open"
+    title="Uzmanlıkları Düzenle"
+    icon="tune"
+    color="secondary"
+    :saving="saving"
+    @save="handleSave"
+  >
+    <div class="text-subtitle2 q-mb-sm">
+      {{ fieldName }}
+    </div>
+    <div
+      v-if="allSpecializations.length === 0"
+      class="text-grey q-pa-md text-center"
+    >
       Bu alan için uzmanlık tanımlanmamış.
     </div>
-    <q-list v-else bordered separator>
-      <q-item v-for="spec in allSpecializations" :key="spec.code" tag="label">
+    <q-list
+      v-else
+      bordered
+      separator
+    >
+      <q-item
+        v-for="spec in allSpecializations"
+        :key="spec.code"
+        tag="label"
+      >
         <q-item-section>
           <q-item-label>{{ spec.name }}</q-item-label>
-          <q-item-label caption>{{ spec.code }}</q-item-label>
+          <q-item-label caption>
+            {{ spec.code }}
+          </q-item-label>
         </q-item-section>
         <q-item-section side>
-          <q-checkbox v-model="selectedCodes" :val="spec.code" />
+          <q-checkbox
+            v-model="selectedCodes"
+            :val="spec.code"
+          />
         </q-item-section>
       </q-item>
     </q-list>

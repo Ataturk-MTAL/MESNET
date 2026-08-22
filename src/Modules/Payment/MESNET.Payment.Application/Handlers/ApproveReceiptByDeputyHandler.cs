@@ -1,15 +1,18 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Payment.Application.Commands;
 using MESNET.Payment.Application.Errors;
 using MESNET.Payment.Core.Entities;
+using MESNET.Payment.Core.Enums;
 using MESNET.Payment.Shared.Events;
 
 namespace MESNET.Payment.Application.Handlers;
 
 public static class ApproveReceiptByDeputyHandler
 {
-    public static async Task<ReceiptApprovedByDeputy> Handle(ApproveReceiptByDeputy command, IQuerySession session)
+    public static async Task<ReceiptApprovedByDeputy> Handle(
+        ApproveReceiptByDeputy command, IQuerySession session, ICurrentUserService currentUser)
     {
         // ReceiptId, command'da taşınmaz; ilgili maaş döneminin PaymentSummary document'ından okunur.
         // (Düz Guid parametresi Wolverine codegen tarafından DI'dan çözülmeye çalışılıyordu → 500.)
@@ -19,6 +22,14 @@ public static class ApproveReceiptByDeputyHandler
         if (summary.ReceiptId is not { } receiptId)
             throw new DomainException(PaymentErrors.ApprovalRequired("Müdür yardımcısı"));
 
-        return new ReceiptApprovedByDeputy(command.SalaryPeriodId, receiptId, command.ApprovedBy, DateTime.UtcNow);
+        // 3. adım (son yetkili): öğrenci ve koordinatör öğretmen onayı olmadan onaylanamaz (bkz. #72).
+        // Faz zinciri sıralı ilerlediği için TeacherApproved kontrolü ikisini birden kapsar.
+        if (summary.Phase != PaymentPhase.TeacherApproved)
+            throw new DomainException(PaymentErrors.InvalidPhase(
+                summary.Phase.Slug, PaymentPhase.TeacherApproved.Slug));
+
+        // Onaylayan token'dan gelir, istekten DEĞİL (#137).
+        return new ReceiptApprovedByDeputy(
+            command.SalaryPeriodId, receiptId, currentUser.GetUserId(), DateTime.UtcNow);
     }
 }

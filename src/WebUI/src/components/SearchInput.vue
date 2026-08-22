@@ -25,9 +25,19 @@ withDefaults(
 </script>
 
 <template>
-  <q-input v-model="model" :label="label" :placeholder="placeholder" :dense="dense" :outlined="outlined" clearable>
+  <q-input
+    v-model="model"
+    :label="label"
+    :placeholder="placeholder"
+    :dense="dense"
+    :outlined="outlined"
+    clearable
+  >
     <template #prepend>
-      <q-icon name="search" :size="iconSize" />
+      <q-icon
+        name="search"
+        :size="iconSize"
+      />
     </template>
   </q-input>
 </template>

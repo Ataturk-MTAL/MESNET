@@ -27,13 +27,19 @@
           <q-item-label
             v-if="isCrossBranch(scope.opt)"
             caption
-            class="text-orange-8"
+            class="text-warning-strong"
           >
             Alan: {{ scope.opt.branchCode }}
           </q-item-label>
         </q-item-section>
-        <q-item-section v-if="isCrossBranch(scope.opt)" side>
-          <q-badge color="orange" label="Alan dışı" />
+        <q-item-section
+          v-if="isCrossBranch(scope.opt)"
+          side
+        >
+          <q-badge
+            color="warning"
+            label="Alan dışı"
+          />
         </q-item-section>
       </q-item>
     </template>

@@ -25,6 +25,7 @@ public static class GetAllTeachersOverviewHandler
             .Where(v =>
                 v.InstitutionId == query.InstitutionId &&
                 v.AcademicPeriodId == query.AcademicPeriodId &&
+                v.BranchCode != "" &&
                 v.AssignedTeacherId != null);
 
         if (!string.IsNullOrWhiteSpace(query.BranchCode))
@@ -54,8 +55,14 @@ public static class GetAllTeachersOverviewHandler
 
             var teacherId = group.Key.AssignedTeacherId.Value;
             var teacherName = group.Key.AssignedTeacherName ?? "—";
-            var assignedHours = group.Sum(v => v.AssignedHours);
+            // Fahri ziyaretler ek ders saatine sayılmaz ama ders programında slot işgal
+            // eder — ikisi ayrı sütun olarak taşınır, yoksa öğretmen yükü olduğundan az
+            // görünür (#115).
+            var assignedHours = group.Sum(v => v.BillableHours());
             var businessCount = group.Count();
+            var honoraryVisits = group.Where(v => v.IsHonoraryVisit).ToList();
+            var honoraryVisitCount = honoraryVisits.Count;
+            var honorarySlotCount = honoraryVisits.Sum(v => v.AssignedSlots.Count);
 
             var freeSlotsByDay = new Dictionary<string, int>();
             var assignedSlotsByDay = new Dictionary<string, int>();
@@ -78,6 +85,8 @@ public static class GetAllTeachersOverviewHandler
                 teacherName,
                 businessCount,
                 assignedHours,
+                honoraryVisitCount,
+                honorarySlotCount,
                 scheduleExists,
                 freeSlotsByDay,
                 assignedSlotsByDay));

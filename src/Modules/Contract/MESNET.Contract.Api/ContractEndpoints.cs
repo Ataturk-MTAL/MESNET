@@ -23,6 +23,11 @@ public static class ContractEndpoints
         group.MapPost("/{contractId:guid}/sign", PostSign).RequireAuthorization(Permissions.Internship.Contract);
         group.MapPost("/{contractId:guid}/activate", PostActivate).RequireAuthorization(Permissions.Internship.Contract);
         group.MapPost("/{contractId:guid}/suspend", PostSuspend).RequireAuthorization(Permissions.Internship.Manage);
+
+        // Tek seferlik geçiş adımı (#248): aktif sözleşmeleri staj saga'sına yeniden bağlar.
+        // Kurum üstü bakım işi — bkz. ResyncInternshipLinksHandler.
+        group.MapPost("/resync-internship-links", PostResyncInternshipLinks)
+            .RequireAuthorization(Permissions.Platform.TenantManage);
         group.MapPost("/{contractId:guid}/resume", PostResume).RequireAuthorization(Permissions.Internship.Manage);
         group.MapPost("/{contractId:guid}/terminate", PostTerminate).RequireAuthorization(Permissions.Internship.Manage);
         group.MapPost("/{contractId:guid}/complete", PostComplete).RequireAuthorization(Permissions.Internship.Manage);
@@ -39,6 +44,20 @@ public static class ContractEndpoints
         group.MapPost("/{contractId:guid}/documents", PostUploadDocument)
             .RequireAuthorization(Permissions.Document.Upload)
             .DisableAntiforgery();
+    }
+
+    /// <summary>
+    /// Aktif sözleşmeleri staj saga'sına yeniden bağlar (#248). Yalnız <c>ContractActivated</c>
+    /// yeniden yayınlanır; gerekçe handler'da.
+    /// </summary>
+    private static async Task<IResult> PostResyncInternshipLinks(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ResyncInternshipLinksResult>(new ResyncInternshipLinks());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.Republished} aktif sözleşme yeniden yayınlandı.")
+            .Build());
     }
 
     private static async Task<IResult> Post(

@@ -18,16 +18,19 @@ public static class GetTeacherWorkloadHandler
             .ToListAsync(cancellationToken);
 
         var businesses = views.Select(v => new TeacherBusinessAssignmentDto(
-            v.Id,
+            v.ResolveBusinessId(),
             v.Name,
             v.AssignedHours,
-            v.AssignedDay
+            v.AssignedDay,
+            v.IsHonoraryVisit
         )).ToList();
 
         return new TeacherWorkloadDto(
             query.TeacherId,
-            views.Sum(v => v.AssignedHours),
+            // Fahri ziyaret ek ders ücreti doğurmaz → toplam saate girmez (#115)
+            views.Sum(v => v.BillableHours()),
             views.Count,
+            views.Count(v => v.IsHonoraryVisit),
             businesses
         );
     }

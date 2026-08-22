@@ -5,8 +5,8 @@ namespace MESNET.Common.Infrastructure.Security;
 
 /// <summary>
 /// Permission bazlı policy handler.
-/// Kullanıcının "permissions" claim'lerinde ilgili permission var mı kontrol eder.
-/// Wildcard desteği: "student:*" → "student:view" policy'si için geçerli.
+/// Kullanıcının "permissions" claim'lerinde istenen izinlerden <b>herhangi biri</b> var mı
+/// kontrol eder. Wildcard desteği: "student:*" → "student:view" policy'si için geçerli.
 /// </summary>
 public sealed class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
 {
@@ -17,7 +17,9 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
 
         foreach (var claim in permissionClaims)
         {
-            if (RolePermissionMap.MatchesPermission(claim, requirement.Permission))
+            // Herhangi biri yeterlidir: uç hem okul tarafına hem veri sahibine açık olabilir.
+            // Hangi veriyi göreceğine handler'daki kapsam merdiveni karar verir (#182).
+            if (requirement.Permissions.Any(required => RolePermissionMap.MatchesPermission(claim, required)))
             {
                 context.Succeed(requirement);
                 break;

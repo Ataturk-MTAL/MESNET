@@ -43,6 +43,8 @@
     <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.1.2-preview.1.26125.13" />
     <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
     <PackageVersion Include="Aspire.Npgsql" Version="13.4.6" />
+    <!-- Kiracı damgası bütünlük testi (#149) doğrudan SQL ile bakar; Marten'a bağlı değil. -->
+    <PackageVersion Include="Npgsql" Version="10.0.2" />
     <PackageVersion Include="Aspire.RabbitMQ.Client" Version="13.4.6" />
     <!-- Telemetry (ServiceDefaults) -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.9" />
@@ -62,6 +64,9 @@
     <PackageVersion Include="Serilog.Exceptions" Version="8.4.0" />
     <!-- ASP.NET Core -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <!-- 10.0.9 transitive olarak Microsoft.OpenApi 2.0.0 çeker; o sürümde NU1903
+         (GHSA-v5pm-xwqc-g5wc) yüksek önem açığı var → patched 2.9.0'a pin'liyoruz -->
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.9.0" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.16.6" />
     <!-- Seeder -->
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />

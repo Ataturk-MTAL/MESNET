@@ -1,5 +1,6 @@
 using System.Text.Json;
 using MESNET.Common.Infrastructure.Notifications;
+using MESNET.Common.Infrastructure.Security;
 
 namespace MESNET.Presentation;
 
@@ -146,6 +147,13 @@ public static class SseNotificationEndpoint
         var roles = user.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
         var permissions = user.FindAll("permissions").Select(c => c.Value).ToList();
 
-        return new SseUserContext(userId, fullName, institutionId, businessId, studentId, roles, permissions);
+        // Veli bağı (#174) — bu claim okunmadığı için veliye gönderilen bildirimler HİÇ
+        // ulaşmıyordu (#247). Otorite claim değil kayıttır: PermissionClaimsTransformation
+        // token'daki değeri silip UserAccount.LinkedStudentIds'ten yeniden yazar.
+        var linkedStudentIds = LinkedStudentClaims.Read(user);
+
+        return new SseUserContext(
+            userId, fullName, institutionId, businessId, studentId, roles, permissions,
+            linkedStudentIds);
     }
 }

@@ -73,12 +73,28 @@ src/
 
 - .NET 10.0 SDK
 - Node.js 20+ & pnpm
-- PostgreSQL 16+
+- PostgreSQL 18 + PostGIS 3.6 (`kartoza/postgis:18-3.6` — Debian trixie tabanlı, çok mimarili)
 - Keycloak 26+
 - MinIO
 - .NET Aspire workload (`dotnet workload install aspire`)
 
 ## Başlangıç
+
+### Yapılandırma (ilk kurulumda ve `git pull` sonrasında)
+
+Gerçek kimlik bilgisi taşıyan üç yapılandırma dosyası git'te **izlenmiyor**; yanlarındaki
+`.sample.json` dosyasından kopyalanır ve placeholder'lar doldurulur:
+
+```bash
+cp src/MESNET.AppHost/appsettings.sample.json                   src/MESNET.AppHost/appsettings.json
+cp src/MESNET.Presentation/appsettings.Development.sample.json  src/MESNET.Presentation/appsettings.Development.json
+cp src/MESNET.Seeder/appsettings.sample.json                    src/MESNET.Seeder/appsettings.json
+```
+
+> **Dikkat:** Bu dosyalar takipten çıkarıldığı için (#66), değişikliği içeren commit'i ilk kez
+> çektiğinizde git **diskteki kopyanızı da siler**. `git pull` sonrası uygulama
+> "endpoint boş" ya da "credentials not initialized" gibi hatalarla açılmıyorsa, önce bu üç
+> dosyanın yerinde olduğunu kontrol edin.
 
 ### Backend
 

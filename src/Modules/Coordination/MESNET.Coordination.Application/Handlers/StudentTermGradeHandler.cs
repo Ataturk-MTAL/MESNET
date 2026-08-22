@@ -38,6 +38,11 @@ public static class StudentTermGradeHandler
         if (existing is not null && existing.StatusName != StudentTermGradeStatus.Draft.Name)
             throw new DomainException(CoordinationErrors.StudentTermGradeAlreadySubmitted(existing.Id));
 
+        // Okulda staj notu (#171) bu uçtan ezilemez — iki akış birbirinin üstüne yazamaz.
+        // Yerleştirme kontrolü zaten bu hâli engelliyor; bu satır kaydın kendisini koruyor.
+        if (existing is not null && existing.BusinessId is null)
+            throw new DomainException(CoordinationErrors.StudentTermGradeBelongsToSchool(existing.Id));
+
         var grade = existing ?? new StudentTermGrade
         {
             Id = Guid.NewGuid(),
@@ -72,8 +77,14 @@ public static class StudentTermGradeHandler
         var grade = await session.LoadAsync<StudentTermGrade>(command.StudentTermGradeId, ct)
             ?? throw new DomainException(CoordinationErrors.StudentTermGradeNotFound(command.StudentTermGradeId));
 
+        // Okulda staj notu (#171) bu uçtan gönderilemez — gönderilseydi StudentTermGradeSubmitted
+        // yayınlanır ve Reporting o kayıt için Form 8 üretebilir hâle gelirdi. Olayın
+        // BusinessId'si bilinçli olarak nullable DEĞİL: olay yalnız işletme notu için vardır.
+        if (grade.BusinessId is not { } gradeBusinessId)
+            throw new DomainException(CoordinationErrors.StudentTermGradeBelongsToSchool(grade.Id));
+
         // Kapsam — yalnız kendi işletmesinin notunu gönderebilir
-        if (grade.BusinessId != command.BusinessId)
+        if (gradeBusinessId != command.BusinessId)
             throw new DomainException(CoordinationErrors.StudentNotPlacedAtBusiness(grade.StudentId));
 
         // Pencere hâlâ açık olmalı
@@ -89,7 +100,7 @@ public static class StudentTermGradeHandler
 
         // Cascading event → Reporting StudentTermGradeView'ini besler (fiş gerçek notlardan üretilir)
         return new StudentTermGradeSubmitted(
-            grade.Id, grade.StudentId, grade.BusinessId, grade.InstitutionId, grade.AcademicPeriodId,
+            grade.Id, grade.StudentId, gradeBusinessId, grade.InstitutionId, grade.AcademicPeriodId,
             grade.PracticeGrades, grade.ServiceGrades, grade.ProjectGrades, grade.ExperimentGrades,
             grade.TermAverage, grade.MasterInstructorName, grade.SubmittedAt.Value);
     }

@@ -1,12 +1,16 @@
 <template>
   <q-page padding>
-    <div class="text-h5 text-weight-bold q-mb-lg">Ders Yükü Havuzu</div>
+    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
+      Ders Yükü Havuzu
+    </h1>
 
     <!-- Alan Seçici -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
       <div class="col-12 col-sm-3">
+        <!-- Yazma bağlamı (#126): ders yükü havuzu kaydedilen sayfa — yetkisiz alan listelenmez -->
         <BranchSelector
           v-model="branchFilter"
+          write-context
           @update:model-value="onBranchChange"
         />
       </div>
@@ -28,7 +32,11 @@
     />
 
     <!-- Alan Ders Yükü Yapılandırması -->
-    <q-card v-if="branchFilter" flat bordered>
+    <q-card
+      v-if="branchFilter"
+      flat
+      bordered
+    >
       <q-card-section>
         <div class="text-subtitle1 text-weight-medium q-mb-sm">
           Alan Ders Yükü Yapılandırması
@@ -57,7 +65,7 @@
             <q-btn
               flat
               dense
-              color="orange-8"
+              color="warning"
               icon="sync"
               label="Öğrenci Sayılarını Güncelle"
               :loading="syncingCounts"
@@ -70,7 +78,9 @@
         </div>
 
         <!-- Şeflik -->
-        <div class="text-body2 text-weight-medium q-mb-sm">Şeflik</div>
+        <div class="text-body2 text-weight-medium q-mb-sm">
+          Şeflik
+        </div>
         <div class="row q-col-gutter-md q-mb-md">
           <div class="col-6 col-sm-3">
             <q-input
@@ -119,27 +129,64 @@
           </div>
         </div>
         <div class="text-body2 q-mb-md">
-          Şeflik Toplamı: <strong class="text-purple-8">{{ wlSupervisorTotal }}</strong> saat
+          Şeflik Toplamı: <strong class="text-secondary-strong">{{ wlSupervisorTotal }}</strong> saat
           <span class="text-caption text-grey-7">
             ({{ wlDeptHeadCount }} × {{ wlDeptHeadHours }} + {{ wlWorkshopHeadCount }} × {{ wlWorkshopHeadHours }})
           </span>
         </div>
 
         <!-- Sınıf Bazlı Ders Yükü -->
-        <div class="text-body2 text-weight-medium q-mb-sm">Sınıf Bazlı Ders Yükü</div>
-        <q-markup-table flat bordered separator="cell" class="q-mb-md">
+        <div class="text-body2 text-weight-medium q-mb-sm">
+          Sınıf Bazlı Ders Yükü
+        </div>
+        <q-markup-table
+          flat
+          bordered
+          separator="cell"
+          class="q-mb-md"
+        >
           <thead>
             <tr class="bg-grey-2">
-              <th class="text-center" style="width: 80px">Sınıf</th>
-              <th class="text-center" style="width: 130px">Öğrenci Sayısı</th>
-              <th class="text-center" style="width: 130px">Haftalık Ders</th>
-              <th class="text-center" style="width: 80px">Grup</th>
-              <th class="text-center" style="width: 100px">Alt Toplam</th>
+              <th
+                class="text-center"
+                style="width: 80px"
+              >
+                Sınıf
+              </th>
+              <th
+                class="text-center"
+                style="width: 130px"
+              >
+                Öğrenci Sayısı
+              </th>
+              <th
+                class="text-center"
+                style="width: 130px"
+              >
+                Haftalık Ders
+              </th>
+              <th
+                class="text-center"
+                style="width: 80px"
+              >
+                Grup
+              </th>
+              <th
+                class="text-center"
+                style="width: 100px"
+              >
+                Alt Toplam
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(cl, idx) in wlClassLevels" :key="cl.classYear">
-              <td class="text-center text-weight-medium">{{ cl.classYear }}. Sınıf</td>
+            <tr
+              v-for="(cl, idx) in wlClassLevels"
+              :key="cl.classYear"
+            >
+              <td class="text-center text-weight-medium">
+                {{ cl.classYear }}. Sınıf
+              </td>
               <td class="text-center text-weight-medium">
                 {{ cl.studentCount }}
               </td>
@@ -154,7 +201,7 @@
                   :disable="periodStore.isReadOnly"
                 />
               </td>
-              <td class="text-center text-weight-medium text-blue-8">
+              <td class="text-center text-weight-medium text-info-strong">
                 {{ estimateGroupCount(wlEducationType, cl.classYear, cl.studentCount) }}
               </td>
               <td class="text-center text-weight-medium">
@@ -167,13 +214,13 @@
         <!-- Toplamlar + Kaydet -->
         <div class="row items-center">
           <div class="text-body2">
-            Ders Yükü: <strong class="text-blue-8">{{ wlTeachingTotal }}</strong>
-            &nbsp;+&nbsp; Şeflik: <strong class="text-purple-8">{{ wlSupervisorTotal }}</strong>
-            &nbsp;=&nbsp; <strong class="text-teal-8 text-h6">HAVUZ: {{ wlPoolTotal }} saat</strong>
+            Ders Yükü: <strong class="text-info-strong">{{ wlTeachingTotal }}</strong>
+            &nbsp;+&nbsp; Şeflik: <strong class="text-secondary-strong">{{ wlSupervisorTotal }}</strong>
+            &nbsp;=&nbsp; <strong class="text-positive-strong text-h6">HAVUZ: {{ wlPoolTotal }} saat</strong>
           </div>
           <q-space />
           <q-btn
-            color="teal"
+            color="positive"
             icon="save"
             label="Yapılandırmayı Kaydet"
             :loading="workloadSaving"
@@ -222,9 +269,13 @@ function onBranchChange() {
 }
 
 onMounted(() => {
-  // Alan Şefi ise BranchSelector otomatik seçer, onMounted'da yükleme yapılır
-  if (authStore.isDepartmentHead && authStore.user?.branchCode) {
-    branchFilter.value = authStore.user.branchCode
+  // Yazma kapsamı tek alansa BranchSelector otomatik seçer; veriyi burada yükleriz (#126)
+  const scopedBranch = authStore.writableBranchCodes?.length === 1
+    ? authStore.writableBranchCodes[0]
+    : null
+
+  if (scopedBranch) {
+    branchFilter.value = scopedBranch
     loadWorkloadConfig().catch(() => {})
   }
 })

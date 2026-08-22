@@ -12,7 +12,8 @@ public class StudentPlacementReportView
     public string StudentNumber { get; set; } = "";
     public string ClassName { get; set; } = "";
     public int ClassYear { get; set; }
-    public Guid BusinessId { get; set; }
+    /// <summary>İşletme — okulda stajda null (#159); raporda "Okulda" olarak gösterilir.</summary>
+    public Guid? BusinessId { get; set; }
     public string BusinessName { get; set; } = "";
     public string? BusinessPhone { get; set; }
     public string? BusinessEmail { get; set; }

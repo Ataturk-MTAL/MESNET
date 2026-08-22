@@ -14,6 +14,20 @@ export const Permissions = {
     Staff: 'institution:staff:manage',
     Report: 'institution:report:view',
     ManageGradeWindow: 'institution:grade-window:manage',
+    /**
+     * Kurum geneli koordinasyon yapılandırmasını DEĞİŞTİRME yetkisi (#130) —
+     * mesafe-saat kuralları, büyükşehir sınırı, azami haftalık ek ders saati.
+     * Okuma ayrıdır: `DepartmentHead.Distribution` ile açıktır (alan şefi görür, yazamaz).
+     * Görünürlük kararı her zaman bu izne bakar, rol adına DEĞİL.
+     */
+    CoordinationConfigManage: 'institution:coordination-config:manage',
+    /**
+     * Okulda staj yapan öğrencinin dönem notunu girme (#171). Öğrenci okulda staj yaptığında
+     * kurum işverenin yerine geçer — bu kurumun işidir, alan/bölüm işi değil.
+     * Müdür `institution:*` ile, müdür yardımcısı ve alan şefi AÇIK SATIRLA alır.
+     * İşletmede staj notunu işletme girer (`Company.EnterGrade`).
+     */
+    SchoolGradeEnter: 'institution:school-grade:enter',
   },
 
   Student: {
@@ -49,6 +63,9 @@ export const Permissions = {
     Attendance: 'company:attendance:manage',
     UploadReceipt: 'company:receipt:upload',
     MasterTrainer: 'company:trainer:manage',
+    // İşletmede staj yapan öğrencinin dönem notunu girme. Okulda staj karşılığı ayrıdır:
+    // Institution.SchoolGradeEnter (#171).
+    EnterGrade: 'company:grade:enter',
   },
 
   Internship: {
@@ -67,9 +84,21 @@ export const Permissions = {
     ViewOwn: 'attendance:view-own',
     Manage: 'attendance:manage',
     Report: 'attendance:report',
+    // Sağlık raporu yükleme (#172). Giriş geniştir: işletme, usta öğretici, işletme İK ve
+    // öğrenci de yükler — ama yükleme tek başına hüküm doğurmaz.
     Upload: 'attendance:upload',
     Approve: 'attendance:approve',
     Delete: 'attendance:delete',
+    // Girilen kaydın onay beklemeden geçerli olması (#172). Yalnız okul rollerindedir;
+    // arayüzde "onay bekliyor" rozetini gizlemek ve düzeltme butonunu göstermek için okunur.
+    DirectEntry: 'attendance:direct-entry',
+    HealthReportDirect: 'attendance:health-report:direct',
+    // MESEM ücretli izin başvurusu (#177). Başvuru öğrencinin, 1. onay işletmenin, 2. onay
+    // okulun. İşletme adımını izin değil `business_id` KAPSAMI bağlar — okul müdürü
+    // `attendance:*` wildcard'ıyla bu izne de sahiptir, ama o claim'i yoktur.
+    LeaveRequest: 'attendance:leave:request',
+    LeaveBusinessApprove: 'attendance:leave:business-approve',
+    LeaveApprove: 'attendance:leave:approve',
   },
 
   Salary: {
@@ -78,7 +107,13 @@ export const Permissions = {
     Calculate: 'salary:calculate',
     Approve: 'salary:approve',
     Receipt: 'salary:receipt:manage',
-    Parameter: 'salary:parameter:manage',
+    // Görüntüleme okullarda; YAZMA ulusal izindir (#147) → Platform.ParameterManage
+    ParameterView: 'salary:parameter:view',
+  },
+
+  // Ulusal (kurum üstü) izinler (#147). Hiçbir okul rolünde yoktur.
+  Platform: {
+    ParameterManage: 'platform:parameter:manage',
   },
 
   Coordinator: {

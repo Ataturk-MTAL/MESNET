@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Coordination.Application.Commands;
 using MESNET.Coordination.Application.Errors;
@@ -12,6 +13,7 @@ public static class AssignBusinessToFreeSlotHandler
     public static async Task<BusinessAssignedToTeacher> Handle(
         AssignBusinessToFreeSlot command,
         IDocumentSession session,
+        ICurrentUserService currentUser,
         CancellationToken cancellationToken)
     {
         // 1. Semester validation
@@ -73,10 +75,11 @@ public static class AssignBusinessToFreeSlotHandler
         )).ToList();
 
         // Schedule updated event append
+        // Aktör token'dan gelir, istekten DEĞİL (#137).
         var updateEvent = new ScheduleUpdated(
             schedule.Id,
             updatedWeekly,
-            command.AssignedBy,
+            currentUser.GetUserId(),
             DateTime.UtcNow);
 
         session.Events.Append(schedule.Id, updateEvent);

@@ -1,16 +1,31 @@
 <template>
-  <FormDialog v-model="open" title="Devamsızlık Düzelt" icon="edit_calendar" color="orange" width="400px" save-label="Düzelt" :saving="saving" @save="handleSave">
+  <FormDialog
+    v-model="open"
+    title="Devamsızlık Düzelt"
+    icon="edit_calendar"
+    color="warning"
+    width="400px"
+    save-label="Düzelt"
+    :saving="saving"
+    @save="handleSave"
+  >
     <q-select
       v-model="form.absenceType"
       :options="absenceTypeOptions"
       label="Devamsızlık Türü"
-      outlined emit-value map-options
+      outlined
+      emit-value
+      map-options
     >
       <template #prepend>
         <q-icon name="category" />
       </template>
     </q-select>
-    <q-input v-model="form.reason" label="Gerekçe" outlined>
+    <q-input
+      v-model="form.reason"
+      label="Gerekçe"
+      outlined
+    >
       <template #prepend>
         <q-icon name="notes" />
       </template>

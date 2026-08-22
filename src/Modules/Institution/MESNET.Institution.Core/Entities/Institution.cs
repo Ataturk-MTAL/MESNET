@@ -6,12 +6,33 @@ namespace MESNET.Institution.Core.Entities;
 public class Institution
 {
     public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
     public int InstitutionCode { get; set; }
     public required string FullName { get; set; }
     public string? Address { get; set; }
-    public string? City { get; set; }
-    public string? District { get; set; }
+
+    /// <summary>
+    /// Kurumun ili — MEB il kodu (<c>01</c>–<c>81</c>, plaka koduyla aynı). Kapsam kararının
+    /// anahtarıdır (#147): dağıtım bugün tek il olsa da ayrım veride durur, yapılandırmada
+    /// durmaz. Buraya serbest metin il adı YAZILMAZ — <c>TurkishProvinces</c> ile doğrulanır.
+    /// </summary>
+    /// <remarks>
+    /// Nullable, çünkü mevcut kayıtlar bu alan olmadan saklandı. <c>required</c> yapılırsa
+    /// System.Text.Json eksik alan yüzünden her eski kurumun okunmasını
+    /// <c>JsonException</c> ile keser. Varlık zorunluluğu yazma sınırında (validator) uygulanır.
+    /// Eski serbest metin <c>City</c>/<c>District</c> alanları kaldırıldı: hiçbir yerde
+    /// yazılmıyor, okunmuyor ve DTO'ya çıkmıyordu; kod alanının yanında durmaları hangisinin
+    /// yetkili olduğu sorusunu üretirdi.
+    /// </remarks>
+    public string? ProvinceCode { get; set; }
+
+    /// <summary>
+    /// İlçe adı — <c>TurkishDistricts</c> kapalı listesinden, ile bağlı. Serbest metin DEĞİL:
+    /// listede olmayan değer reddedilir, böylece aynı ilçe iki farklı yazımla kaydolamaz.
+    /// İlçede kod yerine ad tutulur çünkü ilde plaka kodu kadar güvenilir bir ilçe kodu
+    /// kaynağı yok; uydurulmuş kod gerçek veri gibi görünürdü (#147).
+    /// </summary>
+    public string? DistrictName { get; set; }
+
     public string? PhoneNumber { get; set; }
     public string? Email { get; set; }
     public string? WebUrl { get; set; }
@@ -29,5 +50,11 @@ public sealed class ScheduleConfiguration
     public int DailyPeriodCount { get; set; }
 
     public DateTime UpdatedAt { get; set; }
-    public string UpdatedBy { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Son değişikliği yapan kullanıcının kimliği — token'dan gelir, istekten ALINMAZ (#137).
+    /// Ad sorgu tarafında <c>UserNameView</c>'dan çözülür. Eski <c>updatedBy</c> JSON
+    /// anahtarı (serbest metin ad) bu adla artık okunmaz.
+    /// </summary>
+    public Guid UpdatedById { get; set; }
 }

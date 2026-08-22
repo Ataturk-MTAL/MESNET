@@ -1,9 +1,34 @@
 using MESNET.Common.Shared;
+using MESNET.Common.Shared.Reference;
 
 namespace MESNET.Institution.Application.Errors;
 
 public static class InstitutionErrors
 {
+    /// <summary>
+    /// Aktör başka bir okulun verisine dokunmaya çalıştı (ADR-0003 adım 6).
+    ///
+    /// <para>Hedef kurum kimliği <b>mesajda geçtiği hâliyle</b> yazılır; aktörünki yazılmaz —
+    /// hata mesajı, kapsamı olmayan bir kullanıcıya başka okulun varlığını doğrulatmamalıdır.</para>
+    /// </summary>
+    public static Error InstitutionScopeDenied(Guid targetInstitutionId) =>
+        new("Institution.ScopeDenied",
+            $"Bu işlem yalnız kendi kurumunuz için yapılabilir (hedef: {targetInstitutionId}).");
+
+    /// <summary>
+    /// İlçe, kurumun iline ait değil. İl ve ilçe ayrı ayrı güncellenebildiği için nihai
+    /// kombinasyon handler'da doğrulanır (#147).
+    /// </summary>
+    public static Error DistrictNotInProvince(string districtName, string? provinceCode) =>
+        new("Institution.DistrictNotInProvince",
+            $"\"{districtName}\" ilçesi kurumun iline ({TurkishProvinces.GetName(provinceCode) ?? provinceCode ?? "tanımsız"}) ait değil.");
+
+    /// <summary>Aynı kişi ikinci kez yetkilendirilemez (#190).</summary>
+    public static Error StaffAlreadyAuthorized(string keycloakId) =>
+        new("Institution.StaffAlreadyAuthorized",
+            $"Bu kullanıcı kurumda zaten yetkilendirilmiş: {keycloakId}. " +
+            "Rol ya da alan değişikliği için mevcut kaydı güncelleyin.");
+
     public static Error NotFound(Guid id) =>
         new("Institution.NotFound", $"Kurum bulunamadı: {id}");
 
