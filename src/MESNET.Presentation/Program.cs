@@ -339,6 +339,16 @@ try
                 rabbit.HostName = builder.Configuration["RabbitMQ:HostName"] ?? "localhost";
                 rabbit.UserName = builder.Configuration["RabbitMQ:UserName"] ?? "guest";
                 rabbit.Password = builder.Configuration["RabbitMQ:Password"] ?? "guest";
+
+                // Port YAPILANDIRILABİLİR olmalı: diğer üç bağımlılığın portu zaten
+                // değiştirilebiliyor (Postgres bağlantı dizesinde, Keycloak URL'de, MinIO
+                // Endpoint'te) — yalnız broker sabit 5672'ye bağlanıyordu. Sonuç: aynı makinede
+                // ikinci bir yığın (yerel CI koşusu) ayağa kaldırılamıyordu; API varsayılan
+                // porttaki BAŞKA broker'a bağlanmaya çalışıp açılışta düşüyordu.
+                //
+                // Varsayılan korunur — mevcut dağıtımlar etkilenmez.
+                if (int.TryParse(builder.Configuration["RabbitMQ:Port"], out var rabbitPort))
+                    rabbit.Port = rabbitPort;
             }).AutoProvision();
         }
     });

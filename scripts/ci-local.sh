@@ -22,7 +22,11 @@
 #   • appsettings'e DOKUNULMAZ — CI onu sample'dan üretir (dosya git'te yok); yerelde SİZİN
 #                             dosyanız var ve ezilmemeli. Ortam değişkenleri JSON'u zaten ezer
 #   • docusaurus doğrudan   — `pnpm build` ön-kontrolü core-js build-script kapısına takılıyor
-#   • rabbitmq tmpfs        — rootless podman'da .erlang.cookie okunamıyor (BOOT FAILED/eacces)
+#   • rabbitmq `podman run` — compose ile açılmıyor (.erlang.cookie/eacces). Denenen çözümler
+#                             ve ÇÖZÜLEMEYEN kalan sorun: compose.ci.local.yml
+#
+# ⚠ ENTEGRASYON İŞİ ŞU AN YEREL MAKİNEDE TAM KOŞMUYOR — bkz. compose.ci.local.yml.
+#   Diğer üç iş (backend/frontend/docs) sorunsuz koşuyor ve asıl değeri onlar veriyor.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -32,6 +36,7 @@ COMPOSE_FILE=".github/compose.ci.yml"
 # Yerel uyarlamalar ayrı dosyada — CI dosyası olduğu gibi kalsın (bkz. compose.ci.local.yml).
 COMPOSE_LOCAL=".github/compose.ci.local.yml"
 PROJECT="mesnet-ci"
+RABBIT_NAME="mesnet-ci-rabbit"
 
 # Geliştirme yığınıyla çakışmayan portlar
 export CI_PG_PORT="${CI_PG_PORT:-5433}"
@@ -133,6 +138,7 @@ integration_cleanup() {
     tail -200 "$API_LOG" || true
     printf '\n───────── Konteyner logları ─────────\n'
     compose logs --tail 100 || true
+    podman logs --tail 40 "${RABBIT_NAME}" 2>&1 | tail -40 || true
   fi
 
   if [ -n "$API_PID" ] && kill -0 "$API_PID" 2>/dev/null; then
@@ -141,6 +147,7 @@ integration_cleanup() {
   fi
 
   # Yığın her hâlükârda kapatılır — ci.yml'deki `if: always()` karşılığı.
+  podman rm -f "${RABBIT_NAME}" >/dev/null 2>&1 || true
   compose down -v >/dev/null 2>&1 || true
 }
 
@@ -161,12 +168,40 @@ job_integration() {
 
   trap integration_cleanup EXIT
 
-  log "Entegrasyon — bağımlılık yığını (pg:$CI_PG_PORT rabbit:$CI_RABBIT_PORT kc:$CI_KEYCLOAK_PORT minio:$CI_MINIO_PORT)"
+  log "Entegrasyon — bağımlılık yığını (pg:$CI_PG_PORT kc:$CI_KEYCLOAK_PORT minio:$CI_MINIO_PORT)"
   # ÖNCE ZORLA TEMİZLE: `compose down` podman'da sessizce başarısız olabiliyor ve `up -d`
   # var olan konteyneri YENİ YAPILANDIRMAYI UYGULAMADAN yeniden kullanıyor. Ölçüldü: tmpfs
   # ayarı değiştirildiği hâlde bir saatlik eski konteyner ayakta kalmıştı.
-  podman rm -f $(podman ps -aq --filter "name=${PROJECT}") >/dev/null 2>&1 || true
-  compose up -d --force-recreate
+  podman ps -aq --filter "name=${PROJECT}" | xargs -r podman rm -f >/dev/null 2>&1 || true
+  # rabbitmq compose DIŞINDA başlatılır — gerekçe compose.ci.local.yml içinde.
+  compose up -d --force-recreate postgres keycloak minio
+
+  log "Entegrasyon — RabbitMQ (compose dışı, :$CI_RABBIT_PORT)"
+  podman rm -f "${RABBIT_NAME}" >/dev/null 2>&1 || true
+  podman run -d --name "${RABBIT_NAME}" \
+    --tmpfs /var/lib/rabbitmq:rw,mode=0777 \
+    -e RABBITMQ_DEFAULT_USER=mesnet \
+    -e RABBITMQ_DEFAULT_PASS=mesnet_dev \
+    -p "${CI_RABBIT_PORT}:5672" \
+    rabbitmq:4-alpine >/dev/null
+
+  # SESSİZ DEVAM YOK: ilk sürüm döngü tükendiğinde devam ediyor ve hata 5 dakika sonra
+  # "API hazır olmadı" olarak görünüyordu — asıl sebep gizleniyordu.
+  local rabbit_ready=0
+  for _ in $(seq 1 30); do
+    if podman exec "${RABBIT_NAME}" rabbitmq-diagnostics -q ping >/dev/null 2>&1; then
+      rabbit_ready=1
+      ok "RabbitMQ hazır"
+      break
+    fi
+    sleep 3
+  done
+
+  if [ "$rabbit_ready" -ne 1 ]; then
+    printf '\n───────── RabbitMQ log ─────────\n'
+    podman logs --tail 60 "${RABBIT_NAME}" 2>&1 | tail -60 || echo "(konteyner hiç oluşmadı)"
+    fail "RabbitMQ 90 sn içinde hazır olmadı."
+  fi
 
   wait_for "Keycloak mesnet realm" \
     "http://localhost:${CI_KEYCLOAK_PORT}/realms/mesnet/.well-known/openid-configuration" 200
