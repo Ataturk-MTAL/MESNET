@@ -1,8 +1,6 @@
 <template>
   <q-page padding>
-    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
-      Beceri Sınavları
-    </h1>
+    <PageHeader title="Beceri Sınavları" />
 
     <AppTable
       :rows="exams"
@@ -13,10 +11,7 @@
     >
       <template #body-cell-result="{ row }">
         <q-td>
-          <q-badge
-            :color="row.result === 'Passed' ? 'positive' : 'negative'"
-            :label="row.result === 'Passed' ? 'Başarılı' : 'Başarısız'"
-          />
+          <StatusBadge :slug="row.result === 'Passed' ? 'Başarılı' : 'Başarısız'" />
         </q-td>
       </template>
       <template #body-cell-examDate="{ row }">
@@ -33,6 +28,8 @@ import { coordinationApi, type SkillExamDto } from 'src/api/coordination'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import AppTable from 'components/AppTable.vue'
+import PageHeader from 'components/PageHeader.vue'
+import StatusBadge from 'components/StatusBadge.vue'
 
 const periodStore = useAcademicPeriodStore()
 

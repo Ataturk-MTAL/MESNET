@@ -204,6 +204,15 @@ const router = createRouter({
           component: () => import('pages/coordination/BusinessEvaluationsPage.vue'),
           meta: { permissions: ['coordinator:visit:manage'] },
         },
+        {
+          path: 'coordination/evaluations/new',
+          name: 'BusinessEvaluationNew',
+          component: () => import('pages/coordination/BusinessEvaluationFormPage.vue'),
+          // Form YAZMA yapar (POST /coordination/business-evaluations →
+          // coordinator:visit:manage). Liste sayfasındaki tetikleyiciyi saran
+          // PermissionGuard ile aynı izin — biri gizlerken diğeri açık kalmasın.
+          meta: { permissions: ['coordinator:visit:manage'], formRoute: true },
+        },
 
         // Beceri Sınavları
         {

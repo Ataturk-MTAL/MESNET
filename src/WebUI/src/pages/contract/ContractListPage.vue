@@ -35,6 +35,18 @@
       />
     </div>
 
+    <!--
+      Görünen satırların TAMAMI karar bekliyorsa (ör. "Fesih Talep Edildi" filtresi seçiliyse)
+      satır rozeti hiçbir şeyi ayırt etmez, yalnız durum sütununu ikinci kez söyler. Yirmi
+      rozet yerine tek cümle. Hiçbiri sırada değilse hiçbir şey gösterilmez.
+    -->
+    <AppNotice
+      v-if="showTurnNotice"
+      type="info"
+      class="q-mb-md"
+      :message="`Bu listedeki ${turnRows.length} sözleşmenin tamamı sizin kararınızı bekliyor.`"
+    />
+
     <AppTable
       :rows="contracts"
       :columns="columns"
@@ -49,7 +61,7 @@
           </div>
           <div
             v-if="studentMap[row.studentId]?.info"
-            class="text-caption text-grey-6"
+            class="text-caption text-grey-7"
           >
             {{ studentMap[row.studentId].info }}
           </div>
@@ -59,44 +71,74 @@
         <q-td>{{ businessMap[row.businessId] ?? '—' }}</q-td>
       </template>
       <template #body-cell-statusSlug="{ row }">
-        <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
+        <q-td>
+          <StatusBadge :slug="row.statusSlug" />
+          <!--
+            "Sıra sizde" — koşul ve gerekçe için bkz. `isMyTurn` / `showRowSignal` (script).
+            Yüzey olarak DURUM hücresi seçildi: aşama bilgisinin okunduğu yer burasıdır,
+            sinyal de aşamanın devamıdır. Satır zemini boyamak ya da renkli sol kenarlık
+            koymak tabloyu hardala boğardı; dolu rozet tek satırda kalır ve metin etiketi
+            taşır (Renk Yalnız Kanıt Kuralı — renk körlüğünde bilgi kaybı yok).
+            Rozet yalnız AYIRT ETTİĞİ sayfada basılır: görünen satırların hepsi sıradaysa
+            yerini tablonun üstündeki tek cümlelik bildirim alır (bkz. `showTurnNotice`).
+          -->
+          <q-badge
+            v-if="showRowSignal && isMyTurn(row)"
+            color="accent-strong"
+            class="text-body2 q-px-sm q-py-xs q-ml-xs"
+            label="Sıra sizde"
+          />
+        </q-td>
       </template>
       <template #body-cell-startDate="{ row }">
         <q-td>{{ formatDate(row.startDate) }} – {{ formatDate(row.endDate) }}</q-td>
       </template>
       <template #body-cell-signatures="{ row }">
         <q-td>
-          <q-icon
-            :name="row.institutionSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.institutionSignature.isSigned ? 'positive' : 'grey-4'"
-            size="xs"
+          <!--
+            İmzasız halka ANLAM TAŞIYAN göstergedir: bu hücrede yanında aynı bilgiyi
+            veren görünür metin yok (aria-label yalnız ekran okuyucuya gider, tooltip
+            hover ister), yani WCAG 1.4.11 grafik nesnesi eşiği 3:1 geçerli.
+            Ölçüm (beyaz #FFFFFF hücre zemini): grey-4 #e0e0e0 → 1,32:1 (kalıyordu),
+            grey-7 #757575 → 4,61:1. Renk tek sinyal değil — ikon adı da ayrışıyor
+            (check_circle / radio_button_unchecked).
+          -->
+          <div
+            role="img"
+            :aria-label="`İmzalar — Kurum: ${row.institutionSignature.isSigned ? 'imzalandı' : 'imza bekliyor'}; İşletme: ${row.businessSignature.isSigned ? 'imzalandı' : 'imza bekliyor'}; Öğrenci: ${row.studentSignature.isSigned ? 'imzalandı' : 'imza bekliyor'}; Veli: ${row.parentSignature.isSigned ? 'imzalandı' : 'imza bekliyor'}`"
           >
-            <q-tooltip>Kurum{{ row.institutionSignature.signedBy ? ': ' + row.institutionSignature.signedBy : '' }}</q-tooltip>
-          </q-icon>
-          <q-icon
-            :name="row.businessSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.businessSignature.isSigned ? 'positive' : 'grey-4'"
-            size="xs"
-            class="q-ml-xs"
-          >
-            <q-tooltip>İşletme{{ row.businessSignature.signedBy ? ': ' + row.businessSignature.signedBy : '' }}</q-tooltip>
-          </q-icon>
-          <q-icon
-            :name="row.studentSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.studentSignature.isSigned ? 'positive' : 'grey-4'"
-            size="xs"
-            class="q-ml-xs"
-          >
-            <q-tooltip>Öğrenci{{ row.studentSignature.signedBy ? ': ' + row.studentSignature.signedBy : '' }}</q-tooltip>
-          </q-icon>
-          <q-icon
-            :name="row.parentSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
-            :color="row.parentSignature.isSigned ? 'positive' : 'grey-4'"
-            size="xs"
-            class="q-ml-xs"
-          >
-            <q-tooltip>Veli{{ row.parentSignature.signedBy ? ': ' + row.parentSignature.signedBy : '' }}</q-tooltip>
-          </q-icon>
+            <q-icon
+              :name="row.institutionSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
+              :color="row.institutionSignature.isSigned ? 'positive' : 'grey-7'"
+              size="xs"
+            >
+              <q-tooltip>Kurum{{ row.institutionSignature.signedBy ? ': ' + row.institutionSignature.signedBy : '' }}</q-tooltip>
+            </q-icon>
+            <q-icon
+              :name="row.businessSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
+              :color="row.businessSignature.isSigned ? 'positive' : 'grey-7'"
+              size="xs"
+              class="q-ml-xs"
+            >
+              <q-tooltip>İşletme{{ row.businessSignature.signedBy ? ': ' + row.businessSignature.signedBy : '' }}</q-tooltip>
+            </q-icon>
+            <q-icon
+              :name="row.studentSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
+              :color="row.studentSignature.isSigned ? 'positive' : 'grey-7'"
+              size="xs"
+              class="q-ml-xs"
+            >
+              <q-tooltip>Öğrenci{{ row.studentSignature.signedBy ? ': ' + row.studentSignature.signedBy : '' }}</q-tooltip>
+            </q-icon>
+            <q-icon
+              :name="row.parentSignature.isSigned ? 'check_circle' : 'radio_button_unchecked'"
+              :color="row.parentSignature.isSigned ? 'positive' : 'grey-7'"
+              size="xs"
+              class="q-ml-xs"
+            >
+              <q-tooltip>Veli{{ row.parentSignature.signedBy ? ': ' + row.parentSignature.signedBy : '' }}</q-tooltip>
+            </q-icon>
+          </div>
         </q-td>
       </template>
       <template #body-cell-actions="{ row }">
@@ -132,9 +174,11 @@
             round
             dense
             icon="open_in_new"
-            aria-label="Detayı aç"
+            aria-label="Sözleşme detayını aç"
             @click="openDetail(row)"
-          />
+          >
+            <q-tooltip>Sözleşme detayını aç</q-tooltip>
+          </q-btn>
         </q-td>
       </template>
     </AppTable>
@@ -177,6 +221,9 @@
                 :key="sig.label"
                 class="text-center"
               >
+                <!-- İkon dekoratiftir: durum bilgisi aşağıdaki görünür metinle taşınır.
+                     QIcon kendi render'ında aria-hidden="true" yazar, bu yüzden ikona
+                     verilen role/aria-label erişilebilirlik ağacına HİÇ ulaşmaz. -->
                 <q-icon
                   :name="sig.dto.isSigned ? 'check_circle' : 'pending'"
                   :color="sig.dto.isSigned ? 'positive' : 'grey-4'"
@@ -186,6 +233,12 @@
                   {{ sig.label }}
                 </div>
                 <div
+                  v-if="!sig.dto.isSigned"
+                  class="text-caption text-grey-7"
+                >
+                  İmza bekliyor
+                </div>
+                <div
                   v-if="sig.dto.signedBy"
                   class="text-caption text-grey-7"
                 >
@@ -193,7 +246,7 @@
                 </div>
                 <div
                   v-if="sig.dto.signedAt"
-                  class="text-caption text-grey-6"
+                  class="text-caption text-grey-7"
                 >
                   {{ formatDate(sig.dto.signedAt) }}
                 </div>
@@ -240,7 +293,7 @@
                   </q-item-label>
                   <q-item-label
                     caption
-                    class="text-grey-6"
+                    class="text-grey-7"
                   >
                     {{ doc.uploadedBy }} · {{ formatDate(doc.uploadedAt) }}
                   </q-item-label>
@@ -251,14 +304,13 @@
         </q-card>
 
         <!-- Fesih talebi bekliyor banner -->
-        <q-banner
+        <AppNotice
           v-if="selected.status === 'TerminationRequested'"
-          class="q-mb-md text-white bg-warning rounded-borders"
+          type="warning"
+          icon="pending_actions"
           dense
+          class="q-mb-md"
         >
-          <template #avatar>
-            <q-icon name="pending_actions" />
-          </template>
           <div class="text-caption text-weight-bold">
             FESİH TALEBİ BEKLEMEDE
           </div>
@@ -266,24 +318,23 @@
             <span v-if="selected.terminationReasonTypeSlug">{{ selected.terminationReasonTypeSlug }}</span>
             <span v-if="selected.terminationReason"> — {{ selected.terminationReason }}</span>
           </div>
-        </q-banner>
+        </AppNotice>
 
         <!-- Feshedildi bilgisi -->
-        <q-banner
+        <AppNotice
           v-if="selected.terminationReason && selected.status === 'Terminated'"
-          class="q-mb-md text-white bg-negative rounded-borders"
+          type="error"
+          icon="gavel"
           dense
+          class="q-mb-md"
         >
-          <template #avatar>
-            <q-icon name="gavel" />
-          </template>
           <div class="text-caption text-weight-medium">
             {{ selected.terminationReasonTypeSlug }}
           </div>
           <div class="text-body2">
             {{ selected.terminationReason }}
           </div>
-        </q-banner>
+        </AppNotice>
 
         <!-- Eylemler -->
         <div class="text-subtitle2 text-weight-medium q-mb-sm">
@@ -439,109 +490,105 @@
     />
 
     <!-- ── Evraklar Dialog ── -->
-    <q-dialog
+    <DetailDialog
       v-model="documentsDialog"
+      title="Yüklü Evraklar"
+      icon="folder_open"
+      position="right"
+      full-height
       :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
+      :card-style="documentsCardStyle"
     >
-      <q-card :style="$q.screen.gt.xs ? 'width: 520px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-grey-8 text-white">
-          <q-icon
-            name="folder_open"
-            class="q-mr-sm"
-          />
-          <q-toolbar-title>Yüklü Evraklar</q-toolbar-title>
+      <template #toolbar-actions>
+        <PermissionGuard :permission="Permissions.Document.Upload">
           <q-btn
-            v-close-popup
-            flat
-            round
-            dense
-            icon="close"
-            aria-label="Kapat"
-            color="white"
+            unelevated
+            color="secondary"
+            icon="upload_file"
+            label="Evrak Ekle"
+            size="sm"
+            class="q-mr-md"
+            @click="() => { documentsDialog = false; if (documentsTarget) openUploadDialog(documentsTarget) }"
           />
-        </q-toolbar>
+        </PermissionGuard>
+      </template>
 
-        <q-card-section>
-          <div
-            v-if="!documentsTarget?.documents?.length"
-            class="text-center q-py-lg text-grey-6"
-          >
-            <q-icon
-              name="folder_off"
-              size="48px"
-              class="q-mb-sm"
-            />
-            <div>Henüz evrak yüklenmemiş.</div>
-          </div>
-          <q-list
-            v-else
-            separator
-          >
-            <q-item
-              v-for="doc in documentsTarget?.documents"
-              :key="doc.documentId"
-            >
-              <q-item-section avatar>
-                <q-avatar
-                  color="negative-soft"
-                  text-color="negative-strong"
-                  icon="picture_as_pdf"
-                />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="text-weight-medium">
-                  {{ doc.documentTypeSlug }}
-                </q-item-label>
-                <q-item-label
-                  v-if="doc.description"
-                  caption
-                >
-                  {{ doc.description }}
-                </q-item-label>
-                <q-item-label
-                  caption
-                  class="text-grey-6"
-                >
-                  <q-icon
-                    name="person"
-                    size="12px"
-                  /> {{ doc.uploadedBy }}
-                  &nbsp;·&nbsp;
-                  <q-icon
-                    name="schedule"
-                    size="12px"
-                  /> {{ formatDate(doc.uploadedAt) }}
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-card-section>
+      <q-separator />
 
-        <q-separator />
-        <q-card-actions
-          align="right"
-          class="q-pa-md"
+      <!-- Kayan bölüm kalan yüksekliği alır (flex: 1 1 0 + min-height: 0), böylece
+           "Kapat" çubuğu sabit bir piksel hesabına bağlı kalmadan panelin dibine yaslanır. -->
+      <q-card-section
+        class="scroll"
+        style="flex: 1 1 0; min-height: 0"
+      >
+        <div
+          v-if="!documentsTarget?.documents?.length"
+          class="text-center q-py-lg text-grey-7"
         >
-          <PermissionGuard :permission="Permissions.Document.Upload">
-            <q-btn
-              unelevated
-              color="secondary"
-              icon="upload_file"
-              label="Evrak Ekle"
-              @click="() => { documentsDialog = false; if (documentsTarget) openUploadDialog(documentsTarget) }"
-            />
-          </PermissionGuard>
-          <q-btn
-            v-close-popup
-            flat
-            label="Kapat"
-            color="grey-7"
+          <q-icon
+            name="folder_off"
+            size="48px"
+            class="q-mb-sm"
           />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+          <div>Henüz evrak yüklenmemiş.</div>
+        </div>
+        <q-list
+          v-else
+          separator
+        >
+          <q-item
+            v-for="doc in documentsTarget?.documents"
+            :key="doc.documentId"
+          >
+            <q-item-section avatar>
+              <q-avatar
+                color="negative-soft"
+                text-color="negative-strong"
+                icon="picture_as_pdf"
+              />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="text-weight-medium">
+                {{ doc.documentTypeSlug }}
+              </q-item-label>
+              <q-item-label
+                v-if="doc.description"
+                caption
+              >
+                {{ doc.description }}
+              </q-item-label>
+              <q-item-label
+                caption
+                class="text-grey-7"
+              >
+                <q-icon
+                  name="person"
+                  size="12px"
+                /> {{ doc.uploadedBy }}
+                &nbsp;·&nbsp;
+                <q-icon
+                  name="schedule"
+                  size="12px"
+                /> {{ formatDate(doc.uploadedAt) }}
+              </q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-card-section>
+
+      <q-separator />
+      <q-card-actions
+        align="right"
+        class="q-pa-md"
+      >
+        <q-btn
+          v-close-popup
+          flat
+          label="Kapat"
+          color="grey-7"
+        />
+      </q-card-actions>
+    </DetailDialog>
   </q-page>
 </template>
 
@@ -554,12 +601,14 @@ import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useStudentOptions, useBusinessOptions } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useAuthStore } from 'stores/auth'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import PageHeader from 'components/PageHeader.vue'
 import DetailPanel from 'components/DetailPanel.vue'
+import DetailDialog from 'components/DetailDialog.vue'
 import { useRouter } from 'vue-router'
 import SignContractForm from 'components/forms/contract/SignContractForm.vue'
 import SuspendContractForm from 'components/forms/contract/SuspendContractForm.vue'
@@ -573,6 +622,7 @@ const $q = useQuasar()
 const router = useRouter()
 const notify = useNotify()
 const periodStore = useAcademicPeriodStore()
+const authStore = useAuthStore()
 const studentOpts = useStudentOptions()
 const businessOpts = useBusinessOptions()
 
@@ -609,6 +659,22 @@ const statusFilter = ref<string | null>(null)
 const uploadTarget = ref<InternshipContractDto | null>(null)
 const documentsTarget = ref<InternshipContractDto | null>(null)
 
+// Evraklar yan-paneli: sm altında panel tam ekrana geçer (maximized). Orada genişlik
+// AÇIKÇA verilmek ZORUNDA — Quasar'ın `.q-dialog__inner--maximized > div` kuralındaki
+// `width: 100%` bu kabda hiçbir şeye çözülmez: panel `position="right"` olduğu için
+// QDialog iç kaba `.fixed-right` sınıfını da basar ve o sınıfta top/right/bottom var,
+// LEFT YOK (quasar/src/css/core/positioning.sass) → kap shrink-to-fit olur, yüzde
+// genişlik belirsiz kaba çözülür ve kart içerik kadar kalır. Belirti: 390–599px
+// bandında solda arka plan şeridi açıkta kalır ve şerit ekran genişledikçe BÜYÜR,
+// ayrıca panel eni boş/dolu evrak listesine göre zıplar.
+// (Sorun kuralın !important taşımaması değil; kabın genişliğinin belirsiz olması.)
+// `display: flex` kartı dikey akışkan yapar: içerik kayar, eylem çubuğu dibe yaslanır.
+const documentsCardStyle = computed(() =>
+  $q.screen.lt.sm
+    ? 'width: 100vw; display: flex; flex-direction: column'
+    : 'width: 520px; max-width: 95vw; display: flex; flex-direction: column',
+)
+
 // ── Server-side pagination ──
 const filters = computed(() => ({
   academicPeriodId: periodStore.selectedPeriodId ?? undefined,
@@ -642,6 +708,69 @@ const signatureList = computed(() =>
         { label: 'Veli',     dto: selected.value.parentSignature },
       ]
     : [],
+)
+
+/**
+ * "SIRA SİZDE" — Tek Ses Kuralı: bu ekranda hardal TEK bağlamda görünür, o da fesih
+ * talebi kararıdır.
+ *
+ * Koşul VERİDEN türer, rol adından DEĞİL (ADR-0001 / #184):
+ *  • `status === 'TerminationRequested'` — karar bekleyen tek aşama. Detay panelindeki
+ *    "Feshi Onayla" / "Talebi Reddet" bloğu da tam bu koşulla açılır; sinyal o butonların
+ *    listedeki izdüşümüdür, yeni bir kural değil.
+ *  • `Permissions.Internship.Approve` — kaydı İLERLETEN ucun istediği izin; listeyi AÇAN
+ *    izin değil. Ölçüldü: `POST /api/contracts/{id}/reject-termination` →
+ *    `RequireAuthorization(Permissions.Internship.Approve)` (ContractEndpoints.cs:38-39).
+ *    Listeyi açan izin `internship:contract:manage`'dir (ContractEndpoints.cs:41); sinyal
+ *    ona bağlansaydı, fesih kararı veremeyen kullanıcıda da yanar ve tıklayınca 403 dönerdi.
+ *    Bu izni taşıyanlar (RolePermissionMap.cs): InstitutionManager ("internship:*", satır
+ *    16), DeputyDirector (satır 65), Teacher (satır 135) — yani "müdür / müdür yardımcısı"
+ *    demek YANLIŞTI, koordinatör öğretmen de zincirin bir adımıdır (TerminationStep.Teacher).
+ *  • `!periodStore.isReadOnly` — kapalı dönemde tüm yazma yolları kapalıdır; yapılamayan
+ *    iş vaat edilmez.
+ *
+ * NADİRLİK: rozet yalnız görünen satırların BİR KISMI sıradaysa basılır (`showRowSignal`).
+ * "Fesih Talep Edildi" filtresi seçildiğinde sayfadaki her satır bu aşamadadır ve rozet
+ * durum sütununun tekrarına dönerdi. Ölçüt filtre DEĞERİNE değil sayfadaki orana bakar:
+ * aynı hâl filtre kullanılmadan da (tüm kayıtlar fesih talebindeyse) doğar ve o zaman da
+ * tek cümlelik bildirim gösterilir.
+ *
+ * BİLİNEN BORÇ (bu partinin kapsamı dışı — arayüz guard'ı ile uç izni ayrışıyor):
+ * "Feshi Onayla" butonu `Internship.Approve` guard'ı altındadır ama bastığı uç
+ * `POST /api/contracts/{id}/terminate` `Internship.Manage` ister (ContractEndpoints.cs:32).
+ * `approve` taşıyıp `manage` taşımayan kullanıcı (Teacher) o butondan 403 alır. Sinyal yine
+ * de boş vaat değildir: "Talebi Reddet" yolu ona açıktır ve kaydı gerçekten ilerletir.
+ *
+ * Kapsam BİLEREK dar tutuldu: `Draft` → "İmzaya Gönder" ve `AwaitingSignature` → "İmzala /
+ * Aktifleştir" de bir eylem bekler ve `internship:contract:manage` ile açılır. Onları da
+ * işaretlemek hardalı ikinci ve üçüncü bağlama yayar; nadirlik gidince sinyalin anlamı da
+ * gider (DESIGN.md "Tek Ses Kuralı").
+ *
+ * İMZALAR sütunu bilerek işaretlenMEDİ. Dört imzadan hangisinin BAKAN KİŞİYE ait olduğunu
+ * söyleyen veri yok: `AuthUser` (stores/auth.ts) yalnız id/username/e-posta/ad/roller/
+ * institutionId/branchCodes taşır — studentId, businessId ya da veli bağı yok; DTO'da da
+ * "bekleyen taraf" bayrağı yok (`InternshipContractDto` yalnız isSigned/signedBy verir).
+ * Rolden türetmek ("CompanyManager isem işletme imzasıdır") kapsam kararını rol adına
+ * bağlamak olurdu — kesin yasak. Sunucu `pendingSignatureParty` benzeri bir alan
+ * verdiğinde sinyal oraya taşınabilir; o güne kadar uydurulmaz.
+ */
+function isMyTurn(row: InternshipContractDto): boolean {
+  return (
+    row.status === 'TerminationRequested' &&
+    !periodStore.isReadOnly &&
+    authStore.hasPermission(Permissions.Internship.Approve)
+  )
+}
+
+/** Görünen sayfadaki "sıra sizde" satırları — nadirlik ölçümünün tek kaynağı. */
+const turnRows = computed(() => contracts.value.filter(isMyTurn))
+/** Satır rozeti: bazı satırlar sırada, hepsi değil — sinyal burada ayırt ediyor. */
+const showRowSignal = computed(
+  () => turnRows.value.length > 0 && turnRows.value.length < contracts.value.length,
+)
+/** Hepsi sırada: yirmi rozet yerine tablonun üstünde tek cümle. */
+const showTurnNotice = computed(
+  () => contracts.value.length > 0 && turnRows.value.length === contracts.value.length,
 )
 
 const columns: QTableProps['columns'] = [

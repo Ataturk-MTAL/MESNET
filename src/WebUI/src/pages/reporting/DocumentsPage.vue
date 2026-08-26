@@ -1,8 +1,6 @@
 <template>
   <q-page padding>
-    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
-      Belgeler
-    </h1>
+    <PageHeader title="Belgeler" />
 
     <AppNotice
       type="info"
@@ -31,7 +29,10 @@
               <div class="text-subtitle1 q-mt-sm">
                 İşletme Belgeleri
               </div>
-              <div class="text-caption text-grey">
+              <!-- Beyaz flat bordered q-card üzerinde caption: .doc-card-link yalnız
+                   text-decoration/color:inherit tanımlar, zemini değiştirmez.
+                   text-grey (#9e9e9e) 2,68:1 idi; text-grey-7 (#757575) 4,61:1. -->
+              <div class="text-caption text-grey-7">
                 Ustalık belgesi, usta öğretici belgesi
               </div>
             </q-card-section>
@@ -57,7 +58,10 @@
               <div class="text-subtitle1 q-mt-sm">
                 Sözleşme Belgeleri
               </div>
-              <div class="text-caption text-grey">
+              <!-- Beyaz flat bordered q-card üzerinde caption: .doc-card-link yalnız
+                   text-decoration/color:inherit tanımlar, zemini değiştirmez.
+                   text-grey (#9e9e9e) 2,68:1 idi; text-grey-7 (#757575) 4,61:1. -->
+              <div class="text-caption text-grey-7">
                 Islak imzalı sözleşmeler ve fesih belgeleri
               </div>
             </q-card-section>
@@ -83,7 +87,10 @@
               <div class="text-subtitle1 q-mt-sm">
                 Raporlar
               </div>
-              <div class="text-caption text-grey">
+              <!-- Beyaz flat bordered q-card üzerinde caption: .doc-card-link yalnız
+                   text-decoration/color:inherit tanımlar, zemini değiştirmez.
+                   text-grey (#9e9e9e) 2,68:1 idi; text-grey-7 (#757575) 4,61:1. -->
+              <div class="text-caption text-grey-7">
                 PDF rapor üretimi
               </div>
             </q-card-section>
@@ -96,6 +103,7 @@
 
 <script setup lang="ts">
 import AppNotice from 'components/AppNotice.vue'
+import PageHeader from 'components/PageHeader.vue'
 </script>
 
 <style scoped>

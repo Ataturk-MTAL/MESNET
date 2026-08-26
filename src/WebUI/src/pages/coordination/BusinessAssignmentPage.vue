@@ -1,8 +1,6 @@
 <template>
   <q-page padding>
-    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
-      İşletme Dağıtımı
-    </h1>
+    <PageHeader title="İşletme Dağıtımı" />
 
     <!-- Klavye akışının durum duyurusu (#88). Görsel olarak gizli, ekran okuyucuya açık. -->
     <div
@@ -34,6 +32,7 @@
       </div>
       <div class="col-12 col-sm-auto q-gutter-sm">
         <q-btn
+          unelevated
           color="primary"
           icon="save"
           label="Kaydet"
@@ -45,6 +44,7 @@
             v-if="pendingChanges.length > 0"
             color="negative"
             floating
+            class="tabular-nums"
           >
             {{ pendingChanges.length }}
           </q-badge>
@@ -206,7 +206,11 @@
                             <div class="text-body2 text-weight-medium ellipsis">
                               {{ biz.businessName }}
                             </div>
-                            <div class="text-caption text-grey-6">
+                            <!-- Zemin beyaz DEĞİL: .business-card = color-mix(in srgb, var(--q-warning) 10%, #fff)
+                                 = #f5f0e6. ÖLÇÜLDÜ o zeminde — grey-6 2,36:1, grey-7 4,06:1 (ikisi de eşiğin
+                                 altında), text-warning-strong (#7e5800) 5,63:1; hover zemininde (#ede4d1) 5,06:1.
+                                 Renkli yüzeyde ikincil metin o tondan türetilir, griye düşürülmez. -->
+                            <div class="text-caption text-warning-strong">
                               {{ biz.district ?? '—' }}
                               <span v-if="biz.distanceToSchoolKm != null"> · {{ biz.distanceToSchoolKm.toFixed(1) }} km</span>
                             </div>
@@ -255,7 +259,7 @@
                         Ders Yükü Havuzu
                       </div>
                       <div
-                        class="text-h5"
+                        class="text-h5 stat-value"
                         :class="workloadPoolToneClass(summary.totalWorkloadPool)"
                       >
                         {{ workloadPoolLabel(summary.totalWorkloadPool) }}
@@ -273,7 +277,7 @@
                         Dağıtılan Saat
                       </div>
                       <div
-                        class="text-h5"
+                        class="text-h5 stat-value"
                         :class="assignedHoursToneClass(summary.totalWorkloadPool, summary.totalAssignedHours)"
                       >
                         {{ summary.totalAssignedHours }}
@@ -300,7 +304,7 @@
                         Kalan Saat
                       </div>
                       <div
-                        class="text-h5"
+                        class="text-h5 stat-value"
                         :class="remainingHoursToneClass(summary.totalWorkloadPool, summary.remainingHours)"
                       >
                         {{ remainingHoursLabel(summary.totalWorkloadPool, summary.remainingHours) }}
@@ -317,7 +321,7 @@
                       <div class="text-caption text-grey-7">
                         Atanmış / Toplam
                       </div>
-                      <div class="text-h5 text-secondary-strong">
+                      <div class="text-h5 stat-value text-secondary-strong">
                         {{ summary.assignedBusinessCount }} / {{ summary.assignedBusinessCount + summary.unassignedBusinessCount }}
                       </div>
                     </q-card-section>
@@ -345,7 +349,7 @@
                       color="primary"
                       size="2em"
                     />
-                    <div class="text-caption text-grey-6 q-mt-sm">
+                    <div class="text-caption text-grey-7 q-mt-sm">
                       Program yükleniyor...
                     </div>
                   </div>
@@ -477,20 +481,22 @@
                       :columns="teacherSummaryColumns"
                       row-key="teacherId"
                       flat
-                      bordered
                       dense
                       hide-pagination
                       :rows-per-page-options="[0]"
                     >
                       <template #body-cell-teacherName="{ row }">
                         <q-td>
-                          <a
-                            href="#"
-                            class="text-primary cursor-pointer"
-                            @click.prevent="selectTeacher(row.teacherId)"
-                          >
-                            {{ row.teacherName }}
-                          </a>
+                          <q-btn
+                            flat
+                            dense
+                            no-caps
+                            color="primary"
+                            class="q-px-none"
+                            :label="row.teacherName"
+                            :aria-label="`${row.teacherName} öğretmenini seç`"
+                            @click="selectTeacher(row.teacherId)"
+                          />
                         </q-td>
                       </template>
                       <template #body-cell-honoraryVisitCount="{ row }">
@@ -504,7 +510,7 @@
                           </span>
                           <span
                             v-else
-                            class="text-grey-6"
+                            class="text-grey-7"
                           >—</span>
                         </q-td>
                       </template>
@@ -544,20 +550,12 @@
           name="teachers"
           class="q-pa-none"
         >
-          <div
-            v-if="teacherOverviewLoading"
-            class="text-center q-pa-xl"
+          <DataState
+            :loading="teacherOverviewLoading"
+            loading-text="Öğretmen verileri yükleniyor..."
+            spinner-size="3em"
+            padding="q-pa-xl"
           >
-            <q-spinner
-              color="primary"
-              size="3em"
-            />
-            <div class="text-caption text-grey-6 q-mt-sm">
-              Öğretmen verileri yükleniyor...
-            </div>
-          </div>
-
-          <div v-else>
             <q-table
               :rows="teacherOverviewRows"
               :columns="teacherOverviewColumns"
@@ -599,7 +597,7 @@
                   </q-badge>
                   <span
                     v-else
-                    class="text-grey-6"
+                    class="text-grey-7"
                   >—</span>
                 </q-td>
               </template>
@@ -655,7 +653,7 @@
               </template>
 
               <template #no-data>
-                <div class="full-width text-center q-pa-md text-grey-6">
+                <div class="full-width text-center q-pa-md text-grey-7">
                   <q-icon
                     name="people"
                     size="2em"
@@ -665,41 +663,25 @@
                 </div>
               </template>
             </q-table>
-          </div>
+          </DataState>
         </q-tab-panel>
       </q-tab-panels>
     </div>
 
     <!-- Kaydedilmemiş Değişiklik Onay Dialogu -->
-    <q-dialog
+    <FormDialog
       v-model="showDiscardDialog"
-      persistent
+      title="Kaydedilmemiş Değişiklikler"
+      icon="warning"
+      color="warning"
+      save-label="Değişiklikleri At"
+      save-color="negative"
+      @save="confirmDiscard"
     >
-      <q-card style="min-width: 350px">
-        <q-card-section>
-          <h2 class="text-h6 q-my-none">
-            Kaydedilmemiş Değişiklikler
-          </h2>
-        </q-card-section>
-        <q-card-section>
-          {{ pendingChanges.length }} adet kaydedilmemiş değişiklik var. Öğretmen değiştirirseniz bu değişiklikler kaybolacak.
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn
-            flat
-            label="İptal"
-            color="grey-7"
-            @click="showDiscardDialog = false"
-          />
-          <q-btn
-            flat
-            label="Değişiklikleri At"
-            color="negative"
-            @click="confirmDiscard"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+      <div>
+        {{ pendingChanges.length }} adet kaydedilmemiş değişiklik var. Öğretmen değiştirirseniz bu değişiklikler kaybolacak.
+      </div>
+    </FormDialog>
 
     <!-- Atama Geçmişi Dialogu -->
     <DetailDialog
@@ -797,6 +779,8 @@ import WorkloadIndicator from 'components/WorkloadIndicator.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
 import DetailDialog from 'components/DetailDialog.vue'
+import FormDialog from 'components/FormDialog.vue'
+import PageHeader from 'components/PageHeader.vue'
 import SearchInput from 'components/SearchInput.vue'
 
 const notify = useNotify()
@@ -1134,18 +1118,20 @@ onMounted(async () => {
   border-radius: 8px;
   padding: 10px 12px;
   cursor: grab;
-  /* Hover'da değişen üç özellik — transition: all değil. */
-  transition-property: box-shadow, border-color, transform;
+  /* Hover'da değişen iki özellik — transition: all değil. */
+  transition-property: background-color, border-color;
   transition-duration: 0.2s;
   transition-timing-function: ease-out;
   user-select: none;
 }
 
 .business-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  /* Gölge/kaldırma yok (Tonal Derinlik Kuralı): derinlik zemin tonuyla kurulur.
+    "Tutulabilir" sinyali cursor: grab / :active grabbing'den gelir. */
+  background: #ede4d1;
+  background: color-mix(in srgb, var(--q-warning) 18%, #fff);
   border-color: #c7ae73;
   border-color: color-mix(in srgb, var(--q-warning) 55%, #fff);
-  transform: translateY(-1px);
 }
 
 .business-card:active {

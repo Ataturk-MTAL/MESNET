@@ -1,8 +1,6 @@
 <template>
   <q-page padding>
-    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
-      Öğretmen Ders Programı
-    </h1>
+    <PageHeader title="Öğretmen Ders Programı" />
 
     <!-- Filtreler -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
@@ -62,9 +60,12 @@
                     Kayıtlı
                     <q-tooltip>Versiyon {{ currentVersion }}</q-tooltip>
                   </q-badge>
+                  <!-- Anlamsal durum taşımayan taslak rozeti → bg-neutral (#465a73):
+                       beyaz metinle 7,07:1. Quasar "grey" (#9e9e9e) zemininde QBadge'in
+                       varsayılan #fff metni 2,68:1'de kalıyordu — ÖLÇÜLDÜ. -->
                   <q-badge
                     v-else
-                    color="grey"
+                    color="neutral"
                     class="q-ml-sm"
                   >
                     Yeni
@@ -79,7 +80,7 @@
                 </div>
                 <div
                   v-if="currentScheduleMeta"
-                  class="text-caption text-grey-6 q-mt-xs"
+                  class="text-caption text-grey-7 q-mt-xs"
                 >
                   {{ currentScheduleMeta.academicYear }} - {{ currentScheduleMeta.semester }}
                   <span v-if="currentScheduleMeta.updatedAt">
@@ -113,6 +114,7 @@
                     @click="cancelEditing"
                   />
                   <q-btn
+                    unelevated
                     color="primary"
                     icon="save"
                     label="Kaydet"
@@ -159,7 +161,7 @@
                   <h2 class="text-h6 text-positive-strong q-my-none">
                     {{ freeSlotsPerDay(day.value) }}
                   </h2>
-                  <div class="text-caption text-grey-6">
+                  <div class="text-caption text-grey-7">
                     boş saat
                   </div>
                 </q-card>
@@ -219,23 +221,54 @@
                   @click="viewVersion(ver)"
                 >
                   <q-item-section avatar>
+                    <!-- font-size prop'u kaldırıldı: ÖLÇÜLDÜ, hesaplanan değerle birebir
+                         aynıydı. size="sm" QAvatar'ın köküne inline font-size:24px basar
+                         (useSizeDefaults.sm = 24), Quasar'ın .q-avatar__content kuralı ise
+                         .5em uygular → 12px. Yani prop hiçbir şeyi değiştirmiyordu; kaldırmak
+                         piksel eşdeğeri ve inline tipografi ihlali de ortadan kalkıyor.
+                         (Kök üzerindeki .q-item__section--side > .q-avatar { font-size: 40px }
+                         kuralını inline stil zaten eziyor.)
+
+                         Pasif dal grey-5 (#bdbdbd) idi: text-color="white" ile 1,88:1 — 12px
+                         rozet metni olduğu için büyük-metin istisnası da yok. bg-neutral
+                         (#465a73) beyaz metinle 7,07:1. Aktif dal 'positive' (#2E7D5B) beyazla
+                         5,00:1 ile zaten eşiği geçiyor, korundu. ÖLÇÜLDÜ. -->
                     <q-avatar
-                      :color="ver.version === scheduleHistory?.currentVersion ? 'positive' : 'grey-5'"
+                      :color="ver.version === scheduleHistory?.currentVersion ? 'positive' : 'neutral'"
                       text-color="white"
                       size="sm"
-                      font-size="12px"
                     >
                       v{{ ver.version }}
                     </q-avatar>
                   </q-item-section>
                   <q-item-section>
                     <q-item-label>{{ ver.eventType }}</q-item-label>
-                    <q-item-label caption>
+                    <!-- İki caption da text-grey-8 (#616161) — varsayılan caption rengi
+                         SEÇİLİ satırda eşiğin altına düşüyordu. Bu <q-item>
+                         active-class="bg-info-soft" taşıyor; o zemin app.css'te
+                         color-mix(in srgb, var(--q-info) 12%, #fff) ve düz hex yedeği
+                         #e8edf1 ile birebir aynı (--q-info = #3E6B89). Quasar'ın
+                         .q-item__label--caption kuralı yarı saydamdır (rgba(0,0,0,.54)),
+                         yani ÖNCE zeminle harmanlanır: #e8edf1 üzerinde efektif #6b6d6f →
+                         4,41:1, metin eşiği 4,5:1. ÖLÇÜLDÜ.
+
+                         text-grey-8 opaktır ve `color: #616161 !important` ile caption
+                         kuralını ezer: beyaz zeminde 6,19:1, #e8edf1 üzerinde 5,25:1 —
+                         seçili ve seçili olmayan hâl birlikte temiz, iki kardeş caption
+                         aynı tonda. ÖLÇÜLDÜ.
+
+                         Daha açık tona DÖNÜLMEZ: grey-6 (#9e9e9e) beyazda 2,68:1 /
+                         #e8edf1 üzerinde 2,27:1; grey-7 (#757575) beyazda 4,61:1 ama
+                         #e8edf1 üzerinde 3,91:1 ile eşiğin altında kalır. ÖLÇÜLDÜ. -->
+                    <q-item-label
+                      caption
+                      class="text-grey-8"
+                    >
                       {{ formatDateTime(ver.timestamp) }}
                     </q-item-label>
                     <q-item-label
                       caption
-                      class="text-grey-6"
+                      class="text-grey-8"
                     >
                       {{ ver.updatedByName ?? 'Bilinmiyor' }}
                     </q-item-label>
@@ -279,6 +312,7 @@ import TeacherSelector from 'components/TeacherSelector.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
+import PageHeader from 'components/PageHeader.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()

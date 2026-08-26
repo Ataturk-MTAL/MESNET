@@ -137,6 +137,38 @@ html {
  * form tipi rozetleri). Bunları positive/info gibi bir role bağlamak yanlış anlam
  * yükler: "sektör: Metal" ne olumlu ne bilgilendirici bir durumdur.
  *
+/*
+ * "SIRA SİZDE" tonu — $accent (hardal) tek rolü.
+ *
+ * Bu ton yalnız bir anlama gelir: kaydı bekleten taraf, ekrana bakan kullanıcının KENDİSİ.
+ * Genel "bekliyor" durumu DEĞİLDİR — o `status-pending` ile gösterilir. Bir ekranda en çok
+ * bir bağlamda görünür; nadirliği sinyalin kendisidir.
+ *
+ * Karışım oranları neden diğerlerinden farklı — ÖLÇÜLDÜ:
+ *   Diğer rollerde kullanılan %85 strong reçetesi hardalda 3,14:1 veriyor, eşik 4,5:1.
+ *   Hardal siyaha karıştıkça kendi sıcak zemininden yeterince ayrışmıyor. Bu yüzden strong
+ *   tonu %60'a kadar koyulaştırıldı: soft zemin üzerinde 5,30:1.
+ *   Reçeteyi diğerlerine benzetmek için %85'e çekmeyin — kontrast sessizce eşiğin altına düşer.
+ *
+ * SAF #C9A227 KULLANILMAZ. Beyaz üzerinde 2,4:1 verir; yalnız metin eşiğini (4,5:1) değil
+ * WCAG 1.4.11 grafik nesnesi eşiğini (3:1) de geçemez. Yani saf hardal ne dolu rozet zemini
+ * ne de gösterge çizgisi olabilir — bu dosyadaki türevleri kullanın.
+ */
+.bg-accent-soft {
+  background-color: #f7f2e1;
+  background-color: color-mix(in srgb, var(--q-accent) 14%, #fff);
+}
+.text-accent-strong {
+  /* soft zemin üzerinde 5,30:1, beyaz zemin üzerinde 5,94:1 */
+  color: #796117;
+  color: color-mix(in srgb, var(--q-accent) 60%, #000);
+}
+.bg-accent-strong {
+  /* dolu rozet: beyaz metinle 5,94:1 */
+  background-color: #796117;
+  background-color: color-mix(in srgb, var(--q-accent) 60%, #000);
+}
+
  * Yine de ham `blue-grey` paletinde bırakılmıyor; marka lacivertiyle tonlanmış nötr
  * üretiliyor — ayraç ve gölgede zaten uygulanan yaklaşımın (bkz. $separator-color)
  * aynısı. Tema değişince nötr de birlikte kayar.

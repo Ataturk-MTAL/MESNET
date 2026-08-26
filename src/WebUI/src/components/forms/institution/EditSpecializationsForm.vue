@@ -12,7 +12,7 @@
     </div>
     <div
       v-if="allSpecializations.length === 0"
-      class="text-grey q-pa-md text-center"
+      class="text-grey-7 q-pa-md text-center"
     >
       Bu alan için uzmanlık tanımlanmamış.
     </div>

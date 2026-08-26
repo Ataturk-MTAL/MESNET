@@ -72,7 +72,9 @@ function dismiss() {
         aria-label="Kapat"
         :color="style.iconColor"
         @click="dismiss"
-      />
+      >
+        <q-tooltip>Bildirimi kapat</q-tooltip>
+      </q-btn>
     </template>
   </q-banner>
 </template>

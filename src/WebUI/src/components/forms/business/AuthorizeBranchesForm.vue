@@ -9,7 +9,7 @@
     :saving="saving"
     @save="handleSave"
   >
-    <div class="text-caption text-grey q-mb-sm">
+    <div class="text-caption text-grey-7 q-mb-sm">
       İşletmenin hangi alanlardan öğrenci alabileceğini belge dayanağıyla işaretleyin.
       İşaretlenmeyen alanların yetkisi kaldırılır; mevcut yerleştirmeler bundan etkilenmez,
       yalnız yeni yerleştirme engellenir.
@@ -19,7 +19,7 @@
 
     <div
       v-if="!branchOpts.loading.value && branchOpts.allOptions.value.length === 0"
-      class="text-caption text-grey q-my-md"
+      class="text-caption text-grey-7 q-my-md"
     >
       Kurumda açık alan bulunmuyor. Önce Kurum ayarlarından alan aktifleştirilmelidir.
     </div>

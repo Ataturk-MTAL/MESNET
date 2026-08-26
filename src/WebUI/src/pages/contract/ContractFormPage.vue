@@ -66,19 +66,17 @@
           Sınıf tekrarı katkı blokesi (#161). İşletme bunu sözleşme kurulurken bilmeli;
           ayın sonunda dekont gelirken öğrenmesi "neden katkı gelmedi" çağrısı doğurur.
         -->
-        <q-banner
+        <AppNotice
           v-if="contributionBlock"
+          type="warning"
           dense
-          class="bg-orange-1 text-orange-10"
+          icon="info"
         >
-          <template #avatar>
-            <q-icon name="info" />
-          </template>
           Bu öğrenci <strong>{{ contributionBlock.classYear }}. sınıfı tekrar ediyor</strong> ve
           bu sınıf yılı için devlet katkısı zaten alınmış ({{ contributionBlock.firstClaimedMonth }}).
           Öğrencinin ücreti değişmez; <strong>devlet katkısı ödenmez</strong>, dolayısıyla
           işletmenin ödeyeceği tutar yükselir.
-        </q-banner>
+        </AppNotice>
 
         <q-select
           v-model="form.businessId"
@@ -179,6 +177,7 @@ import { useStudentOptions, useBusinessOptions } from 'src/composables/useEntity
 import { useAuthStore } from 'stores/auth'
 import TeacherSelector from 'components/TeacherSelector.vue'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const router = useRouter()
 const notify = useNotify()

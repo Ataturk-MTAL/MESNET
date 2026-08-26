@@ -22,6 +22,7 @@
         text-color="white"
         icon="route"
         size="sm"
+        class="tabular-nums"
       >
         {{ selectedRoute.distanceKm.toFixed(1) }} km · {{ formatDuration(selectedRoute.durationSec) }}
       </q-chip>
@@ -32,7 +33,7 @@
         round
         icon="close"
         size="xs"
-        color="grey-6"
+        color="grey-7"
         class="clear-route-btn"
         aria-label="Rota seçimini temizle"
         @click="clearRoute"
@@ -78,7 +79,7 @@
         <l-polyline
           v-if="selectedRoute"
           :lat-lngs="selectedRoute.polyline"
-          color="#1565C0"
+          :color="ROUTE_HIGHLIGHT"
           :weight="4"
           :opacity="0.8"
           :dash-array="undefined"
@@ -90,14 +91,17 @@
           :key="biz.businessId"
           :lat-lng="[biz.latitude, biz.longitude]"
           :radius="selectedRoute?.businessId === biz.businessId ? 10 : 7"
-          :color="selectedRoute?.businessId === biz.businessId ? '#1565C0' : clusterColor(biz.clusterId)"
-          :fill-color="selectedRoute?.businessId === biz.businessId ? '#1565C0' : clusterColor(biz.clusterId)"
+          :color="selectedRoute?.businessId === biz.businessId ? ROUTE_HIGHLIGHT : clusterColor(biz.clusterId)"
+          :fill-color="selectedRoute?.businessId === biz.businessId ? ROUTE_HIGHLIGHT : clusterColor(biz.clusterId)"
           :fill-opacity="0.85"
           :weight="selectedRoute?.businessId === biz.businessId ? 3 : 1.5"
           @click="onMarkerClick(biz)"
         >
           <l-popup>
-            <div style="min-width: 180px">
+            <div
+              class="tabular-nums"
+              style="min-width: 180px"
+            >
               <div class="text-weight-bold q-mb-xs">
                 {{ biz.businessName }}
               </div>
@@ -109,19 +113,19 @@
               </div>
               <q-separator class="q-my-xs" />
               <div class="text-caption">
-                <span class="text-grey-6">Alan:</span> {{ biz.branchName }}
+                <span class="text-grey-7">Alan:</span> {{ biz.branchName }}
               </div>
               <div
                 v-if="biz.distanceToSchoolKm != null"
                 class="text-caption"
               >
-                <span class="text-grey-6">Uzaklık:</span> {{ biz.distanceToSchoolKm.toFixed(1) }} km
+                <span class="text-grey-7">Uzaklık:</span> {{ biz.distanceToSchoolKm.toFixed(1) }} km
               </div>
               <div class="text-caption">
-                <span class="text-grey-6">Öğrenci:</span> {{ biz.activeStudentCount }}
+                <span class="text-grey-7">Öğrenci:</span> {{ biz.activeStudentCount }}
               </div>
               <div class="text-caption">
-                <span class="text-grey-6">Verilebilir Maks:</span>
+                <span class="text-grey-7">Verilebilir Maks:</span>
                 <strong class="text-positive-strong">{{ biz.maxCoordinationHours }} saat</strong>
               </div>
               <q-separator class="q-my-xs" />
@@ -143,7 +147,7 @@
                   size="12px"
                 /> Atanmamış
               </div>
-              <div class="text-caption text-grey-6 q-mt-xs">
+              <div class="text-caption text-grey-7 q-mt-xs">
                 {{ biz.clusterId === null ? 'Tekil nokta' : `Küme ${biz.clusterId + 1}` }}
               </div>
               <!-- Takdir edilen saat girişi -->
@@ -203,7 +207,7 @@
               </template>
               <template v-else-if="isHonoraryVisit(biz.businessId)">
                 <div class="text-caption">
-                  <span class="text-grey-6">Takdir Edilen:</span>
+                  <span class="text-grey-7">Takdir Edilen:</span>
                   <q-badge
                     color="neutral-soft"
                     text-color="neutral-strong"
@@ -213,7 +217,7 @@
               </template>
               <template v-else-if="assignedHours[biz.businessId]">
                 <div class="text-caption">
-                  <span class="text-grey-6">Takdir Edilen:</span> {{ assignedHours[biz.businessId] }} saat
+                  <span class="text-grey-7">Takdir Edilen:</span> {{ assignedHours[biz.businessId] }} saat
                 </div>
               </template>
 
@@ -246,6 +250,18 @@ import type { GeoLocation } from 'src/api/institution'
 import { SCHOOL_ICON_URL } from 'src/utils/mapConstants'
 import { clusterColor } from 'src/utils/clusterColors'
 import { HONORARY_LABEL, HONORARY_HINT } from 'src/utils/coordinationHours'
+
+/**
+ * Leaflet CSS değişkeni kabul etmez, düz renk string'i ister; bu yüzden seçili rota
+ * vurgusu tema değişkeninden OKUNUR. Değer boş dönerse marka lacivertine düşer —
+ * aksi hâlde çizgi/marker renksiz kalırdı.
+ */
+function readThemeColor(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+}
+
+const ROUTE_HIGHLIGHT = readThemeColor('--q-primary', '#1E3A5F')
 
 interface RouteState {
   businessId: string

@@ -1,56 +1,53 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg">
-      <h1 class="text-h5 text-weight-bold col q-my-none">
-        MEB Formları ve Dokümanlar
-      </h1>
-      <div class="q-gutter-sm">
-        <q-btn
-          v-if="canGenerate"
-          color="primary"
-          icon="note_add"
-          label="Belge Oluştur"
-          @click="showGenerateDialog = true"
-        />
-        <q-btn
-          v-if="canGenerate"
-          color="warning"
-          icon="sync"
-          label="Form 3 Verilerini Yenile"
-          :loading="resyncing"
-          flat
-          @click="resyncForm3"
-        />
-        <q-btn
-          v-if="canGenerate && selected.length > 0"
-          color="negative"
-          icon="delete_sweep"
-          :label="`Seçilenleri Sil (${selected.length})`"
-          :loading="deleting"
-          flat
-          @click="deleteSelected"
-        />
-        <q-btn
-          v-if="selected.length > 0"
-          color="secondary"
-          icon="archive"
-          :label="`Seçilenleri ZIP İndir (${selected.length})`"
-          :loading="zipping"
-          @click="downloadSelectedZip"
-        />
-        <q-btn
-          color="primary"
-          icon="refresh"
-          flat
-          round
-          :loading="loading"
-          aria-label="Listeyi yenile"
-          @click="load"
-        >
-          <q-tooltip>Yenile</q-tooltip>
-        </q-btn>
-      </div>
-    </div>
+    <PageHeader title="MEB Formları ve Dokümanlar">
+      <q-btn
+        v-if="canGenerate"
+        color="primary"
+        icon="note_add"
+        label="Belge Oluştur"
+        unelevated
+        @click="showGenerateDialog = true"
+      />
+      <q-btn
+        v-if="canGenerate"
+        color="warning"
+        icon="sync"
+        label="Form 3 Verilerini Yenile"
+        :loading="resyncing"
+        flat
+        @click="resyncForm3"
+      />
+      <q-btn
+        v-if="canGenerate && selected.length > 0"
+        color="negative"
+        icon="delete_sweep"
+        :label="`Seçilenleri Sil (${selected.length})`"
+        :loading="deleting"
+        flat
+        @click="deleteSelected"
+      />
+      <q-btn
+        v-if="selected.length > 0"
+        color="secondary"
+        icon="archive"
+        :label="`Seçilenleri ZIP İndir (${selected.length})`"
+        :loading="zipping"
+        unelevated
+        @click="downloadSelectedZip"
+      />
+      <q-btn
+        color="primary"
+        icon="refresh"
+        flat
+        round
+        :loading="loading"
+        aria-label="Listeyi yenile"
+        @click="load"
+      >
+        <q-tooltip>Yenile</q-tooltip>
+      </q-btn>
+    </PageHeader>
 
     <!-- Filtreler -->
     <q-card
@@ -179,13 +176,18 @@
           >
             <q-tooltip>İmzalanıp Teslim Edildi</q-tooltip>
           </q-btn>
+          <!-- İkon-yalnız buton: yanında görünür metin yok (aria-label ekran okuyucuya,
+               q-tooltip hover'a bağlı) ve :disable taşımıyor — yani anlamlı arayüz bileşeni,
+               eşik 3:1. Ölçüldü (beyaz AppTable hücresi): grey (#9e9e9e) 2,68:1 ile eşiğin
+               altındaydı, grey-7 (#757575) 4,61:1. Nötr kalır, komşu positive/negative
+               eylemlerle yarışmaz. -->
           <q-btn
             v-if="row.status === 'SignedAndReturned'"
             flat
             round
             dense
             icon="archive"
-            color="grey"
+            color="grey-7"
             aria-label="Arşivle"
             @click="archiveDoc(row.id)"
           >
@@ -207,85 +209,83 @@
       </template>
     </AppTable>
 
-    <!-- Belge Oluştur Dialog -->
-    <q-dialog
+    <!-- Belge Oluştur — sağdan kayan yan-panel -->
+    <FormDialog
       v-model="showGenerateDialog"
-      persistent
+      title="Toplu Belge Oluştur"
+      icon="note_add"
+      color="primary"
     >
-      <q-card style="min-width: 420px">
-        <q-card-section>
-          <h2 class="text-h6 q-my-none">
-            Toplu Belge Oluştur
-          </h2>
-          <div class="text-caption text-grey-7">
-            Seçili form tipi ve dönem için eksik belgeler otomatik oluşturulur.
-            Zaten oluşturulmuş belgeler tekrar oluşturulmaz.
-          </div>
-        </q-card-section>
+      <div class="text-caption text-grey-7">
+        Seçili form tipi ve dönem için eksik belgeler otomatik oluşturulur.
+        Zaten oluşturulmuş belgeler tekrar oluşturulmaz.
+      </div>
 
-        <q-card-section class="q-gutter-md">
+      <q-select
+        v-model="batchForm.formType"
+        :options="batchFormTypeOptions"
+        label="Form Tipi"
+        outlined
+        dense
+        emit-value
+        map-options
+      />
+
+      <div class="row q-col-gutter-sm">
+        <div class="col-6">
           <q-select
-            v-model="batchForm.formType"
-            :options="batchFormTypeOptions"
-            label="Form Tipi"
+            v-model="batchForm.year"
+            :options="yearOptions"
+            label="Yıl"
             outlined
             dense
             emit-value
             map-options
           />
+        </div>
+        <div class="col-6">
+          <q-select
+            v-model="batchForm.month"
+            :options="monthOptions"
+            label="Ay"
+            outlined
+            dense
+            emit-value
+            map-options
+          />
+        </div>
+      </div>
 
-          <div class="row q-col-gutter-sm">
-            <div class="col-6">
-              <q-select
-                v-model="batchForm.year"
-                :options="yearOptions"
-                label="Yıl"
-                outlined
-                dense
-                emit-value
-                map-options
-              />
-            </div>
-            <div class="col-6">
-              <q-select
-                v-model="batchForm.month"
-                :options="monthOptions"
-                label="Ay"
-                outlined
-                dense
-                emit-value
-                map-options
-              />
-            </div>
-          </div>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn
-            flat
-            label="İptal"
-            color="grey"
-            @click="showGenerateDialog = false"
-          />
-          <q-btn
-            v-if="batchForm.formType === 'MonthlyAttendanceReport'"
-            flat
-            icon="preview"
-            label="Önizle"
-            color="info"
-            :loading="previewing"
-            @click="previewBatchMonthlyAttendance"
-          />
-          <q-btn
-            label="Oluştur"
-            color="positive"
-            :loading="generating"
-            :disable="!batchForm.formType"
-            @click="generateBatch"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+      <!--
+        Koşullu "Önizle" butonu varsayılan eylem çubuğuna sığmadığı için #actions
+        override edilir; İptal butonu bu yüzden elle yazılır.
+      -->
+      <template #actions>
+        <q-btn
+          flat
+          label="İptal"
+          color="grey-7"
+          @click="showGenerateDialog = false"
+        />
+        <q-btn
+          v-if="batchForm.formType === 'MonthlyAttendanceReport'"
+          flat
+          icon="preview"
+          label="Önizle"
+          color="info"
+          :loading="previewing"
+          @click="previewBatchMonthlyAttendance"
+        />
+        <q-btn
+          label="Oluştur"
+          color="positive"
+          unelevated
+          :loading="generating"
+          :disable="!batchForm.formType"
+          @click="generateBatch"
+        />
+      </template>
+    </FormDialog>
   </q-page>
 </template>
 
@@ -293,6 +293,8 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { Permissions } from 'src/utils/permissions'
 import AppTable from 'components/AppTable.vue'
+import PageHeader from 'components/PageHeader.vue'
+import FormDialog from 'components/FormDialog.vue'
 import {
   reportingApi,
   downloadBlob,

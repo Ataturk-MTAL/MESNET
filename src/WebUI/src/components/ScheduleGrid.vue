@@ -1,10 +1,14 @@
 <template>
   <div class="schedule-grid">
-    <table class="full-width">
+    <table
+      class="full-width tabular-nums"
+      aria-label="Ders programı tablosu. Satırlar ders saatini, sütunlar haftanın gününü gösterir; her hücre dolu veya boş durumundadır."
+    >
       <thead>
         <tr>
           <th
-            class="text-left text-caption text-grey-7"
+            scope="col"
+            class="text-left text-caption text-weight-medium text-grey-8"
             style="width: 60px"
           >
             Saat
@@ -12,7 +16,8 @@
           <th
             v-for="day in days"
             :key="day.value"
-            class="text-center text-caption text-grey-7"
+            scope="col"
+            class="text-center text-caption text-weight-medium text-grey-8"
           >
             {{ day.label }}
           </th>
@@ -23,9 +28,12 @@
           v-for="period in periodCount"
           :key="period"
         >
-          <td class="text-center text-weight-medium text-grey-8">
+          <th
+            scope="row"
+            class="text-center text-weight-medium text-grey-8"
+          >
             {{ period }}.
-          </td>
+          </th>
           <td
             v-for="day in days"
             :key="day.value"
@@ -64,10 +72,13 @@
     </table>
 
     <!-- Özet -->
-    <div class="row q-mt-md q-gutter-md">
+    <div class="row q-mt-md q-gutter-md tabular-nums">
+      <!-- Ham palet tonu (grey-3 #eeeeee) tema değişince yerinde donardı. Çip, özetlediği
+           "Dolu" hücresiyle AYNI tonu kullanır: bg-neutral-soft (#edeff2) + grey-8 (#616161)
+           = 5,38:1 (ölçüldü, eşik 4,5:1). Kardeş çipler de tema türevi. -->
       <q-chip
         icon="event_busy"
-        color="grey-3"
+        color="neutral-soft"
         text-color="grey-8"
         dense
       >
@@ -130,10 +141,15 @@ function cellLabel(dayLabel: string, dayValue: string, periodNumber: number): st
   return `${dayLabel} ${periodNumber}. ders: ${durum}`
 }
 
+// Dolu hücre zemini ham Quasar tonu (`bg-grey-2`, #f5f5f5) DEĞİL, tema türevi nötr:
+// `bg-neutral-soft` (app.css) = color-mix(in srgb, var(--q-primary) 8%, #fff), düz hex
+// yedeği #edeff2 — kardeş AssignmentGrid'in `.cell-occupied` zeminiyle birebir aynı.
+// Ham palet tonu kiracı teması değişince yerinde donardı, türetilmiş ton birlikte kayar.
+// ÖLÇÜLDÜ: hücre metni text-grey-8 (#616161) bu zemin üzerinde 5,38:1 (eşik 4,5:1).
 function cellClass(dayValue: string, periodNumber: number): string {
   const occupied = isOccupied(dayValue, periodNumber)
   const base = props.editing ? 'cursor-pointer ' : ''
-  return base + (occupied ? 'bg-grey-2' : 'bg-positive-soft')
+  return base + (occupied ? 'bg-neutral-soft' : 'bg-positive-soft')
 }
 
 function onCellClick(dayValue: string, periodNumber: number) {
@@ -176,12 +192,20 @@ const freeCount = computed(() => totalSlots.value - occupiedCount.value)
 
 .schedule-grid th,
 .schedule-grid td {
-  border: 1px solid #e0e0e0;
+  border: 1px solid rgba(30, 58, 95, 0.14);
+  border: 1px solid color-mix(in srgb, var(--q-primary) 14%, transparent);
   padding: 6px 8px;
 }
 
-.schedule-grid th {
-  background: #fafafa;
+/* Başlık bandı dolu hücreden BİR BASAMAK koyu: ikisi de primary türevi olduğu için tema
+   değişince birlikte kayar, ama rolleri ayrışır (bant %12 = #e4e7ec, dolu hücre
+   .bg-neutral-soft %8 = #edeff2). Eskiden ikisi de #edeff2 idi ve aynı punto/ağırlık/
+   hizalamayla birlikte tümü dolu bir satır ikinci bir başlık satırı gibi okunuyordu.
+   Ayrım tek başına tonla bırakılmıyor; başlık ayrıca text-weight-medium taşır.
+   ÖLÇÜLDÜ: text-grey-8 (#616161) bu bant üzerinde 4,996:1 (eşik 4,5:1). */
+.schedule-grid thead th {
+  background: #e4e7ec;
+  background: color-mix(in srgb, var(--q-primary) 12%, #fff);
 }
 
 .schedule-cell {
