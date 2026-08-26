@@ -23,6 +23,10 @@ public static class InstitutionEndpoints
         group.MapGet("/provinces", GetProvinceList).RequireAuthorization(Permissions.Institution.View);
         group.MapGet("/provinces/{provinceCode}/districts", GetDistrictList)
             .RequireAuthorization(Permissions.Institution.View);
+        // Küratörlü marka paleti kataloğu — kurum kapsamı yok (katalog her okulda aynı ve
+        // koddan gelir). Aynı gerekçeyle /{institutionId:guid} kalıbından ÖNCE kaydedilir.
+        group.MapGet("/brand-palettes", GetBrandPaletteCatalog)
+            .RequireAuthorization(Permissions.Institution.View);
 
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Institution.View);
         group.MapGet("/{institutionId:guid}", Get).RequireAuthorization(Permissions.Institution.View);
@@ -31,6 +35,9 @@ public static class InstitutionEndpoints
         // ile açıkken A okulunun müdürü ikinci bir okul yaratabiliyordu.
         group.MapPost("/", Post).RequireAuthorization(Permissions.Platform.TenantManage);
         group.MapPatch("/{institutionId:guid}", Patch).RequireAuthorization(Permissions.Institution.Manage);
+        // Marka paleti kurum ayarıdır — FieldCatalog/AcademicPeriod ayar uçlarıyla aynı izin.
+        group.MapPut("/{institutionId:guid}/brand-palette", PutBrandPalette)
+            .RequireAuthorization(Permissions.Institution.Manage);
         group.MapPost("/{institutionId:guid}/staff", PostStaff).RequireAuthorization(Permissions.Institution.Staff);
         group.MapPut("/{institutionId:guid}/schedule-config", PutScheduleConfig).RequireAuthorization(Permissions.Institution.Manage);
         group.MapGet("/{institutionId:guid}/schedule-config", GetScheduleConfig).RequireAuthorization(Permissions.Institution.View);
@@ -70,6 +77,29 @@ public static class InstitutionEndpoints
                 $"{result.TotalStaff} personel incelendi, {result.Published} kayıt için alan bilgisi yayınlandı " +
                 $"({result.SkippedNoBranch} personelin alanı yok — normal, " +
                 $"{result.SkippedNoKeycloakId} personel eşleştirilemedi).")
+            .Build());
+    }
+
+    /// <summary>
+    /// Seçilebilir palet listesi. Hex'ler buradan gelir — arayüz onları <b>ikinci kez
+    /// tanımlamaz</b>; iki kopya olsaydı biri güncellenir, diğeri ölçülmemiş renkle kalırdı.
+    /// </summary>
+    private static async Task<IResult> GetBrandPaletteCatalog(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<BrandPaletteListDto>(new GetBrandPalettes());
+        return Results.Ok(ResponseBuilder.Success().AddData(result.Items).Build());
+    }
+
+    /// <summary>
+    /// Kurumun marka paletini değiştirir. Gövde yalnız <c>paletteName</c> taşır; hex kabul
+    /// edilmez — küme kapalıdır, tanınmayan anahtar 422 döner.
+    /// </summary>
+    private static async Task<IResult> PutBrandPalette(
+        Guid institutionId, SetInstitutionBrandPalette command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command with { InstitutionId = institutionId });
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Kurum teması güncellendi.")
             .Build());
     }
 

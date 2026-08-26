@@ -76,6 +76,11 @@ html {
  * kalırdı. Yedek, o tarayıcılarda tonu sabit tutar (tema takibi kaybolur, okunurluk
  * korunur). Tema rengi değişirse yedekleri de güncelle; değerler mevcut temadan
  * hesaplandı.
+ *
+ * Çalışma zamanı kiracı teması (utils/brandTheme.ts, --q-primary/--q-secondary'yi kaydırır)
+ * bu yedekleri ETKİLEMEZ: hepsi varsayılan palete (Mührü Lacivert) göre hesaplandığı için
+ * color-mix() desteklemeyen tarayıcıda kiracının rengi değil varsayılan tonlar görünür —
+ * bu bir kırılma değil, okunabilir bir geri düşüştür.
  */
 .bg-primary-soft {
   background-color: #e4e7ec;
@@ -133,11 +138,6 @@ html {
 }
 
 /*
- * Nötr ton — anlamsal DURUM taşımayan kategori etiketleri için (sektör, rol, kaynak,
- * form tipi rozetleri). Bunları positive/info gibi bir role bağlamak yanlış anlam
- * yükler: "sektör: Metal" ne olumlu ne bilgilendirici bir durumdur.
- *
-/*
  * "SIRA SİZDE" tonu — $accent (hardal) tek rolü.
  *
  * Bu ton yalnız bir anlama gelir: kaydı bekleten taraf, ekrana bakan kullanıcının KENDİSİ.
@@ -169,6 +169,11 @@ html {
   background-color: color-mix(in srgb, var(--q-accent) 60%, #000);
 }
 
+/*
+ * Nötr ton — anlamsal DURUM taşımayan kategori etiketleri için (sektör, rol, kaynak,
+ * form tipi rozetleri). Bunları positive/info gibi bir role bağlamak yanlış anlam
+ * yükler: "sektör: Metal" ne olumlu ne bilgilendirici bir durumdur.
+ *
  * Yine de ham `blue-grey` paletinde bırakılmıyor; marka lacivertiyle tonlanmış nötr
  * üretiliyor — ayraç ve gölgede zaten uygulanan yaklaşımın (bkz. $separator-color)
  * aynısı. Tema değişince nötr de birlikte kayar.

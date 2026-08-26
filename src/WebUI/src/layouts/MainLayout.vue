@@ -409,6 +409,27 @@ onMounted(async () => {
   }
 })
 
+/*
+ * Kiracının marka teması (#brand-palette).
+ *
+ * Tetikleyici burada duruyor çünkü MainLayout kimliği doğrulanmış kabuktur: her sayfa
+ * bunun içinde açılır, yani tema hangi rotadan girilirse girilsin uygulanır. Temayı asıl
+ * UYGULAYAN yer store'dur (`loadInstitution` → `applyBrandTheme`); burada yalnız yükleme
+ * tetiklenir, renk mantığı tekrarlanmaz.
+ *
+ * Kapı `institution:view`: kurum ucu o izni ister ve izni olmayan rol (ör. işletme
+ * yetkilisi) için istek 403 dönerdi. İzinsiz kullanıcı derleme zamanı varsayılanını
+ * (Mührü Lacivert) görür — bu bir kırılma değil, kapsamın dürüst sonucudur.
+ *
+ * `await` edilmiyor: tema kozmetiktir, dönem yüklemesini ya da ilk boyamayı bekletmemeli.
+ * `void` yerine `.catch(() => {})` — CLAUDE.md fire-and-forget kuralı.
+ */
+onMounted(() => {
+  if (!authStore.isAuthenticated) return
+  if (!authStore.hasPermission(Permissions.Institution.View)) return
+  institutionStore.loadInstitution().catch(() => {})
+})
+
 async function onLogout() {
   await logout()
 }

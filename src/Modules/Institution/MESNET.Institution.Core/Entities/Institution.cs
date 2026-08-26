@@ -33,6 +33,29 @@ public class Institution
     /// </summary>
     public string? DistrictName { get; set; }
 
+    /// <summary>
+    /// Kurumun seçtiği marka paletinin <b>anahtarı</b> —
+    /// <c>InstitutionBrandPalette.Name</c> değeri (<c>Lacivert</c>, <c>Bordo</c>, ...).
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Neden ham hex değil anahtar:</b> arayüzün bütün kontrast güvencesi primary'ye
+    /// bağlıdır. Buraya serbest hex saklansaydı, veriye düşen tek bozuk değer üst bardaki,
+    /// birincil butondaki ve rozetlerdeki <b>beyaz metni okunmaz</b> yapardı ve bunu ne
+    /// derleyici ne de bir test görebilirdi. Anahtar saklanınca palet kodda yaşar
+    /// (<see cref="MESNET.Institution.Core.Enums.InstitutionBrandPalette"/>) ve kontrast
+    /// kapıları testle kilitlenir.</para>
+    ///
+    /// <para><b>Null ne demek:</b> kurum henüz seçim yapmadı → varsayılan palet
+    /// (<c>Lacivert</c> / Mührü Lacivert) geçerlidir. Tanınmayan bir değer de aynı yere düşer;
+    /// çeviri tek noktada, <c>InstitutionBrandPalette.Resolve</c> içindedir.</para>
+    ///
+    /// <para>Nullable, <c>required</c> DEĞİL: mevcut kayıtlar bu alan olmadan saklandı;
+    /// <c>required</c> yapılırsa System.Text.Json eksik alan yüzünden her eski kurumun
+    /// okunmasını <c>JsonException</c> ile keser (aynı tuzak <see cref="ProvinceCode"/>
+    /// yorumunda anlatıldı).</para>
+    /// </remarks>
+    public string? BrandPaletteName { get; set; }
+
     public string? PhoneNumber { get; set; }
     public string? Email { get; set; }
     public string? WebUrl { get; set; }

@@ -29,6 +29,15 @@ public static class InstitutionErrors
             $"Bu kullanıcı kurumda zaten yetkilendirilmiş: {keycloakId}. " +
             "Rol ya da alan değişikliği için mevcut kaydı güncelleyin.");
 
+    /// <summary>
+    /// Palet anahtarı küratörlü kümede yok. Serbest renk kabul edilmediği için bu, girdi
+    /// hatasıdır: geçerli anahtarlar mesajda sayılır ki çağıran katalog ucuna gitmeden
+    /// düzeltebilsin.
+    /// </summary>
+    public static Error UnknownBrandPalette(string paletteName, IEnumerable<string> allowed) =>
+        new("Institution.UnknownBrandPalette",
+            $"Tanınmayan marka paleti: \"{paletteName}\". Geçerli seçenekler: {string.Join(", ", allowed)}.");
+
     public static Error NotFound(Guid id) =>
         new("Institution.NotFound", $"Kurum bulunamadı: {id}");
 
