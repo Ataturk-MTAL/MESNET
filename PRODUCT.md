@@ -103,9 +103,10 @@ katalog ucu `GET /api/institutions/brand-palettes` (`institution:view`), atama u
 `PUT /api/institutions/{institutionId}/brand-palette` (`institution:manage`), kilitleyen
 kontrast testi ve **çalışma zamanı uygulaması** (`utils/brandTheme.ts` → `--q-primary` /
 `--q-secondary`, kurum profili yüklenirken tetiklenir; geçersiz değerde derleme zamanı
-varsayılanına düşer). **Bugün olmayan:** arayüzde palet seçici — hiçbir sayfa katalog/atama
-uçlarını çağırmıyor, palet yalnız API üzerinden değişiyor. Beyaz etiketin logo tarafı da
-açık: web logosu ve favicon yok.
+varsayılanına düşer). Seçici arayüzde: Kurum Bilgileri sekmesindeki
+"Kurum Teması" kartı (`institution:manage` ile korunan "Değiştir" butonu, katalog ucundan
+gelen seçenekler). **Bugün olmayan:** beyaz etiketin logo tarafı — web logosu ve favicon
+yok.
 
 **Açık/karara bağlanmamış:** Koyu tema değişkenleri tanımlı (`$dark`, `$dark-page`)
 ama **kullanılmıyor** — koyu tema hâlâ ürün kararı değildir.

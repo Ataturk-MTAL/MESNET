@@ -156,9 +156,12 @@ nötr saf gri değildir, hepsi mührü lacivertle tonlanır.
 
 ### Tertiary
 - **Resmî Hardal** (`{colors.resmi-hardal}`): **Sıra sizde** sinyali — kullanıcının kendi
-  eylemini bekleyen satır veya rozet. Bugün kod tabanında **0 kullanımı vardır**; bu rol
-  bilerek açılmış, henüz uygulanmamıştır. Beyaz üzerinde 2,4:1 verir, metin rengi olarak
-  kullanılamaz.
+  eylemini bekleyen satır veya rozet. Beyaz üzerinde 2,4:1 verir, yani ham hâliyle metin
+  ya da grafik rengi olamaz; kullanım daima ölçülmüş türevlerden geçer
+  (`.bg-accent-soft`, `.text-accent-strong` #796117 → 4,98:1, `.bg-accent-strong`).
+  Bugünkü tüketicileri: `StatCard`ın `tone="accent"` ekseni (panelde yalnız
+  "sıra sizde" sayacı, `DashboardPage`), kullanıcı yönetimindeki bekleyen rozet.
+  `color` prop'uyla verilmez — `color="accent"` saf hardal metin üretirdi.
 
 ### Neutral
 - **Nötr Gövde** (`{colors.notr-govde}`): Anlamsal durum taşımayan kategori rozetleri
@@ -231,9 +234,11 @@ tık farklıdır (5,09:1 ↔ 5,11:1 — ikisi de eşiği geçer).
 `color-mix()` ile bu değişkenden türeyen bütün `-soft` / `-strong` / durum tonları onunla
 birlikte kayar. İki değerden biri bile geçersizse hiçbiri uygulanmaz ve tema derleme zamanı
 varsayılanına döner — yarım uygulanmış palet, primary'si bir kiracıdan secondary'si
-başkasından gelen ölçülmemiş bir çift demektir. **Eksik olan tek halka arayüzdeki seçici:**
-katalog ve atama uçları hazır, ama henüz hiçbir sayfa onları çağırmıyor; palet bugün yalnız
-API üzerinden değişir.
+başkasından gelen ölçülmemiş bir çift demektir. **Seçici arayüzdedir:** kurum ayarlarının
+Kurum Bilgileri sekmesindeki "Kurum Teması" kartı geçerli paleti örnekle gösterir,
+"Değiştir" butonu `institution:manage` ile korunur (`PermissionGuard`) ve seçenekleri
+katalog ucundan okur. Kaydetmeden sonra kurum profili yeniden yüklenir; tema o tek kapıdan
+tazelenir.
 
 ### Named Rules
 
