@@ -1,9 +1,9 @@
 using Marten;
 using MESNET.Common.Shared;
-using MESNET.Common.Shared.Security;
 using MESNET.Institution.Application.Commands;
 using MESNET.Institution.Application.Errors;
 using MESNET.Institution.Core.Enums;
+using MESNET.Institution.Core.Services;
 using MESNET.Institution.Shared.Events;
 using Wolverine;
 
@@ -18,27 +18,24 @@ public static class CreateInstitutionHandler
         var id = command.Id ?? Guid.NewGuid();
         var nodeType = InstitutionNodeType.Resolve(command.NodeType);
 
-        // Yol üst düğümden türetilir. Üst yoksa yalnız İL düğümü kök olarak yol alır; okul ve
-        // ilçe yolsuz doğar ve geçiş ucu doldurur (bugünkü kayıtlarla aynı durum).
-        string? path = null;
-
+        // Üst düğüm varsa yüklenir; yol kararı InstitutionNodePlacement.Resolve'a (saf
+        // fonksiyon) devredilir — veritabanı erişimi burada, karar orada.
+        Core.Entities.Institution? parent = null;
         if (command.ParentId is { } parentId)
-        {
-            var parent = await session
-                .LoadAsync<Core.Entities.Institution>(parentId, cancellationToken)
-                ?? throw new DomainException(InstitutionErrors.ParentNotFound(parentId));
+            parent = await session.LoadAsync<Core.Entities.Institution>(parentId, cancellationToken);
 
-            // Yolsuz bir üstün altına düğüm eklenirse çocuğun yolu da kurulamaz ve İKİSİ de
-            // hiçbir kapsamda görünmez — hata değil, sessiz boşluk. Bu yüzden reddedilir.
-            if (string.IsNullOrWhiteSpace(parent.Path))
-                throw new DomainException(InstitutionErrors.ParentHasNoPath(parentId));
+        var placement = InstitutionNodePlacement.Resolve(
+            nodeType, id, command.ParentId, parentExists: parent is not null, parentPath: parent?.Path);
 
-            path = InstitutionPath.Child(parent.Path, id);
-        }
-        else if (nodeType == InstitutionNodeType.Province)
+        var path = placement.Outcome switch
         {
-            path = InstitutionPath.Root(id);
-        }
+            NodePlacementOutcome.Ok => placement.Path,
+            NodePlacementOutcome.ParentMissing =>
+                throw new DomainException(InstitutionErrors.ParentNotFound(command.ParentId!.Value)),
+            NodePlacementOutcome.ParentHasNoPath =>
+                throw new DomainException(InstitutionErrors.ParentHasNoPath(command.ParentId!.Value)),
+            _ => throw new InvalidOperationException($"Tanınmayan yerleşim sonucu: {placement.Outcome}")
+        };
 
         var institution = new Core.Entities.Institution
         {

@@ -39,7 +39,7 @@ public class CreateInstitutionValidator : AbstractValidator<CreateInstitution>
         // sessizce School yapar — o hoşgörü OKUMA tarafı içindir (eski kayıtlar). Burada
         // sessiz kalsaydı kullanıcı il müdürlüğü açtığını sanırken bir okul doğardı.
         RuleFor(x => x.NodeType)
-            .Must(name => InstitutionNodeType.TryFromName(name, ignoreCase: true, out _))
+            .Must(name => InstitutionNodeType.TryFromName(name!.Trim(), ignoreCase: true, out _))
             .When(x => !string.IsNullOrWhiteSpace(x.NodeType))
             .WithMessage("Geçerli bir kurum türü seçiniz (Province / District / School).");
 
