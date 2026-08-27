@@ -71,4 +71,22 @@ public static class InstitutionErrors
 
     public static Error InvalidGradeEntryWindow() =>
         new("Institution.InvalidGradeEntryWindow", "Not giriş penceresi bitiş tarihi, başlangıç tarihinden önce olamaz.");
+
+    /// <summary>
+    /// Verilen üst düğüm yok. Ağaç bağı kurulamaz; kayıt <b>yaratılmaz</b> — yolsuz bir düğüm
+    /// yaratıp "sonra düzeltiriz" demek, kimsenin göremediği bir kayıt bırakmaktır.
+    /// </summary>
+    public static Error ParentNotFound(Guid parentId) =>
+        new("Institution.ParentNotFound",
+            $"Üst kurum bulunamadı (kimlik: {parentId}).");
+
+    /// <summary>
+    /// Üst düğümün yolu yok — geçiş ucu (<c>POST /api/institutions/rebuild-hierarchy</c>) o
+    /// kayıt için henüz koşmamış. Yolsuz bir üstün altına düğüm eklenirse çocuğun yolu da
+    /// kurulamaz ve ikisi de hiçbir kapsamda görünmez.
+    /// </summary>
+    public static Error ParentHasNoPath(Guid parentId) =>
+        new("Institution.ParentHasNoPath",
+            $"Üst kurumun ağaç bilgisi eksik (kimlik: {parentId}). "
+            + "Önce POST /api/institutions/rebuild-hierarchy çalıştırılmalıdır.");
 }
