@@ -5,36 +5,40 @@ using Xunit;
 namespace MESNET.Security.UnitTests;
 
 /// <summary>
-/// Hangi okulun verisine dokunulabileceği kararı (ADR-0003 adım 6).
+/// Hangi kurumun verisine dokunulabileceği kararı (ADR-0003 adım 6 + kurum hiyerarşisi).
 ///
 /// <para><b>Neden gerekti — ölçüldü.</b> İki okullu dev ortamında bu kontrol yokken B okulunun
 /// müdürü A okulunun kaydını <b>okudu</b> (200, 7 kişilik personel listesiyle), <b>adını
 /// değiştirdi</b> (200) ve personel listesine <b>kayıt ekledi</b> (201). Marten conjoined
 /// kiracılığı bunu engelleyemez: <c>Institution</c> belgesi kiracının kendisidir ve kiracı
 /// damgası taşımaz.</para>
+///
+/// <para><b>Karar neden üç sonuçlu:</b> yol karşılaştırması hedefin kaydını okumayı gerektirir.
+/// Kararı "izin var / yok / yola bakmak gerekiyor" diye ayırmak, okul kullanıcısının (aktör ==
+/// hedef) hiçbir isteğinde ek okuma yapılmamasını sağlar — ek maliyet yalnız yeni üst-düğüm
+/// yeteneği kullanıldığında ödenir.</para>
 /// </summary>
 public sealed class InstitutionScopePolicyTests
 {
     private static readonly Guid OkulA = Guid.Parse("efd57b88-2f47-471c-9f51-476f80fabfca");
     private static readonly Guid OkulB = Guid.Parse("a24ebbab-8c58-4373-b936-640fa3247e77");
 
+    // ── Decide: kimlik aşaması ──
+
     [Fact]
-    public void Kendi_kurumuna_erisebilir()
+    public void Kendi_kurumuna_erisir_ve_yol_okumasi_gerekmez()
     {
-        InstitutionScopePolicy.CanAccess(OkulA, OkulA, hasPlatformScope: false).ShouldBeTrue();
+        InstitutionScopePolicy.Decide(OkulA, OkulA, hasPlatformScope: false)
+            .ShouldBe(InstitutionScopeOutcome.Allowed);
     }
 
     [Fact]
-    public void Baska_kuruma_erisemez()
+    public void Baska_kurum_yol_kontrolune_dusurulur()
     {
-        InstitutionScopePolicy.CanAccess(OkulA, OkulB, hasPlatformScope: false).ShouldBeFalse(
-            "Okul müdürü diğer okulun kaydına dokunamamalı — ölçülen sızıntı buydu.");
+        InstitutionScopePolicy.Decide(OkulA, OkulB, hasPlatformScope: false)
+            .ShouldBe(InstitutionScopeOutcome.NeedsPathCheck);
     }
 
-    /// <summary>
-    /// Kapsamsızlık <b>sınırsızlık değildir</b>. Kurumu olmayan kullanıcı (henüz bağlanmamış
-    /// hesap) hiçbir kurumun verisine erişemez.
-    /// </summary>
     [Theory]
     [InlineData(null)]
     [InlineData("00000000-0000-0000-0000-000000000000")]
@@ -42,50 +46,98 @@ public sealed class InstitutionScopePolicyTests
     {
         Guid? actor = actorId is null ? null : Guid.Parse(actorId);
 
-        InstitutionScopePolicy.CanAccess(actor, OkulA, hasPlatformScope: false).ShouldBeFalse();
+        InstitutionScopePolicy.Decide(actor, OkulA, hasPlatformScope: false)
+            .ShouldBe(InstitutionScopeOutcome.Denied);
+    }
+
+    /// <summary>Muafiyet ÖNCE bakılır; platform aktörünün kendi kurumu yoktur.</summary>
+    [Fact]
+    public void Kurum_ustu_aktor_her_kuruma_erisir()
+    {
+        InstitutionScopePolicy.Decide(null, OkulB, hasPlatformScope: true)
+            .ShouldBe(InstitutionScopeOutcome.Allowed);
+        InstitutionScopePolicy.Decide(OkulA, OkulB, hasPlatformScope: true)
+            .ShouldBe(InstitutionScopeOutcome.Allowed);
+    }
+
+    [Fact]
+    public void Bos_hedef_reddedilir()
+    {
+        InstitutionScopePolicy.Decide(OkulA, Guid.Empty, hasPlatformScope: false)
+            .ShouldBe(InstitutionScopeOutcome.Denied);
+    }
+
+    // ── CanAccessByPath: ağaç aşaması ──
+
+    [Fact]
+    public void Il_yetkilisi_kendi_ilindeki_okulu_gorur()
+    {
+        InstitutionScopePolicy.CanAccessByPath("/il/", "/il/ilce/okul/").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Il_yetkilisi_baska_ilin_okulunu_goremez()
+    {
+        InstitutionScopePolicy.CanAccessByPath("/il/", "/baskail/ilce/okul/").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Okul_ust_dugumu_goremez()
+    {
+        InstitutionScopePolicy.CanAccessByPath("/il/ilce/okul/", "/il/ilce/").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Yolu_olmayan_aktor_yol_kontrolunu_gecemez()
+    {
+        InstitutionScopePolicy.CanAccessByPath(null, "/il/ilce/okul/").ShouldBeFalse();
+    }
+
+    // ── VisibleScope: listeleme daraltması ──
+
+    [Fact]
+    public void Kurum_ustu_aktorun_listesi_daraltilmaz()
+    {
+        var scope = InstitutionScopePolicy.VisibleScope(null, null, hasPlatformScope: true);
+
+        scope.Unrestricted.ShouldBeTrue();
+        scope.PathPrefix.ShouldBeNull();
+        scope.InstitutionId.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Yolu_olan_aktorun_listesi_alt_agaca_daraltilir()
+    {
+        var scope = InstitutionScopePolicy.VisibleScope(OkulA, "/il/", hasPlatformScope: false);
+
+        scope.Unrestricted.ShouldBeFalse();
+        scope.PathPrefix.ShouldBe("/il/");
+        scope.InstitutionId.ShouldBeNull();
     }
 
     /// <summary>
-    /// Kurum üstü aktör (yeni okul açan) her kuruma erişir. Muafiyet <b>önce</b> bakılır;
-    /// aksi hâlde kendi kurumu olmadığı için ilk kuralda elenirdi.
+    /// <b>Geçiş ucu koşturulmadan yapılan dağıtım kurum sayfasını KIRMAMALI.</b> Yolu olmayan
+    /// aktör bugünkü davranışı korur: yalnız kendi kurumunu görür. Bu bir genişletme değildir —
+    /// yolu olmayan aktör hiçbir şey KAZANMAZ, yalnız sahip olduğunu kaybetmez.
     /// </summary>
     [Fact]
-    public void Platform_aktoru_her_kuruma_erisir()
+    public void Yolu_olmayan_aktor_yalniz_kendi_kurumunu_gorur()
     {
-        InstitutionScopePolicy.CanAccess(null, OkulB, hasPlatformScope: true).ShouldBeTrue();
-        InstitutionScopePolicy.CanAccess(OkulA, OkulB, hasPlatformScope: true).ShouldBeTrue();
+        var scope = InstitutionScopePolicy.VisibleScope(OkulA, null, hasPlatformScope: false);
+
+        scope.Unrestricted.ShouldBeFalse();
+        scope.PathPrefix.ShouldBeNull();
+        scope.InstitutionId.ShouldBe(OkulA);
     }
 
-    /// <summary>Boş hedef bir kurum değildir; istekte alan boş bırakılarak kontrol atlatılamaz.</summary>
+    /// <summary>Kapsamsızlık sınırsızlık değildir: hiçbir kurumla eşleşmeyen bir daraltma döner.</summary>
     [Fact]
-    public void Bos_hedef_kabul_edilmez()
+    public void Kapsamsiz_aktorun_listesi_bos_gelir()
     {
-        InstitutionScopePolicy.CanAccess(OkulA, Guid.Empty, hasPlatformScope: false).ShouldBeFalse();
-    }
+        var scope = InstitutionScopePolicy.VisibleScope(null, null, hasPlatformScope: false);
 
-    [Fact]
-    public void Listeleme_kendi_kurumuna_daralir()
-    {
-        InstitutionScopePolicy.VisibleInstitutionFilter(OkulA, hasPlatformScope: false)
-            .ShouldBe(OkulA);
-    }
-
-    [Fact]
-    public void Platform_aktorunun_listesi_daraltilmaz()
-    {
-        InstitutionScopePolicy.VisibleInstitutionFilter(null, hasPlatformScope: true)
-            .ShouldBeNull();
-    }
-
-    /// <summary>
-    /// Kapsamsız aktör <b>boş liste</b> görür, her şeyi değil. Süzgeç <c>null</c> dönseydi
-    /// "daraltma yok" anlamına gelir ve bütün okulları açardı — sessiz sızıntının kılık
-    /// değiştirmiş hâli.
-    /// </summary>
-    [Fact]
-    public void Kapsamsiz_aktor_bos_liste_gorur()
-    {
-        InstitutionScopePolicy.VisibleInstitutionFilter(null, hasPlatformScope: false)
-            .ShouldBe(Guid.Empty);
+        scope.Unrestricted.ShouldBeFalse();
+        scope.PathPrefix.ShouldBeNull();
+        scope.InstitutionId.ShouldBe(Guid.Empty);
     }
 }
