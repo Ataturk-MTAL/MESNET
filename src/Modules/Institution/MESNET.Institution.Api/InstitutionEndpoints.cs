@@ -47,6 +47,11 @@ public static class InstitutionEndpoints
         // (kiracı anahtarı, ADR-0003 adım 2.1). Olay yeniden yayınlanır, Security tüketir —
         // modüller arası doğrudan veri yazma yoktur.
         group.MapPost("/staff/resync-branch-codes", PostResyncStaffBranchCodes).RequireAuthorization(Permissions.Institution.Staff);
+        // Kurum ağacı geçişi — DAĞITIM ÖN KOŞULU, idempotent. Atlanırsa sessizdir: yollar boş
+        // kalır ve il/ilçe yetkilisi hata değil BOŞ LİSTE görür. Kurum üstü bir iştir:
+        // institution:manage "kurum yönetebilir" der, "bütün ağacı yeniden kurabilir" demez.
+        group.MapPost("/rebuild-hierarchy", PostRebuildHierarchy)
+            .RequireAuthorization(Permissions.Platform.TenantManage);
 
         return app;
     }
@@ -78,6 +83,28 @@ public static class InstitutionEndpoints
                 $"{result.TotalStaff} personel incelendi, {result.Published} kayıt için alan bilgisi yayınlandı " +
                 $"({result.SkippedNoBranch} personelin alanı yok — normal, " +
                 $"{result.SkippedNoKeycloakId} personel eşleştirilemedi).")
+            .Build());
+    }
+
+    /// <summary>
+    /// Kurum ağacını mevcut okul künyelerinden yeniden kurar. İdempotent — birden çok kez
+    /// çağrılabilir.
+    /// </summary>
+    private static async Task<IResult> PostRebuildHierarchy(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<RebuildInstitutionHierarchyResult>(
+            new RebuildInstitutionHierarchy());
+
+        var uyari = result.SkippedNoProvince > 0
+            ? $" {result.SkippedNoProvince} okulun il kodu yok; kapsamsız kaldılar ve hiçbir "
+              + "il/ilçe yetkilisinin listesinde görünmezler."
+            : string.Empty;
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage(
+                $"Kurum ağacı kuruldu: {result.ProvincesCreated} il, {result.DistrictsCreated} ilçe "
+                + $"müdürlüğü açıldı, {result.NodesUpdated} düğümün ağaç bilgisi yazıldı.{uyari}")
             .Build());
     }
 

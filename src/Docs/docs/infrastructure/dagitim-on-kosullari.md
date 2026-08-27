@@ -462,6 +462,7 @@ Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden 
 | `POST /api/coordination/weekly-visits/resync` | Haftalık ziyaret olaylarını yeniden yayınlar |
 | `POST /api/institutions/staff/resync-branch-codes` | Personel kaydından kullanıcı hesabına **kurum (kiracı anahtarı) ve alan kapsamı** backfill'i — **uydurmaz, üzerine yazmaz**; yalnız boş alanı doldurur. **Yalnız çağıranın kendi okulu** için çalışır (#131); kurum üstü aktör `?institutionId=` ile hedef verir |
 | `POST /api/security/users/resync-display-names` | Kullanıcı görünen adlarını tazeler |
+| `POST /api/institutions/rebuild-hierarchy` | Kurum **ağacını** mevcut okul künyelerinden (`ProvinceCode` / `DistrictName`) kurar: il ve ilçe müdürlüğü düğümlerini açar, `ParentId` ve `Path` yazar. `platform:tenant:manage` ister. **İdempotent** — ikinci koşu düğüm çoğaltmaz, bozulmuş yolu onarır |
 
 ### Personel backfill'i tek okulludur (#131)
 
@@ -480,6 +481,27 @@ POST /api/institutions/staff/resync-branch-codes?institutionId=<id>   → platfo
 ```
 
 Yabancı hedef veren okul aktörü **422** alır.
+
+### `rebuild-hierarchy` ZORUNLUDUR — atlanırsa hata değil boş liste
+
+Kurum kapsamı artık ağaçtan geliyor: bir aktörün göreceği kurumlar `Path.StartsWith(aktörünYolu)`
+ile bulunur. Geçiş koşturulmazsa **hiçbir kaydın yolu yoktur**, `StartsWith` hiçbir şeyle
+eşleşmez ve il/ilçe yetkilisi **boş liste** görür — istek 200 döner, log temiz kalır.
+
+Okul kullanıcıları etkilenmez: kapsam kararı kimlik eşitliğini yol kontrolünden **önce**
+sorar, yani herkes kendi kurumunu yolsuz da görür. Kaybolan yalnız **yeni** il/ilçe
+yeteneğidir.
+
+Uç kurum üstü izinle korunur ve tüm ağacı bir kerede kurar; kiracı başına çağırmak gerekmez:
+
+```bash
+curl -X POST http://localhost:5270/api/institutions/rebuild-hierarchy \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Yanıttaki `skippedNoProvince` sıfırdan büyükse, o okulların **il kodu yoktur** ve kapsamsız
+kalmışlardır — hiçbir il yetkilisinin listesinde görünmezler. Künyeleri tamamlayıp ucu yeniden
+çağırın.
 
 ### Yerleştirme resync'i: atlanan kayıtlar
 

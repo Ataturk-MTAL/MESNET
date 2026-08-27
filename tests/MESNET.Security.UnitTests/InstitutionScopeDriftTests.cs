@@ -209,12 +209,18 @@ public sealed class InstitutionScopeDriftTests
     /// <para><c>GetInstitutionsHandler</c>: listeleme sorgusu; kapsam guard'la değil
     /// <c>VisibleInstitutionFilter</c> ile uygulanır (hedef istekte geçmez).
     /// <c>InstitutionTenantDirectory</c>: arka plan işlerinin kiracı listesi — kiracıları
-    /// saymak bu servisin tanımıdır, kullanıcı isteğine bağlı değildir.</para>
+    /// saymak bu servisin tanımıdır, kullanıcı isteğine bağlı değildir.
+    /// <c>RebuildInstitutionHierarchyHandler</c>: ağacı kurmak tanımı gereği bütün düğümleri
+    /// görmeyi gerektirir; uç kurum üstü izinle korunur (<c>platform:tenant:manage</c>) ve
+    /// komut hiçbir kurum kimliği taşımaz.</para>
     /// </summary>
     private static readonly HashSet<string> MayEnumerateAll = new(StringComparer.Ordinal)
     {
         "GetInstitutionsHandler.cs",
         "InstitutionTenantDirectory.cs",
+        // Ağacı kurmak tanımı gereği bütün düğümleri görmeyi gerektirir; uç kurum üstü izinle
+        // korunur (platform:tenant:manage) ve komut hiçbir kurum kimliği taşımaz.
+        "RebuildInstitutionHierarchyHandler.cs",
     };
 
     /// <summary>
