@@ -264,17 +264,30 @@ public sealed class InstitutionScopeDriftTests
         Exempt.Count.ShouldBeLessThanOrEqualTo(2);
     }
 
+    /// <summary>Aktörün kurum kapsamını taşıyan ifade — bitişik ya da nokta erişimli.</summary>
+    private const string ActorInstitutionId =
+        @"(?:GetCurrentUser\(\)\s*\??\.\s*InstitutionId|\b(?:actor|current|user)\w*(?:\s*\??\.\s*)?InstitutionId)";
+
     /// <summary>
     /// Aktörün kurum kapsamını <b>elle</b> bir hedefle karşılaştıran kod.
     ///
-    /// <para>Desen bilinçli olarak <b>aktör tarafına</b> demirlenmiştir: solda
-    /// <c>GetCurrentUser()?.InstitutionId</c> ya da <c>actor/current/user</c> ile başlayan bir
-    /// değişken aranır. Yalnız "iki InstitutionId karşılaştırılıyor" denseydi meşru veri
-    /// süzgeçleri (<c>.Where(p =&gt; p.InstitutionId == query.InstitutionId)</c>, ör.
-    /// <c>ListAcademicPeriodsHandler</c>) ihlal sayılırdı ve gürültülü bir kilit kapatılırdı.</para>
+    /// <para><b>Desen aktör tarafına demirlenmiştir</b>, iki tarafta da aranır ve hem bitişik
+    /// (<c>actorInstitutionId</c>) hem nokta erişimli (<c>actor?.InstitutionId</c>) yazımı
+    /// kapsar. İkincisi bu deponun kendi idiomudur: doğru uygulama olan
+    /// <c>InstitutionScopeGuardMiddleware</c> bile <c>actor?.InstitutionId</c> yazar, yani elle
+    /// kopyanın en olası biçimi odur.</para>
+    ///
+    /// <para><b>Neden yalnız "iki InstitutionId karşılaştırılıyor" denmiyor:</b> meşru veri
+    /// süzgeçleri (<c>.Where(p =&gt; p.InstitutionId == query.InstitutionId)</c>) ihlal sayılırdı
+    /// ve gürültülü bir kilit kapatılır.</para>
+    ///
+    /// <para><b>Bilinen sınır:</b> aktörün kurumu nötr bir ada atanırsa
+    /// (<c>var mine = currentUser.GetCurrentUser()?.InstitutionId;</c> ardından
+    /// <c>mine == ...</c>) desen onu göremez. Regex tabanlı her tarayıcının doğasında olan bir
+    /// sınırdır; kilit refleksi kurmak içindir, kanıt değildir.</para>
     /// </summary>
     private static readonly Regex HandRolledScopeComparison = new(
-        @"(?:GetCurrentUser\(\)\??\.InstitutionId|\b(?:actor|current|user)\w*InstitutionId)\s*(?:==|!=)",
+        ActorInstitutionId + @"\s*(?:==|!=)|(?:==|!=)\s*" + ActorInstitutionId,
         RegexOptions.Compiled);
 
     /// <summary>
@@ -286,26 +299,19 @@ public sealed class InstitutionScopeDriftTests
     /// okulun kaydını açamaması — ve bu sessizdir: kod derlenir, mevcut testler yeşil kalır,
     /// istek 422 döner ve mesajı "yalnız kendi kurumunuz" der (doğru görünür).</para>
     ///
-    /// <para><b>Muafiyet <see cref="InstitutionScopePolicy"/>'nin kendisidir</b> — karar orada
-    /// yaşar. <c>UserInstitutionScopePolicy</c> de muaftır: o KİRACI BAĞI yazmayı yönetir,
-    /// veri erişimini değil, ve kuralı bilinçli olarak kimlik eşitliğidir (bkz. planın
-    /// "Kapsam atama neden A'da bir görev DEĞİL" bölümü).</para>
+    /// <para><b>Muafiyet yok.</b> Karar kaynağının kendisi (<see cref="InstitutionScopePolicy"/>,
+    /// <c>UserInstitutionScopePolicy</c>) <c>src/MESNET.Common.Shared/Security/</c> altında
+    /// yaşar — bu tarama yalnız <see cref="GuardableApplicationPath"/>'i (Institution.Application)
+    /// dolaşır ve oraya hiç girmez, dolayısıyla bir muafiyet listesine gerek yoktur.</para>
     /// </summary>
     [Fact]
     public void Kapsam_karari_kopyalanmaz()
     {
-        var allowed = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "InstitutionScopePolicy.cs",
-            "UserInstitutionScopePolicy.cs",
-        };
-
         var offenders = new List<string>();
 
         foreach (var file in SourceFilesUnder(Path.Combine(RepoRoot(), "src", GuardableApplicationPath)))
         {
             var name = Path.GetFileName(file);
-            if (allowed.Contains(name)) continue;
 
             if (HandRolledScopeComparison.IsMatch(File.ReadAllText(file)))
                 offenders.Add(name);

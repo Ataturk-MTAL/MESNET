@@ -17,6 +17,13 @@ namespace MESNET.Security.UnitTests;
 /// fonksiyondan geçmeli" kuralını tarayarak yakalayabilirsiniz; davranış testi yalnız
 /// yazdığınız senaryoları görür ve unutulan yeni sorgu tanımı gereği yazılmamış olandır.
 /// Aynı gerekçe <c>InstitutionScopeDriftTests</c>'te de var.</para>
+///
+/// <para><b>Bilinen sınır:</b> tarama <b>dosya düzeyindedir</b> — <see cref="QueriesInstitutions"/>
+/// ve <see cref="FiltersNodeType"/> ayrı ayrı dosya metnine bakar, aynı sorguya bağlı olduklarını
+/// doğrulamaz. Bir dosyada iki ayrı <c>Query&lt;Institution&gt;()</c> çağrısı olup yalnız biri
+/// <c>.OfNodeType(...)</c> ile süzülse, ikinci (süzülmeyen) çağrı da bu dosyayı yeşil geçirir.
+/// Bugün sömürülmüyor — her dosyada tek bir kurum sorgusu var — ama regex tabanlı her tarayıcının
+/// doğasında olan bir sınırdır; kilit refleksi kurmak içindir, satır bazlı kanıt değildir.</para>
 /// </summary>
 public sealed class InstitutionNodeTypeDriftTests
 {
