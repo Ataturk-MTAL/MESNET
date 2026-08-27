@@ -573,6 +573,8 @@ import PageHeader from 'components/PageHeader.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useInstitutionStore } from 'stores/institution'
+import { useAuthStore } from 'stores/auth'
+import { resolveEditableInstitutionId } from 'utils/institutionScope'
 import { useRouter } from 'vue-router'
 import AddStaffForm from 'components/forms/institution/AddStaffForm.vue'
 import AddBranchForm from 'components/forms/institution/AddBranchForm.vue'
@@ -585,6 +587,7 @@ import GradeEntryWindowForm from 'components/forms/institution/GradeEntryWindowF
 
 const periodStore = useAcademicPeriodStore()
 const institutionStore = useInstitutionStore()
+const authStore = useAuthStore()
 const notify = useNotify()
 const router = useRouter()
 const confirmDialog = useConfirmDialog()
@@ -677,13 +680,18 @@ async function load() {
   error.value = null
   try {
     if (!institutionId.value) {
-      const listRes = await institutionApi.list()
-      const institutions = listRes.data
-      if (!institutions || institutions.length === 0) {
+      // Hedef ÖNCE aktörün kendi kurumudur; liste yalnız kurumu olmayan platform aktörü için
+      // yedektir. "Listenin ilk satırı" demek, sıralaması olmayan bir sorguya güvenmekti ve
+      // platform aktöründe her yazmadan sonra başka bir okulu düzenletiyordu — bkz.
+      // utils/institutionScope.ts.
+      const ownId = authStore.user?.institutionId ?? null
+      const listRes = ownId ? null : await institutionApi.list()
+      const resolved = resolveEditableInstitutionId(ownId, listRes?.data ?? [])
+      if (!resolved) {
         error.value = 'Kayıtlı kurum bulunamadı.'
         return
       }
-      institutionId.value = institutions[0].id
+      institutionId.value = resolved
     }
 
     const [instRes, schedRes, periodsRes] = await Promise.all([
