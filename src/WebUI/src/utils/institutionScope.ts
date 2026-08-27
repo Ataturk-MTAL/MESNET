@@ -13,17 +13,27 @@
  * okulu Atatürk'tü; paleti Cumhuriyet'e yazdı, tema Atatürk'ten uygulandığı için ilk sayfa
  * geçişinde eski renge döndü. Yazma kaybolmadı — <b>yanlış okula</b> gitti.</p>
  *
+ * <p><b>Kurum ağacıyla gelen üçüncü girdi (27.08.2026):</b> rota parametresi. İl/ilçe
+ * yetkilisi `/institutions/:id` ile alt ağacındaki bir okulu açtığında hedef O OKULDUR —
+ * kendi kurumu (İl MEM) değil. Sıra bu yüzden <b>rota → kendi kurumu → liste</b>'dir; en
+ * belirgin niyet en önde.</p>
+ *
+ * @param routeInstitutionId Rota parametresi (`/institutions/:id`). Yoksa `null`.
  * @param ownInstitutionId Aktörün kendi kurumu (`/auth/me` → `authStore.user.institutionId`).
  *   Token'dan GELMEZ; sunucu kullanıcı kaydından üretir (ADR-0003 adım 2).
  * @param institutions Sunucudan gelen görünür kurum listesi.
  * @returns Düzenlenecek kurum kimliği; hiçbiri yoksa `null`.
  */
 export function resolveEditableInstitutionId(
+  routeInstitutionId: string | null | undefined,
   ownInstitutionId: string | null | undefined,
   institutions: readonly { id: string }[],
 ): string | null {
-  // Kendi kurumu VARSA tartışma yok: listede görünmese bile hedef odur. Yetki kararı
-  // sunucunundur (InstitutionScopeGuard); burada liste, yetkinin ikinci bir kopyası değildir.
+  // Rota parametresi en belirgin niyettir: kullanıcı BU kurumu açmak istedi. Yetki kararı
+  // sunucunundur (InstitutionScopeGuard); rota, yetkinin ikinci bir kopyası değildir.
+  if (routeInstitutionId) return routeInstitutionId
+
+  // Kendi kurumu VARSA tartışma yok: listede görünmese bile hedef odur.
   if (ownInstitutionId) return ownInstitutionId
 
   if (institutions.length === 0) return null
