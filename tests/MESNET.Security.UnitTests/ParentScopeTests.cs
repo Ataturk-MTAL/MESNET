@@ -179,6 +179,8 @@ public sealed class ParentScopeTests
         public IReadOnlyList<string> GetBranchCodes() => [];
 
         public IReadOnlyList<Guid> GetLinkedStudentIds() => linkedStudentIds;
+
+        public string? GetInstitutionPath() => null;
     }
 
     /// <summary>

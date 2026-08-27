@@ -46,6 +46,25 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         """;
 
     /// <summary>
+    /// Kurum ağacındaki yolu kurum kimliğinden bulan raw SQL.
+    ///
+    /// <para>Modül entity referansı kullanmaz — schema izolasyonuna uyar; aynı gerekçeyle
+    /// <c>InstitutionLookupSql</c> de burada.</para>
+    ///
+    /// <para><c>NULL</c> dönebilir: geçiş ucu (<c>POST /api/institutions/rebuild-hierarchy</c>)
+    /// bu kayıt için henüz koşmamıştır. Bu bir hata DEĞİLDİR; kapsam kimlik eşitliğine düşer.</para>
+    /// </summary>
+    private const string InstitutionPathLookupSql = """
+        SELECT data->>'path' AS path
+        FROM institution.mt_doc_institution
+        WHERE data->>'id' = @institutionId
+        LIMIT 1
+        """;
+
+    /// <summary>Kurum ağacındaki yol claim'i. Otoritesi <c>Institution.Path</c> alanıdır.</summary>
+    private const string InstitutionPathClaimType = "institution_path";
+
+    /// <summary>
     /// Personel kaydındaki alan (branş) kodlarını keycloakId ile bulan raw SQL (#126).
     /// Kullanıcı birden çok alandan sorumlu olabilir → satır kümesi döner.
     ///
@@ -607,14 +626,34 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
             return;
 
         // Token'daki değer HER DURUMDA atılır — sunucu tarafı kaynak bulunamasa bile.
-        // Aksi hâlde "kaynak yoksa token'a düş" davranışı geri gelirdi.
+        // Aksi hâlde "kaynak yoksa token'a düş" davranışı geri gelirdi. Yol claim'i de aynı
+        // kurala tabidir: yol aktörün göreceği ALT AĞACI belirler, yani kullanıcının
+        // yazabildiği bir yol kendi kapsamını seçmesi demektir.
         RemoveInstitutionClaims(principal);
+        RemoveInstitutionPathClaims(principal);
 
+        var resolvedInstitutionId = await ResolveInstitutionIdAsync(
+            identity, keycloakUserId, accountInstitutionId);
+
+        if (resolvedInstitutionId is null)
+            return;
+
+        await EnrichInstitutionPathClaimAsync(identity, resolvedInstitutionId);
+    }
+
+    /// <summary>
+    /// Kurum kimliğini çözer ve claim olarak ekler; çözülen değeri döndürür.
+    /// Sıra: (1) kullanıcı kaydı — otorite, (2) personel kaydı yedeği — geçiş adımı.
+    /// </summary>
+    private async Task<string?> ResolveInstitutionIdAsync(
+        ClaimsIdentity identity, string keycloakUserId, Guid? accountInstitutionId)
+    {
         // (1) Kullanıcı kaydı — kiracı anahtarının otoritesi.
         if (accountInstitutionId is { } institution && institution != Guid.Empty)
         {
-            identity.AddClaim(new Claim("institution_id", institution.ToString()));
-            return;
+            var value = institution.ToString();
+            identity.AddClaim(new Claim("institution_id", value));
+            return value;
         }
 
         // (2) Personel kaydı yedeği — mevcut kullanıcılar için geçiş adımı.
@@ -629,26 +668,100 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
             // Eskiden boş sonuç da CacheDuration boyunca saklanıyordu ve bu, geçici bir
             // durumu 5 dakikalık bir kesintiye çeviriyordu: kullanıcı personel kaydına
             // eklendikten SONRA bile kapsamsız kalıyordu, çünkü önbellekte "kurumu yok"
-            // yazıyordu. Kaydı olmayan kullanıcıda (henüz senkronize edilmemiş) tüketici
-            // tarafı da devreye giremez — `StaffBranchSyncConsumer` hesap bulamayınca erken
-            // döner, yani önbelleği temizleyecek kimse yoktur.
-            //
-            // Boş veritabanında tam olarak bu yaşandı: kurum oluşturulurken önbelleğe "yok"
-            // yazıldı, saniyeler sonra personel eklendi ve kurum kapsamı isteyen işletme
-            // kaydı 422 döndü. Token yolu bunu maskeliyordu (#204/#208 ile aynı sınıf hata).
-            //
-            // Bedel: kapsamsız kullanıcı için istek başına bir sorgu. Kapsamsızlık zaten
-            // düzeltilmesi gereken bir anomalidir, sürekli bir durum değil; o kullanıcının
-            // istekleri de çoğunlukla reddedilecektir.
+            // yazıyordu.
             if (!string.IsNullOrEmpty(institutionId))
                 _cache.Set(cacheKey, institutionId, CacheDuration);
             else
                 WarnScopeless(keycloakUserId);
         }
 
-        if (!string.IsNullOrEmpty(institutionId))
+        if (string.IsNullOrEmpty(institutionId))
+            return null;
+
+        identity.AddClaim(new Claim("institution_id", institutionId));
+        return institutionId;
+    }
+
+    /// <summary>
+    /// Kurum ağacındaki yolu claim olarak ekler.
+    ///
+    /// <para><b>Yolun boş olması hata değildir</b> — geçiş ucu o kurum için henüz koşmamış
+    /// olabilir. Claim eklenmez ve kapsam kararı kimlik eşitliğine düşer, yani bugünkü
+    /// davranış korunur. Uyarı da basılmaz: geçiş öncesi bu <b>normal</b> durumdur ve her
+    /// istekte log üretmek uyarıyı görünmez yapardı.</para>
+    /// </summary>
+    private async Task EnrichInstitutionPathClaimAsync(ClaimsIdentity identity, string institutionId)
+    {
+        var cacheKey = $"institution-path:{institutionId}";
+
+        if (!_cache.TryGetValue(cacheKey, out string? path))
         {
-            identity.AddClaim(new Claim("institution_id", institutionId));
+            path = await LookupInstitutionPathAsync(institutionId);
+
+            // Boş sonuç önbelleğe ALINMAZ: geçiş ucu koşturulduğu anda yol doğar ve
+            // kullanıcının 5 dakika daha kapsamsız kalması için bir neden yoktur
+            // (institution_id yedeğiyle aynı gerekçe).
+            if (!string.IsNullOrEmpty(path))
+                _cache.Set(cacheKey, path, CacheDuration);
+        }
+
+        if (!string.IsNullOrEmpty(path))
+            identity.AddClaim(new Claim(InstitutionPathClaimType, path));
+    }
+
+    private async Task<string?> LookupInstitutionPathAsync(string institutionId)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var store = scope.ServiceProvider.GetService<Marten.IDocumentStore>();
+            if (store is null)
+                return null;
+
+            var conn = store.Storage.Database.CreateConnection();
+            await conn.OpenAsync();
+            await using (conn)
+            {
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = InstitutionPathLookupSql;
+                cmd.Parameters.Add(new NpgsqlParameter("institutionId", institutionId));
+
+                var result = await cmd.ExecuteScalarAsync();
+                if (result is string path && !string.IsNullOrEmpty(path))
+                    return path;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Institution path lookup hatası: {InstitutionId}", institutionId);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Token'dan gelen <c>institution_path</c> claim'lerini siler.
+    ///
+    /// <para><b>Tüm</b> identity'ler taranır, yalnız birincil olan değil: okuma tarafı
+    /// <c>ClaimsPrincipal.FindFirst</c> kullanır ve bütün identity'lerdeki claim'leri görür
+    /// (<see cref="RemoveInstitutionClaims"/> ile aynı gerekçe).</para>
+    /// </summary>
+    private void RemoveInstitutionPathClaims(ClaimsPrincipal principal)
+    {
+        foreach (var identity in principal.Identities)
+        {
+            var existing = identity.FindAll(InstitutionPathClaimType).ToList();
+
+            foreach (var claim in existing)
+            {
+                if (identity.TryRemoveClaim(claim))
+                    continue;
+
+                _logger.LogWarning(
+                    "Token'daki institution_path claim'i kaldırılamadı: {ClaimValue}. " +
+                    "Kapsam kararı yine de kurum kaydından verilir.", claim.Value);
+            }
         }
     }
 

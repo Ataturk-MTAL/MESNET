@@ -195,4 +195,73 @@ public sealed class InstitutionClaimAuthorityTests
                 BranchCodes: [],
                 InstitutionId: institutionId));
     }
+
+    /// <summary>
+    /// <c>institution_path</c> <b>kiracı anahtarının türevidir</b>, yani <c>institution_id</c>
+    /// ile aynı disiplinden geçmelidir: token'dan gelen değer HİÇ kabul edilmez ve Keycloak'a
+    /// hiçbir yerden YAZILMAZ.
+    ///
+    /// <para>Neden bu kadar katı: yol, aktörün göreceği ALT AĞACI belirler. Kullanıcının
+    /// yazabildiği bir yol, kullanıcının kendi kapsamını seçmesi demektir — <c>/</c> yazan
+    /// biri bütün okulları görürdü. Öznitelik Keycloak'ta <i>unmanaged</i>'dır; realm
+    /// politikası yanlış kurulursa kullanıcı <c>manage-account</c> ile onu kendi yazar.</para>
+    /// </summary>
+    [Fact]
+    public void Hicbir_kod_keycloaka_institution_path_oznitelig_yazmaz()
+    {
+        // Tarama deseni Hicbir_kod_keycloaka_institution_id_oznitelig_yazmaz ile AYNIDIR:
+        // sözlük anahtarına ATAMA aranır, yorum satırları serbesttir (kararın nedenini
+        // anlatan açıklamalar var).
+        var sourceRoot = Path.Combine(RepoRoot(), "src");
+        Directory.Exists(sourceRoot).ShouldBeTrue($"Kaynak klasörü bulunamadı: {sourceRoot}");
+
+        var violations = new List<string>();
+
+        foreach (var file in Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories))
+        {
+            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+                continue;
+
+            var lines = File.ReadAllLines(file);
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                if (line.TrimStart().StartsWith("//", StringComparison.Ordinal)) continue;
+
+                var key = line.IndexOf("[\"institution_path\"]", StringComparison.Ordinal);
+                if (key < 0) continue;
+                if (line.IndexOf('=', key) < 0) continue;
+
+                violations.Add($"{Path.GetRelativePath(RepoRoot(), file)}:{i + 1}");
+            }
+        }
+
+        violations.ShouldBeEmpty(
+            "institution_path Keycloak'a yazılıyor. Yol aktörün ALT AĞACINI belirler — "
+            + "kullanıcının yazabildiği bir yol, kullanıcının kendi kapsamını seçmesi "
+            + "demektir; kök yazan biri her okulu görürdü. Otorite Institution.Path "
+            + "alanıdır.\n  " + string.Join("\n  ", violations));
+    }
+
+    /// <summary>
+    /// Token'daki <c>institution_path</c> her istekte silinmelidir — kayıt boş olsa bile.
+    /// "Kaynak yoksa token'a düş" davranışı, kaydı olmayan kullanıcıya kendi kapsamını
+    /// seçtirirdi.
+    /// </summary>
+    [Fact]
+    public void Tokendaki_institution_path_claimi_silinir()
+    {
+        var transformation = Path.Combine(
+            RepoRoot(), "src", "MESNET.Common.Infrastructure", "Security",
+            "PermissionClaimsTransformation.cs");
+
+        File.Exists(transformation).ShouldBeTrue($"Dosya bulunamadı: {transformation}");
+
+        File.ReadAllText(transformation).ShouldContain("RemoveInstitutionPathClaims",
+            customMessage:
+                "Token'daki institution_path claim'ini silen yol yok. Silinmezse "
+                + "\"kaynak yoksa token'a düş\" davranışı geri gelir ve kaydı olmayan "
+                + "kullanıcı kendi kapsamını seçer.");
+    }
 }
