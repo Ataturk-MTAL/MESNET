@@ -207,7 +207,7 @@ public sealed class InstitutionScopeDriftTests
     /// Kurum belgesini <b>filtresiz</b> dolaşmasına izin verilen yerler.
     ///
     /// <para><c>GetInstitutionsHandler</c>: listeleme sorgusu; kapsam guard'la değil
-    /// <c>VisibleInstitutionFilter</c> ile uygulanır (hedef istekte geçmez).
+    /// <c>InstitutionScopePolicy.VisibleScope</c> ile uygulanır (hedef istekte geçmez).
     /// <c>InstitutionTenantDirectory</c>: arka plan işlerinin kiracı listesi — kiracıları
     /// saymak bu servisin tanımıdır, kullanıcı isteğine bağlı değildir.
     /// <c>RebuildInstitutionHierarchyHandler</c>: ağacı kurmak tanımı gereği bütün düğümleri
@@ -262,6 +262,56 @@ public sealed class InstitutionScopeDriftTests
     public void Muafiyet_listesi_kucuk_kalir()
     {
         Exempt.Count.ShouldBeLessThanOrEqualTo(2);
+    }
+
+    /// <summary>
+    /// Aktörün kurum claim'ini <b>elle</b> bir hedefle karşılaştıran kod.
+    ///
+    /// <para>Kalıp: <c>...InstitutionId ==</c> / <c>!=</c> — kapsam kararının kopyası.</para>
+    /// </summary>
+    private static readonly Regex HandRolledScopeComparison = new(
+        @"InstitutionId\s*(==|!=)\s*\w*[Ii]nstitutionId", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Kapsam kararını <b>kopyalayan</b> uç kalmamalı; karar politikadan geçmeli.
+    ///
+    /// <para><b>Neden kilitleniyor:</b> karar artık iki aşamalıdır — kimlik eşitliği, sonra
+    /// gerekiyorsa ağaçtaki yol. Kararı kopyalayan bir yer <b>yalnız birinci aşamayı</b>
+    /// yapar: kimlikler eşit değilse reddeder. Sonuç, il yetkilisinin kendi ilindeki hiçbir
+    /// okulun kaydını açamaması — ve bu sessizdir: kod derlenir, mevcut testler yeşil kalır,
+    /// istek 422 döner ve mesajı "yalnız kendi kurumunuz" der (doğru görünür).</para>
+    ///
+    /// <para><b>Muafiyet <see cref="InstitutionScopePolicy"/>'nin kendisidir</b> — karar orada
+    /// yaşar. <c>UserInstitutionScopePolicy</c> de muaftır: o KİRACI BAĞI yazmayı yönetir,
+    /// veri erişimini değil, ve kuralı bilinçli olarak kimlik eşitliğidir (bkz. planın
+    /// "Kapsam atama neden A'da bir görev DEĞİL" bölümü).</para>
+    /// </summary>
+    [Fact]
+    public void Kapsam_karari_kopyalanmaz()
+    {
+        var allowed = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "InstitutionScopePolicy.cs",
+            "UserInstitutionScopePolicy.cs",
+        };
+
+        var offenders = new List<string>();
+
+        foreach (var file in SourceFilesUnder(Path.Combine(RepoRoot(), "src", GuardableApplicationPath)))
+        {
+            var name = Path.GetFileName(file);
+            if (allowed.Contains(name)) continue;
+
+            if (HandRolledScopeComparison.IsMatch(File.ReadAllText(file)))
+                offenders.Add(name);
+        }
+
+        offenders.ShouldBeEmpty(
+            "Kapsam kararı elle kopyalanmış. Karar artık iki aşamalı: kimlik eşitliği, sonra "
+            + "gerekiyorsa ağaçtaki yol. Kopya YALNIZ birinci aşamayı yapar ve il/ilçe "
+            + "yetkilisi alt ağacındaki hiçbir kaydı açamaz — sessizce: kod derlenir, testler "
+            + "yeşil kalır, istek 422 döner ve mesajı doğru görünür. Kararı "
+            + $"InstitutionScopePolicy'ye devredin. İhlaller: {string.Join(", ", offenders)}");
     }
 
     private sealed record ScopedMessage(string Key, string Name, string File, bool IsGuarded);
