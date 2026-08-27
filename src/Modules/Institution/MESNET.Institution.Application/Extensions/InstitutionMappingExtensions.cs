@@ -8,11 +8,20 @@ namespace MESNET.Institution.Application.Extensions;
 
 public static class InstitutionMappingExtensions
 {
-    public static InstitutionDto ToDto(this Core.Entities.Institution entity)
+    /// <param name="parentName">
+    /// Üst düğümün adı. Entity onu bilmez (yalnız <c>ParentId</c> tutar) ve bu uzantı saf
+    /// kalmalıdır — bir session açıp okumaz. Sorgu tarafı üst düğümleri <b>toplu</b> okur
+    /// (<c>LoadManyAsync</c>) ve buraya geçirir; aksi hâlde her satır için bir okuma olurdu.
+    /// </param>
+    public static InstitutionDto ToDto(this Core.Entities.Institution entity, string? parentName = null)
     {
         // Saklanan anahtar burada palete çözülür. Null (hiç seçim yapılmamış) ve tanınmayan
         // değer aynı yere, varsayılana düşer — arayüz her zaman geçerli bir tema alır.
         var palette = InstitutionBrandPalette.Resolve(entity.BrandPaletteName);
+
+        // Aynı disiplin düğüm tipinde de geçerli: null (geçiş koşmamış eski kayıt) ve tanınmayan
+        // değer en dar okumaya, School'a düşer.
+        var nodeType = entity.NodeType;
 
         return new InstitutionDto(
             entity.Id,
@@ -26,6 +35,10 @@ public static class InstitutionMappingExtensions
             entity.ProvinceCode,
             TurkishProvinces.GetName(entity.ProvinceCode),
             entity.DistrictName,
+            nodeType.Name,
+            nodeType.Slug,
+            entity.ParentId,
+            parentName,
             palette.Name,
             palette.Slug,
             palette.Primary,

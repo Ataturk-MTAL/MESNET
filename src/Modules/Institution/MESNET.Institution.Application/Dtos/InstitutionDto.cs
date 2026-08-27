@@ -16,6 +16,13 @@ public sealed record InstitutionDto(
     string? ProvinceCode,
     string? ProvinceName,
     string? DistrictName,
+    // Kurum ağacı. NodeType saklanan İngilizce anahtar (istemci mantığı buna bakar),
+    // NodeTypeSlug Türkçe etiket (gösterim). ParentName üst düğümün adıdır ve sorgu tarafında
+    // çözülür — entity onu bilmez, mapping saf kalır.
+    string NodeType,
+    string NodeTypeSlug,
+    Guid? ParentId,
+    string? ParentName,
     // Marka paleti — anahtar VE çözülmüş hex'ler birlikte döner ki arayüz temayı tek istekle
     // uygulayabilsin ve hex'i ikinci kez tanımlamak zorunda kalmasın. Kurum hiç seçim
     // yapmadıysa (BrandPaletteName null) varsayılan palet çözülür; alanların üçü de doludur.
