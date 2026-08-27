@@ -1,12 +1,43 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
+import { useInstitutionStore } from 'stores/institution'
+
+/**
+ * Menü görünürlüğü için izin DIŞI bağlam.
+ *
+ * `isUpperNode`: kullanıcının bağlı olduğu kurum bir il/ilçe müdürlüğü düğümü mü?
+ * İzinle çözülemez — okul müdürü de `institution:view` taşır (hatta `institution:*`).
+ */
+export interface NavVisibilityContext {
+  isUpperNode: boolean
+}
 
 export interface NavItem {
   title: string
   icon: string
   to: { name: string }
   permissions: string[]
+  /**
+   * İzne EK koşul. Verilmezse yalnız izne bakılır.
+   *
+   * Bu bir GÖRÜNÜRLÜK kararıdır, yetki kararı değil — yetki sunucudadır. Menüden gizlemek,
+   * bilgi taşımayan bir girdiyi (okul kullanıcısına tek satırlık "liste") saklamak içindir.
+   */
+  visibleWhen?: (ctx: NavVisibilityContext) => boolean
+}
+
+/**
+ * Bir menü girdisi görünür mü? Saf fonksiyon — store'a dokunmaz, testte tek başına koşar.
+ */
+export function isNavItemVisible(
+  item: NavItem,
+  hasAnyPermission: (permissions: string[]) => boolean,
+  ctx: NavVisibilityContext,
+): boolean {
+  if (item.permissions.length > 0 && !hasAnyPermission(item.permissions)) return false
+  if (item.visibleWhen && !item.visibleWhen(ctx)) return false
+  return true
 }
 
 export interface NavGroup {
@@ -33,6 +64,16 @@ const menuDefinition: NavGroup[] = [
     icon: 'account_balance',
     permissions: [],
     children: [
+      {
+        title: 'Kurumlar',
+        icon: 'account_tree',
+        to: { name: 'InstitutionList' },
+        permissions: ['institution:view'],
+        // Okul kullanıcısına gösterilmez: onun "listesi" tek satırdır ve tıklandığında zaten
+        // açık olan sayfaya gider. Ayrım izinle yapılamaz — okul müdürü de institution:view
+        // taşır; fark bağlı olduğu düğümün TİPİNDEDİR.
+        visibleWhen: (ctx) => ctx.isUpperNode,
+      },
       { title: 'Kurum Bilgileri', icon: 'account_balance', to: { name: 'Institution' }, permissions: ['institution:view'] },
       { title: 'Kullanıcılar', icon: 'manage_accounts', to: { name: 'UserManagement' }, permissions: ['user:view', 'user:create'] },
       { title: 'Roller', icon: 'admin_panel_settings', to: { name: 'RoleManagement' }, permissions: ['user:roles:manage'] },
@@ -109,22 +150,37 @@ const STORAGE_KEY = 'mesnet-nav-expanded'
 
 export function useNavigation() {
   const authStore = useAuthStore()
+  const institutionStore = useInstitutionStore()
   const route = useRoute()
 
+  /**
+   * Kullanıcının kurumu bir üst düğüm mü?
+   *
+   * Kaynak `institutionStore` — aktörün kendi kurumunu `GET /api/institutions/{id}` ile
+   * zaten yükler (MainLayout mount'ta çağırır). Store dolmadan önce `false`'tur, yani menü
+   * girdisi biraz geç belirir; alternatifi `/auth/me`'ye yeni bir claim eklemekti ve o
+   * kapsam anahtarı olmayan bir görünürlük kararı için fazla ağır bir yol.
+   */
+  const visibilityContext = computed<NavVisibilityContext>(() => ({
+    isUpperNode:
+      institutionStore.institution?.nodeType === 'Province' ||
+      institutionStore.institution?.nodeType === 'District',
+  }))
+
   const filteredMenu = computed(() => {
+    const ctx = visibilityContext.value
+    const hasAny = (permissions: string[]) => authStore.hasAnyPermission(permissions)
+
     return menuDefinition
       .map((group) => {
         // Top-level link (children yok)
         if (group.to && group.children.length === 0) {
-          const visible =
-            group.permissions.length === 0 || authStore.hasAnyPermission(group.permissions)
+          const visible = group.permissions.length === 0 || hasAny(group.permissions)
           return visible ? group : null
         }
 
-        // Children filtrele
-        const visibleChildren = group.children.filter(
-          (item) =>
-            item.permissions.length === 0 || authStore.hasAnyPermission(item.permissions),
+        const visibleChildren = group.children.filter((item) =>
+          isNavItemVisible(item, hasAny, ctx),
         )
 
         if (visibleChildren.length === 0) return null
