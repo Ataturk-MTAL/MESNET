@@ -49,7 +49,12 @@ export interface NavGroup {
   children: NavItem[]
 }
 
-const menuDefinition: NavGroup[] = [
+/**
+ * Gerçek menü tanımı — test dosyaları bunu import eder, kendi kopyasını kurmaz. Bir girdinin
+ * `visibleWhen` koşulu buradan silinirse (ör. "Kurumlar") testin bunu görmesi gerekir; yerel
+ * bir kopya üzerinde koşan test bu tür bir gerilemeyi asla yakalayamaz.
+ */
+export const menuDefinition: NavGroup[] = [
   {
     key: 'home',
     title: 'Ana Sayfa',

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isNavItemVisible, type NavItem } from './useNavigation'
+import { isNavItemVisible, menuDefinition, type NavItem } from './useNavigation'
 
 /**
  * "Kurumlar" menü girdisi okul kullanıcısına GÖSTERİLMEZ.
@@ -12,33 +12,43 @@ import { isNavItemVisible, type NavItem } from './useNavigation'
  * NOT: bu bir GÖRÜNÜRLÜK kararıdır, yetki kararı değil. Yetki sunucudadır
  * (`InstitutionScopePolicy`); okul kullanıcısı ucu elle çağırsa da kendi kurumundan
  * fazlasını göremez.
+ *
+ * NOT 2: `kurumlar` burada yerel kurulmaz — gerçek `menuDefinition`'dan bulunur. Yerel bir
+ * kopya, "Kurumlar" girdisinden `visibleWhen` silinse bile testi yeşil tutardı; bu dosya o
+ * sahte-yeşil riskini kapatmak için gerçek tanıma bağlıdır.
  */
 describe('isNavItemVisible', () => {
   const izinliOkuyucu = (perms: string[]) => (required: string[]) =>
     required.length === 0 || required.some((p) => perms.includes(p))
 
-  const kurumlar: NavItem = {
-    title: 'Kurumlar',
-    icon: 'account_tree',
-    to: { name: 'InstitutionList' },
-    permissions: ['institution:view'],
-    visibleWhen: (ctx) => ctx.isUpperNode,
-  }
+  const institutionGroup = menuDefinition.find((group) => group.key === 'institution')
+  const kurumlar = institutionGroup?.children.find((item) => item.to.name === 'InstitutionList')
+
+  it('menü tanımında "Kurumlar" girdisi var ve visibleWhen taşıyor', () => {
+    expect(kurumlar).toBeDefined()
+    expect(kurumlar?.visibleWhen).toBeTypeOf('function')
+  })
 
   it('il/ilçe kullanıcısına gösterilir', () => {
     expect(
-      isNavItemVisible(kurumlar, izinliOkuyucu(['institution:view']), { isUpperNode: true }),
+      isNavItemVisible(kurumlar as NavItem, izinliOkuyucu(['institution:view']), {
+        isUpperNode: true,
+      }),
     ).toBe(true)
   })
 
   it('okul kullanıcısına gösterilmez — izni olsa bile', () => {
     expect(
-      isNavItemVisible(kurumlar, izinliOkuyucu(['institution:view']), { isUpperNode: false }),
+      isNavItemVisible(kurumlar as NavItem, izinliOkuyucu(['institution:view']), {
+        isUpperNode: false,
+      }),
     ).toBe(false)
   })
 
   it('izni olmayana gösterilmez — düğüm tipi üst düğüm olsa bile', () => {
-    expect(isNavItemVisible(kurumlar, izinliOkuyucu([]), { isUpperNode: true })).toBe(false)
+    expect(
+      isNavItemVisible(kurumlar as NavItem, izinliOkuyucu([]), { isUpperNode: true }),
+    ).toBe(false)
   })
 
   it('koşulu olmayan girdi yalnız izne bakar', () => {
@@ -50,7 +60,9 @@ describe('isNavItemVisible', () => {
     }
 
     expect(
-      isNavItemVisible(kurumBilgileri, izinliOkuyucu(['institution:view']), { isUpperNode: false }),
+      isNavItemVisible(kurumBilgileri, izinliOkuyucu(['institution:view']), {
+        isUpperNode: false,
+      }),
     ).toBe(true)
   })
 })

@@ -3,6 +3,11 @@ import { computed, ref } from 'vue'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import type { PagedResponse } from 'src/types/pagination'
 import type { InstitutionDto } from 'src/api/institution'
+import {
+  DEFAULT_NODE_TYPE_FILTER,
+  DEFAULT_SORT_BY,
+  buildInstitutionListFilters,
+} from './institutionListQuery'
 
 /**
  * Liste sayfasının sunucu sözleşmesi.
@@ -11,6 +16,13 @@ import type { InstitutionDto } from 'src/api/institution'
  * kısım şablon değil sözleşmedir: `nodeType` süzgeci gitmezse liste il/ilçe müdürlüklerini
  * okul gibi gösterir, `page`/`search` gitmezse sayfalama ve arama sessizce istemci tarafına
  * düşer ve yalnız ilk 20 satır aranır.</p>
+ *
+ * <p><b>Sahte-yeşil riski kapatıldı (Engelleyici 2):</b> eski sürüm bu değerleri (`'School'`
+ * varsayılanı, `nodeType` gövde şekli, `'fullName'` sıralaması) burada YENİDEN yazıyordu —
+ * `InstitutionListPage.vue`'yu hiç import etmiyordu. Sayfanın varsayılanı değişse (ör.
+ * `'Province'`e) test bunu göremiyordu (ölçüldü, aşağıdaki kanıt). Bu sürüm `./institutionListQuery`
+ * içindeki sabitleri ve kurucuyu import eder — sayfa da AYNI dosyayı kullanır (bkz.
+ * `InstitutionListPage.vue`), yani test artık sayfanın gerçek sözleşmesine bağlıdır.</p>
  *
  * <p><b>`useServerPagination` gerçek imzası (composable dosyasından):</b> `onSearch(term)`
  * senkrondur ve 400ms debounce ile `load()`'u tetikler — Promise DÖNMEZ. `onRequest(props)`
@@ -46,12 +58,12 @@ describe('InstitutionListPage — sunucu sözleşmesi', () => {
   })
 
   it('varsayılan süzgeç OKUL — üst düğümler okul listesinde görünmemeli', async () => {
-    // Arrange
-    const nodeType = ref('School')
+    // Arrange — sayfanın KENDİ varsayılanı; burada yeniden yazılmaz.
+    const nodeType = ref(DEFAULT_NODE_TYPE_FILTER)
     const { load } = useServerPagination<InstitutionDto>({
       fetchFn,
-      filters: computed(() => ({ nodeType: nodeType.value })),
-      defaultSortBy: 'fullName',
+      filters: computed(() => buildInstitutionListFilters(nodeType.value)),
+      defaultSortBy: DEFAULT_SORT_BY,
     })
 
     // Act
@@ -65,8 +77,8 @@ describe('InstitutionListPage — sunucu sözleşmesi', () => {
     const nodeType = ref('District')
     const { load } = useServerPagination<InstitutionDto>({
       fetchFn,
-      filters: computed(() => ({ nodeType: nodeType.value })),
-      defaultSortBy: 'fullName',
+      filters: computed(() => buildInstitutionListFilters(nodeType.value)),
+      defaultSortBy: DEFAULT_SORT_BY,
     })
 
     await load()
@@ -77,8 +89,8 @@ describe('InstitutionListPage — sunucu sözleşmesi', () => {
   it('arama terimi sunucuya gider — istemci tarafında süzülmez', async () => {
     const { onSearch } = useServerPagination<InstitutionDto>({
       fetchFn,
-      filters: computed(() => ({ nodeType: 'School' })),
-      defaultSortBy: 'fullName',
+      filters: computed(() => buildInstitutionListFilters(DEFAULT_NODE_TYPE_FILTER)),
+      defaultSortBy: DEFAULT_SORT_BY,
     })
 
     // onSearch senkron — debounce sonrası load() tetiklenir, Promise döndürmez.
@@ -91,8 +103,8 @@ describe('InstitutionListPage — sunucu sözleşmesi', () => {
   it('sayfa isteği sunucuya gider', async () => {
     const { onRequest } = useServerPagination<InstitutionDto>({
       fetchFn,
-      filters: computed(() => ({ nodeType: 'School' })),
-      defaultSortBy: 'fullName',
+      filters: computed(() => buildInstitutionListFilters(DEFAULT_NODE_TYPE_FILTER)),
+      defaultSortBy: DEFAULT_SORT_BY,
     })
 
     // onRequest senkron — load()'u beklemeden tetikler.
@@ -105,8 +117,8 @@ describe('InstitutionListPage — sunucu sözleşmesi', () => {
   it('varsayılan sıralama kurum adıdır — sıralamasız liste her yazmadan sonra kayardı', async () => {
     const { load } = useServerPagination<InstitutionDto>({
       fetchFn,
-      filters: computed(() => ({ nodeType: 'School' })),
-      defaultSortBy: 'fullName',
+      filters: computed(() => buildInstitutionListFilters(DEFAULT_NODE_TYPE_FILTER)),
+      defaultSortBy: DEFAULT_SORT_BY,
     })
 
     await load()

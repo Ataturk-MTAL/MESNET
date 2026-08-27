@@ -23,7 +23,6 @@
           emit-value
           map-options
           style="min-width: 220px"
-          @update:model-value="load"
         />
       </template>
 
@@ -71,15 +70,20 @@ import PageHeader from 'components/PageHeader.vue'
 import AppTable from 'components/AppTable.vue'
 import { institutionApi, type InstitutionDto } from 'src/api/institution'
 import { useServerPagination } from 'src/composables/useServerPagination'
+import {
+  DEFAULT_NODE_TYPE_FILTER,
+  DEFAULT_SORT_BY,
+  buildInstitutionListFilters,
+} from './institutionListQuery'
 
 const router = useRouter()
 
 /**
- * Kurum türü süzgeci. Varsayılan OKUL: il yetkilisinin aradığı şey neredeyse her zaman bir
- * okuldur; ilçe müdürlükleri listesi ayrı bir sorudur ve karıştırılırsa okul sayısı yanlış
- * okunur.
+ * Kurum türü süzgeci. Varsayılan OKUL (bkz. `institutionListQuery.ts`): il yetkilisinin
+ * aradığı şey neredeyse her zaman bir okuldur; ilçe müdürlükleri listesi ayrı bir sorudur ve
+ * karıştırılırsa okul sayısı yanlış okunur.
  */
-const nodeTypeFilter = ref<string>('School')
+const nodeTypeFilter = ref<string>(DEFAULT_NODE_TYPE_FILTER)
 
 const nodeTypeOptions = [
   { label: 'Okullar', value: 'School' },
@@ -87,13 +91,13 @@ const nodeTypeOptions = [
   { label: 'İl Müdürlükleri', value: 'Province' },
 ]
 
-const filters = computed(() => ({ nodeType: nodeTypeFilter.value }))
+const filters = computed(() => buildInstitutionListFilters(nodeTypeFilter.value))
 
 const { rows: institutions, loading, pagination, search, onRequest, onSearch, load } =
   useServerPagination<InstitutionDto>({
     fetchFn: (params) => institutionApi.list(params),
     filters,
-    defaultSortBy: 'fullName',
+    defaultSortBy: DEFAULT_SORT_BY,
   })
 
 const columns: QTableProps['columns'] = [
