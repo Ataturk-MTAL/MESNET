@@ -1212,6 +1212,25 @@ Kullanıcı yönetimi ekranında (`UserManagementPage`):
   kataloğundan)
 - Davet formunda alan çoklu seçimi vardır; zorunlu değildir
 
+## Kurum Kapsamı Ağaçtan Gelir
+
+Kurumlar bir ağaçtır: il müdürlüğü → ilçe müdürlüğü → okul. Kapsam kararı tek soruya iner —
+**hedefin yolu aktörün yoluyla başlıyor mu** (`InstitutionScopePolicy`).
+
+- Aktörün kendi düğümü kapsamındadır
+- **Üst düğüm kapsam DIŞIDIR** — okul müdürü ilçe müdürlüğünün kaydını göremez
+- Kardeş düğümler kapsam dışıdır
+- `platform:tenant:manage` taşıyan aktör ağacın tamamını görür
+
+`ProvincialAdmin` ve `DistrictAdmin` rolleri **yeni izin almaz**: ikisi de düz
+`institution:view` taşır. Yeni bir `institution:` önekli izin tanımlansaydı, o izin
+`institution:*` wildcard'ı üzerinden **her okul müdürüne** sessizce geçerdi (ADR-0002 önek
+tuzağı). Bu rollerin farkı izinde değil, ağaçtaki yerindedir.
+
+Aktörün yolu `institution_path` claim'inden okunur ve claim **kurum kaydından** üretilir;
+token'daki değer her istekte silinir. Kullanıcının yazabildiği bir yol, kullanıcının kendi
+kapsamını seçmesi demektir — kök yazan biri her okulu görürdü.
+
 ## Kurum Geneli Koordinasyon Yapılandırması (#130)
 
 `CoordinationConfig` alan bazlı **değildir**: kurum düzeyi ve mevzuat türevi üç ayar tutar.

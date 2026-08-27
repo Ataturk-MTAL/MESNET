@@ -73,6 +73,16 @@ public static class AssignablePermissionScope
         [
             "student:", "communication:",
         ],
+        // İl / ilçe yetkilisi: yalnız kurum domaini. Yetki DAĞITAMASINLAR diye başka domain
+        // verilmez — kapsamları ağaçtan gelir, izinle genişletilmez.
+        [MesnetRoles.ProvincialAdmin] =
+        [
+            "institution:",
+        ],
+        [MesnetRoles.DistrictAdmin] =
+        [
+            "institution:",
+        ],
         // Sistem yöneticisi (#147): yalnız ulusal domain. Kurum domainlerinden hiçbiri yok —
         // bu rol kurum verisine yetki dağıtamaz.
         [MesnetRoles.SystemAdmin] =
