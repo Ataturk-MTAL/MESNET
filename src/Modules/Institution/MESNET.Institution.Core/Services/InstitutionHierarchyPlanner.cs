@@ -47,6 +47,14 @@ public sealed record HierarchyPlan(
 /// alt ağacına düşen sahipsiz bir kayıt olurdu. Kapsamsız kalır ve sayılır — sonuçtaki sayı
 /// boşluğu görünür kılar (aynı desen <c>SyncUsersFromKeycloak</c>'un <c>WithoutInstitution</c>
 /// sayısında da var).</para>
+///
+/// <para><b>Künye otoritedir, elle verilen <c>parentId</c> değil.</b> Rebuild her koşuda
+/// <c>ProvinceCode</c>/<c>DistrictName</c>'i doğru kabul edip <see cref="HierarchyAssignment"/>
+/// üretir. <c>POST /api/institutions</c> ile <c>parentId</c> verilerek elle başka bir üst düğüme
+/// yerleştirilmiş bir okulun künyesi o düğümü göstermiyorsa, bu geçiş okulu <b>sessizce</b>
+/// künyenin işaret ettiği düğüme yeniden ebeveynler — elle yapılan yerleştirme kalıcı değildir.
+/// Bugün böyle bir veri yok; ileride elle yerleştirme ucu eklenirse bu davranış gözden
+/// geçirilmeli.</para>
 /// </summary>
 public static class InstitutionHierarchyPlanner
 {

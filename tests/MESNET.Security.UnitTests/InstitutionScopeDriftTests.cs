@@ -264,9 +264,14 @@ public sealed class InstitutionScopeDriftTests
         Exempt.Count.ShouldBeLessThanOrEqualTo(2);
     }
 
-    /// <summary>Aktörün kurum kapsamını taşıyan ifade — bitişik ya da nokta erişimli.</summary>
+    /// <summary>
+    /// Aktörün kurum kapsamını taşıyan ifade — bitişik, nokta (<c>?.</c>) ya da null-forgiving
+    /// (<c>!.</c>) erişimli. İkincisi eskiden kaçırılıyordu (#kapsam-kilidi-null-forgiving):
+    /// <c>currentUser.GetCurrentUser()!.InstitutionId == ...</c> deseni <c>\??\.</c> ile
+    /// eşleşmiyordu, yani <c>!.</c> idiomuyla yazılmış elle kopya bu kilidin görünmez noktasıydı.
+    /// </summary>
     private const string ActorInstitutionId =
-        @"(?:GetCurrentUser\(\)\s*\??\.\s*InstitutionId|\b(?:actor|current|user)\w*(?:\s*\??\.\s*)?InstitutionId)";
+        @"(?:GetCurrentUser\(\)\s*[?!]?\.\s*InstitutionId|\b(?:actor|current|user)\w*(?:\s*[?!]?\.\s*)?InstitutionId)";
 
     /// <summary>
     /// Aktörün kurum kapsamını <b>elle</b> bir hedefle karşılaştıran kod.

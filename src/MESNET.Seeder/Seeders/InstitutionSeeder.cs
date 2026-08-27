@@ -34,20 +34,47 @@ public static class InstitutionSeeder
         await EnsureAcademicPeriodAsync(api, ctx, institutionId.Value);
     }
 
+    // Bu seeder'ın kurduğu okulun MEB kurum kodu. Tek yerden — hem "zaten var mı" aramasında
+    // hem POST gövdesinde kullanılır (aşağıdaki engelleyici düzeltmesine bak).
+    private const int InstitutionCode = 967523;
+
+    /// <summary>
+    /// Kurumun zaten var olup olmadığını kontrol eder.
+    ///
+    /// <para><b>İki ayrı kusur düzeltildi:</b> (1) <c>GET /api/institutions</c> artık sayfalı
+    /// nesne döndürüyor (<c>{ items: [...], totalCount: ... }</c>); <see cref="MesnetApiClient.GetAsync"/>
+    /// zarfın <c>data</c>'sını döner, yani <c>ValueKind</c> artık <c>Array</c> değil <c>Object</c>.
+    /// Eski <c>arr.ValueKind == JsonValueKind.Array</c> kontrolü bu yüzden hiç tutmuyordu — seeder
+    /// her koşuda "kurum yok" sanıp yeni bir Atatürk MTAL POST ediyordu (bkz.
+    /// <see cref="MesnetApiClient.GetAllPagedAsync"/> XML yorumu — aynı sayfalama tuzağı 122 öğrenci
+    /// için 774 kayıt üretmişti, #80/#190). Çözüm: <see cref="MesnetApiClient.GetAllPagedAsync"/>
+    /// kullan — hem diziyi hem <c>{items:[]}</c> nesnesini ele alır, tüm sayfaları gezer.</para>
+    ///
+    /// <para>(2) Eski kod "listenin ilk kurumu"nu (<c>arr[0]</c>) kendi kurumu sanıyordu. Seeder
+    /// aslında <b>kendi</b> kurumunu (<see cref="InstitutionCode"/>) arıyor ve onun üstünde
+    /// <see cref="BackfillProvinceDistrictAsync"/> çalıştırıyor — çok okullu ortamda ilk satırı
+    /// almak <b>başka bir okulu mutasyona uğratırdı</b>. Çözüm: kurum koduyla eşleştir, konumla
+    /// değil.</para>
+    /// </summary>
     private static async Task<Guid?> EnsureInstitutionAsync(MesnetApiClient api)
     {
-        var existing = await api.GetAsync("/api/institutions");
-        if (existing is { } arr && arr.ValueKind == System.Text.Json.JsonValueKind.Array && arr.GetArrayLength() > 0)
+        var existing = await api.GetAllPagedAsync("/api/institutions");
+        var own = existing.FirstOrDefault(inst =>
+            inst.TryGetProperty("institutionCode", out var code)
+            && code.ValueKind == System.Text.Json.JsonValueKind.Number
+            && code.GetInt32() == InstitutionCode);
+
+        if (own.ValueKind == System.Text.Json.JsonValueKind.Object)
         {
-            var id = arr[0].GetProperty("id").GetGuid();
+            var id = own.GetProperty("id").GetGuid();
             Console.WriteLine($"  → Kurum mevcut (id: {id.ToString()[..8]}...)");
-            await BackfillProvinceDistrictAsync(api, arr[0], id);
+            await BackfillProvinceDistrictAsync(api, own, id);
             return id;
         }
 
         var data = await api.PostAsync("/api/institutions", new
         {
-            institutionCode = 967523,
+            institutionCode = InstitutionCode,
             fullName = "Atatürk Mesleki ve Teknik Anadolu Lisesi",
             address = "Toroslar, Mersin",
             // MEB il kodu — Mersin = 33 (#147). Zorunlu alan; adresteki serbest metin değil bu

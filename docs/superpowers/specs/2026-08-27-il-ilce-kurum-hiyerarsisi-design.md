@@ -215,6 +215,16 @@ parametresi önceliği testi.
    şudur:** il/ilçe düğümü palet seçmez; `BrandPaletteName` boş kalır ve `Resolve` zaten
    varsayılana (Mührü Lacivert) düşürür — yani il yetkilisi varsayılan temayı görür. Alt
    okulun paletinin üst düğüme ya da tersine miras olup olmayacağı B parçasının konusudur.
+5. **Guard'ın yazma yüzeyi bugün izin dağıtımına, denetime değil, dayanıyor.** Yol tabanlı
+   kapsam kararı Institution modülündeki **her** `IInstitutionScoped` yazma ucunu
+   (AuthorizeStaff, UpdateInstitution, ActivateBranch…) üst düğüme bağlı bir kullanıcı için
+   alt ağacın tamamına yazmaya çevirir — guard kimlik eşitliği değil alt-ağaç üyeliği
+   kontrol eder. Bugün bunu durduran tek şey `ProvincialAdmin`/`DistrictAdmin` rollerine
+   `institution:manage` gibi bir yazma izninin **verilmemiş** olmasıdır
+   (`AssignablePermissionScope.Defaults` bu iki rol için boş liste tutar — bkz. o dosyanın
+   yorumu). Biri bu izni bireysel ya da rol haritasından verirse guard onu **durdurmaz**:
+   üst düğüme bağlı kullanıcı alt ağacın tamamına, tek bir onaysız işlemle, iz bırakmadan
+   yazar. **C parçası (denetim izi) yazılmadan bu izin verilmemeli.**
 
 ---
 
