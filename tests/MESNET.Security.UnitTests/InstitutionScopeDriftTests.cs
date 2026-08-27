@@ -265,12 +265,17 @@ public sealed class InstitutionScopeDriftTests
     }
 
     /// <summary>
-    /// Aktörün kurum claim'ini <b>elle</b> bir hedefle karşılaştıran kod.
+    /// Aktörün kurum kapsamını <b>elle</b> bir hedefle karşılaştıran kod.
     ///
-    /// <para>Kalıp: <c>...InstitutionId ==</c> / <c>!=</c> — kapsam kararının kopyası.</para>
+    /// <para>Desen bilinçli olarak <b>aktör tarafına</b> demirlenmiştir: solda
+    /// <c>GetCurrentUser()?.InstitutionId</c> ya da <c>actor/current/user</c> ile başlayan bir
+    /// değişken aranır. Yalnız "iki InstitutionId karşılaştırılıyor" denseydi meşru veri
+    /// süzgeçleri (<c>.Where(p =&gt; p.InstitutionId == query.InstitutionId)</c>, ör.
+    /// <c>ListAcademicPeriodsHandler</c>) ihlal sayılırdı ve gürültülü bir kilit kapatılırdı.</para>
     /// </summary>
     private static readonly Regex HandRolledScopeComparison = new(
-        @"InstitutionId\s*(==|!=)\s*\w*[Ii]nstitutionId", RegexOptions.Compiled);
+        @"(?:GetCurrentUser\(\)\??\.InstitutionId|\b(?:actor|current|user)\w*InstitutionId)\s*(?:==|!=)",
+        RegexOptions.Compiled);
 
     /// <summary>
     /// Kapsam kararını <b>kopyalayan</b> uç kalmamalı; karar politikadan geçmeli.
