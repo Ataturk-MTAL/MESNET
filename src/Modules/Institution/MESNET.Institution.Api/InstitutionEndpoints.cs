@@ -1,6 +1,7 @@
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Institution.Application.Commands;
 using MESNET.Institution.Application.Dtos;
 using MESNET.Institution.Application.Queries;
@@ -115,12 +116,35 @@ public static class InstitutionEndpoints
         return Results.Ok(ResponseBuilder.Success().AddData(result.Items).Build());
     }
 
-    private static async Task<IResult> GetAll(IMessageBus bus)
+    /// <summary>
+    /// Görünür kurumların sayfalı listesi. Kapsam sorgunun İÇİNDE uygulanır (handler);
+    /// uçta kimlik karşılaştırması yapılmaz.
+    /// </summary>
+    /// <param name="nodeType">
+    /// <c>Province</c> / <c>District</c> / <c>School</c>. Verilmezse okullar döner.
+    /// </param>
+    /// <param name="parentId">Belirli bir düğümün doğrudan çocukları.</param>
+    private static async Task<IResult> GetAll(
+        string? nodeType = null,
+        Guid? parentId = null,
+        int page = 1,
+        int pageSize = 20,
+        string? sortBy = null,
+        bool descending = false,
+        string? search = null,
+        IMessageBus bus = default!)
     {
-        var institutions = await bus.InvokeAsync<List<InstitutionDto>>(new GetInstitutions());
-        return Results.Ok(ResponseBuilder.Success()
-            .AddData(institutions)
-            .Build());
+        var result = await bus.InvokeAsync<PagedResult<InstitutionDto>>(
+            new GetInstitutions(nodeType, parentId)
+            {
+                Page = page,
+                PageSize = pageSize,
+                SortBy = sortBy,
+                Descending = descending,
+                Search = search
+            });
+
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
 
     private static async Task<IResult> Get(Guid institutionId, IMessageBus bus)

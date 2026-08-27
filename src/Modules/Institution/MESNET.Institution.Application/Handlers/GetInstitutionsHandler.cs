@@ -1,14 +1,18 @@
 using Marten;
+using MESNET.Common.Infrastructure.Pagination;
 using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Institution.Application.Dtos;
 using MESNET.Institution.Application.Extensions;
 using MESNET.Institution.Application.Queries;
+using MESNET.Institution.Core.Enums;
+using InstitutionRecord = MESNET.Institution.Core.Entities.Institution;
 
 namespace MESNET.Institution.Application.Handlers;
 
 /// <summary>
-/// Kurum listesi <b>aktörün kendi okuluyla</b> sınırlıdır (ADR-0003 adım 6).
+/// Kurum listesi aktörün <b>alt ağacıyla</b> sınırlıdır (ADR-0003 adım 6 + kurum hiyerarşisi).
 ///
 /// <para>Bu sorgu <c>IInstitutionScoped</c> olamaz — hedef kurum istekte geçmez, sorulan zaten
 /// "hangi kurumlar". Kapsam bu yüzden guard'la değil <b>süzmeyle</b> uygulanır.</para>
@@ -18,26 +22,112 @@ namespace MESNET.Institution.Application.Handlers;
 /// diğer okulu listede görüyordu; kimlikle devam edip kaydını ve personel listesini de
 /// okuyabiliyordu.</para>
 ///
-/// <para><b>Kapsamsız aktör boş liste görür</b>, her şeyi değil:
-/// <see cref="InstitutionScopePolicy.VisibleInstitutionFilter"/> onun için hiçbir kurumla
-/// eşleşmeyen bir kimlik döndürür.</para>
+/// <para><b>Sıralama artık ZORUNLU.</b> Bu sorgunun <c>ORDER BY</c>'ı yoktu ve Postgres
+/// güncellenen satırı heap'te yerinden oynattığı için sıra iki çağrı arasında değişiyordu.
+/// Ölçüldü (27.08.2026): kurumu olmayan platform aktörü için "listenin ilk satırı" her
+/// yazmadan sonra başka bir okuldu; yönetim ekranı paleti yanlış okula yazdı.</para>
 /// </summary>
 public static class GetInstitutionsHandler
 {
-    public static async Task<List<InstitutionDto>> Handle(
-        GetInstitutions query, IQuerySession session, ICurrentUserService currentUser)
+    public static async Task<PagedResult<InstitutionDto>> Handle(
+        GetInstitutions query,
+        IQuerySession session,
+        ICurrentUserService currentUser,
+        CancellationToken cancellationToken)
     {
-        var filter = InstitutionScopePolicy.VisibleInstitutionFilter(
+        var scope = InstitutionScopePolicy.VisibleScope(
             currentUser.GetCurrentUser()?.InstitutionId,
+            currentUser.GetInstitutionPath(),
             currentUser.HasPermission(Permissions.Platform.TenantManage));
 
-        IQueryable<Core.Entities.Institution> queryable = session.Query<Core.Entities.Institution>();
+        IQueryable<InstitutionRecord> queryable = session.Query<InstitutionRecord>();
 
-        // null = daraltma yok (yalnız platform aktörü); aksi hâlde tek kuruma indirilir.
-        if (filter is { } institutionId)
-            queryable = queryable.Where(i => i.Id == institutionId);
+        queryable = ApplyScope(queryable, scope);
 
-        var institutions = await queryable.ToListAsync();
-        return institutions.Select(i => i.ToDto()).ToList();
+        // Varsayılan OKUL: çağıranların çoğu okul listesi bekler. Süzgeçsiz bırakılsaydı
+        // il/ilçe müdürlükleri açılır listelerde okul gibi görünürdü — sessizce.
+        queryable = queryable.OfNodeType(InstitutionNodeType.Resolve(query.NodeType));
+
+        if (query.ParentId is { } parentId)
+            queryable = queryable.Where(i => i.ParentId == parentId);
+
+        queryable = ApplySearchTerm(queryable, query.Search);
+        queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: i => i.FullName);
+
+        var page = await queryable.ToPagedResultAsync(query, cancellationToken);
+        var parentNames = await ResolveParentNamesAsync(session, page.Items, cancellationToken);
+
+        return PagedResult<InstitutionDto>.Create(
+            page.Items
+                .Select(i => i.ToDto(i.ParentId is { } id && parentNames.TryGetValue(id, out var name) ? name : null))
+                .ToList(),
+            page.TotalCount,
+            page.Page,
+            page.PageSize);
+    }
+
+    /// <summary>
+    /// Kapsam daraltması. Üç hâl vardır ve üçü de <see cref="InstitutionVisibility"/>'den gelir;
+    /// karar burada TEKRARLANMAZ.
+    /// </summary>
+    private static IQueryable<InstitutionRecord> ApplyScope(
+        IQueryable<InstitutionRecord> queryable, InstitutionVisibility scope)
+    {
+        if (scope.Unrestricted)
+            return queryable;
+
+        if (scope.PathPrefix is { } prefix)
+        {
+            // Marten string.StartsWith'i SQL'de LIKE 'önek%' çevirir; ham SQL ve
+            // WITH RECURSIVE gerekmez. Yolu olmayan satır alt ağaçta DEĞİLDİR.
+            return queryable.Where(i => i.Path != null && i.Path.StartsWith(prefix));
+        }
+
+        // Yol yok: kimliğe düş. Kapsamsız aktörde bu Guid.Empty'dir ve hiçbir kurumla
+        // eşleşmez — her şeyi görmek yerine hiçbir şey görmek.
+        var institutionId = scope.InstitutionId ?? Guid.Empty;
+        return queryable.Where(i => i.Id == institutionId);
+    }
+
+    /// <summary>
+    /// Ad ve kurum kodu araması.
+    ///
+    /// <para>Kod <c>int</c> olduğu için <c>ApplySearch</c> ile aranamaz (o yalnız string
+    /// alanlarda çalışır). Terim sayıya çevrilebiliyorsa kodda <b>tam eşleşme</b> aranır:
+    /// kurum kodu tam girilen bir kimliktir, parçası anlamlı değildir.</para>
+    /// </summary>
+    private static IQueryable<InstitutionRecord> ApplySearchTerm(
+        IQueryable<InstitutionRecord> queryable, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return queryable;
+
+        var term = search.Trim();
+
+        if (int.TryParse(term, out var code))
+            return queryable.Where(i => i.InstitutionCode == code);
+
+        return queryable.ApplySearch(term, i => i.FullName);
+    }
+
+    /// <summary>
+    /// Üst düğüm adlarını <b>toplu</b> okur. Satır başına okuma yapılsaydı 20 satırlık bir
+    /// sayfa 21 sorgu ederdi (N+1).
+    /// </summary>
+    private static async Task<Dictionary<Guid, string>> ResolveParentNamesAsync(
+        IQuerySession session, IReadOnlyList<InstitutionRecord> items, CancellationToken cancellationToken)
+    {
+        var parentIds = items
+            .Select(i => i.ParentId)
+            .OfType<Guid>()
+            .Distinct()
+            .ToList();
+
+        if (parentIds.Count == 0)
+            return [];
+
+        var parents = await session.LoadManyAsync<InstitutionRecord>(cancellationToken, parentIds);
+
+        return parents.ToDictionary(p => p.Id, p => p.FullName);
     }
 }
