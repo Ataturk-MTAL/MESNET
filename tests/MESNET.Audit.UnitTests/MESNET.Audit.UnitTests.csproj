@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+    <!--
+      Görev 7'deki middleware sözleşme testi CANLI bir Wolverine ana bilgisayarı kurar ve
+      handler kodunu çalışma anında üretir. Çekirdek WolverineFx artık Roslyn derleyicisini
+      taşımıyor: bu paket olmadan ana bilgisayar "no IAssemblyGenerator (Roslyn) is
+      registered" ile açılışta ölür (ölçüldü, GH-2876).
+    -->
+    <PackageReference Include="WolverineFx.RuntimeCompilation" />
+    <!-- Görev 7'deki sözleşme testi Host.CreateDefaultBuilder() kullanır. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Modules/Audit/MESNET.Audit.Application/MESNET.Audit.Application.csproj" />
+  </ItemGroup>
+
+</Project>

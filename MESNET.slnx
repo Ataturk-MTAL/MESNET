@@ -78,6 +78,12 @@
     <Project Path="src/Modules/Security/MESNET.Security.Persistence/MESNET.Security.Persistence.csproj"/>
     <Project Path="src/Modules/Security/MESNET.Security.Shared/MESNET.Security.Shared.csproj"/>
   </Folder>
+  <Folder Name="/src/Modules/Audit/">
+    <Project Path="src/Modules/Audit/MESNET.Audit.Api/MESNET.Audit.Api.csproj"/>
+    <Project Path="src/Modules/Audit/MESNET.Audit.Application/MESNET.Audit.Application.csproj"/>
+    <Project Path="src/Modules/Audit/MESNET.Audit.Core/MESNET.Audit.Core.csproj"/>
+    <Project Path="src/Modules/Audit/MESNET.Audit.Persistence/MESNET.Audit.Persistence.csproj"/>
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj"/>
     <Project Path="tests/MESNET.Coordination.UnitTests/MESNET.Coordination.UnitTests.csproj"/>
@@ -90,5 +96,6 @@
     <Project Path="tests/MESNET.Payment.UnitTests/MESNET.Payment.UnitTests.csproj"/>
     <Project Path="tests/MESNET.Institution.UnitTests/MESNET.Institution.UnitTests.csproj"/>
     <Project Path="tests/MESNET.Seeder.UnitTests/MESNET.Seeder.UnitTests.csproj"/>
+    <Project Path="tests/MESNET.Audit.UnitTests/MESNET.Audit.UnitTests.csproj"/>
   </Folder>
 </Solution>
