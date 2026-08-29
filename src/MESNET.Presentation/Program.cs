@@ -620,6 +620,7 @@ try
     app.MapDocumentLifecycleEndpoints();
     // Security
     app.MapUserManagementEndpoints();
+    app.MapAuditEndpoints();
     app.MapInvitationEndpoints();
     app.MapRoleEndpoints();
     app.MapRoleIntegrityEndpoints();
