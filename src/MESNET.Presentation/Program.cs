@@ -128,6 +128,12 @@ try
     .IntegrateWithWolverine()
     .AddAsyncDaemon(DaemonMode.HotCold);
 
+    // Kurum ağacı yolu araması — denetim izi (C parçası) konu kurumu aktörün kurumundan
+    // farklı olduğunda kullanır. Singleton: önbellek kurum başınadır ve istek ömrüne bağlı
+    // değildir; IDocumentStore da singleton'dır.
+    builder.Services.AddSingleton<MESNET.Common.Infrastructure.Tenancy.IInstitutionPathLookup,
+        MESNET.Common.Infrastructure.Tenancy.InstitutionPathLookup>();
+
     // ────────────────────────────────────────────────────────────────────────────────
     // Modül Registrations (Her modül kendi katmanlarını kaydeder)
     // ────────────────────────────────────────────────────────────────────────────────
