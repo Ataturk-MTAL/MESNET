@@ -264,4 +264,72 @@ public sealed class InstitutionClaimAuthorityTests
                 + "\"kaynak yoksa token'a düş\" davranışı geri gelir ve kaydı olmayan "
                 + "kullanıcı kendi kapsamını seçer.");
     }
+
+    /// <summary>
+    /// Token'daki <c>active_institution_id</c> her istekte silinmelidir — kayıt boş olsa
+    /// bile. "Kaynak yoksa token'a düş" davranışı, kaydı olmayan kullanıcıya KENDİ bağlamını
+    /// seçtirirdi (B parçası, <c>institution_path</c> ile aynı disiplin).
+    /// </summary>
+    [Fact]
+    public void Token_daki_aktif_baglam_claimi_her_istekte_silinir()
+    {
+        var transformation = Path.Combine(
+            RepoRoot(), "src", "MESNET.Common.Infrastructure", "Security",
+            "PermissionClaimsTransformation.cs");
+
+        File.Exists(transformation).ShouldBeTrue($"Dosya bulunamadı: {transformation}");
+
+        var kaynak = File.ReadAllText(transformation);
+
+        kaynak.ShouldContain("ActiveInstitutionClaimType");
+        kaynak.ShouldContain("RemoveActiveInstitutionClaims",
+            customMessage:
+                "Token'daki active_institution_id claim'ini silen yol yok. Silinmezse "
+                + "\"kaynak yoksa token'a düş\" davranışı geri gelir ve kaydı olmayan "
+                + "kullanıcı kendi bağlamını seçer.");
+    }
+
+    /// <summary>
+    /// <b>Kapı kapalı kalmalı:</b> hiçbir kod Keycloak'a <c>active_institution_id</c>
+    /// özniteliği yazmamalıdır. Oradaki bir kopya, ileride birinin onu yeniden otorite
+    /// sanmasına davetiye çıkarır — #195'te realm'e ulaşmayan ayar tam bu sınıf bir sapmaydı.
+    /// Tarama deseni <see cref="Hicbir_kod_keycloaka_institution_id_oznitelig_yazmaz"/> ile
+    /// AYNIDIR.
+    /// </summary>
+    [Fact]
+    public void Aktif_baglam_Keycloak_a_YAZILMAZ()
+    {
+        var sourceRoot = Path.Combine(RepoRoot(), "src");
+        Directory.Exists(sourceRoot).ShouldBeTrue($"Kaynak klasörü bulunamadı: {sourceRoot}");
+
+        var violations = new List<string>();
+
+        foreach (var file in Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories))
+        {
+            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+                continue;
+
+            var lines = File.ReadAllLines(file);
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                var trimmed = line.TrimStart();
+
+                if (trimmed.StartsWith("//", StringComparison.Ordinal)) continue;
+
+                var key = line.IndexOf("[\"active_institution_id\"]", StringComparison.Ordinal);
+                if (key < 0) continue;
+                if (line.IndexOf('=', key) < 0) continue;
+
+                violations.Add($"{Path.GetRelativePath(RepoRoot(), file)}:{i + 1}");
+            }
+        }
+
+        violations.ShouldBeEmpty(
+            "Aktif bağlam Keycloak'a yazılıyor. Otorite UserAccount.ActiveInstitutionId'dir; "
+            + "Keycloak'taki bir kopya, ileride birinin onu yeniden otorite sanmasına "
+            + "davetiye çıkarır. Bağlam yalnız SetActiveInstitutionHandler ile değişir.\n  "
+            + string.Join("\n  ", violations));
+    }
 }
