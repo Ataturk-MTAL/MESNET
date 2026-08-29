@@ -169,6 +169,17 @@ Reddedilen bir komut (işlem geri alınır) yine de iz satırı bırakır. Bu te
 2. **Yetki reddi (403) ize girmez.** ASP.NET yetkilendirme katmanı isteği handler'dan önce keser, middleware hiç çalışmaz. İzdeki `Rejected` satırları yalnız `DomainException` kaynaklıdır (kapsam ihlali dahil — o guard middleware'de çalışır ve yakalanır). HTTP katmanı reddini kaydetmek ayrı bir ara katman ister; bu spec'in dışındadır.
 3. **Hedef kimliği çıkarımı konvansiyona dayalıdır.** Yeni bir ad kullanan komut hedefsiz kaydolur.
 4. **Gövde yoktur.** "Ne değişti" sorusu olay deposundan cevaplanır; belge tabanlı (event-sourced olmayan) varlıklarda böyle bir geçmiş yoktur — orada iz "dokunuldu" der, "şu değerden şuna" demez.
+
+   **Ölçülmüş en keskin örneği: `ToggleUserStatus`.** Komut `(UserAccountId, Enable: bool)`
+   ve `UserAccount` düz Marten belgesidir — olay akışı yoktur. Gövde saklanmadığı için
+   "hesap açıldı mı, kapatıldı mı" **hiçbir yerden geri alınamaz**: ne izden, ne olay
+   deposundan. Türkçe etiket ("Kullanıcı durumu değiştirildi") tek betimlemedir ve yönü
+   söylemez. Hesap kapatma bir güvenlik olayı olduğu için bu, bedelin en pahalı ucudur.
+
+   Bilinçli olarak C'de bırakıldı: yönü kurtarmanın iki yolu da C'nin dışına taşar —
+   komutu `EnableUser`/`DisableUser` diye bölmek (iki uç + arayüz değişikliği), ya da bu
+   tek komut için gövdeden bir alan saklamak ("gövde yok" kuralında ilk delik). Karar B
+   parçasıyla birlikte ele alınmalıdır.
 5. **Hacim bağı yalnız saklama süresidir.** Tüm yazma komutları kaydedilir; devamsızlık girişi bu alanda en yüksek hacimli komuttur.
 6. **`Consumers/` kaydedilmez.** Bir olayın tetiklediği zincirin adımları görünmez; yalnız zinciri başlatan kullanıcı eylemi görünür.
 
