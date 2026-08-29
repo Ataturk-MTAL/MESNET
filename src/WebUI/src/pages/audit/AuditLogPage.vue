@@ -37,7 +37,11 @@
           style="min-width: 180px"
         />
 
+        <!-- `mine` ucu (GetMine) `crossedTenantBoundary` parametresini HİÇ almıyor — bu
+             kapsamda anahtarı görünür bırakmak, açık görünüp hiçbir şey süzmeyen bir yalan
+             üretirdi. Kurum kapsamına geçilince tekrar belirir. -->
         <q-toggle
+          v-if="scope === 'institution'"
           v-model="crossedOnly"
           label="Yalnız kurum sınırını aşanlar"
           dense
@@ -128,7 +132,9 @@ const outcomeOptions = [
   { label: 'Hata', value: 'Failed' },
 ]
 
-const filters = computed(() => buildAuditListFilters(outcomeFilter.value, crossedOnly.value))
+const filters = computed(() =>
+  buildAuditListFilters(scope.value, outcomeFilter.value, crossedOnly.value),
+)
 
 const { rows: entries, loading, pagination, search, onRequest, onSearch, load } =
   useServerPagination<AuditEntryDto>({
@@ -143,8 +149,14 @@ const { rows: entries, loading, pagination, search, onRequest, onSearch, load } 
     defaultDescending: DEFAULT_DESCENDING,
   })
 
-// `filters` izleyicisi kapsam değişimini GÖRMEZ (kapsam gövdeye girmiyor, ucu değiştiriyor).
-watch(scope, () => {
+// `filters` izleyicisi kapsam değişimini HER ZAMAN görmeyebilir (kapsam gövdeye girmiyor,
+// ucu değiştiriyor — `crossedOnly` kapalıyken filtre gövdesi zaten aynı kalır). Kapsam
+// değişince yeniden yükleme burada elle tetiklenir.
+watch(scope, (newScope) => {
+  // `mine` ucu `crossedTenantBoundary` almıyor. Anahtar `institution`'dan `mine`'a geçerken
+  // açık kalmışsa sıfırlanır — yoksa gizli ama açık bir süzgeç bir sonraki `institution`
+  // dönüşünde sessizce tekrar gövdeye sızar.
+  if (newScope === 'mine') crossedOnly.value = false
   load().catch(() => {})
 })
 

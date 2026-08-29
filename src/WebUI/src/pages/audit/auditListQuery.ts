@@ -25,8 +25,18 @@ export interface AuditListFilters extends Record<string, unknown> {
   crossedTenantBoundary?: boolean
 }
 
-/** `useServerPagination`'a geçilecek filtre gövdesi. */
+/**
+ * `useServerPagination`'a geçilecek filtre gövdesi.
+ *
+ * <p><b>`scope` neden burada:</b> `GetMine` ucu (`AuditEndpoints.cs`) `crossedTenantBoundary`
+ * parametresini HİÇ almıyor — göndersek bile sessizce yok sayılır. Bu kararı yalnız görünürlük
+ * (`v-if`) ile çözmek yetmez: anahtar UI'da açık kalıp kapsam `institution`'dan `mine`'a
+ * geçerse, `crossedOnly` state'i true kalır ve bir sonraki `institution`'a dönüşte tekrar
+ * gövdeye sızar. Kural burada, tek kaynakta, sabitlenir: `mine` kapsamında bu alan HİÇBİR
+ * girdiyle gövdeye giremez.</p>
+ */
 export function buildAuditListFilters(
+  scope: AuditScope,
   outcome: string | null,
   crossedOnly: boolean,
 ): AuditListFilters {
@@ -34,6 +44,8 @@ export function buildAuditListFilters(
   // Boş süzgeç GÖNDERİLMEZ: sunucuda `outcome=""` hiçbir satırla eşleşmez ve liste sessizce
   // boşalırdı.
   if (outcome) filters.outcome = outcome
-  if (crossedOnly) filters.crossedTenantBoundary = true
+  // `mine` ucu bu parametreyi almıyor — göndermek sunucuda sessizce yok sayılırdı ve anahtar
+  // "açık görünüp hiçbir şey yapmayan" bir yalana dönüşürdü.
+  if (crossedOnly && scope === 'institution') filters.crossedTenantBoundary = true
   return filters
 }

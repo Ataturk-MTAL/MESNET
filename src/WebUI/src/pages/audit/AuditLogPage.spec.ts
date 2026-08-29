@@ -8,6 +8,7 @@ import {
   DEFAULT_DESCENDING,
   DEFAULT_SCOPE,
   buildAuditListFilters,
+  type AuditScope,
 } from './auditListQuery'
 
 /**
@@ -42,10 +43,14 @@ describe('AuditLogPage — sunucu sözleşmesi', () => {
 
   let fetchFn: ReturnType<typeof vi.fn<FetchFn>>
 
-  const kur = (outcome: string | null = null, crossedOnly = false) =>
+  const kur = (
+    scope: AuditScope = 'mine',
+    outcome: string | null = null,
+    crossedOnly = false,
+  ) =>
     useServerPagination<AuditEntryDto>({
       fetchFn,
-      filters: computed(() => buildAuditListFilters(outcome, crossedOnly)),
+      filters: computed(() => buildAuditListFilters(scope, outcome, crossedOnly)),
       defaultSortBy: DEFAULT_SORT_BY,
       defaultDescending: DEFAULT_DESCENDING,
     })
@@ -74,7 +79,7 @@ describe('AuditLogPage — sunucu sözleşmesi', () => {
   })
 
   it('sonuç süzgeci sunucuya gider', async () => {
-    const { load } = kur('Rejected')
+    const { load } = kur('mine', 'Rejected')
 
     await load()
 
@@ -82,7 +87,7 @@ describe('AuditLogPage — sunucu sözleşmesi', () => {
   })
 
   it('boş sonuç süzgeci GÖNDERİLMEZ — gönderilse liste sessizce boşalırdı', async () => {
-    const { load } = kur(null)
+    const { load } = kur('mine', null)
 
     await load()
 
@@ -90,8 +95,8 @@ describe('AuditLogPage — sunucu sözleşmesi', () => {
     expect(params).not.toHaveProperty('outcome')
   })
 
-  it('kurum sınırı süzgeci yalnız açıkken gider', async () => {
-    const { load } = kur(null, true)
+  it('kurum sınırı süzgeci KURUM kapsamında açıkken gider', async () => {
+    const { load } = kur('institution', null, true)
 
     await load()
 
@@ -99,6 +104,20 @@ describe('AuditLogPage — sunucu sözleşmesi', () => {
       expect.objectContaining({ crossedTenantBoundary: true }),
     )
   })
+
+  it(
+    'kurum sınırı süzgeci İŞLEMLERİM kapsamında GÖNDERİLMEZ — ' +
+      '`GetMine` ucu bu parametreyi almıyor, göndermek anahtarın açık görünüp hiçbir şey ' +
+      'yapmadığı bir yalan üretirdi',
+    async () => {
+      const { load } = kur('mine', null, true)
+
+      await load()
+
+      const params = fetchFn.mock.calls[0]![0]
+      expect(params).not.toHaveProperty('crossedTenantBoundary')
+    },
+  )
 
   it('arama terimi sunucuya gider — istemci tarafında süzülmez', async () => {
     const { onSearch } = kur()
