@@ -87,4 +87,14 @@ public static class SecurityErrors
             $"Şu öğrenciler bu kuruma ait değil ya da öğrenci görünümü henüz doldurulmamış: "
             + $"{string.Join(", ", studentIds)}. Görünüm boşsa "
             + "POST /api/students/resync-projections çalıştırılmalıdır.");
+
+    /// <summary>
+    /// Hedef kurum aktörün alt ağacında değil. <b>"Bulunamadı" DENMEZ</b> — kapsamı olmayan
+    /// bir aktöre hangi kimliklerin var olduğunu doğrulatmak, kurum listesini tahminle
+    /// taramanın kapısını açar. Aynı gerekçe <c>InstitutionErrors.InstitutionScopeDenied</c>
+    /// yorumunda.
+    /// </summary>
+    public static Error ActiveContextOutOfScope(Guid institutionId) =>
+        new("Security.ActiveContextOutOfScope",
+            $"Bu kurum yetki alanınızda değil: {institutionId}");
 }

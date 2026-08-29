@@ -17,6 +17,12 @@ public static class UserManagementEndpoints
     {
         var group = app.MapGroup("/api/security/users").WithTags("UserManagement");
 
+        // Aktif bağlam — kullanıcının KENDİ bağlamı, başkasınınki değil; bu yüzden yolda
+        // kullanıcı kimliği YOK. Ek izin gerektirmez: kapı alt ağaç kontrolüdür ve o
+        // handler'dadır. Sabit segmentli rota, aşağıdaki "/{userAccountId:guid}" kalıbından
+        // ÖNCE kaydedilir — aynı gerekçe InstitutionEndpoints'te "/provinces" için de geçerli.
+        group.MapPost("/me/context", SetContext).RequireAuthorization();
+
         group.MapPost("/", CreateUser).RequireAuthorization(Permissions.UserManagement.Create);
         group.MapGet("/", GetUsers).RequireAuthorization(Permissions.UserManagement.View);
         group.MapGet("/{userAccountId:guid}", GetUser).RequireAuthorization(Permissions.UserManagement.View);
@@ -189,6 +195,16 @@ public static class UserManagementEndpoints
             : "Kullanıcının kurum bağı güncellendi.";
 
         return Results.Ok(ResponseBuilder.Success().AddMessage(message).Build());
+    }
+
+    /// <summary>
+    /// Aktörün aktif bağlamını değiştirir/temizler (B parçası). Kapsam kontrolü
+    /// <c>SetActiveInstitutionHandler</c>'da yapılır — burada iş mantığı yoktur.
+    /// </summary>
+    private static async Task<IResult> SetContext(SetActiveInstitution command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command);
+        return Results.Ok(ResponseBuilder.Success().Build());
     }
 
     private static async Task<IResult> ChangeStudents(

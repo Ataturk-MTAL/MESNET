@@ -84,4 +84,7 @@ public sealed class CurrentUserService : ICurrentUserService
     {
         return GetCurrentUser()?.InstitutionPath;
     }
+
+    public string? GetSessionId()
+        => _httpContextAccessor.HttpContext?.User.FindFirst("sid")?.Value;
 }

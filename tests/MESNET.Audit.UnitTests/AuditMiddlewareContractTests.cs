@@ -87,6 +87,7 @@ public class AuditMiddlewareContractTests
         public IReadOnlyList<string> GetBranchCodes() => [];
         public IReadOnlyList<Guid> GetLinkedStudentIds() => [];
         public string? GetInstitutionPath() => "/il/ilce/okul/";
+        public string? GetSessionId() => null;
     }
 
     private static async Task<(IHost Host, SahteYazici Yazici)> AnaBilgisayarKurAsync()

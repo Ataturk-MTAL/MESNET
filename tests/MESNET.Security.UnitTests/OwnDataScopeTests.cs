@@ -288,5 +288,7 @@ public sealed class OwnDataScopeTests
         public IReadOnlyList<Guid> GetLinkedStudentIds() => linkedStudentIds;
 
         public string? GetInstitutionPath() => null;
+
+        public string? GetSessionId() => null;
     }
 }
