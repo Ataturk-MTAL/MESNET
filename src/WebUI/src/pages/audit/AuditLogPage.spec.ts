@@ -8,7 +8,9 @@ import {
   DEFAULT_DESCENDING,
   DEFAULT_SCOPE,
   buildAuditListFilters,
+  resolveAuditEndpoint,
   type AuditScope,
+  type AuditApiClient,
 } from './auditListQuery'
 
 /**
@@ -135,5 +137,36 @@ describe('AuditLogPage — sunucu sözleşmesi', () => {
     await vi.runAllTimersAsync()
 
     expect(fetchFn).toHaveBeenCalledWith(expect.objectContaining({ page: 4 }))
+  })
+})
+
+/**
+ * Madde 5 düzeltmesi: `AuditLogPage`'in kapsam→uç eşlemesi eskiden sayfa içinde satır içi bir
+ * üçlü operatördü ve yukarıdaki testler `fetchFn`'i doğrudan mock'ladığı için bu satırı HİÇ
+ * ÇALIŞTIRMIYORDU — eşleme ters çevrilse (institution ↔ mine) bile 8/8 yeşil kalırdı. Eşleme
+ * `resolveAuditEndpoint`'e (`./auditListQuery`) taşındı; sayfa VE bu test AYNI fonksiyonu
+ * çağırır. Aşağıdaki testler o fonksiyonu DOĞRUDAN çağırır — `useServerPagination`'ı
+ * devreye SOKMAZ.
+ */
+describe('resolveAuditEndpoint — kapsam → uç eşlemesi', () => {
+  const kurSahteApi = (): AuditApiClient => ({
+    listMine: vi.fn() as unknown as AuditApiClient['listMine'],
+    listForInstitution: vi.fn() as unknown as AuditApiClient['listForInstitution'],
+  })
+
+  it('institution kapsamında listForInstitution seçilir', () => {
+    const api = kurSahteApi()
+
+    const secilen = resolveAuditEndpoint('institution', api)
+
+    expect(secilen).toBe(api.listForInstitution)
+  })
+
+  it('mine kapsamında listMine seçilir', () => {
+    const api = kurSahteApi()
+
+    const secilen = resolveAuditEndpoint('mine', api)
+
+    expect(secilen).toBe(api.listMine)
   })
 })

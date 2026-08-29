@@ -7,6 +7,8 @@
  * koşulduğunda test 5/5 yeşil kaldı.</p>
  */
 
+import type { auditApi } from 'src/api/audit'
+
 /** Varsayılan kapsam. Herkesin izni olan tek kapsam — açılışta 403 riski yok. */
 export const DEFAULT_SCOPE = 'mine'
 
@@ -48,4 +50,29 @@ export function buildAuditListFilters(
   // "açık görünüp hiçbir şey yapmayan" bir yalana dönüşürdü.
   if (crossedOnly && scope === 'institution') filters.crossedTenantBoundary = true
   return filters
+}
+
+/** `resolveAuditEndpoint`'in kabul ettiği en dar sözleşme — testte gerçek `auditApi` yerine
+ *  sahte fonksiyonlar geçilebilsin diye `Pick` ile daraltıldı. */
+export type AuditApiClient = Pick<typeof auditApi, 'listMine' | 'listForInstitution'>
+
+/**
+ * Kapsam → uç eşlemesi.
+ *
+ * <p><b>Madde 5 düzeltmesi — neden ayrı fonksiyon:</b> bu eşleme eskiden
+ * `AuditLogPage.vue`'nin `fetchFn`'i içinde satır içi bir üçlü operatördü
+ * (`scope === 'institution' ? listForInstitution : listMine`). Sayfa testi
+ * `useServerPagination`'a `fetchFn`'i doğrudan mock'layarak geçtiği için bu satır TESTTE HİÇ
+ * ÇALIŞMIYORDU — eşleme ters çevrilse (institution ↔ mine) bile 8/8 yeşil kalırdı. Eşleme
+ * buraya taşınınca hem sayfa hem test AYNI fonksiyonu çağırır; ters çevrilirse test kırmızı
+ * olur. Aynı desen: `utils/institutionScope.ts`.</p>
+ *
+ * <p>İki ucun izni FARKLIDIR (`listForInstitution` → `audit:view:institution`); bu fonksiyon
+ * yalnız HANGİ ucun çağrılacağına karar verir, yetki kararı sunucudadır.</p>
+ */
+export function resolveAuditEndpoint(
+  scope: AuditScope,
+  api: AuditApiClient,
+): AuditApiClient['listMine'] {
+  return scope === 'institution' ? api.listForInstitution : api.listMine
 }

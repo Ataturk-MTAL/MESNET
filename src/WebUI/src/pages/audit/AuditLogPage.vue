@@ -104,6 +104,7 @@ import {
   DEFAULT_SORT_BY,
   DEFAULT_DESCENDING,
   buildAuditListFilters,
+  resolveAuditEndpoint,
   type AuditScope,
 } from './auditListQuery'
 
@@ -139,11 +140,9 @@ const filters = computed(() =>
 const { rows: entries, loading, pagination, search, onRequest, onSearch, load } =
   useServerPagination<AuditEntryDto>({
     // Kapsam URL'i DEĞİŞTİRİR, bir sorgu parametresi değildir: iki ucun izni farklıdır ve
-    // yetki kararı sunucuda uç seviyesinde verilir.
-    fetchFn: (params) =>
-      scope.value === 'institution'
-        ? auditApi.listForInstitution(params)
-        : auditApi.listMine(params),
+    // yetki kararı sunucuda uç seviyesinde verilir. Eşleme kararı `resolveAuditEndpoint`'te
+    // (auditListQuery.ts) — sayfa VE test aynı fonksiyonu çağırır.
+    fetchFn: (params) => resolveAuditEndpoint(scope.value, auditApi)(params),
     filters,
     defaultSortBy: DEFAULT_SORT_BY,
     defaultDescending: DEFAULT_DESCENDING,
