@@ -124,7 +124,7 @@ yoksa                        → bugünkü davranış (ev kurumu, yoksa platform
 | Kurum künyesi düzeltme | `institution:manage` | `PATCH /api/institutions/{id}` |
 | Tıkanmış onay zincirini açma | `internship:manage` | `POST /api/internships/{id}/approve/override` |
 
-`ProvincialAdmin` ve `DistrictAdmin` rollerine `institution:manage` verilir. Bunun yan etkisi bilinçlidir: marka paleti ve ders programı yapılandırması da açılır (ikisi de `institution:manage` altındadır). İkisi de okul ayarıdır, denetlenir, ve ayrı bir izne bölmek var olan izin ağacını il yetkilisi için yeniden çizmek olurdu.
+`ProvincialAdmin` ve `DistrictAdmin` rollerine `institution:manage` verilir. Bunun yan etkisi bilinçlidir ve düşünüldüğünden geniştir — bkz. Bölüm 7, madde 3 için gerçek kapsam listesi.
 
 **Override ayrı bir izne bölünür.** `internship:manage` bugün override ile birlikte **müdür onay adımını** da açıyor (`POST /approve/director`). İl yetkilisinin onay zincirinde normal bir adım olması istenmez — istenen tıkanıklığı açmaktır. Bu yüzden override ucu kendi iznine geçer: `internship:approval:override`.
 
@@ -205,7 +205,14 @@ Bunlar tasarım seçimlerinin **kalıcı** sonuçlarıdır — ertelenen kapsam 
 0. **Bağlamın ömrü SSO oturumunun ömrüdür, sekmeninki değil.** Sekmeyi kapatıp uygulamayı yeniden açan kullanıcı, SSO oturumu canlıysa aynı bağlamda devam eder (ölçüldü: `sid` aynı kalır). "Yeni girişte düşer" yalnız gerçek çıkışta ya da oturum zaman aşımında geçerlidir.
 1. **İki sekme aynı bağlamı paylaşır.** Bağlamı sunucuda saklamanın doğrudan sonucu: bir sekmede okul değiştirmek diğerini de değiştirir. Sekme başına bağlam istemci tarafı saklama isterdi; o da ADR-0003'ün kaçındığı şeydir. Kullanıcının iki okulu yan yana açması mümkün değildir.
 2. **Bağlam değişimi izin önbelleğini geçersiz kılar.** Kullanıcının bütün claim'leri yeniden hesaplanır (izinler, alan kodları, yol). Sık bağlam değiştiren kullanıcıda bu ek bir veritabanı gidişidir; kabul edilir, çünkü alternatifi bayat kapsamla çalışmaktır.
-3. **`institution:manage` müdahale sınırını aşar.** İl yetkilisi dönem ve künye için aldığı izinle marka paletini ve ders programı yapılandırmasını da değiştirebilir. Bilinçlidir: var olan izin ağacını tek rol için yeniden çizmemek adına kabul edildi. Üçü de denetlenir.
+3. **`institution:manage` müdahale sınırını aşar — düşünülenden geniş.** İl yetkilisi dönem ve künye için aldığı izinle bağlamdaki okulda şunları da değiştirebilir:
+   - Marka paleti ve ders programı yapılandırması
+   - `POST /api/work-calendar` (`WorkCalendarEndpoints.cs:19`) — devamsızlık muhasebesini besleyen çalışma takvimi
+   - `DELETE /api/reports/documents/{documentId}`, `POST /api/reports/documents/batch-delete`, `POST /api/reports/documents/generate-batch` (`DocumentLifecycleEndpoints.cs:28-30`) — **üretilmiş evrakın toplu/tekil silinmesi** (yıkıcı, geri alınamaz)
+   - `POST /api/institutions/{institutionId}/branches`, `DELETE .../branches/{fieldCode}`, `PUT .../branches/{fieldCode}/specializations`, `PUT .../branches/{fieldCode}/supervisors` (`FieldCatalogEndpoints.cs:24-27`) — okulun alan/dal/uzmanlık kataloğu
+   - `POST /api/coordination/weekly-visits/resync` (`WeeklyVisitEndpoints.cs:40`)
+
+   Bilinçlidir: var olan izin ağacını tek rol için yeniden çizmemek adına kabul edildi. Hepsi `Commands/` üzerinden ize düşer, denetlenir — ama en riskli kalemi (evrak toplu silme) örtük bırakmadan kabul edilmelidir.
 4. **Yetki reddi (403) hâlâ ize girmez** (C'den devralınır). Bağlam dışı bir okula erişim denemesi `DomainException` ürettiği için ize **girer**; izin katmanının kestiği istekler girmez.
 
 ---
