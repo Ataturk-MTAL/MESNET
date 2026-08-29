@@ -80,6 +80,7 @@ import AppNotice from 'components/AppNotice.vue'
 import { institutionApi, type InstitutionDto } from 'src/api/institution'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useInstitutionContext } from 'src/composables/useInstitutionContext'
+import { useNotify } from 'src/composables/useNotify'
 import { useAuthStore } from 'stores/auth'
 import { useInstitutionStore } from 'stores/institution'
 import {
@@ -92,6 +93,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const institutionStore = useInstitutionStore()
 const context = useInstitutionContext()
+const notify = useNotify()
 
 // Seçim ekranı yalnız OKULLARI listeler (bkz. contextSelectQuery.ts) — süzgeç sabit, il/ilçe
 // yetkilisine gösterilecek ikinci bir seçenek yoktur.
@@ -123,14 +125,22 @@ function formatLocation(row: InstitutionDto): string {
  * bir invalidasyon yazılmaz.
  */
 async function switchToInstitution(institutionId: string) {
-  await context.switchTo(institutionId)
-  router.push('/dashboard').catch(() => {})
+  try {
+    await context.switchTo(institutionId)
+    router.push('/dashboard').catch(() => {})
+  } catch (e) {
+    notify.apiError(e, 'Kuruma geçilirken bir hata oluştu.')
+  }
 }
 
 /** Kendi düğümüne dönmek bir kurum SEÇMEK değildir — bağlam temizlenir. */
 async function exitContext() {
-  await context.switchTo(null)
-  router.push('/dashboard').catch(() => {})
+  try {
+    await context.switchTo(null)
+    router.push('/dashboard').catch(() => {})
+  } catch (e) {
+    notify.apiError(e, 'Bağlamdan çıkılırken bir hata oluştu.')
+  }
 }
 
 /**
