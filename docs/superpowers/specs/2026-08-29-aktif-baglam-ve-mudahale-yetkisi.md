@@ -76,7 +76,7 @@ Bağlam, onu kuran token'ın `sid` claim'iyle birlikte saklanır. Çözümlemede
 
 `sid` yetki kararında **kullanılmaz**, yalnız bağlamı düşürmek için. En kötü hâlde yanlış karşılaştırır ve kullanıcı okulu yeniden seçer.
 
-**ÖLÇÜLMEDİ:** depoda `sid` ya da `session_state` claim'i hiçbir yerde kullanılmıyor; token'da geldiği doğrulanmadı. Bkz. "Ölçülmesi gerekenler".
+**Ölçüldü (29.08.2026):** `sid` kullanıcı access token'ında geliyor, yenilemede sabit kalıyor, yeni girişte değişiyor. Ayrıntı ve kararın gerçek sınırı için bkz. "Ölçüm sonuçları".
 
 ---
 
@@ -202,6 +202,7 @@ O liste "bu rol başkasına hangi izinleri dağıtabilir" sorusudur. İl yetkili
 
 Bunlar tasarım seçimlerinin **kalıcı** sonuçlarıdır — ertelenen kapsam değil.
 
+0. **Bağlamın ömrü SSO oturumunun ömrüdür, sekmeninki değil.** Sekmeyi kapatıp uygulamayı yeniden açan kullanıcı, SSO oturumu canlıysa aynı bağlamda devam eder (ölçüldü: `sid` aynı kalır). "Yeni girişte düşer" yalnız gerçek çıkışta ya da oturum zaman aşımında geçerlidir.
 1. **İki sekme aynı bağlamı paylaşır.** Bağlamı sunucuda saklamanın doğrudan sonucu: bir sekmede okul değiştirmek diğerini de değiştirir. Sekme başına bağlam istemci tarafı saklama isterdi; o da ADR-0003'ün kaçındığı şeydir. Kullanıcının iki okulu yan yana açması mümkün değildir.
 2. **Bağlam değişimi izin önbelleğini geçersiz kılar.** Kullanıcının bütün claim'leri yeniden hesaplanır (izinler, alan kodları, yol). Sık bağlam değiştiren kullanıcıda bu ek bir veritabanı gidişidir; kabul edilir, çünkü alternatifi bayat kapsamla çalışmaktır.
 3. **`institution:manage` müdahale sınırını aşar.** İl yetkilisi dönem ve künye için aldığı izinle marka paletini ve ders programı yapılandırmasını da değiştirebilir. Bilinçlidir: var olan izin ağacını tek rol için yeniden çizmemek adına kabul edildi. Üçü de denetlenir.
@@ -223,15 +224,27 @@ Okul *listesi* B'de zaten vardır ve seçim ekranı onunla çalışır; eksik ol
 
 ---
 
-## 9. Ölçülmesi gerekenler (planlamadan önce)
+## 9. Ölçüm sonuçları (29.08.2026, canlı Keycloak)
 
-**`sid` claim'i token'da geliyor mu.** Depoda `sid` ya da `session_state` hiçbir yerde kullanılmıyor; geldiği doğrulanmadı. Canlı token'a bakılacak.
+Planlamadan önce ölçüldü; **yedek yola ihtiyaç yok**.
 
-Gelmiyorsa iki yol:
-- **Doğru yol:** Keycloak istemcisine oturum claim eşleyicisi eklenir. #195'te ölçüldüğü gibi realm import **tek seferliktir** — `mesnet-realm.json`'a yazmak yetmez, çalışan realm'e ulaştığı ayrıca doğrulanmalıdır (`RealmVerificationHostedService` / `RealmInvariants` deseni).
-- **Yedek:** bağlam çıkışta ön yüzden temizlenir. Tarayıcı kapatılınca çalışmaz, yani "yeni girişte düşer" kararını tam karşılamaz. Bedeli açıkça yazılır.
+| Ölçüm | Sonuç |
+|---|---|
+| Kullanıcı access token'ında `sid` | **Var** — mapper gerekmiyor, realm değişikliği gerekmiyor |
+| `session_state` | Yok — yeni Keycloak'ta `sid` onun yerini aldı |
+| Token yenilemede `sid` | **Sabit** — uzun çalışma gününde bağlam düşmez |
+| Yeni girişte `sid` | **Değişiyor** — bağlam oturumlar arası taşınmaz |
+| Servis hesabı token'ında `sid` | Yok (beklenen: kullanıcı oturumu yaratmaz) |
 
----
+Realm dosyasına oturum claim eşleyicisi **eklenmeyecek**; #195'teki "realm'e ulaşmayan ayar" riski bu kararla hiç doğmuyor.
+
+### Ölçümden çıkan nüans — kararın gerçek sınırı
+
+Bağlamın ömrü **tarayıcı sekmesinin değil, Keycloak SSO oturumunun** ömrüdür.
+
+Ölçümdeki "yeni giriş" bir parola akışıydı ve her seferinde yeni oturum açtı. Tarayıcıdaki PKCE akışı farklıdır: kullanıcı sekmeyi kapatıp uygulamayı yeniden açtığında SSO oturumu hâlâ canlıysa aynı `sid` döner ve **bağlam taşınır**.
+
+Yani "çıkışta sıfırlanır" kararı şu koşulla geçerlidir: gerçek çıkış yapıldığında ya da SSO oturumu zaman aşımına uğradığında. Sekmeyi kapatmak bağlamı düşürmez. Bu, sunucuda saklama kararının doğal sonucudur ve arayüzde hangi okulda olunduğunun tartışmasız görünmesi gereğini güçlendirir.
 
 ## Sıra
 
