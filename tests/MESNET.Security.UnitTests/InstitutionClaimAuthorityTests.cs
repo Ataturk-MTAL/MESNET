@@ -282,11 +282,19 @@ public sealed class InstitutionClaimAuthorityTests
         var kaynak = File.ReadAllText(transformation);
 
         kaynak.ShouldContain("ActiveInstitutionClaimType");
-        kaynak.ShouldContain("RemoveActiveInstitutionClaims",
-            customMessage:
-                "Token'daki active_institution_id claim'ini silen yol yok. Silinmezse "
-                + "\"kaynak yoksa token'a düş\" davranışı geri gelir ve kaydı olmayan "
-                + "kullanıcı kendi bağlamını seçer.");
+
+        // Yalnız metod ADININ dosyada geçmesi yetmez (metod TANIMI da eşleşir ve çağrı
+        // silinse bile yeşil kalır). Çağrı SİTESİ aranır: yorum satırları hariç tutulur,
+        // imza "(principal)" ile eşleşir — tanım "(ClaimsPrincipal principal)" İLE EŞLEŞMEZ.
+        var cagriVarMi = File.ReadAllLines(transformation)
+            .Select(line => line.TrimStart())
+            .Where(line => !line.StartsWith("//", StringComparison.Ordinal))
+            .Any(line => line.Contains("RemoveActiveInstitutionClaims(principal);", StringComparison.Ordinal));
+
+        cagriVarMi.ShouldBeTrue(
+            "Token'daki active_institution_id claim'ini silen ÇAĞRI yok. Silinmezse "
+            + "\"kaynak yoksa token'a düş\" davranışı geri gelir ve kaydı olmayan "
+            + "kullanıcı kendi bağlamını seçer.");
     }
 
     /// <summary>
