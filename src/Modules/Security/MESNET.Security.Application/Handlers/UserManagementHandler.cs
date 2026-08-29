@@ -172,8 +172,17 @@ public static class ChangeUserInstitutionHandler
         if (account is null || account.DeletedAt is not null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
-        var normalYol = UserInstitutionScopePolicy.CanAssign(
-            command.ActorInstitutionId, account.InstitutionId, command.InstitutionId);
+        // Uç artık OR-policy ile korunuyor (UserInstitutionAssignOrBootstrap): yalnız
+        // directorate:institution-bootstrap taşıyan (user:roles:manage'i OLMAYAN) bir aktör de
+        // buraya girebilir. CanAssign yalnız KAPSAMA bakar, İZNE bakmaz — o yüzden izin
+        // kontrolünü burada AÇIKÇA eklemek zorundayız. Eklenmeseydi bootstrap-yalnız aktör
+        // normal yoldan (ör. kendi il/ilçe düğümüne bağlı/bağsız kullanıcılarla) CanAssign'ı
+        // geçebilir ve müdahale kapısına HİÇ uğramadan bağ değiştirebilirdi — brief'in "yalnız
+        // yöneticisiz okula ilk yönetici" sınırını atlayan yeni bir yetenek. user:roles:manage
+        // taşıyan mevcut aktörlerin davranışı DEĞİŞMEZ: zaten bu izne sahiptiler.
+        var normalYol = currentUser.HasPermission(Permissions.UserManagement.RolesManage)
+            && UserInstitutionScopePolicy.CanAssign(
+                command.ActorInstitutionId, account.InstitutionId, command.InstitutionId);
 
         if (!normalYol)
         {
@@ -184,13 +193,26 @@ public static class ChangeUserInstitutionHandler
             var hedefKurum = command.InstitutionId ?? Guid.Empty;
             var hedefYolu = await pathLookup.GetPathAsync(hedefKurum, cancellationToken);
 
+            var hasBootstrapPermission = currentUser.HasPermission(Permissions.Directorate.InstitutionBootstrap);
+            var targetInSubtree = InstitutionScopePolicy.CanAccessByPath(
+                currentUser.GetCurrentUser()?.InstitutionPath, hedefYolu);
+
+            // İZİN + ALT AĞAÇ kontrolü yöneticilik sorgusundan ÖNCE biter ve erken döner.
+            // SecurityErrors.ActiveContextOutOfScope'un kendi yorumu bunu söylüyor: kapsamsız
+            // (ya da alt ağaç dışı) bir aktöre "bu kurumun yöneticisi var mı" cevabını vermek,
+            // kimin var olduğunu tahminle taramanın kapısını açar — bilgi sızıntısı. Bu satır
+            // olmasaydı user:roles:manage taşıyan ama başka bir alt ağaçtaki bir okul müdürü
+            // bile rastgele bir InstitutionId deneyip yönetici-var-mı bilgisini sızdırabilirdi.
+            if (!hasBootstrapPermission || !targetInSubtree)
+                throw new DomainException(SecurityErrors.ActiveContextOutOfScope(hedefKurum));
+
             // MesnetRoles.InstitutionManager burada bir KAPSAM KONTROLÜ için değil, "okulun
-            // etkin bir yöneticisi var mı" ÖLÇÜMÜ için kullanılıyor — yetki kararı
-            // InstitutionBootstrapPolicy.CanBootstrap'in hasBootstrapPermission parametresindedir.
-            // Depo kuralı "rol adına bakan yeni kapsam kontrolü yazılmaz" der; bu bir kapsam
-            // kontrolü değil, kapıyı açık/kapalı tutan bir tıkanıklık ölçümüdür. Mezar taşı
-            // (#210) ve devre dışı hesap "etkin yönetici" sayılmaz — aksi hâlde silinmiş/devre
-            // dışı bırakılmış bir yönetici, okulu süresiz kilitli tutardı.
+            // etkin bir yöneticisi var mı" ÖLÇÜMÜ için kullanılıyor — yetki kararı yukarıdaki
+            // hasBootstrapPermission'dadır. Depo kuralı "rol adına bakan yeni kapsam kontrolü
+            // yazılmaz" der; bu bir kapsam kontrolü değil, kapıyı açık/kapalı tutan bir
+            // tıkanıklık ölçümüdür. Mezar taşı (#210) ve devre dışı hesap "etkin yönetici"
+            // sayılmaz — aksi hâlde silinmiş/devre dışı bırakılmış bir yönetici, okulu süresiz
+            // kilitli tutardı. Buraya YALNIZ izin + alt ağaç kontrolü geçtikten SONRA girilir.
             var yoneticisiVar = await session.Query<UserAccount>()
                 .AnyAsync(a => a.InstitutionId == hedefKurum
                                && a.DeletedAt == null
@@ -198,18 +220,16 @@ public static class ChangeUserInstitutionHandler
                                && a.Roles.Contains(MesnetRoles.InstitutionManager),
                           cancellationToken);
 
+            // NOT (bilinçli, Bulgu 4): CanBootstrap'in üç koşulu "başka kuruma bağlı kullanıcı
+            // devralınamaz" kuralına (UserInstitutionScopePolicy.CanAssign'daki üçüncü kural)
+            // bakmaz. Yani alt ağaçtaki A okulunun kullanıcısı, A'ya sorulmadan yöneticisiz B
+            // okuluna taşınabilir. Brief'in üç koşulu bunu öngörmüyor — spec'e uygun, davranış
+            // BİLEREK değiştirilmedi.
             var mudahale = InstitutionBootstrapPolicy.CanBootstrap(
-                currentUser.HasPermission(Permissions.Directorate.InstitutionBootstrap),
-                InstitutionScopePolicy.CanAccessByPath(
-                    currentUser.GetCurrentUser()?.InstitutionPath, hedefYolu),
-                yoneticisiVar);
+                hasBootstrapPermission, targetInSubtree, yoneticisiVar);
 
             if (!mudahale)
-            {
-                throw new DomainException(yoneticisiVar
-                    ? SecurityErrors.InstitutionAlreadyHasManager(hedefKurum)
-                    : SecurityErrors.ActiveContextOutOfScope(hedefKurum));
-            }
+                throw new DomainException(SecurityErrors.InstitutionAlreadyHasManager(hedefKurum));
         }
 
         var previous = account.InstitutionId;

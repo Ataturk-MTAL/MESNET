@@ -62,6 +62,24 @@ public sealed class DirectoratePermissionMappingTests
         PermissionsOf(role).ShouldNotContain(Permissions.UserManagement.RolesManage);
     }
 
+    /// <summary>
+    /// Kurum bağı ucu (<c>POST /institution</c>) <c>PermissionPolicies.UserInstitutionAssignOrBootstrap</c>
+    /// ile korunuyor (OR: <c>user:roles:manage</c> YA DA <c>directorate:institution-bootstrap</c>).
+    /// Bu rollerde <c>RolesManage</c> yoktur (yukarıdaki test) — uca girebilmeleri TAMAMEN
+    /// bootstrap izninin OR listesinde olmasına bağlıdır. Bu testin kırmızıya dönmesi, ucun
+    /// bu rollere sessizce kapandığı anlamına gelir.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(MudurlukRolleri))]
+    public void Mudurluk_rolleri_kurum_bagi_ucunun_birlesik_policysini_bootstrap_izniyle_gecer(string role)
+    {
+        var required = PermissionPolicies.Split(PermissionPolicies.UserInstitutionAssignOrBootstrap);
+        required.ShouldContain(Permissions.Directorate.InstitutionBootstrap);
+
+        PermissionsOf(role).ShouldContain(Permissions.Directorate.InstitutionBootstrap,
+            $"{role} birleşik policy'yi yalnız bootstrap izniyle geçebilmeli.");
+    }
+
     [Fact]
     public void Bootstrap_izni_baska_HICBIR_role_gitmez()
     {
