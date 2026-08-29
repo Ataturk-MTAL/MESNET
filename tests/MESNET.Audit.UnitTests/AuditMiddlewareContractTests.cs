@@ -46,7 +46,10 @@ public class AuditMiddlewareContractTests
         }
     }
 
-    private sealed class SahteYazici : IAuditWriter
+    // internal: AuditGuardOrderingRegressionTests bu sahte altyapıyı yeniden kullanır (madde 1
+    // regresyon testi) — aynı assembly içindeki test sınıfları arası paylaşım için private
+    // yerine internal.
+    internal sealed class SahteYazici : IAuditWriter
     {
         public List<(string CommandType, Exception? Exception)> Yazilanlar { get; } = [];
 
@@ -68,7 +71,8 @@ public class AuditMiddlewareContractTests
             => throw new InvalidOperationException("Denetim yazıcısı bozuldu (test).");
     }
 
-    private sealed class SahteKullanici : ICurrentUserService
+    // internal: bkz. SahteYazici üstündeki not.
+    internal sealed class SahteKullanici : ICurrentUserService
     {
         private static readonly UserContext Kullanici = new(
             UserId: Guid.Parse("11111111-1111-1111-1111-111111111111"),

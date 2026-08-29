@@ -302,6 +302,27 @@ try
         opts.Policies.AutoApplyTransactions();
         opts.Policies.UseDurableLocalQueues();
 
+        // Denetim izi (C parçası) — her YAZMA komutu. Süzgeç ad alanı konvansiyonudur;
+        // Queries/ ve Consumers/ dışarıda kalır (okuma iz üretmez, tüketici kullanıcı
+        // eylemi değildir).
+        //
+        // TİP PARAMETRELİ AŞIRI YÜKLEME KULLANILAMAZ: AddMiddleware<T> statik sınıf almaz
+        // (CS0718: static types cannot be used as type arguments). Ölçüldü.
+        //
+        // SIRALAMA KESİN KURAL: bu kayıt aşağıdaki dört guard politikasının (kapalı dönem +
+        // kurum kapsamı) ÜSTÜNDE durmalıdır. Wolverine middleware zincirinde ilk kaydedilen
+        // EN DIŞTA sarar; guard bir DomainException fırlattığında istisna dıştan içe değil
+        // içten dışa yükselir, yani en dışta duran middleware'in OnExceptionAsync'i her zaman
+        // çalışır. Denetim guard'ların ALTINDA kayıtlıyken ölçüldü: guard reddi 0 satır
+        // yazıyordu (AuditMiddleware.Before hiç koşmamış, accessor.Current null); üste
+        // alınca aynı ret 1 satır yazdı (DomainException ile, Rejected). Guard'ların
+        // reddettiği komut denetim izinin en çok var olma sebebidir — "kim başka okulun
+        // verisine yazmaya çalıştı" kaydı bu sıralamaya bağlı. Bu satırı guard'ların altına
+        // indirmeyin.
+        opts.Policies.AddMiddleware(
+            typeof(MESNET.Audit.Application.Auditing.AuditMiddleware),
+            chain => MESNET.Audit.Application.Auditing.AuditCommandFilter.ShouldAudit(chain.MessageType));
+
         // Kapalı akademik dönem koruması (#8) — Payment maaş/dekont yazma command'ları
         opts.Policies.ForMessagesOfType<MESNET.Payment.Application.ISalaryPeriodScoped>()
             .AddMiddleware(typeof(MESNET.Payment.Application.SalaryPeriodGuardMiddleware));
@@ -320,16 +341,6 @@ try
         // okuyor, adını değiştiriyor ve personel listesine kayıt ekleyebiliyordu.
         opts.Policies.ForMessagesOfType<MESNET.Institution.Application.Security.IInstitutionScoped>()
             .AddMiddleware(typeof(MESNET.Institution.Application.Security.InstitutionScopeGuardMiddleware));
-
-        // Denetim izi (C parçası) — her YAZMA komutu. Süzgeç ad alanı konvansiyonudur;
-        // Queries/ ve Consumers/ dışarıda kalır (okuma iz üretmez, tüketici kullanıcı
-        // eylemi değildir).
-        //
-        // TİP PARAMETRELİ AŞIRI YÜKLEME KULLANILAMAZ: AddMiddleware<T> statik sınıf almaz
-        // (CS0718: static types cannot be used as type arguments). Ölçüldü.
-        opts.Policies.AddMiddleware(
-            typeof(MESNET.Audit.Application.Auditing.AuditMiddleware),
-            chain => MESNET.Audit.Application.Auditing.AuditCommandFilter.ShouldAudit(chain.MessageType));
 
         // Modül Application assembly'lerini handler keşfi için tanıt
         // Wolverine varsayılan olarak sadece host assembly'yi tarar
