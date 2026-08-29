@@ -266,9 +266,45 @@ public sealed class InstitutionClaimAuthorityTests
     }
 
     /// <summary>
+    /// <b>Davranışsal kilit:</b> token'da <c>active_institution_id</c> claim'i varsa —
+    /// kayıt boş olsa bile — gerçek dönüşüm koşulduktan sonra claim SİLİNMİŞ olmalıdır.
+    ///
+    /// <para><b>Neden kaynak taraması testi yetmiyordu:</b> <see cref="Token_daki_aktif_baglam_claimi_her_istekte_silinir"/>
+    /// yalnız <c>RemoveActiveInstitutionClaims(principal);</c> dizesinin dosyada VAR OLDUĞUNU
+    /// arıyordu — ama o çağrı <c>EnrichActiveContextClaimAsync</c>'in İÇİNDE. Üst seviyedeki
+    /// <c>await EnrichActiveContextClaimAsync(principal, sub);</c> çağrısı (TransformAsync
+    /// içinde) tamamen silinse bile alt metod ve onun içindeki
+    /// <c>RemoveActiveInstitutionClaims(principal);</c> dizesi dosyada dururdu — tarama testi
+    /// yeşil kalırdı, ama üretimde active_institution_id hiç silinmezdi ve
+    /// <c>TenantResolutionMiddleware</c> onu okuduğu için kiracı anahtarı yeniden token'dan
+    /// gelir hâle gelirdi. Bu test gerçek <see cref="PermissionClaimsTransformation.TransformAsync"/>'i
+    /// koşturup SONUCU doğrular; çağrı sitesi nerede olursa olsun kırılır.</para>
+    /// </summary>
+    [Fact]
+    public async Task Tokendaki_aktif_baglam_claimi_kayit_bos_olsa_bile_atilir()
+    {
+        var transformation = Create(provider: null);
+
+        var principal = Principal(tokenInstitutionId: null);
+        principal.Identities.First().AddClaim(new Claim(
+            PermissionClaimsTransformation.ActiveInstitutionClaimType, Spoofed.ToString()));
+
+        var result = await transformation.TransformAsync(principal);
+
+        result.FindFirst(PermissionClaimsTransformation.ActiveInstitutionClaimType).ShouldBeNull(
+            "Kayıt boşken token'a düşülürse kullanıcı kendi bağlamını seçebilir.");
+    }
+
+    /// <summary>
     /// Token'daki <c>active_institution_id</c> her istekte silinmelidir — kayıt boş olsa
     /// bile. "Kaynak yoksa token'a düş" davranışı, kaydı olmayan kullanıcıya KENDİ bağlamını
     /// seçtirirdi (B parçası, <c>institution_path</c> ile aynı disiplin).
+    ///
+    /// <para><b>Bilinen sınır:</b> bu test yalnız dizenin dosyada var olduğunu doğrular,
+    /// çağrı sitesinin nerede olduğunu değil — bkz.
+    /// <see cref="Tokendaki_aktif_baglam_claimi_kayit_bos_olsa_bile_atilir"/> yanında kalır,
+    /// SİLİNMEZ: biri niyeti (çağrı var mı), diğeri sonucu (claim gerçekten kalkıyor mu)
+    /// kilitler.</para>
     /// </summary>
     [Fact]
     public void Token_daki_aktif_baglam_claimi_her_istekte_silinir()
