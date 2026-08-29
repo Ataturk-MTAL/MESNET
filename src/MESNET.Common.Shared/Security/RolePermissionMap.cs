@@ -38,7 +38,10 @@ public static class RolePermissionMap
             // gelir; onu engelleyen izin değil business_id KAPSAMIDIR — müdürde o claim yoktur.
             Permissions.Attendance.LeaveApprove,
             // Okulda staj dönem notu (#171) — "institution:*" zaten kapsar, açıkça yazılır.
-            Permissions.Institution.SchoolGradeEnter
+            Permissions.Institution.SchoolGradeEnter,
+            // Denetim izi (C parçası). "institution:*" bunu KAPSAMAZ ve kapsamamalıdır —
+            // önek bilerek ayrıdır. Bu yüzden açıkça yazılır.
+            Permissions.Audit.ViewInstitution
         ],
         // Müdür yardımcısı (#129). Kaynak: actors.md → "Müdür Yardımcısı" —
         // staj işlemleri koordinasyonu, evrak takibi ve onayı, öğretmen görevlendirmeleri,
@@ -95,7 +98,10 @@ public static class RolePermissionMap
             Permissions.Company.Manage,
             Permissions.Company.Document,
             Permissions.Communication.ViewMessages,
-            Permissions.Communication.SendMessage
+            Permissions.Communication.SendMessage,
+            // Denetim izi (C parçası). "institution:*" bunu KAPSAMAZ ve kapsamamalıdır —
+            // önek bilerek ayrıdır. Bu yüzden açıkça yazılır.
+            Permissions.Audit.ViewInstitution
         ],
         // Kurum yetkilendirdiği personel (#129). Kaynak: actors.md → "Kurum Yetkilendirdiği
         // Personel" — öğrenci kayıt işlemleri, belge doğrulama, devamsızlık takibi,

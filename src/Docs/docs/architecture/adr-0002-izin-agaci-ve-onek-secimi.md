@@ -112,8 +112,8 @@ Wildcard'lar genişletilmiş hâliyle.
 
 | Rol | İzin | Wildcard önekleri |
 | --- | ---: | --- |
-| Kurum Müdürü (`InstitutionManager`) | 77 | `attendance:*` `communication:*` `company:*` `coordinator:*` `department:*` `document:*` `institution:*` `internship:*` `salary:*` `student:*` `user:*` |
-| Müdür Yardımcısı (`DeputyDirector`) | 43 | `department:*` `user:*` |
+| Kurum Müdürü (`InstitutionManager`) | 78 | `attendance:*` `communication:*` `company:*` `coordinator:*` `department:*` `document:*` `institution:*` `internship:*` `salary:*` `student:*` `user:*` |
+| Müdür Yardımcısı (`DeputyDirector`) | 44 | `department:*` `user:*` |
 | Kurum Personeli (`InstitutionStaff`) | 18 | — |
 | Alan Şefi (`DepartmentHead`) | 14 | `department:*` |
 | Koordinatör Öğretmen (`Teacher`) | 22 | — |
@@ -137,6 +137,7 @@ Wildcard'lar genişletilmiş hâliyle.
 | `attendance:` | 12 | Kurum Müdürü |
 | `salary:` | 6 | Kurum Müdürü |
 | `platform:` | 2 | — (her rol tek tek alır) |
+| `audit:` | 1 | — (her rol tek tek alır) |
 | `coordinator:` | 5 | Kurum Müdürü |
 | `department:` | 5 | Kurum Müdürü, Müdür Yardımcısı, Alan Şefi |
 | `document:` | 6 | Kurum Müdürü |
@@ -211,6 +212,8 @@ Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kay
 | **`platform:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `platform:parameter:manage` | · | · | · | · | · | · | · | · | · | · | · | · | ● |
 | `platform:tenant:manage` | · | · | · | · | · | · | · | · | · | · | · | · | ● |
+| **`audit:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `audit:view:institution` | ● | ● | · | · | · | · | · | · | · | · | · | · | · |
 | **`coordinator:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `coordinator:assign` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
 | `coordinator:schedule:manage` | ○ | · | · | ● | ● | · | · | · | · | · | · | · | · |
@@ -252,6 +255,7 @@ Hiçbir yapılandırmayla tek bir kullanıcıya verilemez —
 - `attendance:direct-entry`
 - `attendance:health-report:direct`
 - `attendance:leave:approve`
+- `audit:view:institution`
 - `institution:distribution:all-branches`
 - `platform:parameter:manage`
 
