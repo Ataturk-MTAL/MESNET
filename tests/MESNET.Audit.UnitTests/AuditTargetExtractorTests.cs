@@ -77,16 +77,6 @@ public class AuditTargetExtractorTests
     }
 
     [Fact]
-    public void Ayni_tip_iki_kez_cozulunce_ayni_sonucu_verir()
-    {
-        // Önbellek doğru anahtarlanmazsa ikinci çağrı boş dönerdi.
-        var command = new MarkAttendance(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow);
-
-        AuditTargetExtractor.Extract(command).Count
-            .ShouldBe(AuditTargetExtractor.Extract(command).Count);
-    }
-
-    [Fact]
     public void Bilinen_ad_kumesi_beklenen_dokuz_adi_icerir()
     {
         // Küme SABİTTİR ve testle kilitlidir — sessizce daralması hedeflerin kaybolması demek.

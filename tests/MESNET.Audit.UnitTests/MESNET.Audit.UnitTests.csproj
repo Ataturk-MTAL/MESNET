@@ -29,4 +29,22 @@
     <ProjectReference Include="../../src/Modules/Audit/MESNET.Audit.Application/MESNET.Audit.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      Kapsam sapma testi GERÇEK komut tiplerini tarar; kaynak metni değil. Test projesinin
+      modülleri referans etmesi, ÜRÜN kodunun onları referans etmesiyle aynı şey değildir —
+      MESNET.Audit.Application hâlâ hiçbir modülü tanımıyor (Görev 1, Step 4).
+    -->
+    <ProjectReference Include="../../src/Modules/Institution/MESNET.Institution.Application/MESNET.Institution.Application.csproj" />
+    <ProjectReference Include="../../src/Modules/Business/MESNET.Business.Application/MESNET.Business.Application.csproj" />
+    <ProjectReference Include="../../src/Modules/Enrollment/MESNET.Enrollment.Application/MESNET.Enrollment.Application.csproj" />
+    <ProjectReference Include="../../src/Modules/Contract/MESNET.Contract.Application/MESNET.Contract.Application.csproj" />
+    <ProjectReference Include="../../src/Modules/Attendance/MESNET.Attendance.Application/MESNET.Attendance.Application.csproj" />
+    <ProjectReference Include="../../src/Modules/Payment/MESNET.Payment.Application/MESNET.Payment.Application.csproj" />
+    <ProjectReference Include="../../src/Modules/Coordination/MESNET.Coordination.Application/MESNET.Coordination.Application.csproj" />
+    <ProjectReference Include="../../src/Modules/Internship/MESNET.Internship.Application/MESNET.Internship.Application.csproj" />
+    <ProjectReference Include="../../src/Modules/Reporting/MESNET.Reporting.Application/MESNET.Reporting.Application.csproj" />
+    <ProjectReference Include="../../src/Modules/Security/MESNET.Security.Application/MESNET.Security.Application.csproj" />
+  </ItemGroup>
+
 </Project>
