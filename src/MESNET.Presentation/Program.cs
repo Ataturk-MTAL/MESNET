@@ -27,6 +27,7 @@ using MESNET.Common.Infrastructure.Email;
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Security.Api;
+using MESNET.Audit.Api;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Wolverine.FluentValidation;
@@ -147,6 +148,7 @@ try
     builder.Services.AddInternshipModule();
     builder.Services.AddReportingModule();
     builder.Services.AddSecurityModule();
+    builder.Services.AddAuditModule();
 
     // Email (MJML template + MailKit SMTP)
     builder.Services.AddEmailServices();
@@ -318,6 +320,16 @@ try
         // okuyor, adını değiştiriyor ve personel listesine kayıt ekleyebiliyordu.
         opts.Policies.ForMessagesOfType<MESNET.Institution.Application.Security.IInstitutionScoped>()
             .AddMiddleware(typeof(MESNET.Institution.Application.Security.InstitutionScopeGuardMiddleware));
+
+        // Denetim izi (C parçası) — her YAZMA komutu. Süzgeç ad alanı konvansiyonudur;
+        // Queries/ ve Consumers/ dışarıda kalır (okuma iz üretmez, tüketici kullanıcı
+        // eylemi değildir).
+        //
+        // TİP PARAMETRELİ AŞIRI YÜKLEME KULLANILAMAZ: AddMiddleware<T> statik sınıf almaz
+        // (CS0718: static types cannot be used as type arguments). Ölçüldü.
+        opts.Policies.AddMiddleware(
+            typeof(MESNET.Audit.Application.Auditing.AuditMiddleware),
+            chain => MESNET.Audit.Application.Auditing.AuditCommandFilter.ShouldAudit(chain.MessageType));
 
         // Modül Application assembly'lerini handler keşfi için tanıt
         // Wolverine varsayılan olarak sadece host assembly'yi tarar
