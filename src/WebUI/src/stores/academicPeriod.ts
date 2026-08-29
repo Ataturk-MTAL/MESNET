@@ -23,6 +23,17 @@ export const useAcademicPeriodStore = defineStore('academicPeriod', () => {
   const selectedPeriodId = ref<string | null>(null)
   const isLoaded = ref(false)
 
+  /**
+   * Cache'teki listenin HANGİ kuruma ait olduğu (`institutionStore.loadedInstitutionId` ile
+   * aynı desen).
+   *
+   * `isLoaded` tek başına yetmez: bayrağın hangi kurum için kaldırıldığı bilinmezse, aktif
+   * bağlam değişip liste yenilenmeden ekranda eski okulun dönemi seçili kalır ve yazma
+   * sessizce YANLIŞ okulun dönem kimliğiyle gider (hata fırlamaz — kayıt sadece yanlış
+   * döneme düşer). Kimlik karşılaştırması bu sessiz bayatlamayı kapatır.
+   */
+  const loadedInstitutionId = ref<string | null>(null)
+
   const selectedPeriod = computed(() =>
     periods.value.find((p) => p.id === selectedPeriodId.value) ?? null,
   )
@@ -47,21 +58,36 @@ export const useAcademicPeriodStore = defineStore('academicPeriod', () => {
 
   async function loadPeriods(): Promise<void> {
     const authStore = useAuthStore()
-    const institutionId = authStore.user?.institutionId
+    // authStore.currentInstitutionId OKUNUR — user.institutionId DEĞİL: aktif bağlam varsa
+    // ekran o kuruma bağlanmalı, ev kuruma değil (Görev 8).
+    const institutionId = authStore.currentInstitutionId
     if (!institutionId) return
+    if (isLoaded.value && loadedInstitutionId.value === institutionId) return
+
+    const institutionChanged = loadedInstitutionId.value !== institutionId
 
     try {
       const { data } = await institutionApi.listAcademicPeriods(institutionId, { pageSize: 100 })
       periods.value = data?.items ?? []
 
-      // İlk yükleme: aktif dönemi seç
+      // Kurum değiştiyse eski seçim başka okulun dönem kimliğini taşır — sıfırlanmazsa
+      // yazma sessizce o kimlikle YANLIŞ döneme gider.
+      if (institutionChanged) {
+        selectedPeriodId.value = null
+      }
+
+      // İlk yükleme veya kurum değişimi sonrası: aktif dönemi seç
       if (!selectedPeriodId.value && activePeriod.value) {
         selectedPeriodId.value = activePeriod.value.id
       }
-      isLoaded.value = true
     } catch {
       // Dönem henüz oluşturulmamış olabilir
       periods.value = []
+      if (institutionChanged) {
+        selectedPeriodId.value = null
+      }
+    } finally {
+      loadedInstitutionId.value = institutionId
       isLoaded.value = true
     }
   }
@@ -79,6 +105,7 @@ export const useAcademicPeriodStore = defineStore('academicPeriod', () => {
     selectedPeriodId.value = null
     selectedSemester.value = getDefaultSemester()
     isLoaded.value = false
+    loadedInstitutionId.value = null
   }
 
   return {
