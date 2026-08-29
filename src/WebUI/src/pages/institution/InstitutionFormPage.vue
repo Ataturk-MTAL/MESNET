@@ -309,7 +309,10 @@ async function loadInstitution() {
     // güvenmekti ve platform aktöründe her yazmadan sonra başka bir okulu düzenletiyordu.
     // InstitutionPage 27.08.2026'da düzeltilmişti; bu çağrı yeri gözden kaçmıştı.
     const routeId = typeof route.params.id === 'string' ? route.params.id : null
-    const ownId = authStore.user?.institutionId ?? null
+    // authStore.currentInstitutionId OKUNUR — user.institutionId DEĞİL: aktif bağlam varsa
+    // düzenlenen kurum davranılan (bağlamdaki) okul olmalı, il yetkilisinin kendi İl MEM
+    // kaydı değil (Görev 10 ile aynı disiplin — üçüncü kopya, InstitutionPage ile aynı).
+    const ownId = authStore.currentInstitutionId ?? null
     const listRes = routeId || ownId ? null : await institutionApi.list({ pageSize: 100 })
     const resolved = resolveEditableInstitutionId(routeId, ownId, listRes?.data?.items ?? [])
     if (!resolved) {

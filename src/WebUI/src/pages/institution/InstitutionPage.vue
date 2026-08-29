@@ -686,7 +686,10 @@ async function load() {
       // sorguya güvenmekti ve platform aktöründe her yazmadan sonra başka bir okulu
       // düzenletiyordu — bkz. utils/institutionScope.ts.
       const routeId = typeof route.params.id === 'string' ? route.params.id : null
-      const ownId = authStore.user?.institutionId ?? null
+      // authStore.currentInstitutionId OKUNUR — user.institutionId DEĞİL: aktif bağlam
+      // varsa rota parametresi yokken de davranılan (bağlamdaki) okul düzenlenmeli, il
+      // yetkilisinin kendi İl MEM kaydı değil (Görev 10 ile aynı disiplin — üçüncü kopya).
+      const ownId = authStore.currentInstitutionId ?? null
       const listRes = routeId || ownId ? null : await institutionApi.list({ pageSize: 100 })
       const resolved = resolveEditableInstitutionId(routeId, ownId, listRes?.data?.items ?? [])
       if (!resolved) {

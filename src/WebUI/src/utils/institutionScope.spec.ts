@@ -53,4 +53,26 @@ describe('resolveEditableInstitutionId', () => {
   it('boş string kurum kimliği yokmuş sayılır', () => {
     expect(resolveEditableInstitutionId('', '', [{ id: 'gazi-id' }])).toBe('gazi-id')
   })
+
+  /**
+   * ÜÇÜNCÜ KOPYA (29.08.2026): `InstitutionPage` ve `InstitutionFormPage` `ownId`
+   * argümanını `authStore.user?.institutionId` (EV kurumu) ile besliyordu. Aktif bağlam
+   * açıkken (il yetkilisi bir okula geçtiğinde) rota parametresi yoksa (menüden
+   * "Kurum Bilgileri") sonuç EV kurumu oluyordu — üst barda "X Okulu adına
+   * çalışıyorsunuz" rozeti dururken il yetkilisi kendi İl MEM kaydını düzenliyordu.
+   *
+   * `resolveEditableInstitutionId`'nin kendisi hangi kaynaktan geldiğini bilmez — sözleşme
+   * ÇAĞIRANDA: `ownId` her zaman DAVRANILAN kurum (aktif bağlam varsa o, yoksa ev kurumu)
+   * olmalıdır. Bu test o sözleşimi kilitler: ownId'ye aktif bağlam geçilince sonuç aktif
+   * bağlam olur, ev kurumu OLMAZ — düzeltilen hata tam bu ayrımın kaybolmasıydı.
+   */
+  it('aktif bağlam varken ownId davranılan (bağlamdaki) okul olmalı — ev kurumu DEĞİL', () => {
+    const evKurumu = 'il-mem-id'
+    const aktifBaglam = 'ataturk-id'
+
+    // Doğru çağrı: sayfa ownId'yi authStore.currentInstitutionId'den besler → aktif bağlam
+    expect(resolveEditableInstitutionId(null, aktifBaglam, list)).toBe(aktifBaglam)
+    // ownId ev kurumuyla beslenseydi (düzeltilen hata) sonuç aktif bağlamla eşleşmezdi
+    expect(resolveEditableInstitutionId(null, evKurumu, list)).not.toBe(aktifBaglam)
+  })
 })
