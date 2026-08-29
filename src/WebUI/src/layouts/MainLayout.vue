@@ -138,6 +138,47 @@
     >
       <q-scroll-area class="fit">
         <q-list padding>
+          <!--
+            Bağlam göstergesi/seçici — dönem seçicisinin ÜSTÜNDE: aktif bağlam bu uygulamada
+            en üst öncelikli bilgidir, il/ilçe yetkilisinin tüm çalışması bir okul adına
+            geçtiği andan itibaren o bağlamın içinde yürür. İnce bir rozet yeterli değil —
+            aktif renk + net metin + tek tıkla `/context`'e giden eylem.
+          -->
+          <q-item
+            v-if="activeInstitutionName"
+            class="q-mb-xs"
+          >
+            <q-item-section>
+              <q-chip
+                clickable
+                square
+                color="warning"
+                text-color="white"
+                icon="swap_horiz"
+                class="full-width baglam-rozeti"
+                @click="goToContextSelect"
+              >
+                {{ activeInstitutionName }} adına çalışıyorsunuz
+              </q-chip>
+            </q-item-section>
+          </q-item>
+          <q-item
+            v-else-if="showContextSelectButton"
+            class="q-mb-xs"
+          >
+            <q-item-section>
+              <q-btn
+                outline
+                no-caps
+                color="primary"
+                icon="swap_horiz"
+                label="Kurum Seç"
+                class="full-width"
+                @click="goToContextSelect"
+              />
+            </q-item-section>
+          </q-item>
+
           <!-- Dönem Seçici -->
           <q-item
             v-if="periodStore.isLoaded && periodStore.periods.length > 0"
@@ -375,6 +416,38 @@ const currentYear = new Date().getFullYear()
 
 const unreadCount = computed(() => notificationStore.unreadCount)
 
+/**
+ * Aktif bağlamdaki kurumun adı — doluysa üst bar göstergesi görünür.
+ *
+ * <p>Görünürlük ölçütü `authStore.user?.activeInstitutionId` dolu mu sorusudur. Ad
+ * `institutionStore.institution`'dan gelir: bağlam aktifken store `authStore.
+ * currentInstitutionId`'yi (Görev 8 → aktif bağlam varsa o) okuyarak zaten AKTİF okulun
+ * profilini yükler (bkz. `stores/institution.ts`), ikinci bir sorgu yazılmaz.</p>
+ */
+const activeInstitutionName = computed(() =>
+  authStore.user?.activeInstitutionId ? institutionStore.institution?.fullName : null,
+)
+
+/**
+ * "Kurum Seç" butonu yalnız bağlam YOKKEN ve kullanıcının kendi düğümü bir üst düğümse
+ * (il/ilçe müdürlüğü) görünür. Okul kullanıcısında ikisi de görünmez.
+ *
+ * <b>Rol adına BAKILMAZ</b> (depo kuralı) — `useNavigation.ts`'teki `visibilityContext` ile
+ * aynı sinyal: `institutionStore`'daki yüklü kurumun `nodeType`'ı. Bağlam yokken bu alan
+ * kullanıcının EV kurumunu taşır (yine `currentInstitutionId` üzerinden), yani il/ilçe
+ * müdürlüğü mü sorusuna doğru cevabı verir. Yeni bir `authStore` yardımcısına gerek yok —
+ * `institutionStore.institution?.nodeType` zaten menüde aynı amaçla kullanılan mevcut sinyal.
+ */
+const showContextSelectButton = computed(() => {
+  if (activeInstitutionName.value) return false
+  const nodeType = institutionStore.institution?.nodeType
+  return nodeType === 'Province' || nodeType === 'District'
+})
+
+function goToContextSelect() {
+  router.push('/context').catch(() => {})
+}
+
 const semesterOpts = [...semesterOptions]
 
 const periodOptions = computed(() =>
@@ -479,6 +552,22 @@ async function onLogout() {
 </style>
 
 <style scoped>
+/*
+ * Bağlam rozeti — "gösterge ince olamaz": il/ilçe yetkilisinin bütün zamanı bir bağlamın
+ * içinde geçer, hangi okul adına davrandığı her an tartışmasız görünmeli. q-chip'in
+ * varsayılan tek satır/kısaltma davranışı burada istenmiyor — okul adı ne kadar uzun olursa
+ * olsun tam görünür ve satır kırılabilir; kalın yazı tipi göze ilk çarpan öge olmasını
+ * sağlar. Renk: `$warning` (#9A6B00) bu depoda beyaz metinle 4,8:1 için özel ayarlandı
+ * (bkz. quasar-variables.sass yorumu) — Quasar varsayılanı ~1,9:1 ile yetersizdi.
+ */
+.baglam-rozeti {
+  height: auto;
+  min-height: 40px;
+  padding: 8px 12px;
+  white-space: normal;
+  font-weight: 600;
+}
+
 /* Dokunma hedefi WCAG 2.2 SC 2.5.8 (24x24 CSS px) — size="xs" görsel olarak küçük kalıyor. */
 .notif-remove-btn {
   min-width: 24px;

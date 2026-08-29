@@ -59,6 +59,16 @@ const router = createRouter({
           meta: { permissions: ['institution:view'] },
         },
 
+        // Bağlam seçimi — il/ilçe yetkilisinin tek çalışma modu okulun bağlamına geçmektir.
+        // İzin institution:view'dir: seçim listesi zaten o izinle geliyor ve kapsam
+        // sunucudadır (InstitutionScopePolicy).
+        {
+          path: 'context',
+          name: 'ContextSelect',
+          component: () => import('pages/institution/ContextSelectPage.vue'),
+          meta: { permissions: ['institution:view'] },
+        },
+
         // Denetim izi (C parçası). Rota "İşlemlerim" kapsamıyla açılır ve o kapsam EK İZİN
         // GEREKTİRMEZ — kullanıcının kendi geçmişini görmesi bir yetki sorusu değildir.
         // Kurum kapsamı sayfa içinde `audit:view:institution` ile açılır.
