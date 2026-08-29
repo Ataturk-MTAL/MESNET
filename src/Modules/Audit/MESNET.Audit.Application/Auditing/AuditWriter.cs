@@ -37,7 +37,7 @@ public sealed class AuditWriter(
         try
         {
             var (subjectId, crossed) = AuditEntryFactory.ResolveSubject(
-                context.Command, context.ActorInstitutionId);
+                context.Command, context.ActorInstitutionId, context.ActiveInstitutionId);
 
             // Sıcak yolda EK OKUMA YOK: komutların büyük çoğunluğu aktörün kendi kurumuna
             // yazar ve o dalda yol claim'den gelir. Arama yalnız sınır aşıldığında yapılır.
@@ -62,7 +62,8 @@ public sealed class AuditWriter(
                 ActorInstitutionId: context.ActorInstitutionId,
                 ActorInstitutionPath: context.ActorInstitutionPath,
                 SubjectInstitutionPathOverride: subjectPathOverride,
-                DurationMs: context.ElapsedMs);
+                DurationMs: context.ElapsedMs,
+                ActiveInstitutionId: context.ActiveInstitutionId);
 
             var entry = exception is null
                 ? AuditEntryFactory.Succeeded(input)

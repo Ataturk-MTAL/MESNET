@@ -16,7 +16,8 @@ public class AuditEntryFactoryTests
         object? command = null,
         Guid? actorInstitutionId = null,
         string? actorPath = null,
-        string? subjectPathOverride = null)
+        string? subjectPathOverride = null,
+        Guid? activeInstitutionId = null)
         => new(
             Id: Guid.NewGuid(),
             OccurredAt: new DateTimeOffset(2026, 8, 28, 9, 0, 0, TimeSpan.Zero),
@@ -28,7 +29,8 @@ public class AuditEntryFactoryTests
             ActorInstitutionId: actorInstitutionId ?? AktorKurumu,
             ActorInstitutionPath: actorPath,
             SubjectInstitutionPathOverride: subjectPathOverride,
-            DurationMs: 42);
+            DurationMs: 42,
+            ActiveInstitutionId: activeInstitutionId);
 
     private sealed record OrnekKomut(Guid StudentId, Guid InstitutionId);
 
@@ -128,6 +130,60 @@ public class AuditEntryFactoryTests
         entry.CrossedTenantBoundary.ShouldBeFalse();
     }
 
+    // ── Aktif bağlam (B parçası) ─────────────────────────────────────────
+
+    [Fact]
+    public void Aktif_baglam_varsa_konu_kurum_ODUR_ve_sinir_asilmis_sayilir()
+    {
+        // B'nin izli verilmesinin tek sebebi bu satır: il yetkilisi hangi okula dokundu.
+        var entry = AuditEntryFactory.Succeeded(Girdi(
+            command: new { X = 1 },
+            actorInstitutionId: AktorKurumu,
+            activeInstitutionId: BaskaKurum));
+
+        entry.SubjectInstitutionId.ShouldBe(BaskaKurum);
+        entry.CrossedTenantBoundary.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Komuttaki_kurum_hedefi_aktif_baglamdan_ONCE_gelir()
+    {
+        // Komut açıkça bir kurumu hedefliyorsa iz o kurumu göstermelidir; aktif bağlam
+        // yalnız hedefsiz komutlarda devreye girer.
+        var komut = new OrnekKomut(Guid.NewGuid(), AktorKurumu);
+
+        var entry = AuditEntryFactory.Succeeded(Girdi(
+            command: komut,
+            actorInstitutionId: AktorKurumu,
+            activeInstitutionId: BaskaKurum));
+
+        entry.SubjectInstitutionId.ShouldBe(AktorKurumu);
+        entry.CrossedTenantBoundary.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Aktif_baglam_kendi_kurumuysa_sinir_asilmaz()
+    {
+        var entry = AuditEntryFactory.Succeeded(Girdi(
+            command: new { X = 1 },
+            actorInstitutionId: AktorKurumu,
+            activeInstitutionId: AktorKurumu));
+
+        entry.CrossedTenantBoundary.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Aktif_baglam_yoksa_eski_davranis_korunur()
+    {
+        var entry = AuditEntryFactory.Succeeded(Girdi(
+            command: new { X = 1 },
+            actorInstitutionId: AktorKurumu,
+            activeInstitutionId: null));
+
+        entry.SubjectInstitutionId.ShouldBe(AktorKurumu);
+        entry.CrossedTenantBoundary.ShouldBeFalse();
+    }
+
     // ── Yol ───────────────────────────────────────────────────────────────
 
     [Fact]
@@ -176,7 +232,8 @@ public class AuditEntryFactoryTests
         // öğrenir. İki yerde iki ayrı "konu kurum" tanımı doğmasın diye tek kaynak.
         var komut = new OrnekKomut(Guid.NewGuid(), BaskaKurum);
 
-        var (subjectId, crossed) = AuditEntryFactory.ResolveSubject(komut, AktorKurumu);
+        var (subjectId, crossed) = AuditEntryFactory.ResolveSubject(
+            komut, AktorKurumu, activeInstitutionId: null);
         var entry = AuditEntryFactory.Succeeded(Girdi(komut, actorInstitutionId: AktorKurumu));
 
         subjectId.ShouldBe(entry.SubjectInstitutionId);

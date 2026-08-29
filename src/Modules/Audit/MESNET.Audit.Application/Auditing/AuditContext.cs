@@ -48,6 +48,14 @@ public sealed class AuditContext
     public required Guid? ActorInstitutionId { get; init; }
     public required string? ActorInstitutionPath { get; init; }
 
+    /// <summary>
+    /// Aktörün adına davrandığı kurum — <c>UserContext.ActiveInstitutionId</c> (B parçası).
+    /// <c>null</c> = kendi kurumunda çalışıyor. <see cref="ActorInstitutionId"/> ile
+    /// KARIŞTIRILMAZ: o "kim olduğun", bu "nerede davrandığın" — bkz.
+    /// <c>AuditEntryFactory.ResolveSubject</c>.
+    /// </summary>
+    public required Guid? ActiveInstitutionId { get; init; }
+
     public bool Succeeded { get; private set; }
 
     public void MarkSucceeded() => Succeeded = true;
