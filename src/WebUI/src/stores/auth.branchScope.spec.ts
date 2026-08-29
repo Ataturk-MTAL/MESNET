@@ -18,6 +18,7 @@ function makeUser(branchCodes: string[]): AuthUser {
     fullName: 'Test Kullanıcı',
     roles: [],
     institutionId: 'i1',
+    activeInstitutionId: null,
     branchCodes,
   }
 }
