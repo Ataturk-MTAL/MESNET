@@ -503,12 +503,27 @@ Yanıttaki `skippedNoProvince` sıfırdan büyükse, o okulların **il kodu yokt
 kalmışlardır — hiçbir il yetkilisinin listesinde görünmezler. Künyeleri tamamlayıp ucu yeniden
 çağırın.
 
-**Denetim izi de bu ön koşula bağlıdır.** Denetim satırının kaydı sırasında aktörün kurum yolu
-(`Institution.Path`) boşsa, iz satırına `SubjectInstitutionPath = null` yazılır. `rebuild-hierarchy`
-hiç koşmamışsa "Kurumumdaki işlemler" kapsamı (`GET /api/audit/institution`) yol önekiyle
-süzdüğü için bu satırları **hiç göstermez** — hata dönmez, sayaç yok, uç 200 ve liste **boş**
-gelir. Ayrı bir ön koşul değildir: yukarıdaki `rebuild-hierarchy` geçişi zaten listede, onu
-koşturmak bu görünümü de düzeltir.
+**Denetim izi bu ön koşula farklı bir şekilde bağlıdır — sıraya, listeye değil.**
+`rebuild-hierarchy` hiç koşmamış bir kurulumda kurum kapsamlı denetim listesi (`GET
+/api/audit/institution`) **normal çalışır**: yol yoksa `InstitutionScopePolicy.VisibleScope`
+aktörün kimliğine düşer (`SubjectInstitutionId == institutionId`) ve bu alan her satırda
+doludur (`AuditEntryFactory.ResolveSubject` konu kurumu bulamazsa aktörün kurumuna düşer) —
+boş liste görülmez.
+
+Asıl tehlike **kısmi sıradır**. Aktörün kurum yolu boşken (`rebuild-hierarchy` henüz
+koşturulmamışken) yazılan satırlara `SubjectInstitutionPath = null` işlenir — sıcak yolda ek
+okuma yapılmaz, yol doğrudan aktörün claim'inden kopyalanır. `rebuild-hierarchy` **sonradan**
+koşup aktör yol kazanınca `VisibleScope` yol-önekiyle süzen dala geçer
+(`SubjectInstitutionPath != null && StartsWith(...)`) ve **arada yazılmış o satırlar kurum
+kapsamlı görünümde kalıcı olarak görünmez olur** — hata dönmez, sayaç yok, uç 200 ve liste
+eksik gelir. Bunu geri dolduracak bir uç yoktur: `rebuild-hierarchy` yalnız `Institution`
+belgelerini yazar, `AuditEntry.SubjectInstitutionPath` yazma anında donmuş bir kopyadır ve
+geri işlenmez.
+
+**Bu yüzden kurum hiyerarşisi geçişi denetim izi dağıtılmadan önce koşturulmalıdır.**
+Sonrasına kalırsa aradaki satırlar yalnız kurum kapsamlı görünümden kaybolur; aktörün kendi
+"İşlemlerim" görünümü (`ActorId` ile süzülür, yol kontrolü yapmaz) onları göstermeye devam
+eder.
 
 ### Yerleştirme resync'i: atlanan kayıtlar
 
