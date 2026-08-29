@@ -9,6 +9,7 @@ public static class ServiceRegistration
     {
         services.AddScoped<AuditContextAccessor>();
         services.AddScoped<IAuditWriter, AuditWriter>();
+        services.AddHostedService<Services.AuditRetentionService>();
         return services;
     }
 }
