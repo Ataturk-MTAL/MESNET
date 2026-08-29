@@ -57,6 +57,17 @@ public class AuditMiddlewareContractTests
         }
     }
 
+    /// <summary>
+    /// Her çağrıda fırlayan sahte yazıcı. Hata sözleşmesinin <see cref="IAuditWriter"/>
+    /// UYGULAMASINA bağımlı OLMADIĞINI kanıtlamak için — üretim <c>AuditWriter</c>'ı zaten
+    /// kendi içinde her şeyi yakalıyor, ama middleware bunu VARSAYMAMALI.
+    /// </summary>
+    private sealed class FirlatanYazici : IAuditWriter
+    {
+        public Task WriteAsync(AuditContext context, Exception? exception, CancellationToken ct = default)
+            => throw new InvalidOperationException("Denetim yazıcısı bozuldu (test).");
+    }
+
     private sealed class SahteKullanici : ICurrentUserService
     {
         private static readonly UserContext Kullanici = new(
@@ -77,11 +88,16 @@ public class AuditMiddlewareContractTests
     private static async Task<(IHost Host, SahteYazici Yazici)> AnaBilgisayarKurAsync()
     {
         var yazici = new SahteYazici();
+        var host = await AnaBilgisayarKurAsync(yazici);
+        return (host, yazici);
+    }
 
-        var host = await Host.CreateDefaultBuilder()
+    /// <summary>Verilen yazıcıyla canlı ana bilgisayarı kurar — Bulgu 1 testleri için.</summary>
+    private static Task<IHost> AnaBilgisayarKurAsync(IAuditWriter writer)
+        => Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
-                services.AddSingleton<IAuditWriter>(yazici);
+                services.AddSingleton<IAuditWriter>(writer);
                 services.AddScoped<AuditContextAccessor>();
                 services.AddSingleton<ICurrentUserService, SahteKullanici>();
             })
@@ -92,9 +108,6 @@ public class AuditMiddlewareContractTests
                     chain => chain.MessageType == typeof(OrnekKomut));
             })
             .StartAsync();
-
-        return (host, yazici);
-    }
 
     [Fact]
     public async Task Basarili_komut_bir_iz_satiri_birakir()
@@ -164,6 +177,44 @@ public class AuditMiddlewareContractTests
             () => bus.InvokeAsync<string>(new OrnekKomut(Guid.NewGuid(), Reddet: true)));
 
         yazici.Yazilanlar.Count.ShouldBe(1);
+
+        await host.StopAsync();
+    }
+
+    [Fact]
+    public async Task Yazici_firlatsa_bile_basarili_komut_bozulmaz()
+    {
+        // Bulgu 1'in kilidi (başarı yolu): FinallyAsync'teki writer.WriteAsync try/catch İLE
+        // SARILI olmalı. Sarılı olmasaydı FirlatanYazici'nin istisnası komutun kendi
+        // sonucunun YERİNE geçer ve "tamam" yerine InvalidOperationException fırlardı —
+        // hata sözleşmesi yazıcı uygulamasına bağımlı olurdu.
+        var host = await AnaBilgisayarKurAsync(new FirlatanYazici());
+        using var _ = host;
+        var bus = host.Services.GetRequiredService<IMessageBus>();
+
+        var sonuc = await bus.InvokeAsync<string>(new OrnekKomut(Guid.NewGuid(), Reddet: false));
+
+        sonuc.ShouldBe("tamam");
+
+        await host.StopAsync();
+    }
+
+    [Fact]
+    public async Task Yazici_firlatsa_bile_reddedilen_komutun_DomainException_i_CAGIRANA_ULASIR()
+    {
+        // Bulgu 1'in kilidi (ret yolu): OnExceptionAsync'teki writer.WriteAsync try/catch İLE
+        // SARILI olmalı ve rethrow bunun DIŞINDA kalmalı. Sarılı olmasaydı
+        // FirlatanYazici'nin istisnası ExceptionDispatchInfo satırına hiç ULAŞILMADAN
+        // çağırana giderdi — orijinal DomainException'ın yerini denetim istisnası alırdı
+        // (422 yerine 500).
+        var host = await AnaBilgisayarKurAsync(new FirlatanYazici());
+        using var _ = host;
+        var bus = host.Services.GetRequiredService<IMessageBus>();
+
+        var ex = await Should.ThrowAsync<DomainException>(
+            () => bus.InvokeAsync<string>(new OrnekKomut(Guid.NewGuid(), Reddet: true)));
+
+        ex.Error.Code.ShouldBe("KURAL_IHLALI");
 
         await host.StopAsync();
     }

@@ -23,6 +23,14 @@ public sealed class AuditWriter(
     IInstitutionPathLookup pathLookup,
     ILogger<AuditWriter> logger) : IAuditWriter
 {
+    /// <param name="cancellationToken">
+    /// <b>KASITLI OLARAK KULLANILMAZ.</b> Bu, isteğin/komutun kendi token'ıdır ve istemci
+    /// bağlantıyı koparırsa iptal edilir. "Ayrı oturum" kararının NİYETİ tam da denetim
+    /// yazmasını komutun/isteğin ömründen bağımsız kılmaktı (bkz. sınıf yorumu) — bu token'ı
+    /// gerçek yazmaya taşımak o niyeti dolaylı yoldan bozar: istemci bağlantıyı keserse iz
+    /// sessizce (yalnız log'a) kaybolur. Aşağıda hem kurum yolu araması hem <c>SaveChangesAsync</c>
+    /// KASITLI olarak <see cref="CancellationToken.None"/> ile çağrılır.
+    /// </param>
     public async Task WriteAsync(
         AuditContext context, Exception? exception, CancellationToken cancellationToken = default)
     {
@@ -33,10 +41,16 @@ public sealed class AuditWriter(
 
             // Sıcak yolda EK OKUMA YOK: komutların büyük çoğunluğu aktörün kendi kurumuna
             // yazar ve o dalda yol claim'den gelir. Arama yalnız sınır aşıldığında yapılır.
+            // CancellationToken.None: yukarıdaki parametre yorumuna bakın.
             string? subjectPathOverride = crossed && subjectId is { } id
-                ? await pathLookup.GetPathAsync(id, cancellationToken)
+                ? await pathLookup.GetPathAsync(id, CancellationToken.None)
                 : null;
 
+            // Id KASITLI olarak context.Id'den geliyor (yeni Guid ÜRETİLMİYOR). Aynı komut
+            // için Finally (Succeeded) ve OnException (Failed) ikisi de çağrılırsa (handler
+            // döndükten SONRA patlayan hata — transaction commit/cascading publish), aynı
+            // kimlikle Marten Store() UPSERT yapar ve son yazan (OnException/Failed) kazanır.
+            // Bkz. AuditContext.Id yorumu.
             var input = new AuditInput(
                 Id: context.Id,
                 OccurredAt: context.OccurredAt,
@@ -63,7 +77,9 @@ public sealed class AuditWriter(
 
             await using var session = store.LightweightSession(tenantId);
             session.Store(entry);
-            await session.SaveChangesAsync(cancellationToken);
+            // CancellationToken.None: yukarıdaki parametre yorumuna bakın — istek iptal
+            // edilse bile bu yazma DEVAM eder, "ayrı oturum" kararının niyeti budur.
+            await session.SaveChangesAsync(CancellationToken.None);
         }
         catch (Exception ex)
         {

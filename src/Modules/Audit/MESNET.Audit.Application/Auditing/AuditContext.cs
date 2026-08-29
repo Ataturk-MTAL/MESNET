@@ -19,6 +19,22 @@ namespace MESNET.Audit.Application.Auditing;
 /// </remarks>
 public sealed class AuditContext
 {
+    /// <summary>
+    /// Denetim satırının kimliği — <b>bilerek TEK sefer üretilir ve komutun ömrü boyunca
+    /// sabit kalır.</b>
+    /// </summary>
+    /// <remarks>
+    /// Handler döndükten SONRA (transaction commit / cascading publish) patlayan bir hata
+    /// senaryosunda <c>Finally</c> önce "Succeeded" satırını yazar, sonra <c>OnException</c>
+    /// "Failed" satırını yazar (hook sırası: <c>Finally</c> → <c>OnException</c>). İkisi de
+    /// AYNI <see cref="AuditContext"/> örneğini kullanır — yani aynı <see cref="Id"/>'yi.
+    /// <see cref="AuditWriter"/> bu kimlikle Marten <c>Store()</c> çağırır ve Marten
+    /// <c>Store()</c> varsayılan olarak kimliğe göre UPSERT yapar (<c>AuditMartenConfig</c>'te
+    /// tersini söyleyen bir <c>.Identity()</c> yapılandırması yok). Sonuç: ikinci yazma
+    /// birincinin ÜSTÜNE yazar ve iz kalıcı olarak "Failed" görünür — geri alınmış bir komut
+    /// hiçbir zaman "Succeeded" olarak takılı kalmaz. Kimlik yazma başına üretilseydi aynı
+    /// komut için İKİ ayrı satır (biri yanlışlıkla "başarılı") doğardı.
+    /// </remarks>
     public Guid Id { get; } = Guid.NewGuid();
     public DateTimeOffset OccurredAt { get; } = DateTimeOffset.UtcNow;
 
