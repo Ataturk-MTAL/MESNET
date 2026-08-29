@@ -503,6 +503,13 @@ Yanıttaki `skippedNoProvince` sıfırdan büyükse, o okulların **il kodu yokt
 kalmışlardır — hiçbir il yetkilisinin listesinde görünmezler. Künyeleri tamamlayıp ucu yeniden
 çağırın.
 
+**Denetim izi de bu ön koşula bağlıdır.** Denetim satırının kaydı sırasında aktörün kurum yolu
+(`Institution.Path`) boşsa, iz satırına `SubjectInstitutionPath = null` yazılır. `rebuild-hierarchy`
+hiç koşmamışsa "Kurumumdaki işlemler" kapsamı (`GET /api/audit/institution`) yol önekiyle
+süzdüğü için bu satırları **hiç göstermez** — hata dönmez, sayaç yok, uç 200 ve liste **boş**
+gelir. Ayrı bir ön koşul değildir: yukarıdaki `rebuild-hierarchy` geçişi zaten listede, onu
+koşturmak bu görünümü de düzeltir.
+
 ### Yerleştirme resync'i: atlanan kayıtlar
 
 `POST /api/placements/resync-projections` yanıtı `{ placementCount, skipped }` döndürür.
