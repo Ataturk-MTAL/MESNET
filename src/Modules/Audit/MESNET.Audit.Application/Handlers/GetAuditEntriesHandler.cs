@@ -89,8 +89,16 @@ public static class GetAuditEntriesHandler
     {
         if (!string.Equals(query.Scope, GetAuditEntries.ScopeInstitution, StringComparison.Ordinal))
         {
-            // "Kendi işlemlerim". Kimliği çözülemeyen aktörde Guid.Empty hiçbir satırla
-            // eşleşmez — her şeyi görmek yerine hiçbir şey görmek.
+            // "Kendi işlemlerim". YANLIŞ DEĞİŞMEZ İDDİASI DÜZELTİLDİ (madde 4): Guid.Empty
+            // "hiçbir satırla eşleşmez" DEĞİL — AuditMiddleware.Before
+            // (ActorId = actor?.UserId ?? Guid.Empty) ve CurrentUserService (sub claim'i
+            // çözülemeyince UserId = Guid.Empty) tam da Guid.Empty aktörlü satır yazabilir.
+            // Kimliği çözülemeyen bu istekte de aktörUserId Guid.Empty'ye düşer, yani
+            // kimliksiz istek KENDİ ürettiği Guid.Empty'li satırları görür — üstelik başka
+            // kimliksiz isteklerin de Guid.Empty'li satırlarını görebilir (aktörler birbirinin
+            // izini görür). Olasılık düşük (bu yol yalnız aktör çözülemediğinde çalışır) ve
+            // sonuç yine kiracıyla sınırlıdır (Marten conjoined kiracılık satırı filtreler),
+            // ama "hiçbir şey görmek" iddiası yanlıştı.
             var userId = actorUserId ?? Guid.Empty;
             return queryable.Where(e => e.ActorId == userId);
         }
