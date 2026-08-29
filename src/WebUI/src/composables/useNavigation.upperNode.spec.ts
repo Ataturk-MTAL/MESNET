@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isNavItemVisible, menuDefinition, type NavItem } from './useNavigation'
+import { isNavItemVisible, menuDefinition, resolveIsUpperNode, type NavItem } from './useNavigation'
 
 /**
  * "Kurumlar" menü girdisi okul kullanıcısına GÖSTERİLMEZ.
@@ -49,6 +49,30 @@ describe('isNavItemVisible', () => {
     expect(
       isNavItemVisible(kurumlar as NavItem, izinliOkuyucu([]), { isUpperNode: true }),
     ).toBe(false)
+  })
+
+  /**
+   * Görev 10 (B parçası) sonrası ölçülen hata: `institutionStore` artık aktif bağlama bağlı —
+   * il yetkilisi bir okula geçtiğinde `institutionStore.institution.nodeType === 'School'`
+   * olur ve `nodeType` TEK BAŞINA kontrol edilirse "Kurumlar" menü girdisi KAYBOLUR. Aktif
+   * bağlam DOLU olması aktörün üst düğüm olduğunun KANITIDIR (okul kullanıcısı bağlam
+   * SEÇEMEZ), o yüzden `resolveIsUpperNode` ikisini OR'lar.
+   */
+  it('aktif bağlam varken üst düğüm sayılır — nodeType School olsa bile', () => {
+    expect(resolveIsUpperNode('School', 'okul-x-id')).toBe(true)
+  })
+
+  it('aktif bağlam varken "Kurumlar" görünür kalır', () => {
+    const ctx = { isUpperNode: resolveIsUpperNode('School', 'okul-x-id') }
+
+    expect(isNavItemVisible(kurumlar as NavItem, izinliOkuyucu(['institution:view']), ctx)).toBe(
+      true,
+    )
+  })
+
+  it('aktif bağlam yokken nodeType School ise üst düğüm SAYILMAZ', () => {
+    expect(resolveIsUpperNode('School', null)).toBe(false)
+    expect(resolveIsUpperNode('School', undefined)).toBe(false)
   })
 
   it('koşulu olmayan girdi yalnız izne bakar', () => {
