@@ -56,13 +56,17 @@ export const useAcademicPeriodStore = defineStore('academicPeriod', () => {
     selectedPeriod.value?.startYear ?? new Date().getFullYear(),
   )
 
-  async function loadPeriods(): Promise<void> {
+  async function loadPeriods(force = false): Promise<void> {
     const authStore = useAuthStore()
     // authStore.currentInstitutionId OKUNUR — user.institutionId DEĞİL: aktif bağlam varsa
     // ekran o kuruma bağlanmalı, ev kuruma değil (Görev 8).
     const institutionId = authStore.currentInstitutionId
     if (!institutionId) return
-    if (isLoaded.value && loadedInstitutionId.value === institutionId) return
+    // `force` deseni institutionStore.loadInstitution / roleCatalogStore.load ile AYNI:
+    // aynı kurum için bile yeniden çekmek gereken çağıranlar (yeni dönem oluşturma, dönem
+    // kapatma) erken dönüşü bilerek atlar — aksi hâlde önbellek koruması bu iki çağrıyı
+    // ölü yol yapar.
+    if (isLoaded.value && !force && loadedInstitutionId.value === institutionId) return
 
     const institutionChanged = loadedInstitutionId.value !== institutionId
 

@@ -804,7 +804,7 @@ function confirmClosePeriod(period: AcademicPeriodDto) {
         await institutionApi.closeAcademicPeriod(institutionId.value, period.id)
         notify.success('Dönem kapatıldı.')
         await load()
-        await periodStore.loadPeriods()
+        await periodStore.loadPeriods(true)
       } catch (e) {
         notify.apiError(e, 'Dönem kapatılırken bir hata oluştu.')
       } finally {

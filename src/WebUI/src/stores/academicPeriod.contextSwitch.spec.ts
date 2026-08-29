@@ -86,6 +86,19 @@ describe('academicPeriodStore — bağlam değişimi', () => {
     expect(store.selectedPeriodId).toBe('okul-b-donem')
   })
 
+  it('force:true erken dönüşü atlar — AYNI kurum için bile yeniden çeker', async () => {
+    // Görev 9'un önbellek koruması iki çağıranı (yeni dönem oluşturma, dönem kapatma) ölü
+    // yol yaptı: "her çağrıda yeniden çek" sözleşmesine dayanıyorlardı. `force` bu iki
+    // çağıranın erken dönüşü BİLEREK atlamasını sağlar.
+    const { useAcademicPeriodStore } = await import('./academicPeriod')
+    const store = useAcademicPeriodStore()
+
+    await store.loadPeriods()
+    await store.loadPeriods(true)
+
+    expect(listAcademicPeriods).toHaveBeenCalledTimes(2)
+  })
+
   it('kurum yoksa istek atılmaz', async () => {
     const { useAcademicPeriodStore } = await import('./academicPeriod')
     const store = useAcademicPeriodStore()
