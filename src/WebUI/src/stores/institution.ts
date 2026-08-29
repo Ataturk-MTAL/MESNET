@@ -16,8 +16,21 @@ import { applyBrandTheme } from 'utils/brandTheme'
  * Mutasyon sonrası ilgili load*(true) ile tazelenir → tüm tüketicilere reaktif yansır.
  */
 export const useInstitutionStore = defineStore('institution', () => {
+  /**
+   * Bağlamda DAVRANILAN kurum. `user?.institutionId` (EV kurumu) DEĞİL,
+   * `authStore.currentInstitutionId` (Görev 8: aktif bağlam varsa o, yoksa ev kurumu) okunur.
+   *
+   * <p>Denetimden gelen düzeltme: bu yardımcı eskiden ev kurumunu okuyordu. Bağlam
+   * `useInstitutionContext().switchTo()` ile değiştirildiğinde `institutionStore.clear()`
+   * çağrılıyor ama bir sonraki `loadInstitution()`/`loadFieldCatalog()` yine ev kurumunun
+   * verisini çekiyordu — kurum profili sayfası sessizce YANLIŞ okulu gösteriyordu. Bu,
+   * `academicPeriodStore`'da Görev 9'un kapattığı tuzağın (bkz. `academicPeriod.ts`
+   * `loadPeriods`) birebir ikinci kopyasıydı. `loadedInstitutionId` koruması zaten kiracı
+   * değişimini kimlik karşılaştırmasıyla yakalıyor; sorun yalnız BURADA hangi kimliğin
+   * okunduğuydu.</p>
+   */
   function currentInstitutionId(): string | null {
-    return useAuthStore().user?.institutionId ?? null
+    return useAuthStore().currentInstitutionId
   }
 
   // ── Kurum profili (branches + staff dahil) ──
