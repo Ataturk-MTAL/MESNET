@@ -154,6 +154,13 @@ public static class AssignablePermissionScope
             // günlüğünü okurdu. Rol → domain haritası çalışma zamanında değiştirilebildiği
             // için (user:roles:manage) yalnız yapılandırmaya güvenmek yetmez.
             Permissions.Audit.ViewInstitution,
+            // Müdürlük katmanı (B parçası). Kapsam AKTİF BAĞLAMDAN gelir (ağaçtaki yer), izin
+            // demetinden değil — DeputyDirector'ın atanabilir kapsamı bugün "internship:" ve
+            // "institution:" prefix'lerini içerir; bu koruma olmasaydı müdür yardımcısı bu iki
+            // izni bireysel olarak herhangi bir kullanıcıya (bir işletme kullanıcısına bile)
+            // atayıp müdürlük katmanının müdahale yetkisini tümden dışarı sızdırabilirdi.
+            Permissions.Directorate.InstitutionBootstrap,
+            Permissions.Internship.ApprovalOverride,
         };
 
     /// <summary>

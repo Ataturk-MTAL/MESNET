@@ -29,7 +29,10 @@ public static class InternshipEndpoints
         group.MapPost("/{internshipId:guid}/approve/teacher", PostApproveTeacher).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/director", PostApproveDirector).RequireAuthorization(Permissions.Internship.Manage);
-        group.MapPost("/{internshipId:guid}/approve/override", PostOverride).RequireAuthorization(Permissions.Internship.Manage);
+        // Override kendi iznine geçti (B parçası): internship:manage müdür onay adımını da
+        // açıyordu ve il yetkilisinin zincirde normal bir adım olması istenmiyor.
+        group.MapPost("/{internshipId:guid}/approve/override", PostOverride)
+            .RequireAuthorization(Permissions.Internship.ApprovalOverride);
 
         // Tek seferlik geçiş adımı (#251): kopya saga'ları birleştirir. Kurum üstü bir bakım
         // işidir — bir okulun müdürü kendi verisinin saga kimliklerini yeniden yazamamalı.

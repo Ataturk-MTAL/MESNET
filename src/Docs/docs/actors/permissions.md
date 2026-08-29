@@ -1229,14 +1229,28 @@ Kurumlar bir ağaçtır: il müdürlüğü → ilçe müdürlüğü → okul. Ka
 - Kardeş düğümler kapsam dışıdır
 - `platform:tenant:manage` taşıyan aktör ağacın tamamını görür
 
-`ProvincialAdmin` ve `DistrictAdmin` rolleri **yeni izin almaz**: ikisi de düz
-`institution:view` taşır. Yeni bir `institution:` önekli izin tanımlansaydı, o izin
-`institution:*` wildcard'ı üzerinden **her okul müdürüne** sessizce geçerdi (ADR-0002 önek
-tuzağı). Bu rollerin farkı izinde değil, ağaçtaki yerindedir.
+`ProvincialAdmin` ve `DistrictAdmin` rolleri A parçasında **yeni izin almıyordu**: ikisi de düz
+`institution:view` taşıyordu. `institution:` önekli her yeni izin `institution:*` wildcard'ı
+üzerinden **her okul müdürüne** sessizce geçerdi (ADR-0002 önek tuzağı) — bu yüzden yazma yetkisi
+denetim izi (Audit, C parçası) yazılana kadar bilerek ertelendi. B parçasında (müdahale yetkisi)
+sıra tamamlandı; bkz. "Müdürlük Katmanı" aşağıda. Bu rollerin farkı hâlâ izinde değil, ağaçtaki
+yerindedir — yalnız artık ağaçtaki yerlerinde **yazabiliyorlar** da.
 
 Aktörün yolu `institution_path` claim'inden okunur ve claim **kurum kaydından** üretilir;
 token'daki değer her istekte silinir. Kullanıcının yazabildiği bir yol, kullanıcının kendi
 kapsamını seçmesi demektir — kök yazan biri her okulu görürdü.
+
+## Müdürlük Katmanı — Müdahale Yetkisi (B parçası)
+
+`ProvincialAdmin` (kendi ilinin alt ağacında) ve `DistrictAdmin` (kendi ilçesinin alt ağacında)
+aynı üç müdahaleyi yapabilir: kurum künyesini düzenleme/dönem açma-kapatma
+(`institution:manage`), tıkanmış fesih onay zincirini atlama (`internship:approval:override` —
+`internship:manage` DEĞİL, o müdür onay adımını da açardı) ve hiç yöneticisi olmayan bir okula
+ilk yöneticiyi bağlama (`directorate:institution-bootstrap`, koşullu — okulun yöneticisi olduğu
+an kapanır). Kapsam üçünde de **aktif bağlamdan** (ağaçtaki yerden) gelir, izinden değil —
+`InstitutionScopePolicy` "hedefin yolu benim yolumla başlıyor mu" sorusuna iner. `directorate:`
+öneki bilerek yenidir: `institution:` seçilseydi izin `InstitutionManager`'ın `institution:*`
+wildcard'ı üzerinden her okul müdürüne geçerdi, `platform:` seçilseydi kapsam bütün ülkeye açılırdı.
 
 ## Kurum Geneli Koordinasyon Yapılandırması (#130)
 
