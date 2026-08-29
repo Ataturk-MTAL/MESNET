@@ -34,12 +34,28 @@ public static class PermissionPolicies
     public static readonly string SalaryViewOrOwn =
         AnyOf(Permissions.Salary.View, Permissions.Salary.ViewOwn);
 
+    /// <summary>
+    /// Kullanıcının kurum bağını değiştirme ucu — normal kapsam yolu ya da müdahale yolu
+    /// (B parçası, <c>InstitutionBootstrapPolicy</c>).
+    ///
+    /// <para><b>Neden gerekli:</b> il/ilçe yetkilisi rollerinde (<c>ProvincialAdmin</c>,
+    /// <c>DistrictAdmin</c>) <c>user:roles:manage</c> YOKTUR — kasıtlı olarak, o izin alt
+    /// ağaçtaki her okulda her kullanıcının rollerini değiştirmek demektir ve istenen şeyden
+    /// kat kat geniştir. Yalnız <c>user:roles:manage</c> ile korunan bir uç bu rolleri hiç
+    /// içeri almazdı ve müdahale yolu handler'a hiç ulaşmazdı. Asıl daraltma (tıkanıklık var
+    /// mı, hedef alt ağaçta mı) yine <c>ChangeUserInstitutionHandler</c>'da yapılır — bu
+    /// policy yalnız ucu açar.</para>
+    /// </summary>
+    public static readonly string UserInstitutionAssignOrBootstrap =
+        AnyOf(Permissions.UserManagement.RolesManage, Permissions.Directorate.InstitutionBootstrap);
+
     /// <summary>Kayıtlı tüm birleşik policy'ler — DI kaydı buradan okur, elle liste tutulmaz.</summary>
     public static IReadOnlyList<string> All { get; } =
     [
         AttendanceViewOrOwn,
         InternshipViewOrOwn,
-        SalaryViewOrOwn
+        SalaryViewOrOwn,
+        UserInstitutionAssignOrBootstrap
     ];
 
     /// <summary>Policy adını izinlerine ayırır.</summary>

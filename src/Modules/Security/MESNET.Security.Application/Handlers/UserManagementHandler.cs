@@ -1,6 +1,7 @@
 using Marten;
 using Microsoft.Extensions.Logging;
 using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
@@ -162,16 +163,54 @@ public static class ChangeUserBranchesHandler
 public static class ChangeUserInstitutionHandler
 {
     public static async Task<UserInstitutionChanged> Handle(
-        ChangeUserInstitution command, IDocumentSession session, IMemoryCache cache)
+        ChangeUserInstitution command, IDocumentSession session, IMemoryCache cache,
+        ICurrentUserService currentUser, IInstitutionPathLookup pathLookup,
+        CancellationToken cancellationToken)
     {
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
         // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
         if (account is null || account.DeletedAt is not null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
-        if (!UserInstitutionScopePolicy.CanAssign(
-                command.ActorInstitutionId, account.InstitutionId, command.InstitutionId))
-            throw new DomainException(SecurityErrors.InstitutionScopeNotAllowed());
+        var normalYol = UserInstitutionScopePolicy.CanAssign(
+            command.ActorInstitutionId, account.InstitutionId, command.InstitutionId);
+
+        if (!normalYol)
+        {
+            // Müdahale yolu (B parçası): il/ilçe yetkilisi alt ağacındaki YÖNETİCİSİZ bir okula
+            // ilk yöneticiyi bağlayabilir. Normal yol reddettiğinde denenen İKİNCİ bir yoldur —
+            // UserInstitutionScopePolicy.CanAssign'ın kararını bozmaz, yalnız o false döndüğünde
+            // ayrı bir kapı açar.
+            var hedefKurum = command.InstitutionId ?? Guid.Empty;
+            var hedefYolu = await pathLookup.GetPathAsync(hedefKurum, cancellationToken);
+
+            // MesnetRoles.InstitutionManager burada bir KAPSAM KONTROLÜ için değil, "okulun
+            // etkin bir yöneticisi var mı" ÖLÇÜMÜ için kullanılıyor — yetki kararı
+            // InstitutionBootstrapPolicy.CanBootstrap'in hasBootstrapPermission parametresindedir.
+            // Depo kuralı "rol adına bakan yeni kapsam kontrolü yazılmaz" der; bu bir kapsam
+            // kontrolü değil, kapıyı açık/kapalı tutan bir tıkanıklık ölçümüdür. Mezar taşı
+            // (#210) ve devre dışı hesap "etkin yönetici" sayılmaz — aksi hâlde silinmiş/devre
+            // dışı bırakılmış bir yönetici, okulu süresiz kilitli tutardı.
+            var yoneticisiVar = await session.Query<UserAccount>()
+                .AnyAsync(a => a.InstitutionId == hedefKurum
+                               && a.DeletedAt == null
+                               && a.IsEnabled
+                               && a.Roles.Contains(MesnetRoles.InstitutionManager),
+                          cancellationToken);
+
+            var mudahale = InstitutionBootstrapPolicy.CanBootstrap(
+                currentUser.HasPermission(Permissions.Directorate.InstitutionBootstrap),
+                InstitutionScopePolicy.CanAccessByPath(
+                    currentUser.GetCurrentUser()?.InstitutionPath, hedefYolu),
+                yoneticisiVar);
+
+            if (!mudahale)
+            {
+                throw new DomainException(yoneticisiVar
+                    ? SecurityErrors.InstitutionAlreadyHasManager(hedefKurum)
+                    : SecurityErrors.ActiveContextOutOfScope(hedefKurum));
+            }
+        }
 
         var previous = account.InstitutionId;
 

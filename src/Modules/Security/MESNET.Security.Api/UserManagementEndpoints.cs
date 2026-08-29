@@ -35,7 +35,13 @@ public static class UserManagementEndpoints
         // YENİ İZİN TANIMLANMADI: "hangi kuruma" sorusunu izin değil aktörün kendi kurum
         // kapsamı cevaplar (UserInstitutionScopePolicy). Ayrı bir izin, "user:*" wildcard'ı
         // üzerinden zaten aynı iki role düşerdi (ADR-0002) — erişimi hiç daraltmazdı.
-        group.MapPost("/{userAccountId:guid}/institution", ChangeInstitution).RequireAuthorization(Permissions.UserManagement.RolesManage);
+        //
+        // Birleşik policy (B parçası): il/ilçe yetkilisi rollerinde user:roles:manage YOKTUR
+        // (kasıtlı — alt ağaçtaki her okulda her kullanıcının rollerini değiştirmek istenenden
+        // kat kat geniş). Yalnız RolesManage ile korunsaydı müdahale yolu (ChangeUserInstitutionHandler
+        // içindeki InstitutionBootstrapPolicy dalı) hiç tetiklenmezdi — ucun kendisi kapalı kalırdı.
+        group.MapPost("/{userAccountId:guid}/institution", ChangeInstitution)
+            .RequireAuthorization(PermissionPolicies.UserInstitutionAssignOrBootstrap);
         // İşletme kapsamı (#229) — claim kayıttan üretildiği için yanlış bağı düzeltebilecek
         // TEK yol budur; Keycloak'a yazmak okunmaz, senkronizasyon kaydı ezmez.
         group.MapPost("/{userAccountId:guid}/business", ChangeBusiness).RequireAuthorization(Permissions.UserManagement.RolesManage);

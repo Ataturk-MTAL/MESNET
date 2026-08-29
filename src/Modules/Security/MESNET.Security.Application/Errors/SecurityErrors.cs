@@ -97,4 +97,12 @@ public static class SecurityErrors
     public static Error ActiveContextOutOfScope(Guid institutionId) =>
         new("Security.ActiveContextOutOfScope",
             $"Bu kurum yetki alanınızda değil: {institutionId}");
+
+    /// <summary>
+    /// Hedef okulun zaten bir yöneticisi var; müdahale yolu kapalı. Bağı okulun kendi
+    /// yöneticisi kurar (<c>InstitutionBootstrapPolicy</c>, B parçası).
+    /// </summary>
+    public static Error InstitutionAlreadyHasManager(Guid institutionId) =>
+        new("Security.InstitutionAlreadyHasManager",
+            $"Bu kurumun yöneticisi var; kullanıcı bağını kurum kendi yönetir: {institutionId}");
 }
