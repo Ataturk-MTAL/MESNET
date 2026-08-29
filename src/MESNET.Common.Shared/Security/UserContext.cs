@@ -34,4 +34,14 @@ public sealed record UserContext(
     /// disiplin (ADR-0003 adım 2). Kullanıcının yazabildiği bir yol, kullanıcının kendi
     /// kapsamını seçmesi demektir.</para>
     /// </summary>
-    string? InstitutionPath = null);
+    string? InstitutionPath = null,
+    /// <summary>
+    /// Aktörün adına davrandığı kurum — <c>active_institution_id</c> claim'i (B parçası).
+    /// <c>null</c> = kendi kurumunda çalışıyor.
+    /// </summary>
+    /// <remarks>
+    /// <b><see cref="InstitutionId"/> ile karıştırmayın.</b> O "kim olduğun", bu "nerede
+    /// davrandığın". Denetim izi ikisini ayrı alanlara yazar ve
+    /// <c>CrossedTenantBoundary</c> tam olarak bu farktan doğar.
+    /// </remarks>
+    Guid? ActiveInstitutionId = null);
