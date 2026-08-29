@@ -59,6 +59,15 @@ const router = createRouter({
           meta: { permissions: ['institution:view'] },
         },
 
+        // Denetim izi (C parçası). Rota "İşlemlerim" kapsamıyla açılır ve o kapsam EK İZİN
+        // GEREKTİRMEZ — kullanıcının kendi geçmişini görmesi bir yetki sorusu değildir.
+        // Kurum kapsamı sayfa içinde `audit:view:institution` ile açılır.
+        {
+          path: 'audit',
+          name: 'AuditLog',
+          component: () => import('pages/audit/AuditLogPage.vue'),
+        },
+
         // İşletme (Company)
         {
           path: 'companies',
