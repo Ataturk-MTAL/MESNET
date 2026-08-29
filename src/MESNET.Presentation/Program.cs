@@ -343,6 +343,7 @@ try
         opts.Discovery.IncludeAssembly(typeof(MESNET.Internship.Application.Commands.RequestTermination).Assembly);
         opts.Discovery.IncludeAssembly(typeof(MESNET.Reporting.Application.Commands.GenerateInternshipContractDocument).Assembly);
         opts.Discovery.IncludeAssembly(typeof(MESNET.Security.Application.Commands.CreateUser).Assembly);
+        opts.Discovery.IncludeAssembly(typeof(MESNET.Audit.Application.Queries.GetAuditEntries).Assembly);
 
         // RabbitMQ Transport — Aspire connection string'inden okur
         var rabbitUri = builder.Configuration.GetConnectionString("rabbitmq");
