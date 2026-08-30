@@ -70,6 +70,10 @@ public static class DocumentTenancyMap
 
         ["AcademicPeriod"] = Tenant,
         ["AcademicPeriodView"] = Tenant,
+        // Denetim izi (C parçası). Satır bir okulun verisi HAKKINDADIR ve satır düzeyinde
+        // süzülmelidir: bir okulun müdürü diğer okulun iz satırını görmemelidir. Kurum üstü
+        // işler (ulusal parametre, rebuild-hierarchy) platform kiracısına düşer.
+        ["AuditEntry"] = Tenant,
         ["BranchStudentCountView"] = Tenant,
         ["BranchWorkloadConfig"] = Tenant,
         ["BusinessCoordinationView"] = Tenant,

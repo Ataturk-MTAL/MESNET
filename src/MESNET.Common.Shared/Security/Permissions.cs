@@ -408,6 +408,26 @@ public static class Permissions
     }
 
     /// <summary>
+    /// Denetim izi (C parçası).
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Neden ayrı bir önek, neden <c>institution:</c> DEĞİL:</b> <c>institution:</c>
+    /// önekli bir izin <c>InstitutionManager</c>'ın <c>institution:*</c> wildcard'ı üzerinden
+    /// her okul müdürüne sessizce geçerdi (ADR-0002 önek tuzağı). Okul müdürünün kendi
+    /// okulunun izini görmesi istenen bir şeydir; ama kararın wildcard'ın yan etkisiyle değil
+    /// AÇIKÇA verilmesi gerekir. Yeni ve çakışmasız önek bunu sağlar.</para>
+    ///
+    /// <para><b>"Kendi işlemlerim" için izin YOKTUR</b> ve bu bilinçlidir: kullanıcının kendi
+    /// geçmişini görmesi bir yetki sorusu değildir. Kapsam <c>ActorId == aktör</c> ile
+    /// sunucuda daraltılır.</para>
+    /// </remarks>
+    public static class Audit
+    {
+        /// <summary>Kendi kurum ağacının (yol öneki) denetim izini okuma.</summary>
+        public const string ViewInstitution = "audit:view:institution";
+    }
+
+    /// <summary>
     /// Koordinatör öğretmene ilişkin izinler.
     /// Ders programı, işletme ziyareti ve faaliyet raporlarını kapsar.
     /// </summary>

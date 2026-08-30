@@ -148,6 +148,12 @@ public static class AssignablePermissionScope
             // `attendance:` vardır. Rol üzerinden dağıtım etkilenmez: koordinatör öğretmen,
             // müdür yardımcısı ve müdür bu izni RolePermissionMap'ten almaya devam eder.
             Permissions.Attendance.Approve,
+            // Denetim izi okuma (C parçası). InstitutionManager'ın atanabilir kapsamı "*"tır;
+            // bu koruma olmasaydı okul müdürü denetim görünürlüğünü herhangi bir kullanıcıya —
+            // bir İŞLETME kullanıcısına bile — verebilirdi ve o kullanıcı okulun bütün eylem
+            // günlüğünü okurdu. Rol → domain haritası çalışma zamanında değiştirilebildiği
+            // için (user:roles:manage) yalnız yapılandırmaya güvenmek yetmez.
+            Permissions.Audit.ViewInstitution,
         };
 
     /// <summary>

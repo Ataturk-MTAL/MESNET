@@ -47,6 +47,7 @@
     <ProjectReference Include="../Modules/Reporting/MESNET.Reporting.Persistence/MESNET.Reporting.Persistence.csproj" />
     <ProjectReference Include="../Modules/Security/MESNET.Security.Api/MESNET.Security.Api.csproj" />
     <ProjectReference Include="../Modules/Security/MESNET.Security.Persistence/MESNET.Security.Persistence.csproj" />
+    <ProjectReference Include="../Modules/Audit/MESNET.Audit.Api/MESNET.Audit.Api.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1212,6 +1212,13 @@ Kullanıcı yönetimi ekranında (`UserManagementPage`):
   kataloğundan)
 - Davet formunda alan çoklu seçimi vardır; zorunlu değildir
 
+## Denetim İzi
+
+`audit:view:institution` iznine yalnız `InstitutionManager` ve `DeputyDirector` sahiptir; kapsam
+kendi kurum ağacının yol önekiyle sınırlıdır. Önek bilerek `institution:` **değil** `audit:`
+seçildi — aksi hâlde `InstitutionManager`'ın `institution:*` wildcard'ı üzerinden karar sessizce
+her okul müdürüne geçerdi, oysa denetim görünürlüğü açıkça verilmesi gereken bir karardır.
+
 ## Kurum Kapsamı Ağaçtan Gelir
 
 Kurumlar bir ağaçtır: il müdürlüğü → ilçe müdürlüğü → okul. Kapsam kararı tek soruya iner —

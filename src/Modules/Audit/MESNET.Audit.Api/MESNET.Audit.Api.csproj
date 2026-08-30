@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../MESNET.Audit.Application/MESNET.Audit.Application.csproj" />
+    <ProjectReference Include="../MESNET.Audit.Persistence/MESNET.Audit.Persistence.csproj" />
+  </ItemGroup>
+</Project>
