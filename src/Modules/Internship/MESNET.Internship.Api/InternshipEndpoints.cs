@@ -34,6 +34,12 @@ public static class InternshipEndpoints
         group.MapPost("/{internshipId:guid}/approve/override", PostOverride)
             .RequireAuthorization(Permissions.Internship.ApprovalOverride);
 
+        // Tıkanmış onaylar kartı (D2). İzin BİLEREK internship:view değil approval:override:
+        // kart yalnız müdahale edebilecek aktöre bilgi taşır; görüp müdahale edemeyen
+        // kullanıcı için bilgi değil gürültüdür.
+        group.MapGet("/stuck-approvals", GetStuckApprovalSummary)
+            .RequireAuthorization(Permissions.Internship.ApprovalOverride);
+
         // Tıkanma eşiği. OKUMA müdahale yetkisine bağlıdır: eşiği yalnız kartı gören
         // kullanıcının bilmesi anlamlıdır. YAZMA ulusal parametre iznidir ve hiçbir okul
         // rolünde yoktur — okul kendi eşiğini belirleyemez.
@@ -163,6 +169,12 @@ public static class InternshipEndpoints
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Onay zinciri override edildi.")
             .Build());
+    }
+
+    private static async Task<IResult> GetStuckApprovalSummary(IMessageBus bus)
+    {
+        var dto = await bus.InvokeAsync<StuckApprovalSummaryDto>(new GetStuckApprovals());
+        return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
     }
 
     private static async Task<IResult> GetApprovalConfiguration(IMessageBus bus)
