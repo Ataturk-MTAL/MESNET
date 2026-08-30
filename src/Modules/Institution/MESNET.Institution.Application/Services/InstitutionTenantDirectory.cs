@@ -1,6 +1,8 @@
 using Marten;
 using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Common.Shared.Tenancy;
+using MESNET.Institution.Application.Extensions;
+using MESNET.Institution.Core.Enums;
 // "Institution" hem ad alanı hem tip adı olduğu için doğrudan kullanılamaz (CS0118).
 using InstitutionRecord = MESNET.Institution.Core.Entities.Institution;
 
@@ -29,7 +31,11 @@ public sealed class InstitutionTenantDirectory : ITenantDirectory
     {
         await using var session = _store.QuerySession(TenantResolution.Platform);
 
+        // KİRACI = OKUL. İl ve ilçe müdürlüğü düğümleri kiracı DEĞİLDİR ve kiracı damgalı
+        // hiçbir veri taşımazlar. Süzülmeselerdi arka plan işleri hiçbir verinin bulunmadığı
+        // "kiracılarda" koşardı — istisna değil, sessiz boş geçiş.
         var ids = await session.Query<InstitutionRecord>()
+            .OfNodeType(InstitutionNodeType.School)
             .Select(i => i.Id)
             .ToListAsync(cancellationToken);
 

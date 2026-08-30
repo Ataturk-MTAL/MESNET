@@ -23,4 +23,11 @@ public interface ICurrentUserService
     /// Bilgi yoksa boş liste döner — boş liste "hiçbir öğrenciye erişemez" demektir.
     /// </summary>
     IReadOnlyList<Guid> GetLinkedStudentIds();
+
+    /// <summary>
+    /// Aktörün kurum ağacındaki yolu — <c>institution_path</c> claim'i.
+    /// Kapsam kararı için kullanılır; erişim kararı için değil (o permission'ın işidir).
+    /// Bilgi yoksa <c>null</c> döner ve kapsam kimlik eşitliğine düşer.
+    /// </summary>
+    string? GetInstitutionPath();
 }

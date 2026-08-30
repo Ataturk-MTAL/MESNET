@@ -73,6 +73,17 @@ public static class AssignablePermissionScope
         [
             "student:", "communication:",
         ],
+        // İl / ilçe yetkilisi: BOŞ liste (#il-ilce-hiyerarsisi A parçası). "institution:" domaini
+        // burada `institution:manage` ve `institution:staff`'ı da kapsardı — spec'in bilerek
+        // ERTELEDİĞİ yazma yetkisi (üst düğüme bağlı kullanıcının alt ağaca yol tabanlı yazması)
+        // tam bu bireysel atama yolundan doğardı; guard onu durdurmaz, izin dağıtımı durdurur.
+        // Bu iki role zaten `user:roles:manage` verilmiyor, yani domain girdisi hiçbir kullanıcı
+        // yönetim akışını açmıyordu — yalnız risk taşıyordu (dosyanın #126/#172 gerekçesiyle aynı
+        // sınıf: erişim izniyle kapsam muafiyetini karıştırmamak). Yazma denetim izi (C parçası)
+        // yazılmadan bu domainler tekrar açılmamalı. Anahtarlar KALIR — RoleModelDriftTests rol
+        // listesiyle anahtar kümesini karşılaştırıyor.
+        [MesnetRoles.ProvincialAdmin] = [],
+        [MesnetRoles.DistrictAdmin] = [],
         // Sistem yöneticisi (#147): yalnız ulusal domain. Kurum domainlerinden hiçbiri yok —
         // bu rol kurum verisine yetki dağıtamaz.
         [MesnetRoles.SystemAdmin] =

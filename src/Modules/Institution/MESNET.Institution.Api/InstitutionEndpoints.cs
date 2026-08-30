@@ -1,6 +1,7 @@
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Institution.Application.Commands;
 using MESNET.Institution.Application.Dtos;
 using MESNET.Institution.Application.Queries;
@@ -46,6 +47,11 @@ public static class InstitutionEndpoints
         // (kiracı anahtarı, ADR-0003 adım 2.1). Olay yeniden yayınlanır, Security tüketir —
         // modüller arası doğrudan veri yazma yoktur.
         group.MapPost("/staff/resync-branch-codes", PostResyncStaffBranchCodes).RequireAuthorization(Permissions.Institution.Staff);
+        // Kurum ağacı geçişi — DAĞITIM ÖN KOŞULU, idempotent. Atlanırsa sessizdir: yollar boş
+        // kalır ve il/ilçe yetkilisi hata değil BOŞ LİSTE görür. Kurum üstü bir iştir:
+        // institution:manage "kurum yönetebilir" der, "bütün ağacı yeniden kurabilir" demez.
+        group.MapPost("/rebuild-hierarchy", PostRebuildHierarchy)
+            .RequireAuthorization(Permissions.Platform.TenantManage);
 
         return app;
     }
@@ -77,6 +83,28 @@ public static class InstitutionEndpoints
                 $"{result.TotalStaff} personel incelendi, {result.Published} kayıt için alan bilgisi yayınlandı " +
                 $"({result.SkippedNoBranch} personelin alanı yok — normal, " +
                 $"{result.SkippedNoKeycloakId} personel eşleştirilemedi).")
+            .Build());
+    }
+
+    /// <summary>
+    /// Kurum ağacını mevcut okul künyelerinden yeniden kurar. İdempotent — birden çok kez
+    /// çağrılabilir.
+    /// </summary>
+    private static async Task<IResult> PostRebuildHierarchy(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<RebuildInstitutionHierarchyResult>(
+            new RebuildInstitutionHierarchy());
+
+        var uyari = result.SkippedNoProvince > 0
+            ? $" {result.SkippedNoProvince} okulun il kodu yok; kapsamsız kaldılar ve hiçbir "
+              + "il/ilçe yetkilisinin listesinde görünmezler."
+            : string.Empty;
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage(
+                $"Kurum ağacı kuruldu: {result.ProvincesCreated} il, {result.DistrictsCreated} ilçe "
+                + $"müdürlüğü açıldı, {result.NodesUpdated} düğümün ağaç bilgisi yazıldı.{uyari}")
             .Build());
     }
 
@@ -115,12 +143,35 @@ public static class InstitutionEndpoints
         return Results.Ok(ResponseBuilder.Success().AddData(result.Items).Build());
     }
 
-    private static async Task<IResult> GetAll(IMessageBus bus)
+    /// <summary>
+    /// Görünür kurumların sayfalı listesi. Kapsam sorgunun İÇİNDE uygulanır (handler);
+    /// uçta kimlik karşılaştırması yapılmaz.
+    /// </summary>
+    /// <param name="nodeType">
+    /// <c>Province</c> / <c>District</c> / <c>School</c>. Verilmezse okullar döner.
+    /// </param>
+    /// <param name="parentId">Belirli bir düğümün doğrudan çocukları.</param>
+    private static async Task<IResult> GetAll(
+        string? nodeType = null,
+        Guid? parentId = null,
+        int page = 1,
+        int pageSize = 20,
+        string? sortBy = null,
+        bool descending = false,
+        string? search = null,
+        IMessageBus bus = default!)
     {
-        var institutions = await bus.InvokeAsync<List<InstitutionDto>>(new GetInstitutions());
-        return Results.Ok(ResponseBuilder.Success()
-            .AddData(institutions)
-            .Build());
+        var result = await bus.InvokeAsync<PagedResult<InstitutionDto>>(
+            new GetInstitutions(nodeType, parentId)
+            {
+                Page = page,
+                PageSize = pageSize,
+                SortBy = sortBy,
+                Descending = descending,
+                Search = search
+            });
+
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
 
     private static async Task<IResult> Get(Guid institutionId, IMessageBus bus)

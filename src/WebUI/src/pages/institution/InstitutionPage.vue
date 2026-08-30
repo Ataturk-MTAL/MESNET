@@ -575,7 +575,7 @@ import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useInstitutionStore } from 'stores/institution'
 import { useAuthStore } from 'stores/auth'
 import { resolveEditableInstitutionId } from 'utils/institutionScope'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AddStaffForm from 'components/forms/institution/AddStaffForm.vue'
 import AddBranchForm from 'components/forms/institution/AddBranchForm.vue'
 import EditSpecializationsForm from 'components/forms/institution/EditSpecializationsForm.vue'
@@ -590,6 +590,7 @@ const institutionStore = useInstitutionStore()
 const authStore = useAuthStore()
 const notify = useNotify()
 const router = useRouter()
+const route = useRoute()
 const confirmDialog = useConfirmDialog()
 
 // ── Core State ──
@@ -680,13 +681,14 @@ async function load() {
   error.value = null
   try {
     if (!institutionId.value) {
-      // Hedef ÖNCE aktörün kendi kurumudur; liste yalnız kurumu olmayan platform aktörü için
-      // yedektir. "Listenin ilk satırı" demek, sıralaması olmayan bir sorguya güvenmekti ve
-      // platform aktöründe her yazmadan sonra başka bir okulu düzenletiyordu — bkz.
-      // utils/institutionScope.ts.
+      // Sıra: rota parametresi → aktörün kendi kurumu → liste. Liste yalnız kurumu olmayan
+      // platform aktörü için yedektir. "Listenin ilk satırı" demek, sıralaması olmayan bir
+      // sorguya güvenmekti ve platform aktöründe her yazmadan sonra başka bir okulu
+      // düzenletiyordu — bkz. utils/institutionScope.ts.
+      const routeId = typeof route.params.id === 'string' ? route.params.id : null
       const ownId = authStore.user?.institutionId ?? null
-      const listRes = ownId ? null : await institutionApi.list()
-      const resolved = resolveEditableInstitutionId(ownId, listRes?.data ?? [])
+      const listRes = routeId || ownId ? null : await institutionApi.list({ pageSize: 100 })
+      const resolved = resolveEditableInstitutionId(routeId, ownId, listRes?.data?.items ?? [])
       if (!resolved) {
         error.value = 'Kayıtlı kurum bulunamadı.'
         return

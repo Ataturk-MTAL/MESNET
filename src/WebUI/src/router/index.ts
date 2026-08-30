@@ -41,6 +41,23 @@ const router = createRouter({
           // doldurup Kaydet'te 403 duvarına çarpardı.
           meta: { permissions: ['institution:manage'], formRoute: true },
         },
+        // Kurum ağacı listesi (il/ilçe yetkilisi). Menüde yalnız üst düğüm kullanıcısına
+        // görünür; rota izinle korunur, kapsam sunucudadır (InstitutionScopePolicy).
+        {
+          path: 'institutions',
+          name: 'InstitutionList',
+          component: () => import('pages/institution/InstitutionListPage.vue'),
+          meta: { permissions: ['institution:view'] },
+        },
+        // Detay için ayrı sayfa YOK: mevcut kurum sayfası rota parametresiyle açılır.
+        // Yazma butonları orada institution:manage ile sarılı olduğundan sayfa il
+        // yetkilisinde kendiliğinden salt okunur açılır.
+        {
+          path: 'institutions/:id',
+          name: 'InstitutionDetail',
+          component: () => import('pages/institution/InstitutionPage.vue'),
+          meta: { permissions: ['institution:view'] },
+        },
 
         // İşletme (Company)
         {

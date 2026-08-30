@@ -267,6 +267,28 @@ public static class RolePermissionMap
             Permissions.Communication.SendMessage,
             Permissions.Communication.ReportIssue
         ],
+        // İl / ilçe millî eğitim yetkilisi — kurum hiyerarşisi A parçası.
+        //
+        // YENİ İZİN YOK, WILDCARD YOK. institution:* InstitutionManager'a aittir ve
+        // "institution:" önekli her yeni izin o wildcard üzerinden her okul müdürüne sessizce
+        // geçer (ADR-0002 önek tuzağı — #126'da alan muafiyeti izninde bire bir yaşandı).
+        //
+        // Bu rollerin farkı izinde DEĞİL, ağaçtaki yerlerindedir: kapsam
+        // InstitutionScopePolicy'de "hedefin yolu benim yolumla başlıyor mu" sorusuna iner.
+        //
+        // A parçasında YAZMA YOKTUR: institution:manage verilmez. Tam yetki, denetim izi
+        // (C parçası) yazılmadan verilmez — sıra bağlayıcıdır, C önce gelir.
+        [MesnetRoles.ProvincialAdmin] =
+        [
+            Permissions.Institution.View
+        ],
+        // İlçe yetkilisi il yetkilisiyle AYNI demeti alır; farkı yalnız ağaçtaki yeridir.
+        // Demetleri ayrıştırmak, ikisinin arasındaki tek gerçek farkı (kapsam) izne taşıma
+        // isteğini doğururdu — o da yeni bir "institution:" önekli izin demekti.
+        [MesnetRoles.DistrictAdmin] =
+        [
+            Permissions.Institution.View
+        ],
         // Sistem yöneticisi (#147) — ULUSAL parametre girişi. Kurum domainlerinden HİÇBİRİ
         // yoktur: bu rol kurum verisi görmez, yalnız mevzuat sayılarını yazar. Tersi de
         // geçerli — okul rollerinin hiçbirinde "platform:" öneki yoktur.

@@ -207,14 +207,20 @@ public sealed class InstitutionScopeDriftTests
     /// Kurum belgesini <b>filtresiz</b> dolaşmasına izin verilen yerler.
     ///
     /// <para><c>GetInstitutionsHandler</c>: listeleme sorgusu; kapsam guard'la değil
-    /// <c>VisibleInstitutionFilter</c> ile uygulanır (hedef istekte geçmez).
+    /// <c>InstitutionScopePolicy.VisibleScope</c> ile uygulanır (hedef istekte geçmez).
     /// <c>InstitutionTenantDirectory</c>: arka plan işlerinin kiracı listesi — kiracıları
-    /// saymak bu servisin tanımıdır, kullanıcı isteğine bağlı değildir.</para>
+    /// saymak bu servisin tanımıdır, kullanıcı isteğine bağlı değildir.
+    /// <c>RebuildInstitutionHierarchyHandler</c>: ağacı kurmak tanımı gereği bütün düğümleri
+    /// görmeyi gerektirir; uç kurum üstü izinle korunur (<c>platform:tenant:manage</c>) ve
+    /// komut hiçbir kurum kimliği taşımaz.</para>
     /// </summary>
     private static readonly HashSet<string> MayEnumerateAll = new(StringComparer.Ordinal)
     {
         "GetInstitutionsHandler.cs",
         "InstitutionTenantDirectory.cs",
+        // Ağacı kurmak tanımı gereği bütün düğümleri görmeyi gerektirir; uç kurum üstü izinle
+        // korunur (platform:tenant:manage) ve komut hiçbir kurum kimliği taşımaz.
+        "RebuildInstitutionHierarchyHandler.cs",
     };
 
     /// <summary>
@@ -256,6 +262,72 @@ public sealed class InstitutionScopeDriftTests
     public void Muafiyet_listesi_kucuk_kalir()
     {
         Exempt.Count.ShouldBeLessThanOrEqualTo(2);
+    }
+
+    /// <summary>
+    /// Aktörün kurum kapsamını taşıyan ifade — bitişik, nokta (<c>?.</c>) ya da null-forgiving
+    /// (<c>!.</c>) erişimli. İkincisi eskiden kaçırılıyordu (#kapsam-kilidi-null-forgiving):
+    /// <c>currentUser.GetCurrentUser()!.InstitutionId == ...</c> deseni <c>\??\.</c> ile
+    /// eşleşmiyordu, yani <c>!.</c> idiomuyla yazılmış elle kopya bu kilidin görünmez noktasıydı.
+    /// </summary>
+    private const string ActorInstitutionId =
+        @"(?:GetCurrentUser\(\)\s*[?!]?\.\s*InstitutionId|\b(?:actor|current|user)\w*(?:\s*[?!]?\.\s*)?InstitutionId)";
+
+    /// <summary>
+    /// Aktörün kurum kapsamını <b>elle</b> bir hedefle karşılaştıran kod.
+    ///
+    /// <para><b>Desen aktör tarafına demirlenmiştir</b>, iki tarafta da aranır ve hem bitişik
+    /// (<c>actorInstitutionId</c>) hem nokta erişimli (<c>actor?.InstitutionId</c>) yazımı
+    /// kapsar. İkincisi bu deponun kendi idiomudur: doğru uygulama olan
+    /// <c>InstitutionScopeGuardMiddleware</c> bile <c>actor?.InstitutionId</c> yazar, yani elle
+    /// kopyanın en olası biçimi odur.</para>
+    ///
+    /// <para><b>Neden yalnız "iki InstitutionId karşılaştırılıyor" denmiyor:</b> meşru veri
+    /// süzgeçleri (<c>.Where(p =&gt; p.InstitutionId == query.InstitutionId)</c>) ihlal sayılırdı
+    /// ve gürültülü bir kilit kapatılır.</para>
+    ///
+    /// <para><b>Bilinen sınır:</b> aktörün kurumu nötr bir ada atanırsa
+    /// (<c>var mine = currentUser.GetCurrentUser()?.InstitutionId;</c> ardından
+    /// <c>mine == ...</c>) desen onu göremez. Regex tabanlı her tarayıcının doğasında olan bir
+    /// sınırdır; kilit refleksi kurmak içindir, kanıt değildir.</para>
+    /// </summary>
+    private static readonly Regex HandRolledScopeComparison = new(
+        ActorInstitutionId + @"\s*(?:==|!=)|(?:==|!=)\s*" + ActorInstitutionId,
+        RegexOptions.Compiled);
+
+    /// <summary>
+    /// Kapsam kararını <b>kopyalayan</b> uç kalmamalı; karar politikadan geçmeli.
+    ///
+    /// <para><b>Neden kilitleniyor:</b> karar artık iki aşamalıdır — kimlik eşitliği, sonra
+    /// gerekiyorsa ağaçtaki yol. Kararı kopyalayan bir yer <b>yalnız birinci aşamayı</b>
+    /// yapar: kimlikler eşit değilse reddeder. Sonuç, il yetkilisinin kendi ilindeki hiçbir
+    /// okulun kaydını açamaması — ve bu sessizdir: kod derlenir, mevcut testler yeşil kalır,
+    /// istek 422 döner ve mesajı "yalnız kendi kurumunuz" der (doğru görünür).</para>
+    ///
+    /// <para><b>Muafiyet yok.</b> Karar kaynağının kendisi (<see cref="InstitutionScopePolicy"/>,
+    /// <c>UserInstitutionScopePolicy</c>) <c>src/MESNET.Common.Shared/Security/</c> altında
+    /// yaşar — bu tarama yalnız <see cref="GuardableApplicationPath"/>'i (Institution.Application)
+    /// dolaşır ve oraya hiç girmez, dolayısıyla bir muafiyet listesine gerek yoktur.</para>
+    /// </summary>
+    [Fact]
+    public void Kapsam_karari_kopyalanmaz()
+    {
+        var offenders = new List<string>();
+
+        foreach (var file in SourceFilesUnder(Path.Combine(RepoRoot(), "src", GuardableApplicationPath)))
+        {
+            var name = Path.GetFileName(file);
+
+            if (HandRolledScopeComparison.IsMatch(File.ReadAllText(file)))
+                offenders.Add(name);
+        }
+
+        offenders.ShouldBeEmpty(
+            "Kapsam kararı elle kopyalanmış. Karar artık iki aşamalı: kimlik eşitliği, sonra "
+            + "gerekiyorsa ağaçtaki yol. Kopya YALNIZ birinci aşamayı yapar ve il/ilçe "
+            + "yetkilisi alt ağacındaki hiçbir kaydı açamaz — sessizce: kod derlenir, testler "
+            + "yeşil kalır, istek 422 döner ve mesajı doğru görünür. Kararı "
+            + $"InstitutionScopePolicy'ye devredin. İhlaller: {string.Join(", ", offenders)}");
     }
 
     private sealed record ScopedMessage(string Key, string Name, string File, bool IsGuarded);

@@ -286,5 +286,7 @@ public sealed class OwnDataScopeTests
         public IReadOnlyList<string> GetBranchCodes() => [];
 
         public IReadOnlyList<Guid> GetLinkedStudentIds() => linkedStudentIds;
+
+        public string? GetInstitutionPath() => null;
     }
 }

@@ -18,8 +18,17 @@ public static class PermissionMatrixDoc
     public const string BeginMarker = "<!-- BEGIN generated: permission-matrix -->";
     public const string EndMarker = "<!-- END generated: permission-matrix -->";
 
-    /// <summary>Matris sütun sırası — okuldan işletmeye, geniş yetkiden dara.</summary>
-    private static readonly string[] RoleOrder =
+    /// <summary>
+    /// Matris sütun sırası — okuldan işletmeye, geniş yetkiden dara.
+    ///
+    /// <para><b>Elle tutulur, <see cref="MesnetRoles.All"/>'dan üretilmez.</b> Bu, bilinçli bir
+    /// kaynak-tarama kilidinin tersidir: burada eksik kalan rol matriste hiç görünmez, ADR de
+    /// üretilen metinle eşleştiği için <c>PermissionMatrixDocTests.ADR_izin_matrisi_kodla_ayni</c>
+    /// yeşil kalır — iki taraf da aynı rolü atladığı için sapma görünmez. Bu kör noktayı
+    /// <see cref="PermissionMatrixDocTests.RoleOrder_ve_ShortLabels_MesnetRoles_All_ile_birebir_ayni"/>
+    /// kapatır: bu liste <see cref="MesnetRoles.All"/> ile birebir aynı değilse kırmızı test verir.</para>
+    /// </summary>
+    internal static readonly string[] RoleOrder =
     [
         MesnetRoles.InstitutionManager,
         MesnetRoles.DeputyDirector,
@@ -31,11 +40,16 @@ public static class PermissionMatrixDoc
         MesnetRoles.CompanyHR,
         MesnetRoles.Student,
         MesnetRoles.Parent,
+        MesnetRoles.ProvincialAdmin,
+        MesnetRoles.DistrictAdmin,
         MesnetRoles.SystemAdmin
     ];
 
-    /// <summary>Tablo başlığı için kısaltmalar — tam ad matrisi okunmaz genişliğe çıkarır.</summary>
-    private static readonly Dictionary<string, string> ShortLabels = new()
+    /// <summary>
+    /// Tablo başlığı için kısaltmalar — tam ad matrisi okunmaz genişliğe çıkarır.
+    /// <see cref="RoleOrder"/> ile aynı kör nokta ve aynı kilit geçerlidir.
+    /// </summary>
+    internal static readonly Dictionary<string, string> ShortLabels = new()
     {
         [MesnetRoles.InstitutionManager] = "MÜD",
         [MesnetRoles.DeputyDirector] = "MYRD",
@@ -47,6 +61,11 @@ public static class PermissionMatrixDoc
         [MesnetRoles.CompanyHR] = "İİK",
         [MesnetRoles.Student] = "ÖĞRC",
         [MesnetRoles.Parent] = "VELİ",
+        // "İL" ve "İLÇE" tek başına belirsiz (il/ilçe müdürlüğü mü, il/ilçe okulu mu?) —
+        // diğer kısaltmalar gibi 3-4 harfte rolü tek anlama indiriyor, MEM (millî eğitim
+        // müdürlüğü) ekleniyor.
+        [MesnetRoles.ProvincialAdmin] = "İLMEM",
+        [MesnetRoles.DistrictAdmin] = "İLÇMEM",
         [MesnetRoles.SystemAdmin] = "SİSY"
     };
 
