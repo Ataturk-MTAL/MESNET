@@ -46,6 +46,24 @@ public sealed class InstitutionSubtreeDirectory : IInstitutionSubtreeDirectory
         return ToTenants(ids);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetSubtreeInstitutionIdsAsync(
+        string pathPrefix, CancellationToken cancellationToken = default)
+    {
+        // Boş önek "her şey" demek DEĞİLDİR — GetSchoolTenantsAsync ile aynı gerekçe.
+        // Marten string.StartsWith("") her satırı geçirir.
+        if (string.IsNullOrWhiteSpace(pathPrefix))
+            return [];
+
+        await using var session = _store.QuerySession(TenantResolution.Platform);
+
+        // Düğüm tipi süzgeci YOK: müdürlük düğümleri de dönmelidir, çünkü kullanıcı kaydı
+        // onlara da bağlanır.
+        return await session.Query<InstitutionRecord>()
+            .Where(i => i.Path != null && i.Path.StartsWith(pathPrefix))
+            .Select(i => i.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     // Çevrim burada TEKRARLANMAZ: 1:1 eşleşme TenantResolution'da tek noktada yaşar (#148).
     private static IReadOnlyList<string> ToTenants(IEnumerable<Guid> ids) =>
         ids.Select(TenantResolution.ForInstitution).ToList();
