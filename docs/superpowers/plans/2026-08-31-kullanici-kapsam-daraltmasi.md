@@ -422,9 +422,10 @@ public sealed class UserScopeResolver
         // KAPSAM — istekten gelen InstitutionId'den ÖNCE ve ondan bağımsız. İstekteki değer
         // bir kolaylık süzgecidir, yetki değildir; kapsamı genişletemez.
         //
-        // Kurum bağı OLMAYAN kayıtlar bilerek dışarıda bırakılır: bağı kuran tek arayüz bu
-        // listedir (UserManagementPage → POST /users/{id}/institution). Düşerlerse hesap
-        // kalıcı kapsamsız kalır — tek yönlü kapı.
+        // Kurum bağı OLMAYAN kayıtlar bilerek GÖRÜNÜR KALIR (yüklemdeki `== null` dalı):
+        // bağı kuran tek arayüz bu listedir (UserManagementPage → POST /users/{id}/institution).
+        // Süzülüp düşselerdi o uç hiç çağrılamaz ve hesap kalıcı kapsamsız kalırdı — tek
+        // yönlü kapı.
         var visibleIds = await scopeResolver.ResolveAsync(cancellationToken);
         if (visibleIds is { } ids)
             queryable = queryable.Where(u => u.InstitutionId == null || ids.Contains(u.InstitutionId.Value));
@@ -498,8 +499,8 @@ git commit -m "fix(security): kullanıcı listesi ve tekil okuma aktörün kurum
 
 ```csharp
         // KAPSAM — kullanıcı listesiyle AYNI kapıdan. Kurum bağı olmayan davetler bilerek
-        // dışarıda bırakılır: CreateInvitation InstitutionId'yi isteğe bağlı alır ve düşen
-        // davet onaylanamaz/reddedilemez hâle gelir.
+        // GÖRÜNÜR KALIR (yüklemdeki `== null` dalı): CreateInvitation InstitutionId'yi isteğe
+        // bağlı alır ve süzülüp düşen davet onaylanamaz/reddedilemez hâle gelirdi.
         var visibleIds = await scopeResolver.ResolveAsync(cancellationToken);
         if (visibleIds is { } ids)
             queryable = queryable.Where(i => i.InstitutionId == null || ids.Contains(i.InstitutionId.Value));

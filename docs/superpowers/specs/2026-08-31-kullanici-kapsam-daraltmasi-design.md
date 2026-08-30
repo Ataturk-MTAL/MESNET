@@ -122,7 +122,7 @@ alır.
 
 ---
 
-## Karar 3 — Kurum bağı olmayan hesap daraltmanın DIŞINDA (`|| InstitutionId == null`)
+## Karar 3 — Kurum bağı olmayan hesap SÜZÜLMEZ, görünür kalır (`|| InstitutionId == null`)
 
 **Bu opsiyonel değildir.** Katı süzgeç `InstitutionId == null` olan her hesabı düşürür;
 `SyncUsersFromKeycloak` her hesabı böyle üretir (`UserManagementHandler.cs:646`, `:656` —
