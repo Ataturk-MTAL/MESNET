@@ -246,7 +246,7 @@ Başlangıç izin listesi ve gerekçeleri:
 
 ---
 
-## Karar 8 — Davranış testi AYNI değişikliğin parçasıdır
+## Karar 8 — Kararı SAF bir fonksiyona çıkar ve onu tüketici tarafından test et
 
 Bugün hiçbir test aşırı daraltmayı göremez. `SecurityApiTests.cs:207-211` yalnız `200`
 bekler; `TenantStampIntegrityTests.cs:106-107` yalnız `IsSuccessStatusCode` bekler. Fixture
@@ -254,16 +254,70 @@ kimliği `admin` hem `user:*` hem `platform:tenant:manage` taşır, yani `Visibl
 `Unrestricted`'a düşer ve **her iki yönde de** yeşil kalır: sızdıran bugünkü hâl de, boş liste
 döndüren bozuk daraltma da.
 
-Bu yüzden **ikinci okula bağlı bir aktörle satır SAYISI ve satır İÇERİĞİ ölçen** bir API
-testi bu değişikliğin parçasıdır. Sonraya bırakılırsa hem sızıntı hem kilitlenme sessiz kalır.
+### Ölçüldü: canlı API davranış testi bu dalda YAZILAMAZ
 
-En az şunlar ölçülür:
-- İkinci okulun aktörü, birinci okulun kullanıcısını **görmez**
-- Aynı aktör kendi okulunun kullanıcısını **görür**
-- Kurum bağı olmayan hesap **her iki aktöre de görünür** (Karar 3)
-- Platform kapsamlı aktör **hepsini** görür
+`MESNET.Api.Tests` **çalışan yığına** karşı koşan kara kutu paketidir; Keycloak'tan tek bir
+kimlik için token alır (`ApiTestFixture.cs`). İkinci okula bağlı bir aktörle test yazmak
+`mesnet-realm.json`'da ikinci kurum + ikinci kullanıcı istiyor; realm'de bugün yalnız tek
+okulun kullanıcıları var (`admin`, `teacher1..3`, `student1`, `viceprincipal`). Bu test kodu
+değil **ortam işidir** ve bu düzeltmenin kapsamına sığmaz.
 
----
+**Sahte kapsama üretilmez.** Sadece durum kodu ölçen bir test eklemek, iki hata yönünü de
+yeşil bırakacağı için kilit değil süstür.
+
+### Bunun yerine: karar saf fonksiyona çıkar
+
+Kapsamın hangi dala düştüğü — süzgeç yok / kimlik kümesi — saf bir fonksiyonda yaşar ve
+`MESNET.Security.UnitTests` içinde **DB'siz, Keycloak'sız** tüketici tarafından ölçülür:
+
+```csharp
+/// <summary>Kapsamın kullanıcı/davet sorgusuna nasıl çevrileceği. Saf karar.</summary>
+public static class UserScopePolicy
+{
+    /// <returns>
+    /// <c>null</c> = süzgeç UYGULANMAZ (platform kapsamı).
+    /// Boş liste = yalnız kurum bağı olmayan kayıtlar görünür.
+    /// Dolu liste = bu kimlikler VEYA kurum bağı olmayanlar görünür.
+    /// </returns>
+    public static IReadOnlyList<Guid>? VisibleInstitutionIds(
+        InstitutionVisibility scope, IReadOnlyList<Guid> subtreeIds);
+}
+```
+
+Ölçülecek hâller (hepsi zorunlu):
+
+| Girdi | Beklenen |
+|---|---|
+| `Unrestricted` | `null` — süzgeç yok |
+| `PathPrefix` + alt ağaç kimlikleri | o kimlikler |
+| `PathPrefix` + boş alt ağaç | boş liste (yalnız bağsızlar) |
+| Yalnız `InstitutionId` | tek elemanlı liste |
+| `InstitutionId == Guid.Empty` (kapsamsız) | boş liste |
+
+**Sıra dayatılır:** platform muafiyeti EN ÖNDE ölçülür — kendi kurumu olmayan platform
+aktörünün `Guid.Empty`'ye düşüp her zaman boş liste görmesi, bu düzeltmenin en olası sessiz
+hatasıdır.
+
+### Üç dallı yükleme TEK bir yükleme şekline indirgenir
+
+`Unrestricted` dışındaki iki hâl aynı yüklemi kullanır, çünkü kimlik hâli tek elemanlı bir
+kümedir:
+
+```csharp
+u.InstitutionId == null || ids.Contains(u.InstitutionId.Value)
+```
+
+Böylece Karar 3 (`|| null`) tek yerde yaşar ve iki çağrı yerine kopyalanan şey bir satırlık
+yüklemdir; Karar 7'nin kilidi zaten her çağrı yerinin paylaşılan çözücüyü kullanmasını
+dayatır.
+
+### Devredilen iş — sessizce düşürülmez
+
+İkinci kuruma bağlı aktörle uçtan uca API testi **yapılacaklar listesine yazılır** ve gerekçesi
+kaydedilir: `mesnet-realm.json`'a ikinci kurum ve o kuruma bağlı `user:view` taşıyan bir
+kullanıcı eklenmesi gerekir. Realm import **tek seferliktir** (#195), yani bu değişiklik
+çalışan kaba ulaşmaz — dev ortamının yeniden kurulmasını ya da elle kullanıcı açılmasını
+gerektirir. Bu yüzden ayrı iştir.
 
 ## Karar 9 — Pano davet sayacındaki ölü süzgeç aynı değişiklikte düzeltilir
 
