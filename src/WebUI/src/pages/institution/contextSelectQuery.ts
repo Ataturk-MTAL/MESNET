@@ -25,3 +25,28 @@ export interface ContextSelectFilters extends Record<string, unknown> {
 export function buildContextSelectFilters(nodeType: string): ContextSelectFilters {
   return { nodeType }
 }
+
+/**
+ * `Security.ActiveContextOutOfScope` — sunucunun hata açıklaması hedef kurumun ham GUID'ini
+ * taşır (kararı `SetActiveInstitutionHandler.CanSwitchTo` verir). "errors name the problem
+ * and the recovery" (craft floor): bir kimlik ikisini de yapmaz. Bu ekran hangi kuruma
+ * geçilmeye çalışıldığını zaten biliyor (satırdaki `fullName`), o yüzden GUID'i kurum ADIYLA
+ * değiştirir. Sunucunun kodu/açıklaması DEĞİŞMEZ — makine tarafı `Security.
+ * ActiveContextOutOfScope` kodunda okunabilir kalır, yalnız kullanıcıya ne YAZILACAĞI burada
+ * kararlaştırılır.
+ */
+export const ACTIVE_CONTEXT_OUT_OF_SCOPE_CODE = 'Security.ActiveContextOutOfScope'
+
+/**
+ * @param errorCode `extractApiErrorCode(err)` ile çıkarılan sunucu hata kodu.
+ * @param institutionName Geçilmeye çalışılan kurumun adı (satırdan gelir).
+ * @returns Tanınan kod için insan-okunur mesaj; tanınmayan kod için `null` — çağıran genel
+ * `notify.apiError` yoluna düşer.
+ */
+export function resolveActiveContextErrorMessage(
+  errorCode: string | undefined,
+  institutionName: string,
+): string | null {
+  if (errorCode !== ACTIVE_CONTEXT_OUT_OF_SCOPE_CODE) return null
+  return `${institutionName} yetki alanınızda değil.`
+}

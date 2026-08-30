@@ -19,6 +19,18 @@ export function extractApiError(err: unknown, fallback: string): string {
   return fallback
 }
 
+/**
+ * Backend `DomainException` hatasının makine-okunur KODUNU çıkarır (ör.
+ * `Security.ActiveContextOutOfScope`) — `errors.code` alanında taşınır, üst seviye `code`
+ * (HTTP durumuna yakın sayısal alan) DEĞİL. Sayfalar bu kodu tanıyıp kullanıcıya ham sunucu
+ * açıklaması yerine bağlama uygun bir mesaj göstermek için kullanır; sunucudaki kod/açıklama
+ * ÇİFTİ değişmez, yalnız ekranda ne gösterileceği burada kararlaştırılır.
+ */
+export function extractApiErrorCode(err: unknown): string | undefined {
+  const axiosErr = err as AxiosError<{ errors?: { code?: string } }>
+  return axiosErr?.response?.data?.errors?.code
+}
+
 /** Geliştirici için tam teknik detayı tarayıcı konsoluna basar (kullanıcıya gösterilmez). */
 function logApiError(err: unknown) {
   const axiosErr = err as AxiosError<{ message?: string; code?: number | string }>

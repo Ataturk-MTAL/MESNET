@@ -78,7 +78,7 @@
             color="primary"
             label="Bu kuruma geç"
             :loading="context.switching.value"
-            @click="switchToInstitution(row.id)"
+            @click="switchToInstitution(row.id, row.fullName)"
           />
         </q-td>
       </template>
@@ -96,13 +96,14 @@ import AppNotice from 'components/AppNotice.vue'
 import { institutionApi, type InstitutionDto } from 'src/api/institution'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useInstitutionContext } from 'src/composables/useInstitutionContext'
-import { useNotify } from 'src/composables/useNotify'
+import { useNotify, extractApiErrorCode } from 'src/composables/useNotify'
 import { useAuthStore } from 'stores/auth'
 import { useInstitutionStore } from 'stores/institution'
 import {
   DEFAULT_NODE_TYPE_FILTER,
   DEFAULT_SORT_BY,
   buildContextSelectFilters,
+  resolveActiveContextErrorMessage,
 } from './contextSelectQuery'
 
 const router = useRouter()
@@ -139,13 +140,22 @@ function formatLocation(row: InstitutionDto): string {
  * Bağlamı seçilen okula taşır ve panoya döner. `useInstitutionContext().switchTo` sunucudaki
  * kaydı ve tüm ilgili önbellekleri (kurum/dönem/lookup) tek yerden temizler — burada ikinci
  * bir invalidasyon yazılmaz.
+ *
+ * `institutionName` yalnız hata mesajı içindir: `Security.ActiveContextOutOfScope` sunucu
+ * açıklaması hedef kurumun ham GUID'ini taşır (bkz. `resolveActiveContextErrorMessage`
+ * yorumu) — ekrana kimlik değil, satırdan zaten bilinen kurum ADI yazılır.
  */
-async function switchToInstitution(institutionId: string) {
+async function switchToInstitution(institutionId: string, institutionName: string) {
   try {
     await context.switchTo(institutionId)
     router.push('/dashboard').catch(() => {})
   } catch (e) {
-    notify.apiError(e, 'Kuruma geçilirken bir hata oluştu.')
+    const message = resolveActiveContextErrorMessage(extractApiErrorCode(e), institutionName)
+    if (message) {
+      notify.error(message)
+    } else {
+      notify.apiError(e, 'Kuruma geçilirken bir hata oluştu.')
+    }
   }
 }
 
