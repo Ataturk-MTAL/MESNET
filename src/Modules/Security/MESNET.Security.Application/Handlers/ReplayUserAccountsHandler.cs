@@ -32,7 +32,7 @@ public static class ReplayUserAccountsHandler
         {
             // UserCreated DEĞİL: o olayın Business/Enrollment/Institution personel
             // tüketicileri "yeni kayıt" varsayar ve boş Metadata ile silinmiş kayıtları eksik
-            // alanlarla diriltirdi (I-2). UserAccountReplayed yalnız InstitutionManagerLink'i
+            // alanlarla diriltirdi. UserAccountReplayed yalnız InstitutionManagerLink'i
             // besler ve etkinlik durumunu olayın kendisiyle taşır — ayrı bir UserDeactivated
             // yayınına, dolayısıyla iki olay arasındaki sıra garantisine gerek kalmaz.
             await bus.PublishAsync(new UserAccountReplayed(

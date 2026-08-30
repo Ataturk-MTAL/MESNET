@@ -101,7 +101,7 @@ public sealed record UserDeleted(
 /// yerel görünüm satırını eksiksiz olarak yeniden yazar. Amacı yalnız başka modüllerin yerel
 /// görünümlerini geriye dönük onarmaktır.</para>
 ///
-/// <para><b>Neden <c>UserCreated</c> değil (I-2):</b> <c>UserCreated</c>'ın diğer tüketicileri
+/// <para><b>Neden <c>UserCreated</c> değil:</b> <c>UserCreated</c>'ın diğer tüketicileri
 /// (Business temsilci, Enrollment öğrenci/öğretmen, Institution personel kaydı) onu "yeni
 /// kayıt" sanır; boş <c>Metadata</c> ile yeniden yayınlamak silinmiş bir öğrenci profilini boş
 /// branş alanları ve <c>ClassYear = 0</c> ile, silinmiş bir personel kaydını boş branş koduyla

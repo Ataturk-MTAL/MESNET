@@ -40,7 +40,7 @@ public sealed class CrossTenantQueryDriftTests
     ];
 
     /// <summary>
-    /// Bu kilidin KENDİ dosyası (M-2) — tarama artık <c>tests/</c> ağacını da kapsıyor ve bu
+    /// Bu kilidin KENDİ dosyası — tarama artık <c>tests/</c> ağacını da kapsıyor ve bu
     /// dosya kendi ihlal mesajı dizgelerinde ("AnyTenant() ..." / "TenantIsOneOf(...) ...")
     /// yasak çağrının adını olduğu gibi taşıyor. Bunlar yorum DEĞİL, dize sabiti — StripComments
     /// onları silmez. Kendi kendine tetiklenmeyi önlemek için bu tek dosya taramadan hariç
@@ -98,7 +98,7 @@ public sealed class CrossTenantQueryDriftTests
     }
 
     /// <summary>
-    /// Tarama <c>src/</c> ile sınırlı DEĞİLDİR (M-2): spesifikasyon "test dosyaları dahil" der
+    /// Tarama <c>src/</c> ile sınırlı DEĞİLDİR: spesifikasyon "test dosyaları dahil" der
     /// — bir test bugün <c>AnyTenant()</c> çağırsa bu kilit onu göremezdi. <see cref="SelfPath"/>
     /// kilidin kendi dosyasıdır ve ayrı bir gerekçeyle hariç tutulur (yukarıya bakınız).
     /// </summary>

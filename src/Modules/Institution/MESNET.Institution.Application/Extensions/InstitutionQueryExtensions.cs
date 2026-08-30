@@ -54,7 +54,7 @@ public static class InstitutionQueryExtensions
         if (scope.Unrestricted)
             return queryable;
 
-        // Boş/whitespace önek asla kapsamı GENİŞLETMEMELİDİR (M-4): boş dize StartsWith("")
+        // Boş/whitespace önek asla kapsamı GENİŞLETMEMELİDİR: boş dize StartsWith("")
         // her satırla eşleşir ve Marten'de LIKE '%' üretir — kapsamsız aktörü tüm ağacı gören
         // aktöre çevirir. SubtreeTenantScope.ResolveAsync aynı denetimi yapar; ikisi arasında
         // fark bırakmak yalnız InstitutionScopePolicy.VisibleScope'un bugün asla boş dize

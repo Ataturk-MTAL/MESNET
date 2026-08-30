@@ -41,7 +41,7 @@ public static class InternshipEndpoints
             .RequireAuthorization(Permissions.Internship.ApprovalOverride);
 
         // Tıkanma eşiği. OKUMA müdahale yetkisine ya da ulusal parametre yönetimine bağlıdır
-        // (I-1): eşiği yalnız kartı gören kullanıcının bilmesi anlamlıdır, ama eşiği YAZAN
+        // eşiği yalnız kartı gören kullanıcının bilmesi anlamlıdır, ama eşiği YAZAN
         // SystemAdmin de kendi yazdığı değeri okuyabilmelidir — yoksa yönetim sayfası boş
         // render eder. Bkz. PermissionPolicies.ApprovalConfigView.
         group.MapGet("/approval-config", GetApprovalConfiguration)

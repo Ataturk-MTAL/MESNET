@@ -51,7 +51,7 @@ public static class PermissionPolicies
 
     /// <summary>
     /// Tıkanma eşiği (staj onay yapılandırması) okuma — müdahale yetkisi ya da ulusal
-    /// parametre yönetimi (I-1).
+    /// parametre yönetimi.
     ///
     /// <para><b>Neden iki izin birden:</b> eşiği <b>yazan</b> tek rol <c>SystemAdmin</c>'dir
     /// ve yalnız <c>platform:parameter:manage</c> taşır — <c>internship:approval:override</c>

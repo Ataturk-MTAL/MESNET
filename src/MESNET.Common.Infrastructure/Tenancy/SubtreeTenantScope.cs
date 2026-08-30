@@ -7,7 +7,7 @@ namespace MESNET.Common.Infrastructure.Tenancy;
 /// Aktörün okuyabileceği okul kiracılarının listesini <b>üreten TEK yer</b> — kiracılar arası
 /// okumanın kararı burada verilir.
 ///
-/// <para><b>Üretim/uygulama ayrımı (M-3):</b> bu sınıf listeyi kurar, sorguya
+/// <para><b>Üretim/uygulama ayrımı:</b> bu sınıf listeyi kurar, sorguya
 /// <b>uygulamaz</b>. Listeyi <c>TenantIsOneOf(...)</c> ile fiilen sorguya bağlayan ayrı bir
 /// nokta daha vardır — <c>GetStuckApprovalsHandler</c>. Bölünme kasıtlıdır: bu sınıf
 /// <see cref="InstitutionVisibility"/>'yi kiracı kimliklerine çevirir, handler onları sorguya

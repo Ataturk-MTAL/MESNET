@@ -802,7 +802,7 @@ FROM security.mt_doc_useraccount WHERE data->'roles' ? 'Student';
 değilse (dev tohum verisinde çoğu böyledir) tüketici sessizce atlar — uydurmaz. Bu öğrencilerin
 sistemde hesabı yoktur, dolayısıyla kapsam da gerekmez.
 
-## Müdürlük panosu: yöneticisiz okul listesi — replay ZORUNLU (I-2)
+## Müdürlük panosu: yöneticisiz okul listesi — replay ZORUNLU
 
 Müdürlük panosunun "yöneticisiz okullar" kartı `InstitutionManagerLink` görünümünden okur. Bu
 görünüm Security modülünün `UserCreated` / `UserRolesChanged` / `UserActivated` /

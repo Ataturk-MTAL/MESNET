@@ -83,7 +83,7 @@ public sealed class InstitutionManagerLinkConsumer : IConfigureLocalQueue
     }
 
     /// <summary>
-    /// <c>ReplayUserAccountsHandler</c>'dan gelen anlık görüntüyü yazar (I-2). <c>UserCreated</c>
+    /// <c>ReplayUserAccountsHandler</c>'dan gelen anlık görüntüyü yazar. <c>UserCreated</c>
     /// tüketicisinin bir kopyası DEĞİLDİR: bu satırı <b>mutlak</b> olarak yazar — etkinlik
     /// durumu dahil olayın kendisinden gelir, ayrı bir <c>UserDeactivated</c> beklenmez.
     /// </summary>
