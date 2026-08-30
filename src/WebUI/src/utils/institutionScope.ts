@@ -15,12 +15,20 @@
  *
  * <p><b>Kurum ağacıyla gelen üçüncü girdi (27.08.2026):</b> rota parametresi. İl/ilçe
  * yetkilisi `/institutions/:id` ile alt ağacındaki bir okulu açtığında hedef O OKULDUR —
- * kendi kurumu (İl MEM) değil. Sıra bu yüzden <b>rota → kendi kurumu → liste</b>'dir; en
+ * davrandığı kurum değil. Sıra bu yüzden <b>rota → davranılan kurum → liste</b>'dir; en
  * belirgin niyet en önde.</p>
  *
+ * <p><b>Aktif bağlamla gelen sözleşme daralması (29.08.2026):</b> ikinci girdi artık EV kurumu
+ * değil <b>DAVRANILAN</b> kurumdur. Çağıranlar `authStore.currentInstitutionId`
+ * (= `activeInstitutionId ?? institutionId`) besler, `authStore.user.institutionId` DEĞİL.
+ * Ev kurumuyla beslenirse üst barda "X Okulu adına çalışıyorsunuz" rozeti dururken il
+ * yetkilisi kendi İl MEM kaydını düzenler. Fonksiyonun kendisi kaynağı bilmez; sözleşme
+ * ÇAĞIRANDADIR ve `institutionScope.spec.ts` içinde kilitlidir.</p>
+ *
  * @param routeInstitutionId Rota parametresi (`/institutions/:id`). Yoksa `null`.
- * @param ownInstitutionId Aktörün kendi kurumu (`/auth/me` → `authStore.user.institutionId`).
- *   Token'dan GELMEZ; sunucu kullanıcı kaydından üretir (ADR-0003 adım 2).
+ * @param ownInstitutionId Aktörün DAVRANDIĞI kurum — aktif bağlam varsa o, yoksa ev kurumu
+ *   (`authStore.currentInstitutionId`). Token'dan GELMEZ; sunucu kullanıcı kaydından üretir
+ *   (ADR-0003 adım 2).
  * @param institutions Sunucudan gelen görünür kurum listesi.
  * @returns Düzenlenecek kurum kimliği; hiçbiri yoksa `null`.
  */
@@ -33,7 +41,7 @@ export function resolveEditableInstitutionId(
   // sunucunundur (InstitutionScopeGuard); rota, yetkinin ikinci bir kopyası değildir.
   if (routeInstitutionId) return routeInstitutionId
 
-  // Kendi kurumu VARSA tartışma yok: listede görünmese bile hedef odur.
+  // Davranılan kurum VARSA tartışma yok: listede görünmese bile hedef odur.
   if (ownInstitutionId) return ownInstitutionId
 
   if (institutions.length === 0) return null
