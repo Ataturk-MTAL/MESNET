@@ -7,10 +7,9 @@ using Wolverine;
 namespace MESNET.Security.Application.Handlers;
 
 /// <summary>
-/// <see cref="ReplayUserAccounts"/> sonucu — kaç hesap yeniden yayınlandı, kaçı ek olarak pasif
-/// durumuyla işaretlendi (operatör görsün diye ikisi ayrı sayılır).
+/// <see cref="ReplayUserAccounts"/> sonucu — kaç hesap yeniden yayınlandı.
 /// </summary>
-public sealed record ReplayUserAccountsResult(int Replayed, int MarkedDeactivated);
+public sealed record ReplayUserAccountsResult(int Replayed);
 
 /// <summary>
 /// <inheritdoc cref="ReplayUserAccounts"/>
@@ -29,47 +28,21 @@ public static class ReplayUserAccountsHandler
             .Where(u => u.DeletedAt == null)
             .ToListAsync(cancellationToken);
 
-        var markedDeactivated = 0;
-
         foreach (var account in accounts)
         {
-            await bus.PublishAsync(new UserCreated(
+            // UserCreated DEĞİL: o olayın Business/Enrollment/Institution personel
+            // tüketicileri "yeni kayıt" varsayar ve boş Metadata ile silinmiş kayıtları eksik
+            // alanlarla diriltirdi (I-2). UserAccountReplayed yalnız InstitutionManagerLink'i
+            // besler ve etkinlik durumunu olayın kendisiyle taşır — ayrı bir UserDeactivated
+            // yayınına, dolayısıyla iki olay arasındaki sıra garantisine gerek kalmaz.
+            await bus.PublishAsync(new UserAccountReplayed(
                 account.Id,
                 account.KeycloakUserId,
-                account.Username,
-                account.FullName,
-                account.Email,
                 account.Roles,
                 account.InstitutionId,
-                account.BusinessId,
-                new Dictionary<string, string>()));
-
-            // UserCreated tüketicisi (Task 6, InstitutionManagerLinkConsumer) IsEnabled'ı
-            // KOŞULSUZ true yazar — olay şeması etkinlik durumu taşımaz ve başka modüllerin
-            // tüketicileriyle PAYLAŞILAN bir sözleşmedir, burada genişletilmez. Hesap zaten
-            // pasifse ikinci bir olay yayınlanır; InstitutionManagerLinkConsumer'ın kuyruğu
-            // Sequential() olduğu için aynı kullanıcının olayları normal yolda YAYIN SIRASIYLA
-            // işlenir ve bu ikinci olay IsEnabled'ı doğru değere (false) döndürür. Aksi hâlde
-            // pasif bir yöneticinin hesabı "etkin yönetici" sayılır, okulu yöneticisiz
-            // listesinden SESSİZCE düşürür — bu ucun tüm amacı tam da bunu önlemektir.
-            //
-            // Sıra GARANTİ DEĞİLDİR: Sequential() yalnız paralellik derecesini 1'e indirir,
-            // sıralı YENİDEN teslimatı taahhüt etmez. UserCreated başarısız olup yeniden
-            // denenirken UserDeactivated önce başarıyla işlenmişse, ya da replay ortasında
-            // süreç yeniden başlarsa sıra TERS DÖNEBİLİR — belirti aynıdır: bağlantı sessizce
-            // yeniden "etkin" görünür. Onarım budur: bu uç idempotenttir, yeniden çalıştırmak
-            // durumu düzeltir.
-            if (!account.IsEnabled)
-            {
-                await bus.PublishAsync(new UserDeactivated(
-                    account.Id,
-                    account.KeycloakUserId,
-                    "Yeniden yayın (replay) — hesap zaten pasifti, durum eski hâline döndürüldü."));
-
-                markedDeactivated++;
-            }
+                account.IsEnabled));
         }
 
-        return new ReplayUserAccountsResult(accounts.Count, markedDeactivated);
+        return new ReplayUserAccountsResult(accounts.Count);
     }
 }

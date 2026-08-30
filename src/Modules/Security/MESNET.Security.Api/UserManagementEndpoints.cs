@@ -300,12 +300,13 @@ public static class UserManagementEndpoints
     }
 
     /// <summary>
-    /// Mevcut hesapları <c>UserCreated</c> olarak yeniden yayınlar (D2) — Institution modülünün
-    /// <c>InstitutionManagerLink</c> read-model'ini geriye dönük doldurur. İdempotenttir.
+    /// Mevcut hesapları <c>UserAccountReplayed</c> olarak yeniden yayınlar (D2, I-2) —
+    /// Institution modülünün <c>InstitutionManagerLink</c> read-model'ini geriye dönük
+    /// doldurur. İdempotenttir. Etkinlik durumu olayın kendisiyle taşındığı için ayrı bir
+    /// "pasif işaretlenen" sayacına gerek yoktur.
     ///
-    /// <para>Pasif hesaplar için ayrıca <c>UserDeactivated</c> yayınlanır (aksi hâlde
-    /// <c>UserCreated</c> tüketicisi kaydı koşulsuz etkin yazardı) — <c>markedDeactivated</c>
-    /// operatöre bunun kaç hesapta olduğunu gösterir.</para>
+    /// <para><b>Asenkron:</b> bu uç 200 döndüğünde olaylar yalnız yayınlanmıştır, işlenmiş
+    /// olması gerekmez — durum kuyruk üzerinden ayrıca ilerler.</para>
     /// </summary>
     private static async Task<IResult> PostReplayUserAccounts(IMessageBus bus)
     {
@@ -313,9 +314,7 @@ public static class UserManagementEndpoints
 
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result)
-            .AddMessage(
-                $"{result.Replayed} kullanıcı hesabı yeniden yayınlandı "
-                + $"({result.MarkedDeactivated} tanesi pasif durumuyla işaretlendi).")
+            .AddMessage($"{result.Replayed} kullanıcı hesabı yeniden yayınlandı.")
             .Build());
     }
 

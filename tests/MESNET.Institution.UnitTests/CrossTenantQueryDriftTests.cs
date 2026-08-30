@@ -39,6 +39,15 @@ public sealed class CrossTenantQueryDriftTests
         "src/Modules/Internship/MESNET.Internship.Application/Handlers/GetStuckApprovalsHandler.cs",
     ];
 
+    /// <summary>
+    /// Bu kilidin KENDİ dosyası (M-2) — tarama artık <c>tests/</c> ağacını da kapsıyor ve bu
+    /// dosya kendi ihlal mesajı dizgelerinde ("AnyTenant() ..." / "TenantIsOneOf(...) ...")
+    /// yasak çağrının adını olduğu gibi taşıyor. Bunlar yorum DEĞİL, dize sabiti — StripComments
+    /// onları silmez. Kendi kendine tetiklenmeyi önlemek için bu tek dosya taramadan hariç
+    /// tutulur; gerçek üretim/test koduna ait değildir, gerekçenin bir parçasıdır.
+    /// </summary>
+    private const string SelfPath = "tests/MESNET.Institution.UnitTests/CrossTenantQueryDriftTests.cs";
+
     [Fact]
     public void Kaynakta_AnyTenant_cagrisi_yok()
     {
@@ -88,15 +97,23 @@ public sealed class CrossTenantQueryDriftTests
         return Regex.Replace(withoutBlocks, @"//.*$", string.Empty, RegexOptions.Multiline);
     }
 
+    /// <summary>
+    /// Tarama <c>src/</c> ile sınırlı DEĞİLDİR (M-2): spesifikasyon "test dosyaları dahil" der
+    /// — bir test bugün <c>AnyTenant()</c> çağırsa bu kilit onu göremezdi. <see cref="SelfPath"/>
+    /// kilidin kendi dosyasıdır ve ayrı bir gerekçeyle hariç tutulur (yukarıya bakınız).
+    /// </summary>
     private static IEnumerable<string> SourceFiles()
     {
-        var root = Path.Combine(RepoRoot(), "src");
+        var repoRoot = RepoRoot();
+        var roots = new[] { Path.Combine(repoRoot, "src"), Path.Combine(repoRoot, "tests") };
         var obj = $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}";
         var bin = $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}";
 
-        return Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+        return roots
+            .SelectMany(root => Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
             .Where(f => !f.Contains(obj, StringComparison.Ordinal)
-                     && !f.Contains(bin, StringComparison.Ordinal));
+                     && !f.Contains(bin, StringComparison.Ordinal)
+                     && !string.Equals(Relative(f), SelfPath, StringComparison.Ordinal));
     }
 
     /// <summary>

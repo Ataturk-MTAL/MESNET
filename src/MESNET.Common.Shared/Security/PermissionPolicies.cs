@@ -49,13 +49,29 @@ public static class PermissionPolicies
     public static readonly string UserInstitutionAssignOrBootstrap =
         AnyOf(Permissions.UserManagement.RolesManage, Permissions.Directorate.InstitutionBootstrap);
 
+    /// <summary>
+    /// Tıkanma eşiği (staj onay yapılandırması) okuma — müdahale yetkisi ya da ulusal
+    /// parametre yönetimi (I-1).
+    ///
+    /// <para><b>Neden iki izin birden:</b> eşiği <b>yazan</b> tek rol <c>SystemAdmin</c>'dir
+    /// ve yalnız <c>platform:parameter:manage</c> taşır — <c>internship:approval:override</c>
+    /// ona verilmez, çünkü bu izin <c>SubtreeTenantScope</c>'ta <c>Unrestricted</c> dalını da
+    /// açar (ulusal okuma) ve istenen bu değildir. Ama okuma ucu yalnız
+    /// <c>internship:approval:override</c> ile korunursa yazan rol kendi yazdığı değeri
+    /// okuyamaz — yönetim sayfası eşiği boş render eder. Bu policy iki tarafı da kabul eder:
+    /// biri sayıyı kullanır (müdahale eden), diğeri sayıyı belirler (SystemAdmin).</para>
+    /// </summary>
+    public static readonly string ApprovalConfigView =
+        AnyOf(Permissions.Internship.ApprovalOverride, Permissions.Platform.ParameterManage);
+
     /// <summary>Kayıtlı tüm birleşik policy'ler — DI kaydı buradan okur, elle liste tutulmaz.</summary>
     public static IReadOnlyList<string> All { get; } =
     [
         AttendanceViewOrOwn,
         InternshipViewOrOwn,
         SalaryViewOrOwn,
-        UserInstitutionAssignOrBootstrap
+        UserInstitutionAssignOrBootstrap,
+        ApprovalConfigView
     ];
 
     /// <summary>Policy adını izinlerine ayırır.</summary>

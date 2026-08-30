@@ -4,14 +4,22 @@ using MESNET.Common.Shared.Tenancy;
 namespace MESNET.Common.Infrastructure.Tenancy;
 
 /// <summary>
-/// Aktörün okuyabileceği okul kiracılarının listesi — <b>kiracılar arası okumanın TEK
-/// kapısı</b>.
+/// Aktörün okuyabileceği okul kiracılarının listesini <b>üreten TEK yer</b> — kiracılar arası
+/// okumanın kararı burada verilir.
 ///
-/// <para><b>Neden tek kapı:</b> Marten'in <c>TenantIsOneOf(...)</c> operatörü kiracı yalıtımını
-/// bilerek deler; ürettiği SQL <c>tenant_id IN (...)</c>'dir. Serbest bırakılırsa bir gün biri
-/// onu <b>istekten gelen</b> kimliklerle çağırır ve kapsam sessizce açılır — hata değil, fazla
-/// veri. Bu sınıf listeyi yalnız <see cref="InstitutionVisibility"/>'den üretir; istekten gelen
-/// hiçbir değer buraya giremez.</para>
+/// <para><b>Üretim/uygulama ayrımı (M-3):</b> bu sınıf listeyi kurar, sorguya
+/// <b>uygulamaz</b>. Listeyi <c>TenantIsOneOf(...)</c> ile fiilen sorguya bağlayan ayrı bir
+/// nokta daha vardır — <c>GetStuckApprovalsHandler</c>. Bölünme kasıtlıdır: bu sınıf
+/// <see cref="InstitutionVisibility"/>'yi kiracı kimliklerine çevirir, handler onları sorguya
+/// uygular; ikisi ayrı sorumluluktur ve <c>CrossTenantQueryDriftTests</c>'in izin listesi
+/// bilerek yalnız bu iki dosyayı kabul eder — üçüncü bir dosya kabul edilmez.</para>
+///
+/// <para><b>Girdi güvenliği burada tektir:</b> <c>TenantIsOneOf(...)</c> operatörü kiracı
+/// yalıtımını bilerek deler; ürettiği SQL <c>tenant_id IN (...)</c>'dir. Serbest bırakılırsa
+/// bir gün biri onu <b>istekten gelen</b> kimliklerle çağırır ve kapsam sessizce açılır — hata
+/// değil, fazla veri. Bu sınıf listeyi yalnız <see cref="InstitutionVisibility"/>'den üretir;
+/// istekten gelen hiçbir değer buraya giremez. Handler tarafı bu listeyi olduğu gibi kullanır,
+/// kendi kaynağını türetmez.</para>
 ///
 /// <para><b>İki ayrı kaynak, tek karar:</b> kapsamsız (platform) aktör için liste
 /// <see cref="ITenantDirectory.GetActiveTenantsAsync"/>'ten gelir — bu sorguyu zaten
@@ -21,8 +29,7 @@ namespace MESNET.Common.Infrastructure.Tenancy;
 /// bu ikisi farklı sorgulardır ve birleştirilemez.</para>
 ///
 /// <para><b><c>AnyTenant()</c> bu depoda YASAKTIR</b> — kapsamsız aktör için bile
-/// kullanılmaz. Tek kod yolu, tek gözden geçirme noktası. Kilitleyen test:
-/// <c>CrossTenantQueryDriftTests</c>.</para>
+/// kullanılmaz, istisnasızdır. Kilitleyen test: <c>CrossTenantQueryDriftTests</c>.</para>
 /// </summary>
 public sealed class SubtreeTenantScope
 {

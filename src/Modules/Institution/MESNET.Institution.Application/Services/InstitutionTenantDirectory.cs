@@ -13,9 +13,9 @@ namespace MESNET.Institution.Application.Services;
 /// kiracı kimlikleri <c>Institution</c> belgelerinin kimlikleridir.
 ///
 /// <para><b>Neden <see cref="TenantResolution.Platform"/> ile okunuyor:</b> <c>Institution</c>
-/// <see cref="DocumentTenancyMap"/> içinde <b>paylaşımlı</b>dır — kiracı damgası taşımaz, çünkü
-/// kiracının kendisidir. Kiracıya göre süzülseydi hiçbir okul kendi kaydını göremezdi. Yine de
-/// bir ada ihtiyaç var: kiracısız session yasaktır.</para>
+/// <see cref="DocumentTenancyMap"/> içinde <b>kimlik katmanındadır</b> (M-6) — kiracı damgası
+/// taşımaz, çünkü kiracının kendisidir. Kiracıya göre süzülseydi hiçbir okul kendi kaydını
+/// göremezdi. Yine de bir ada ihtiyaç var: kiracısız session yasaktır.</para>
 /// </summary>
 public sealed class InstitutionTenantDirectory : ITenantDirectory
 {

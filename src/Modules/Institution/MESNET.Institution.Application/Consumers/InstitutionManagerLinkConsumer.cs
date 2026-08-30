@@ -83,6 +83,23 @@ public sealed class InstitutionManagerLinkConsumer : IConfigureLocalQueue
     }
 
     /// <summary>
+    /// <c>ReplayUserAccountsHandler</c>'dan gelen anlık görüntüyü yazar (I-2). <c>UserCreated</c>
+    /// tüketicisinin bir kopyası DEĞİLDİR: bu satırı <b>mutlak</b> olarak yazar — etkinlik
+    /// durumu dahil olayın kendisinden gelir, ayrı bir <c>UserDeactivated</c> beklenmez.
+    /// </summary>
+    public static void Consume(UserAccountReplayed e, IDocumentSession session)
+    {
+        session.Store(new InstitutionManagerLink
+        {
+            Id = e.UserAccountId,
+            InstitutionId = e.InstitutionId,
+            IsEnabled = e.IsEnabled,
+            HasManagePermission = InstitutionManagerLink.HasManage(e.Roles),
+            UpdatedAt = DateTime.UtcNow,
+        });
+    }
+
+    /// <summary>
     /// Satır yoksa boş bir tane kurar. <b>Sessizce vazgeçmez:</b> satırsız bir kullanıcı için
     /// güncellemeyi düşürmek, o kullanıcının bağlı olduğu okulu kalıcı olarak "yöneticisiz"
     /// gösterirdi. Eksik alanlar (kurum, roller) sonraki olayla ya da resync ile dolar.

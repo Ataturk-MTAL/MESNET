@@ -40,11 +40,12 @@ public static class InternshipEndpoints
         group.MapGet("/stuck-approvals", GetStuckApprovalSummary)
             .RequireAuthorization(Permissions.Internship.ApprovalOverride);
 
-        // Tıkanma eşiği. OKUMA müdahale yetkisine bağlıdır: eşiği yalnız kartı gören
-        // kullanıcının bilmesi anlamlıdır. YAZMA ulusal parametre iznidir ve hiçbir okul
-        // rolünde yoktur — okul kendi eşiğini belirleyemez.
+        // Tıkanma eşiği. OKUMA müdahale yetkisine ya da ulusal parametre yönetimine bağlıdır
+        // (I-1): eşiği yalnız kartı gören kullanıcının bilmesi anlamlıdır, ama eşiği YAZAN
+        // SystemAdmin de kendi yazdığı değeri okuyabilmelidir — yoksa yönetim sayfası boş
+        // render eder. Bkz. PermissionPolicies.ApprovalConfigView.
         group.MapGet("/approval-config", GetApprovalConfiguration)
-            .RequireAuthorization(Permissions.Internship.ApprovalOverride);
+            .RequireAuthorization(PermissionPolicies.ApprovalConfigView);
         group.MapPut("/approval-config", PutApprovalConfiguration)
             .RequireAuthorization(Permissions.Platform.ParameterManage);
 

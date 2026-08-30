@@ -54,7 +54,13 @@ public static class InstitutionQueryExtensions
         if (scope.Unrestricted)
             return queryable;
 
-        if (scope.PathPrefix is { } prefix)
+        // Boş/whitespace önek asla kapsamı GENİŞLETMEMELİDİR (M-4): boş dize StartsWith("")
+        // her satırla eşleşir ve Marten'de LIKE '%' üretir — kapsamsız aktörü tüm ağacı gören
+        // aktöre çevirir. SubtreeTenantScope.ResolveAsync aynı denetimi yapar; ikisi arasında
+        // fark bırakmak yalnız InstitutionScopePolicy.VisibleScope'un bugün asla boş dize
+        // üretmemesine bağlıydı — güvenli olmayan bir varsayım. Boş/whitespace önek burada da
+        // kimliğe düşen dala düşer (aşağıya bakınız), tıpkı önek hiç yokmuş gibi.
+        if (scope.PathPrefix is { } prefix && !string.IsNullOrWhiteSpace(prefix))
         {
             // Marten string.StartsWith'i SQL'de LIKE 'önek%' çevirir; ham SQL ve
             // WITH RECURSIVE gerekmez. Yolu olmayan satır alt ağaçta DEĞİLDİR.
