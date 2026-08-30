@@ -58,76 +58,90 @@ aynı kapsam kararının ikinci bir kopyasını doğururdu ve o kopya ayrışabi
 (ADR-0001). "Hiç kullanıcısı yok" ölçütü bilerek seçilmedi: beş öğretmeni olan ama müdürü
 olmayan okul da fiilen yönetilemez durumdadır ve bootstrap iş listesi tam olarak budur.
 
-### Read-model: `InstitutionAdminView`
+### Read-model KULLANICI başınadır, kurum başına sayaç DEĞİL
 
-Institution modülü kendi şemasında tutar:
+İlk tasarım kurum başına bir sayaç (`ManagerCount`) tutup olay olay artırıp azaltıyordu.
+**Ölçüm bunu çürüttü:** sayacı azaltması gereken üç olayın hiçbiri kurum kimliği taşımıyor.
+
+| Olay | Alanlar | Kurum kimliği |
+|---|---|---|
+| `UserCreated` | `UserAccountId, KeycloakUserId, Username, FullName, Email, Roles, InstitutionId, BusinessId, Metadata` | **var** |
+| `UserInstitutionChanged` | `UserAccountId, KeycloakUserId, PreviousInstitutionId, InstitutionId` | **var** |
+| `UserRolesChanged` | `UserAccountId, KeycloakUserId, PreviousRoles, NewRoles` | **yok** |
+| `UserDeactivated` | `UserAccountId, KeycloakUserId, Reason` | **yok** |
+| `UserDeleted` | `UserAccountId, KeycloakUserId` | **yok** |
+
+Institution modülü, rolü değişen kullanıcının hangi okula bağlı olduğunu bilemez; sayacı
+hangi satırdan düşeceğini de bilemez. Olaylara kurum kimliği eklemek Security modülünün
+sözleşmesini bu kartın ihtiyacına göre değiştirmek olurdu.
+
+Doğru model **kullanıcı başına bir satır**dır. Her olay tek bir kullanıcının durumunu **mutlak**
+olarak yazar; artırma/azaltma hiç yoktur, dolayısıyla kayan sayaç sorunu da yoktur.
 
 ```csharp
-public sealed class InstitutionAdminView
+public sealed class InstitutionManagerLink
 {
-    public Guid Id { get; set; }            // = InstitutionId
-    public int ManagerCount { get; set; }   // institution:manage taşıyan etkin hesap sayısı
+    public Guid Id { get; set; }                  // = UserAccountId
+    public Guid? InstitutionId { get; set; }      // null = kurum kapsamsız
+    public bool IsEnabled { get; set; } = true;
+    public bool HasManagePermission { get; set; } // rollerden RolePermissionMap ile türer
     public DateTime UpdatedAt { get; set; }
 }
 ```
 
-`DocumentTenancyMap` sınıflandırması: **`Identity`**. Gerekçe: kaynağı `UserAccount`
-(`Identity`) ve hedefi `Institution` (`Identity`); ikisi de kiracı damgası taşımaz. Damga
-verilseydi hangi kiracıda yazıldığı sonucu değiştirirdi ve müdürlük onu hiç göremezdi.
+`DocumentTenancyMap` sınıflandırması: **`Identity`**. Kaynağı `UserAccount` (`Identity`),
+hedefi `Institution` (`Identity`); ikisi de kiracı damgası taşımaz.
 
-### Besleyen olaylar — hepsi zaten yayınlanıyor
+### Besleyen olaylar
 
-`Security.Shared.Events` içindeki şu kayıtlar düz (aggregate olmayan) handler dönüşleridir,
-yani Wolverine tarafından cascading olarak yayınlanır:
+Hepsi düz (aggregate olmayan) handler dönüşleridir, yani Wolverine tarafından cascading olarak
+yayınlanır.
 
 | Olay | Etki |
 |---|---|
-| `UserCreated` | `InstitutionId` doluysa ve roller `institution:manage` veriyorsa +1 |
-| `UserInstitutionChanged` | `PreviousInstitutionId` −1, `InstitutionId` +1 (izin koşuluyla) |
-| `UserRolesChanged` | izin kazanıldıysa +1, kaybedildiyse −1 |
-| `UserDeactivated` / `UserDeleted` | −1 |
+| `UserCreated` | Satırı yazar; `HasManagePermission` `Roles`'tan türer |
+| `UserInstitutionChanged` | Satırın `InstitutionId`'sini yazar |
+| `UserRolesChanged` | `HasManagePermission`'ı `NewRoles`'tan yeniden türetir |
+| `UserActivated` / `UserDeactivated` | `IsEnabled` |
+| `UserDeleted` | Satırı siler |
 
-Sayaç mutlak sayı olarak yeniden hesaplanmaz, olay olay güncellenir. **Bu yüzden tüketici
-sıralı olmak zorundadır**: sınıf `IConfigureLocalQueue` uygular ve
-`public static void Configure(LocalQueueConfiguration c) => c.Sequential();` yazar
-(CLAUDE.md, #262 — sticky yerel kuyruk varsayılan olarak paralel ve sırasızdır; aynı kaydı
-olay olay güncelleyen tüketicide sayaç bozulur). Sınıf `sealed class` olur, metotlar statik kalır.
+İzin rollerden `RolePermissionMap.GetPermissionsForRoles(roles)` ile türetilir ve
+`Permissions.Institution.Manage` aranır — **rol adına bakılmaz** (ADR-0001). Wildcard
+(`institution:*`) bu fonksiyonda zaten genişletilir.
 
-### Satırı DOĞURAN yol — kullanıcı olayı değil kurum oluşturma
+**Tüketici sıralı olmak zorundadır.** Sınıf `IConfigureLocalQueue` uygular ve
+`public static void Configure(LocalQueueConfiguration c) => c.Sequential();` yazar (#262:
+sticky yerel kuyruk varsayılan olarak paralel ve sırasızdır). Load-modify-store yapan her
+tüketici için geçerli. Statik sınıf arayüz uygulayamaz → `sealed class`, metotlar statik kalır.
 
-Sayaç yalnız kullanıcı olaylarıyla beslenseydi, **hiç kullanıcı olayı görmemiş okulun satırı
-hiç doğmazdı** — ve o okul tam olarak aranan okuldur. "Satırı yok" ile "sayacı sıfır" aynı
-şey değildir ve sorgu ikincisini arar.
-
-Bu yüzden satır kurum oluşturulurken doğar: `CreateInstitutionHandler` aynı session'da
-`session.Store(new InstitutionAdminView { Id = institution.Id, ManagerCount = 0 })` yazar.
-Aynı modül, aynı transaction — olay gerekmez, `InstitutionCreated` diye bir olay zaten yok.
-
-### Sorgu iki adımlıdır
+### Sorgu iki adımlıdır — ve NEGATİF yönde
 
 Marten join yapmaz. Sıra **önemlidir** ve tersi sayfalamayı bozar:
 
-1. `InstitutionAdminView` içinde `ManagerCount == 0` → kimlik kümesi
-2. `Institution` içinde kapsam süzgeci **ve** `ids.Contains(i.Id)` → sayfalanır
+1. `InstitutionManagerLink` içinde `IsEnabled && HasManagePermission && InstitutionId != null`
+   → **yönetilen** kurum kimlikleri (tekilleştirilmiş)
+2. `Institution` içinde kapsam süzgeci **ve** `!managedIds.Contains(i.Id)` → sayfalanır
+
+İkinci adım bilerek **negatiftir**: aranan şey satırı OLMAYAN kurumdur. Pozitif yönde
+(yöneticisiz kurumların kimliklerini toplayıp `Contains` demek) her kurum için bir satırın var
+olmasını gerektirirdi ve hiç kullanıcı olayı görmemiş kurum o listede hiç doğmazdı — aranan
+kurum tam olarak o.
 
 Ters sıra (önce kurumları sayfala, sonra bellekte süz) sayfa boyutlarını yanlışlardı: 20
-satırlık bir sayfadan 3'ü kalırsa istemci "3 sonuç var" sanır. Aynı iki adımlı desen depoda
-`StudentNameView` aramasında da kullanılıyor.
-
-Kimlik kümesi büyürse (`ids.Contains` çok elemanlı) sorgu yavaşlar; aranan küme "yöneticisi
-olmayan okullar" olduğu için küçük kalması beklenir. Büyükse sorun sorguda değil veridedir.
+satırlık bir sayfadan 3'ü kalırsa istemci "3 sonuç var" sanır.
 
 ### Backfill — ZORUNLU dağıtım ön koşulu
 
-Read-model boş doğar; hiçbir olay geçmişe dönük yeniden oynatılmaz. Backfill koşulmazsa
-**her okul "yöneticisi yok" görünür** — hata değil, yanlış sayı.
+Read-model boş doğar; hiçbir olay geçmişe dönük yeniden oynatılmaz. Boş read-model'de
+**yönetilen kurum kümesi boştur**, yani negatif sorgu **her okulu** "yöneticisi yok" olarak
+döndürür — hata değil, yanlış liste.
 
-`POST /api/institutions/resync-admin-view` (`Permissions.Platform.TenantManage`).
+`POST /api/institutions/resync-manager-links` (`Permissions.Platform.TenantManage`).
 
-İş **kurumlardan** başlar, kullanıcılardan değil: alt ağaç ayrımı yapmadan her `Institution`
-için bir satır yazar, sonra `UserAccount` kayıtlarını dolaşıp sayacı doldurur. Ters yön
-(kullanıcılardan başlamak) hiç kullanıcısı olmayan okulu yine satırsız bırakırdı — bu ucun
-kapatmak için var olduğu boşluğun ta kendisi.
+İş bütün `UserAccount` kayıtlarını dolaşır ve her biri için bir `InstitutionManagerLink`
+satırı yazar. Kurum başına satır YOKTUR — model kullanıcı başınadır, dolayısıyla hiç
+kullanıcısı olmayan okul için yazılacak bir şey de yoktur; o okul negatif sorguda
+kendiliğinden "yöneticisiz" çıkar.
 
 `UserAccount` `Identity` sınıfıdır ve kiracı damgası taşımaz; iş kiracı kiracı dolaşmaz,
 `TenantResolution.Platform` session'ında tek geçişte koşar.
@@ -486,6 +500,6 @@ oturumda tekrar eden başarısızlık kalıbı **içi boş kilit**: yeşil ama h
 
 | Uç | Zorunlu mu | Atlanırsa |
 |---|---|---|
-| `POST /api/institutions/resync-admin-view` | **evet** | Her okul "yöneticisi yok" görünür |
+| `POST /api/institutions/resync-manager-links` | **evet** | Her okul "yöneticisi yok" görünür |
 
 `src/Docs/docs/infrastructure/dagitim-on-kosullari.md` dosyasına eklenir.
