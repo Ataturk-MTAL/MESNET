@@ -322,21 +322,26 @@ Gerekçe CLAUDE.md'nin kendi ilkesi (#252): *eksik veri sınırı gevşetemez.* 
 (`null` → sayma) fesih zincirinde aylardır takılı duran her eski kaydı panodan **sessizce**
 silerdi — tam olarak kartın var olma sebebi olan durum.
 
-**Bunun değerli sonucu:** backfill **zorunlu ön koşul değildir.** Koşulmazsa kart fazla sayar
-(görünür ve düzeltilebilir), az saymaz (sessiz ve fark edilmez).
+**Bunun değerli sonucu:** geriye dönük doldurma **gerekmez.** Doldurulmazsa kart fazla sayar
+(görünür ve düzeltilebilir), az saymaz (sessiz ve fark edilmez) — aşağıda ölçülen mimari engel
+bu yüzden bir sorun değil.
 
-### Backfill — isteğe bağlı kalite iyileştirmesi
+### Backfill YAPILMAZ — ölçülmüş mimari engel
 
-Kaynak C parçasının denetim izidir: `AuditEntry.OccurredAt`, `CommandType` fesih talebi
-komutu, `TargetIds` staj kimliğini taşır. Saklama süresi 24 ay (`Audit:RetentionMonths`
-varsayılanı) — takılı bir zincir için fazlasıyla yeterli.
+Tasarım sırasında `AuditEntry.OccurredAt` (C parçası) doğal kaynak gibi görünüyordu. Ölçüm
+bunu kapattı: `MESNET.Internship.Application.csproj` `MESNET.Audit.Core`'a **referans
+vermiyor ve veremez** — modüller arası referans kuralı yalnız `.Shared` katmanına izin verir
+(CLAUDE.md, "csproj Proje Referansı Kuralları"). Denetim satırını Internship modülünden okumak
+şema izolasyonunu kırardı.
 
-`POST /api/internships/backfill-termination-requested-at` (`Permissions.Platform.TenantManage`).
-`AuditEntry` `Tenant` sınıfıdır, dolayısıyla iş kiracı kiracı koşar — saga da aynı kiracıdadır,
-ek bir sınır geçişi yoktur. Denetim satırı bulunamayan saga `null` kalır ve tıkanmış
-sayılmaya devam eder.
+Ters yön de kapalı: Audit modülü `AuditEntry`'yi bilir ama `InternshipSaga`'yı bilmez.
 
-`dagitim-on-kosullari.md`'ye **isteğe bağlı** olarak işaretlenmiş biçimde eklenir.
+Doğru çözüm (Audit'in zaman damgalarını olayla ya da sözleşmeyle dışa vermesi) **isteğe bağlı
+bir iyileştirme için fazla iştir**, çünkü eksik veri zaten güvenli yönde ele alınıyor: zamanı
+bilinmeyen açık zincir tıkanmış sayılır, yani kart onu **gösterir**. Karar: backfill yok.
+
+Görünen sonuç: bu alan eklenmeden önce açılmış zincirlerde kart yaşı "bilinmiyor" der ve kayıt
+eşikten bağımsız listelenir. Zamanla kendiliğinden düzelir — yeni her talep zamanını yazar.
 
 ---
 
@@ -482,6 +487,5 @@ oturumda tekrar eden başarısızlık kalıbı **içi boş kilit**: yeşil ama h
 | Uç | Zorunlu mu | Atlanırsa |
 |---|---|---|
 | `POST /api/institutions/resync-admin-view` | **evet** | Her okul "yöneticisi yok" görünür |
-| `POST /api/internships/backfill-termination-requested-at` | hayır | Kart fazla sayar (görünür), az saymaz |
 
-İkisi de `src/Docs/docs/infrastructure/dagitim-on-kosullari.md` dosyasına eklenir.
+`src/Docs/docs/infrastructure/dagitim-on-kosullari.md` dosyasına eklenir.
