@@ -34,6 +34,14 @@ public static class InternshipEndpoints
         group.MapPost("/{internshipId:guid}/approve/override", PostOverride)
             .RequireAuthorization(Permissions.Internship.ApprovalOverride);
 
+        // Tıkanma eşiği. OKUMA müdahale yetkisine bağlıdır: eşiği yalnız kartı gören
+        // kullanıcının bilmesi anlamlıdır. YAZMA ulusal parametre iznidir ve hiçbir okul
+        // rolünde yoktur — okul kendi eşiğini belirleyemez.
+        group.MapGet("/approval-config", GetApprovalConfiguration)
+            .RequireAuthorization(Permissions.Internship.ApprovalOverride);
+        group.MapPut("/approval-config", PutApprovalConfiguration)
+            .RequireAuthorization(Permissions.Platform.ParameterManage);
+
         // Tek seferlik geçiş adımı (#251): kopya saga'ları birleştirir. Kurum üstü bir bakım
         // işidir — bir okulun müdürü kendi verisinin saga kimliklerini yeniden yazamamalı.
         group.MapPost("/resync-sagas", PostResyncSagas).RequireAuthorization(Permissions.Platform.TenantManage);
@@ -155,5 +163,18 @@ public static class InternshipEndpoints
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Onay zinciri override edildi.")
             .Build());
+    }
+
+    private static async Task<IResult> GetApprovalConfiguration(IMessageBus bus)
+    {
+        var dto = await bus.InvokeAsync<ApprovalConfigDto>(new GetApprovalConfig());
+        return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
+    }
+
+    private static async Task<IResult> PutApprovalConfiguration(
+        UpdateApprovalConfig command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command);
+        return Results.Ok(ResponseBuilder.Success().Build());
     }
 }

@@ -139,6 +139,10 @@ public static class DocumentTenancyMap
         // Devamsızlık sınırları da ulusal parametredir (#183): MEB Yönetmeliği md. 36'dan
         // türer, okul başına değişemez. Damgalanırsa her okul kendi sınırını belirlerdi.
         ["AttendanceLimitConfig"] = Shared,
+        // Fesih onay zinciri tıkanma eşiği (D2) de ulusal parametredir: bir işletim
+        // politikasıdır, okul başına değişmez. Damgalanırsa her okul kendi eşiğini belirlerdi
+        // ve müdürlük panosu okuldan okula başka sayı gösterirdi.
+        ["InternshipApprovalConfig"] = Shared,
         // Kullanıcı adı çözümlemesi — kimlik katmanı (Keycloak), kiracıya ait değil
         ["UserNameView"] = Shared,
 
