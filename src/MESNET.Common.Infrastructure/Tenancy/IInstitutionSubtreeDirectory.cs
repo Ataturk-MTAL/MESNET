@@ -23,11 +23,4 @@ public interface IInstitutionSubtreeDirectory
     /// </param>
     Task<IReadOnlyList<string>> GetSchoolTenantsAsync(
         string pathPrefix, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Bütün okul kiracıları. <b>Yalnız kapsamsız (platform) aktör için</b> — kapsamlı aktörde
-    /// çağrılırsa kapsam sessizce genişler.
-    /// </summary>
-    Task<IReadOnlyList<string>> GetAllSchoolTenantsAsync(
-        CancellationToken cancellationToken = default);
 }

@@ -11,11 +11,10 @@ namespace MESNET.Institution.UnitTests;
 /// </summary>
 public sealed class SubtreeTenantScopeTests
 {
-    /// <summary>Dizini taklit eder — gerçek Marten gerekmez, karar saf.</summary>
+    /// <summary>Alt ağaç dizinini taklit eder — gerçek Marten gerekmez, karar saf.</summary>
     private sealed class FakeDirectory : IInstitutionSubtreeDirectory
     {
         public string? RequestedPrefix { get; private set; }
-        public bool AllRequested { get; private set; }
 
         public Task<IReadOnlyList<string>> GetSchoolTenantsAsync(
             string pathPrefix, CancellationToken cancellationToken = default)
@@ -23,11 +22,21 @@ public sealed class SubtreeTenantScopeTests
             RequestedPrefix = pathPrefix;
             return Task.FromResult<IReadOnlyList<string>>(["okul-a", "okul-b"]);
         }
+    }
 
-        public Task<IReadOnlyList<string>> GetAllSchoolTenantsAsync(
+    /// <summary>
+    /// Kiracı dizinini taklit eder. Kapsamsız (platform) aktör için liste artık buradan gelir —
+    /// <c>InstitutionTenantDirectory</c>'nin zaten barındırdığı sorguyla aynısını
+    /// <c>IInstitutionSubtreeDirectory</c>'de tekrarlamamak için.
+    /// </summary>
+    private sealed class FakeTenantDirectory : ITenantDirectory
+    {
+        public bool Requested { get; private set; }
+
+        public Task<IReadOnlyList<string>> GetActiveTenantsAsync(
             CancellationToken cancellationToken = default)
         {
-            AllRequested = true;
+            Requested = true;
             return Task.FromResult<IReadOnlyList<string>>(["okul-a", "okul-b", "okul-c"]);
         }
     }
@@ -37,7 +46,8 @@ public sealed class SubtreeTenantScopeTests
     {
         // Arrange
         var directory = new FakeDirectory();
-        var scope = new SubtreeTenantScope(directory);
+        var tenantDirectory = new FakeTenantDirectory();
+        var scope = new SubtreeTenantScope(directory, tenantDirectory);
         var visibility = new InstitutionVisibility(
             Unrestricted: false, PathPrefix: "/il-35/ilce-konak", InstitutionId: null);
 
@@ -47,38 +57,42 @@ public sealed class SubtreeTenantScopeTests
         // Assert
         tenants.ShouldBe(["okul-a", "okul-b"]);
         directory.RequestedPrefix.ShouldBe("/il-35/ilce-konak");
-        directory.AllRequested.ShouldBeFalse();
+        tenantDirectory.Requested.ShouldBeFalse();
     }
 
     [Fact]
     public async Task Kapsamsiz_platform_aktoru_butun_okullari_gorur()
     {
         var directory = new FakeDirectory();
-        var scope = new SubtreeTenantScope(directory);
+        var tenantDirectory = new FakeTenantDirectory();
+        var scope = new SubtreeTenantScope(directory, tenantDirectory);
         var visibility = new InstitutionVisibility(
             Unrestricted: true, PathPrefix: null, InstitutionId: null);
 
         var tenants = await scope.ResolveAsync(visibility);
 
         tenants.Count.ShouldBe(3);
-        directory.AllRequested.ShouldBeTrue();
+        // Kapsamsız aktörde liste ITenantDirectory'den gelir, alt ağaç dizininden değil.
+        tenantDirectory.Requested.ShouldBeTrue();
+        directory.RequestedPrefix.ShouldBeNull();
     }
 
     [Fact]
     public async Task Okul_aktoru_yalniz_kendi_kiracisini_gorur()
     {
         var directory = new FakeDirectory();
-        var scope = new SubtreeTenantScope(directory);
+        var tenantDirectory = new FakeTenantDirectory();
+        var scope = new SubtreeTenantScope(directory, tenantDirectory);
         var institutionId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         var visibility = new InstitutionVisibility(
             Unrestricted: false, PathPrefix: null, InstitutionId: institutionId);
 
         var tenants = await scope.ResolveAsync(visibility);
 
-        // Dizine HİÇ gitmez: kendi kiracısını bilmek için sorguya gerek yok.
+        // Ne dizine ne kiracı listesine gider: kendi kiracısını bilmek için sorguya gerek yok.
         tenants.ShouldBe([institutionId.ToString()]);
         directory.RequestedPrefix.ShouldBeNull();
-        directory.AllRequested.ShouldBeFalse();
+        tenantDirectory.Requested.ShouldBeFalse();
     }
 
     /// <summary>
@@ -90,13 +104,14 @@ public sealed class SubtreeTenantScopeTests
     public async Task Kapsamsiz_aktor_bos_liste_alir()
     {
         var directory = new FakeDirectory();
-        var scope = new SubtreeTenantScope(directory);
+        var tenantDirectory = new FakeTenantDirectory();
+        var scope = new SubtreeTenantScope(directory, tenantDirectory);
         var visibility = new InstitutionVisibility(
             Unrestricted: false, PathPrefix: null, InstitutionId: Guid.Empty);
 
         var tenants = await scope.ResolveAsync(visibility);
 
         tenants.ShouldBeEmpty();
-        directory.AllRequested.ShouldBeFalse();
+        tenantDirectory.Requested.ShouldBeFalse();
     }
 }

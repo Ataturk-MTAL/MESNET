@@ -26,13 +26,17 @@ public sealed class CrossTenantQueryDriftTests
         new(@"\bTenantIsOneOf\s*\(", RegexOptions.Compiled);
 
     /// <summary>
-    /// Operatörü kullanabilecek tek üretim dosyası. Sorgu handler'ı listeyi buradan alır ama
-    /// operatörü kendisi çağırır; bu yüzden handler dosyası da izinlidir.
+    /// Operatörü kullanabilecek tek üretim dosyaları — depo köküne göre TAM YOL. Yalnız dosya
+    /// adını karşılaştırmak, başka bir yerde aynı adı taşıyan bir dosyanın (ör. başka bir modülde
+    /// yeniden yazılmış bir <c>SubtreeTenantScope.cs</c>) sessizce izinli sayılmasına yol açardı
+    /// ve tek kapı garantisini delerdi. Karşılaştırma <see cref="Relative"/>'in ürettiği, her
+    /// zaman <c>/</c> ile ayrılmış göreli yol üzerinden yapılır. Sorgu handler'ı listeyi buradan
+    /// alır ama operatörü kendisi çağırır; bu yüzden handler dosyası da izinlidir.
     /// </summary>
     private static readonly string[] AllowedFiles =
     [
-        "SubtreeTenantScope.cs",
-        "GetStuckApprovalsHandler.cs",
+        "src/MESNET.Common.Infrastructure/Tenancy/SubtreeTenantScope.cs",
+        "src/Modules/Internship/MESNET.Internship.Application/Handlers/GetStuckApprovalsHandler.cs",
     ];
 
     [Fact]
@@ -64,7 +68,7 @@ public sealed class CrossTenantQueryDriftTests
             if (!TenantIsOneOfCall.IsMatch(code))
                 continue;
 
-            if (!AllowedFiles.Contains(Path.GetFileName(file), StringComparer.Ordinal))
+            if (!AllowedFiles.Contains(Relative(file), StringComparer.Ordinal))
                 violations.Add(Relative(file));
         }
 
@@ -95,7 +99,14 @@ public sealed class CrossTenantQueryDriftTests
                      && !f.Contains(bin, StringComparison.Ordinal));
     }
 
-    private static string Relative(string file) => Path.GetRelativePath(RepoRoot(), file);
+    /// <summary>
+    /// Depo köküne göre göreli yol, her zaman <c>/</c> ile ayrılmış. <see cref="AllowedFiles"/>
+    /// karşılaştırması bu normalizasyona dayanır — <c>Path.DirectorySeparatorChar</c> Windows'ta
+    /// <c>\</c> olduğundan normalize edilmezse aynı dosya platforma göre farklı dizgeye çevrilir
+    /// ve karşılaştırma sessizce kırılır.
+    /// </summary>
+    private static string Relative(string file) =>
+        Path.GetRelativePath(RepoRoot(), file).Replace(Path.DirectorySeparatorChar, '/');
 
     private static string RepoRoot()
     {

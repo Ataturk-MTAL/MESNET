@@ -46,19 +46,6 @@ public sealed class InstitutionSubtreeDirectory : IInstitutionSubtreeDirectory
         return ToTenants(ids);
     }
 
-    public async Task<IReadOnlyList<string>> GetAllSchoolTenantsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        await using var session = _store.QuerySession(TenantResolution.Platform);
-
-        var ids = await session.Query<InstitutionRecord>()
-            .OfNodeType(InstitutionNodeType.School)
-            .Select(i => i.Id)
-            .ToListAsync(cancellationToken);
-
-        return ToTenants(ids);
-    }
-
     // Çevrim burada TEKRARLANMAZ: 1:1 eşleşme TenantResolution'da tek noktada yaşar (#148).
     private static IReadOnlyList<string> ToTenants(IEnumerable<Guid> ids) =>
         ids.Select(TenantResolution.ForInstitution).ToList();

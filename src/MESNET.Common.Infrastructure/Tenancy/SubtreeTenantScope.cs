@@ -13,6 +13,13 @@ namespace MESNET.Common.Infrastructure.Tenancy;
 /// veri. Bu sınıf listeyi yalnız <see cref="InstitutionVisibility"/>'den üretir; istekten gelen
 /// hiçbir değer buraya giremez.</para>
 ///
+/// <para><b>İki ayrı kaynak, tek karar:</b> kapsamsız (platform) aktör için liste
+/// <see cref="ITenantDirectory.GetActiveTenantsAsync"/>'ten gelir — bu sorguyu zaten
+/// <c>InstitutionTenantDirectory</c> barındırıyordu, aynısını <see cref="IInstitutionSubtreeDirectory"/>'de
+/// tekrar tanımlamak yerine mevcut arayüz kullanılır. Yol önekli (il/ilçe) aktör için liste
+/// <see cref="IInstitutionSubtreeDirectory.GetSchoolTenantsAsync"/> ile alt ağaca daraltılır —
+/// bu ikisi farklı sorgulardır ve birleştirilemez.</para>
+///
 /// <para><b><c>AnyTenant()</c> bu depoda YASAKTIR</b> — kapsamsız aktör için bile
 /// kullanılmaz. Tek kod yolu, tek gözden geçirme noktası. Kilitleyen test:
 /// <c>CrossTenantQueryDriftTests</c>.</para>
@@ -20,10 +27,12 @@ namespace MESNET.Common.Infrastructure.Tenancy;
 public sealed class SubtreeTenantScope
 {
     private readonly IInstitutionSubtreeDirectory _directory;
+    private readonly ITenantDirectory _tenantDirectory;
 
-    public SubtreeTenantScope(IInstitutionSubtreeDirectory directory)
+    public SubtreeTenantScope(IInstitutionSubtreeDirectory directory, ITenantDirectory tenantDirectory)
     {
         _directory = directory;
+        _tenantDirectory = tenantDirectory;
     }
 
     /// <summary>
@@ -37,7 +46,7 @@ public sealed class SubtreeTenantScope
         InstitutionVisibility scope, CancellationToken cancellationToken = default)
     {
         if (scope.Unrestricted)
-            return await _directory.GetAllSchoolTenantsAsync(cancellationToken);
+            return await _tenantDirectory.GetActiveTenantsAsync(cancellationToken);
 
         if (scope.PathPrefix is { } prefix && !string.IsNullOrWhiteSpace(prefix))
             return await _directory.GetSchoolTenantsAsync(prefix, cancellationToken);
