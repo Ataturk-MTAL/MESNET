@@ -552,7 +552,7 @@ git commit -m "fix(security): davet listesi kapsama daraltıldı, Metadata liste
 
 ---
 
-### Task 5: Kilidi ekle — ve `role-integrity` için BİLEREK kırmızı bırak
+### Task 5: Kilidi ekle — ve `role-integrity` için BİLEREK kırmızı bırak (#283)
 
 **Files:**
 - Create: `tests/MESNET.Security.UnitTests/IdentityDocumentScopeDriftTests.cs`
@@ -578,7 +578,7 @@ dosyalar (hepsi `src/Modules/Security/MESNET.Security.Application/` altında):
 |---|---|---|
 | `Handlers/UserQueryHandler.cs` | **HAYIR** | Task 3 ile çözücüyü çağırır |
 | `Handlers/InvitationHandler.cs` | **HAYIR** | Task 4 ile çözücüyü çağırır |
-| `Handlers/RoleIntegrityHandler.cs` | **HAYIR — bilerek** | Kapsamı ürün kararıdır, verilmedi (spec Karar 6). Test bu yüzden kırmızı kalır |
+| `Handlers/RoleIntegrityHandler.cs` | **HAYIR — bilerek** | Kapsamı ürün kararıdır, verilmedi — **#283**. Test bu yüzden kırmızı kalır |
 | `Handlers/GuardianLinkGapHandler.cs` | evet | Çıktı kiracı damgalı `GuardianLinkView` ile sınırlı; yalnız üyelik sorulmuş — gerekçe dosyada yazılı |
 | `Handlers/ReplayUserAccountsHandler.cs` | evet | Dağıtım ön koşulu; `platform:tenant:manage` ile korunuyor |
 | `Handlers/UserManagementHandler.cs` | evet | Yazma komutları hedefi kimlikle alır; ayrıca Keycloak senkronizasyonu doğası gereği realm geneli ve kurum bağı KURMAZ |
@@ -691,6 +691,6 @@ git commit -m "docs(tenancy): davet listesi kapsam borcu kapandı, not silindi"
 
 ## Devredilen işler — sessizce düşürülmez
 
-1. **`role-integrity` kapsam kararı.** Uç kurum düzeyinde mi platform düzeyinde mi? Karar verilene kadar kilit kırmızı. Dal bu karar alınmadan merge edilmemelidir.
+1. **`role-integrity` kapsam kararı — #283.** Uç kurum düzeyinde mi platform düzeyinde mi? Üç seçenek ve bedelleri issue'da yazılı. Karar verilene kadar kilit kırmızı. Dal bu karar alınmadan merge edilmemelidir.
 2. **İkinci kuruma bağlı aktörle uçtan uca API testi.** `mesnet-realm.json`'a ikinci kurum + `user:view` taşıyan kullanıcı gerekir; realm import tek seferliktir (#195), yani dev ortamının yeniden kurulmasını gerektirir.
 3. **Marten çeviri doğrulaması (elle, canlı yığında).** `ids.Contains(u.InstitutionId.Value)` ifadesinin `Guid?` üzerinde ürettiği SQL birim testle kanıtlanamaz. Doğrulanacaklar: ikinci okulun aktörü birinci okulun kullanıcısını görmüyor; kurum bağı olmayan hesap her iki aktöre de görünüyor; platform aktörü hepsini görüyor.

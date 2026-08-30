@@ -172,7 +172,7 @@ DTO'sundan düz kaldırılır; tüketen varsa tekil davet ucuna taşınır.
 
 ---
 
-## Karar 6 — `role-integrity` bilerek AÇIK BIRAKILIR ve kilit kırmızı kalır
+## Karar 6 — `role-integrity` bilerek AÇIK BIRAKILIR ve kilit kırmızı kalır (#283)
 
 `GET /api/security/role-integrity` kapsam parametresi hiç taşımaz
 (`RoleIntegrityCommands.cs:14`) ve Keycloak bacağı doğası gereği realm geneldir
@@ -187,8 +187,8 @@ açılmadan merge edilmemelidir.
 
 **Kırmızı testin mesajı kendini savunmalıdır.** Kilit `RoleIntegrityHandler.cs` için
 başarısız olduğunda mesaj, bunun bir gözden kaçma değil **açık bir ürün kararı** olduğunu,
-kararın ne olduğunu (kurum düzeyi mi platform düzeyi mi) ve muafiyet listesine eklemenin
-**kararı vermek anlamına geldiğini** yazmalıdır. Aksi hâlde bir sonraki okuyan testi
+kararın ne olduğunu (kurum düzeyi mi platform düzeyi mi), **#283**'ü ve muafiyet listesine
+eklemenin **kararı vermek anlamına geldiğini** yazmalıdır. Aksi hâlde bir sonraki okuyan testi
 "düzeltmek" için dosyayı listeye ekler ve karar hiç verilmemiş olarak kapanır — bu oturumda
 tekrar eden içi boş kilit kalıbının aynısı.
 
