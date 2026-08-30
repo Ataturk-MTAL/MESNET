@@ -12,7 +12,8 @@ namespace MESNET.Security.Application.Services;
 /// Kapsam kararının tamamı sorgu handler'ına aittir.</para>
 ///
 /// <para><b>Kimlikler istekten HİÇ gelmez</b> — aktörün claim'lerinden türer. Kilitleyen test:
-/// <c>IdentityDocumentScopeDriftTests</c>.</para>
+/// <c>IdentityDocumentScopeDriftTests</c> — bu aynı değişiklik kümesinin ilerleyen bir adımıyla
+/// (Task 5) eklenecek, henüz bu commit'te yoktur.</para>
 /// </summary>
 public sealed class UserScopeResolver
 {
