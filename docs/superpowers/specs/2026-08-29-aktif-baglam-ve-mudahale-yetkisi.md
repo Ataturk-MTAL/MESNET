@@ -213,7 +213,20 @@ Bunlar tasarım seçimlerinin **kalıcı** sonuçlarıdır — ertelenen kapsam 
    - `POST /api/coordination/weekly-visits/resync` (`WeeklyVisitEndpoints.cs:40`)
 
    Bilinçlidir: var olan izin ağacını tek rol için yeniden çizmemek adına kabul edildi. Hepsi `Commands/` üzerinden ize düşer, denetlenir — ama en riskli kalemi (evrak toplu silme) örtük bırakmadan kabul edilmelidir.
-4. **Yetki reddi (403) hâlâ ize girmez** (C'den devralınır). Bağlam dışı bir okula erişim denemesi `DomainException` ürettiği için ize **girer**; izin katmanının kestiği istekler girmez.
+4. **Bağlama giriş kaydı, girilen bağlamdan görünmez.** Denetim satırı kiracı damgalıdır ve
+   `SetActiveInstitution` komutu **eski** kiracıda koşar; dolayısıyla "X okuluna geçtim" satırı
+   aktörün ev kiracısında kalır, X okulunun izinde görünmez. Simetrik olarak "X'ten çıktım"
+   satırı X'te kalır.
+
+   **Ölçüldü (30.08.2026, canlı yığın):** bağlam açıkken `/api/audit/mine` 248 satır gösteriyordu
+   ve başarılı geçiş satırı yoktu; bağlam temizlenince ev kiracısında tam o satır göründü — tek
+   satır, `CrossedTenantBoundary = true`.
+
+   Bilinçli: satırı iki kiracıya birden yazmak kiracı damgasının anlamını bozardı. Sonucu şudur —
+   bir okulun izine bakan kişi o okula **kimin girdiğini** göremez, yalnız girdikten sonra **ne
+   yaptığını** görür. "Kim girdi" sorusu il düğümünün izinden cevaplanır.
+
+5. **Yetki reddi (403) hâlâ ize girmez** (C'den devralınır). Bağlam dışı bir okula erişim denemesi `DomainException` ürettiği için ize **girer**; izin katmanının kestiği istekler girmez.
 
 ---
 
