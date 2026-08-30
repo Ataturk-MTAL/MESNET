@@ -180,9 +180,20 @@ public static class ChangeUserInstitutionHandler
         // geçebilir ve müdahale kapısına HİÇ uğramadan bağ değiştirebilirdi — brief'in "yalnız
         // yöneticisiz okula ilk yönetici" sınırını atlayan yeni bir yetenek. user:roles:manage
         // taşıyan mevcut aktörlerin davranışı DEĞİŞMEZ: zaten bu izne sahiptiler.
+        // PLATFORM MUAFİYETİ DÖRDÜNCÜ ARGÜMANLA GEÇİLİR — geçilmezse varsayılan false olur ve
+        // platform:tenant:manage taşıyan aktör kullanıcıyı BAŞKA kuruma bağlayamaz. Oysa
+        // ADR-0003'te o iznin var olma sebebi tam olarak budur ("yeni okul açmak, bir
+        // kullanıcıyı herhangi bir okula bağlamak") ve UserInstitutionScopePolicy.CanAssign'ın
+        // kendi yorumu da "bu parametre olmadan ikinci okul HİÇ açılamazdı" diyor.
+        //
+        // Ölçüldü (30.08.2026, canlı yığın): argüman yokken SystemAdmin bir kullanıcıyı İl MEM
+        // düğümüne bağlayamıyordu — 422 Security.ActiveContextOutOfScope. CreateUser aynı
+        // politikayı zaten dört argümanla çağırıyordu (bkz. yukarıdaki CreateUser handler'ı);
+        // asimetri bir gözden kaçmaydı.
         var normalYol = currentUser.HasPermission(Permissions.UserManagement.RolesManage)
             && UserInstitutionScopePolicy.CanAssign(
-                command.ActorInstitutionId, account.InstitutionId, command.InstitutionId);
+                command.ActorInstitutionId, account.InstitutionId, command.InstitutionId,
+                currentUser.HasPermission(Permissions.Platform.TenantManage));
 
         if (!normalYol)
         {
