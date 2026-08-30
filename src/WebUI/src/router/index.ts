@@ -58,6 +58,16 @@ const router = createRouter({
           component: () => import('pages/institution/InstitutionPage.vue'),
           meta: { permissions: ['institution:view'] },
         },
+        // Ağaçtan açılan kurumun düzenleme rotası. `institution/edit` ile AYNI bileşen ama
+        // rota parametresi TAŞIR: parametresiz rotada hedef davranılan kuruma düşüyor ve
+        // müdürlüğü düzenlediğini sanan kullanıcı başka bir kurumu düzenliyordu
+        // (ölçüldü 30.08.2026 — bkz. utils/institutionRoutes.ts).
+        {
+          path: 'institutions/:id/edit',
+          name: 'InstitutionDetailEdit',
+          component: () => import('pages/institution/InstitutionFormPage.vue'),
+          meta: { permissions: ['institution:manage'], formRoute: true },
+        },
 
         // Bağlam seçimi — il/ilçe yetkilisinin tek çalışma modu okulun bağlamına geçmektir.
         // İzin institution:view'dir: seçim listesi zaten o izinle geliyor ve kapsam

@@ -21,7 +21,7 @@
               color="primary"
               icon="edit"
               label="Düzenle"
-              @click="router.push('/institution/edit')"
+              @click="router.push(institutionEditRoute(routeInstitutionId))"
             />
           </PermissionGuard>
         </PageHeader>
@@ -526,6 +526,7 @@ import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useInstitutionStore } from 'stores/institution'
 import { useAuthStore } from 'stores/auth'
 import { resolveEditableInstitutionId, isActiveContextInstitution } from 'utils/institutionScope'
+import { institutionEditRoute } from 'utils/institutionRoutes'
 import { useRoute, useRouter } from 'vue-router'
 import AddStaffForm from 'components/forms/institution/AddStaffForm.vue'
 import AddBranchForm from 'components/forms/institution/AddBranchForm.vue'
@@ -554,6 +555,12 @@ const scheduleConfig = ref<ScheduleConfigDto | null>(null)
 const fieldCatalog = ref<FieldOfStudyDto[]>([])
 
 const tab = ref('info')
+// Rota parametresi: "hangi kurumu GÖRÜNTÜLÜYORUM". `institutionId` çözümlenmiş hedeftir
+// (parametre yoksa davranılan kuruma düşer); Düzenle rotası ise parametreyi AYNEN taşımalı
+// ki form da aynı kuruma açılsın.
+const routeInstitutionId = computed(() =>
+  typeof route.params.id === 'string' ? route.params.id : null,
+)
 const institutionId = ref<string>('')
 const periods = ref<AcademicPeriodDto[]>([])
 

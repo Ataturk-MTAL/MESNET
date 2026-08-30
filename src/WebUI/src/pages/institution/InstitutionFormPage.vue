@@ -175,6 +175,7 @@ import { useNotify } from 'src/composables/useNotify'
 import { useInstitutionStore } from 'stores/institution'
 import { useAuthStore } from 'stores/auth'
 import { resolveEditableInstitutionId, isActiveContextInstitution } from 'src/utils/institutionScope'
+import { institutionReturnRoute } from 'utils/institutionRoutes'
 import { isSafeUrl } from 'utils/safeUrl'
 
 /** Boş geçilebilir; doluysa yalnız http(s) kabul edilir. */
@@ -299,7 +300,8 @@ function filterProvinces(needle: string, update: (fn: () => void) => void) {
 }
 
 function goBack() {
-  router.push('/institution').catch(() => {})
+  const routeId = typeof route.params.id === 'string' ? route.params.id : null
+  router.push(institutionReturnRoute(routeId)).catch(() => {})
 }
 
 async function loadInstitution() {
