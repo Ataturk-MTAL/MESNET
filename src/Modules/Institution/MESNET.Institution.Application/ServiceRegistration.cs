@@ -22,6 +22,9 @@ public static class ServiceRegistration
         // Alt ağaç kiracı listesi (D2). Aynı gerekçe: sözleşme altyapıda, uygulama burada.
         services.AddScoped<IInstitutionSubtreeDirectory, InstitutionSubtreeDirectory>();
 
+        // Kiracılar arası okumanın tek kapısı (D2).
+        services.AddScoped<SubtreeTenantScope>();
+
         return services;
     }
 }
