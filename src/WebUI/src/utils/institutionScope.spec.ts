@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveEditableInstitutionId } from './institutionScope'
+import { resolveEditableInstitutionId, isActiveContextInstitution } from './institutionScope'
 
 /**
  * Bu testin varlık nedeni ÖLÇÜLMÜŞ bir hatadır (27.08.2026):
@@ -74,5 +74,34 @@ describe('resolveEditableInstitutionId', () => {
     expect(resolveEditableInstitutionId(null, aktifBaglam, list)).toBe(aktifBaglam)
     // ownId ev kurumuyla beslenseydi (düzeltilen hata) sonuç aktif bağlamla eşleşmezdi
     expect(resolveEditableInstitutionId(null, evKurumu, list)).not.toBe(aktifBaglam)
+  })
+})
+
+/**
+ * Bu testin varlık nedeni ÖLÇÜLMÜŞ bir hatadır (29.08.2026):
+ *
+ * `InstitutionPage` başka bir kurumu (il yetkilisinin `Kurumlar` ağacında gezdiği bir okul)
+ * görüntülerken `institutionStore.clear()` / `periodStore.loadPeriods(true)` çağırıyordu —
+ * bu çağrılar AKTİF BAĞLAMIN kurumunu hedefler. Sonuç: header'daki bağlam çipi kalıcı iskelete
+ * düşüyordu (ad hiç gelmiyordu) ve üst bardaki dönem seçici görüntülenen (boş/farklı) kurumun
+ * verisiyle tazelenip kayboluyordu. Karar bu saf fonksiyona çıkarıldı ki sayfa montajı olmadan
+ * test edilebilsin.
+ */
+describe('isActiveContextInstitution', () => {
+  it('görüntülenen kurum aktif bağlamla AYNIYSA true döner — global store serbesttir', () => {
+    expect(isActiveContextInstitution('okul-id', 'okul-id')).toBe(true)
+  })
+
+  it('görüntülenen kurum aktif bağlamdan FARKLIYSA false döner — global store YAZILMAZ', () => {
+    expect(isActiveContextInstitution('konak-ilce-id', 'baska-okul-id')).toBe(false)
+  })
+
+  it('aktif bağlam yoksa (null) false döner', () => {
+    expect(isActiveContextInstitution('konak-ilce-id', null)).toBe(false)
+  })
+
+  it('görüntülenen kurum boş/undefined ise false döner', () => {
+    expect(isActiveContextInstitution('', 'okul-id')).toBe(false)
+    expect(isActiveContextInstitution(undefined, 'okul-id')).toBe(false)
   })
 })

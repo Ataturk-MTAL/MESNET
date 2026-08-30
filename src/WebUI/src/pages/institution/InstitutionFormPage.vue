@@ -174,7 +174,7 @@ import { institutionApi, type ProvinceDto } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useInstitutionStore } from 'stores/institution'
 import { useAuthStore } from 'stores/auth'
-import { resolveEditableInstitutionId } from 'src/utils/institutionScope'
+import { resolveEditableInstitutionId, isActiveContextInstitution } from 'src/utils/institutionScope'
 import { isSafeUrl } from 'utils/safeUrl'
 
 /** Boş geçilebilir; doluysa yalnız http(s) kabul edilir. */
@@ -360,7 +360,12 @@ async function handleSave() {
       email: form.email || undefined,
       webUrl: form.webUrl || undefined,
     })
-    institutionStore.clear()
+    // InstitutionPage ile aynı gerekçe (bkz. o dosyadaki isActiveContext yorumu): bu form
+    // BAŞKA bir kurumu (rota parametresiyle açılan) düzenleyebilir; global store'u yalnız
+    // düzenlenen kurum aktif bağlamın kendisiyse geçersiz kıl.
+    if (isActiveContextInstitution(institutionId.value, authStore.currentInstitutionId)) {
+      institutionStore.clear()
+    }
     notify.success('Kurum bilgileri güncellendi.')
     goBack()
   } catch (e) {

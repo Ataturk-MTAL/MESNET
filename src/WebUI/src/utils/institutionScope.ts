@@ -43,3 +43,30 @@ export function resolveEditableInstitutionId(
   // Kimliğe göre kararlı seçim, aynı kümede her zaman aynı okulu verir.
   return [...institutions].sort((a, b) => a.id.localeCompare(b.id))[0]!.id
 }
+
+/**
+ * Görüntülenen kurum, aktörün AKTİF BAĞLAMININ KENDİSİ mi?
+ *
+ * <p><b>Neden ayrı bir soru:</b> "hangi kurumu düzenliyorum" (`resolveEditableInstitutionId`)
+ * ile "bu görüntüleme global store'a yazabilir mi" iki farklı sorudur. İl/ilçe yetkilisi
+ * `Kurumlar` ağacında BAŞKA bir okulu görüntülerken `InstitutionPage` o okulun verisini kendi
+ * YEREL state'inde tutar (bu fonksiyonun konusu değil); ama sayfa mutasyon sonrası
+ * `institutionStore.clear()` / `academicPeriodStore.loadPeriods(true)` gibi GLOBAL önbellek
+ * tazeleme çağrıları da yapıyordu — bu çağrılar "davranılan (aktif bağlamdaki) kurum" sorusuna
+ * cevap veren store'ları hedefler. Görüntülenen kurum aktif bağlamdan FARKLIYSA bu çağrılar
+ * YANLIŞ kurumun (aktif bağlamın) önbelleğini boşaltır: header'daki bağlam çipi kalıcı iskelete
+ * düşer, dönem seçici aktif bağlamın verisiyle değil görüntülenen kurumun (boş) verisiyle
+ * tazelenir. Global store'u kullanmak/tazelemek SADECE iki soru aynı cevaba sahipken serbesttir
+ * — global bağlamı geçersiz kılma yetkisi `useInstitutionContext().switchTo()`'nundur, bir
+ * görüntüleme sayfası bu yetkiyi ödünç almaz.</p>
+ *
+ * @param viewedInstitutionId Sayfanın gösterdiği kurum (rota parametresi çözüldükten sonra).
+ * @param activeContextInstitutionId `authStore.currentInstitutionId` — aktif bağlam varsa o,
+ *   yoksa aktörün kendi (ev) kurumu.
+ */
+export function isActiveContextInstitution(
+  viewedInstitutionId: string | null | undefined,
+  activeContextInstitutionId: string | null | undefined,
+): boolean {
+  return !!viewedInstitutionId && viewedInstitutionId === activeContextInstitutionId
+}

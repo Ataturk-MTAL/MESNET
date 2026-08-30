@@ -574,7 +574,7 @@ import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useInstitutionStore } from 'stores/institution'
 import { useAuthStore } from 'stores/auth'
-import { resolveEditableInstitutionId } from 'utils/institutionScope'
+import { resolveEditableInstitutionId, isActiveContextInstitution } from 'utils/institutionScope'
 import { useRoute, useRouter } from 'vue-router'
 import AddStaffForm from 'components/forms/institution/AddStaffForm.vue'
 import AddBranchForm from 'components/forms/institution/AddBranchForm.vue'
@@ -607,6 +607,20 @@ const fieldCatalog = ref<FieldOfStudyDto[]>([])
 const tab = ref('info')
 const institutionId = ref<string>('')
 const periods = ref<AcademicPeriodDto[]>([])
+
+/**
+ * Görüntülenen kurum aktif bağlamın KENDİSİ mi?
+ *
+ * Bu sayfa BAŞKA bir kurumu (il/ilçe yetkilisinin `Kurumlar` ağacında gezdiği bir okul)
+ * gösterebilir — o veri her zaman yukarıdaki YEREL `institution`/`periods` ref'lerinde durur.
+ * `institutionStore`/`academicPeriodStore` ise "aktörün DAVRANILAN (aktif bağlamdaki) kurumu"
+ * sorusuna cevap verir (header çipi, dönem seçici, menü, tema — bkz. `stores/institution.ts`).
+ * İki soru SADECE bu koşul doğruyken aynı cevaba sahiptir; global store'a yazan/tazeleyen her
+ * çağrı bu koşulla korunur (karar `utils/institutionScope.ts#isActiveContextInstitution`).
+ */
+const isActiveContext = computed(() =>
+  isActiveContextInstitution(institutionId.value, authStore.currentInstitutionId),
+)
 
 // ── Computed ──
 const activeBranches = computed(() =>
@@ -707,9 +721,12 @@ async function load() {
     institution.value = instRes.data
     scheduleConfig.value = schedRes.data
     periods.value = periodsRes.data?.items ?? []
-    // Bu yönetim sayfası kurum/branş/program verisini değiştirir; paylaşılan store
-    // cache'ini geçersiz kıl → diğer sayfalar bir sonraki erişimde taze veri çeker.
-    institutionStore.clear()
+    // Bu yönetim sayfası kurum/branş/program verisini değiştirir; paylaşılan store cache'ini
+    // geçersiz kıl → diğer sayfalar bir sonraki erişimde taze veri çeker. AMA SADECE
+    // görüntülenen kurum aktif bağlamın kendisiyse — aksi hâlde bu, BAŞKA bir kurumu (il/ilçe
+    // ağacında gezilen bir okul) görüntülerken aktif bağlamın önbelleğini boşaltır: header
+    // çipi kalıcı iskelete düşer, dönem seçici kaybolur (bkz. isActiveContext yorumu).
+    if (isActiveContext.value) institutionStore.clear()
   } catch {
     error.value = 'Kurum bilgileri yüklenirken bir hata oluştu.'
   } finally {
@@ -730,7 +747,8 @@ async function loadSchedule() {
   try {
     const res = await institutionApi.getScheduleConfig(institutionId.value)
     scheduleConfig.value = res.data
-    institutionStore.clear()
+    // Aynı gerekçe: yalnız aktif bağlamın kendisi düzenlenirken global store tazelenir.
+    if (isActiveContext.value) institutionStore.clear()
   } catch { /* sessiz */ }
 }
 
@@ -807,7 +825,11 @@ function confirmClosePeriod(period: AcademicPeriodDto) {
         await institutionApi.closeAcademicPeriod(institutionId.value, period.id)
         notify.success('Dönem kapatıldı.')
         await load()
-        await periodStore.loadPeriods(true)
+        // periodStore aktif bağlamın dönem listesini taşır (üst bar dönem seçici, isReadOnly).
+        // Görüntülenen kurum aktif bağlamdan FARKLIYSA bu çağrı YANLIŞ kurumun listesini
+        // çeker ve üst bardaki dönem seçici görüntülenen kurumun (genelde boş) verisiyle
+        // tazelenip kaybolur — yalnız aktif bağlamın kendi dönemi kapatılırken çalışır.
+        if (isActiveContext.value) await periodStore.loadPeriods(true)
       } catch (e) {
         notify.apiError(e, 'Dönem kapatılırken bir hata oluştu.')
       } finally {
