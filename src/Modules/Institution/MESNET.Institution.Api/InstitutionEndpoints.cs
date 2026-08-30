@@ -47,6 +47,8 @@ public static class InstitutionEndpoints
         // (kiracı anahtarı, ADR-0003 adım 2.1). Olay yeniden yayınlanır, Security tüketir —
         // modüller arası doğrudan veri yazma yoktur.
         group.MapPost("/staff/resync-branch-codes", PostResyncStaffBranchCodes).RequireAuthorization(Permissions.Institution.Staff);
+        // Yöneticisi olmayan okullar (D2) — müdürlük panosu bootstrap iş listesi.
+        group.MapGet("/unmanaged", GetUnmanaged).RequireAuthorization(Permissions.Institution.View);
         // Kurum ağacı geçişi — DAĞITIM ÖN KOŞULU, idempotent. Atlanırsa sessizdir: yollar boş
         // kalır ve il/ilçe yetkilisi hata değil BOŞ LİSTE görür. Kurum üstü bir iştir:
         // institution:manage "kurum yönetebilir" der, "bütün ağacı yeniden kurabilir" demez.
@@ -163,6 +165,31 @@ public static class InstitutionEndpoints
     {
         var result = await bus.InvokeAsync<PagedResult<InstitutionDto>>(
             new GetInstitutions(nodeType, parentId)
+            {
+                Page = page,
+                PageSize = pageSize,
+                SortBy = sortBy,
+                Descending = descending,
+                Search = search
+            });
+
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
+    }
+
+    /// <summary>
+    /// Yöneticisi olmayan okullar (D2) — müdürlük panosu bootstrap iş listesi. Kapsam sorgunun
+    /// İÇİNDE uygulanır (handler); uçta kimlik karşılaştırması yapılmaz.
+    /// </summary>
+    private static async Task<IResult> GetUnmanaged(
+        int page = 1,
+        int pageSize = 20,
+        string? sortBy = null,
+        bool descending = false,
+        string? search = null,
+        IMessageBus bus = default!)
+    {
+        var result = await bus.InvokeAsync<PagedResult<InstitutionDto>>(
+            new GetUnmanagedInstitutions
             {
                 Page = page,
                 PageSize = pageSize,

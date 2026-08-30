@@ -219,6 +219,11 @@ public sealed class InstitutionScopeDriftTests
     private static readonly HashSet<string> MayEnumerateAll = new(StringComparer.Ordinal)
     {
         "GetInstitutionsHandler.cs",
+        // GetInstitutionsHandler ile AYNI desen: listeleme sorgusu, kapsam guard'la değil
+        // InstitutionScopePolicy.VisibleScope ile uygulanır (hedef istekte geçmez). Negatif
+        // yön (yönetilenlerin DIŞI) ikinci bir Query<InstitutionManagerLink>() gerektirir ama
+        // o ayrı bir belge tipi, bu taramanın konusu değil.
+        "GetUnmanagedInstitutionsHandler.cs",
         "InstitutionTenantDirectory.cs",
         // SubtreeTenantScope için okul kiracılarını listeler — girdisi yalnız
         // InstitutionVisibility'den türer, istekten asla gelmez.
