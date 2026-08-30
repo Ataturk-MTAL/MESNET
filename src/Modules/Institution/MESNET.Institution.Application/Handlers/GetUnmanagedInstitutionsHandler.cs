@@ -48,7 +48,7 @@ public static class GetUnmanagedInstitutionsHandler
 
         IQueryable<InstitutionRecord> queryable = session.Query<InstitutionRecord>();
 
-        queryable = ApplyScope(queryable, scope);
+        queryable = queryable.ApplyScope(scope);
 
         // Yalnız OKUL: il/ilçe müdürlüğünün "yöneticisi" bu kartın konusu değildir.
         queryable = queryable.OfNodeType(InstitutionNodeType.School);
@@ -68,22 +68,5 @@ public static class GetUnmanagedInstitutionsHandler
             page.TotalCount,
             page.Page,
             page.PageSize);
-    }
-
-    /// <summary>
-    /// Kapsam daraltması — <c>GetInstitutionsHandler</c> ile AYNI karardan (<see
-    /// cref="InstitutionVisibility"/>) beslenir; karar burada TEKRARLANMAZ.
-    /// </summary>
-    private static IQueryable<InstitutionRecord> ApplyScope(
-        IQueryable<InstitutionRecord> queryable, InstitutionVisibility scope)
-    {
-        if (scope.Unrestricted)
-            return queryable;
-
-        if (scope.PathPrefix is { } prefix)
-            return queryable.Where(i => i.Path != null && i.Path.StartsWith(prefix));
-
-        var institutionId = scope.InstitutionId ?? Guid.Empty;
-        return queryable.Where(i => i.Id == institutionId);
     }
 }

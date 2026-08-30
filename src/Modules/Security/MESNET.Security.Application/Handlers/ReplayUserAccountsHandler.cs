@@ -48,10 +48,17 @@ public static class ReplayUserAccountsHandler
             // KOŞULSUZ true yazar — olay şeması etkinlik durumu taşımaz ve başka modüllerin
             // tüketicileriyle PAYLAŞILAN bir sözleşmedir, burada genişletilmez. Hesap zaten
             // pasifse ikinci bir olay yayınlanır; InstitutionManagerLinkConsumer'ın kuyruğu
-            // Sequential() olduğu için aynı kullanıcının olayları YAYIN SIRASIYLA işlenir ve bu
-            // ikinci olay IsEnabled'ı doğru değere (false) döndürür. Aksi hâlde pasif bir
-            // yöneticinin hesabı "etkin yönetici" sayılır, okulu yöneticisiz listesinden
-            // SESSİZCE düşürür — bu ucun tüm amacı tam da bunu önlemektir.
+            // Sequential() olduğu için aynı kullanıcının olayları normal yolda YAYIN SIRASIYLA
+            // işlenir ve bu ikinci olay IsEnabled'ı doğru değere (false) döndürür. Aksi hâlde
+            // pasif bir yöneticinin hesabı "etkin yönetici" sayılır, okulu yöneticisiz
+            // listesinden SESSİZCE düşürür — bu ucun tüm amacı tam da bunu önlemektir.
+            //
+            // Sıra GARANTİ DEĞİLDİR: Sequential() yalnız paralellik derecesini 1'e indirir,
+            // sıralı YENİDEN teslimatı taahhüt etmez. UserCreated başarısız olup yeniden
+            // denenirken UserDeactivated önce başarıyla işlenmişse, ya da replay ortasında
+            // süreç yeniden başlarsa sıra TERS DÖNEBİLİR — belirti aynıdır: bağlantı sessizce
+            // yeniden "etkin" görünür. Onarım budur: bu uç idempotenttir, yeniden çalıştırmak
+            // durumu düzeltir.
             if (!account.IsEnabled)
             {
                 await bus.PublishAsync(new UserDeactivated(

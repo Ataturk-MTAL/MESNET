@@ -42,7 +42,7 @@ public static class GetInstitutionsHandler
 
         IQueryable<InstitutionRecord> queryable = session.Query<InstitutionRecord>();
 
-        queryable = ApplyScope(queryable, scope);
+        queryable = queryable.ApplyScope(scope);
 
         // Varsayılan OKUL: çağıranların çoğu okul listesi bekler. Süzgeçsiz bırakılsaydı
         // il/ilçe müdürlükleri açılır listelerde okul gibi görünürdü — sessizce.
@@ -64,29 +64,6 @@ public static class GetInstitutionsHandler
             page.TotalCount,
             page.Page,
             page.PageSize);
-    }
-
-    /// <summary>
-    /// Kapsam daraltması. Üç hâl vardır ve üçü de <see cref="InstitutionVisibility"/>'den gelir;
-    /// karar burada TEKRARLANMAZ.
-    /// </summary>
-    private static IQueryable<InstitutionRecord> ApplyScope(
-        IQueryable<InstitutionRecord> queryable, InstitutionVisibility scope)
-    {
-        if (scope.Unrestricted)
-            return queryable;
-
-        if (scope.PathPrefix is { } prefix)
-        {
-            // Marten string.StartsWith'i SQL'de LIKE 'önek%' çevirir; ham SQL ve
-            // WITH RECURSIVE gerekmez. Yolu olmayan satır alt ağaçta DEĞİLDİR.
-            return queryable.Where(i => i.Path != null && i.Path.StartsWith(prefix));
-        }
-
-        // Yol yok: kimliğe düş. Kapsamsız aktörde bu Guid.Empty'dir ve hiçbir kurumla
-        // eşleşmez — her şeyi görmek yerine hiçbir şey görmek.
-        var institutionId = scope.InstitutionId ?? Guid.Empty;
-        return queryable.Where(i => i.Id == institutionId);
     }
 
     /// <summary>
