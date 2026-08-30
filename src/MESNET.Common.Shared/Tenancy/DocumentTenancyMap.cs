@@ -150,6 +150,11 @@ public static class DocumentTenancyMap
         // Kimlik katmanı; InstitutionId taşır ama kiracı sınırı DEĞİL — kullanıcı kurumlar arası taşınabilir
         ["UserAccount"] = Identity,
 
+        // Kullanıcının kurum bağı ve yönetme yetkisinin Institution modülündeki yerel görünümü
+        // (D2). Kaynağı UserAccount, hedefi Institution — ikisi de kimlik katmanında ve kiracı
+        // damgası taşımıyor; damgalansaydı müdürlük onu hiç göremezdi.
+        ["InstitutionManagerLink"] = Identity,
+
         // Davet, kimlik katmanının ONBOARDING kenarıdır: daveti tamamlayan kişinin henüz
         // kullanıcı kaydı, dolayısıyla kiracısı YOKTUR — uç anonimdir. Kiracıya ait
         // sınıflandırılsaydı daveti okumak için önce kiracıyı bilmek gerekirdi; daveti okumadan

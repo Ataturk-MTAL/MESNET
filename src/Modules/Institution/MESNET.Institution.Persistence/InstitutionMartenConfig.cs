@@ -35,5 +35,9 @@ public class InstitutionMartenConfig : IConfigureMarten
         // UserNameView (Security.UserDisplayNameUpserted ile beslenir) — denetim alanları
         // yalnız kullanıcı kimliğini saklar, ad sorgu tarafında buradan çözülür (#137)
         options.Schema.For<UserNameView>().DatabaseSchemaName("institution");
+
+        // Yöneticisiz okul sorgusu bu alanla süzer; indeks olmadan her çağrıda tam tarama olur.
+        options.Schema.For<InstitutionManagerLink>().DatabaseSchemaName("institution");
+        options.Schema.For<InstitutionManagerLink>().Index(x => x.InstitutionId);
     }
 }
