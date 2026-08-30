@@ -164,7 +164,13 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         // kontrol kendi kendini doğrular hâle gelirdi. Bu yüzden bu adım institution_path'ten
         // SONRA çalışır: ActiveContextPolicy.Resolve aktörün yolunu (institution_path claim'i)
         // GİRDİ olarak okur.
-        await EnrichActiveContextClaimAsync(principal, sub);
+        //
+        // hasPlatformScope BURADA türetilir, yeni bir arama EKLENMEZ: `entry` bu metodun
+        // üstünde zaten Marten'dan (ya da önbellekten) yüklendi. Ölçüldü (canlı, sessiz
+        // hata): SetActiveInstitutionHandler platform muafiyetini alırken bu çözümleme adımı
+        // almıyordu — kayıt activeInstitutionId'yi taşıyordu ama claim hiç doğmuyordu, admin
+        // "geçti" görünüp ev kurumunda kalmaya devam ediyordu.
+        await EnrichActiveContextClaimAsync(principal, sub, HasPlatformScope(entry, principal));
 
         // ── Alan (branş) kapsamı claim enrichment (#126) ──
         // Sıra: token claim → kullanıcı kaydındaki BranchCodes → personel kaydı yedeği.
@@ -811,10 +817,24 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     ///
     /// <para>Karar saf <see cref="ActiveContextPolicy.Resolve"/> içindedir: iki koşul birlikte
     /// aranır — bağlam bu OTURUMDA kurulmuş olmalı (<c>sid</c> eşleşmesi) ve hedef hâlâ aktörün
-    /// alt ağacında olmalı. <c>institution_path</c> claim'i (aktörün KENDİ yolu) girdi olarak
-    /// kullanılır ve bu adımla DEĞİŞTİRİLMEZ.</para>
+    /// alt ağacında olmalı (platform aktöründe ikinci koşul <paramref name="hasPlatformScope"/>
+    /// ile atlanır — sid koşulu ATLANMAZ). <c>institution_path</c> claim'i (aktörün KENDİ yolu)
+    /// girdi olarak kullanılır ve bu adımla DEĞİŞTİRİLMEZ.</para>
+    ///
+    /// <para><b>Doğrulama İKİ yerde yapılır</b> (spec §1) — burası ikincisi, her çözümlemede
+    /// çalışır. <c>SetActiveInstitutionHandler</c> (değiştirme anı) platform muafiyetini
+    /// alırken bu adım almıyordu: kayıt <c>activeInstitutionId</c>'yi taşıyor, ama bu metod
+    /// platformsuz aktörmüş gibi <c>CanAccessByPath</c>'e düşüp reddediyor ve
+    /// <c>active_institution_id</c> claim'i hiç doğmuyordu — kullanıcı hatasız biçimde ev
+    /// kurumunda kalmaya devam ediyordu (canlıda ölçüldü).</para>
     /// </summary>
-    private async Task EnrichActiveContextClaimAsync(ClaimsPrincipal principal, string keycloakUserId)
+    /// <param name="hasPlatformScope">
+    /// <c>platform:tenant:manage</c> — çağıran (<see cref="TransformAsync"/>) tarafından zaten
+    /// yüklenmiş <c>entry</c>'den türetilir (<see cref="HasPlatformScope"/>); burada yeni bir
+    /// Marten/SQL araması YAPILMAZ.
+    /// </param>
+    private async Task EnrichActiveContextClaimAsync(
+        ClaimsPrincipal principal, string keycloakUserId, bool hasPlatformScope)
     {
         if (principal.Identity is not ClaimsIdentity identity)
             return;
@@ -844,12 +864,49 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         var targetPath = await LookupTargetInstitutionPathAsync(stored.InstitutionId);
 
         var resolved = ActiveContextPolicy.Resolve(
-            activeInstitutionId, stored.SessionId, currentSessionId, actorPath, targetPath);
+            activeInstitutionId, stored.SessionId, currentSessionId, actorPath, targetPath,
+            hasPlatformScope);
 
         if (resolved is not { } resolvedInstitutionId)
             return;
 
         identity.AddClaim(new Claim(ActiveInstitutionClaimType, resolvedInstitutionId.ToString()));
+    }
+
+    /// <summary>
+    /// <c>platform:tenant:manage</c> — <see cref="EnrichActiveContextClaimAsync"/>'in
+    /// <c>hasPlatformScope</c> girdisi. <b>Yeni bir arama EKLEMEZ:</b> <paramref name="entry"/>
+    /// <see cref="TransformAsync"/> içinde bu çağrıdan ÖNCE zaten Marten'dan (ya da
+    /// önbellekten) yüklendi; burada yalnız <c>allPermissions</c>'ın aşağıda (identity null
+    /// kontrolünden sonra) yapılan hesabıyla AYNI mantık — rol + doğrudan izin birleşimi —
+    /// daha erken ve dar bir soru için (yalnız bu bir izin mi) tekrarlanır.
+    ///
+    /// <para>Hesap devre dışıysa <c>false</c> döner — aşağıdaki <c>allPermissions</c> bloğu da
+    /// aynı durumda hiçbir izin eklemez, tutarlı.</para>
+    /// </summary>
+    private bool HasPlatformScope(PermissionCacheEntry? entry, ClaimsPrincipal principal)
+    {
+        IReadOnlyList<string> roles;
+        IEnumerable<string> directPermissions;
+
+        if (entry is not null)
+        {
+            if (!entry.IsEnabled)
+                return false;
+
+            roles = entry.Roles;
+            directPermissions = entry.DirectPermissions;
+        }
+        else
+        {
+            // UserAccount henüz yok — allPermissions'daki token-fallback dalıyla aynı kaynak.
+            roles = ExtractRealmRolesFromToken(principal);
+            directPermissions = [];
+        }
+
+        return RolePermissionMap.GetPermissionsForRoles(roles)
+            .Concat(directPermissions)
+            .Any(p => RolePermissionMap.MatchesPermission(p, Permissions.Platform.TenantManage));
     }
 
     /// <summary>
