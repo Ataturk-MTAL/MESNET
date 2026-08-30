@@ -17,7 +17,62 @@
         >
           <q-tooltip>Menüyü aç/kapat</q-tooltip>
         </q-btn>
-        <q-toolbar-title>MESNET</q-toolbar-title>
+        <q-toolbar-title class="baslik-daralmaz">MESNET</q-toolbar-title>
+
+        <!--
+          Bağlam göstergesi — HEADER'DA, "MESNET"in hemen sağında (ürün ilkesi #3: kapsam her
+          zaman ekranda okunur; kenar çubuğu kapanabilir, header kapanmaz). Eskiden çekmecenin
+          tepesindeydi ve ince bir rozetti — buradan kaldırıldı (aşağıdaki drawer'da izi yok).
+        -->
+        <template v-if="hasActiveContext || showContextSelectButton">
+          <span
+            class="baglam-ayrac"
+            aria-hidden="true"
+          />
+          <q-chip
+            v-if="hasActiveContext"
+            clickable
+            square
+            color="warning"
+            text-color="white"
+            icon="swap_horiz"
+            class="baglam-cip"
+            :aria-label="
+              activeInstitutionName
+                ? `Aktif kurum bağlamını değiştir — ${activeInstitutionName}`
+                : 'Aktif kurum bağlamını değiştir'
+            "
+            @click="goToContextSelect"
+          >
+            <!-- Ad çözülene kadar yer tutucu METİN gösterilmez (bulgu 2) — yalnız iskelet. -->
+            <q-skeleton
+              v-if="!activeInstitutionName"
+              type="text"
+              width="140px"
+              class="baglam-cip-iskelet"
+            />
+            <span
+              v-else
+              class="baglam-cip-metin"
+            >{{ activeInstitutionName }}</span>
+            <q-tooltip v-if="activeInstitutionName">
+              {{ activeInstitutionName }}
+            </q-tooltip>
+          </q-chip>
+          <q-btn
+            v-else
+            outline
+            no-caps
+            dense
+            color="white"
+            text-color="white"
+            icon="swap_horiz"
+            label="Kurum Seç"
+            class="baglam-buton"
+            @click="goToContextSelect"
+          />
+        </template>
+
         <q-space />
         <span
           v-if="authStore.user"
@@ -139,45 +194,10 @@
       <q-scroll-area class="fit">
         <q-list padding>
           <!--
-            Bağlam göstergesi/seçici — dönem seçicisinin ÜSTÜNDE: aktif bağlam bu uygulamada
-            en üst öncelikli bilgidir, il/ilçe yetkilisinin tüm çalışması bir okul adına
-            geçtiği andan itibaren o bağlamın içinde yürür. İnce bir rozet yeterli değil —
-            aktif renk + net metin + tek tıkla `/context`'e giden eylem.
+            Bağlam göstergesi/seçici artık HEADER'da ("MESNET"in sağında, q-toolbar) —
+            kenar çubuğu kapanabilir, header kapanmaz (ürün ilkesi #3). Eski rozet ve
+            "Kurum Seç" düğmesi buradan kaldırıldı; iki yerde durmasın.
           -->
-          <q-item
-            v-if="activeInstitutionName"
-            class="q-mb-xs"
-          >
-            <q-item-section>
-              <q-chip
-                clickable
-                square
-                color="warning"
-                text-color="white"
-                icon="swap_horiz"
-                class="full-width baglam-rozeti"
-                @click="goToContextSelect"
-              >
-                {{ activeInstitutionName }} adına çalışıyorsunuz
-              </q-chip>
-            </q-item-section>
-          </q-item>
-          <q-item
-            v-else-if="showContextSelectButton"
-            class="q-mb-xs"
-          >
-            <q-item-section>
-              <q-btn
-                outline
-                no-caps
-                color="primary"
-                icon="swap_horiz"
-                label="Kurum Seç"
-                class="full-width"
-                @click="goToContextSelect"
-              />
-            </q-item-section>
-          </q-item>
 
           <!-- Dönem Seçici -->
           <q-item
@@ -417,20 +437,35 @@ const currentYear = new Date().getFullYear()
 const unreadCount = computed(() => notificationStore.unreadCount)
 
 /**
- * Aktif bağlamdaki kurumun adı — doluysa üst bar göstergesi görünür.
+ * Bağlam KURULU mu — `authStore.user?.activeInstitutionId` dolu mu sorusu. Ada (isme)
+ * BAKMAZ: kurum adı henüz yüklenmemişken de bağlam kuruludur (bulgu 2). Header'daki çip bu
+ * bayrağa göre görünür; içindeki metin/iskelet ayrımı `activeInstitutionName`'e bakar.
+ */
+const hasActiveContext = computed(() => Boolean(authStore.user?.activeInstitutionId))
+
+/**
+ * Aktif bağlamdaki kurumun adı — `null` iki ayrı anlama gelebilir: bağlam yok ya da bağlam
+ * var ama ad henüz yüklenmedi (`hasActiveContext` bu ikisini ayırır, bkz. yukarısı).
  *
- * <p>Görünürlük ölçütü `authStore.user?.activeInstitutionId` dolu mu sorusudur. Ad
- * `institutionStore.institution`'dan gelir: bağlam aktifken store `authStore.
+ * <p>Ad `institutionStore.institution`'dan gelir: bağlam aktifken store `authStore.
  * currentInstitutionId`'yi (Görev 8 → aktif bağlam varsa o) okuyarak zaten AKTİF okulun
  * profilini yükler (bkz. `stores/institution.ts`), ikinci bir sorgu yazılmaz.</p>
+ *
+ * <p><b>Yer tutucu METİN döndürülmez</b> (bulgu 2) — ad gelene kadar `null` kalır ve şablon
+ * bunun yerine `q-skeleton` gösterir. Yanlış-tanıdık bir metin ("seçili kurum adına
+ * çalışıyorsunuz") kullanıcının bir an hangi okulda olduğunu okumasını engellerdi.</p>
  */
 const activeInstitutionName = computed(() =>
-  authStore.user?.activeInstitutionId ? institutionStore.institution?.fullName : null,
+  hasActiveContext.value ? (institutionStore.institution?.fullName ?? null) : null,
 )
 
 /**
  * "Kurum Seç" butonu yalnız bağlam YOKKEN ve kullanıcının kendi düğümü bir üst düğümse
  * (il/ilçe müdürlüğü) görünür. Okul kullanıcısında ikisi de görünmez.
+ *
+ * <b>`hasActiveContext`'e bakar, `activeInstitutionName`'e DEĞİL</b> — ad henüz yüklenmemişken
+ * (bulgu 2'deki yükleme penceresi) bağlam yine de kuruludur; ada bakılsaydı o pencerede bu
+ * buton bir an yanlışlıkla görünürdü.
  *
  * <b>Rol adına BAKILMAZ</b> (depo kuralı) — `useNavigation.ts`'teki `visibilityContext` ile
  * aynı sinyal: `institutionStore`'daki yüklü kurumun `nodeType`'ı. Bağlam yokken bu alan
@@ -439,7 +474,7 @@ const activeInstitutionName = computed(() =>
  * `institutionStore.institution?.nodeType` zaten menüde aynı amaçla kullanılan mevcut sinyal.
  */
 const showContextSelectButton = computed(() => {
-  if (activeInstitutionName.value) return false
+  if (hasActiveContext.value) return false
   const nodeType = institutionStore.institution?.nodeType
   return nodeType === 'Province' || nodeType === 'District'
 })
@@ -553,19 +588,79 @@ async function onLogout() {
 
 <style scoped>
 /*
- * Bağlam rozeti — "gösterge ince olamaz": il/ilçe yetkilisinin bütün zamanı bir bağlamın
- * içinde geçer, hangi okul adına davrandığı her an tartışmasız görünmeli. q-chip'in
- * varsayılan tek satır/kısaltma davranışı burada istenmiyor — okul adı ne kadar uzun olursa
- * olsun tam görünür ve satır kırılabilir; kalın yazı tipi göze ilk çarpan öge olmasını
- * sağlar. Renk: `$warning` (#9A6B00) bu depoda beyaz metinle 4,8:1 için özel ayarlandı
- * (bkz. quasar-variables.sass yorumu) — Quasar varsayılanı ~1,9:1 ile yetersizdi.
+ * Başlık büyümesin — "MESNET"in HEMEN SAĞINDA bir ayraç+çip istiyoruz. Quasar'ın
+ * `.q-toolbar__title` varsayılanı `flex: 1 1 0%`tir (node_modules/quasar/.../QToolbar.sass):
+ * kutu büyür ama metin sola yaslı kaldığı için ayraç/çip "MESNET"ten UZAKLAŞIP q-space'e
+ * yapışırdı. `flex: 0 0 auto` kutuyu içeriğine küçültür, ayraç hemen bitişik durur.
  */
-.baglam-rozeti {
-  height: auto;
-  min-height: 40px;
-  padding: 8px 12px;
-  white-space: normal;
+.baslik-daralmaz {
+  flex: 0 0 auto;
+}
+
+/*
+ * Bağlam ayracı — "MESNET" ile göstergeyi ayıran saç teli (1px). Header zemini mührü lacivert
+ * (ya da kiracının kaydırdığı primary); beyaz %24 opaklık zeminden ayrılan ama bağırmayan bir
+ * çizgi verir. Renkli `border-left` YASAK (craft floor) — bu bir DIŞ ayraç, kenarlık değil.
+ */
+.baglam-ayrac {
+  display: inline-block;
+  width: 1px;
+  align-self: stretch;
+  margin: 8px 12px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+/*
+ * Bağlam çipi — "gösterge ince olamaz": il/ilçe yetkilisinin bütün zamanı bir bağlamın
+ * içinde geçer, hangi okul adına davrandığı her an tartışmasız görünmeli. Dolu `warning`
+ * zemini + beyaz metin bu depoda 4,8:1 için özel ayarlandı (`$warning` = #9A6B00, bkz.
+ * quasar-variables.sass yorumu) — anlamsal renkler kiracıdan bağımsızdır (DESIGN.md), yani
+ * bu çift her kiracıda aynı kalır.
+ */
+.baglam-cip {
   font-weight: 600;
+}
+
+/* Geniş görünümde ad TAM görünür — kesilme yok. Dar görünümde ellipsis (aşağıdaki media query). */
+.baglam-cip-metin {
+  white-space: nowrap;
+}
+
+.baglam-cip-iskelet {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+@media (max-width: 599px) {
+  /* Kesilme yalnız DAR görünümde: çip amberliğini ve ikonunu korur, yalnız metin kısalır. */
+  .baglam-cip-metin {
+    display: inline-block;
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+}
+
+/*
+ * "Kurum Seç" outline butonu HEADER zemininde: `color="primary"` burada YANLIŞ olurdu —
+ * header'ın kendi zemini primary, yani kenarlık/metin görünmez kaybolurdu. Beyaz seçildi;
+ * küratörlü sekiz paletin hepsinde primary beyaz metinle en az 11,2:1 verir (DESIGN.md), yani
+ * bu kontrast kiracıdan BAĞIMSIZ garantilidir — tema kaymasıyla kırılmaz.
+ */
+.baglam-buton {
+  font-weight: 600;
+}
+
+/*
+ * Odak halkası — HEADER zemininde görünür olmalı (craft floor: "browser surfaces", asla
+ * kaldırılmaz). Site geneli odak rengi 2px mührü lacivert'tir (DESIGN.md → Buttons); o renk
+ * TAM DA bu header'ın kendi zemini olduğu için burada kullanılırsa halka görünmez olurdu.
+ * Beyaz, yukarıdaki "Kurum Seç" gerekçesiyle aynı garantiye (≥11,2:1) dayanır.
+ */
+.baglam-cip:focus-visible,
+.baglam-buton:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 /* Dokunma hedefi WCAG 2.2 SC 2.5.8 (24x24 CSS px) — size="xs" görsel olarak küçük kalıyor. */

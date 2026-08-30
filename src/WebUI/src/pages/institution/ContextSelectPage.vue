@@ -8,8 +8,24 @@
       class="q-mb-md"
     >
       <div class="row items-center q-gutter-sm">
-        <span>
-          Şu an <strong>{{ institutionStore.institution?.fullName ?? 'seçili kurum' }}</strong>
+        <!--
+          Ad çözülene kadar yer tutucu METİN gösterilmez (bulgu 2, MainLayout'taki header
+          çipiyle aynı kural): "seçili kurum" yanlış-tanıdık bir metindir, kullanıcı bir an
+          hangi okulda olduğunu okuyamaz. Ad gelene kadar iskelet durur, gelince yerine geçer.
+        -->
+        <span v-if="institutionStore.institution?.fullName">
+          Şu an <strong>{{ institutionStore.institution.fullName }}</strong>
+          adına çalışıyorsunuz.
+        </span>
+        <span
+          v-else
+          class="row items-center q-gutter-xs"
+        >
+          Şu an
+          <q-skeleton
+            type="text"
+            width="160px"
+          />
           adına çalışıyorsunuz.
         </span>
         <q-btn
