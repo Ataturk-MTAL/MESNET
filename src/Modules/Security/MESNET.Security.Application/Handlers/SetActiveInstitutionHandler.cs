@@ -51,14 +51,10 @@ public static class SetActiveInstitutionHandler
 
         if (command.InstitutionId is { } target && target != Guid.Empty)
         {
+            var hasPlatformScope = currentUser.HasPermission(Permissions.Platform.TenantManage);
             var targetPath = await pathLookup.GetPathAsync(target, cancellationToken);
 
-            // Kendi kurumuna geçmek her zaman serbesttir: yol henüz kurulmamış olsa da
-            // (geçiş ucu koşmamış kurum) kullanıcı kendi okuluna dönebilmelidir.
-            var kendiKurumu = actor.InstitutionId is { } own && own == target;
-
-            if (!kendiKurumu
-                && !InstitutionScopePolicy.CanAccessByPath(actor.InstitutionPath, targetPath))
+            if (!CanSwitchTo(actor.InstitutionId, actor.InstitutionPath, target, targetPath, hasPlatformScope))
             {
                 throw new DomainException(SecurityErrors.ActiveContextOutOfScope(target));
             }
@@ -77,5 +73,42 @@ public static class SetActiveInstitutionHandler
         await session.SaveChangesAsync(cancellationToken);
 
         PermissionClaimsTransformation.InvalidateCache(cache, account.KeycloakUserId);
+    }
+
+    /// <summary>
+    /// Bağlam geçişinin kapsam kararı — saf yardımcı, Marten/HTTP'den bağımsız. Kural burada
+    /// YAŞAMAZ; <see cref="InstitutionScopePolicy.Decide"/> ve
+    /// <see cref="InstitutionScopePolicy.CanAccessByPath"/>'i sarar, tek iş ikisini bu ucun
+    /// beklediği tek boole karara indirgemektir.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Platform muafiyeti burada eksikti — canlıda ölçüldü.</b> Bu uç eskiden yalnız
+    /// "kendi kurumu" veya "aktörün alt ağacı"nı kabul ediyordu; <c>Decide</c>'ın zaten taşıdığı
+    /// <c>hasPlatformScope</c> parametresi hiç geçilmiyordu. <c>platform:tenant:manage</c>
+    /// taşıyan aktör zaten bütün kurumları okuyabiliyor
+    /// (<see cref="InstitutionScopePolicy.VisibleScope"/> → <c>Unrestricted</c>) ve kullanıcıyı
+    /// herhangi bir okula bağlayabiliyor (ADR-0003 adım 6,
+    /// <see cref="UserInstitutionScopePolicy.CanAssign"/>). Bağlam değiştirmesini engellemek
+    /// yeni bir güvence üretmiyordu — yalnız çözümleme katmanının
+    /// (<c>TenantResolution.Resolve</c>, <c>TenantResolutionActiveContextTests.
+    /// Kurumu_olmayan_platform_aktoru_baglam_secebilir</c>) zaten desteklediği bir durumu bu
+    /// ucun veremediği bir tutarsızlık bırakıyordu. Her geçiş zaten denetim izine düşer
+    /// (<c>AuditCommandLabels</c>) — muafiyet yeni bir izlenemez yol açmaz.</para>
+    /// </remarks>
+    public static bool CanSwitchTo(
+        Guid? actorInstitutionId,
+        string? actorPath,
+        Guid targetInstitutionId,
+        string? targetPath,
+        bool hasPlatformScope)
+    {
+        var outcome = InstitutionScopePolicy.Decide(actorInstitutionId, targetInstitutionId, hasPlatformScope);
+
+        return outcome switch
+        {
+            InstitutionScopeOutcome.Allowed => true,
+            InstitutionScopeOutcome.NeedsPathCheck => InstitutionScopePolicy.CanAccessByPath(actorPath, targetPath),
+            _ => false,
+        };
     }
 }
