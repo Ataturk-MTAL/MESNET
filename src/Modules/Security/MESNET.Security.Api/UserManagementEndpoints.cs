@@ -302,11 +302,21 @@ public static class UserManagementEndpoints
     /// <summary>
     /// Mevcut hesapları <c>UserCreated</c> olarak yeniden yayınlar (D2) — Institution modülünün
     /// <c>InstitutionManagerLink</c> read-model'ini geriye dönük doldurur. İdempotenttir.
+    ///
+    /// <para>Pasif hesaplar için ayrıca <c>UserDeactivated</c> yayınlanır (aksi hâlde
+    /// <c>UserCreated</c> tüketicisi kaydı koşulsuz etkin yazardı) — <c>markedDeactivated</c>
+    /// operatöre bunun kaç hesapta olduğunu gösterir.</para>
     /// </summary>
     private static async Task<IResult> PostReplayUserAccounts(IMessageBus bus)
     {
-        var count = await bus.InvokeAsync<int>(new ReplayUserAccounts());
-        return Results.Ok(ResponseBuilder.Success().AddData(new { replayed = count }).Build());
+        var result = await bus.InvokeAsync<ReplayUserAccountsResult>(new ReplayUserAccounts());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage(
+                $"{result.Replayed} kullanıcı hesabı yeniden yayınlandı "
+                + $"({result.MarkedDeactivated} tanesi pasif durumuyla işaretlendi).")
+            .Build());
     }
 
     private static async Task<IResult> SyncUsers(IMessageBus bus)

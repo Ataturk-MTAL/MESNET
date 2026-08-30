@@ -7,11 +7,17 @@ using Wolverine;
 namespace MESNET.Security.Application.Handlers;
 
 /// <summary>
+/// <see cref="ReplayUserAccounts"/> sonucu — kaç hesap yeniden yayınlandı, kaçı ek olarak pasif
+/// durumuyla işaretlendi (operatör görsün diye ikisi ayrı sayılır).
+/// </summary>
+public sealed record ReplayUserAccountsResult(int Replayed, int MarkedDeactivated);
+
+/// <summary>
 /// <inheritdoc cref="ReplayUserAccounts"/>
 /// </summary>
 public static class ReplayUserAccountsHandler
 {
-    public static async Task<int> Handle(
+    public static async Task<ReplayUserAccountsResult> Handle(
         ReplayUserAccounts command,
         IQuerySession session,
         IMessageBus bus,
@@ -22,6 +28,8 @@ public static class ReplayUserAccountsHandler
         var accounts = await session.Query<UserAccount>()
             .Where(u => u.DeletedAt == null)
             .ToListAsync(cancellationToken);
+
+        var markedDeactivated = 0;
 
         foreach (var account in accounts)
         {
@@ -35,8 +43,26 @@ public static class ReplayUserAccountsHandler
                 account.InstitutionId,
                 account.BusinessId,
                 new Dictionary<string, string>()));
+
+            // UserCreated tüketicisi (Task 6, InstitutionManagerLinkConsumer) IsEnabled'ı
+            // KOŞULSUZ true yazar — olay şeması etkinlik durumu taşımaz ve başka modüllerin
+            // tüketicileriyle PAYLAŞILAN bir sözleşmedir, burada genişletilmez. Hesap zaten
+            // pasifse ikinci bir olay yayınlanır; InstitutionManagerLinkConsumer'ın kuyruğu
+            // Sequential() olduğu için aynı kullanıcının olayları YAYIN SIRASIYLA işlenir ve bu
+            // ikinci olay IsEnabled'ı doğru değere (false) döndürür. Aksi hâlde pasif bir
+            // yöneticinin hesabı "etkin yönetici" sayılır, okulu yöneticisiz listesinden
+            // SESSİZCE düşürür — bu ucun tüm amacı tam da bunu önlemektir.
+            if (!account.IsEnabled)
+            {
+                await bus.PublishAsync(new UserDeactivated(
+                    account.Id,
+                    account.KeycloakUserId,
+                    "Yeniden yayın (replay) — hesap zaten pasifti, durum eski hâline döndürüldü."));
+
+                markedDeactivated++;
+            }
         }
 
-        return accounts.Count;
+        return new ReplayUserAccountsResult(accounts.Count, markedDeactivated);
     }
 }
