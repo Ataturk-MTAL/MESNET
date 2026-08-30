@@ -174,7 +174,8 @@ import { institutionApi, type ProvinceDto } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useInstitutionStore } from 'stores/institution'
 import { useAuthStore } from 'stores/auth'
-import { resolveEditableInstitutionId } from 'src/utils/institutionScope'
+import { resolveEditableInstitutionId, isActiveContextInstitution } from 'src/utils/institutionScope'
+import { institutionReturnRoute } from 'utils/institutionRoutes'
 import { isSafeUrl } from 'utils/safeUrl'
 
 /** Boş geçilebilir; doluysa yalnız http(s) kabul edilir. */
@@ -299,7 +300,8 @@ function filterProvinces(needle: string, update: (fn: () => void) => void) {
 }
 
 function goBack() {
-  router.push('/institution').catch(() => {})
+  const routeId = typeof route.params.id === 'string' ? route.params.id : null
+  router.push(institutionReturnRoute(routeId)).catch(() => {})
 }
 
 async function loadInstitution() {
@@ -309,7 +311,10 @@ async function loadInstitution() {
     // güvenmekti ve platform aktöründe her yazmadan sonra başka bir okulu düzenletiyordu.
     // InstitutionPage 27.08.2026'da düzeltilmişti; bu çağrı yeri gözden kaçmıştı.
     const routeId = typeof route.params.id === 'string' ? route.params.id : null
-    const ownId = authStore.user?.institutionId ?? null
+    // authStore.currentInstitutionId OKUNUR — user.institutionId DEĞİL: aktif bağlam varsa
+    // düzenlenen kurum davranılan (bağlamdaki) okul olmalı, il yetkilisinin kendi İl MEM
+    // kaydı değil (Görev 10 ile aynı disiplin — üçüncü kopya, InstitutionPage ile aynı).
+    const ownId = authStore.currentInstitutionId ?? null
     const listRes = routeId || ownId ? null : await institutionApi.list({ pageSize: 100 })
     const resolved = resolveEditableInstitutionId(routeId, ownId, listRes?.data?.items ?? [])
     if (!resolved) {
@@ -357,7 +362,12 @@ async function handleSave() {
       email: form.email || undefined,
       webUrl: form.webUrl || undefined,
     })
-    institutionStore.clear()
+    // InstitutionPage ile aynı gerekçe (bkz. o dosyadaki isActiveContext yorumu): bu form
+    // BAŞKA bir kurumu (rota parametresiyle açılan) düzenleyebilir; global store'u yalnız
+    // düzenlenen kurum aktif bağlamın kendisiyse geçersiz kıl.
+    if (isActiveContextInstitution(institutionId.value, authStore.currentInstitutionId)) {
+      institutionStore.clear()
+    }
     notify.success('Kurum bilgileri güncellendi.')
     goBack()
   } catch (e) {

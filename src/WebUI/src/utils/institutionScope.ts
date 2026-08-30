@@ -15,12 +15,20 @@
  *
  * <p><b>Kurum ağacıyla gelen üçüncü girdi (27.08.2026):</b> rota parametresi. İl/ilçe
  * yetkilisi `/institutions/:id` ile alt ağacındaki bir okulu açtığında hedef O OKULDUR —
- * kendi kurumu (İl MEM) değil. Sıra bu yüzden <b>rota → kendi kurumu → liste</b>'dir; en
+ * davrandığı kurum değil. Sıra bu yüzden <b>rota → davranılan kurum → liste</b>'dir; en
  * belirgin niyet en önde.</p>
  *
+ * <p><b>Aktif bağlamla gelen sözleşme daralması (29.08.2026):</b> ikinci girdi artık EV kurumu
+ * değil <b>DAVRANILAN</b> kurumdur. Çağıranlar `authStore.currentInstitutionId`
+ * (= `activeInstitutionId ?? institutionId`) besler, `authStore.user.institutionId` DEĞİL.
+ * Ev kurumuyla beslenirse üst barda "X Okulu adına çalışıyorsunuz" rozeti dururken il
+ * yetkilisi kendi İl MEM kaydını düzenler. Fonksiyonun kendisi kaynağı bilmez; sözleşme
+ * ÇAĞIRANDADIR ve `institutionScope.spec.ts` içinde kilitlidir.</p>
+ *
  * @param routeInstitutionId Rota parametresi (`/institutions/:id`). Yoksa `null`.
- * @param ownInstitutionId Aktörün kendi kurumu (`/auth/me` → `authStore.user.institutionId`).
- *   Token'dan GELMEZ; sunucu kullanıcı kaydından üretir (ADR-0003 adım 2).
+ * @param ownInstitutionId Aktörün DAVRANDIĞI kurum — aktif bağlam varsa o, yoksa ev kurumu
+ *   (`authStore.currentInstitutionId`). Token'dan GELMEZ; sunucu kullanıcı kaydından üretir
+ *   (ADR-0003 adım 2).
  * @param institutions Sunucudan gelen görünür kurum listesi.
  * @returns Düzenlenecek kurum kimliği; hiçbiri yoksa `null`.
  */
@@ -33,7 +41,7 @@ export function resolveEditableInstitutionId(
   // sunucunundur (InstitutionScopeGuard); rota, yetkinin ikinci bir kopyası değildir.
   if (routeInstitutionId) return routeInstitutionId
 
-  // Kendi kurumu VARSA tartışma yok: listede görünmese bile hedef odur.
+  // Davranılan kurum VARSA tartışma yok: listede görünmese bile hedef odur.
   if (ownInstitutionId) return ownInstitutionId
 
   if (institutions.length === 0) return null
@@ -42,4 +50,31 @@ export function resolveEditableInstitutionId(
   // garantisi vermiyor ve "ilk satır" her yazmadan sonra başka bir okul olabiliyordu.
   // Kimliğe göre kararlı seçim, aynı kümede her zaman aynı okulu verir.
   return [...institutions].sort((a, b) => a.id.localeCompare(b.id))[0]!.id
+}
+
+/**
+ * Görüntülenen kurum, aktörün AKTİF BAĞLAMININ KENDİSİ mi?
+ *
+ * <p><b>Neden ayrı bir soru:</b> "hangi kurumu düzenliyorum" (`resolveEditableInstitutionId`)
+ * ile "bu görüntüleme global store'a yazabilir mi" iki farklı sorudur. İl/ilçe yetkilisi
+ * `Kurumlar` ağacında BAŞKA bir okulu görüntülerken `InstitutionPage` o okulun verisini kendi
+ * YEREL state'inde tutar (bu fonksiyonun konusu değil); ama sayfa mutasyon sonrası
+ * `institutionStore.clear()` / `academicPeriodStore.loadPeriods(true)` gibi GLOBAL önbellek
+ * tazeleme çağrıları da yapıyordu — bu çağrılar "davranılan (aktif bağlamdaki) kurum" sorusuna
+ * cevap veren store'ları hedefler. Görüntülenen kurum aktif bağlamdan FARKLIYSA bu çağrılar
+ * YANLIŞ kurumun (aktif bağlamın) önbelleğini boşaltır: header'daki bağlam çipi kalıcı iskelete
+ * düşer, dönem seçici aktif bağlamın verisiyle değil görüntülenen kurumun (boş) verisiyle
+ * tazelenir. Global store'u kullanmak/tazelemek SADECE iki soru aynı cevaba sahipken serbesttir
+ * — global bağlamı geçersiz kılma yetkisi `useInstitutionContext().switchTo()`'nundur, bir
+ * görüntüleme sayfası bu yetkiyi ödünç almaz.</p>
+ *
+ * @param viewedInstitutionId Sayfanın gösterdiği kurum (rota parametresi çözüldükten sonra).
+ * @param activeContextInstitutionId `authStore.currentInstitutionId` — aktif bağlam varsa o,
+ *   yoksa aktörün kendi (ev) kurumu.
+ */
+export function isActiveContextInstitution(
+  viewedInstitutionId: string | null | undefined,
+  activeContextInstitutionId: string | null | undefined,
+): boolean {
+  return !!viewedInstitutionId && viewedInstitutionId === activeContextInstitutionId
 }

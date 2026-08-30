@@ -79,9 +79,16 @@ public static class AssignablePermissionScope
         // tam bu bireysel atama yolundan doğardı; guard onu durdurmaz, izin dağıtımı durdurur.
         // Bu iki role zaten `user:roles:manage` verilmiyor, yani domain girdisi hiçbir kullanıcı
         // yönetim akışını açmıyordu — yalnız risk taşıyordu (dosyanın #126/#172 gerekçesiyle aynı
-        // sınıf: erişim izniyle kapsam muafiyetini karıştırmamak). Yazma denetim izi (C parçası)
-        // yazılmadan bu domainler tekrar açılmamalı. Anahtarlar KALIR — RoleModelDriftTests rol
-        // listesiyle anahtar kümesini karşılaştırıyor.
+        // sınıf: erişim izniyle kapsam muafiyetini karıştırmamak).
+        //
+        // B parçası `institution:manage`'i RolePermissionMap üzerinden bu rollere ZATEN AÇTI
+        // (kurum künyesi + müdahale yetkisi) — ama bu liste ONU sormaz. Bu liste "bu rol
+        // BAŞKASINA hangi izinleri dağıtabilir" sorusudur, "bu rol ne yapabilir" değil. İl/ilçe
+        // yetkilisinin izin dağıtması hiçbir zaman B'nin kapsamında olmadı; açılırsa il
+        // yetkilisi kendi elindeki izinleri başka kullanıcılara vererek kendi kapsamını
+        // (dolaylı da olsa) genişletmiş olur. Bu yüzden liste B ile birlikte de BOŞ kalır —
+        // gerekçe "henüz yazılmamış bir denetim izi" değil, "bu sorunun cevabı hep hayırdı".
+        // Anahtarlar KALIR — RoleModelDriftTests rol listesiyle anahtar kümesini karşılaştırıyor.
         [MesnetRoles.ProvincialAdmin] = [],
         [MesnetRoles.DistrictAdmin] = [],
         // Sistem yöneticisi (#147): yalnız ulusal domain. Kurum domainlerinden hiçbiri yok —
@@ -154,6 +161,13 @@ public static class AssignablePermissionScope
             // günlüğünü okurdu. Rol → domain haritası çalışma zamanında değiştirilebildiği
             // için (user:roles:manage) yalnız yapılandırmaya güvenmek yetmez.
             Permissions.Audit.ViewInstitution,
+            // Müdürlük katmanı (B parçası). Kapsam AKTİF BAĞLAMDAN gelir (ağaçtaki yer), izin
+            // demetinden değil — DeputyDirector'ın atanabilir kapsamı bugün "internship:" ve
+            // "institution:" prefix'lerini içerir; bu koruma olmasaydı müdür yardımcısı bu iki
+            // izni bireysel olarak herhangi bir kullanıcıya (bir işletme kullanıcısına bile)
+            // atayıp müdürlük katmanının müdahale yetkisini tümden dışarı sızdırabilirdi.
+            Permissions.Directorate.InstitutionBootstrap,
+            Permissions.Internship.ApprovalOverride,
         };
 
     /// <summary>

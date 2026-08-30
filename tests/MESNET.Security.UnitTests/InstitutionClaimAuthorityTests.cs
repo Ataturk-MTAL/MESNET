@@ -264,4 +264,116 @@ public sealed class InstitutionClaimAuthorityTests
                 + "\"kaynak yoksa token'a düş\" davranışı geri gelir ve kaydı olmayan "
                 + "kullanıcı kendi kapsamını seçer.");
     }
+
+    /// <summary>
+    /// <b>Davranışsal kilit:</b> token'da <c>active_institution_id</c> claim'i varsa —
+    /// kayıt boş olsa bile — gerçek dönüşüm koşulduktan sonra claim SİLİNMİŞ olmalıdır.
+    ///
+    /// <para><b>Neden kaynak taraması testi yetmiyordu:</b> <see cref="Token_daki_aktif_baglam_claimi_her_istekte_silinir"/>
+    /// yalnız <c>RemoveActiveInstitutionClaims(principal);</c> dizesinin dosyada VAR OLDUĞUNU
+    /// arıyordu — ama o çağrı <c>EnrichActiveContextClaimAsync</c>'in İÇİNDE. Üst seviyedeki
+    /// <c>await EnrichActiveContextClaimAsync(principal, sub);</c> çağrısı (TransformAsync
+    /// içinde) tamamen silinse bile alt metod ve onun içindeki
+    /// <c>RemoveActiveInstitutionClaims(principal);</c> dizesi dosyada dururdu — tarama testi
+    /// yeşil kalırdı, ama üretimde active_institution_id hiç silinmezdi ve
+    /// <c>TenantResolutionMiddleware</c> onu okuduğu için kiracı anahtarı yeniden token'dan
+    /// gelir hâle gelirdi. Bu test gerçek <see cref="PermissionClaimsTransformation.TransformAsync"/>'i
+    /// koşturup SONUCU doğrular; çağrı sitesi nerede olursa olsun kırılır.</para>
+    /// </summary>
+    [Fact]
+    public async Task Tokendaki_aktif_baglam_claimi_kayit_bos_olsa_bile_atilir()
+    {
+        var transformation = Create(provider: null);
+
+        var principal = Principal(tokenInstitutionId: null);
+        principal.Identities.First().AddClaim(new Claim(
+            PermissionClaimsTransformation.ActiveInstitutionClaimType, Spoofed.ToString()));
+
+        var result = await transformation.TransformAsync(principal);
+
+        result.FindFirst(PermissionClaimsTransformation.ActiveInstitutionClaimType).ShouldBeNull(
+            "Kayıt boşken token'a düşülürse kullanıcı kendi bağlamını seçebilir.");
+    }
+
+    /// <summary>
+    /// Token'daki <c>active_institution_id</c> her istekte silinmelidir — kayıt boş olsa
+    /// bile. "Kaynak yoksa token'a düş" davranışı, kaydı olmayan kullanıcıya KENDİ bağlamını
+    /// seçtirirdi (B parçası, <c>institution_path</c> ile aynı disiplin).
+    ///
+    /// <para><b>Bilinen sınır:</b> bu test yalnız dizenin dosyada var olduğunu doğrular,
+    /// çağrı sitesinin nerede olduğunu değil — bkz.
+    /// <see cref="Tokendaki_aktif_baglam_claimi_kayit_bos_olsa_bile_atilir"/> yanında kalır,
+    /// SİLİNMEZ: biri niyeti (çağrı var mı), diğeri sonucu (claim gerçekten kalkıyor mu)
+    /// kilitler.</para>
+    /// </summary>
+    [Fact]
+    public void Token_daki_aktif_baglam_claimi_her_istekte_silinir()
+    {
+        var transformation = Path.Combine(
+            RepoRoot(), "src", "MESNET.Common.Infrastructure", "Security",
+            "PermissionClaimsTransformation.cs");
+
+        File.Exists(transformation).ShouldBeTrue($"Dosya bulunamadı: {transformation}");
+
+        var kaynak = File.ReadAllText(transformation);
+
+        kaynak.ShouldContain("ActiveInstitutionClaimType");
+
+        // Yalnız metod ADININ dosyada geçmesi yetmez (metod TANIMI da eşleşir ve çağrı
+        // silinse bile yeşil kalır). Çağrı SİTESİ aranır: yorum satırları hariç tutulur,
+        // imza "(principal)" ile eşleşir — tanım "(ClaimsPrincipal principal)" İLE EŞLEŞMEZ.
+        var cagriVarMi = File.ReadAllLines(transformation)
+            .Select(line => line.TrimStart())
+            .Where(line => !line.StartsWith("//", StringComparison.Ordinal))
+            .Any(line => line.Contains("RemoveActiveInstitutionClaims(principal);", StringComparison.Ordinal));
+
+        cagriVarMi.ShouldBeTrue(
+            "Token'daki active_institution_id claim'ini silen ÇAĞRI yok. Silinmezse "
+            + "\"kaynak yoksa token'a düş\" davranışı geri gelir ve kaydı olmayan "
+            + "kullanıcı kendi bağlamını seçer.");
+    }
+
+    /// <summary>
+    /// <b>Kapı kapalı kalmalı:</b> hiçbir kod Keycloak'a <c>active_institution_id</c>
+    /// özniteliği yazmamalıdır. Oradaki bir kopya, ileride birinin onu yeniden otorite
+    /// sanmasına davetiye çıkarır — #195'te realm'e ulaşmayan ayar tam bu sınıf bir sapmaydı.
+    /// Tarama deseni <see cref="Hicbir_kod_keycloaka_institution_id_oznitelig_yazmaz"/> ile
+    /// AYNIDIR.
+    /// </summary>
+    [Fact]
+    public void Aktif_baglam_Keycloak_a_YAZILMAZ()
+    {
+        var sourceRoot = Path.Combine(RepoRoot(), "src");
+        Directory.Exists(sourceRoot).ShouldBeTrue($"Kaynak klasörü bulunamadı: {sourceRoot}");
+
+        var violations = new List<string>();
+
+        foreach (var file in Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories))
+        {
+            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+                continue;
+
+            var lines = File.ReadAllLines(file);
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                var trimmed = line.TrimStart();
+
+                if (trimmed.StartsWith("//", StringComparison.Ordinal)) continue;
+
+                var key = line.IndexOf("[\"active_institution_id\"]", StringComparison.Ordinal);
+                if (key < 0) continue;
+                if (line.IndexOf('=', key) < 0) continue;
+
+                violations.Add($"{Path.GetRelativePath(RepoRoot(), file)}:{i + 1}");
+            }
+        }
+
+        violations.ShouldBeEmpty(
+            "Aktif bağlam Keycloak'a yazılıyor. Otorite UserAccount.ActiveInstitutionId'dir; "
+            + "Keycloak'taki bir kopya, ileride birinin onu yeniden otorite sanmasına "
+            + "davetiye çıkarır. Bağlam yalnız SetActiveInstitutionHandler ile değişir.\n  "
+            + string.Join("\n  ", violations));
+    }
 }

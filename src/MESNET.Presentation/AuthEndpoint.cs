@@ -45,6 +45,11 @@ public static class AuthEndpoint
         // institution_id artık InstitutionClaimsTransformation tarafından claim olarak eklenir
         // (token'da yoksa DB fallback — 5dk cache)
         var institutionId = user.FindFirst("institution_id")?.Value;
+        // active_institution_id aktörün ADINA DAVRANDIĞI kurumdur (B parçası) — institutionId
+        // EV kurumudur ve bundan etkilenmez. İkisi yan yana döner; ön yüz hangisinin geçerli
+        // olduğuna authStore.currentInstitutionId ile karar verir.
+        var activeInstitutionId = user.FindFirst(
+            PermissionClaimsTransformation.ActiveInstitutionClaimType)?.Value;
         var businessId = user.FindFirst("business_id")?.Value;
         // #230 — kapsam claim'lerinin üçü de burada görünür olmalı; studentId eksikti ve
         // eksikliği kapsamın doğru çözülüp çözülmediğini gözlenemez kılıyordu.
@@ -67,6 +72,7 @@ public static class AuthEndpoint
                 lastName = user.FindFirst("family_name")?.Value
                     ?? user.FindFirst(ClaimTypes.Surname)?.Value,
                 institutionId,
+                activeInstitutionId,
                 businessId,
                 studentId,
                 // Geriye uyumluluk: tek alan bekleyen istemciler için ilk kod.

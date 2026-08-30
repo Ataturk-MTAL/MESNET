@@ -37,10 +37,13 @@ public sealed class CurrentUserService : ICurrentUserService
         var branchCodes = BranchCodeClaims.Read(user);
         var linkedStudentIds = LinkedStudentClaims.Read(user);
         var institutionPath = user.FindFirst("institution_path")?.Value;
+        var activeInstitutionId =
+            Guid.TryParse(user.FindFirst("active_institution_id")?.Value, out var actInstId)
+                ? actInstId : (Guid?)null;
 
         _cachedContext = new UserContext(
             userId, fullName, institutionId, businessId, studentId, roles, permissions,
-            branchCodes, linkedStudentIds, institutionPath);
+            branchCodes, linkedStudentIds, institutionPath, activeInstitutionId);
         return _cachedContext;
     }
 
@@ -84,4 +87,7 @@ public sealed class CurrentUserService : ICurrentUserService
     {
         return GetCurrentUser()?.InstitutionPath;
     }
+
+    public string? GetSessionId()
+        => _httpContextAccessor.HttpContext?.User.FindFirst("sid")?.Value;
 }

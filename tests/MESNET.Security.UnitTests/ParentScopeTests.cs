@@ -181,6 +181,8 @@ public sealed class ParentScopeTests
         public IReadOnlyList<Guid> GetLinkedStudentIds() => linkedStudentIds;
 
         public string? GetInstitutionPath() => null;
+
+        public string? GetSessionId() => null;
     }
 
     /// <summary>

@@ -53,9 +53,18 @@ public class AuditMiddlewareContractTests
     {
         public List<(string CommandType, Exception? Exception)> Yazilanlar { get; } = [];
 
+        /// <summary>
+        /// Yazılan ham <see cref="AuditContext"/>'ler — aktif bağlamın middleware üzerinden
+        /// doğru TAŞINDIĞINI (bkz. <c>Aktif_baglam_middleware_araciligiyla_denetim_baglamina_tasinir</c>)
+        /// doğrulamak için. <c>Yazilanlar</c> yalnız komut tipi/istisna tutar, bağlamın
+        /// tamamını değil.
+        /// </summary>
+        public List<AuditContext> Baglamlar { get; } = [];
+
         public Task WriteAsync(AuditContext context, Exception? exception, CancellationToken ct = default)
         {
             Yazilanlar.Add((context.CommandType.Name, exception));
+            Baglamlar.Add(context);
             return Task.CompletedTask;
         }
     }
@@ -71,39 +80,57 @@ public class AuditMiddlewareContractTests
             => throw new InvalidOperationException("Denetim yazıcısı bozuldu (test).");
     }
 
+    // Referans için: AuditEntryFactoryTests'teki AktorKurumu/BaskaKurum ile AYNI değerler —
+    // iki test dosyası birbirinden bağımsız derlenir (farklı sınıflar), aynı sabitleri
+    // burada da tanımlıyoruz.
+    internal static readonly Guid AktorKurumu = Guid.Parse("22222222-2222-2222-2222-222222222222");
+    internal static readonly Guid BaskaKurum = Guid.Parse("33333333-3333-3333-3333-333333333333");
+
     // internal: bkz. SahteYazici üstündeki not.
-    internal sealed class SahteKullanici : ICurrentUserService
+    //
+    // Aktif bağlamı KURUCUDAN alır (yapılandırılabilir alan) — brief'teki iki seçenekten
+    // biri ("ikinci bir sahte sınıf ya da yapılandırılabilir bir alan"). İkinci sahte sınıf
+    // yerine bunu seçtik: AuditGuardOrderingRegressionTests.cs bu sınıfı TİP bazlı DI kaydıyla
+    // (`AddSingleton<ICurrentUserService, SahteKullanici>()`) kullanıyor ve o dosyaya
+    // DOKUNMADAN çalışmaya devam etmesi gerekiyordu (brief bu dosyayı Files listesinde
+    // saymıyor). Parametreye varsayılan `null` vermek her iki kullanım şeklini de (tip bazlı
+    // DI aktivasyonu VE burada `new SahteKullanici(aktifBaglam)` ile örnek bazlı kayıt) aynı
+    // sınıfla, ikinci bir sınıf türetmeden karşılıyor.
+    internal sealed class SahteKullanici(Guid? aktifBaglam = null) : ICurrentUserService
     {
-        private static readonly UserContext Kullanici = new(
+        private readonly UserContext _kullanici = new(
             UserId: Guid.Parse("11111111-1111-1111-1111-111111111111"),
             FullName: "Ayşe Öğretmen",
-            InstitutionId: Guid.Parse("22222222-2222-2222-2222-222222222222"));
+            InstitutionId: AktorKurumu,
+            ActiveInstitutionId: aktifBaglam);
 
-        public UserContext? GetCurrentUser() => Kullanici;
-        public Guid GetUserId() => Kullanici.UserId;
-        public string GetFullName() => Kullanici.FullName;
+        public UserContext? GetCurrentUser() => _kullanici;
+        public Guid GetUserId() => _kullanici.UserId;
+        public string GetFullName() => _kullanici.FullName;
         public bool HasPermission(string permission) => false;
         public bool IsInRole(string role) => false;
         public IReadOnlyList<string> GetBranchCodes() => [];
         public IReadOnlyList<Guid> GetLinkedStudentIds() => [];
         public string? GetInstitutionPath() => "/il/ilce/okul/";
+        public string? GetSessionId() => null;
     }
 
-    private static async Task<(IHost Host, SahteYazici Yazici)> AnaBilgisayarKurAsync()
+    private static async Task<(IHost Host, SahteYazici Yazici)> AnaBilgisayarKurAsync(
+        Guid? aktifBaglam = null)
     {
         var yazici = new SahteYazici();
-        var host = await AnaBilgisayarKurAsync(yazici);
+        var host = await AnaBilgisayarKurAsync(yazici, aktifBaglam);
         return (host, yazici);
     }
 
     /// <summary>Verilen yazıcıyla canlı ana bilgisayarı kurar — Bulgu 1 testleri için.</summary>
-    private static Task<IHost> AnaBilgisayarKurAsync(IAuditWriter writer)
+    private static Task<IHost> AnaBilgisayarKurAsync(IAuditWriter writer, Guid? aktifBaglam = null)
         => Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
                 services.AddSingleton<IAuditWriter>(writer);
                 services.AddScoped<AuditContextAccessor>();
-                services.AddSingleton<ICurrentUserService, SahteKullanici>();
+                services.AddSingleton<ICurrentUserService>(new SahteKullanici(aktifBaglam));
             })
             .UseWolverine(opts =>
             {
@@ -129,6 +156,24 @@ public class AuditMiddlewareContractTests
         yazici.Yazilanlar.Count.ShouldBe(1);
         yazici.Yazilanlar[0].CommandType.ShouldBe(nameof(OrnekKomut));
         yazici.Yazilanlar[0].Exception.ShouldBeNull();
+
+        await host.StopAsync();
+    }
+
+    [Fact]
+    public async Task Aktif_baglam_middleware_araciligiyla_denetim_baglamina_tasinir()
+    {
+        // C'nin "kim olduğun / nerede davrandığın" ayrımının B'de yaşadığını kilitler.
+        // institution_id claim'i aktif bağlamla ezilseydi ikisi eşitlenirdi.
+        var (host, yazici) = await AnaBilgisayarKurAsync(aktifBaglam: BaskaKurum);
+        using var _ = host;
+        var bus = host.Services.GetRequiredService<IMessageBus>();
+
+        await bus.InvokeAsync<string>(new OrnekKomut(Guid.NewGuid(), Reddet: false));
+
+        yazici.Baglamlar.Count.ShouldBe(1);
+        yazici.Baglamlar[0].ActiveInstitutionId.ShouldBe(BaskaKurum);
+        yazici.Baglamlar[0].ActorInstitutionId.ShouldBe(AktorKurumu);
 
         await host.StopAsync();
     }

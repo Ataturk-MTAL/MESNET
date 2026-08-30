@@ -30,4 +30,12 @@ public interface ICurrentUserService
     /// Bilgi yoksa <c>null</c> döner ve kapsam kimlik eşitliğine düşer.
     /// </summary>
     string? GetInstitutionPath();
+
+    /// <summary>
+    /// Token'ın oturum kimliği — <c>sid</c> claim'i. Aktif bağlamın hangi oturumda
+    /// kurulduğunu işaretlemek için kullanılır; <b>yetki kararında kullanılmaz</b>.
+    /// Ölçüldü (29.08.2026): Keycloak bunu kullanıcı access token'ında gönderiyor, token
+    /// yenilemede sabit tutuyor, yeni girişte değiştiriyor.
+    /// </summary>
+    string? GetSessionId();
 }

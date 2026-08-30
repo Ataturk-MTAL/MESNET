@@ -23,7 +23,8 @@ public sealed record AuditInput(
     Guid? ActorInstitutionId,
     string? ActorInstitutionPath,
     string? SubjectInstitutionPathOverride,
-    int DurationMs);
+    int DurationMs,
+    Guid? ActiveInstitutionId = null);
 
 /// <summary>
 /// Denetim satırının içeriğine karar veren SAF fonksiyon.
@@ -65,15 +66,22 @@ public static class AuditEntryFactory
     /// iki ayrı "konu kurum" tanımı doğardı.
     /// </remarks>
     public static (Guid? SubjectInstitutionId, bool CrossedTenantBoundary) ResolveSubject(
-        object? command, Guid? actorInstitutionId)
+        object? command, Guid? actorInstitutionId, Guid? activeInstitutionId)
     {
         var targets = AuditTargetExtractor.Extract(command);
 
-        // Konu kurum: komut bir kurumu HEDEFLİYORSA o, aksi hâlde aktörün kurumu.
-        // IInstitutionScoped arayüzüne bakılmaz — o tip Institution.Application'dadır ve
-        // Audit hiçbir modülü referans etmez (Görev 1, Step 4).
-        var subjectInstitutionId = targets.TryGetValue(InstitutionTargetName, out var targeted)
-            ? targeted
+        // Konu kurum: komut bir kurumu HEDEFLİYORSA o; aksi hâlde aktif bağlam VARSA o;
+        // aksi hâlde aktörün (ev) kurumu. IInstitutionScoped arayüzüne bakılmaz — o tip
+        // Institution.Application'dadır ve Audit hiçbir modülü referans etmez (Görev 1,
+        // Step 4).
+        //
+        // AKTİF BAĞLAM EV KURUMUNDAN ÖNCE GELİR (B parçası). Gelmeseydi, il yetkilisinin
+        // okulda yaptığı hedefsiz her yazma ize İL adına düşerdi ve CrossedTenantBoundary
+        // her zaman false olurdu — yani "il yetkilisi hangi okula dokundu" sorusu, B'nin
+        // izli verilmesinin TEK sebebi, cevapsız kalırdı.
+        var subjectInstitutionId =
+            targets.TryGetValue(InstitutionTargetName, out var targeted) ? targeted
+            : activeInstitutionId is { } active && active != Guid.Empty ? active
             : actorInstitutionId;
 
         // Sınır aşımı bir İDDİADIR; veri eksikliği onu doğurmaz. Kurumsuz aktörde
@@ -90,7 +98,8 @@ public static class AuditEntryFactory
         var targets = AuditTargetExtractor.Extract(input.Command);
         var (commandType, module) = AuditCommandDescriptor.Describe(input.CommandType);
 
-        var (subjectInstitutionId, crossed) = ResolveSubject(input.Command, input.ActorInstitutionId);
+        var (subjectInstitutionId, crossed) = ResolveSubject(
+            input.Command, input.ActorInstitutionId, input.ActiveInstitutionId);
 
         // Sıcak yolda EK OKUMA YOK: konu aktörün kendi kurumuysa yol claim'den gelir.
         var subjectPath = crossed

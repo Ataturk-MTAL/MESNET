@@ -112,8 +112,8 @@ Wildcard'lar genişletilmiş hâliyle.
 
 | Rol | İzin | Wildcard önekleri |
 | --- | ---: | --- |
-| Kurum Müdürü (`InstitutionManager`) | 78 | `attendance:*` `communication:*` `company:*` `coordinator:*` `department:*` `document:*` `institution:*` `internship:*` `salary:*` `student:*` `user:*` |
-| Müdür Yardımcısı (`DeputyDirector`) | 44 | `department:*` `user:*` |
+| Kurum Müdürü (`InstitutionManager`) | 79 | `attendance:*` `communication:*` `company:*` `coordinator:*` `department:*` `document:*` `institution:*` `internship:*` `salary:*` `student:*` `user:*` |
+| Müdür Yardımcısı (`DeputyDirector`) | 45 | `department:*` `user:*` |
 | Kurum Personeli (`InstitutionStaff`) | 18 | — |
 | Alan Şefi (`DepartmentHead`) | 14 | `department:*` |
 | Koordinatör Öğretmen (`Teacher`) | 22 | — |
@@ -122,8 +122,8 @@ Wildcard'lar genişletilmiş hâliyle.
 | İşletme İnsan Kaynakları (`CompanyHR`) | 8 | — |
 | Öğrenci (`Student`) | 11 | — |
 | Veli (`Parent`) | 9 | — |
-| İl MEM Yetkilisi (`ProvincialAdmin`) | 1 | — |
-| İlçe MEM Yetkilisi (`DistrictAdmin`) | 1 | — |
+| İl MEM Yetkilisi (`ProvincialAdmin`) | 4 | — |
+| İlçe MEM Yetkilisi (`DistrictAdmin`) | 4 | — |
 | Sistem Yöneticisi (`SystemAdmin`) | 5 | — |
 
 ### Domainler
@@ -133,10 +133,11 @@ Wildcard'lar genişletilmiş hâliyle.
 | `institution:` | 9 | Kurum Müdürü |
 | `student:` | 6 | Kurum Müdürü |
 | `company:` | 10 | Kurum Müdürü |
-| `internship:` | 8 | Kurum Müdürü |
+| `internship:` | 9 | Kurum Müdürü |
 | `attendance:` | 12 | Kurum Müdürü |
 | `salary:` | 6 | Kurum Müdürü |
 | `platform:` | 2 | — (her rol tek tek alır) |
+| `directorate:` | 1 | — (her rol tek tek alır) |
 | `audit:` | 1 | — (her rol tek tek alır) |
 | `coordinator:` | 5 | Kurum Müdürü |
 | `department:` | 5 | Kurum Müdürü, Müdür Yardımcısı, Alan Şefi |
@@ -154,7 +155,7 @@ Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kay
 | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
 | **`institution:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `institution:view` | ○ | ● | ● | · | · | · | · | · | · | · | ● | ● | · |
-| `institution:manage` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `institution:manage` | ○ | · | · | · | · | · | · | · | · | · | ● | ● | · |
 | `institution:delete` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
 | `institution:staff:manage` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
 | `institution:report:view` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
@@ -189,6 +190,7 @@ Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kay
 | `internship:manage` | ○ | ● | · | · | · | · | · | · | · | · | · | · | · |
 | `internship:contract:manage` | ○ | ● | · | · | · | · | · | · | · | · | · | · | · |
 | `internship:report:manage` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `internship:approval:override` | ● | ● | · | · | · | · | · | · | · | · | ● | ● | · |
 | **`attendance:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `attendance:view` | ○ | ● | ● | ● | ● | · | · | · | · | · | · | · | · |
 | `attendance:view-own` | ○ | · | · | · | · | · | · | · | ● | ● | · | · | · |
@@ -212,6 +214,8 @@ Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kay
 | **`platform:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `platform:parameter:manage` | · | · | · | · | · | · | · | · | · | · | · | · | ● |
 | `platform:tenant:manage` | · | · | · | · | · | · | · | · | · | · | · | · | ● |
+| **`directorate:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `directorate:institution-bootstrap` | · | · | · | · | · | · | · | · | · | · | ● | ● | · |
 | **`audit:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `audit:view:institution` | ● | ● | · | · | · | · | · | · | · | · | · | · | · |
 | **`coordinator:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -256,7 +260,9 @@ Hiçbir yapılandırmayla tek bir kullanıcıya verilemez —
 - `attendance:health-report:direct`
 - `attendance:leave:approve`
 - `audit:view:institution`
+- `directorate:institution-bootstrap`
 - `institution:distribution:all-branches`
+- `internship:approval:override`
 - `platform:parameter:manage`
 
 <!-- END generated: permission-matrix -->

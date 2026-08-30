@@ -200,6 +200,7 @@ public static class AuditCommandLabels
             ["ChangeUserStudents"] = "Kullanıcının öğrenci bağı değiştirildi",
             ["CompleteInvitation"] = "Davet tamamlandı",
             ["CreateInvitation"] = "Davet oluşturuldu",
+            ["SetActiveInstitution"] = "Aktif kurum bağlamı değiştirildi",
             ["CreateUser"] = "Kullanıcı oluşturuldu",
             ["DeleteUser"] = "Kullanıcı silindi",
             ["PurgeKeycloakInstitutionAttribute"] = "Keycloak kurum özniteliği temizlendi",

@@ -40,6 +40,8 @@ public sealed class BranchScopeGuardTests
 
         // Kurum ağacı yolu (institution_path) bu testlerin konusu değil.
         public string? GetInstitutionPath() => null;
+
+        public string? GetSessionId() => null;
     }
 
     private static ICurrentUserService DepartmentHead(params string[] branchCodes) =>

@@ -40,6 +40,22 @@ export function isNavItemVisible(
   return true
 }
 
+/**
+ * Üst düğüm sinyalinin SAF kararı — store'a dokunmaz, testte tek başına koşar
+ * (<c>isNavItemVisible</c> ile aynı gerekçe).
+ *
+ * `nodeType` TEK BAŞINA yeterli DEĞİL (Görev 10, B parçası son inceleme madde 6):
+ * `institutionStore` aktif bağlama bağlandığı için il yetkilisi bir okula geçtiğinde
+ * `nodeType === 'School'` olur. Aktif bağlam DOLU olması aktörün üst düğüm olduğunun
+ * KANITIDIR — okul kullanıcısı bağlam SEÇEMEZ — bu yüzden ikisi OR'lanır.
+ */
+export function resolveIsUpperNode(
+  nodeType: string | undefined,
+  activeInstitutionId: string | null | undefined,
+): boolean {
+  return nodeType === 'Province' || nodeType === 'District' || !!activeInstitutionId
+}
+
 export interface NavGroup {
   key: string
   title: string
@@ -164,15 +180,23 @@ export function useNavigation() {
   /**
    * Kullanıcının kurumu bir üst düğüm mü?
    *
-   * Kaynak `institutionStore` — aktörün kendi kurumunu `GET /api/institutions/{id}` ile
-   * zaten yükler (MainLayout mount'ta çağırır). Store dolmadan önce `false`'tur, yani menü
-   * girdisi biraz geç belirir; alternatifi `/auth/me`'ye yeni bir claim eklemekti ve o
-   * kapsam anahtarı olmayan bir görünürlük kararı için fazla ağır bir yol.
+   * Kaynak `institutionStore` — aktörün DAVRANILAN kurumunu (`GET /api/institutions/{id}`,
+   * aktif bağlam varsa o) yükler (MainLayout mount'ta çağırır). Store dolmadan önce
+   * `false`'tur, yani menü girdisi biraz geç belirir; alternatifi `/auth/me`'ye yeni bir
+   * claim eklemekti ve o kapsam anahtarı olmayan bir görünürlük kararı için fazla ağır bir
+   * yol.
+   *
+   * `institutionStore`'un `nodeType`'ı TEK BAŞINA yeterli DEĞİL (Görev 10, B parçası): store
+   * artık aktif bağlama bağlı — il yetkilisi bir okula geçtiğinde `nodeType === 'School'`
+   * olur ve "Kurumlar" menü girdisi KAYBOLUR. Üst düğüm sinyali aktif bağlamdan
+   * ETKİLENMEMELİDİR: aktif bağlam DOLU olması aktörün tanımı gereği üst düğüm olduğunun
+   * kanıtıdır — okul kullanıcısı bağlam SEÇEMEZ (yalnız il/ilçe yetkilisi bağlama geçer).
    */
   const visibilityContext = computed<NavVisibilityContext>(() => ({
-    isUpperNode:
-      institutionStore.institution?.nodeType === 'Province' ||
-      institutionStore.institution?.nodeType === 'District',
+    isUpperNode: resolveIsUpperNode(
+      institutionStore.institution?.nodeType,
+      authStore.user?.activeInstitutionId,
+    ),
   }))
 
   const filteredMenu = computed(() => {

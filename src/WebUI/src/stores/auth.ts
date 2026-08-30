@@ -20,6 +20,8 @@ interface KeycloakTokenParsed {
   family_name?: string
   realm_access?: { roles: string[] }
   institution_id?: string
+  /** Aktörün adına davrandığı kurum (B parçası) — `institution_id` EV kurumudur, bundan etkilenmez. */
+  active_institution_id?: string
   /** Kullanıcının sorumlu olduğu alan (branş) kodları (#126) — multivalued claim */
   branch_codes?: string[] | string
 }
@@ -42,6 +44,8 @@ export interface AuthUser {
   fullName: string
   roles: string[]
   institutionId: string | null
+  /** Aktörün adına davrandığı kurum (B parçası) — null ise EV kurumu geçerlidir. */
+  activeInstitutionId: string | null
   /** Kullanıcının sorumlu olduğu alan kodları; bir kişi birden çok alandan sorumlu olabilir (#126). */
   branchCodes: string[]
 }
@@ -71,6 +75,16 @@ export const useAuthStore = defineStore('auth', () => {
   // Getters
   const isAuthenticated = computed(() => !!_accessToken.value && !!user.value)
   const accessToken = computed(() => _accessToken.value)
+
+  /**
+   * Ekranların ve store'ların bağlanacağı kurum. Aktif bağlam varsa o, yoksa ev kurumu.
+   *
+   * <p>Kuruma bağlı her store bunu okur; `user.institutionId`'yi doğrudan okuyan yeni kod
+   * YAZILMAZ — o ev kurumudur ve bağlamla değişmez.</p>
+   */
+  const currentInstitutionId = computed(
+    () => user.value?.activeInstitutionId ?? user.value?.institutionId ?? null,
+  )
 
 
 
@@ -139,6 +153,7 @@ export const useAuthStore = defineStore('auth', () => {
         parsed.preferred_username,
       roles: realmRoles,
       institutionId: parsed.institution_id ?? null,
+      activeInstitutionId: parsed.active_institution_id ?? null,
       // Token'da claim varsa hemen kullan; yoksa loadPermissions() backend'den doldurur (#126)
       branchCodes: normalizeBranchCodes(parsed.branch_codes),
     }
@@ -170,6 +185,10 @@ export const useAuthStore = defineStore('auth', () => {
           user.value = {
             ...user.value,
             ...(data?.institutionId ? { institutionId: data.institutionId } : {}),
+            // institutionId'nin aksine null MEŞRUDUR (bağlam temizlendi demektir) — koşullu
+            // spread ile atlanırsa bağlam sıfırlandığında ön yüzde eski kurum asılı kalır ve
+            // Görev 9'un kapattığı sessiz-yanlış-okula-yazma tuzağı geri açılır.
+            activeInstitutionId: data?.activeInstitutionId ?? null,
             branchCodes: normalizeBranchCodes(data?.branchCodes),
           }
         }
@@ -229,6 +248,7 @@ export const useAuthStore = defineStore('auth', () => {
     isInitialized,
     isAuthenticated,
     accessToken,
+    currentInstitutionId,
     canManageAllBranches,
     writableBranchCodes,
     canWriteBranch,

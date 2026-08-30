@@ -147,6 +147,20 @@ public sealed class OwnDataScopeTests
     }
 
     /// <summary>
+    /// Kurum bağı ucunun birleşik policy'si (B parçası, müdahale yetkisi): normal kapsam yolu
+    /// (<c>user:roles:manage</c>) YA DA müdahale yolu (<c>directorate:institution-bootstrap</c>).
+    /// Bu test bilerek <b>tam liste</b> ister — <c>ShouldBe</c> fazladan bir izin sızarsa da,
+    /// bir izin eksilirse de kırmızıya döner. İçerik denetlenmezse <c>AnyOf</c>'a üçüncü bir
+    /// izin sessizce eklenebilir ve uç kimseye açık olmaması gereken bir izinle de açılabilirdi.
+    /// </summary>
+    [Fact]
+    public void UserInstitutionAssignOrBootstrap_tam_olarak_iki_izin_tasir()
+    {
+        PermissionPolicies.Split(PermissionPolicies.UserInstitutionAssignOrBootstrap)
+            .ShouldBe([Permissions.UserManagement.RolesManage, Permissions.Directorate.InstitutionBootstrap]);
+    }
+
+    /// <summary>
     /// Birleşik policy adı bir izin sabitiyle ÇAKIŞMAMALI — çakışsaydı DI'da aynı adla iki
     /// policy kaydedilir ve hangisinin kazandığı belirsiz olurdu.
     /// </summary>
@@ -288,5 +302,7 @@ public sealed class OwnDataScopeTests
         public IReadOnlyList<Guid> GetLinkedStudentIds() => linkedStudentIds;
 
         public string? GetInstitutionPath() => null;
+
+        public string? GetSessionId() => null;
     }
 }

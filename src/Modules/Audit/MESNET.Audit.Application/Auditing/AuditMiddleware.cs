@@ -56,6 +56,7 @@ public static class AuditMiddleware
             TenantId = envelope.TenantId,
             ActorInstitutionId = actor?.InstitutionId,
             ActorInstitutionPath = currentUser.GetInstitutionPath(),
+            ActiveInstitutionId = actor?.ActiveInstitutionId,
         };
 
         accessor.Set(context);
