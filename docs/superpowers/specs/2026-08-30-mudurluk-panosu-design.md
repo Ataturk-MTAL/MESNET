@@ -239,9 +239,35 @@ Phase == InternshipPhase.TerminationInProgress
   && (TerminationRequestedAt is null || TerminationRequestedAt < now - threshold)
 ```
 
-`InternshipPhase` bir SmartEnum'dur ve Marten LINQ'te doğrudan kullanılamaz (CLAUDE.md,
-nested path tuzağı: `data->'phase'->>'Name'` her zaman NULL döner). `InternshipSaga` düz
-`PhaseName` alanı taşımıyorsa eklenir ve LINQ o alanla kurulur.
+**Faz alanı sorguya HİÇ girmez — ölçülmüş gerekçeyle.**
+
+`InternshipSaga.Phase` bir `InternshipPhase` SmartEnum'udur ve düz bir `PhaseName` ikizi
+yoktur. Marten LINQ'te SmartEnum nested path'i (`data->'phase'->>'Name'`) **her zaman NULL**
+döner (CLAUDE.md). İlk akla gelen çözüm — `PhaseName` alanı eklemek — burada **yanlış yöne**
+başarısız olur: alan yeni olduğu için mevcut saga satırlarında yoktur, deserialize `null` ya
+da boş string verir, o satırlar süzgece takılmaz ve **kart onları sessizce hiç göstermez.**
+Aranan kayıtlar tam olarak eskiler olduğu için bu, kartı işe yaramaz yapardı.
+
+Faz zaten türetilebilir: zincir varsa ve kapanmamışsa saga tanımı gereği
+`TerminationInProgress`'tedir. Sorgu bu yüzden yalnız `ApprovalChain` üzerinden kurulur:
+
+```csharp
+x.ApprovalChain != null
+  && !x.ApprovalChain.IsOverridden
+  && !(x.ApprovalChain.TeacherApproved
+       && x.ApprovalChain.DeputyApproved
+       && x.ApprovalChain.DirectorApproved)
+```
+
+Bu alanların hepsi düz `bool`'dur ve `TerminationApprovalChain` JSON'da **nesne** olarak
+serialize edilir (SmartEnum gibi çıplak string değil), dolayısıyla nested path çalışır. Alan
+#218'den beri var; mevcut satırlarda dolu. **Yeni alan yok, backfill yok, sessiz yön yok.**
+
+**Bedeli ve karşılığı:** `IsCompleteOrOverridden()` bir metottur, LINQ'e çevrilemez; kararı
+açarak yazmak onu ikinci bir yerde yaşatır. Karşılığı bir doğruluk tablosu testidir:
+`TerminationApprovalChain`'in 16 bayrak birleşiminin hepsinde LINQ ifadesinin sonucu
+`!IsCompleteOrOverridden()` ile aynı olmalıdır. Zincir kuralı bir gün değişirse (dördüncü
+onaycı) test kırmızı olur — ayrışma sessiz kalmaz.
 
 ### Uç
 
