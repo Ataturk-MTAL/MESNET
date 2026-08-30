@@ -1,6 +1,10 @@
 <template>
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
+      <a
+        class="atlama-baglantisi"
+        href="#ana-icerik"
+      >İçeriğe atla</a>
       <q-toolbar>
         <q-btn
           flat
@@ -8,8 +12,11 @@
           round
           icon="menu"
           aria-label="Menüyü aç/kapat"
+          :aria-expanded="drawerOpen ? 'true' : 'false'"
           @click="drawerOpen = !drawerOpen"
-        />
+        >
+          <q-tooltip>Menüyü aç/kapat</q-tooltip>
+        </q-btn>
         <q-toolbar-title>MESNET</q-toolbar-title>
         <q-space />
         <span
@@ -23,13 +30,15 @@
           round
           dense
           icon="notifications"
-          aria-label="Bildirimler"
+          :aria-label="unreadCount > 0 ? `Bildirimler — ${unreadCount} okunmamış` : 'Bildirimler — okunmamış yok'"
           class="q-mr-xs"
         >
           <q-badge
             v-if="unreadCount > 0"
             color="negative"
             floating
+            aria-hidden="true"
+            class="tabular-nums"
           >
             {{ unreadCount }}
           </q-badge>
@@ -45,7 +54,7 @@
                 v-if="notificationStore.notifications.length === 0"
                 dense
               >
-                <q-item-section class="text-grey text-caption text-center q-pa-md">
+                <q-item-section class="text-grey-7 text-caption text-center q-pa-md">
                   Bildirim yok
                 </q-item-section>
               </q-item>
@@ -66,9 +75,17 @@
                   <q-item-label class="text-caption text-weight-medium">
                     {{ eventLabel(n.eventType) }}
                   </q-item-label>
+                  <!--
+                    Zaman damgası grey-7 DEĞİL grey-8: bu satırın zemini okunmamış
+                    bildirimde bg-info-soft (#e8edf1) oluyor — yukarıdaki :class koşulu.
+                    Ölçüldü: grey-7 (#757575) o zeminde 3,91:1 ile 4,5:1 eşiğinin altında
+                    kalıyor; grey-8 (#616161) beyazda 6,19:1, #e8edf1 üzerinde 5,25:1 —
+                    her iki zemini de geçiyor. Quasar'ın kendi .q-item__label--caption
+                    rengini bu sınıf !important ile eziyor, yani devreye giren renk budur.
+                  -->
                   <q-item-label
                     caption
-                    class="text-grey"
+                    class="text-grey-8"
                   >
                     {{ timeAgo(n.occurredAt) }}
                   </q-item-label>
@@ -81,8 +98,11 @@
                     size="xs"
                     icon="close"
                     aria-label="Bildirimi kaldır"
+                    class="notif-remove-btn"
                     @click.stop="notificationStore.remove(i)"
-                  />
+                  >
+                    <q-tooltip>Bildirimi kaldır</q-tooltip>
+                  </q-btn>
                 </q-item-section>
               </q-item>
               <q-item
@@ -91,7 +111,7 @@
                 clickable
                 @click="notificationStore.clear()"
               >
-                <q-item-section class="text-center text-caption text-grey">
+                <q-item-section class="text-center text-caption text-grey-7">
                   Tümünü temizle
                 </q-item-section>
               </q-item>
@@ -105,7 +125,9 @@
           icon="logout"
           aria-label="Çıkış yap"
           @click="onLogout"
-        />
+        >
+          <q-tooltip>Çıkış yap</q-tooltip>
+        </q-btn>
       </q-toolbar>
     </q-header>
 
@@ -139,8 +161,17 @@
                       <q-item-label>{{ opt.label }}</q-item-label>
                     </q-item-section>
                     <q-item-section side>
+                      <!--
+                        Kapalı dönem rozeti grey-5 olamaz: q-badge metni her zaman beyazdır
+                        (quasar.css .q-badge → color: #fff, 12px normal ağırlık → metin
+                        eşiği 4,5:1) ve grey-5 (#bdbdbd) beyaz metinle 1,88:1 veriyordu —
+                        ne 4,5:1 metin eşiğini ne 3:1 grafik eşiğini geçiyor. grey-9
+                        (#424242) beyaz metinle 10,05:1. Ton keyfî değil: StatusBadge.vue
+                        "kapatılmış" durumunu da grey-9 ile gösterir (CLOSED sabiti);
+                        "taslak/pasif" orada grey-8'dir.
+                      -->
                       <q-badge
-                        :color="opt.active ? 'positive' : 'grey-5'"
+                        :color="opt.active ? 'positive' : 'grey-9'"
                         :label="opt.active ? 'Aktif' : 'Kapalı'"
                       />
                     </q-item-section>
@@ -244,7 +275,11 @@
       </q-scroll-area>
     </q-drawer>
 
-    <q-page-container>
+    <q-page-container
+      id="ana-icerik"
+      role="main"
+      tabindex="-1"
+    >
       <router-view v-slot="{ Component }">
         <transition
           :name="transitionName"
@@ -298,7 +333,7 @@
         </div>
       </q-card-section>
 
-      <q-card-section class="text-center text-caption text-grey-6 q-pt-none">
+      <q-card-section class="text-center text-caption text-grey-7 q-pt-none">
         &copy; {{ currentYear }} MESNET — Tüm hakları saklıdır.
       </q-card-section>
     </DetailDialog>
@@ -311,6 +346,8 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 import { useNotificationStore } from 'stores/notifications'
 import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
+import { useInstitutionStore } from 'stores/institution'
+import { Permissions } from 'utils/permissions'
 import { logout } from 'boot/auth'
 import { useNavigation } from 'src/composables/useNavigation'
 import { eventLabel, timeAgo } from 'src/utils/notificationFormat'
@@ -321,6 +358,7 @@ const authStore = useAuthStore()
 const { filteredMenu, isExpanded, toggleGroup, activeGroupKey } = useNavigation()
 const notificationStore = useNotificationStore()
 const periodStore = useAcademicPeriodStore()
+const institutionStore = useInstitutionStore()
 
 // Sayfa geçişi yönü: form route'una giriş → liste sola kayar/form sağdan girer; çıkış → tersi; diğer nav → fade
 const router = useRouter()
@@ -371,6 +409,27 @@ onMounted(async () => {
   }
 })
 
+/*
+ * Kiracının marka teması (#brand-palette).
+ *
+ * Tetikleyici burada duruyor çünkü MainLayout kimliği doğrulanmış kabuktur: her sayfa
+ * bunun içinde açılır, yani tema hangi rotadan girilirse girilsin uygulanır. Temayı asıl
+ * UYGULAYAN yer store'dur (`loadInstitution` → `applyBrandTheme`); burada yalnız yükleme
+ * tetiklenir, renk mantığı tekrarlanmaz.
+ *
+ * Kapı `institution:view`: kurum ucu o izni ister ve izni olmayan rol (ör. işletme
+ * yetkilisi) için istek 403 dönerdi. İzinsiz kullanıcı derleme zamanı varsayılanını
+ * (Mührü Lacivert) görür — bu bir kırılma değil, kapsamın dürüst sonucudur.
+ *
+ * `await` edilmiyor: tema kozmetiktir, dönem yüklemesini ya da ilk boyamayı bekletmemeli.
+ * `void` yerine `.catch(() => {})` — CLAUDE.md fire-and-forget kuralı.
+ */
+onMounted(() => {
+  if (!authStore.isAuthenticated) return
+  if (!authStore.hasPermission(Permissions.Institution.View)) return
+  institutionStore.loadInstitution().catch(() => {})
+})
+
 async function onLogout() {
   await logout()
 }
@@ -416,5 +475,56 @@ async function onLogout() {
 .slide-right-leave-to {
   transform: translateX(40px);
   opacity: 0;
+}
+</style>
+
+<style scoped>
+/* Dokunma hedefi WCAG 2.2 SC 2.5.8 (24x24 CSS px) — size="xs" görsel olarak küçük kalıyor. */
+.notif-remove-btn {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+/*
+ * Blok atlama (WCAG 2.4.1) — kalıcı sol çekmece her sayfada onlarca menü bağlantısını
+ * tekrarlıyor; klavye kullanıcısı buradan doğrudan #ana-icerik'e geçer.
+ *
+ * Zemin ÜST BARIN RENGİ OLAMAZ: Quasar'ın kendi kuralı
+ * `.q-layout__section--marginal { background-color: var(--q-primary) }`
+ * (node_modules/quasar/src/components/layout/QLayout.sass) üst bara zaten aynı rengi
+ * veriyor — bağlantı odaklandığında üst barla birebir aynı zemine oturur ve ayrı bir
+ * kontrol olarak hiç görünmez. Bu yüzden kağıt beyazı zemin + lacivert metin
+ * (ölçüldü: #1E3A5F / #FFFFFF = 11,50:1, metin eşiği 4,5:1) ve 2px lacivert dış çizgi
+ * (11,50:1 — grafik nesnesi eşiği 3:1).
+ *
+ * Dış çizginin arkasındaki zemin TARAYICI VARSAYILANI BEYAZDIR, #EDEFF2 değil: bu
+ * uygulamada sayfa zeminine hiç renk verilmiyor. Quasar çekirdeği `body`ye arka plan
+ * koymuyor (core/typography.sass'taki `body` bloğunda `background` yok; tek tanım
+ * `body.body--dark` altında, core/dark.sass), src/assets/app.css'te body/`.q-layout`/
+ * `.q-page-container` için arka plan kuralı yok ve index.html stil taşımıyor. #EDEFF2
+ * yalnızca `.bg-neutral-soft` BİLEŞEN yüzeyi olarak var (app.css). Odaklı bağlantı böyle
+ * bir yüzeyin üstüne denk gelirse oran 9,99:1'e iner — o da 3:1 eşiğini rahat geçer.
+ *
+ * Konum üst barın ALTINA iner (`top: 100%`): `top: 8px; left: 8px` bağlantıyı toolbar'ın
+ * sol başındaki menü butonunun üzerine oturtuyordu.
+ *
+ * Metin/dış çizgi rengi `var(--q-primary)`; düz hex yedeği bilerek yazılmadı — kimlik
+ * kiracıdan gelebilir, sabit bir kopya tema değişince yerinde donar.
+ */
+.atlama-baglantisi {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: #fff;
+  color: var(--q-primary);
+  border-radius: 8px;
+  outline: 2px solid var(--q-primary);
+  outline-offset: 2px;
+}
+.atlama-baglantisi:focus {
+  left: 8px;
+  top: calc(100% + 10px);
 }
 </style>

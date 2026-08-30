@@ -16,8 +16,32 @@ public sealed record InstitutionDto(
     string? ProvinceCode,
     string? ProvinceName,
     string? DistrictName,
+    // Marka paleti — anahtar VE çözülmüş hex'ler birlikte döner ki arayüz temayı tek istekle
+    // uygulayabilsin ve hex'i ikinci kez tanımlamak zorunda kalmasın. Kurum hiç seçim
+    // yapmadıysa (BrandPaletteName null) varsayılan palet çözülür; alanların üçü de doludur.
+    string BrandPaletteName,
+    string BrandPaletteSlug,
+    string BrandPrimary,
+    string BrandSecondary,
     List<InstitutionBranchDto> Branches,
     List<StaffMemberDto> Staff);
+
+/// <summary>
+/// Küratörlü palet seçeneği. <paramref name="Name"/> yetkili anahtardır (kayda o yazılır),
+/// <paramref name="Slug"/> Türkçe etiket, hex'ler önizleme içindir.
+/// </summary>
+public sealed record BrandPaletteDto(
+    string Name,
+    string Slug,
+    string Primary,
+    string Secondary,
+    bool IsDefault);
+
+/// <summary>
+/// Palet kataloğu sarmalayıcısı — <c>ProvinceListDto</c> ile aynı gerekçeyle: çıplak
+/// koleksiyon Wolverine tarafından cascading message sanılır.
+/// </summary>
+public sealed record BrandPaletteListDto(List<BrandPaletteDto> Items);
 
 /// <summary>Tek il — açılır liste için (kod yetkili, ad görüntü).</summary>
 public sealed record ProvinceDto(string Code, string Name);

@@ -52,7 +52,9 @@ withDefaults(
           icon="close"
           aria-label="Kapat"
           @click="open = false"
-        />
+        >
+          <q-tooltip>Kapat</q-tooltip>
+        </q-btn>
       </q-card-section>
 
       <!-- Alt başlık / separator / içerik tüketici tarafından -->

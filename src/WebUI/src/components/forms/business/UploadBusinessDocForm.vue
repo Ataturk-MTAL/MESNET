@@ -37,20 +37,20 @@
       v-if="form.file"
       class="q-mt-sm"
     >
-      <div class="text-caption text-grey q-mb-xs">
+      <div class="text-caption text-grey-7 q-mb-xs">
         Ön İzleme
       </div>
       <iframe
         v-if="form.file.type === 'application/pdf'"
         :src="filePreviewUrl ?? ''"
         title="Belge ön izlemesi"
-        style="width: 100%; height: 300px; border: 1px solid #ddd; border-radius: 4px"
+        class="doc-preview"
       />
       <img
         v-else
         :src="filePreviewUrl ?? ''"
         alt="Yüklenecek belgenin ön izlemesi"
-        style="max-width: 100%; max-height: 300px; border: 1px solid #ddd; border-radius: 4px"
+        class="doc-preview doc-preview--img"
       >
     </div>
   </FormDialog>
@@ -124,3 +124,20 @@ async function handleSave() {
   }
 }
 </script>
+
+<style scoped>
+.doc-preview {
+  width: 100%;
+  height: 300px;
+  border-radius: 8px;
+  border: 1px solid rgba(30, 58, 95, 0.14);
+  border: 1px solid color-mix(in srgb, var(--q-primary) 14%, transparent);
+}
+
+.doc-preview--img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 300px;
+}
+</style>

@@ -1,0 +1,447 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-22T18:44:50.388Z",
+  "title": "Design System: MESNET",
+  "extensions": {
+    "colorMeta": {
+      "muhur-lacivert": {
+        "role": "primary",
+        "displayName": "Mührü Lacivert",
+        "canonical": "oklch(34.6% 0.074 256.0)",
+        "tonalRamp": [
+          "oklch(15% 0.040 256.0)",
+          "oklch(26% 0.054 256.0)",
+          "oklch(38% 0.065 256.0)",
+          "oklch(50% 0.072 256.0)",
+          "oklch(62% 0.071 256.0)",
+          "oklch(74% 0.063 256.0)",
+          "oklch(86% 0.051 256.0)",
+          "oklch(95% 0.040 256.0)"
+        ]
+      },
+      "celik-mavisi": {
+        "role": "secondary",
+        "displayName": "Çelik Mavisi",
+        "canonical": "oklch(53.8% 0.095 257.8)",
+        "tonalRamp": [
+          "oklch(15% 0.052 257.8)",
+          "oklch(26% 0.069 257.8)",
+          "oklch(38% 0.084 257.8)",
+          "oklch(50% 0.094 257.8)",
+          "oklch(62% 0.093 257.8)",
+          "oklch(74% 0.082 257.8)",
+          "oklch(86% 0.066 257.8)",
+          "oklch(95% 0.052 257.8)"
+        ]
+      },
+      "resmi-hardal": {
+        "role": "tertiary",
+        "displayName": "Resmî Hardal",
+        "canonical": "oklch(72.8% 0.138 89.7)",
+        "tonalRamp": [
+          "oklch(15% 0.075 89.7)",
+          "oklch(26% 0.100 89.7)",
+          "oklch(38% 0.122 89.7)",
+          "oklch(50% 0.136 89.7)",
+          "oklch(62% 0.134 89.7)",
+          "oklch(74% 0.119 89.7)",
+          "oklch(86% 0.096 89.7)",
+          "oklch(95% 0.075 89.7)"
+        ]
+      },
+      "onay-yesili": {
+        "role": "semantic",
+        "displayName": "Onay Yeşili",
+        "canonical": "oklch(53.1% 0.095 161.9)",
+        "tonalRamp": [
+          "oklch(15% 0.051 161.9)",
+          "oklch(26% 0.069 161.9)",
+          "oklch(38% 0.084 161.9)",
+          "oklch(50% 0.093 161.9)",
+          "oklch(62% 0.092 161.9)",
+          "oklch(74% 0.081 161.9)",
+          "oklch(86% 0.066 161.9)",
+          "oklch(95% 0.051 161.9)"
+        ]
+      },
+      "ret-kirmizisi": {
+        "role": "semantic",
+        "displayName": "Ret Kırmızısı",
+        "canonical": "oklch(50.1% 0.178 28.7)",
+        "tonalRamp": [
+          "oklch(15% 0.097 28.7)",
+          "oklch(26% 0.130 28.7)",
+          "oklch(38% 0.158 28.7)",
+          "oklch(50% 0.175 28.7)",
+          "oklch(62% 0.173 28.7)",
+          "oklch(74% 0.154 28.7)",
+          "oklch(86% 0.124 28.7)",
+          "oklch(95% 0.097 28.7)"
+        ]
+      },
+      "bilgi-mavisi": {
+        "role": "semantic",
+        "displayName": "Bilgi Mavisi",
+        "canonical": "oklch(50.8% 0.069 239.3)",
+        "tonalRamp": [
+          "oklch(15% 0.038 239.3)",
+          "oklch(26% 0.050 239.3)",
+          "oklch(38% 0.061 239.3)",
+          "oklch(50% 0.068 239.3)",
+          "oklch(62% 0.067 239.3)",
+          "oklch(74% 0.059 239.3)",
+          "oklch(86% 0.048 239.3)",
+          "oklch(95% 0.038 239.3)"
+        ]
+      },
+      "uyari-hardali": {
+        "role": "semantic",
+        "displayName": "Uyarı Hardalı",
+        "canonical": "oklch(56.2% 0.117 78.3)",
+        "tonalRamp": [
+          "oklch(15% 0.064 78.3)",
+          "oklch(26% 0.085 78.3)",
+          "oklch(38% 0.103 78.3)",
+          "oklch(50% 0.115 78.3)",
+          "oklch(62% 0.114 78.3)",
+          "oklch(74% 0.101 78.3)",
+          "oklch(86% 0.082 78.3)",
+          "oklch(95% 0.064 78.3)"
+        ]
+      },
+      "notr-govde": {
+        "role": "neutral",
+        "displayName": "Nötr Gövde",
+        "canonical": "oklch(46.1% 0.048 254.3)",
+        "tonalRamp": [
+          "oklch(15% 0.026 254.3)",
+          "oklch(26% 0.035 254.3)",
+          "oklch(38% 0.042 254.3)",
+          "oklch(50% 0.047 254.3)",
+          "oklch(62% 0.046 254.3)",
+          "oklch(74% 0.041 254.3)",
+          "oklch(86% 0.033 254.3)",
+          "oklch(95% 0.026 254.3)"
+        ]
+      },
+      "notr-zemin": {
+        "role": "neutral",
+        "displayName": "Nötr Zemin",
+        "canonical": "oklch(95.1% 0.005 258.3)",
+        "tonalRamp": [
+          "oklch(15% 0.002 258.3)",
+          "oklch(26% 0.003 258.3)",
+          "oklch(38% 0.004 258.3)",
+          "oklch(50% 0.004 258.3)",
+          "oklch(62% 0.004 258.3)",
+          "oklch(74% 0.004 258.3)",
+          "oklch(86% 0.003 258.3)",
+          "oklch(95% 0.002 258.3)"
+        ]
+      },
+      "koyu-yuzey": {
+        "role": "neutral",
+        "displayName": "Koyu Yüzey (tanımlı, kullanılmıyor)",
+        "canonical": "oklch(25.7% 0.047 261.2)",
+        "tonalRamp": [
+          "oklch(15% 0.026 261.2)",
+          "oklch(26% 0.034 261.2)",
+          "oklch(38% 0.042 261.2)",
+          "oklch(50% 0.047 261.2)",
+          "oklch(62% 0.046 261.2)",
+          "oklch(74% 0.041 261.2)",
+          "oklch(86% 0.033 261.2)",
+          "oklch(95% 0.026 261.2)"
+        ]
+      },
+      "koyu-sayfa": {
+        "role": "neutral",
+        "displayName": "Koyu Sayfa (tanımlı, kullanılmıyor)",
+        "canonical": "oklch(20.8% 0.031 259.0)",
+        "tonalRamp": [
+          "oklch(15% 0.017 259.0)",
+          "oklch(26% 0.023 259.0)",
+          "oklch(38% 0.027 259.0)",
+          "oklch(50% 0.031 259.0)",
+          "oklch(62% 0.030 259.0)",
+          "oklch(74% 0.027 259.0)",
+          "oklch(86% 0.022 259.0)",
+          "oklch(95% 0.017 259.0)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Sayaç kartı değerleri — tek büyük rakam. Sayfa başlığı değil."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Sayfa başlığı (PageHeader içindeki <h1>)."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Bölüm ve kart başlıkları, panel toolbar başlığı."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Tablo hücresi, form etiketi, rozet etiketi. 14px sabit."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Caption, boş-durum metni, zaman damgası — gri tonda."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating-layer",
+        "value": "0 1px 5px rgba(30,58,95,.2), 0 2px 2px rgba(30,58,95,.14), 0 3px 1px -2px rgba(30,58,95,.12)",
+        "purpose": "Yalnız gerçekten yüzen katman: üst bar, dialog, menü, örtüşen çekmece. Gölge rengi saf siyah değil, mührü laciverte tonlanır."
+      },
+      {
+        "name": "hover-lift-debt",
+        "value": "0 4px 12px rgba(0,0,0,.08)",
+        "purpose": "BORÇ — yalnız tıklanabilir sayaç kartında (translateY(-2px) ile). Tonal katmanlama kuralına aykırıdır, yeni bileşene kopyalanmaz."
+      }
+    ],
+    "motion": [
+      {
+        "name": "page-fade",
+        "value": "opacity .16s ease, transform .16s ease",
+        "purpose": "Sayfalar arası varsayılan geçiş; giren sayfa 8px aşağıdan yükselir (mode=out-in)."
+      },
+      {
+        "name": "form-slide",
+        "value": "transform .25s ease, opacity .25s ease",
+        "purpose": "Form route yönlü kayma: girişte slide-left, çıkışta slide-right, ±40px."
+      },
+      {
+        "name": "state-transition",
+        "value": ".2s ease-out",
+        "purpose": "Hover, bırakma alanı ve durum geçişleri. transition: all yerine değişen özellikler tek tek yazılır."
+      },
+      {
+        "name": "grid-cell",
+        "value": "background-color .15s",
+        "purpose": "Izgara hücresi zemin geçişi — yoğun yüzeyde kısa tutulur."
+      },
+      {
+        "name": "reduced-motion-floor",
+        "value": "0.01ms",
+        "purpose": "prefers-reduced-motion: reduce altında tüm süreler 0.01ms. Tam sıfır DEĞİL — bazı tarayıcılarda transitionend hiç tetiklenmez ve ona bağlı mantık takılır."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "xs",
+        "value": "<600px"
+      },
+      {
+        "name": "sm",
+        "value": "600px"
+      },
+      {
+        "name": "md",
+        "value": "1024px"
+      },
+      {
+        "name": "lg",
+        "value": "1440px"
+      },
+      {
+        "name": "xl",
+        "value": "1920px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Birincil Buton",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Yükümlülük doğuran ana eylem. Gölgesiz (unelevated), sağda durur.",
+      "html": "<button class=\"ds-btn-primary\">Kaydet</button>",
+      "css": ".ds-btn-primary { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 500; background: #1E3A5F; color: #fff; padding: 6px 18px; min-height: 36px; border: none; border-radius: 8px; cursor: pointer; transition: background-color .2s ease-out; } .ds-btn-primary:hover { background: #1a3354; } .ds-btn-primary:focus-visible { outline: 2px solid #1E3A5F; outline-offset: 2px; } .ds-btn-primary:active { background: #16293f; }"
+    },
+    {
+      "name": "İptal Butonu",
+      "kind": "button",
+      "refersTo": "button-cancel",
+      "description": "Geri alınabilir çıkış. Her zaman onaylayıcı eylemin solunda, flat.",
+      "html": "<button class=\"ds-btn-cancel\">İptal</button>",
+      "css": ".ds-btn-cancel { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 500; background: transparent; color: #616161; padding: 6px 18px; min-height: 36px; border: none; border-radius: 8px; cursor: pointer; transition: background-color .2s ease-out; } .ds-btn-cancel:hover { background: rgba(30,58,95,.06); } .ds-btn-cancel:focus-visible { outline: 2px solid #1E3A5F; outline-offset: 2px; }"
+    },
+    {
+      "name": "Yıkıcı Buton",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Geri alınamayan işlem (fesih, silme, kayıt sonlandırma). Ret kırmızısı yalnız burada dolgu olur.",
+      "html": "<button class=\"ds-btn-danger\">Feshet</button>",
+      "css": ".ds-btn-danger { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 14px; font-weight: 500; background: #B3261E; color: #fff; padding: 6px 18px; min-height: 36px; border: none; border-radius: 8px; cursor: pointer; transition: background-color .2s ease-out; } .ds-btn-danger:hover { background: #9a2019; } .ds-btn-danger:focus-visible { outline: 2px solid #B3261E; outline-offset: 2px; }"
+    },
+    {
+      "name": "Durum Rozeti",
+      "kind": "chip",
+      "refersTo": "badge-status-pending",
+      "description": "Onay zincirinin görünür halkası. Renk aşamayı ayırır, metin etiketi her zaman yanındadır — renk tek sinyal değildir.",
+      "html": "<span class=\"ds-badge ds-badge--pending\">Onay Bekliyor</span><span class=\"ds-badge ds-badge--active\">Aktif</span><span class=\"ds-badge ds-badge--progress\">Yerleştirildi</span><span class=\"ds-badge ds-badge--negative\">Reddedildi</span><span class=\"ds-badge ds-badge--done\">Tamamlandı</span>",
+      "css": ".ds-badge { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.375rem; color: #fff; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-right: 6px; } .ds-badge--pending { background: #9A6B00; } .ds-badge--active { background: #2E7D5B; } .ds-badge--progress { background: #367472; } .ds-badge--negative { background: #B3261E; } .ds-badge--done { background: #355077; }"
+    },
+    {
+      "name": "Arama Girdisi",
+      "kind": "input",
+      "refersTo": "input-outlined",
+      "description": "Liste yüzeylerinin standart arama alanı: outlined + dense, 400ms debounce, en az 250px.",
+      "html": "<div class=\"ds-input-search\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14\"/></svg><input type=\"text\" placeholder=\"Ara...\" aria-label=\"Ara\"></div>",
+      "css": ".ds-input-search { display: inline-flex; align-items: center; gap: 8px; min-width: 250px; height: 40px; padding: 0 12px; background: #fff; border: 1px solid rgba(30,58,95,.24); border-radius: 8px; color: #616161; transition: border-color .2s ease-out, box-shadow .2s ease-out; } .ds-input-search:focus-within { border-color: #1E3A5F; box-shadow: inset 0 0 0 1px #1E3A5F; } .ds-input-search input { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #212121; border: none; outline: none; background: transparent; flex: 1; min-width: 0; }"
+    },
+    {
+      "name": "Kart Yüzeyi",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "Düz ve kenarlıklı — dinlenirken gölge taşımaz. Derinlik zemin tonuyla kurulur.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card__title\">Sözleşme Özeti</div><div class=\"ds-card__body\">Aktif staj sözleşmesi, imza zinciri tamamlandı.</div></div>",
+      "css": ".ds-card { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #fff; border: 1px solid rgba(30,58,95,.14); border-radius: 8px; padding: 16px; max-width: 360px; } .ds-card__title { font-size: 1.125rem; line-height: 1.625rem; font-weight: 600; letter-spacing: -.005em; color: #212121; margin-bottom: 8px; } .ds-card__body { font-size: 14px; line-height: 1.375rem; color: #424242; }"
+    },
+    {
+      "name": "Salt-Okunur Bildirimi",
+      "kind": "custom",
+      "refersTo": "notice-readonly",
+      "description": "Kapalı dönem uyarısının kalıcı yeri. Nötr gri + kilit ikonu; hata değil, durum bildirir.",
+      "html": "<div class=\"ds-notice-readonly\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2m-9-2a3 3 0 0 1 6 0v2H9zm3 12a2 2 0 1 1 0-4 2 2 0 0 1 0 4\"/></svg><span>Geçmiş dönem — salt okunur</span></div>",
+      "css": ".ds-notice-readonly { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif; display: flex; align-items: center; gap: 8px; background: #EDEFF2; color: #424242; font-size: 12px; line-height: 1.25rem; padding: 8px 12px; border-radius: 8px; }"
+    },
+    {
+      "name": "Çekmece Menü Öğesi",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "Sol çekmece navigasyonu: pasif ve aktif hâl. Aktif öğe mührü lacivert metin ve yumuşak zemin taşır.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav__item ds-nav__item--active\" href=\"#\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z\"/></svg>Sözleşmeler</a><a class=\"ds-nav__item\" href=\"#\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M12 2 1 7l11 5 9-4.09V17h2V7zM5 13.18v4L12 21l7-3.82v-4L12 17z\"/></svg>Devamsızlık</a></nav>",
+      "css": ".ds-nav { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif; width: 260px; background: #fff; border-right: 1px solid rgba(30,58,95,.14); padding: 8px; } .ds-nav__item { display: flex; align-items: center; gap: 16px; font-size: 14px; color: #424242; padding: 10px 12px; border-radius: 8px; text-decoration: none; transition: background-color .2s ease-out; } .ds-nav__item:hover { background: rgba(30,58,95,.06); } .ds-nav__item--active { background: color-mix(in srgb, #1E3A5F 8%, #fff); color: #1E3A5F; font-weight: 500; } .ds-nav__item:focus-visible { outline: 2px solid #1E3A5F; outline-offset: -2px; }"
+    },
+    {
+      "name": "Boş Durum",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Liste boş durumu: nötr inbox ikonu + metin + eylem çağrısı. Uyarı ikonu kullanılmaz — boş liste hata değildir.",
+      "html": "<div class=\"ds-empty\"><svg viewBox=\"0 0 24 24\" width=\"48\" height=\"48\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m0 12h-4a3 3 0 0 1-6 0H5V5h14z\"/></svg><span class=\"ds-empty__text\">Kayıt bulunamadı</span><button class=\"ds-btn-primary\">İlk kaydı ekle</button></div>",
+      "css": ".ds-empty { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, 'Helvetica Neue', Arial, sans-serif; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 48px 24px; color: #757575; } .ds-empty__text { font-size: 14px; } .ds-empty .ds-btn-primary { margin-top: 8px; font-size: 14px; font-weight: 500; background: #1E3A5F; color: #fff; padding: 6px 18px; min-height: 36px; border: none; border-radius: 8px; cursor: pointer; transition: background-color .2s ease-out; } .ds-empty .ds-btn-primary:hover { background: #1a3354; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "İmza Zinciri",
+    "overview": "Her ekran tek bir soruyu cevaplar: şimdi kimin sırası? MESNET'in ayırt edici mekanizması tek taraflı hükmün doğmaması — ücretli izin işletme ve okul onayından geçer, sağlık raporu girişi okul onayını bekler, dekont dört ayrı elden geçer. Arayüz bu zinciri gizlemez, görselleştirir: aşama rozeti, bekleyen taraf ve sıradaki eylem birincil katmandır; tablonun kendisi ikincil taşıyıcıdır.\n\nKişilik ölçülü ve kesin — \"resmî ama nazik\". Mührü lacivert ağırlığı taşır, çelik mavisi ikincil eylemleri üstlenir, anlamsal renkler yalnız durum bildirir. Hiçbir eleman bağırmaz; yükümlülük doğuran bir buton görsel olarak da ağır durur. Yoğunluk okul kullanıcısının gerçek sahnesine ayarlıdır: gün boyu açık kalan bir pencere, 14px gövde, sabit genişlikli rakamlar.\n\nSistem dört şeyi bilerek reddeder: eski kamu yazılımı görünümü, çiğ Material varsayılanı, tüketici SaaS makyajı ve yoğun analitik panosu estetiği.",
+    "keyCharacteristics": [
+      "Aşama ve sorumlu taraf her satırda okunur; onay zinciri gizlenmez",
+      "Düz yüzeyler, tonal derinlik — gölge yalnız gerçekten yüzen katmanda",
+      "Renk anlam taşır; dekoratif renk yoktur",
+      "Türkçe tam ve eksiksiz; MEB terminolojisi esas",
+      "Kimlik kiracıdan gelebilir — hiçbir renk sabit varsayılmaz",
+      "Kontrast ölçülür, tahmin edilmez (metin eşiği 4,5:1)"
+    ],
+    "rules": [
+      {
+        "name": "Küratörlü Palet Kuralı",
+        "body": "Kiracı serbest renk giremez; kodda yaşayan ve testle kilitlenen sekiz seçenekten birini seçer. Veritabanı ham hex değil anahtar saklar — veriye düşen bozuk bir değer kontrastı kıramaz, tanınmayan anahtar varsayılan palete düşer ve ölçülmemiş bir renk hiçbir yüzeye ulaşamaz.",
+        "section": "colors"
+      },
+      {
+        "name": "Sabit Anlam Kuralı",
+        "body": "positive / negative / info / warning ve Resmî Hardal kiracıya göre değişmez — bunlar marka ifadesi değil sistem anlamıdır. Yalnız primary ve secondary kayar; ölçülmüş bütün anlamsal kontrastlar böylece her kiracıda geçerli kalır.",
+        "section": "colors"
+      },
+      {
+        "name": "Tek Ses Kuralı",
+        "body": "Resmî Hardal yalnız \"sıra sizde\" anlamına gelir ve bir ekranda en çok bir bağlamda görünür. Nadirliği anlamın kendisidir; dekoratif vurgu olarak kullanılırsa sinyal ölür.",
+        "section": "colors"
+      },
+      {
+        "name": "Türetme Kuralı",
+        "body": "Hiçbir yumuşak ton elle yazılmaz. -soft / -strong çiftleri color-mix() ile marka değişkeninden türetilir. Ham Quasar palet tonu tema dışına düşer ve kiracı rengi değiştiğinde yerinde donar. Bugünkü borç: 13 nokta.",
+        "section": "colors"
+      },
+      {
+        "name": "Ölçülmüş Kontrast Kuralı",
+        "body": "Yeni bir renk çifti eklenmeden önce kontrast ölçülür. Metin eşiği 4,5:1; -strong tonlar kendi -soft zeminlerinde bu eşiği geçer.",
+        "section": "colors"
+      },
+      {
+        "name": "Renk Yalnız Kanıt Kuralı",
+        "body": "Renk hiçbir zaman tek sinyal değildir. Durum rozeti her zaman metin etiketi taşır; renk körlüğünde bilgi kaybı olmaz.",
+        "section": "colors"
+      },
+      {
+        "name": "Kayık Gri Kuralı",
+        "body": "Quasar'ın gri ölçeği Material'ınkinden bir basamak kaymıştır: grey-6 = #9e9e9e, grey-7 = #757575, grey-8 = #616161 — Material'da #616161 grey-700'dür. Metin için taban grey-7; grey-6 (2,68:1) ve grey-5 (1,88:1) metin olarak da beyaz metinli rozet zemini olarak da kullanılamaz. Hex her zaman quasar/src/css/variables.sass'tan doğrulanır, ezberden yazılmaz: bu depoda iki bağımsız denetim aynı sınıf için farklı hex bildirdi.",
+        "section": "colors"
+      },
+      {
+        "name": "Sabit Rakam Kuralı",
+        "body": "Sayı gösteren her yüzey tabular-nums kullanır. Orantılı fontta \"1\" ile \"8\" farklı genişliktedir; sayı değişince sütun kayar ve göz zıplar.",
+        "section": "typography"
+      },
+      {
+        "name": "14px Sabit Kuralı",
+        "body": "Gövde 14px'te sabittir. Büyütmek 38 sayfalık tablo düzenini kaydırır; okunurluk sorunu varsa çözüm satır yüksekliği ve kontrasttır, punto değil.",
+        "section": "typography"
+      },
+      {
+        "name": "Sarma Kuralı",
+        "body": "Başlıklar text-wrap: balance, açıklama/caption text-wrap: pretty. Uzun düz metin, kod ve <pre> bu kuralın dışındadır.",
+        "section": "typography"
+      },
+      {
+        "name": "Kapsam Görünür Kuralı",
+        "body": "Hangi dönemin ve hangi yarıyılın verisine bakıldığı her ekranda okunabilir olmalıdır. Dönem kapalıysa salt-okunur bildirimi kalıcı durur ve tüm yazma yüzeyleri devre dışıdır — gizlenmez, açıklanır.",
+        "section": "layout"
+      },
+      {
+        "name": "Form Sayfa Kuralı",
+        "body": "Bir varlığın oluştur/düzenle formu ayrı route sayfasıdır, modal değil. Kısa ve bağlamsal aksiyonlar sağdan kayan yan-panel kullanır. Merkezî modal bu sistemde yoktur.",
+        "section": "layout"
+      },
+      {
+        "name": "Tonal Derinlik Kuralı",
+        "body": "Bir yüzeyi öne çıkarmak gerekiyorsa gölge değil -soft zemin tonu kullanılır. box-shadow yazmak, o elemanın gerçekten sayfanın üstünde yüzdüğünü iddia etmektir.",
+        "section": "elevation"
+      },
+      {
+        "name": "Kenarlık Önce Kuralı",
+        "body": "Ayrım önce kenarlıkla, sonra zemin tonuyla, en son gölgeyle kurulur. Üç katman aynı anda kullanılmaz.",
+        "section": "elevation"
+      },
+      {
+        "name": "Kesik Çizgi Kuralı",
+        "body": "Kesikli kenarlık yalnız bırakma hedefi içindir. Dekoratif ayraç, placeholder çerçevesi veya boş-durum kutusu için kullanılmaz.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do her satırda aşamayı ve bekleyen tarafı göster — StatusBadge ile, metin etiketiyle birlikte.",
+      "Do yumuşak tonları color-mix() ile tema değişkeninden türet (bg-positive-soft, text-warning-strong) ve color-mix() desteklenmeyen tarayıcı için düz hex yedeği bırak.",
+      "Do kiracı markasını küratörlü sekiz seçenekten bir anahtarla ayarla; hex tek yerde, palet kümesinde yaşar ve arayüzde ikinci kez tanımlanmaz.",
+      "Do derinliği zemin tonuyla kur; gölgeyi yalnız dialog, menü, örtüşen çekmece ve üst bar için sakla.",
+      "Do yalnız ikon içeren her butona aria-label + <q-tooltip> ver ve dokunma hedefini en az 24×24 CSS px yap.",
+      "Do boş durumu nötr ikon + eylem çağrısıyla göster (inbox, \"Kayıt bulunamadı\").",
+      "Do sayı gösteren her yüzeyde tabular-nums kullan.",
+      "Do oluştur/düzenle formunu ayrı route sayfası yap; kısa aksiyonu FormDialog yan paneline koy.",
+      "Do ilk yüklemede içerik-şekilli skeleton kullan (44px satır), spinner değil.",
+      "Do Türkçe karakterleri tam yaz (ç ş ğ ü ö ı İ) ve MEB terminolojisini kullan (\"1. Dönem\" / \"2. Dönem\")."
+    ],
+    "donts": [
+      "Don't ham Quasar palet tonu yazma (bg-orange-1, text-blue-8, text-orange-9). Tema dışına düşer ve kiracı rengi değiştiğinde yerinde donar. Mevcut 13 nokta borçtur, çoğaltılmaz.",
+      "Don't kiracıya serbest renk girdirme ve veritabanına ham hex yazma — ölçülmemiş bir primary üst bardaki, birincil butondaki ve rozetlerdeki beyaz metni okunmaz yapar; bunu hiçbir derleyici göremez.",
+      "Don't Resmî Hardal'ı metin rengi olarak kullanma (beyaz üzerinde 2,4:1) ve \"sıra sizde\" dışında bir anlama bağlama.",
+      "Don't dinlenen bir karta veya tabloya box-shadow verme. flat bordered varsayılandır.",
+      "Don't merkezî modal açma — bu sistemde form ya ayrı sayfadır ya sağdan kayan panel.",
+      "Don't boş listeye uyarı (⚠) ikonu koyma; boş durum bir hata değildir.",
+      "Don't gövde puntosunu 14px'ten büyütme — 38 sayfalık tablo düzeni kayar.",
+      "Don't title attribute'ünü tooltip yerine kullanma (WCAG için güvenilir değil).",
+      "Don't kesikli kenarlığı bırakma hedefi dışında kullanma.",
+      "Don't rengi tek sinyal yapma — her durum rozeti metin etiketi taşır.",
+      "Don't yeni bir renk çiftini kontrast ölçmeden ekleme (metin eşiği 4,5:1).",
+      "Don't Quasar gri tonunu ezberden yazma; ölçek Material'dan bir basamak kayıktır. grey-6 (#9e9e9e, 2,68:1) ve grey-5 (#bdbdbd, 1,88:1) ne metin ne de beyaz metinli rozet zemini olabilir — metin tabanı grey-7, hex variables.sass'tan doğrulanır.",
+      "Don't koyu tema değişkenlerini canlı kabul etme — tanımlıdır ama ürün kararı değildir."
+    ]
+  }
+}

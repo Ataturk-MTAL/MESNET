@@ -1,16 +1,10 @@
 <template>
   <q-page padding>
     <!-- Hoş Geldin -->
-    <div class="row items-center q-mb-lg">
-      <div class="col">
-        <h1 class="text-h5 text-weight-bold q-my-none">
-          {{ greeting }}
-        </h1>
-        <div class="text-caption text-grey">
-          {{ institutionName || '' }}{{ institutionName ? ' · ' : '' }}{{ todayFormatted }}
-        </div>
-      </div>
-    </div>
+    <PageHeader
+      :title="greeting"
+      :subtitle="headerSubtitle"
+    />
 
     <!-- Özet Kartları -->
     <div class="row q-col-gutter-md q-mb-lg">
@@ -56,13 +50,30 @@
         />
       </div>
 
+      <!--
+        "SIRA SİZDE" — bu ekrandaki TEK hardal bağlam (Tek Ses Kuralı).
+        Diğer sayaçlar primary/secondary/positive, hızlı erişim primary/secondary/info,
+        grafikler statusTone.* (bekleyen = uyarı hardalı #9A6B00) kullanır; hiçbiri
+        Resmî Hardal değildir. Sinyal yalnız burada yanar.
+
+        Sinyal SAYACA değil, kaydı İLERLETME yetkisine bağlıdır — bkz. isMyTurnPending.
+        Sayacı dolduran izinler kuyruğu yalnız AÇAR; onlara bağlansaydı rozet, onay
+        yetkisi olmayan kullanıcıda hiç sönmez ve tıklayınca 403 alınırdı (ölçüm ve
+        kaynak satırları PENDING_QUEUES yorumunda). Yetkisi olmayanda kart bugünkü
+        nötr `warning` görünümüne düşer.
+
+        `color` artık koşulsuz "warning": tone="accent" iken ikonu da StatCard'ın
+        kendisi accent-strong'a çevirir, iki prop'un elle senkron tutulması gerekmez.
+      -->
       <div class="col-12 col-sm-6 col-md-3">
         <StatCard
           icon="pending_actions"
           :value="stats.pendingTotal"
           label="Bekleyen İşlem"
           color="warning"
+          :tone="isMyTurnPending ? 'accent' : undefined"
           :loading="stats.pendingLoading"
+          :to="pendingQueueRoute"
         />
       </div>
     </div>
@@ -126,35 +137,40 @@
             <div class="text-subtitle1 text-weight-medium q-mb-sm">
               Son Aktiviteler
             </div>
-            <q-list
-              v-if="recentNotifications.length > 0"
-              separator
+            <DataState
+              :empty="recentNotifications.length === 0"
+              empty-icon="notifications_none"
+              empty-text="Henüz aktivite yok"
+              padding="q-pa-md"
             >
-              <q-item
-                v-for="n in recentNotifications"
-                :key="n.id"
-                dense
-              >
-                <q-item-section avatar>
-                  <q-icon
-                    :name="MODULE_ICONS[n.module] ?? 'info'"
-                    color="grey-6"
-                  />
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label>{{ eventLabel(n.eventType) }}</q-item-label>
-                  <q-item-label caption>
-                    {{ timeAgo(n.occurredAt) }}
-                  </q-item-label>
-                </q-item-section>
-              </q-item>
-            </q-list>
-            <div
-              v-else
-              class="text-body2 text-grey q-pa-md text-center"
-            >
-              Henüz aktivite yok
-            </div>
+              <q-list separator>
+                <q-item
+                  v-for="n in recentNotifications"
+                  :key="n.id"
+                  dense
+                >
+                  <q-item-section avatar>
+                    <!--
+                      İkon modül bilgisini taşıyor: yanındaki eventLabel(n.eventType)
+                      metni modül adını tekrarlamıyor (ör. "Rehberlik ziyareti eklendi"
+                      Coordination modülünü söylemez), yani dekoratif değil — WCAG 1.4.11
+                      grafik nesnesi eşiği 3:1 geçerli. grey-6 (#9e9e9e) beyaz zeminde
+                      2,68:1 ile eşiğin altındaydı; grey-7 (#757575) 4,61:1.
+                    -->
+                    <q-icon
+                      :name="MODULE_ICONS[n.module] ?? 'info'"
+                      color="grey-7"
+                    />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ eventLabel(n.eventType) }}</q-item-label>
+                    <q-item-label caption>
+                      {{ timeAgo(n.occurredAt) }}
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </DataState>
           </q-card-section>
         </q-card>
       </div>
@@ -178,8 +194,13 @@
                 <q-card
                   flat
                   bordered
+                  role="link"
+                  tabindex="0"
+                  :aria-label="link.label"
                   class="cursor-pointer q-pa-sm text-center quick-link"
                   @click="$router.push(link.route)"
+                  @keydown.enter.prevent="$router.push(link.route)"
+                  @keydown.space.prevent="$router.push(link.route)"
                 >
                   <q-icon
                     :name="link.icon"
@@ -208,9 +229,12 @@ import { SVGRenderer } from 'echarts/renderers'
 import VChart from 'vue-echarts'
 import { useAuthStore } from 'stores/auth'
 import { useNotificationStore } from 'stores/notifications'
+import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { Permissions } from 'utils/permissions'
 import { useDashboardStats } from 'src/composables/useDashboardStats'
 import { useDashboardActivity } from 'src/composables/useDashboardActivity'
+import DataState from 'components/DataState.vue'
+import PageHeader from 'components/PageHeader.vue'
 import StatCard from 'components/StatCard.vue'
 
 // ECharts tree-shaking
@@ -218,6 +242,8 @@ use([PieChart, BarChart, TitleComponent, TooltipComponent, LegendComponent, Grid
 
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
+// Yalnız okunur: dönemler MainLayout'ta bir kez yükleniyor, burada yeni istek yok.
+const periodStore = useAcademicPeriodStore()
 
 const institutionId = authStore.user?.institutionId ?? ''
 
@@ -240,10 +266,119 @@ const { institutionName, stats, studentChartOption, contractChartOption, init } 
   institutionId,
 })
 
+// Alt başlık: kurum adı varsa tarihle ayraçla birleşir, yoksa yalnız tarih.
+const headerSubtitle = computed(() =>
+  institutionName.value ? `${institutionName.value} · ${todayFormatted}` : todayFormatted,
+)
+
 // Son aktiviteler (bildirim akışı)
 const { MODULE_ICONS, recentNotifications, eventLabel, timeAgo } = useDashboardActivity({
   notificationStore,
 })
+
+/*
+ * Bekleyen iş kuyrukları. Her satırda İKİ AYRI izin vardır ve karıştırılmamalıdır:
+ *
+ *   permission → kuyruğu AÇAN (sayan) izin. useDashboardStats.loadPendingActions()
+ *                (useDashboardStats.ts:177-217) ile BİREBİR aynıdır; sayacı hangi izin
+ *                dolduruyorsa rota da ona bakar, başka bir rota uydurulmaz.
+ *   action     → kaydı İLERLETEN uç noktanın istediği izin. Kaynaktan okundu:
+ *                POST /api/attendance/{id}/approve → attendance:approve
+ *                  (AttendanceEndpoints.cs:40)
+ *                POST /api/businesses/{id}/approve → company:manage
+ *                  (BusinessEndpoints.cs:24)
+ *                POST /api/invitations/{id}/approve → user:approve
+ *                  (InvitationEndpoints.cs:21)
+ *                POST /api/contracts/{id}/sign → internship:contract:manage
+ *                  (ContractEndpoints.cs:23) — yalnız bu satırda ikisi aynı izindir.
+ *
+ * NEDEN AYRI: okuma izni zincirin her fazında açıktır, ilerletme izni değildir.
+ * RolePermissionMap.cs'ten ölçüldü — DepartmentHead `attendance:view` + `attendance:delete`
+ * taşır, `attendance:approve` TAŞIMAZ; InstitutionStaff `attendance:view` + `company:view`
+ * taşır, ikisinin de onay iznini taşımaz (dosyanın kendi yorumu: "yürütür, onaylamaz",
+ * #129); CompanyHR bu dört kuyruk izninden yalnız `company:view`'ü taşır, `company:manage`
+ * yoktur. Sinyal `permission`a bağlansaydı bu üç
+ * profilde HİÇ sönmez, tıklayınca 403 alınırdı. Depo bu hataya bir kez daha çarpmış:
+ * router/index.ts:158 "Alan şefi (attendance:view var, manage yok) bu formu açıp
+ * Kaydet'te 403 alıyordu".
+ *
+ * Rotalar sorgu parametresi taşımaz: hiçbir liste sayfası `route.query`den durum filtresi
+ * okumuyor (doğrulandı), uydurulmuş bir `?status=` sessizce hiçbir şey yapmazdı.
+ */
+const PENDING_QUEUES = [
+  {
+    permission: Permissions.Internship.Contract,
+    action: Permissions.Internship.Contract,
+    route: '/internship/contracts',
+  },
+  {
+    permission: Permissions.Attendance.View,
+    action: Permissions.Attendance.Approve,
+    route: '/attendance',
+  },
+  {
+    permission: Permissions.Company.View,
+    action: Permissions.Company.Manage,
+    route: '/companies',
+  },
+  {
+    permission: Permissions.UserManagement.View,
+    action: Permissions.UserManagement.Approve,
+    route: '/admin/users',
+  },
+] as const
+
+/*
+ * Kartın hedefi: izinli İLK kuyruk. Sıra "en dolu kuyruk" DEĞİL, composable'ın kendi
+ * toplama sırasıdır; başında imza bekleyen sözleşme durur (İmza Zinciri'nin ilk halkası).
+ *
+ * BİLİNEN BORÇ — hedef BOŞ bir kuyruk olabilir: useDashboardStats dışarıya yalnız
+ * `pendingTotal` veriyor, kırılımı vermiyor (dört sayı yerel `total`de toplanıyor,
+ * useDashboardStats.ts:177-217). Dört izni de taşıyan müdürde imza bekleyen sözleşme 0,
+ * devamsızlık onayı 5 iken kart yanar ve boş /internship/contracts'a götürür. Çözüm bu
+ * dosyada değil: composable `pendingByQueue` kırılımını dışarı vermeli, hedef ondan
+ * sonra dolu kuyruğa göre seçilmeli. Kapsam dışı bırakıldı, tahminle kapatılmadı.
+ *
+ * Dört iznin de olmadığı kullanıcıda undefined kalır → kart tıklanamaz.
+ */
+const pendingQueueRoute = computed(
+  () => PENDING_QUEUES.find((q) => authStore.hasPermission(q.permission))?.route,
+)
+
+/*
+ * Kullanıcının GERÇEKTEN ilerletebileceği bir kuyruk var mı — kuyruğu açan izin YETMEZ,
+ * kaydı ilerleten uç noktanın izni de gerekir.
+ *
+ * KAPSAM NOTU: izin gerek şarttır, yeter şart değildir. Kapsam da isteyen zincirlerde
+ * (ör. ücretli izinde `business_id` eşleşmesi — PaidLeaveApprovalPolicy) karar sunucuda
+ * daralır. Bu sayaç o kuyrukları saymıyor, bu yüzden burada ek kapsam kontrolü yok;
+ * kuyruk listesine kapsam isteyen bir satır eklenirse bu not yeniden okunmalı.
+ */
+const hasActionableQueue = computed(() =>
+  PENDING_QUEUES.some(
+    (q) => authStore.hasPermission(q.permission) && authStore.hasPermission(q.action),
+  ),
+)
+
+/*
+ * "Sıra sizde" sinyalinin koşulu — dördü de VERİDEN ya da izinden türer, hiçbiri
+ * varsayım değildir:
+ *   1) sayaç yüklendi          → skeleton sırasında vaat verilmez
+ *   2) sayaç > 0               → sıfır kuyruk sinyal üretmez (Kural 4)
+ *   3) dönem kapalı değil      → salt-okunur dönemde yapılamayan iş vaat edilmez (Kural 3)
+ *   4) ilerletebileceği kuyruk → sinyal bir EYLEME çıkmalı, 403'e değil
+ *
+ * Koşul 4, eski "gidilecek açık bir kuyruk var" koşulunu KAPSAR: `action` izni olan
+ * satırın `permission` izni de vardır, dolayısıyla pendingQueueRoute kesinlikle
+ * tanımlıdır — ayrı bir kontrol gereksiz olurdu.
+ */
+const isMyTurnPending = computed(
+  () =>
+    !stats.pendingLoading &&
+    stats.pendingTotal > 0 &&
+    !periodStore.isReadOnly &&
+    hasActionableQueue.value,
+)
 
 // Quick links — permission-filtered
 const quickLinks = computed(() => {
@@ -264,8 +399,20 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/*
+ * Hover zemini tema değişkeninden türetilir (ham siyah örtü kiracı rengi değişince
+ * yerinde donardı). color-mix desteklenmeyen tarayıcı için düz hex yedeği önce gelir.
+ * Geçiş temel kuralda: yalnız :hover'da tanımlanırsa fare çekilirken uygulanmaz.
+ */
+.quick-link {
+  transition: background-color 0.2s ease;
+}
 .quick-link:hover {
-  background-color: rgba(0, 0, 0, 0.03);
-  transition: background-color 0.2s;
+  background-color: #f6f7f9;
+  background-color: color-mix(in srgb, var(--q-primary) 4%, #fff);
+}
+.quick-link:focus-visible {
+  outline: 2px solid var(--q-primary);
+  outline-offset: -2px;
 }
 </style>

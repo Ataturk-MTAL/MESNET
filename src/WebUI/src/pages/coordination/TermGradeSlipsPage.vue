@@ -1,16 +1,12 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-md">
-      <h1 class="text-h5 col q-my-none">
-        Dönem Not Fişleri
-      </h1>
+    <PageHeader title="Dönem Not Fişleri">
       <q-btn
         flat
         dense
         icon="folder_open"
         label="Belgeler"
         :to="{ name: 'Documents' }"
-        class="q-mr-sm"
       >
         <q-tooltip>Üretilen fişler Belgeler'de görünür (yazdır / imzala / arşivle)</q-tooltip>
       </q-btn>
@@ -24,7 +20,7 @@
       >
         <q-tooltip>Yenile</q-tooltip>
       </q-btn>
-    </div>
+    </PageHeader>
 
     <AppNotice
       v-if="!activePeriod"
@@ -39,23 +35,11 @@
         class="q-mb-md"
       />
 
-      <div
-        v-if="!loading && rows.length === 0"
-        class="text-center q-pa-xl text-grey-6"
-      >
-        <q-icon
-          name="grading"
-          size="48px"
-          class="q-mb-sm"
-        />
-        <div>Bu dönemde işletmelerce gönderilmiş not bulunmuyor.</div>
-      </div>
-
       <AppTable
-        v-else
         :rows="rows"
         :columns="columns"
         :loading="loading"
+        no-data-label="Bu dönemde işletmelerce gönderilmiş not bulunmuyor."
       >
         <template #body-cell-average="{ row }">
           <q-td>{{ row.termAverage ?? '—' }}</q-td>
@@ -172,6 +156,7 @@ import { useNotify } from 'src/composables/useNotify'
 import AppTable from 'components/AppTable.vue'
 import FormDialog from 'components/FormDialog.vue'
 import AppNotice from 'components/AppNotice.vue'
+import PageHeader from 'components/PageHeader.vue'
 
 const periodStore = useAcademicPeriodStore()
 const notify = useNotify()

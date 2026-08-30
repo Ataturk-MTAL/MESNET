@@ -1,20 +1,16 @@
 <template>
   <q-page padding>
-    <div class="row items-center q-mb-lg">
-      <div class="col text-h5 text-weight-bold">
-        İşletme Değerlendirmeleri
-      </div>
-      <div class="col-auto">
-        <PermissionGuard :permission="Permissions.Coordinator.Visit">
-          <q-btn
-            color="primary"
-            icon="add"
-            label="Değerlendirme Ekle"
-            @click="openEvalDialog"
-          />
-        </PermissionGuard>
-      </div>
-    </div>
+    <PageHeader title="İşletme Değerlendirmeleri">
+      <PermissionGuard :permission="Permissions.Coordinator.Visit">
+        <q-btn
+          unelevated
+          color="primary"
+          icon="add"
+          label="Değerlendirme Ekle"
+          @click="goToNewEvaluation"
+        />
+      </PermissionGuard>
+    </PageHeader>
 
     <AppTable
       :rows="evaluations"
@@ -25,160 +21,32 @@
     >
       <template #body-cell-result="{ row }">
         <q-td>
-          <q-badge
-            :color="row.result === 'Suitable' ? 'positive' : row.result === 'Conditional' ? 'warning' : 'negative'"
-            :label="row.result === 'Suitable' ? 'Uygun' : row.result === 'Conditional' ? 'Şartlı' : 'Uygun Değil'"
-          />
+          <StatusBadge :slug="resultLabel(row.result)" />
         </q-td>
       </template>
       <template #body-cell-evaluationDate="{ row }">
         <q-td>{{ formatDate(row.evaluationDate) }}</q-td>
       </template>
     </AppTable>
-
-    <!-- Değerlendirme Ekle Dialog -->
-    <q-dialog
-      v-model="evalDialog"
-      persistent
-      :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
-    >
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-positive text-white">
-          <q-icon
-            name="rate_review"
-            class="q-mr-sm"
-          />
-          <q-toolbar-title>Değerlendirme Ekle</q-toolbar-title>
-          <q-btn
-            v-close-popup
-            flat
-            round
-            dense
-            icon="close"
-            aria-label="Kapat"
-            color="white"
-          />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-select
-            v-model="evalForm.businessId"
-            :options="evalBusinessOpts.options.value"
-            :loading="evalBusinessOpts.loading.value"
-            label="İşletme *"
-            outlined
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            @filter="evalBusinessOpts.filter"
-          >
-            <template #prepend>
-              <q-icon name="business" />
-            </template>
-            <template #option="{ itemProps, opt }">
-              <q-item v-bind="itemProps">
-                <q-item-section>
-                  <q-item-label>{{ opt.label }}</q-item-label>
-                  <q-item-label
-                    v-if="opt.caption"
-                    caption
-                  >
-                    {{ opt.caption }}
-                  </q-item-label>
-                </q-item-section>
-              </q-item>
-            </template>
-            <template #no-option>
-              <SelectEmptyOption />
-            </template>
-          </q-select>
-          <q-input
-            v-model="evalForm.evaluationDate"
-            label="Değerlendirme Tarihi"
-            outlined
-            type="date"
-          >
-            <template #prepend>
-              <q-icon name="calendar_today" />
-            </template>
-          </q-input>
-          <q-select
-            v-model="evalForm.result"
-            :options="evalResultOptions"
-            label="Sonuç"
-            outlined
-            emit-value
-            map-options
-          >
-            <template #prepend>
-              <q-icon name="fact_check" />
-            </template>
-          </q-select>
-          <q-input
-            v-model="evalForm.notes"
-            label="Notlar"
-            outlined
-            type="textarea"
-            rows="2"
-          >
-            <template #prepend>
-              <q-icon name="notes" />
-            </template>
-          </q-input>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions
-          align="right"
-          class="q-pa-md"
-        >
-          <q-btn
-            v-close-popup
-            flat
-            label="İptal"
-            color="grey-7"
-          />
-          <q-btn
-            unelevated
-            color="positive"
-            label="Kaydet"
-            :loading="saving"
-            @click="createEvaluation"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import type { QTableProps } from 'quasar'
-import { useQuasar } from 'quasar'
 import {
   coordinationApi,
   type BusinessEvaluationDto,
-  EVALUATION_RESULTS,
 } from 'src/api/coordination'
-import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
-import { useBusinessOptions } from 'src/composables/useEntityOptions'
 import { Permissions } from 'utils/permissions'
-import { useAuthStore } from 'stores/auth'
 import AppTable from 'components/AppTable.vue'
+import PageHeader from 'components/PageHeader.vue'
+import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
-import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 
-const $q = useQuasar()
-const notify = useNotify()
-const authStore = useAuthStore()
-const evalBusinessOpts = useBusinessOptions()
-
-const saving = ref(false)
-const evalDialog = ref(false)
+const router = useRouter()
 
 const evalFilters = computed(() => ({}))
 const { rows: evaluations, loading: loadingEvals, pagination: evalsPagination, onRequest: onEvalsRequest, load: loadEvaluations } = useServerPagination<BusinessEvaluationDto>({
@@ -186,13 +54,6 @@ const { rows: evaluations, loading: loadingEvals, pagination: evalsPagination, o
   filters: evalFilters,
   defaultSortBy: 'evaluationDate',
   defaultDescending: true,
-})
-
-const evalResultOptions = EVALUATION_RESULTS.map((r) => ({ label: r.label, value: r.value }))
-
-const evalForm = reactive({
-  businessId: '', evaluationDate: '',
-  result: 'Suitable', notes: '',
 })
 
 const evalColumns: QTableProps['columns'] = [
@@ -206,33 +67,36 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function openEvalDialog() {
-  evalForm.businessId = ''
-  evalForm.evaluationDate = ''
-  evalForm.result = 'Suitable'
-  evalForm.notes = ''
-  evalBusinessOpts.reset()
-  evalBusinessOpts.load().catch(() => {})
-  evalDialog.value = true
+/**
+ * Değerlendirme sonucunun Türkçe etiketi. Renk kararı StatusBadge'in
+ * STATUS_COLORS haritasına aittir — sayfada renk ternary'si kalmaz.
+ */
+function resultLabel(result: string) {
+  if (result === 'Suitable') return 'Uygun'
+  if (result === 'Conditional') return 'Şartlı'
+  return 'Uygun Değil'
 }
 
-async function createEvaluation() {
-  saving.value = true
-  try {
-    await coordinationApi.createEvaluation({
-      businessId: evalForm.businessId,
-      institutionId: authStore.user?.institutionId ?? '',
-      evaluationDate: new Date(evalForm.evaluationDate).toISOString(),
-      result: evalForm.result,
-      notes: evalForm.notes || undefined,
-    })
-    notify.success('Değerlendirme eklendi.')
-    evalDialog.value = false
-    await loadEvaluations()
-  } catch (e) {
-    notify.apiError(e, 'Değerlendirme eklenirken bir hata oluştu.')
-  } finally {
-    saving.value = false
-  }
+/**
+ * Oluşturma formu artık ayrı route sayfası (DESIGN.md "Form Sayfa Kuralı"): varlık
+ * yaratan bir form yan-panele değil kendi sayfasına açılır. MainLayout geçiş yönünü
+ * hedef rotanın `meta.formRoute` işaretinden okur.
+ */
+function goToNewEvaluation() {
+  router.push('/coordination/evaluations/new').catch(() => {})
 }
+
+// Açılış isteği BİLEREK eklendi: bu bir davranış koruması değil, önceden var olan
+// "liste hiç yüklenmiyor" hatasının düzeltmesidir. Ölçüldü (`git show HEAD`): dosyada
+// onMounted yoktu ve tek yükleme çağrısı dialog'un `createEvaluation()` sonundaki
+// `await loadEvaluations()` idi — sayfa, aynı oturumda kayıt eklenene kadar HER açılışta
+// boş geliyordu. Otomatik tetikleyicilerin ikisi de ölü: `useServerPagination` mount'ta
+// yüklemez (`load()` yalnız onRequest/onSearch/filtre watch'ından çağrılır) ve
+// `evalFilters` reaktif bağımlılık taşımadığı için o watch hiç tetiklenmez (immediate de
+// değil); q-table `request`'i yalnız `requestServerInteraction` üzerinden yayar
+// (quasar/src/components/table/table-pagination.js:66), QTable.js'te mount'ta
+// setPagination çağıran kanca yoktur. Aynı desen: WeeklyVisitPage.vue:454.
+onMounted(() => {
+  loadEvaluations().catch(() => {})
+})
 </script>

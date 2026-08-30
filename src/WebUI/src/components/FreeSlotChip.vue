@@ -3,14 +3,14 @@
     <!-- Atanmış slot sayısı -->
     <span
       v-if="assigned > 0"
-      :class="['bg-info-soft', 'text-info-strong', 'q-px-xs', 'rounded-borders', 'text-caption', 'text-weight-bold']"
+      :class="['bg-info-soft', 'text-info-strong', 'q-px-xs', 'rounded-borders', 'text-caption', 'text-weight-bold', 'tabular-nums']"
       style="min-width: 20px; display: inline-block; text-align: center"
     >
       {{ assigned }}
     </span>
     <!-- Boş slot sayısı -->
     <span
-      :class="[`bg-${bgColor}`, `text-${textColor}`, 'q-px-xs', 'rounded-borders', 'text-caption', 'text-weight-medium']"
+      :class="[`bg-${bgColor}`, `text-${textColor}`, 'q-px-xs', 'rounded-borders', 'text-caption', 'text-weight-medium', 'tabular-nums']"
       style="min-width: 20px; display: inline-block; text-align: center"
     >
       {{ free > 0 ? free : '—' }}

@@ -7,8 +7,8 @@
         flat
         dense
         :options="[
-          { value: 'table', slot: 'table' },
-          { value: 'map', slot: 'map' },
+          { value: 'table', slot: 'table', attrs: { 'aria-label': 'Tablo görünümü' } },
+          { value: 'map', slot: 'map', attrs: { 'aria-label': 'Harita görünümü' } },
         ]"
       >
         <template #table>
@@ -25,6 +25,7 @@
           color="primary"
           icon="add_business"
           label="İşletme Ekle"
+          unelevated
           @click="router.push('/companies/new')"
         />
       </PermissionGuard>
@@ -57,30 +58,27 @@
         @update:model-value="load"
       />
       <q-space />
-      <q-input
+      <SearchInput
         :model-value="search"
-        dense
-        outlined
         placeholder="Ara..."
-        style="min-width: 250px"
+        aria-label="İşletmelerde ara"
         debounce="400"
+        style="min-width: 250px"
         @update:model-value="(v) => onSearch(String(v ?? ''))"
-      >
-        <template #prepend>
-          <q-icon name="search" />
-        </template>
-        <template
-          v-if="search"
-          #append
-        >
-          <q-icon
-            name="close"
-            class="cursor-pointer"
-            @click="onSearch('')"
-          />
-        </template>
-      </q-input>
+      />
     </div>
+
+    <!--
+      Görünen satırların TAMAMI onay bekliyorsa (ör. "Onay Bekliyor" filtresi seçiliyse) satır
+      rozeti hiçbir şeyi ayırt etmez, yalnız durum sütununu ikinci kez söyler. Yirmi rozet
+      yerine tek cümle. Hiçbiri sırada değilse hiçbir şey gösterilmez.
+    -->
+    <AppNotice
+      v-if="viewMode === 'table' && showTurnNotice"
+      type="info"
+      class="q-mb-md"
+      :message="`Bu listedeki ${turnRows.length} işletmenin tamamı sizin onayınızı bekliyor.`"
+    />
 
     <!-- Tablo Görünümü -->
     <AppTable
@@ -103,12 +101,28 @@
           />
           <span
             v-if="row.sectors.length === 0"
-            class="text-grey text-caption"
+            class="text-grey-7 text-caption"
           >—</span>
         </q-td>
       </template>
       <template #body-cell-statusSlug="{ row }">
-        <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
+        <q-td>
+          <StatusBadge :slug="row.statusSlug" />
+          <!--
+            "Sıra sizde" — koşul ve gerekçe için bkz. `isMyTurn` / `showRowSignal` (script).
+            Yüzey olarak DURUM hücresi seçildi: aşama bilgisinin okunduğu yer burasıdır.
+            Satır zemini boyamak ya da renkli sol kenarlık koymak yasak (craft-floor); dolu
+            rozet metin etiketi taşır, yani renk ikincil sinyaldir.
+            Rozet yalnız AYIRT ETTİĞİ sayfada basılır: görünen satırların hepsi sıradaysa
+            yerini tablonun üstündeki tek cümlelik bildirim alır (bkz. `showTurnNotice`).
+          -->
+          <q-badge
+            v-if="showRowSignal && isMyTurn(row)"
+            color="accent-strong"
+            class="text-body2 q-px-sm q-py-xs q-ml-xs"
+            label="Sıra sizde"
+          />
+        </q-td>
       </template>
       <template #body-cell-capacity="{ row }">
         <q-td>
@@ -132,7 +146,9 @@
             icon="visibility"
             aria-label="Detayları görüntüle"
             @click="openDetail(row)"
-          />
+          >
+            <q-tooltip>Detayları görüntüle</q-tooltip>
+          </q-btn>
           <PermissionGuard :permission="Permissions.Company.Manage">
             <q-btn
               v-if="row.status === 'PendingApproval'"
@@ -223,7 +239,6 @@
                   text-color="neutral-strong"
                   class="q-mr-xs q-mb-xs"
                   :label="sec.slug"
-                  style="font-size: 10px"
                 />
               </div>
               <div class="text-caption q-mt-xs">
@@ -245,7 +260,7 @@
       </l-map>
       <div
         v-if="businessesWithoutLocation.length > 0"
-        class="text-caption text-grey q-mt-sm"
+        class="text-caption text-grey-7 q-mt-sm"
       >
         {{ businessesWithoutLocation.length }} işletmenin konum bilgisi bulunmuyor.
       </div>
@@ -324,7 +339,7 @@
             />
             <span
               v-if="selected.sectors.length === 0"
-              class="text-grey"
+              class="text-grey-7"
             >Belirtilmemiş</span>
           </InfoItem>
 
@@ -348,6 +363,15 @@
               </q-btn>
             </PermissionGuard>
           </div>
+          <!--
+            Aşağıdaki v-else satırı bilerek grey-8'de: bu sayfadaki diğer ikincil
+            metinler grey-7 (#757575, beyaz üzerinde 4,61:1) iken o satır bir SONUÇ
+            bildiriyor (işletmeye hiçbir alandan yerleştirme yapılamaz), en soluk
+            tonda kalmamalı → grey-8 (#616161, beyaz üzerinde 6,19:1).
+            "Tutarlılık" gerekçesiyle grey-7'ye çekmeyin.
+            (Yorum v-if'in ÜSTÜNDE duruyor: v-if ile v-else arasına konursa v-else
+             dalı dev derlemesinde tek elemandan Fragment'e döner.)
+          -->
           <div v-if="selected.activeBranchCodes.length > 0">
             <q-badge
               v-for="code in selected.activeBranchCodes"
@@ -359,13 +383,13 @@
           </div>
           <div
             v-else
-            class="text-grey text-caption"
+            class="text-grey-8 text-caption"
           >
             Yetkili alan yok — bu işletmeye hiçbir alandan öğrenci yerleştirilemez.
           </div>
           <div
             v-if="revokedBranches.length > 0"
-            class="text-caption text-grey q-mt-xs"
+            class="text-caption text-grey-7 q-mt-xs"
           >
             Kaldırılan yetkiler:
             <q-badge
@@ -395,12 +419,13 @@
               <q-btn
                 color="primary"
                 label="Güncelle"
+                unelevated
                 :loading="saving"
                 @click="updateCapacity"
               />
             </div>
           </PermissionGuard>
-          <div class="text-caption text-grey">
+          <div class="text-caption text-grey-7">
             Dolu: {{ selected.capacity.occupiedSlots }} / {{ selected.capacity.totalSlots }}
             — Müsait: {{ selected.capacity.availableSlots }}
           </div>
@@ -411,7 +436,7 @@
           </div>
           <div
             v-if="selected.documents.length === 0"
-            class="text-grey text-caption"
+            class="text-grey-7 text-caption"
           >
             Belge yok
           </div>
@@ -486,6 +511,7 @@
               icon="upload"
               label="Belge Yükle"
               class="q-mt-sm"
+              unelevated
               @click="docUploadDialog = true"
             />
           </PermissionGuard>
@@ -503,6 +529,7 @@
                   color="positive"
                   icon="check_circle"
                   label="Onayla"
+                  unelevated
                   :loading="saving"
                   class="full-width"
                   @click="approveFromDrawer"
@@ -511,6 +538,7 @@
                   color="negative"
                   icon="cancel"
                   label="Reddet"
+                  unelevated
                   :loading="saving"
                   class="full-width"
                   @click="openReject(selected)"
@@ -523,6 +551,7 @@
                   text-color="white"
                   icon="pause_circle"
                   label="Pasife Al"
+                  unelevated
                   :loading="saving"
                   class="full-width"
                   @click="deactivateBusiness"
@@ -543,6 +572,7 @@
                   color="positive"
                   icon="play_circle"
                   label="Aktifleştir"
+                  unelevated
                   :loading="saving"
                   class="full-width"
                   @click="activateBusiness"
@@ -590,13 +620,16 @@ import { businessApi, type BusinessDto, type SectorDto } from 'src/api/business'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
 import { useEntityOptionsStore } from 'stores/entityOptions'
+import { useAuthStore } from 'stores/auth'
 import { Permissions } from 'utils/permissions'
 import AppTable from 'components/AppTable.vue'
+import AppNotice from 'components/AppNotice.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import MapPicker from 'components/MapPicker.vue'
 import InfoItem from 'components/InfoItem.vue'
 import PageHeader from 'components/PageHeader.vue'
+import SearchInput from 'components/SearchInput.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import DetailPanel from 'components/DetailPanel.vue'
 import { useRouter } from 'vue-router'
@@ -610,6 +643,7 @@ const $q = useQuasar()
 const router = useRouter()
 const notify = useNotify()
 const entityOptionsStore = useEntityOptionsStore()
+const authStore = useAuthStore()
 const confirmDialog = useConfirmDialog()
 const viewMode = ref<'table' | 'map'>('table')
 const mapZoom = ref(7)
@@ -676,6 +710,62 @@ const statusOptions = [
 
 const sectorOptions = computed(() =>
   allSectors.value.map((s) => ({ label: s.slug, value: s.name })),
+)
+
+/**
+ * "SIRA SİZDE" — Tek Ses Kuralı: bu ekranda hardal TEK bağlamda görünür, o da işletme
+ * onay kararıdır.
+ *
+ * Koşul VERİDEN türer, rol adından DEĞİL (ADR-0001):
+ *  • `status === 'PendingApproval'` — kararı bekleyen tek aşama (bkz. #body-cell-actions).
+ *  • `Permissions.Company.Manage` — kaydı İLERLETEN ucun istediği izin, listeyi AÇAN izin
+ *    değil. Ölçüldü: `POST /api/businesses/{id}/approve` ve `.../reject` →
+ *    `RequireAuthorization(Permissions.Company.Manage)` (BusinessEndpoints.cs:24-25);
+ *    listeyi açan uç yalnız `company:view` ister (BusinessQueryEndpoints.cs:20).
+ *  • `Permissions.Institution.View` — KAPSAM ayracı: kararı okul verir, işletme değil.
+ *    Tek başına `company:manage` bu iki tarafı AYIRMAZ; ölçüldü (RolePermissionMap.cs):
+ *    izni taşıyanlar InstitutionManager ("company:*", satır 24), DeputyDirector (satır 95)
+ *    ve CompanyManager (satır 195). CompanyManager'da `company:view` de vardır, yani
+ *    /companies rotasına girer ve GET /api/businesses sahiplik kapsamı uygulamaz — koşul
+ *    daraltılmasaydı işletme yetkilisi KENDİ kaydında "Sıra sizde" okurdu, oysa o kararı
+ *    okul verir. `institution:view` yalnız okul rollerindedir: InstitutionManager
+ *    ("institution:*", satır 14), DeputyDirector (satır 60), InstitutionStaff (satır 106);
+ *    CompanyManager'da YOKTUR. InstitutionStaff ise `company:manage` taşımaz, yani "VE"
+ *    onu da eler. Geriye tam olarak karar mercii kalır.
+ *
+ *    Bu bir VEKİL ölçüttür, ucun izni değil: `institution:view` "okul tarafındayım" demektir.
+ *    Asıl borç (bu partinin kapsamı dışı): onay/red uçları ve #body-cell-actions butonları
+ *    `company:manage`ten ayrı bir onay iznine (`company:approve`) bağlanmalı — o gün bu satır
+ *    o izinle değiştirilir. Vekil ölçüt yalnız DARALTIR; hiçbir erişim açmaz.
+ *
+ * NADİRLİK: rozet yalnız görünen satırların BİR KISMI sıradaysa basılır (`showRowSignal`).
+ * "Onay Bekliyor" filtresi seçildiğinde sayfadaki her satır bu aşamadadır ve rozet durum
+ * sütununun tekrarına dönerdi. Ölçüt artık filtre DEĞERİNE değil sayfadaki orana bakar —
+ * aynı hâl filtresiz de doğabilir; o durumda tek cümlelik bildirim gösterilir.
+ *
+ * Dönem kapalılığı (`periodStore.isReadOnly`) BİLEREK sorgulanmadı: işletme onayı akademik
+ * döneme bağlı değildir, bu sayfa dönem store'una hiç dokunmaz ve onay ucu dönem kapanınca
+ * kapanmaz. Olmayan bir kapıyı taklit etmek yanlış olurdu.
+ *
+ * Detay panelindeki evrak onayı ikinci bir bağlam açardı — bilerek işaretlenmedi.
+ */
+function isMyTurn(row: BusinessDto): boolean {
+  return (
+    row.status === 'PendingApproval' &&
+    authStore.hasPermission(Permissions.Company.Manage) &&
+    authStore.hasPermission(Permissions.Institution.View)
+  )
+}
+
+/** Görünen sayfadaki "sıra sizde" satırları — nadirlik ölçümünün tek kaynağı. */
+const turnRows = computed(() => businesses.value.filter(isMyTurn))
+/** Satır rozeti: bazı satırlar sırada, hepsi değil — sinyal burada ayırt ediyor. */
+const showRowSignal = computed(
+  () => turnRows.value.length > 0 && turnRows.value.length < businesses.value.length,
+)
+/** Hepsi sırada: yirmi rozet yerine tablonun üstünde tek cümle. */
+const showTurnNotice = computed(
+  () => businesses.value.length > 0 && turnRows.value.length === businesses.value.length,
 )
 
 const columns: QTableProps['columns'] = [

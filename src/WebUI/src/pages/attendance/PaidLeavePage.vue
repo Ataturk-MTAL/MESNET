@@ -4,6 +4,7 @@
       <PermissionGuard :permission="Permissions.Attendance.LeaveRequest">
         <q-btn
           :disable="periodStore.isReadOnly"
+          unelevated
           color="primary"
           icon="add"
           label="İzin Başvurusu"
@@ -47,7 +48,8 @@
       <template #body-cell-range="{ row }">
         <q-td>
           <div>{{ formatDate(row.startDate) }} – {{ formatDate(row.endDate) }}</div>
-          <div class="text-caption text-grey-6">
+          <!-- grey-6 (#9e9e9e) beyaz q-td zemininde 2,68:1 idi; grey-7 (#757575) 4,61:1. -->
+          <div class="text-caption text-grey-7">
             {{ row.dayCount }} gün
           </div>
         </q-td>
@@ -55,6 +57,35 @@
       <template #body-cell-statusSlug="{ row }">
         <q-td>
           <StatusBadge :slug="row.statusSlug" />
+          <!-- "Sıra sizde" hardalı bu yüzeyde BİLEREK YOK — geri eklemeden önce okuyun.
+
+               1) İŞLETME ADIMI İSTEMCİDE HESAPLANAMAZ. Adımı bağlayan şey izin değil kapsamdır:
+                  `PaidLeaveApprovalPolicy.CanBusinessApprove` yalnız `business_id` claim'inin
+                  başvurunun `BusinessId`'siyle eşleşmesine bakar. O claim istemcide YOK —
+                  `AuthUser` id/username/email/ad/roles/institutionId/branchCodes taşır
+                  (stores/auth.ts:36-47), `businessId` alanı yoktur.
+                  Önceki tur bunu "LeaveBusinessApprove VAR && LeaveApprove YOK" biçiminde bir
+                  ROL ŞEKLİ çıkarımıyla taklit ediyordu. İki sakıncası ölçüldü:
+                  (a) `attendance:*` taşıyan InstitutionManager (RolePermissionMap.cs:17) o
+                      koşulu tutturamıyor ama aşağıdaki `LeaveBusinessApprove` PermissionGuard'ını
+                      GEÇİYOR — yani PendingBusiness satırında butonları görüp rozeti görmüyordu;
+                      satır kendi içinde çelişiyordu;
+                  (b) rol→izin haritası çalışma zamanında değiştirilebiliyor
+                      (`user:roles:manage`); bir işletme rolüne `attendance:leave:approve`
+                      verildiği an sinyal HATA VERMEDEN sönerdi.
+                  CLAUDE.md kesin kuralı: kapsam kararı izne, claim'e ya da kayda bakar; rol
+                  kimliği çıkarsanmaz.
+
+               2) GERİYE KALAN OKUL ADIMI DURUM SÜTUNUNUN TEKRARIDIR. `attendance:leave:approve`
+                  istemcide doğrulanabilir, ama o rozet tam olarak solundaki StatusBadge'in
+                  "Okul Onayı Bekliyor" dediği satırlarda ve zaten onay/ret butonlarının çıktığı
+                  yerde yanardı. DESIGN.md "Tek Ses Kuralı": ayırt etmeyen hardal sinyali öldürür.
+                  Süzgeç bunu daha da keskinleştirir — "Okul Onayı Bekliyor" seçilince
+                  (PAID_LEAVE_STATUSES, paidLeave.ts) ekrandaki HER satır yanardı.
+
+               Doğru çözüm sunucu tarafı bir `isActionableByMe` bayrağıdır: kapsamı bilen taraf
+               orasıdır. O alan `PaidLeaveRequestDto`'ya eklenene kadar bu yüzeyde sinyal yoktur.
+               Eksik sinyal, yanlış sinyalden iyidir. -->
           <q-tooltip v-if="row.rejectionReason">
             {{ row.rejectionReason }}
           </q-tooltip>

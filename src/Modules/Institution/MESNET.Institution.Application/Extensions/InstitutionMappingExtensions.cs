@@ -1,26 +1,38 @@
 using MESNET.Common.Shared.Reference;
 using MESNET.Institution.Application.Dtos;
 using MESNET.Institution.Core.Entities;
+using MESNET.Institution.Core.Enums;
 using MESNET.Institution.Core.ValueObjects;
 
 namespace MESNET.Institution.Application.Extensions;
 
 public static class InstitutionMappingExtensions
 {
-    public static InstitutionDto ToDto(this Core.Entities.Institution entity) => new(
-        entity.Id,
-        entity.InstitutionCode,
-        entity.FullName,
-        entity.Address,
-        entity.PhoneNumber,
-        entity.Email,
-        entity.WebUrl,
-        entity.Location,
-        entity.ProvinceCode,
-        TurkishProvinces.GetName(entity.ProvinceCode),
-        entity.DistrictName,
-        entity.Branches.Select(b => b.ToDto()).ToList(),
-        entity.Staff.Select(s => s.ToDto()).ToList());
+    public static InstitutionDto ToDto(this Core.Entities.Institution entity)
+    {
+        // Saklanan anahtar burada palete çözülür. Null (hiç seçim yapılmamış) ve tanınmayan
+        // değer aynı yere, varsayılana düşer — arayüz her zaman geçerli bir tema alır.
+        var palette = InstitutionBrandPalette.Resolve(entity.BrandPaletteName);
+
+        return new InstitutionDto(
+            entity.Id,
+            entity.InstitutionCode,
+            entity.FullName,
+            entity.Address,
+            entity.PhoneNumber,
+            entity.Email,
+            entity.WebUrl,
+            entity.Location,
+            entity.ProvinceCode,
+            TurkishProvinces.GetName(entity.ProvinceCode),
+            entity.DistrictName,
+            palette.Name,
+            palette.Slug,
+            palette.Primary,
+            palette.Secondary,
+            entity.Branches.Select(b => b.ToDto()).ToList(),
+            entity.Staff.Select(s => s.ToDto()).ToList());
+    }
 
     public static InstitutionBranchDto ToDto(this InstitutionBranch vo) => new(
         vo.FieldCode,

@@ -7,6 +7,7 @@ import {
   type ScheduleConfigDto,
 } from 'src/api/institution'
 import { useAuthStore } from './auth'
+import { applyBrandTheme } from 'utils/brandTheme'
 
 /**
  * Kurum referans/katalog verisi için merkezi cache.
@@ -22,6 +23,15 @@ export const useInstitutionStore = defineStore('institution', () => {
   // ── Kurum profili (branches + staff dahil) ──
   const institution = ref<InstitutionDto | null>(null)
   const isLoaded = ref(false)
+
+  /**
+   * Cache'teki kaydın HANGİ kuruma ait olduğu.
+   *
+   * `isLoaded` tek başına yetmez: kiracı değişirse (kullanıcının kurumu değiştirilirse)
+   * bayrak hâlâ true'dur ve `loadInstitution()` erken döner — eski okulun adı, alanları VE
+   * marka teması ekranda kalırdı. Kimlik karşılaştırması bu sessiz bayatlamayı kapatır.
+   */
+  const loadedInstitutionId = ref<string | null>(null)
 
   const branches = computed(() => institution.value?.branches ?? [])
   const activeBranches = computed(() => branches.value.filter((b) => b.isActive))
@@ -43,13 +53,28 @@ export const useInstitutionStore = defineStore('institution', () => {
     () => isScheduleConfigLoaded.value && periodCount.value === 0,
   )
 
+  /**
+   * Kurum profilini yükler ve <b>kiracının marka temasını uygular</b>.
+   *
+   * <p>Tema burada uygulanır çünkü <c>InstitutionDto</c> uygulamaya TEK bu kapıdan girer:
+   * palet değiştikten sonra çağrılan <c>loadInstitution(true)</c> ile tema kendiliğinden
+   * tazelenir, kiracı değişince yeni renkle yeniden kurulur. Uygulamayı ayrı bir yerde
+   * (boot dosyası, bileşen) tetiklemek ikinci bir doğruluk kaynağı yaratır ve o kaynak er
+   * geç cache ile ayrışır.</p>
+   *
+   * <p>Hex sunucudan gelir; frontend'de ikinci kez tanımlanmaz. Değer bozuksa
+   * <c>applyBrandTheme</c> sessizce derleme zamanı varsayılanına (Mührü Lacivert) düşer —
+   * kontrast hiçbir durumda ölçülmemiş bir renge bırakılmaz.</p>
+   */
   async function loadInstitution(force = false): Promise<void> {
     const id = currentInstitutionId()
     if (!id) return
-    if (isLoaded.value && !force) return
+    if (isLoaded.value && !force && loadedInstitutionId.value === id) return
     try {
       const { data } = await institutionApi.get(id)
       institution.value = data
+      loadedInstitutionId.value = id
+      applyBrandTheme(data?.brandPrimary, data?.brandSecondary)
     } finally {
       isLoaded.value = true
     }
@@ -79,9 +104,18 @@ export const useInstitutionStore = defineStore('institution', () => {
     }
   }
 
+  /**
+   * Cache'i geçersiz kılar; bir sonraki erişim taze veri çeker.
+   *
+   * <b>Temayı SIFIRLAMAZ:</b> bu fonksiyon mutasyon sonrası tazeleme için çağrılıyor
+   * (InstitutionPage her kaydetmede çağırır) ve tema sıfırlansaydı ekran her kayıtta
+   * varsayılan laciverte düşüp yeniden kiracı rengine dönerdi. Tema yalnız yeni kurum
+   * verisi geldiğinde değişir.
+   */
   function clear(): void {
     institution.value = null
     isLoaded.value = false
+    loadedInstitutionId.value = null
     fieldCatalog.value = []
     isFieldCatalogLoaded.value = false
     scheduleConfig.value = null

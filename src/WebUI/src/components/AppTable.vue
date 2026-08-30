@@ -9,10 +9,12 @@
       <q-space />
       <q-input
         v-if="showSearch"
+        ref="searchInput"
         :model-value="search"
         dense
         outlined
         placeholder="Ara..."
+        aria-label="Listede ara"
         style="min-width: 250px"
         debounce="400"
         @update:model-value="onSearchInput"
@@ -24,11 +26,20 @@
           v-if="search"
           #append
         >
-          <q-icon
-            name="close"
-            class="cursor-pointer"
-            @click="$emit('search', '')"
-          />
+          <!-- size verilmez: varsayılan 14px font → .q-btn .q-icon 1.715em = 24px ikon,
+               prepend'deki arama ikonuyla (q-field__marginal 24px) aynı optik ağırlık.
+               Dokunma hedefi .q-btn--dense.q-btn--round 2.4em × 14px = 33,6px
+               (WCAG 2.2 SC 2.5.8 eşiği 24×24 px, payla birlikte geçilir). -->
+          <q-btn
+            flat
+            dense
+            round
+            icon="close"
+            aria-label="Aramayı temizle"
+            @click="onClearSearch"
+          >
+            <q-tooltip>Aramayı temizle</q-tooltip>
+          </q-btn>
         </template>
       </q-input>
     </div>
@@ -88,7 +99,7 @@
         v-if="!loading && rows.length === 0"
         #no-data
       >
-        <div class="full-width column flex-center q-pa-xl text-grey-6">
+        <div class="full-width column flex-center q-pa-xl text-grey-7">
           <q-icon
             name="inbox"
             size="48px"
@@ -109,8 +120,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import type { QTableProps } from 'quasar'
+import { ref, computed, watch, nextTick } from 'vue'
+import type { QInput, QTableProps } from 'quasar'
 
 // Kök öğe q-table değil, sarmalayıcı <div>. inheritAttrs açık kalsaydı tanımsız her
 // öznitelik (class, dense, selection...) hem köke düşer hem de v-bind="$attrs" ile
@@ -165,6 +176,21 @@ watch(
 
 function onSearchInput(val: string | number | null) {
   emit('search', String(val ?? ''))
+}
+
+/** Arama girdisi — temizleme sonrası odağı geri vermek için. */
+const searchInput = ref<QInput | null>(null)
+
+/**
+ * Temizleme butonu `v-if="search"` altındadır: terim boşalınca buton DOM'dan sökülür ve
+ * klavye odağı <body>'ye düşer (kullanıcı listenin başına atılır). Emit sonrası odağı
+ * arama girdisine geri veriyoruz — DOM yamanmasını beklemek için nextTick.
+ */
+function onClearSearch() {
+  emit('search', '')
+  nextTick(() => {
+    searchInput.value?.focus()
+  }).catch(() => {})
 }
 
 /**

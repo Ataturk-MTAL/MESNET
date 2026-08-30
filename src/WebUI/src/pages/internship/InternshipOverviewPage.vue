@@ -10,6 +10,9 @@
     />
 
     <!-- Özet Kartlar -->
+    <!-- Beş sayaç kartı yan yana duruyor ve biri zaten `color="warning"`. Buraya Resmî
+         Hardal ("Sıra sizde") bir altıncı kart olarak EKLENMEZ — gerekçe aşağıda,
+         devamsızlık tablosunun üstündeki yorumda. -->
     <div class="row q-col-gutter-md q-mb-lg">
       <div class="col-12 col-sm-6 col-md">
         <StatCard
@@ -123,7 +126,9 @@
                 icon="visibility"
                 aria-label="Detayları görüntüle"
                 @click="openDetail(row)"
-              />
+              >
+                <q-tooltip>Detayları görüntüle</q-tooltip>
+              </q-btn>
             </q-td>
           </template>
         </AppTable>
@@ -140,11 +145,38 @@
         <div class="text-subtitle1 text-weight-medium q-mb-md">
           Devamsızlık Durumu
         </div>
-        <div class="text-caption text-grey q-mb-sm">
+        <!-- 25/30 gün eşiğini anlatan açıklama; beyaz flat bordered kart üzerinde.
+             text-grey (#9e9e9e) 2,68:1 ile gövde eşiğinin (4,5:1) altındaydı,
+             text-grey-7 (#757575) 4,61:1. Caption yine gövdeden soluk kalır. -->
+        <div class="text-caption text-grey-7 q-mb-sm">
           25 gün ve üzeri devamsız öğrenciler listelenir.
           30 günü aşan öğrenciler <span class="text-negative text-weight-medium">kırmızı</span> ile gösterilir.
         </div>
 
+        <!-- Resmî Hardal ("Sıra sizde") bu ekrana KOYULMAZ — bilerek. Tekrar denemeyin.
+             Aday koşul gerçekti: `canManage && row.totalAbsenceDays >= 30` satırın
+             "Tamamlayamadı İşaretle" butonunu açar, yani sırası gelen gerçekten
+             kullanıcıdır. Yine de sinyal buraya oturmuyor, iki nedenle:
+
+             (1) Tek Ses Kuralı. Sayfada beş sayaç kartı var ve biri `color="warning"`;
+                 bu tablonun satır zemini de `bg-negative-soft` / `bg-warning-soft`
+                 ikilisiyle ZATEN dolu bir dil konuşuyor. Üçüncü bir sıcak zemin
+                 eklenirse ekranda dört sıcak ton yan yana gelir ve hardal "sıra sizde"
+                 yerine "burası da önemli" diye okunur — sinyal ölür. `-soft` zemin
+                 burada serbest bir yüzey değil, kullanımda olan bir yüzeydir.
+
+             (2) Eşik izin değildir. `totalAbsenceDays >= 30` bir İŞ KURALI eşiğidir;
+                 sinyali yalnız ona bağlamak, kaydı İLERLETEN ucun iznini taşımayan
+                 kullanıcıda da yakardı — yapamayacağı bir iş vaat edilirdi. O uç
+                 `POST /placements/{id}/mark-failed` ve `internship:manage` ister
+                 (Enrollment.Api/PlacementEndpoints.cs); satırdaki `canManage` de tam
+                 o izne bakar, yani kapı doğru yere bağlı. İzinli kullanıcıda ise eylem
+                 zaten satırdaki "Tamamlayamadı İşaretle" butonuyla anlatılıyor
+                 (`flat`, ret kırmızısı metin); rozet aynı şeyi ikinci kez söylerdi.
+
+             Sırası gelen okul kullanıcısı fesih kuyruğunu /internship/terminations
+             ekranında (TerminationsPage, `internship:manage`) görür — "sıra sizde"
+             sinyalinin yeri, gerekiyorsa, orasıdır; burası değil. -->
         <q-table
           flat
           :rows="highAbsenceRows"
@@ -163,7 +195,19 @@
                 {{ row.businessName }}
               </td>
               <td class="text-center">
-                <span :class="row.totalAbsenceDays >= 30 ? 'text-negative text-weight-bold' : 'text-warning text-weight-medium'">
+                <!-- Satırın tek nicel verisi. 14px gövde puntosunda (DESIGN.md "14px Sabit
+                     Kuralı"), büyük metin tanımına (>=24px ya da >=18,66px kalın) girmiyor,
+                     devre dışı bileşen de değil → eşik 4,5:1. Ton artık satırın `-soft`
+                     zeminiyle eşleşen `-strong` basamağından geliyor; aynı çift AppNotice.vue
+                     ve FreeSlotChip.vue'da da böyle kuruluyor. Ölçüldü (sRGB, WCAG 2.x):
+                       text-warning        #9A6B00 / bg-warning-soft  #efe7d6 = 3,81:1  ✗
+                       text-warning-strong #7e5800 / bg-warning-soft  #efe7d6 = 5,20:1  ✓
+                       text-negative        #B3261E / bg-negative-soft #f6e5e4 = 5,37:1 (geçiyordu)
+                       text-negative-strong #98201a / bg-negative-soft #f6e5e4 = 6,75:1  ✓
+                     Ternary'nin iki dalı AYNI rolü oynar, aynı ton basamağını kullanır.
+                     Yukarıdaki açıklamadaki "kırmızı" kelimesi beyaz kart zemininde durur;
+                     orada `-soft` zemin yok, bu yüzden düz `text-negative` (6,54:1) kalır. -->
+                <span :class="row.totalAbsenceDays >= 30 ? 'text-negative-strong text-weight-bold' : 'text-warning-strong text-weight-medium'">
                   {{ row.totalAbsenceDays }} gün
                 </span>
               </td>

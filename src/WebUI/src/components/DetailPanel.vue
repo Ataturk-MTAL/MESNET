@@ -21,7 +21,9 @@
           icon="close"
           aria-label="Kapat"
           @click="open = false"
-        />
+        >
+          <q-tooltip>Kapat</q-tooltip>
+        </q-btn>
       </q-toolbar>
       <q-separator />
       <q-scroll-area class="fit">

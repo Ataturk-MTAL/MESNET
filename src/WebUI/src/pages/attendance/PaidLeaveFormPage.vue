@@ -27,16 +27,13 @@
       class="q-mx-auto"
     >
       <q-card-section>
-        <q-banner
+        <AppNotice
+          type="info"
           dense
-          class="bg-blue-1 text-primary"
         >
-          <template #avatar>
-            <q-icon name="info" />
-          </template>
           Başvurunuz önce işletmenizin, sonra okul yönetiminin onayından geçer. İki onay
           tamamlanmadan izin günleri kaydedilmez.
-        </q-banner>
+        </AppNotice>
       </q-card-section>
 
       <q-card-section class="q-gutter-md">
@@ -117,6 +114,7 @@ import { useRouter } from 'vue-router'
 import { paidLeaveApi, PAID_LEAVE_MAX_DAYS } from 'src/api/paidLeave'
 import { useNotify } from 'src/composables/useNotify'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import AppNotice from 'components/AppNotice.vue'
 
 const router = useRouter()
 const notify = useNotify()

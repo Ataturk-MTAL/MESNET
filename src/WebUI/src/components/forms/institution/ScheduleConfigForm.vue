@@ -8,7 +8,10 @@
     :saving="saving"
     @save="handleSave"
   >
-    <div class="text-subtitle2 q-mb-md">
+    <div
+      id="gunluk-ders-sayisi-etiket"
+      class="text-subtitle2 q-mb-md"
+    >
       Günlük Ders Sayısı
     </div>
     <q-slider
@@ -20,6 +23,8 @@
       label-always
       color="primary"
       markers
+      aria-labelledby="gunluk-ders-sayisi-etiket"
+      :aria-valuetext="`${dailyPeriodCount} ders saati`"
     />
     <div class="text-center text-h5 text-primary q-mt-sm">
       {{ dailyPeriodCount }} ders
