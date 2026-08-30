@@ -136,15 +136,17 @@ Read-model boş doğar; hiçbir olay geçmişe dönük yeniden oynatılmaz. Boş
 **yönetilen kurum kümesi boştur**, yani negatif sorgu **her okulu** "yöneticisi yok" olarak
 döndürür — hata değil, yanlış liste.
 
-`POST /api/institutions/resync-manager-links` (`Permissions.Platform.TenantManage`).
+`POST /api/security/users/replay` (`Permissions.Platform.TenantManage`) — **Security
+modülünde**, Institution'da değil.
 
-İş bütün `UserAccount` kayıtlarını dolaşır ve her biri için bir `InstitutionManagerLink`
-satırı yazar. Kurum başına satır YOKTUR — model kullanıcı başınadır, dolayısıyla hiç
-kullanıcısı olmayan okul için yazılacak bir şey de yoktur; o okul negatif sorguda
-kendiliğinden "yöneticisiz" çıkar.
+**Neden orada:** Institution modülü `UserAccount` belgesini okuyamaz (şema izolasyonu).
+Backfill, Security'nin kendi kayıtlarını `UserCreated` olarak **yeniden yayınlaması** ve
+Institution tüketicisinin onları normal yoldan işlemesidir. Depoda birebir emsali var:
+`POST /api/institutions/staff/resync-branch-codes` olayı yeniden yayınlar, Security tüketir.
 
-`UserAccount` `Identity` sınıfıdır ve kiracı damgası taşımaz; iş kiracı kiracı dolaşmaz,
-`TenantResolution.Platform` session'ında tek geçişte koşar.
+Kurum başına satır YOKTUR — model kullanıcı başınadır, dolayısıyla hiç kullanıcısı olmayan
+okul için yazılacak bir şey de yoktur; o okul negatif sorguda kendiliğinden "yöneticisiz"
+çıkar. İdempotenttir: tüketici satırı mutlak olarak yazar.
 
 `src/Docs/docs/infrastructure/dagitim-on-kosullari.md` dosyasına eklenir.
 
@@ -500,6 +502,6 @@ oturumda tekrar eden başarısızlık kalıbı **içi boş kilit**: yeşil ama h
 
 | Uç | Zorunlu mu | Atlanırsa |
 |---|---|---|
-| `POST /api/institutions/resync-manager-links` | **evet** | Her okul "yöneticisi yok" görünür |
+| `POST /api/security/users/replay` | **evet** | Her okul "yöneticisi yok" görünür |
 
 `src/Docs/docs/infrastructure/dagitim-on-kosullari.md` dosyasına eklenir.
