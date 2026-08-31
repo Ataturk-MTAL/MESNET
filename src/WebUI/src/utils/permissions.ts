@@ -77,6 +77,17 @@ export const Permissions = {
     Manage: 'internship:manage',
     Contract: 'internship:contract:manage',
     Report: 'internship:report:manage',
+    /** Onay zincirine müdahale — müdürlük yetkisi, okul rollerinde de bulunur. */
+    ApprovalOverride: 'internship:approval:override',
+  },
+
+  /**
+   * İl/ilçe müdürlüğü yetkileri. Önek bilerek `directorate:` — `institution:` olsaydı
+   * InstitutionManager'ın `institution:*` wildcard'ı üzerinden her okul müdürüne geçerdi
+   * (ADR-0002 önek tuzağı).
+   */
+  Directorate: {
+    InstitutionBootstrap: 'directorate:institution-bootstrap',
   },
 
   Attendance: {
