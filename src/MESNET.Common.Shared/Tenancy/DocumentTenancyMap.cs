@@ -161,9 +161,6 @@ public static class DocumentTenancyMap
         // da kiracı bilinemez. Aynı döngüsellik UserAccount'ta da var (#149).
         // Ölçüldü: Tenant iken anonim POST /api/security/invitations/{id}/complete
         // DefaultTenantUsageDisabledException ile 500 döndü.
-        // KALAN BORÇ: davet listeleme kapsamı isteğe bağlı InstitutionId filtresiyle çalışıyor
-        // (InvitationHandler). Kiracılık artık o listeyi ARKADAN DESTEKLEMİYOR; kapsam kararı
-        // sunucuda verilmeli.
         ["UserInvitation"] = Identity,
 
         // ── BOŞLUK: kiracıya ait veri taşıyıp kiracı anahtarı olmayan belge KALMADI ────

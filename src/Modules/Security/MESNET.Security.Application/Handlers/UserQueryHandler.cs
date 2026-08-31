@@ -5,6 +5,7 @@ using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
 using MESNET.Security.Application.Errors;
+using MESNET.Security.Application.Services;
 using MESNET.Security.Core.Entities;
 
 namespace MESNET.Security.Application.Handlers;
@@ -34,10 +35,24 @@ public sealed record UserAccountDto(
 public static class GetUserAccountsHandler
 {
     public static async Task<PagedResult<UserAccountDto>> Handle(
-        GetUserAccounts query, IQuerySession session)
+        GetUserAccounts query,
+        IQuerySession session,
+        UserScopeResolver scopeResolver,
+        CancellationToken cancellationToken)
     {
         // Mezar taşları yönetim yüzeyinde görünmez (#210).
         IQueryable<UserAccount> queryable = session.Query<UserAccount>().Where(u => u.DeletedAt == null);
+
+        // KAPSAM — istekten gelen InstitutionId'den ÖNCE ve ondan bağımsız. İstekteki değer
+        // bir kolaylık süzgecidir, yetki değildir; kapsamı genişletemez.
+        //
+        // Kurum bağı OLMAYAN kayıtlar bilerek GÖRÜNÜR KALIR (yüklemdeki `== null` dalı):
+        // bağı kuran tek arayüz bu listedir (UserManagementPage → POST /users/{id}/institution).
+        // Süzülüp düşselerdi o uç hiç çağrılamaz ve hesap kalıcı kapsamsız kalırdı — tek
+        // yönlü kapı.
+        var visibleIds = await scopeResolver.ResolveAsync(cancellationToken);
+        if (visibleIds is { } ids)
+            queryable = queryable.Where(u => u.InstitutionId == null || ids.Contains(u.InstitutionId.Value));
 
         if (query.InstitutionId.HasValue)
             queryable = queryable.Where(u => u.InstitutionId == query.InstitutionId.Value);
@@ -59,7 +74,7 @@ public static class GetUserAccountsHandler
         // filtre uygulandığında bellek üzerinden yapılır.
         if (query.MissingBranchOnly == true)
         {
-            var all = await queryable.ToListAsync();
+            var all = await queryable.ToListAsync(cancellationToken);
             var missing = all.Where(IsBranchMissing).ToList();
 
             var items = missing
@@ -77,7 +92,7 @@ public static class GetUserAccountsHandler
             };
         }
 
-        return await queryable.ToPagedResultAsync(query, ToDto);
+        return await queryable.ToPagedResultAsync(query, ToDto, cancellationToken);
     }
 
     internal static bool IsBranchMissing(UserAccount a) =>
@@ -101,11 +116,23 @@ public static class GetUserAccountsHandler
 public static class GetUserAccountHandler
 {
     public static async Task<UserAccountDto> Handle(
-        GetUserAccount query, IQuerySession session)
+        GetUserAccount query,
+        IQuerySession session,
+        UserScopeResolver scopeResolver,
+        CancellationToken cancellationToken)
     {
-        var account = await session.LoadAsync<UserAccount>(query.UserAccountId);
+        var account = await session.LoadAsync<UserAccount>(query.UserAccountId, cancellationToken);
         // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
         if (account is null || account.DeletedAt is not null)
+            throw new DomainException(SecurityErrors.UserNotFound(query.UserAccountId));
+
+        // Kapsam dışı kayıt "bulunamadı" döner, "yasak" DEĞİL: yasak yanıtı kaydın VAR
+        // olduğunu doğrular ve kimliği tahmin edilebilir hâle gelmiş bir listede bu bilgi
+        // sızıntıdır.
+        var visibleIds = await scopeResolver.ResolveAsync(cancellationToken);
+        if (visibleIds is { } ids
+            && account.InstitutionId is { } institutionId
+            && !ids.Contains(institutionId))
             throw new DomainException(SecurityErrors.UserNotFound(query.UserAccountId));
 
         return GetUserAccountsHandler.ToDto(account);
