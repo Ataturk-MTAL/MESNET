@@ -33,6 +33,7 @@ describe('isNavItemVisible', () => {
     expect(
       isNavItemVisible(kurumlar as NavItem, izinliOkuyucu(['institution:view']), {
         isUpperNode: true,
+        isActingAsDirectorate: false,
       }),
     ).toBe(true)
   })
@@ -41,13 +42,17 @@ describe('isNavItemVisible', () => {
     expect(
       isNavItemVisible(kurumlar as NavItem, izinliOkuyucu(['institution:view']), {
         isUpperNode: false,
+        isActingAsDirectorate: false,
       }),
     ).toBe(false)
   })
 
   it('izni olmayana gösterilmez — düğüm tipi üst düğüm olsa bile', () => {
     expect(
-      isNavItemVisible(kurumlar as NavItem, izinliOkuyucu([]), { isUpperNode: true }),
+      isNavItemVisible(kurumlar as NavItem, izinliOkuyucu([]), {
+        isUpperNode: true,
+        isActingAsDirectorate: false,
+      }),
     ).toBe(false)
   })
 
@@ -63,7 +68,10 @@ describe('isNavItemVisible', () => {
   })
 
   it('aktif bağlam varken "Kurumlar" görünür kalır', () => {
-    const ctx = { isUpperNode: resolveIsUpperNode('School', 'okul-x-id') }
+    const ctx = {
+      isUpperNode: resolveIsUpperNode('School', 'okul-x-id'),
+      isActingAsDirectorate: false,
+    }
 
     expect(isNavItemVisible(kurumlar as NavItem, izinliOkuyucu(['institution:view']), ctx)).toBe(
       true,
@@ -86,7 +94,96 @@ describe('isNavItemVisible', () => {
     expect(
       isNavItemVisible(kurumBilgileri, izinliOkuyucu(['institution:view']), {
         isUpperNode: false,
+        isActingAsDirectorate: false,
       }),
     ).toBe(true)
+  })
+})
+
+/**
+ * Müdürlük bağlamında "Staj Yönetimi" grubunun okul-işi girdileri gizlenir.
+ *
+ * Gerekçe: müdürlük rollerine `internship:view` verildi (D1) — bu izin `Staj Yönetimi`
+ * grubunun TÜM çocuklarını açar, ama müdürlüğün KENDİ bağlamında (aktif bağlam yok, kiracı
+ * müdürlüğün kendisi) bu sayfaların hiçbiri veri döndürmez: liste boş görünür. `Fesihler`
+ * istisnadır — müdürlük oraya tam olarak bir okulun bağlamına GEÇMEK için gider, girdi onun
+ * giriş kapısıdır ve gizlenmez.
+ *
+ * `isActingAsDirectorate` ile `isUpperNode` KARIŞTIRILMAZ: `isUpperNode` aktif bağlam açıkken
+ * de true kalır (Kurumlar ağacı erişilebilir kalmalı), `isActingAsDirectorate` ise aktif bağlam
+ * açıkken FALSE olur (kiracı artık o okuldur, okul menüleri doğrudur).
+ *
+ * NOT: bu testler de `menuDefinition`'ı GERÇEK tanımdan bulur — yerel bir kopya, bir girdiden
+ * `visibleWhen` silinse bile testi yeşil tutardı.
+ */
+describe('isNavItemVisible — Staj Yönetimi grubunun müdürlük bağlamı kapısı', () => {
+  const izinliOkuyucu = (perms: string[]) => (required: string[]) =>
+    required.length === 0 || required.some((p) => perms.includes(p))
+
+  const internshipGroup = menuDefinition.find((group) => group.key === 'internship')
+  const children = internshipGroup?.children ?? []
+  const fesihler = children.find((item) => item.to.name === 'InternshipTerminations')
+  const digerCocuklar = children.filter((item) => item.to.name !== 'InternshipTerminations')
+
+  it('grup tanımlı ve Fesihler dışında en az bir çocuk taşıyor', () => {
+    expect(internshipGroup).toBeDefined()
+    expect(fesihler).toBeDefined()
+    expect(digerCocuklar.length).toBeGreaterThan(0)
+  })
+
+  it('Fesihler dışındaki her çocuk visibleWhen koşulu taşıyor', () => {
+    for (const item of digerCocuklar) {
+      expect(item.visibleWhen, `${item.title} için visibleWhen bekleniyordu`).toBeTypeOf(
+        'function',
+      )
+    }
+  })
+
+  it('Fesihler herhangi bir visibleWhen koşulu TAŞIMAZ — müdürlüğün giriş kapısı', () => {
+    expect(fesihler?.visibleWhen).toBeUndefined()
+  })
+
+  it('müdürlük bağlamında (isActingAsDirectorate: true) Fesihler dışındaki çocuklar görünmez', () => {
+    const ctx = { isUpperNode: true, isActingAsDirectorate: true }
+    const tumIzinler = digerCocuklar.flatMap((item) => item.permissions)
+
+    for (const item of digerCocuklar) {
+      expect(
+        isNavItemVisible(item, izinliOkuyucu(tumIzinler), ctx),
+        `${item.title} müdürlük bağlamında görünmemeliydi`,
+      ).toBe(false)
+    }
+  })
+
+  it('müdürlük bağlamında Fesihler görünür — izni varsa', () => {
+    const ctx = { isUpperNode: true, isActingAsDirectorate: true }
+
+    expect(
+      isNavItemVisible(fesihler as NavItem, izinliOkuyucu(['internship:approval:override']), ctx),
+    ).toBe(true)
+  })
+
+  it('okul bağlamında (isActingAsDirectorate: false) grubun tüm çocukları izinliyse görünür', () => {
+    const ctx = { isUpperNode: false, isActingAsDirectorate: false }
+
+    for (const item of children) {
+      expect(
+        isNavItemVisible(item, izinliOkuyucu(item.permissions), ctx),
+        `${item.title} okul bağlamında görünmeliydi`,
+      ).toBe(true)
+    }
+  })
+
+  it('Kurum Yönetimi grubunun girdileri müdürlük bağlamında da görünür kalır', () => {
+    const institutionGroup = menuDefinition.find((group) => group.key === 'institution')
+    const izinsizGirdiler = institutionGroup?.children ?? []
+    const directorateCtx = { isUpperNode: true, isActingAsDirectorate: true }
+
+    for (const item of izinsizGirdiler) {
+      expect(
+        isNavItemVisible(item, izinliOkuyucu(item.permissions), directorateCtx),
+        `${item.title} müdürlük bağlamında görünmeliydi (Kurum Yönetimi müdürlüğün kendi işi)`,
+      ).toBe(true)
+    }
   })
 })

@@ -2,6 +2,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 import { useInstitutionStore } from 'stores/institution'
+import { isActingAsDirectorate } from 'utils/directorateContext'
 
 /**
  * Menü görünürlüğü için izin DIŞI bağlam.
@@ -11,6 +12,13 @@ import { useInstitutionStore } from 'stores/institution'
  */
 export interface NavVisibilityContext {
   isUpperNode: boolean
+  /**
+   * Aktör ŞU AN müdürlük olarak mı davranıyor? `isUpperNode` ile karıştırmayın: o "aktör üst
+   * düğüm mü" der ve aktif bağlam açıkken de true kalır (Kurumlar ağacı okula geçince de
+   * görünmeli). Bu alan aktif bağlam açıkken FALSE olur — kiracı o okuldur, okul menüleri
+   * doğrudur.
+   */
+  isActingAsDirectorate: boolean
 }
 
 export interface NavItem {
@@ -130,16 +138,20 @@ export const menuDefinition: NavGroup[] = [
     icon: 'work_history',
     permissions: [],
     children: [
-      { title: 'Staj Takibi', icon: 'work_history', to: { name: 'InternshipOverview' }, permissions: ['internship:view', 'internship:manage', 'internship:view-own'] },
-      { title: 'Sözleşmeler', icon: 'description', to: { name: 'ContractList' }, permissions: ['internship:manage', 'internship:contract:manage'] },
+      // Bu grubun tüm çocukları (Fesihler HARİÇ) müdürlük bağlamında GİZLENİR — internship:view
+      // izni müdürlük rollerine bu grubu açar ama müdürlük kiracısında (kendi bağlamında) bu
+      // sayfaların hiçbiri veri döndürmez, boş liste görünürdü. `Fesihler` istisnadır: müdürlük
+      // oraya tam olarak bir okulun bağlamına GEÇMEK için gider, o yüzden girdi kapının kendisi.
+      { title: 'Staj Takibi', icon: 'work_history', to: { name: 'InternshipOverview' }, permissions: ['internship:view', 'internship:manage', 'internship:view-own'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
+      { title: 'Sözleşmeler', icon: 'description', to: { name: 'ContractList' }, permissions: ['internship:manage', 'internship:contract:manage'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
       // İzin listesi rota metasıyla (router/index.ts → InternshipTerminations) AYNI üçlüdür.
       // Girdi eksikti: müdürlük rolleri sayfaya rotadan ulaşabiliyordu ama menüde hiç yoktu.
       { title: 'Fesihler', icon: 'link_off', to: { name: 'InternshipTerminations' }, permissions: ['internship:view', 'internship:manage', 'internship:approval:override'] },
-      { title: 'Devamsızlık', icon: 'event_available', to: { name: 'AttendanceList' }, permissions: ['attendance:view', 'attendance:view-own'] },
-      { title: 'Ücretli İzin', icon: 'event_note', to: { name: 'PaidLeaveList' }, permissions: ['attendance:leave:request', 'attendance:leave:business-approve', 'attendance:leave:approve'] },
-      { title: 'Maaş / Dekont', icon: 'payments', to: { name: 'SalaryList' }, permissions: ['salary:view', 'salary:view-own'] },
-      { title: 'Asgari Ücret', icon: 'price_change', to: { name: 'SalaryConfig' }, permissions: ['salary:parameter:view'] },
-      { title: 'Dönem Notu Girişi', icon: 'edit_note', to: { name: 'TermGradeEntry' }, permissions: ['company:grade:enter', 'institution:school-grade:enter'] },
+      { title: 'Devamsızlık', icon: 'event_available', to: { name: 'AttendanceList' }, permissions: ['attendance:view', 'attendance:view-own'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
+      { title: 'Ücretli İzin', icon: 'event_note', to: { name: 'PaidLeaveList' }, permissions: ['attendance:leave:request', 'attendance:leave:business-approve', 'attendance:leave:approve'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
+      { title: 'Maaş / Dekont', icon: 'payments', to: { name: 'SalaryList' }, permissions: ['salary:view', 'salary:view-own'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
+      { title: 'Asgari Ücret', icon: 'price_change', to: { name: 'SalaryConfig' }, permissions: ['salary:parameter:view'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
+      { title: 'Dönem Notu Girişi', icon: 'edit_note', to: { name: 'TermGradeEntry' }, permissions: ['company:grade:enter', 'institution:school-grade:enter'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
     ],
   },
   {
@@ -202,6 +214,7 @@ export function useNavigation() {
       institutionStore.institution?.nodeType,
       authStore.user?.activeInstitutionId,
     ),
+    isActingAsDirectorate: isActingAsDirectorate(institutionStore.institution?.nodeType),
   }))
 
   const filteredMenu = computed(() => {
