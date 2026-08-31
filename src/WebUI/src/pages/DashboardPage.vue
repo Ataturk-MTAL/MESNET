@@ -6,217 +6,226 @@
       :subtitle="headerSubtitle"
     />
 
-    <!-- Özet Kartları -->
-    <div class="row q-col-gutter-md q-mb-lg">
-      <div
-        v-if="authStore.hasPermission(Permissions.Student.View)"
-        class="col-12 col-sm-6 col-md-3"
-      >
-        <StatCard
-          icon="school"
-          :value="stats.students"
-          label="Öğrenci"
-          color="primary"
-          :loading="stats.studentsLoading"
-          to="/enrollment/students"
-        />
-      </div>
+    <!--
+      Müdürlük bağlamında okul panosu YANLIŞ veri değil, BOŞ veri gösterir: il/ilçe düğümü
+      kiracı değildir ve kiracı damgalı belgelere attığı her sorgu boş döner. Bu yüzden
+      dallanma bir tercih değil, doğruluk gereğidir.
+    -->
+    <DirectorateDashboard v-if="isDirectorate" />
 
-      <div
-        v-if="authStore.hasPermission(Permissions.Company.View)"
-        class="col-12 col-sm-6 col-md-3"
-      >
-        <StatCard
-          icon="business"
-          :value="stats.businesses"
-          label="Aktif İşletme"
-          color="secondary"
-          :loading="stats.businessesLoading"
-          to="/companies"
-        />
-      </div>
-
-      <div
-        v-if="authStore.hasPermission(Permissions.Internship.Contract)"
-        class="col-12 col-sm-6 col-md-3"
-      >
-        <StatCard
-          icon="description"
-          :value="stats.activeContracts"
-          label="Aktif Sözleşme"
-          color="positive"
-          :loading="stats.contractsLoading"
-          to="/internship/contracts"
-        />
-      </div>
-
-      <!--
-        "SIRA SİZDE" — bu ekrandaki TEK hardal bağlam (Tek Ses Kuralı).
-        Diğer sayaçlar primary/secondary/positive, hızlı erişim primary/secondary/info,
-        grafikler statusTone.* (bekleyen = uyarı hardalı #9A6B00) kullanır; hiçbiri
-        Resmî Hardal değildir. Sinyal yalnız burada yanar.
-
-        Sinyal SAYACA değil, kaydı İLERLETME yetkisine bağlıdır — bkz. isMyTurnPending.
-        Sayacı dolduran izinler kuyruğu yalnız AÇAR; onlara bağlansaydı rozet, onay
-        yetkisi olmayan kullanıcıda hiç sönmez ve tıklayınca 403 alınırdı (ölçüm ve
-        kaynak satırları PENDING_QUEUES yorumunda). Yetkisi olmayanda kart bugünkü
-        nötr `warning` görünümüne düşer.
-
-        `color` artık koşulsuz "warning": tone="accent" iken ikonu da StatCard'ın
-        kendisi accent-strong'a çevirir, iki prop'un elle senkron tutulması gerekmez.
-      -->
-      <div class="col-12 col-sm-6 col-md-3">
-        <StatCard
-          icon="pending_actions"
-          :value="stats.pendingTotal"
-          label="Bekleyen İşlem"
-          color="warning"
-          :tone="isMyTurnPending ? 'accent' : undefined"
-          :loading="stats.pendingLoading"
-          :to="pendingQueueRoute"
-        />
-      </div>
-    </div>
-
-    <!-- Grafikler -->
-    <div class="row q-col-gutter-md q-mb-lg">
-      <div
-        v-if="authStore.hasPermission(Permissions.Student.View) && studentChartOption"
-        class="col-12 col-md-6"
-      >
-        <q-card
-          flat
-          bordered
+    <template v-else>
+      <!-- Özet Kartları -->
+      <div class="row q-col-gutter-md q-mb-lg">
+        <div
+          v-if="authStore.hasPermission(Permissions.Student.View)"
+          class="col-12 col-sm-6 col-md-3"
         >
-          <q-card-section>
-            <div class="text-subtitle1 text-weight-medium q-mb-sm">
-              Öğrenci Durum Dağılımı
-            </div>
-            <v-chart
-              :option="studentChartOption"
-              :init-options="{ renderer: 'svg' }"
-              autoresize
-              style="height: 280px"
-            />
-          </q-card-section>
-        </q-card>
+          <StatCard
+            icon="school"
+            :value="stats.students"
+            label="Öğrenci"
+            color="primary"
+            :loading="stats.studentsLoading"
+            to="/enrollment/students"
+          />
+        </div>
+
+        <div
+          v-if="authStore.hasPermission(Permissions.Company.View)"
+          class="col-12 col-sm-6 col-md-3"
+        >
+          <StatCard
+            icon="business"
+            :value="stats.businesses"
+            label="Aktif İşletme"
+            color="secondary"
+            :loading="stats.businessesLoading"
+            to="/companies"
+          />
+        </div>
+
+        <div
+          v-if="authStore.hasPermission(Permissions.Internship.Contract)"
+          class="col-12 col-sm-6 col-md-3"
+        >
+          <StatCard
+            icon="description"
+            :value="stats.activeContracts"
+            label="Aktif Sözleşme"
+            color="positive"
+            :loading="stats.contractsLoading"
+            to="/internship/contracts"
+          />
+        </div>
+
+        <!--
+          "SIRA SİZDE" — bu ekrandaki TEK hardal bağlam (Tek Ses Kuralı).
+          Diğer sayaçlar primary/secondary/positive, hızlı erişim primary/secondary/info,
+          grafikler statusTone.* (bekleyen = uyarı hardalı #9A6B00) kullanır; hiçbiri
+          Resmî Hardal değildir. Sinyal yalnız burada yanar.
+
+          Sinyal SAYACA değil, kaydı İLERLETME yetkisine bağlıdır — bkz. isMyTurnPending.
+          Sayacı dolduran izinler kuyruğu yalnız AÇAR; onlara bağlansaydı rozet, onay
+          yetkisi olmayan kullanıcıda hiç sönmez ve tıklayınca 403 alınırdı (ölçüm ve
+          kaynak satırları PENDING_QUEUES yorumunda). Yetkisi olmayanda kart bugünkü
+          nötr `warning` görünümüne düşer.
+
+          `color` artık koşulsuz "warning": tone="accent" iken ikonu da StatCard'ın
+          kendisi accent-strong'a çevirir, iki prop'un elle senkron tutulması gerekmez.
+        -->
+        <div class="col-12 col-sm-6 col-md-3">
+          <StatCard
+            icon="pending_actions"
+            :value="stats.pendingTotal"
+            label="Bekleyen İşlem"
+            color="warning"
+            :tone="isMyTurnPending ? 'accent' : undefined"
+            :loading="stats.pendingLoading"
+            :to="pendingQueueRoute"
+          />
+        </div>
       </div>
 
-      <div
-        v-if="authStore.hasPermission(Permissions.Internship.Contract) && contractChartOption"
-        class="col-12 col-md-6"
-      >
-        <q-card
-          flat
-          bordered
+      <!-- Grafikler -->
+      <div class="row q-col-gutter-md q-mb-lg">
+        <div
+          v-if="authStore.hasPermission(Permissions.Student.View) && studentChartOption"
+          class="col-12 col-md-6"
         >
-          <q-card-section>
-            <div class="text-subtitle1 text-weight-medium q-mb-sm">
-              Sözleşme Durumları
-            </div>
-            <v-chart
-              :option="contractChartOption"
-              :init-options="{ renderer: 'svg' }"
-              autoresize
-              style="height: 280px"
-            />
-          </q-card-section>
-        </q-card>
-      </div>
-    </div>
-
-    <!-- Alt Satır: Son Aktiviteler + Hızlı Erişim -->
-    <div class="row q-col-gutter-md">
-      <!-- Son Aktiviteler -->
-      <div class="col-12 col-md-6">
-        <q-card
-          flat
-          bordered
-        >
-          <q-card-section>
-            <div class="text-subtitle1 text-weight-medium q-mb-sm">
-              Son Aktiviteler
-            </div>
-            <DataState
-              :empty="recentNotifications.length === 0"
-              empty-icon="notifications_none"
-              empty-text="Henüz aktivite yok"
-              padding="q-pa-md"
-            >
-              <q-list separator>
-                <q-item
-                  v-for="n in recentNotifications"
-                  :key="n.id"
-                  dense
-                >
-                  <q-item-section avatar>
-                    <!--
-                      İkon modül bilgisini taşıyor: yanındaki eventLabel(n.eventType)
-                      metni modül adını tekrarlamıyor (ör. "Rehberlik ziyareti eklendi"
-                      Coordination modülünü söylemez), yani dekoratif değil — WCAG 1.4.11
-                      grafik nesnesi eşiği 3:1 geçerli. grey-6 (#9e9e9e) beyaz zeminde
-                      2,68:1 ile eşiğin altındaydı; grey-7 (#757575) 4,61:1.
-                    -->
-                    <q-icon
-                      :name="MODULE_ICONS[n.module] ?? 'info'"
-                      color="grey-7"
-                    />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>{{ eventLabel(n.eventType) }}</q-item-label>
-                    <q-item-label caption>
-                      {{ timeAgo(n.occurredAt) }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </DataState>
-          </q-card-section>
-        </q-card>
-      </div>
-
-      <!-- Hızlı Erişim -->
-      <div class="col-12 col-md-6">
-        <q-card
-          flat
-          bordered
-        >
-          <q-card-section>
-            <div class="text-subtitle1 text-weight-medium q-mb-sm">
-              Hızlı Erişim
-            </div>
-            <div class="row q-gutter-sm">
-              <div
-                v-for="link in quickLinks"
-                :key="link.route"
-                class="col-5"
-              >
-                <q-card
-                  flat
-                  bordered
-                  role="link"
-                  tabindex="0"
-                  :aria-label="link.label"
-                  class="cursor-pointer q-pa-sm text-center quick-link"
-                  @click="$router.push(link.route)"
-                  @keydown.enter.prevent="$router.push(link.route)"
-                  @keydown.space.prevent="$router.push(link.route)"
-                >
-                  <q-icon
-                    :name="link.icon"
-                    size="28px"
-                    :color="link.color"
-                  />
-                  <div class="text-caption text-weight-medium q-mt-xs">
-                    {{ link.label }}
-                  </div>
-                </q-card>
+          <q-card
+            flat
+            bordered
+          >
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-medium q-mb-sm">
+                Öğrenci Durum Dağılımı
               </div>
-            </div>
-          </q-card-section>
-        </q-card>
+              <v-chart
+                :option="studentChartOption"
+                :init-options="{ renderer: 'svg' }"
+                autoresize
+                style="height: 280px"
+              />
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <div
+          v-if="authStore.hasPermission(Permissions.Internship.Contract) && contractChartOption"
+          class="col-12 col-md-6"
+        >
+          <q-card
+            flat
+            bordered
+          >
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-medium q-mb-sm">
+                Sözleşme Durumları
+              </div>
+              <v-chart
+                :option="contractChartOption"
+                :init-options="{ renderer: 'svg' }"
+                autoresize
+                style="height: 280px"
+              />
+            </q-card-section>
+          </q-card>
+        </div>
       </div>
-    </div>
+
+      <!-- Alt Satır: Son Aktiviteler + Hızlı Erişim -->
+      <div class="row q-col-gutter-md">
+        <!-- Son Aktiviteler -->
+        <div class="col-12 col-md-6">
+          <q-card
+            flat
+            bordered
+          >
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-medium q-mb-sm">
+                Son Aktiviteler
+              </div>
+              <DataState
+                :empty="recentNotifications.length === 0"
+                empty-icon="notifications_none"
+                empty-text="Henüz aktivite yok"
+                padding="q-pa-md"
+              >
+                <q-list separator>
+                  <q-item
+                    v-for="n in recentNotifications"
+                    :key="n.id"
+                    dense
+                  >
+                    <q-item-section avatar>
+                      <!--
+                        İkon modül bilgisini taşıyor: yanındaki eventLabel(n.eventType)
+                        metni modül adını tekrarlamıyor (ör. "Rehberlik ziyareti eklendi"
+                        Coordination modülünü söylemez), yani dekoratif değil — WCAG 1.4.11
+                        grafik nesnesi eşiği 3:1 geçerli. grey-6 (#9e9e9e) beyaz zeminde
+                        2,68:1 ile eşiğin altındaydı; grey-7 (#757575) 4,61:1.
+                      -->
+                      <q-icon
+                        :name="MODULE_ICONS[n.module] ?? 'info'"
+                        color="grey-7"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>{{ eventLabel(n.eventType) }}</q-item-label>
+                      <q-item-label caption>
+                        {{ timeAgo(n.occurredAt) }}
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </DataState>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Hızlı Erişim -->
+        <div class="col-12 col-md-6">
+          <q-card
+            flat
+            bordered
+          >
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-medium q-mb-sm">
+                Hızlı Erişim
+              </div>
+              <div class="row q-gutter-sm">
+                <div
+                  v-for="link in quickLinks"
+                  :key="link.route"
+                  class="col-5"
+                >
+                  <q-card
+                    flat
+                    bordered
+                    role="link"
+                    tabindex="0"
+                    :aria-label="link.label"
+                    class="cursor-pointer q-pa-sm text-center quick-link"
+                    @click="$router.push(link.route)"
+                    @keydown.enter.prevent="$router.push(link.route)"
+                    @keydown.space.prevent="$router.push(link.route)"
+                  >
+                    <q-icon
+                      :name="link.icon"
+                      size="28px"
+                      :color="link.color"
+                    />
+                    <div class="text-caption text-weight-medium q-mt-xs">
+                      {{ link.label }}
+                    </div>
+                  </q-card>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+    </template>
   </q-page>
 </template>
 
@@ -230,12 +239,15 @@ import VChart from 'vue-echarts'
 import { useAuthStore } from 'stores/auth'
 import { useNotificationStore } from 'stores/notifications'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useInstitutionStore } from 'stores/institution'
 import { Permissions } from 'utils/permissions'
+import { isActingAsDirectorate } from 'utils/directorateContext'
 import { useDashboardStats } from 'src/composables/useDashboardStats'
 import { useDashboardActivity } from 'src/composables/useDashboardActivity'
 import DataState from 'components/DataState.vue'
 import PageHeader from 'components/PageHeader.vue'
 import StatCard from 'components/StatCard.vue'
+import DirectorateDashboard from 'pages/dashboard/DirectorateDashboard.vue'
 
 // ECharts tree-shaking
 use([PieChart, BarChart, TitleComponent, TooltipComponent, LegendComponent, GridComponent, SVGRenderer])
@@ -244,6 +256,13 @@ const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
 // Yalnız okunur: dönemler MainLayout'ta bir kez yükleniyor, burada yeni istek yok.
 const periodStore = useAcademicPeriodStore()
+const institutionStore = useInstitutionStore()
+
+/**
+ * `resolveIsUpperNode` DEĞİL: il yetkilisi bir okula geçtiğinde kiracısı o okuldur ve okul
+ * panosunu görmelidir. Fark `directorateContext.spec.ts` içinde kilitlidir.
+ */
+const isDirectorate = computed(() => isActingAsDirectorate(institutionStore.institution?.nodeType))
 
 const institutionId = authStore.user?.institutionId ?? ''
 
@@ -394,6 +413,10 @@ const quickLinks = computed(() => {
 })
 
 onMounted(async () => {
+  // Müdürlük bağlamında okul verisi sorguları gereksiz — hiçbiri kiracı damgalı belgeyle
+  // eşleşmez, hepsi boş döner.
+  if (isDirectorate.value) return
+
   await init()
 })
 </script>

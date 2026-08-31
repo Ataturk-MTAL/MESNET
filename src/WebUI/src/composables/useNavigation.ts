@@ -109,6 +109,9 @@ export const menuDefinition: NavGroup[] = [
       { title: 'Kullanıcılar', icon: 'manage_accounts', to: { name: 'UserManagement' }, permissions: ['user:view', 'user:create', 'directorate:institution-bootstrap'] },
       { title: 'Roller', icon: 'admin_panel_settings', to: { name: 'RoleManagement' }, permissions: ['user:roles:manage'] },
       { title: 'Yetki Kapsamı', icon: 'tune', to: { name: 'PermissionScope' }, permissions: ['user:roles:manage'] },
+      // İzin listesi rota metasıyla (router/index.ts → PlatformParameters) AYNIDIR
+      // (routePermissionAlignment.spec.ts ile kilitli, Görev 11).
+      { title: 'Ulusal Parametreler', icon: 'public', to: { name: 'PlatformParameters' }, permissions: ['platform:parameter:manage'] },
       // İzin listesi BOŞ: "İşlemlerim" kapsamı herkese açıktır. Kurum kapsamı sayfa içinde
       // izinle açılır — menüyü izne bağlamak, kendi geçmişini göremeyen kullanıcılar üretirdi.
       { title: 'Son İşlemler', icon: 'history', to: { name: 'AuditLog' }, permissions: [] },

@@ -33,6 +33,7 @@ const ZORUNLU_IZINLER: Record<string, string[]> = {
   InternshipTerminations: ['internship:view', 'internship:manage', 'internship:approval:override'],
   UserManagement: ['user:view', 'user:create', 'directorate:institution-bootstrap'],
   PermissionScope: ['user:roles:manage'],
+  PlatformParameters: ['platform:parameter:manage'],
 }
 
 /**

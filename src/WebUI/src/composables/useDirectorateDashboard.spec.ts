@@ -51,6 +51,10 @@ describe('useDirectorateDashboard', () => {
     expect(dash.stuckCount.value).toBe(7)
     expect(dash.stuckThresholdDays.value).toBe(14)
     expect(dash.loading.value).toBe(false)
+    expect(dash.districtFailed.value).toBe(false)
+    expect(dash.schoolFailed.value).toBe(false)
+    expect(dash.unmanagedFailed.value).toBe(false)
+    expect(dash.stuckFailed.value).toBe(false)
   })
 
   /**
@@ -73,6 +77,61 @@ describe('useDirectorateDashboard', () => {
     expect(dash.unmanagedCount.value).toBe(3)
     expect(dash.stuckCount.value).toBe(0)
     expect(notify.apiError).toHaveBeenCalled()
+  })
+
+  /**
+   * "Veri yok" (ör. bekleyen onay yok) ile "veri hiç yüklenemedi" ayrımı yalnız toast'a
+   * bağlıysa kart bunu göremez — bayrak kaynak başınadır ve BAŞKA kaynağı kirletmemelidir.
+   */
+  it('fetchStuck patlarsa yalnız stuckFailed set edilir, diğerleri false kalır', async () => {
+    const dash = useDirectorateDashboard({
+      fetchDistrictCount: okDistricts,
+      fetchSchoolCount: okSchools,
+      fetchUnmanaged: okUnmanaged,
+      fetchStuck: () => Promise.reject(new Error('403')),
+      notify: makeNotify(),
+    })
+
+    await dash.load()
+
+    expect(dash.stuckFailed.value).toBe(true)
+    expect(dash.districtFailed.value).toBe(false)
+    expect(dash.schoolFailed.value).toBe(false)
+    expect(dash.unmanagedFailed.value).toBe(false)
+  })
+
+  it('fetchUnmanaged patlarsa yalnız unmanagedFailed set edilir, diğerleri false kalır', async () => {
+    const dash = useDirectorateDashboard({
+      fetchDistrictCount: okDistricts,
+      fetchSchoolCount: okSchools,
+      fetchUnmanaged: () => Promise.reject(new Error('500')),
+      fetchStuck: okStuck,
+      notify: makeNotify(),
+    })
+
+    await dash.load()
+
+    expect(dash.unmanagedFailed.value).toBe(true)
+    expect(dash.districtFailed.value).toBe(false)
+    expect(dash.schoolFailed.value).toBe(false)
+    expect(dash.stuckFailed.value).toBe(false)
+  })
+
+  it('bütün çağrılar patlarsa dördü de kendi bayrağını set eder', async () => {
+    const dash = useDirectorateDashboard({
+      fetchDistrictCount: () => Promise.reject(new Error('500')),
+      fetchSchoolCount: () => Promise.reject(new Error('500')),
+      fetchUnmanaged: () => Promise.reject(new Error('500')),
+      fetchStuck: () => Promise.reject(new Error('500')),
+      notify: makeNotify(),
+    })
+
+    await dash.load()
+
+    expect(dash.districtFailed.value).toBe(true)
+    expect(dash.schoolFailed.value).toBe(true)
+    expect(dash.unmanagedFailed.value).toBe(true)
+    expect(dash.stuckFailed.value).toBe(true)
   })
 
   it('yükleme bittiğinde loading kapanır — hata olsa bile', async () => {
