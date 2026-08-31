@@ -384,7 +384,12 @@ const selected = ref<InternshipSummaryDto | null>(null)
 const selectedChain = ref<TerminationChainStatusDto | null>(null)
 const overrideReason = ref('')
 
-const canOverride = computed(() => authStore.hasPermission(Permissions.Internship.Manage))
+// Sunucu bu eylemi internship:approval:override ile korur (InternshipEndpoints.cs:34-35).
+// Önceden internship:manage'e bakılıyordu; müdürlük rolleri (ProvincialAdmin, DistrictAdmin)
+// o izni TAŞIMAZ ve butonu hiç göremiyordu. Ters yönde kimse kapanmaz: RolePermissionMap.cs'te
+// manage taşıyıp override taşımayan rol yoktur (InstitutionManager internship:*, DeputyDirector
+// açık satırla — ikisi de override'ı da taşır).
+const canOverride = computed(() => authStore.hasPermission(Permissions.Internship.ApprovalOverride))
 
 function openChain(row: InternshipSummaryDto) {
   selected.value = row

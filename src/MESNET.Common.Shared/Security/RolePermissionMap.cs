@@ -299,7 +299,14 @@ public static class RolePermissionMap
             // Tıkanmış onayı açma — internship:manage DEĞİL (o müdür onay adımını da açardı).
             Permissions.Internship.ApprovalOverride,
             // Okula ilk yöneticiyi bağlama; koşulludur (okulun hiç yöneticisi olmamalı).
-            Permissions.Directorate.InstitutionBootstrap
+            Permissions.Directorate.InstitutionBootstrap,
+            // Fesih listesini okumak için. Müdahale (approval:override) yazma yetkisidir;
+            // liste ucu ayrıca internship:view ister. Kendi bağlamında liste boştur — yol
+            // aktif bağlamdır (#281).
+            Permissions.Internship.View,
+            // Okula ilk yöneticiyi bağlamanın (bootstrap) tek arayüzü kullanıcı listesidir.
+            // Liste aktörün alt ağacına daralır; bu daraltma olmadan bu izin verilemezdi.
+            Permissions.UserManagement.View
         ],
         // İlçe yetkilisi il yetkilisiyle AYNI demeti alır; farkı yalnız ağaçtaki yeridir.
         // Demetleri ayrıştırmak, ikisinin arasındaki tek gerçek farkı (kapsam) izne taşıma
@@ -309,7 +316,14 @@ public static class RolePermissionMap
             Permissions.Institution.View,
             Permissions.Institution.Manage,
             Permissions.Internship.ApprovalOverride,
-            Permissions.Directorate.InstitutionBootstrap
+            Permissions.Directorate.InstitutionBootstrap,
+            // Fesih listesini okumak için. Müdahale (approval:override) yazma yetkisidir;
+            // liste ucu ayrıca internship:view ister. Kendi bağlamında liste boştur — yol
+            // aktif bağlamdır (#281).
+            Permissions.Internship.View,
+            // Okula ilk yöneticiyi bağlamanın (bootstrap) tek arayüzü kullanıcı listesidir.
+            // Liste aktörün alt ağacına daralır; bu daraltma olmadan bu izin verilemezdi.
+            Permissions.UserManagement.View
         ],
         // Sistem yöneticisi (#147) — ULUSAL parametre girişi. Kurum domainlerinden HİÇBİRİ
         // yoktur: bu rol kurum verisi görmez, yalnız mevzuat sayılarını yazar. Tersi de

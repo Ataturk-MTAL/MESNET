@@ -140,4 +140,38 @@ public sealed class DirectoratePermissionMappingTests
         AssignablePermissionScope.Defaults[MesnetRoles.ProvincialAdmin].ShouldBeEmpty();
         AssignablePermissionScope.Defaults[MesnetRoles.DistrictAdmin].ShouldBeEmpty();
     }
+
+    /// <summary>
+    /// Fesih listesini OKUYABİLMELİ. Müdahale izni (<c>internship:approval:override</c>) yazma
+    /// yetkisidir; onsuz sayfaya ulaşılsa bile liste ucu 403 döner
+    /// (<c>PermissionPolicies.InternshipViewOrOwn</c>).
+    ///
+    /// <para><b>Kendi bağlamında liste BOŞTUR ve bu doğrudur:</b> <c>InternshipSummary</c>
+    /// kiracıya aittir, müdürlük düğümü kiracı değildir. Yol aktif bağlamdır (#281).</para>
+    /// </summary>
+    [Theory]
+    [InlineData(MesnetRoles.ProvincialAdmin)]
+    [InlineData(MesnetRoles.DistrictAdmin)]
+    public void Mudurluk_rolleri_fesih_listesini_okuyabilir(string role)
+    {
+        RolePermissionMap.GetPermissionsForRoles([role])
+            .ShouldContain(Permissions.Internship.View);
+    }
+
+    /// <summary>
+    /// Kullanıcı listesini OKUYABİLMELİ — okula ilk yöneticiyi bağlamanın (bootstrap) tek
+    /// arayüzü o listedir.
+    ///
+    /// <para><b>Bu izin daha önce verilemezdi:</b> <c>UserAccount</c> kimlik katmanındadır ve
+    /// liste aktörden türeyen hiçbir daraltma yapmıyordu — <c>user:view</c> ülke geneli okuma
+    /// demekti. Kapsam düzeltmesiyle liste artık aktörün ALT AĞACINA daralıyor.</para>
+    /// </summary>
+    [Theory]
+    [InlineData(MesnetRoles.ProvincialAdmin)]
+    [InlineData(MesnetRoles.DistrictAdmin)]
+    public void Mudurluk_rolleri_kullanici_listesini_okuyabilir(string role)
+    {
+        RolePermissionMap.GetPermissionsForRoles([role])
+            .ShouldContain(Permissions.UserManagement.View);
+    }
 }

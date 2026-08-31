@@ -163,11 +163,14 @@ const router = createRouter({
             // Fesih onay zinciri (#191) — okul tarafının adımları.
             // Görüntüleme internship:view; her adımın butonu KENDİ iznine bakar ve o izin
             // sunucudan gelen adım tanımından okunur.
+            // İzin listesi sunucunun AnyOf politikasıyla aynıdır (internship:approval:override
+            // eklendi, #281): müdürlük yalnız o izni taşır, liste daha darsa sayfaya hiç
+            // ulaşamaz — sunucunun kabul ettiği aktör ön yüzden düşer.
             {
               path: 'terminations',
               name: 'InternshipTerminations',
               component: () => import('pages/internship/TerminationsPage.vue'),
-              meta: { permissions: ['internship:view', 'internship:manage'] },
+              meta: { permissions: ['internship:view', 'internship:manage', 'internship:approval:override'] },
             },
             // Veli ve işletme yetkilisi için fesih DURUM sayfası (#191, #218).
             // Salt okunur: onaylar okul tarafında verilir. Kapsamı SUNUCU çözer
@@ -363,11 +366,15 @@ const router = createRouter({
         {
           path: 'admin',
           children: [
+            // İzin listesi sunucunun AnyOf politikasıyla aynıdır
+            // (PermissionPolicies.UserInstitutionAssignOrBootstrap, #281): il/ilçe yetkilisi
+            // yalnız directorate:institution-bootstrap taşır, liste daha darsa okula ilk
+            // yöneticiyi bağlayacağı tek arayüze — kullanıcı listesine — hiç ulaşamaz.
             {
               path: 'users',
               name: 'UserManagement',
               component: () => import('pages/admin/UserManagementPage.vue'),
-              meta: { permissions: ['user:view', 'user:create'] },
+              meta: { permissions: ['user:view', 'user:create', 'directorate:institution-bootstrap'] },
             },
             {
               path: 'roles',
