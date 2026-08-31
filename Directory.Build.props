@@ -5,6 +5,16 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- Lisans: kod AGPL-3.0-or-later, belgeler CC BY-SA 4.0 (bkz. LICENSE, LICENSE-DOCS).
+         AGPL bilerek seçildi: MESNET bir web uygulamasıdır ve GPL'in copyleft'i yalnız
+         DAĞITIMDA tetiklenir — bir tedarikçi değiştirilmiş sürümü okullara hizmet olarak
+         koşturup kaynağı hiç paylaşmayabilirdi. AGPL §13 o boşluğu kapatır. -->
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <Copyright>Copyright (C) 2026 Hakan GÜLEN</Copyright>
+    <Authors>Hakan GÜLEN</Authors>
+    <RepositoryUrl>https://github.com/Ataturk-MTAL/MESNET</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
 </Project>

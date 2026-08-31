@@ -59,7 +59,10 @@ const config: Config = {
     },
     footer: {
       style: 'dark',
-      copyright: `MESNET Mimari Dokümantasyon`,
+      copyright:
+        `MESNET Mimari Dokümantasyon — Telif hakkı (C) 2026 Hakan GÜLEN. ` +
+        `Belge içeriği <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.tr">CC BY-SA 4.0</a>, ` +
+        `kod <a href="https://www.gnu.org/licenses/agpl-3.0.html">AGPL-3.0-or-later</a> ile lisanslıdır.`,
     },
     colorMode: {
       defaultMode: 'light',

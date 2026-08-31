@@ -113,4 +113,38 @@ pnpm dev
 
 ## Lisans
 
-Bu proje özel kullanım içindir.
+**Kod: [GNU AGPL-3.0-or-later](LICENSE). Belgeler: [CC BY-SA 4.0](LICENSE-DOCS).**
+
+Telif hakkı (C) 2026 Hakan GÜLEN.
+
+### Neden AGPL
+
+MESNET bir **web uygulamasıdır**. GPL'in copyleft'i yalnız **dağıtımda** tetiklenir: bir
+tedarikçi MESNET'i alıp özelleştirip okullara **hizmet olarak** koşturabilir ve hiçbir şey
+paylaşmak zorunda kalmazdı. AGPL §13 tam bu boşluğu kapatır — yazılımı ağ üzerinden
+kullandıran, kullanıcılarına kaynağı sunmak zorundadır.
+
+Ticari kaygımız yok; amaç bu altyapının **açık kalmasıdır**.
+
+### Bu sizin için ne demek
+
+| Siz | Yükümlülüğünüz |
+|---|---|
+| Okul / il–ilçe müdürlüğü / bakanlık, kendi koşuyor | Yok. Kaynak zaten burada; kullanıcılara bu deponun adresini göstermek yeter |
+| Kendi ihtiyacınıza göre değiştiriyorsunuz, dışarı hizmet vermiyorsunuz | Yok |
+| Değiştirilmiş sürümü **başkalarına hizmet olarak** sunuyorsunuz | Kullanıcılarınıza tüm kaynağı AGPL altında vermelisiniz |
+| Bir tedarikçiye özelleştirtiyorsunuz | Tedarikçi değişiklikleri **size vermek zorundadır** — bu lisans sizi tedarikçi kilidine karşı korur |
+
+AGPL ticari kullanımı **yasaklamaz**; kapalı ürüne dönüştürmeyi yasaklar. Barındırma ve destek
+hizmeti satmak serbesttir — yeter ki kod açık kalsın.
+
+### Belgeler
+
+`src/Docs/` altındaki belge **içeriği** CC BY-SA 4.0 ile lisanslanmıştır: atıf vererek ve aynı
+lisansla paylaşmak koşuluyla kopyalayabilir, uyarlayabilir, çevirebilirsiniz. Belge sitesinin
+kendi kodu diğer kod gibi AGPL kapsamındadır.
+
+### Bağımlılıklar
+
+Yığının tamamı MIT ve Apache-2.0 lisanslıdır (Marten, Wolverine, Quasar, Vue, Npgsql, Keycloak
+istemcileri, MinIO, ZXing, QuestPDF). Apache-2.0 → AGPL-3.0 tek yönlü uyumludur; çakışma yoktur.

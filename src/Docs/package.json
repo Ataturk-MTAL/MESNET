@@ -2,6 +2,7 @@
   "name": "mesnet-docs",
   "version": "0.0.1",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "start": "docusaurus start --port ${PORT:-8100} --host 0.0.0.0",
     "build": "docusaurus build",
