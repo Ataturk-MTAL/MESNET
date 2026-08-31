@@ -220,8 +220,16 @@ const canOverride = authStore.hasPermission(Permissions.Internship.ApprovalOverr
  */
 const institutionNames = ref<Map<string, string>>(new Map())
 
+/** İsim çözümlemesi devam ederken true. Satırlar "—" gösterir; çözümleme tamamlandıktan sonra çözülemeyen kimlikler "Bilinmeyen kurum" gösterir. */
+const isResolvingNames = ref(false)
+
 function institutionName(id: string): string {
-  return institutionNames.value.get(id) ?? 'Bilinmeyen kurum'
+  const name = institutionNames.value.get(id)
+  if (name) return name
+  // Çözümleme devam ediyorsa nötr yer tutucu göster
+  if (isResolvingNames.value) return '—'
+  // Çözümleme tamamlandı ama isim bulunamadı
+  return 'Bilinmeyen kurum'
 }
 
 /**
@@ -293,7 +301,13 @@ const {
 
 onMounted(() => {
   load()
-    .then(() => resolveInstitutionNames(stuckByInstitution.value.map((row) => row.institutionId)))
+    .then(() => {
+      isResolvingNames.value = true
+      return resolveInstitutionNames(stuckByInstitution.value.map((row) => row.institutionId))
+    })
     .catch(() => {})
+    .finally(() => {
+      isResolvingNames.value = false
+    })
 })
 </script>
