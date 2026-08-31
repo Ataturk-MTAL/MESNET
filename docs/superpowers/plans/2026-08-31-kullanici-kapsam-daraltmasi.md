@@ -657,12 +657,16 @@ git commit -m "fix(webui): pano davet sayacındaki durum süzgeci sessizce düş
 
 ---
 
-### Task 7: Kapanan borcun notunu sil
+### Task 7: Kapsam hakkında YANLIŞ olan iki yorumu düzelt
+
+Bu görev kod davranışını değiştirmez; tenancy hakkında gerçeğe aykırı iki yorumu düzeltir.
+İkisi de aynı sınıftan kusurdur: **bir yorumun, koruma varmış gibi konuşup gerçekte olmayan
+bir güvenceyi anlatması.** Bu dalda aynı kusurun üçüncüsü Task 3'te yakalandı.
 
 **Files:**
 - Modify: `src/MESNET.Common.Shared/Tenancy/DocumentTenancyMap.cs`
 
-- [ ] **Step 1: Notu güncelle**
+- [ ] **Step 1: Kapanan borcun notunu sil**
 
 `["UserInvitation"] = Identity,` girdisinin üstündeki yorumda "KALAN BORÇ: davet listeleme kapsamı isteğe bağlı InstitutionId filtresiyle çalışıyor … kapsam kararı sunucuda verilmeli" cümleleri **silinir** — borç kapandı.
 
@@ -670,14 +674,40 @@ Girdinin geri kalanı (anonim davet tamamlamanın neden `Identity` gerektirdiği
 
 `["UserAccount"] = Identity,` girdisine bu borç notu hiç yazılmamıştı; oraya bir şey eklenmez.
 
-- [ ] **Step 2: Derle, testleri koş ve commit**
+- [ ] **Step 2: Yanlış tenancy önermesini düzelt**
+
+`src/Modules/Security/MESNET.Security.Application/Consumers/AbsenceNotificationEmailConsumer.cs`
+satır 79-80'de şu yorum var:
+
+```csharp
+        // Kiracı süzgeci gerekmiyor: UserAccount kiracı damgalıdır ve oturum istek/mesaj
+        // bağlamındaki kiracıyla açılır.
+```
+
+**Önerme yanlış.** `UserAccount` `DocumentTenancyMap`'te `Identity`'dir (`:151`), `Tenant`
+değil — kiracı damgası **yoktur** ve conjoined kiracılık bu sorguyu **süzmez**. Yorum, süzgeç
+yokluğunu var olmayan bir güvenceyle gerekçelendiriyor; bir sonraki okuyan aynı yanlış
+önermeye dayanarak gerçekten sızdıran bir sorgu yazabilir.
+
+**Sızıntı yok — ölçüldü.** Alıcılar bellekte olayın kendi tanımlayıcılarıyla sınırlanıyor:
+veli bağı (`LinkedStudentIds.Contains(@event.StudentId)`), işletme (`u.BusinessId ==
+@event.BusinessId`) ve öğrencinin kendisi (`u.StudentId == @event.StudentId`). Yani davranış
+doğru, **gerekçe** yanlış.
+
+Yorumu gerçeğe uyacak biçimde yeniden yaz. Şunları söylemeli: `UserAccount` kimlik
+katmanındadır ve kiracı damgası taşımaz, dolayısıyla conjoined kiracılık burada **süzmez**;
+daraltmayı yapan şey olayın taşıdığı tanımlayıcılardır (veli bağı / işletme / öğrenci), bu
+yüzden ek bir kapsam süzgeci gerekmez. Davranışı DEĞİŞTİRME — yalnız gerekçeyi doğru yaz.
+
+- [ ] **Step 3: Derle, testleri koş ve commit**
 
 Run: `dotnet build MESNET.slnx && dotnet test MESNET.slnx`
 Expected: Task 5'in bilerek kırmızı bıraktığı tek test dışında hepsi yeşil.
 
 ```bash
-git add src/MESNET.Common.Shared/Tenancy/DocumentTenancyMap.cs
-git commit -m "docs(tenancy): davet listesi kapsam borcu kapandı, not silindi"
+git add src/MESNET.Common.Shared/Tenancy/DocumentTenancyMap.cs \
+        src/Modules/Security/MESNET.Security.Application/Consumers/AbsenceNotificationEmailConsumer.cs
+git commit -m "docs(tenancy): kapsam hakkında yanlış konuşan iki yorum düzeltildi"
 ```
 
 ---
