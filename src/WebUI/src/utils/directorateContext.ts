@@ -16,3 +16,19 @@
 export function isActingAsDirectorate(nodeType: string | null | undefined): boolean {
   return nodeType === 'Province' || nodeType === 'District'
 }
+
+/**
+ * Kullanıcı ŞU AN il müdürlüğü olarak mı davranıyor?
+ *
+ * <p><b>`isActingAsDirectorate` ile karıştırmayın.</b> O fonksiyon "müdürlük mü" (il VEYA
+ * ilçe) sorusuna cevap verir. Bu fonksiyon daha DAR bir soruyu yanıtlar: bir düğüm kendi alt
+ * ağacının İÇİNDEDİR, yani bir ilçe müdürlüğü "bana bağlı kaç ilçe var" diye sorduğunda
+ * KENDİSİNİ sayar ve "İlçe: 1" görür — kendisini. İlçe müdürlüğünün altında zaten başka ilçe
+ * olamaz (ağaç iki seviyelidir: il → ilçe → okul), o yüzden ilçe sayısı kartı yalnız İL
+ * bağlamında anlamlıdır.</p>
+ *
+ * @param nodeType `InstitutionDto.nodeType` — `'Province'`, `'District'` ya da `'School'`.
+ */
+export function isActingAsProvince(nodeType: string | null | undefined): boolean {
+  return nodeType === 'Province'
+}
