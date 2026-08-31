@@ -12,8 +12,9 @@ namespace MESNET.Security.Application.Services;
 /// Kapsam kararının tamamı sorgu handler'ına aittir.</para>
 ///
 /// <para><b>Kimlikler istekten HİÇ gelmez</b> — aktörün claim'lerinden türer. Kilitleyen test:
-/// <c>IdentityDocumentScopeDriftTests</c> — bu aynı değişiklik kümesinin ilerleyen bir adımıyla
-/// (Task 5) eklenecek, henüz bu commit'te yoktur.</para>
+/// <c>IdentityDocumentScopeDriftTests</c> (<c>tests/MESNET.Security.UnitTests/</c>) — bu
+/// çözücüyü çağırmadan <c>UserAccount</c>/<c>UserInvitation</c> sorgulayan (ya da kimlikle
+/// çeken) yeni bir üretim dosyasını kırmızıya çevirir.</para>
 /// </summary>
 public sealed class UserScopeResolver
 {

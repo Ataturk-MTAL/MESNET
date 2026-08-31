@@ -25,6 +25,19 @@ namespace MESNET.Security.UnitTests;
 /// listesiyle süzer (bkz. <c>UserQueryHandler</c>, <c>InvitationHandler</c> — Task 3/4 ile bu
 /// çözücüyü çağırdıkları için bu listede DEĞİLLER).</para>
 ///
+/// <para><b>Belgelenmiş sınırlama — işaretleyici DOSYA düzeyindedir, ÇAĞRI düzeyinde değil.</b>
+/// <see cref="ResolverMarker"/> kontrolü tüm dosya metnini tarar: aynı dosyada TEK bir çağrı
+/// <c>UserScopeResolver</c> kullanıyorsa, o dosyadaki DİĞER tüm kimlik-belgesi çağrıları da
+/// (kapsamsız olsalar bile) geçmiş sayılır. <c>InvitationHandler.cs</c> bunun canlı örneğidir
+/// (#284): <c>ApproveInvitationHandler</c>, <c>RejectInvitationHandler</c> ve
+/// <c>ResendInvitationHandler</c> davetini <c>session.LoadAsync&lt;UserInvitation&gt;(...)</c>
+/// ile hiçbir kurum kontrolü olmadan çeker — başka okulun davetini onaylayabilir/reddedebilir/
+/// yeniden gönderebilir. Ama aynı dosyadaki <c>GetInvitationsHandler</c>, listelemede
+/// <c>UserScopeResolver</c> çağırdığı için dosya bütünüyle "işaretli" sayılır ve bu üç handler
+/// kilide GÖRÜNMEZ kalır. Bu, kilidin bilinen bir açığıdır — çözümü bu testin kapsamı DIŞINDADIR
+/// (çağrı-bazlı işaretleme AST/Roslyn analizi gerektirir, basit metin taramasıyla güvenilir
+/// yapılamaz); kayıt burada tutulur ki gelecekte biri "test yeşil, öyleyse güvenli" sanmasın.</para>
+///
 /// <para><b><c>RoleIntegrityHandler.cs</c> (role-integrity) BİLEREK izin listesinde
 /// DEĞİL — test bu dosya yüzünden KIRMIZI kalır ve bu bir hata değil, henüz verilmemiş açık
 /// bir ürün kararının kaydıdır (#283).</b> Ucun <c>GET /api/security/role-integrity</c> hiçbir kapsam
@@ -41,12 +54,16 @@ namespace MESNET.Security.UnitTests;
 public sealed class IdentityDocumentScopeDriftTests
 {
     /// <summary>
-    /// Kimlik katmanı belgesini sorgulayan çağrı. İki tip tek regex'te birleştirilmiştir —
-    /// alternation aradaki "&gt;" ile "(" karakterlerini bitiştirmediği için bu dosyanın kendi
-    /// kaynağında (alan bildirimi, aşağıda) yanlışlıkla kendi kendine eşleşmez.
+    /// Kimlik katmanı belgesini sorgulayan YA DA kimlikle tek kayıt çeken çağrı. <c>Query</c>
+    /// koleksiyon tarar; <c>LoadAsync</c>/<c>LoadManyAsync</c> id ile doğrudan çeker — ikisi de
+    /// aynı kapsam kararına muhtaçtır, id ile çekmek "zaten kapsamlı" anlamına gelmez (bkz.
+    /// #284: üç davet yazma handler'ı tam olarak bunu, kontrolsüz, yapıyordu). Üç metot adı ve
+    /// iki tip tek regex'te birleştirilmiştir — alternation aradaki "&gt;" ile "(" karakterlerini
+    /// bitiştirmediği için bu dosyanın kendi kaynağında (alan bildirimi, aşağıda) yanlışlıkla
+    /// kendi kendine eşleşmez.
     /// </summary>
     private static readonly Regex IdentityDocumentQueryCall = new(
-        @"\bQuery<(?:UserAccount|UserInvitation)>\s*\(", RegexOptions.Compiled);
+        @"\b(?:Query|LoadAsync|LoadManyAsync)<(?:UserAccount|UserInvitation)>\s*\(", RegexOptions.Compiled);
 
     /// <summary>Kapsamı çözen TEK kapı — bu ad geçen dosya kararı çözücüye devretmiş sayılır.</summary>
     private const string ResolverMarker = "UserScopeResolver";
@@ -57,8 +74,11 @@ public sealed class IdentityDocumentScopeDriftTests
     /// modülde aynı adı taşıyan bir dosyanın sessizce izinli sayılmasına yol açardı.
     ///
     /// <para><b>Ölçüldü (2026-08-31):</b> <c>src/Modules/Security/MESNET.Security.Application/</c>
-    /// altında <c>Query&lt;UserAccount&gt;()</c> ya da <c>Query&lt;UserInvitation&gt;()</c> çağıran
-    /// TÜM dosyalar tarandı. On birinden ikisi (<c>UserQueryHandler.cs</c>,
+    /// altında <c>Query&lt;UserAccount&gt;()</c>/<c>Query&lt;UserInvitation&gt;()</c> ÇAĞRISI
+    /// çağıran TÜM dosyalar tarandı; tarama sonradan <c>LoadAsync</c>/<c>LoadManyAsync</c>'i de
+    /// kapsayacak şekilde genişletildi (id ile tek kayıt çekmek de aynı kapsam kararına muhtaçtır
+    /// — yukarıdaki "Belgelenmiş sınırlama" paragrafına bakınız) ve tarama TEKRARLANDI: sonuç
+    /// KÜMESİ değişmedi, yine aynı on bir dosya eşleşti. On birinden ikisi (<c>UserQueryHandler.cs</c>,
     /// <c>InvitationHandler.cs</c>) artık <see cref="ResolverMarker"/>'ı çağırıyor ve bu listede
     /// DEĞİL. Sekizi aşağıda, gerekçesiyle. Onbirincisi — <c>RoleIntegrityHandler.cs</c> —
     /// BİLEREK burada değil (yukarıdaki sınıf açıklamasına, #283'e bakınız).</para>

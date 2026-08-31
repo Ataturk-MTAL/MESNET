@@ -247,11 +247,11 @@ public static class GetInvitationsHandler
         queryable = queryable.ApplySearch(query.Search, i => i.Email, i => i.FullName);
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: i => i.CreatedAt);
 
-        var page = await queryable.ToPagedResultAsync(query, i => i);
+        var page = await queryable.ToPagedResultAsync(query, i => i, cancellationToken);
 
         // Aktör adı saklanmaz, okuma anında çözülür (#137). Security kendi kimlik kaynağıdır;
         // UserAccount aynı modülde olduğu için ayrı UserNameView'a gerek yoktur.
-        var names = await ResolveActorNamesAsync(session, page.Items);
+        var names = await ResolveActorNamesAsync(session, page.Items, cancellationToken);
 
         return new PagedResult<InvitationDto>
         {
@@ -269,7 +269,8 @@ public static class GetInvitationsHandler
 
     /// <summary>Sayfadaki tüm aktör kimlikleri için kimlik → ad sözlüğü (tek sorgu).</summary>
     private static async Task<Dictionary<Guid, string>> ResolveActorNamesAsync(
-        IQuerySession session, IReadOnlyList<UserInvitation> invitations)
+        IQuerySession session, IReadOnlyList<UserInvitation> invitations,
+        CancellationToken cancellationToken)
     {
         var ids = invitations
             .SelectMany(i => new[] { i.CreatedById, i.ApprovedById })
@@ -286,7 +287,7 @@ public static class GetInvitationsHandler
 
         var accounts = await session.Query<UserAccount>()
             .Where(a => idStrings.Contains(a.KeycloakUserId))
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return accounts
             .Where(a => Guid.TryParse(a.KeycloakUserId, out _))
