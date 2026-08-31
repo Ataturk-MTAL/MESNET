@@ -388,6 +388,15 @@ const router = createRouter({
               component: () => import('pages/admin/PermissionScopePage.vue'),
               meta: { permissions: ['user:roles:manage'] },
             },
+            // Ulusal parametre katmanının ilk ekranı (Görev 11) — devamsızlık sınırları
+            // buraya taşınmadı, yalnız tıkanma eşiği. Yazma izniyle korunur: yalnız okuyabilen
+            // kullanıcının bu ayar sayfasında işi yoktur.
+            {
+              path: 'parameters',
+              name: 'PlatformParameters',
+              component: () => import('pages/admin/PlatformParametersPage.vue'),
+              meta: { permissions: ['platform:parameter:manage'] },
+            },
           ],
         },
       ],
