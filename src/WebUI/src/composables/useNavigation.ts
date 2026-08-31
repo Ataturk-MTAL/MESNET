@@ -96,7 +96,9 @@ export const menuDefinition: NavGroup[] = [
         visibleWhen: (ctx) => ctx.isUpperNode,
       },
       { title: 'Kurum Bilgileri', icon: 'account_balance', to: { name: 'Institution' }, permissions: ['institution:view'] },
-      { title: 'Kullanıcılar', icon: 'manage_accounts', to: { name: 'UserManagement' }, permissions: ['user:view', 'user:create'] },
+      // İzin listesi rota metasıyla (router/index.ts → UserManagement) AYNI üçlüdür — biri
+      // güncellenip diğeri unutulursa girdi menüde görünür rotada kapalı ya da tersi olur.
+      { title: 'Kullanıcılar', icon: 'manage_accounts', to: { name: 'UserManagement' }, permissions: ['user:view', 'user:create', 'directorate:institution-bootstrap'] },
       { title: 'Roller', icon: 'admin_panel_settings', to: { name: 'RoleManagement' }, permissions: ['user:roles:manage'] },
       { title: 'Yetki Kapsamı', icon: 'tune', to: { name: 'PermissionScope' }, permissions: ['user:roles:manage'] },
       // İzin listesi BOŞ: "İşlemlerim" kapsamı herkese açıktır. Kurum kapsamı sayfa içinde
@@ -130,6 +132,9 @@ export const menuDefinition: NavGroup[] = [
     children: [
       { title: 'Staj Takibi', icon: 'work_history', to: { name: 'InternshipOverview' }, permissions: ['internship:view', 'internship:manage', 'internship:view-own'] },
       { title: 'Sözleşmeler', icon: 'description', to: { name: 'ContractList' }, permissions: ['internship:manage', 'internship:contract:manage'] },
+      // İzin listesi rota metasıyla (router/index.ts → InternshipTerminations) AYNI üçlüdür.
+      // Girdi eksikti: müdürlük rolleri sayfaya rotadan ulaşabiliyordu ama menüde hiç yoktu.
+      { title: 'Fesihler', icon: 'link_off', to: { name: 'InternshipTerminations' }, permissions: ['internship:view', 'internship:manage', 'internship:approval:override'] },
       { title: 'Devamsızlık', icon: 'event_available', to: { name: 'AttendanceList' }, permissions: ['attendance:view', 'attendance:view-own'] },
       { title: 'Ücretli İzin', icon: 'event_note', to: { name: 'PaidLeaveList' }, permissions: ['attendance:leave:request', 'attendance:leave:business-approve', 'attendance:leave:approve'] },
       { title: 'Maaş / Dekont', icon: 'payments', to: { name: 'SalaryList' }, permissions: ['salary:view', 'salary:view-own'] },
