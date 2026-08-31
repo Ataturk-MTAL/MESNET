@@ -210,6 +210,8 @@ public sealed class InstitutionScopeDriftTests
     /// <c>InstitutionScopePolicy.VisibleScope</c> ile uygulanır (hedef istekte geçmez).
     /// <c>InstitutionTenantDirectory</c>: arka plan işlerinin kiracı listesi — kiracıları
     /// saymak bu servisin tanımıdır, kullanıcı isteğine bağlı değildir.
+    /// <c>InstitutionSubtreeDirectory</c>: <c>SubtreeTenantScope</c> için okul kiracılarını
+    /// listeler — girdisi yalnız <c>InstitutionVisibility</c>'den türer, istekten asla gelmez.
     /// <c>RebuildInstitutionHierarchyHandler</c>: ağacı kurmak tanımı gereği bütün düğümleri
     /// görmeyi gerektirir; uç kurum üstü izinle korunur (<c>platform:tenant:manage</c>) ve
     /// komut hiçbir kurum kimliği taşımaz.</para>
@@ -217,7 +219,15 @@ public sealed class InstitutionScopeDriftTests
     private static readonly HashSet<string> MayEnumerateAll = new(StringComparer.Ordinal)
     {
         "GetInstitutionsHandler.cs",
+        // GetInstitutionsHandler ile AYNI desen: listeleme sorgusu, kapsam guard'la değil
+        // InstitutionScopePolicy.VisibleScope ile uygulanır (hedef istekte geçmez). Negatif
+        // yön (yönetilenlerin DIŞI) ikinci bir Query<InstitutionManagerLink>() gerektirir ama
+        // o ayrı bir belge tipi, bu taramanın konusu değil.
+        "GetUnmanagedInstitutionsHandler.cs",
         "InstitutionTenantDirectory.cs",
+        // SubtreeTenantScope için okul kiracılarını listeler — girdisi yalnız
+        // InstitutionVisibility'den türer, istekten asla gelmez.
+        "InstitutionSubtreeDirectory.cs",
         // Ağacı kurmak tanımı gereği bütün düğümleri görmeyi gerektirir; uç kurum üstü izinle
         // korunur (platform:tenant:manage) ve komut hiçbir kurum kimliği taşımaz.
         "RebuildInstitutionHierarchyHandler.cs",

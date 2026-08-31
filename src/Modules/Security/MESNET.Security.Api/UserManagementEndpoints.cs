@@ -52,6 +52,10 @@ public static class UserManagementEndpoints
         group.MapDelete("/{userAccountId:guid}", DeleteUser).RequireAuthorization(Permissions.UserManagement.Delete);
         group.MapPost("/sync", SyncUsers).RequireAuthorization(Permissions.UserManagement.Create);
         group.MapPost("/resync-display-names", ResyncDisplayNames).RequireAuthorization(Permissions.UserManagement.Create);
+        // Kullanıcı kayıtlarını olay olarak yeniden yayınlar (D2) — diğer modüllerin yerel
+        // görünümlerini doldurur. DAĞITIM ÖN KOŞULU, idempotent.
+        group.MapPost("/replay", PostReplayUserAccounts)
+            .RequireAuthorization(Permissions.Platform.TenantManage);
 
         // Velisi bağlı olmayan öğrenciler (#271) — eksiği ölçülebilir kılar. Bağ kurulmadan
         // md. 36 (4) tebligatı (#247) veliye hiç ulaşmıyor ve bu sessiz.
@@ -292,6 +296,25 @@ public static class UserManagementEndpoints
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result)
             .AddMessage($"{result.Published} kullanıcının adı yeniden yayınlandı ({result.Skipped} atlandı).")
+            .Build());
+    }
+
+    /// <summary>
+    /// Mevcut hesapları <c>UserAccountReplayed</c> olarak yeniden yayınlar (D2, I-2) —
+    /// Institution modülünün <c>InstitutionManagerLink</c> read-model'ini geriye dönük
+    /// doldurur. İdempotenttir. Etkinlik durumu olayın kendisiyle taşındığı için ayrı bir
+    /// "pasif işaretlenen" sayacına gerek yoktur.
+    ///
+    /// <para><b>Asenkron:</b> bu uç 200 döndüğünde olaylar yalnız yayınlanmıştır, işlenmiş
+    /// olması gerekmez — durum kuyruk üzerinden ayrıca ilerler.</para>
+    /// </summary>
+    private static async Task<IResult> PostReplayUserAccounts(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ReplayUserAccountsResult>(new ReplayUserAccounts());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.Replayed} kullanıcı hesabı yeniden yayınlandı.")
             .Build());
     }
 

@@ -193,6 +193,10 @@ export const institutionApi = {
   list: (params?: InstitutionListParams & PaginationParams) =>
     api.get<PagedResponse<InstitutionDto>>('/institutions', { params }),
 
+  /** Yöneticisi olmayan okullar (D2) — kapsam sunucuda, istekten geçmez. */
+  listUnmanaged: (params?: PaginationParams) =>
+    api.get<PagedResponse<InstitutionDto>>('/institutions/unmanaged', { params }),
+
   get: (institutionId: string) =>
     api.get<InstitutionDto>(`/institutions/${institutionId}`),
 

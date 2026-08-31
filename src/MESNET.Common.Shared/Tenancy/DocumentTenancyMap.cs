@@ -139,12 +139,21 @@ public static class DocumentTenancyMap
         // Devamsızlık sınırları da ulusal parametredir (#183): MEB Yönetmeliği md. 36'dan
         // türer, okul başına değişemez. Damgalanırsa her okul kendi sınırını belirlerdi.
         ["AttendanceLimitConfig"] = Shared,
+        // Fesih onay zinciri tıkanma eşiği (D2) de ulusal parametredir: bir işletim
+        // politikasıdır, okul başına değişmez. Damgalanırsa her okul kendi eşiğini belirlerdi
+        // ve müdürlük panosu okuldan okula başka sayı gösterirdi.
+        ["InternshipApprovalConfig"] = Shared,
         // Kullanıcı adı çözümlemesi — kimlik katmanı (Keycloak), kiracıya ait değil
         ["UserNameView"] = Shared,
 
         // ── Kiracının kendisi / kimlik katmanı ────────────────────────────────────────
         // Kimlik katmanı; InstitutionId taşır ama kiracı sınırı DEĞİL — kullanıcı kurumlar arası taşınabilir
         ["UserAccount"] = Identity,
+
+        // Kullanıcının kurum bağı ve yönetme yetkisinin Institution modülündeki yerel görünümü
+        // (D2). Kaynağı UserAccount, hedefi Institution — ikisi de kimlik katmanında ve kiracı
+        // damgası taşımıyor; damgalansaydı müdürlük onu hiç göremezdi.
+        ["InstitutionManagerLink"] = Identity,
 
         // Davet, kimlik katmanının ONBOARDING kenarıdır: daveti tamamlayan kişinin henüz
         // kullanıcı kaydı, dolayısıyla kiracısı YOKTUR — uç anonimdir. Kiracıya ait

@@ -463,6 +463,7 @@ Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden 
 | `POST /api/institutions/staff/resync-branch-codes` | Personel kaydından kullanıcı hesabına **kurum (kiracı anahtarı) ve alan kapsamı** backfill'i — **uydurmaz, üzerine yazmaz**; yalnız boş alanı doldurur. **Yalnız çağıranın kendi okulu** için çalışır (#131); kurum üstü aktör `?institutionId=` ile hedef verir |
 | `POST /api/security/users/resync-display-names` | Kullanıcı görünen adlarını tazeler |
 | `POST /api/institutions/rebuild-hierarchy` | Kurum **ağacını** mevcut okul künyelerinden (`ProvinceCode` / `DistrictName`) kurar: il ve ilçe müdürlüğü düğümlerini açar, `ParentId` ve `Path` yazar. `platform:tenant:manage` ister. **İdempotent** — ikinci koşu düğüm çoğaltmaz, bozulmuş yolu onarır |
+| `POST /api/security/users/replay` | Mevcut kullanıcı hesaplarını `UserAccountReplayed` olarak yeniden yayınlar — Institution modülünün `InstitutionManagerLink` görünümünü doldurur (bkz. aşağıdaki bölüm). `platform:tenant:manage` ister. **İdempotent** |
 
 ### Personel backfill'i tek okulludur (#131)
 
@@ -800,6 +801,37 @@ FROM security.mt_doc_useraccount WHERE data->'roles' ? 'Student';
 **Eşleşmeyen öğrenci normaldir:** öğrenci profili gerçek bir Keycloak kullanıcısına bağlı
 değilse (dev tohum verisinde çoğu böyledir) tüketici sessizce atlar — uydurmaz. Bu öğrencilerin
 sistemde hesabı yoktur, dolayısıyla kapsam da gerekmez.
+
+## Müdürlük panosu: yöneticisiz okul listesi — replay ZORUNLU
+
+Müdürlük panosunun "yöneticisiz okullar" kartı `InstitutionManagerLink` görünümünden okur. Bu
+görünüm Security modülünün `UserCreated` / `UserRolesChanged` / `UserActivated` /
+`UserDeactivated` / `UserDeleted` olaylarıyla **bundan sonra** beslenir — dağıtım öncesi var
+olan kullanıcı hesapları için satır **hiç yoktur**.
+
+```
+POST /api/security/users/replay      (platform:tenant:manage)
+```
+
+**Ne zaman çalıştırılır:** bu işi dağıttıktan sonra **bir kez**. **İdempotenttir** — birden
+çok kez çağrılabilir, ikinci koşu satırları aynı değerle yeniden yazar.
+
+**Ne yapar:** `DeletedAt == null` olan tüm kullanıcı hesaplarını `UserAccountReplayed` olarak
+yeniden yayınlar (`UserCreated` **değil** — bkz. `UserAccountReplayed` XML doc, I-2); Institution
+modülünün `InstitutionManagerLinkConsumer`'ı bu olayı dinleyip kurum bağı, etkinlik durumu ve
+`institution:manage` yetkisini satıra mutlak olarak yazar.
+
+:::danger Atlanırsa ne olur
+Görünüm **boş kalır**, dolayısıyla "yöneticisiz okul" sorgusu **HER okulu** yöneticisiz sayar —
+gerçekte yöneticisi olan okullar da dahil. Hata dönmez, log basılmaz; panoda yalnız yanlış bir
+liste görünür.
+:::
+
+:::note Olaylar asenkron işlenir
+Uç 200 döndüğünde olaylar yalnız **yayınlanmıştır**, işlenmiş olması gerekmez —
+`InstitutionManagerLinkConsumer`'ın kuyruğu ayrıca ilerler. Yanıttan hemen sonra panoyu
+kontrol etmek eksik görünebilir; kuyruk boşalana kadar bekleyin.
+:::
 
 ## Sırayı bozmayın
 

@@ -12,5 +12,8 @@ public class InternshipMartenConfig : IConfigureMarten
         options.Schema.For<InternshipSummary>().Index(x => x.StudentId);
         options.Schema.For<InternshipSummary>().Index(x => x.BusinessId);
         options.Schema.For<InternshipSummary>().Index(x => x.InstitutionId);
+
+        // Ulusal tekil parametre (D2) — tek satır, indeks gerekmez.
+        options.Schema.For<InternshipApprovalConfig>().DatabaseSchemaName("internship");
     }
 }

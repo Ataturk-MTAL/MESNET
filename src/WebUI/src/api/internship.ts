@@ -62,6 +62,27 @@ export interface TerminationChainStatusDto {
   terminationReasonType: string | null
 }
 
+/** Tıkanmış onayların kurum kırılımı (D2). */
+export interface StuckApprovalByInstitutionDto {
+  institutionId: string
+  /** Sunucu HER ZAMAN null döndürür — ad ön yüzde lookup ile doldurulur (şema izolasyonu). */
+  institutionName: string | null
+  count: number
+  /** null = o kurumdaki tıkanmış zincirlerin hiçbirinde talep zamanı bilinmiyor. */
+  oldestDays: number | null
+}
+
+export interface StuckApprovalSummaryDto {
+  totalCount: number
+  /** Karar anındaki eşik — boş-durum metni bununla yazılır. */
+  thresholdDays: number
+  byInstitution: StuckApprovalByInstitutionDto[]
+}
+
+export interface ApprovalConfigDto {
+  stuckApprovalDays: number
+}
+
 export const internshipApi = {
   listInternships: (params?: {
     studentId?: string
@@ -106,4 +127,13 @@ export const internshipApi = {
    */
   overrideTermination: (internshipId: string, body: { reason: string }) =>
     api.post(`/internships/${internshipId}/approve/override`, body),
+
+  getStuckApprovals: () =>
+    api.get<StuckApprovalSummaryDto>('/internships/stuck-approvals'),
+
+  getApprovalConfig: () =>
+    api.get<ApprovalConfigDto>('/internships/approval-config'),
+
+  updateApprovalConfig: (payload: ApprovalConfigDto) =>
+    api.put('/internships/approval-config', payload),
 }

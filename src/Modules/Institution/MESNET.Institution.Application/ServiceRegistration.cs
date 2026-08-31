@@ -19,6 +19,12 @@ public static class ServiceRegistration
         // burada — arka plan işleri "hangi kiracı adına" sorusunu bu servisle cevaplar.
         services.AddScoped<ITenantDirectory, InstitutionTenantDirectory>();
 
+        // Alt ağaç kiracı listesi (D2). Aynı gerekçe: sözleşme altyapıda, uygulama burada.
+        services.AddScoped<IInstitutionSubtreeDirectory, InstitutionSubtreeDirectory>();
+
+        // Kiracılar arası okumanın tek kapısı (D2).
+        services.AddScoped<SubtreeTenantScope>();
+
         return services;
     }
 }
