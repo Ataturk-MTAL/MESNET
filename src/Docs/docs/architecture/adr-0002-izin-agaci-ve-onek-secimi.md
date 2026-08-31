@@ -122,8 +122,8 @@ Wildcard'lar genişletilmiş hâliyle.
 | İşletme İnsan Kaynakları (`CompanyHR`) | 8 | — |
 | Öğrenci (`Student`) | 11 | — |
 | Veli (`Parent`) | 9 | — |
-| İl MEM Yetkilisi (`ProvincialAdmin`) | 4 | — |
-| İlçe MEM Yetkilisi (`DistrictAdmin`) | 4 | — |
+| İl MEM Yetkilisi (`ProvincialAdmin`) | 6 | — |
+| İlçe MEM Yetkilisi (`DistrictAdmin`) | 6 | — |
 | Sistem Yöneticisi (`SystemAdmin`) | 5 | — |
 
 ### Domainler
@@ -183,7 +183,7 @@ Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kay
 | `company:grade:enter` | ○ | · | · | · | · | ● | ● | · | · | · | · | · | · |
 | **`internship:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `internship:apply` | ○ | · | · | · | · | · | · | · | ● | · | · | · | · |
-| `internship:view` | ○ | ● | ● | · | ● | · | · | · | · | · | · | · | · |
+| `internship:view` | ○ | ● | ● | · | ● | · | · | · | · | · | ● | ● | · |
 | `internship:review` | ○ | · | · | · | ● | · | · | · | · | · | · | · | · |
 | `internship:approve` | ○ | ● | · | · | ● | · | · | · | · | · | · | · | · |
 | `internship:view-own` | ○ | · | · | · | · | ● | · | · | ● | ● | · | · | · |
@@ -243,7 +243,7 @@ Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kay
 | `communication:issue:report` | ○ | · | · | · | · | · | ○ | · | ● | ● | · | · | · |
 | `communication:issue:manage` | ○ | · | · | · | · | · | ○ | · | · | · | · | · | · |
 | **`user:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `user:view` | ○ | ○ | · | · | · | · | · | · | · | · | · | · | · |
+| `user:view` | ○ | ○ | · | · | · | · | · | · | · | · | ● | ● | · |
 | `user:create` | ○ | ○ | · | · | · | · | · | · | · | · | · | · | ● |
 | `user:update` | ○ | ○ | · | · | · | · | · | · | · | · | · | · | · |
 | `user:delete` | ○ | ○ | · | · | · | · | · | · | · | · | · | · | · |
