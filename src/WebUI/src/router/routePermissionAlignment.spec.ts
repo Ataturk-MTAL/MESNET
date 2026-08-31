@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { menuDefinition } from '../composables/useNavigation'
 
 /**
  * Rota izinleri, sunucudaki yetkilendirme politikasıyla ELLE eşleniyor ve aralarında hiçbir
@@ -62,6 +63,23 @@ function rotaIzinleriniOku(): Map<string, string[]> {
   return rotaIzinleri
 }
 
+/**
+ * Verilen rota adına işaret eden menü girdisini `menuDefinition`'da bulur — hem tek-child'ı
+ * düz link'e terfi ETMEMİŞ hâldeki (child) girdileri hem üst-seviye grup linklerini ('home'
+ * gibi `to` taşıyan gruplar) kapsar. `useNavigation.upperNode.spec.ts` ile aynı desen: menü
+ * yerel kopyalanmaz, gerçek dışa aktarılan tanımdan okunur — yerel kopya bir sapmayı asla
+ * yakalayamaz.
+ */
+function menuIzinleriniBul(rotaAdi: string): string[] | undefined {
+  for (const grup of menuDefinition) {
+    if (grup.to?.name === rotaAdi) return grup.permissions
+    for (const cocuk of grup.children) {
+      if (cocuk.to.name === rotaAdi) return cocuk.permissions
+    }
+  }
+  return undefined
+}
+
 describe('Rota/politika hizası kilidi', () => {
   const rotaIzinleri = rotaIzinleriniOku()
 
@@ -87,6 +105,47 @@ describe('Rota/politika hizası kilidi', () => {
           `${rotaAdi} rotası '${eksikIzin}' iznini meta.permissions listesinde içermiyor — ` +
             'sunucu politikası bu izni de kabul ediyor (AnyOf). Sonuç: bu izne sahip aktör ' +
             'işlemi sunucuda yapabilir ama sayfaya HİÇ ulaşamaz (403 değil, menüde görünmeme).',
+        )
+      }
+    }
+
+    expect(ihlaller, `\n  ${ihlaller.join('\n  ')}`).toEqual([])
+  })
+
+  /**
+   * Rota metasının doğru olması yetmez: aynı yeteneğe giden MENÜ girdisi farklı bir izin
+   * listesi taşırsa aktör rotaya URL'den ulaşsa bile menüde hiç göremez (ya da tersi — menü
+   * geniş, rota dar kalırsa 403'e giden bir bağlantı gösterilir). İki dosyadaki liste
+   * (`router/index.ts` meta.permissions ↔ `useNavigation.ts` menuDefinition) bugüne kadar
+   * yalnız YORUM SATIRIYLA "aynı" tutuluyordu — yorum kilit değildir, sessiz sapmayı
+   * yakalamaz. Karşılaştırma SIRAYA değil KÜMEYE bakar: iki listenin yazılış sırası farklı
+   * olabilir, önemli olan aynı izin kümesini taşımalarıdır.
+   */
+  it('her kilitli rotanın menü girdisi, rotanın meta.permissions listesiyle KÜME olarak eşleşiyor', () => {
+    const ihlaller: string[] = []
+
+    for (const rotaAdi of Object.keys(ZORUNLU_IZINLER)) {
+      const rotaninIzinleri = rotaIzinleri.get(rotaAdi) ?? []
+      const menuIzinleri = menuIzinleriniBul(rotaAdi)
+
+      if (menuIzinleri === undefined) {
+        ihlaller.push(
+          `${rotaAdi} rotasına işaret eden bir menü girdisi (\`to: { name: '${rotaAdi}' }\`) ` +
+            'menuDefinition içinde bulunamadı.',
+        )
+        continue
+      }
+
+      const rotaKumesi = new Set(rotaninIzinleri)
+      const menuKumesi = new Set(menuIzinleri)
+      const kumeEsit =
+        rotaKumesi.size === menuKumesi.size &&
+        [...rotaKumesi].every((izin) => menuKumesi.has(izin))
+
+      if (!kumeEsit) {
+        ihlaller.push(
+          `${rotaAdi}: rota izinleri [${[...rotaKumesi].join(', ')}] ile menü izinleri ` +
+            `[${[...menuKumesi].join(', ')}] KÜME olarak eşleşmiyor.`,
         )
       }
     }

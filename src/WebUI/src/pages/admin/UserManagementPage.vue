@@ -163,8 +163,35 @@
                 >
                   <q-tooltip>Alanları (branş) yönet</q-tooltip>
                 </q-btn>
-                <!-- Kurum (kiracı) bağı — ADR-0003 adım 2. Token'dan gelen institution_id
-                     artık okunmuyor ve sync de yazmıyor; bağ yalnız buradan kurulur. -->
+                <!-- Veli–öğrenci bağı (#174): velinin KAPSAMI. İzinleri tüm velilerde
+                     aynıdır; erişeceği veriyi yalnız bu bağ belirler. -->
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="family_restroom"
+                  aria-label="Bağlı öğrencileri yönet"
+                  @click="openStudents(row)"
+                >
+                  <q-tooltip>Bağlı öğrencileri yönet (veli)</q-tooltip>
+                </q-btn>
+              </PermissionGuard>
+              <!--
+                Kurum (kiracı) bağı — ADR-0003 adım 2. Token'dan gelen institution_id artık
+                okunmuyor ve sync de yazmıyor; bağ yalnız buradan kurulur.
+
+                KENDİ GUARD'I VAR (RolesManage'e gömülü DEĞİL): il/ilçe
+                müdürlüğü rolleri (`ProvincialAdmin`, `DistrictAdmin`) `user:roles:manage`
+                TAŞIMAZ — bilerek, o izin alt ağaçtaki her okulun her kullanıcısının rollerini
+                değiştirmek demektir. Onlar `directorate:institution-bootstrap` taşır ve
+                sunucu bu ucu ikisinden HERHANGİ BİRİYLE açar (`AnyOf`,
+                `UserInstitutionAssignOrBootstrap`). Guard tek `RolesManage` olsaydı, sunucunun
+                kabul ettiği aktörden düğme tümüyle saklanırdı — düğme dururdu ama sahibi onu
+                hiç görmezdi.
+              -->
+              <PermissionGuard
+                :permission="[Permissions.UserManagement.RolesManage, Permissions.Directorate.InstitutionBootstrap]"
+              >
                 <q-btn
                   flat
                   round
@@ -177,18 +204,6 @@
                   <q-tooltip>
                     {{ row.institutionId ? 'Kurum bağını yönet' : 'Kurum bağı yok — kapsamlı ekranlar kapalı' }}
                   </q-tooltip>
-                </q-btn>
-                <!-- Veli–öğrenci bağı (#174): velinin KAPSAMI. İzinleri tüm velilerde
-                     aynıdır; erişeceği veriyi yalnız bu bağ belirler. -->
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="family_restroom"
-                  aria-label="Bağlı öğrencileri yönet"
-                  @click="openStudents(row)"
-                >
-                  <q-tooltip>Bağlı öğrencileri yönet (veli)</q-tooltip>
                 </q-btn>
               </PermissionGuard>
               <PermissionGuard :permission="Permissions.UserManagement.Update">
@@ -474,6 +489,22 @@
         type="warning"
         message="Bu kullanıcının kurum bağı yok. Kurum kapsamı isteyen ekranlar ona kapalıdır."
       />
+
+      <!--
+        Hedef kurum adı — BULGU 2. `saveInstitution` seçici SUNMAZ (yukarıdaki not); aktörün
+        O AN davrandığı kurumu bağlar (`institutionStore.institution`). Müdürlük kendi
+        bağlamındaysa bu müdürlük düğümünün kendisidir — bu, müdürlük personeli için doğru
+        sonuçtur. Ama bir OKUL müdürünü bağlamak isteniyorsa aktör önce O OKULUN bağlamına
+        GEÇMİŞ olmalıdır; aksi hâlde kullanıcı sessizce müdürlük düğümüne bağlanır. Ad burada
+        adıyla göründüğü için "Kuruma bağla"ya basmadan ÖNCE yanlış bağlamda olunduğu görülür.
+      -->
+      <div
+        v-if="!selectedUser?.institutionId"
+        class="text-body2 text-weight-medium q-mt-sm"
+      >
+        Bağlanacak kurum:
+        <span class="text-secondary">{{ institutionStore.institution?.fullName ?? 'Yükleniyor…' }}</span>
+      </div>
 
       <div class="text-caption text-grey-7">
         Kurum bağı kullanıcının hangi okulun verisini göreceğini belirler. Yalnız kendi
