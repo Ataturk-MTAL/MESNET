@@ -76,8 +76,9 @@ public static class AbsenceNotificationEmailConsumer
     private static async Task<IReadOnlyList<UserAccount>> ResolveRecipientsAsync(
         IQuerySession session, AbsenceNotificationDue @event, CancellationToken ct)
     {
-        // Kiracı süzgeci gerekmiyor: UserAccount kiracı damgalıdır ve oturum istek/mesaj
-        // bağlamındaki kiracıyla açılır.
+        // UserAccount kimlik katmanındadır (DocumentTenancyMap:151) ve kiracı damgası taşımaz;
+        // conjoined kiracılık burada süzmez. Alıcı sınırlandırması olayın tanımlayıcılarından
+        // gelir: veli bağı (LinkedStudentIds), işletme (BusinessId), öğrenci (StudentId).
         var candidates = await session.Query<UserAccount>()
             .Where(u => u.IsEnabled)
             .ToListAsync(ct);
