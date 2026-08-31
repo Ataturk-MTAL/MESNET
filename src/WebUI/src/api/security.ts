@@ -49,7 +49,6 @@ export interface InvitationDto {
   approvedById: string | null
   approvedByName: string | null
   expiresAt: string
-  metadata: Record<string, string>
 }
 
 /**
