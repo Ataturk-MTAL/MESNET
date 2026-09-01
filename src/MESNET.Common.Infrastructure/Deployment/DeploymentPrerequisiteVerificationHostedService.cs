@@ -20,10 +20,17 @@ namespace MESNET.Common.Infrastructure.Deployment;
 /// realm rolü yoktur. Koşturma sırası ve kimliği operatörde kalır:
 /// <c>src/Docs/docs/infrastructure/dagitim-on-kosullari.md</c>.</para>
 ///
-/// <para><b>Davranış ortama göre ayrılır</b> (<c>RealmVerificationHostedService</c> ve
-/// <c>DocumentTenancyVerificationHostedService</c> ile aynı çizgi): Development'ta bulgu
-/// <b>açılışı durdurur</b>; diğer ortamlarda <c>LogCritical</c> — çalışan bir sistemi eksik bir
-/// backfill yüzünden indirmek eksikliğin kendisinden büyük zarar verebilir.</para>
+/// <para><b>HİÇBİR ortamda açılışı durdurmaz</b> — ve bu, kardeş iki doğrulayıcıdan
+/// <b>bilinçli bir ayrılıktır</b>. <c>RealmVerificationHostedService</c> ile
+/// <c>DocumentTenancyVerificationHostedService</c> Development'ta atar, çünkü onların çaresi
+/// süreç dışındadır (Keycloak ayarı, kaynak kodda sınıflandırma). Buradaki çare ise <b>bu API'nin
+/// kendi ucudur</b>: <c>POST /api/security/users/replay</c>, <c>POST /api/institutions/rebuild-hierarchy</c>.
+/// Açılışı durdursaydık uç ulaşılamaz olurdu ve sistem <b>kendi çaresine erişemeyen</b> bir
+/// kilitlenmeye girerdi — üstelik her yeni kurulumda, çünkü boş bir veritabanında bu bulgular
+/// tanımı gereği vardır. Koruma değil, tuzak olurdu.</para>
+///
+/// <para>Görünürlük bu yüzden <b>seviyeden</b> gelir: bulgu <c>LogCritical</c> olarak, ölçüm +
+/// sonuç + birebir çağrılabilir adım ile tek blokta yazılır.</para>
 ///
 /// <para><b>Ölçülemeyen sonda bulgu üretmez ve SESSİZ KALMAZ.</b> Sondanın istisnası "atlandı"
 /// olarak raporlanır; kapsam her koşuda loglanır. Kaç ön koşulun ölçüldüğünü yazmayan bir
@@ -31,7 +38,6 @@ namespace MESNET.Common.Infrastructure.Deployment;
 /// </summary>
 public sealed class DeploymentPrerequisiteVerificationHostedService(
     IServiceScopeFactory scopeFactory,
-    IHostEnvironment environment,
     ILogger<DeploymentPrerequisiteVerificationHostedService> logger) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -81,12 +87,9 @@ public sealed class DeploymentPrerequisiteVerificationHostedService(
         if (findings.Count == 0)
             return;
 
-        var rapor = Describe(findings, unmeasured);
-
-        if (environment.IsDevelopment())
-            throw new InvalidOperationException(rapor);
-
-        logger.LogCritical("{Rapor}", rapor);
+        // Atmak yerine yazılır: çare bu API'nin kendi ucudur, açılışı durdurmak onu ulaşılmaz
+        // kılardı (bkz. sınıf belgesi).
+        logger.LogCritical("{Rapor}", Describe(findings, unmeasured));
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

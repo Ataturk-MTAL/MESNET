@@ -31,10 +31,19 @@ kayıtlar için görünüm hiç dolmaz.
 Bu sayfadaki adımların bir kısmı atlandığında **belirtisi ölçülebilir**. Açılışta
 `DeploymentPrerequisiteVerificationHostedService` o belirtileri okur:
 
-- **Development:** bulgu varsa **açılış durur**, ölçüm + sonuç + koşturulacak adım hata metnindedir
-- **Diğer ortamlar:** `LogCritical`
+- Bulgu **`LogCritical`** olarak yazılır: ölçüm + sonuç + birebir çağrılabilir adım, tek blokta
+- **Hiçbir ortamda açılış durmaz** — gerekçesi aşağıda
 - **Ölçüm yapılamaması bulgu sayılmaz** — ilk açılışta tablo henüz yoksa kontrol atlanır ve
-  uyarı yazılır; açılış bu yüzden durmaz
+  uyarı yazılır
+
+:::note Neden Realm doğrulaması gibi Development'ta durdurmuyor
+`RealmVerificationHostedService` ve `DocumentTenancyVerificationHostedService` Development'ta
+**açılışı durdurur**, çünkü onların çaresi süreç dışındadır (Keycloak ayarı, kaynak kodda
+sınıflandırma). Buradaki çare ise **bu API'nin kendi ucudur**. Açılış dursaydı uç ulaşılamaz
+olur ve sistem **kendi çaresine erişemeyen** bir kilitlenmeye girerdi — üstelik her yeni
+kurulumda, çünkü boş bir veritabanında bu bulgular tanımı gereği vardır. Koruma değil tuzak
+olurdu. Kilitleyen test: `DeploymentPrerequisiteVerificationTests.Bulgu_varken_bile_acilis_DURMAZ`.
+:::
 
 :::warning Ölçer, koşturmaz
 Doğrulayıcı hiçbir resync ucunu **çağırmaz** ve hiçbir şey **yazmaz**. Açılıştan koşturmak bu
@@ -61,6 +70,46 @@ Dağıtım ön koşulları: 3/3 ölçüldü, 0 eksik bulundu.
 
 Yeni bir sonda eklemek tek dosyadır: `IDeploymentPrerequisiteProbe` uygulayın ve modülün
 `ServiceRegistration`'ında kaydedin. Sonda **yalnız okur**.
+
+## Koşturma — `scripts/deploy-prereqs.sh`
+
+Adımları **sırasıyla** koşturan betik. Sıra betiğin içinde gerekçesiyle yazılıdır.
+
+```bash
+export MESNET_API_URL=https://mesnet.example.gov.tr
+export MESNET_KEYCLOAK_TOKEN_URL=https://kc.example.gov.tr/realms/mesnet/protocol/openid-connect/token
+export MESNET_OPERATOR_USER=<platform:tenant:manage taşıyan gerçek kullanıcı>
+
+./scripts/deploy-prereqs.sh --dry-run     # önce planı görün
+./scripts/deploy-prereqs.sh               # sonra koşturun (parola terminalden sorulur)
+```
+
+**Kimlik: adlandırılmış operatör hesabı** — kalıcı bir `DeploymentOperator` servis hesabı
+**değil**. Servis hesabı, yılda beş kez kullanılmak için 365 gün boyunca bütün okulların verisine
+yazma yetkisi taşıyan kalıcı bir anahtar olurdu. Parola betikte saklanmaz; çalışma anında ortam
+değişkeninden ya da terminalden alınır ve süreçle birlikte ölür. Denetim kaydı gerçek bir kişinin
+`sub`'unu taşır.
+
+**Varsayılan hedef yoktur.** URL de kimlik de tahmin edilmez; yanlış hedefe sessizce koşan bir
+dağıtım betiği, koşmayan betikten kötüdür. Geliştirme için `--dev`.
+
+### Betik üç sınıf tanır
+
+| Sınıf | Anlamı | Varsayılan |
+| --- | --- | --- |
+| `safe` | İdempotent, serbestçe yeniden koşturulur | Koşar |
+| `once` | Gerekli ama idempotent **değil** — tam bir kez | **Atlanır**; `--allow-once` + damga dosyası |
+| `broken` | Bilinen hatalı, veri bozar | **Atlanır**; `--include-broken` |
+
+Bugün `once`: `students/resync-projections` (#290 — şube öğrenci sayacını her koşuda şişirir).
+Bugün `broken`: `placements/resync-projections` (#291), `internships/resync-sagas` ve
+`contracts/resync-internship-links` (#292).
+
+### 200 dönmek "yapıldı" demek değildir
+
+Betik, yanıtı **doğrulayabildiği** fazlarda doğrular ve doğrulayamadığını `DOĞRULANMADI` diye
+yazar — "TAMAM" demez. Gerekçe #292'de ölçüldü: uç 200 döndü ve **sıfır** satır işledi. Doğrulama
+tutmayan faz `ŞÜPHELİ` sayılır ve betik sıfırdan farklı kodla çıkar.
 
 ## Realm ayarları — artık otomatik yakalanıyor
 
