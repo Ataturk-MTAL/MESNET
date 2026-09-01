@@ -71,6 +71,27 @@ Dağıtım ön koşulları: 3/3 ölçüldü, 0 eksik bulundu.
 Yeni bir sonda eklemek tek dosyadır: `IDeploymentPrerequisiteProbe` uygulayın ve modülün
 `ServiceRegistration`'ında kaydedin. Sonda **yalnız okur**.
 
+## Şema göçü betikle YAPILMAZ — elden uygulanır
+
+`scripts/migrate.sh` ve `scripts/migrate.ps1` **silindi** (#293). İkisi de
+`dotnet run -- marten-apply` çağırıyordu; depoda böyle bir komut ana bilgisayarı **yok**
+(`RunJasperFxCommands` / `AddJasperFx` araması: 0 sonuç, Oakton/JasperFx paket referansı: 0).
+Argüman yutuluyor, API normal açılıyor ve betik **0 ile çıkıyordu** — yani "göç uygulandı"
+diyen, hiçbir şey yapmamış bir betik.
+
+Yerine konmadı, çünkü doğru yol zaten elden uygulamaktır:
+
+```bash
+psql "$CONNECTION" -f src/Docs/docs/infrastructure/sql/149-conjoined-kiracilik.sql
+psql "$CONNECTION" -f src/Docs/docs/infrastructure/sql/149-kiraci-damgalama.sql
+```
+
+`ApplyAllDatabaseChangesOnStartup()` bu depoda kullanılmaz: Marten'ın kendisiyle çelişen deltası
+(`42710: constraint "fkey_mt_events_stream_id_tenant_id" ... already exists`) API'yi öldürür.
+Aynı delta `marten-apply` üzerinden de gelirdi — bir komut ana bilgisayarı eklemek, bilinen bozuk
+yolu diriltmek olurdu. **Gözden geçirilebilir SQL** bilinçli bir karardır; otomatik uygulayan bir
+sarmalayıcı o gözden geçirmeyi ortadan kaldırır.
+
 ## Koşturma — `scripts/deploy-prereqs.sh`
 
 Adımları **sırasıyla** koşturan betik. Sıra betiğin içinde gerekçesiyle yazılıdır.
