@@ -1,4 +1,6 @@
+using MESNET.Common.Infrastructure.Deployment;
 using MESNET.Common.Infrastructure.Tenancy;
+using MESNET.Institution.Application.Deployment;
 using MESNET.Institution.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,6 +26,11 @@ public static class ServiceRegistration
 
         // Kiracılar arası okumanın tek kapısı (D2).
         services.AddScoped<SubtreeTenantScope>();
+
+        // Dağıtım ön koşulu sondaları — açılışta ÖLÇÜLÜR, koşturulmaz. Belge Institution
+        // modülünün şemasındadır; ölçüm bu yüzden burada yaşar (şema izolasyonu).
+        services.AddScoped<IDeploymentPrerequisiteProbe, InstitutionHierarchyProbe>();
+        services.AddScoped<IDeploymentPrerequisiteProbe, InstitutionManagerLinkProbe>();
 
         return services;
     }

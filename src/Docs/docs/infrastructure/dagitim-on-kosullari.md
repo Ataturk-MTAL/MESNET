@@ -26,6 +26,42 @@ Ortak kök neden: olay-beslemeli read-model'ler yalnız **bundan sonra** gelen o
 Seeder idempotent olduğu için kaynağı yeniden yaratmaz, yani olay bir daha yayınlanmaz ve mevcut
 kayıtlar için görünüm hiç dolmaz.
 
+## Atlanan adım artık açılışta bildiriliyor
+
+Bu sayfadaki adımların bir kısmı atlandığında **belirtisi ölçülebilir**. Açılışta
+`DeploymentPrerequisiteVerificationHostedService` o belirtileri okur:
+
+- **Development:** bulgu varsa **açılış durur**, ölçüm + sonuç + koşturulacak adım hata metnindedir
+- **Diğer ortamlar:** `LogCritical`
+- **Ölçüm yapılamaması bulgu sayılmaz** — ilk açılışta tablo henüz yoksa kontrol atlanır ve
+  uyarı yazılır; açılış bu yüzden durmaz
+
+:::warning Ölçer, koşturmaz
+Doğrulayıcı hiçbir resync ucunu **çağırmaz** ve hiçbir şey **yazmaz**. Açılıştan koşturmak bu
+depoda mümkün değildir: `UseWolverine` host'tan **sonra** başlar, açılıştan yapılan her yayın
+`WolverineHasNotStartedException` fırlatır. Ayrıca iki uç idempotent değildir (#290, #291) ve her
+yeniden başlatmada sayacı biraz daha bozardı. Koşturma sırası ve kimliği **operatördedir**.
+:::
+
+### Neyin ölçüldüğü — ve neyin ölçülmediği
+
+| Ön koşul | Ölçülen belirti | Adım |
+| --- | --- | --- |
+| Kurum ağacı | Okul var, ama `Path` alanı boş olan okul var | `POST /api/institutions/rebuild-hierarchy` |
+| Yönetici bağı görünümü | Okul var, `InstitutionManagerLink` görünümünde **0 satır** | `POST /api/security/users/replay` |
+| Staj saga'sı kopyaları | Saga sayısı, işaret ettiği tekil yerleştirme sayısından fazla | `POST /api/internships/resync-sagas` → `POST /api/contracts/resync-internship-links` |
+
+Kalan adımların belirtisi **tek modül içinden ölçülemez** (ör. "öğrenci var ama `StudentNameView`
+boş" iki modülü birden görmeyi gerektirir; şema izolasyonu buna izin vermez). Onlar bu listede
+**yoktur** ve doğrulayıcının sessizliği onlar için bir şey söylemez. Kapsam her açılışta loglanır:
+
+```
+Dağıtım ön koşulları: 3/3 ölçüldü, 0 eksik bulundu.
+```
+
+Yeni bir sonda eklemek tek dosyadır: `IDeploymentPrerequisiteProbe` uygulayın ve modülün
+`ServiceRegistration`'ında kaydedin. Sonda **yalnız okur**.
+
 ## Realm ayarları — artık otomatik yakalanıyor
 
 Keycloak realm import **tek seferliktir**: `mesnet-realm.json`'a sonradan eklenen rol, politika
