@@ -129,10 +129,11 @@ public static class GetUserAccountHandler
         // Kapsam dışı kayıt "bulunamadı" döner, "yasak" DEĞİL: yasak yanıtı kaydın VAR
         // olduğunu doğrular ve kimliği tahmin edilebilir hâle gelmiş bir listede bu bilgi
         // sızıntıdır.
+        // Karar saf UserScopePolicy.IsVisible'dadır — davet yazma uçlarıyla AYNI kapı (#284).
+        // Kopya bir koşul iki yerde yaşasaydı, birine yapılan düzeltme diğerine sessizce
+        // yansımazdı.
         var visibleIds = await scopeResolver.ResolveAsync(cancellationToken);
-        if (visibleIds is { } ids
-            && account.InstitutionId is { } institutionId
-            && !ids.Contains(institutionId))
+        if (!UserScopePolicy.IsVisible(visibleIds, account.InstitutionId))
             throw new DomainException(SecurityErrors.UserNotFound(query.UserAccountId));
 
         return GetUserAccountsHandler.ToDto(account);

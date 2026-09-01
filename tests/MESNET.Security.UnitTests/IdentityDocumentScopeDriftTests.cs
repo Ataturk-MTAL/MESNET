@@ -26,7 +26,7 @@ namespace MESNET.Security.UnitTests;
 /// çözücüyü çağırdıkları için bu listede DEĞİLLER).</para>
 ///
 /// <para><b>Belgelenmiş sınırlama — işaretleyici DOSYA düzeyindedir, ÇAĞRI düzeyinde değil.</b>
-/// <see cref="ResolverMarker"/> kontrolü tüm dosya metnini tarar: aynı dosyada TEK bir çağrı
+/// <see cref="ScopeDecisionMarkers"/> kontrolü tüm dosya metnini tarar: aynı dosyada TEK bir çağrı
 /// <c>UserScopeResolver</c> kullanıyorsa, o dosyadaki DİĞER tüm kimlik-belgesi çağrıları da
 /// (kapsamsız olsalar bile) geçmiş sayılır. <c>InvitationHandler.cs</c> bunun canlı örneğidir
 /// (#284): <c>ApproveInvitationHandler</c>, <c>RejectInvitationHandler</c> ve
@@ -41,7 +41,7 @@ namespace MESNET.Security.UnitTests;
 /// <para><b>Karara bağlandı — <c>RoleIntegrityHandler.cs</c> artık çözücüyü çağırıyor (#283).</b>
 /// <c>GET /api/security/role-integrity</c> uzun süre kapsamsızdı ve bu test onun yüzünden
 /// bilerek KIRMIZI bırakılmıştı. Karar <b>kurum düzeyi</b> oldu: yerel iki bacak (davetler,
-/// hesaplar) diğer üç uçla aynı kapıdan (<see cref="ResolverMarker"/>) geçiyor. Belirleyici
+/// hesaplar) diğer üç uçla aynı kapıdan (<see cref="ScopeDecisionMarkers"/>) geçiyor. Belirleyici
 /// gerekçe, ucun kendi tasarımıydı — raporu görmesi gereken kişi düzeltmeyi de yapacak olandır
 /// ve düzeltme ucu (<c>POST /api/security/users/{id}/roles</c>) kurum kapsamlıdır; rapor
 /// platforma çekilseydi gören ile düzeltebilen ayrılırdı. Realm bacağı (Keycloak'ta hiç rolü
@@ -64,8 +64,43 @@ public sealed class IdentityDocumentScopeDriftTests
     private static readonly Regex IdentityDocumentQueryCall = new(
         @"\b(?:Query|LoadAsync|LoadManyAsync)<(?:UserAccount|UserInvitation)>\s*\(", RegexOptions.Compiled);
 
-    /// <summary>Kapsamı çözen TEK kapı — bu ad geçen dosya kararı çözücüye devretmiş sayılır.</summary>
-    private const string ResolverMarker = "UserScopeResolver";
+    /// <summary>
+    /// Kapsam kararının <b>fiilen verildiğini</b> gösteren ÇAĞRI kalıpları (#284).
+    ///
+    /// <para><b>Neden tip adı yetmiyor:</b> ilk sürüm yalnız <c>UserScopeResolver</c> dizesini
+    /// arıyordu. Ölçüldü — bu, kararın VERİLDİĞİNİ değil parametrenin BİLDİRİLDİĞİNİ kanıtlar:
+    /// gövdeden kontrolü silip imzadaki <c>UserScopeResolver scopeResolver</c> parametresini
+    /// bırakan bir mutasyon kilidi olduğu gibi geçti. Derleyici de susar — kullanılmayan metot
+    /// parametresi C#'ta uyarı üretmez.</para>
+    ///
+    /// <para>İki ayrı meşru mekanizma vardır ve ikisi de kapsam kararıdır: çözücü
+    /// <b>görünürlük</b> sorusunu cevaplar (bu kaydı okuyabilir miyim),
+    /// <c>UserInstitutionScopePolicy</c> ise <b>atama</b> sorusunu (bu kuruma yazabilir miyim).
+    /// Tek işaretle yetinmek, ikinci mekanizmayı doğru kullanan sınıfı ihlal gösterirdi.</para>
+    /// </summary>
+    private static readonly Regex[] ScopeDecisionMarkers =
+    [
+        new(@"[Ss]copeResolver\s*\.\s*ResolveAsync\s*\(", RegexOptions.Compiled),
+        new(@"UserScopePolicy\s*\.\s*(?:IsVisible|VisibleInstitutionIds)\s*\(", RegexOptions.Compiled),
+        new(@"UserInstitutionScopePolicy\s*\.\s*CanAssign\s*\(", RegexOptions.Compiled),
+    ];
+
+    /// <summary>
+    /// Kapsam kararı vermeden kimlik belgesi çekebilecek <b>sınıflar</b> — dosya değil.
+    ///
+    /// <para><c>CompleteInvitationHandler</c>: davet kabul ucu <b>anonimdir</b>
+    /// (<c>InvitationEndpoints.cs</c> → <c>.AllowAnonymous()</c>). Davetlinin henüz hesabı
+    /// yoktur, dolayısıyla kapsam türetilecek bir aktör de yoktur; davet GUID'i orada kimlik
+    /// bilgisinin <b>ta kendisidir</b>. Kapsam kontrolü eklemek ucu kullanılamaz hâle
+    /// getirirdi.</para>
+    ///
+    /// <para><b>Bu liste küçük kalmalı.</b> Büyümesi, kilidin kural olmaktan çıkıp istisnalar
+    /// tablosuna döndüğünün işaretidir.</para>
+    /// </summary>
+    private static readonly HashSet<string> AllowedClasses = new(StringComparer.Ordinal)
+    {
+        "src/Modules/Security/MESNET.Security.Application/Handlers/InvitationHandler.cs::CompleteInvitationHandler",
+    };
 
     /// <summary>
     /// Çözücüyü çağırmadan kimlik belgesi sorgulayabilecek üretim dosyaları — depo köküne göre
@@ -78,7 +113,7 @@ public sealed class IdentityDocumentScopeDriftTests
     /// kapsayacak şekilde genişletildi (id ile tek kayıt çekmek de aynı kapsam kararına muhtaçtır
     /// — yukarıdaki "Belgelenmiş sınırlama" paragrafına bakınız) ve tarama TEKRARLANDI: sonuç
     /// KÜMESİ değişmedi, yine aynı on bir dosya eşleşti. On birinden ikisi (<c>UserQueryHandler.cs</c>,
-    /// <c>InvitationHandler.cs</c>) artık <see cref="ResolverMarker"/>'ı çağırıyor ve bu listede
+    /// <c>InvitationHandler.cs</c>) artık <see cref="ScopeDecisionMarkers"/>'ı çağırıyor ve bu listede
     /// DEĞİL. Onbirincisi — <c>RoleIntegrityHandler.cs</c> — #283 kararından sonra o da çözücüyü
     /// çağırıyor ve listede DEĞİL. Sekizi aşağıda, gerekçesiyle.</para>
     ///
@@ -148,18 +183,28 @@ public sealed class IdentityDocumentScopeDriftTests
 
         foreach (var file in SourceFiles())
         {
-            var code = StripComments(File.ReadAllText(file));
-            if (!IdentityDocumentQueryCall.IsMatch(code))
-                continue;
-
-            if (code.Contains(ResolverMarker, StringComparison.Ordinal))
-                continue;
-
             var relative = Relative(file);
             if (AllowedFiles.Contains(relative, StringComparer.Ordinal))
                 continue;
 
-            violations.Add(relative);
+            var code = StripComments(File.ReadAllText(file));
+            if (!IdentityDocumentQueryCall.IsMatch(code))
+                continue;
+
+            foreach (var (className, body) in ClassBlocks(code))
+            {
+                if (!IdentityDocumentQueryCall.IsMatch(body))
+                    continue;
+
+                if (ScopeDecisionMarkers.Any(marker => marker.IsMatch(body)))
+                    continue;
+
+                var key = $"{relative}::{className}";
+                if (AllowedClasses.Contains(key))
+                    continue;
+
+                violations.Add(key);
+            }
         }
 
         violations.ShouldBeEmpty(FailureMessage(violations));
@@ -177,6 +222,41 @@ public sealed class IdentityDocumentScopeDriftTests
         + "bir okumaysa gerekçesiyle izin listesine ekleyin (bu kilidin amacı mevcut dosyaları "
         + "yasaklamak değil, YENİ bir dosyayı gerekçelenmeye zorlamaktır). İhlaller: "
         + $"{string.Join(" | ", violations)}";
+
+    /// <summary>Üst düzey sınıf bildirimleri.</summary>
+    private static readonly Regex ClassDeclaration = new(
+        @"(?m)^\s*(?:public|internal)\s+(?:static\s+|sealed\s+|abstract\s+|partial\s+)*class\s+(\w+)",
+        RegexOptions.Compiled);
+
+    /// <summary>
+    /// Kaynağı sınıf bildirimlerinden böler — işaretleyici artık DOSYA değil SINIF düzeyinde
+    /// değerlendirilsin diye (#284).
+    ///
+    /// <para><b>Sınıf bulunamazsa dosya TEK blok döner</b> — bölünemeyen bir dosyayı sessizce
+    /// atlamak, tam da bu kilidin engellemeye çalıştığı şeyi üretirdi. Roslyn gerekmedi: bu
+    /// depoda handler'lar üst düzey, tek sorumlu sınıflardır.</para>
+    /// </summary>
+    private static IEnumerable<(string ClassName, string Body)> ClassBlocks(string code)
+    {
+        var declarations = ClassDeclaration.Matches(code);
+
+        if (declarations.Count == 0)
+        {
+            yield return ("(sınıfsız)", code);
+            yield break;
+        }
+
+        // İlk sınıftan ÖNCEKİ kısım da taranır; atlanırsa orada duran bir çağrı görünmez olurdu.
+        if (declarations[0].Index > 0)
+            yield return ("(sınıf dışı)", code[..declarations[0].Index]);
+
+        for (var i = 0; i < declarations.Count; i++)
+        {
+            var start = declarations[i].Index;
+            var end = i + 1 < declarations.Count ? declarations[i + 1].Index : code.Length;
+            yield return (declarations[i].Groups[1].Value, code[start..end]);
+        }
+    }
 
     /// <summary>
     /// Satır ve blok yorumlarını atar: bu kuralın NEDENİNİ anlatan XML doc'lar yasak çağrının

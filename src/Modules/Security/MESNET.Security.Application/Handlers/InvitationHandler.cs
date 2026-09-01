@@ -20,6 +20,18 @@ public static class CreateInvitationHandler
     public static async Task<(Guid, InvitationCreated)> Handle(
         CreateInvitation command, IDocumentSession session, ICurrentUserService currentUser)
     {
+        // GÖVDEDEKİ InstitutionId HEDEFTİR, YETKİ DEĞİLDİR (ADR-0003 adım 6, #284).
+        // CreateUser'da bu kapı vardı, davet oluşturmada YOKTU — kilitli kapının yanındaki açık
+        // pencere. Kontrol olmadan A okulunun yöneticisi B okuluna davet ekebilir; davet B'nin
+        // listesinde belirir ve B'nin onaycısı, dışarıdan ekilmiş bir daveti onaylayarak kendi
+        // okulunda hesap açar. Yeni davetin bugünkü bağı yoktur, "current" null geçilir.
+        if (!UserInstitutionScopePolicy.CanAssign(
+                currentUser.GetCurrentUser()?.InstitutionId,
+                null,
+                command.InstitutionId,
+                currentUser.HasPermission(Permissions.Platform.TenantManage)))
+            throw new DomainException(SecurityErrors.InstitutionScopeNotAllowed());
+
         var studentIds = ParentScopePolicy.Normalize(command.StudentIds ?? []).ToList();
 
         // KAPSAM İSTEKTEN ALINMAZ (#271). Öğrenci kimlikleri istek gövdesinden geliyor; kontrol
@@ -67,10 +79,18 @@ public static class ApproveInvitationHandler
 {
     public static async Task<InvitationApproved> Handle(
         ApproveInvitation command, IDocumentSession session, IEmailService emailService,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser, UserScopeResolver scopeResolver,
+        CancellationToken cancellationToken)
     {
-        var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId);
+        var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId, cancellationToken);
         if (invitation is null)
+            throw new DomainException(SecurityErrors.InvitationNotFound(command.InvitationId));
+
+        // KAPSAM — davet başka okulun olabilir (#284). Kimlikle yüklemek "zaten kapsamlı"
+        // anlamına GELMEZ; tanımlayıcının tahmin edilemezliğine dayanmak yetkilendirme değildir.
+        // "Yasak" değil "bulunamadı" dönülür: yasak yanıtı kaydın VAR OLDUĞUNU doğrulardı.
+        var visibleIds = await scopeResolver.ResolveAsync(cancellationToken);
+        if (!UserScopePolicy.IsVisible(visibleIds, invitation.InstitutionId))
             throw new DomainException(SecurityErrors.InvitationNotFound(command.InvitationId));
 
         if (invitation.Status != InvitationStatus.PendingApproval)
@@ -98,10 +118,18 @@ public static class ApproveInvitationHandler
 public static class RejectInvitationHandler
 {
     public static async Task<InvitationRejected> Handle(
-        RejectInvitation command, IDocumentSession session, ICurrentUserService currentUser)
+        RejectInvitation command, IDocumentSession session, ICurrentUserService currentUser,
+        UserScopeResolver scopeResolver, CancellationToken cancellationToken)
     {
-        var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId);
+        var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId, cancellationToken);
         if (invitation is null)
+            throw new DomainException(SecurityErrors.InvitationNotFound(command.InvitationId));
+
+        // KAPSAM — davet başka okulun olabilir (#284). Kimlikle yüklemek "zaten kapsamlı"
+        // anlamına GELMEZ; tanımlayıcının tahmin edilemezliğine dayanmak yetkilendirme değildir.
+        // "Yasak" değil "bulunamadı" dönülür: yasak yanıtı kaydın VAR OLDUĞUNU doğrulardı.
+        var visibleIds = await scopeResolver.ResolveAsync(cancellationToken);
+        if (!UserScopePolicy.IsVisible(visibleIds, invitation.InstitutionId))
             throw new DomainException(SecurityErrors.InvitationNotFound(command.InvitationId));
 
         if (invitation.Status != InvitationStatus.PendingApproval)
@@ -301,10 +329,18 @@ public static class GetInvitationsHandler
 public static class ResendInvitationHandler
 {
     public static async Task Handle(
-        ResendInvitation command, IDocumentSession session, IEmailService emailService)
+        ResendInvitation command, IDocumentSession session, IEmailService emailService,
+        UserScopeResolver scopeResolver, CancellationToken cancellationToken)
     {
-        var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId);
+        var invitation = await session.LoadAsync<UserInvitation>(command.InvitationId, cancellationToken);
         if (invitation is null)
+            throw new DomainException(SecurityErrors.InvitationNotFound(command.InvitationId));
+
+        // KAPSAM — davet başka okulun olabilir (#284). Kimlikle yüklemek "zaten kapsamlı"
+        // anlamına GELMEZ; tanımlayıcının tahmin edilemezliğine dayanmak yetkilendirme değildir.
+        // "Yasak" değil "bulunamadı" dönülür: yasak yanıtı kaydın VAR OLDUĞUNU doğrulardı.
+        var visibleIds = await scopeResolver.ResolveAsync(cancellationToken);
+        if (!UserScopePolicy.IsVisible(visibleIds, invitation.InstitutionId))
             throw new DomainException(SecurityErrors.InvitationNotFound(command.InvitationId));
 
         if (invitation.Status != InvitationStatus.Approved)
