@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Contract.Shared.Events;
 using MESNET.Internship.Core.Entities;
 using MESNET.Internship.Core.Enums;
+using MESNET.Internship.Core.Policies;
 using MESNET.Internship.Shared.Events;
 
 namespace MESNET.Internship.Application.Consumers;
@@ -30,10 +31,30 @@ public static class InternshipSummaryConsumer
         session.Store(summary);
     }
 
+    /// <summary>
+    /// Sözleşme aktifleştiğinde özeti bağlar.
+    ///
+    /// <para><b>Eşleşme SagaRelayConsumer ile AYNI kuraldan geçer (#295).</b> Eski hâli yalnız
+    /// <c>StudentId</c>'ye bakıyordu: ne işletme, ne faz süzgeci, ne sıralama. <c>InternshipSummary</c>
+    /// yerleştirme başına doğar, yani fesih + yeniden yerleştirme yaşamış öğrencinin BİRDEN ÇOK
+    /// satırı olur ve sorgu bunlardan Postgres'in döndürdüğü ilkini alırdı — o sıra kararlı
+    /// değildir (güncellenen satır heap'te yer değiştirir).</para>
+    ///
+    /// <para><b>Neden aynı politika, kendi süzgecim değil:</b> özet ile saga <b>aynı satırı</b>
+    /// seçmek zorundadır. Ayrı kurallar yazılsaydı özet, saga'nın ilerlettiğinden BAŞKA bir
+    /// stajı anlatabilirdi ve iki kayıt sessizce ayrışırdı.</para>
+    ///
+    /// <para>Faz süzgeci LINQ'te DEĞİL bellekte uygulanır: <c>InternshipPhase</c> bir SmartEnum
+    /// ve Marten LINQ'inde karşılaştırılamaz (bkz. CLAUDE.md).</para>
+    /// </summary>
     public static async Task Handle(ContractActivated e, IDocumentSession session)
     {
-        var summary = await session.Query<InternshipSummary>()
-            .FirstOrDefaultAsync(s => s.StudentId == e.StudentId);
+        var candidates = await session.Query<InternshipSummary>()
+            .Where(s => s.StudentId == e.StudentId)
+            .ToListAsync();
+
+        var summary = candidates.FirstOrDefault(s => SagaCorrelationPolicy.MatchesContract(
+            s.StudentId, s.BusinessId, s.Phase, e.StudentId, e.BusinessId));
         if (summary is null) return;
 
         summary.ContractId = e.ContractId;
@@ -63,10 +84,21 @@ public static class InternshipSummaryConsumer
         session.Store(summary);
     }
 
+    /// <summary>
+    /// Yeniden yerleştirme talebinde eski stajın özetini kapatır.
+    ///
+    /// <para><b>Aynı kural, aynı gerekçe (#295).</b> Eski hâli işletmeye bakıyordu ama FAZA
+    /// bakmıyordu: aynı işletmede daha önce feshedilmiş bir staj varsa, kapatılacak satır
+    /// ikisinden hangisinin döndüğüne bağlıydı. Politika kapanmış stajı zaten eler.</para>
+    /// </summary>
     public static async Task Handle(InternshipReplacementRequested e, IDocumentSession session)
     {
-        var summary = await session.Query<InternshipSummary>()
-            .FirstOrDefaultAsync(s => s.StudentId == e.StudentId && s.BusinessId == e.OldBusinessId);
+        var candidates = await session.Query<InternshipSummary>()
+            .Where(s => s.StudentId == e.StudentId)
+            .ToListAsync();
+
+        var summary = candidates.FirstOrDefault(s => SagaCorrelationPolicy.MatchesContract(
+            s.StudentId, s.BusinessId, s.Phase, e.StudentId, e.OldBusinessId));
         if (summary is null) return;
 
         summary.Phase = InternshipPhase.Terminated;

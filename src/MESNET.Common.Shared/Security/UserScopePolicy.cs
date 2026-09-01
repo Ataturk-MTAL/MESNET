@@ -38,4 +38,33 @@ public static class UserScopePolicy
         // hiçbir kurumla eşleşmez — her şeyi görmek yerine hiçbir şey görmek.
         return scope.InstitutionId is { } id && id != Guid.Empty ? [id] : [];
     }
+
+    /// <summary>
+    /// TEK bir kaydın kapsamda olup olmadığı — kimliğiyle yüklenen kayıtlar için (#284).
+    ///
+    /// <para><b>Neden ayrı bir kapı gerekiyor:</b> liste sorgusu <see cref="VisibleInstitutionIds"/>
+    /// dönüşünü <c>Where</c>'e çevirir, ama <c>LoadAsync&lt;T&gt;(id)</c> ile TEK kayıt çeken yol
+    /// hiçbir <c>Where</c>'den geçmez. Kimlikle çekmek "zaten kapsamlı" anlamına GELMEZ:
+    /// tanımlayıcının tahmin edilemezliğine dayanmak yetkilendirme değildir. Ölçüldü (#284):
+    /// üç davet yazma ucu tam olarak bunu yapıyordu ve başka okulun daveti onaylanabiliyordu.</para>
+    ///
+    /// <para><b>Kurum bağı OLMAYAN kayıt görünür kalır.</b> Okuma tarafındaki kararla aynı:
+    /// aksi hâlde kapsamsız davet hiç kimse tarafından onaylanamaz/reddedilemez hâle gelir ve
+    /// sonsuza kadar beklemede kalırdı.</para>
+    /// </summary>
+    /// <param name="visibleIds">
+    /// <see cref="VisibleInstitutionIds"/> dönüşü. <c>null</c> = süzgeç yok (platform kapsamı),
+    /// yani her kayıt görünür.
+    /// </param>
+    /// <param name="recordInstitutionId">Kaydın kurum bağı; <c>null</c> ise bağsızdır.</param>
+    public static bool IsVisible(IReadOnlyList<Guid>? visibleIds, Guid? recordInstitutionId)
+    {
+        if (visibleIds is null)
+            return true;
+
+        if (recordInstitutionId is not { } institutionId)
+            return true;
+
+        return visibleIds.Contains(institutionId);
+    }
 }
