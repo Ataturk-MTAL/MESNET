@@ -1,0 +1,398 @@
+{
+  "realm": "mesnet",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "tr",
+    "en"
+  ],
+  "defaultLocale": "tr",
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "requiredActions": [
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "providerId": "CONFIGURE_TOTP",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 10,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PASSWORD",
+      "name": "Update Password",
+      "providerId": "UPDATE_PASSWORD",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 30,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PROFILE",
+      "name": "Update Profile",
+      "providerId": "UPDATE_PROFILE",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 40,
+      "config": {}
+    },
+    {
+      "alias": "VERIFY_EMAIL",
+      "name": "Verify Email",
+      "providerId": "VERIFY_EMAIL",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 50,
+      "config": {}
+    },
+    {
+      "alias": "VERIFY_PROFILE",
+      "name": "Verify Profile",
+      "providerId": "VERIFY_PROFILE",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 90,
+      "config": {}
+    }
+  ],
+  "accessTokenLifespan": 1800,
+  "accessTokenLifespanForImplicitFlow": 1800,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 28800,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespanEnabled": true,
+  "offlineSessionMaxLifespan": 5184000,
+  "roles": {
+    "realm": [
+      {
+        "name": "InstitutionManager",
+        "description": "Okul müdürü"
+      },
+      {
+        "name": "DeputyDirector",
+        "description": "Müdür yardımcısı"
+      },
+      {
+        "name": "InstitutionStaff",
+        "description": "Kurum personeli"
+      },
+      {
+        "name": "Teacher",
+        "description": "Koordinatör öğretmen"
+      },
+      {
+        "name": "Student",
+        "description": "Öğrenci"
+      },
+      {
+        "name": "Parent",
+        "description": "Veli — bağlı olduğu öğrencinin devam ve staj sürecini izler, girişleri okul onayına tabidir"
+      },
+      {
+        "name": "DepartmentHead",
+        "description": "Alan şefi"
+      },
+      {
+        "name": "CompanyManager",
+        "description": "İşletme yetkilisi"
+      },
+      {
+        "name": "MasterTrainer",
+        "description": "Usta öğretici"
+      },
+      {
+        "name": "CompanyHR",
+        "description": "İşletme insan kaynakları — belge ve sağlık raporu girer, girişleri okul onayına tabidir"
+      },
+      {
+        "name": "ProvincialAdmin",
+        "description": "İl MEM yetkilisi — kendi ilindeki okulları listeler ve görüntüler"
+      },
+      {
+        "name": "DistrictAdmin",
+        "description": "İlçe MEM yetkilisi — kendi ilçesindeki okulları listeler ve görüntüler"
+      },
+      {
+        "name": "SystemAdmin",
+        "description": "Sistem yöneticisi — ulusal parametreler (asgari ücret, 3308 oranları)"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "mesnet-api",
+      "name": "MESNET API",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": false,
+      "bearerOnly": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "protocol": "openid-connect",
+      "authorizationSettings": {
+        "policyEnforcementMode": "DISABLED",
+        "decisionStrategy": "AFFIRMATIVE",
+        "resources": [],
+        "policies": [],
+        "scopes": []
+      },
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "audience-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "mesnet-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "institution_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "institution_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "institution_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "business_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "business_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "business_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "student_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "student_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "student_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "branch_codes",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "branch_codes",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "branch_codes",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "aggregate.attrs": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "mesnet-web",
+      "name": "MESNET Frontend",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "https://__APP_DOMAIN__/*"
+      ],
+      "webOrigins": [
+        "https://__APP_DOMAIN__"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "audience-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "mesnet-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "institution_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "institution_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "institution_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "business_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "business_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "business_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "student_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "student_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "student_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "branch_codes",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "branch_codes",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "branch_codes",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "aggregate.attrs": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-mesnet-api",
+      "enabled": true,
+      "serviceAccountClientId": "mesnet-api",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "view-clients",
+          "manage-realm"
+        ]
+      }
+    }
+  ],
+  "scopeMappings": [
+    {
+      "client": "mesnet-api",
+      "roles": [
+        "manage-users",
+        "view-users",
+        "query-users",
+        "manage-realm"
+      ]
+    }
+  ],
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "client": "mesnet-api",
+        "roles": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "manage-realm"
+        ]
+      }
+    ]
+  },
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}],\"unmanagedAttributePolicy\":\"ADMIN_EDIT\"}"
+          ]
+        }
+      }
+    ]
+  },
+  "displayName": "MESNET"
+}

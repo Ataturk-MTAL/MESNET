@@ -1,6 +1,14 @@
 # Sürüm konteynerleri — bir tag (v*) push edildiğinde deploy edilebilir bileşenlerin
-# imajlarını derler ve GHCR'ye push eder. Depo PRIVATE olduğundan imajlar da PRIVATE'tır
-# (public yayınlanmaz). Bkz. VERSIONING.md.
+# imajlarını derler ve GHCR'ye push eder.
+#
+# İMAJLAR PRIVATE'TIR — ama bunun nedeni deponun görünürlüğü DEĞİLDİR. Depo PUBLIC'tir;
+# GHCR paket görünürlüğü depo görünürlüğünden BAĞIMSIZDIR ve paketler varsayılan olarak
+# private doğar. "Depo private, imaj güvende" akıl yürütmesi yanlış öncüle dayanır: depo
+# görünürlüğü değişse imaj görünürlüğü kendiliğinden değişmez, ama tersi de doğru değildir —
+# paket ayarından public yapılırsa imajlar depodan bağımsız olarak herkese açılır.
+# Doğrulama (anonim, kimliksiz): manifest isteği 403 dönmelidir.
+#
+# Bkz. VERSIONING.md ve deploy/README.md.
 name: Release Containers
 
 on:

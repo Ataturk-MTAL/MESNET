@@ -1,3 +1,4 @@
+using System.Text;
 using JasperFx;
 using JasperFx.MultiTenancy;
 using JasperFx.Events.Daemon;
@@ -72,6 +73,64 @@ try
                 otel.Headers = headers;
             }
         }));
+
+    // ──── Üretim yapılandırma kapısı ────
+    //
+    // Development DIŞINDA, dış dünyaya bağlanan her anahtar burada AÇIKÇA doğrulanır. Gerekçe
+    // ölçüldü: appsettings.Production.json eskiden "${POSTGRES_USER}" gibi yer tutucular
+    // taşıyordu ve .NET onları GENİŞLETMEZ — Postgres'e kullanıcı adı olarak birebir o dizge
+    // gidiyor, JWT otoritesi "${KEYCLOAK_URL}/realms/mesnet" oluyordu. API açılıyor, istekleri
+    // kabul ediyor ve her biri anlaşılmaz bir bağlantı/yetki hatasıyla düşüyordu.
+    //
+    // Eksik yapılandırmanın DOĞRU davranışı açılmamaktır. Yarı yapılandırılmış bir API,
+    // hiç açılmayan API'den kötüdür: ayakta görünür, sağlık kontrolünü geçer ve arızayı
+    // kullanıcıya taşır.
+    if (!builder.Environment.IsDevelopment())
+    {
+        string[] zorunluAnahtarlar =
+        [
+            "ConnectionStrings:mesnet",
+            "Keycloak:auth-server-url",
+            "Keycloak:realm",
+            "Keycloak:resource",
+            "Keycloak:credentials:secret",
+            "MinioStorage:Endpoint",
+            "MinioStorage:AccessKey",
+            "MinioStorage:SecretKey",
+            "FrontendUrl",
+        ];
+
+        var eksik = zorunluAnahtarlar
+            .Where(a => string.IsNullOrWhiteSpace(builder.Configuration[a]))
+            .ToList();
+
+        // Yer tutucu, eksik olmaktan daha sinsidir: değer DOLU görünür. Ayrı ayrı raporlanır.
+        var yerTutucu = zorunluAnahtarlar
+            .Select(a => (Anahtar: a, Deger: builder.Configuration[a]))
+            .Where(x => x.Deger is not null && x.Deger.Contains("${", StringComparison.Ordinal))
+            .Select(x => $"{x.Anahtar} = \"{x.Deger}\"")
+            .ToList();
+
+        if (eksik.Count > 0 || yerTutucu.Count > 0)
+        {
+            var rapor = new StringBuilder();
+            rapor.AppendLine("Üretim yapılandırması eksik — API açılmayacak.");
+            if (eksik.Count > 0)
+            {
+                rapor.AppendLine($"  Değeri olmayan anahtar ({eksik.Count}): {string.Join(", ", eksik)}");
+            }
+            if (yerTutucu.Count > 0)
+            {
+                rapor.AppendLine($"  GENİŞLETİLMEMİŞ yer tutucu ({yerTutucu.Count}): {string.Join(", ", yerTutucu)}");
+                rapor.AppendLine("  .NET yapılandırması ${...} sözdizimini genişletmez; değeri ortam değişkeniyle verin.");
+            }
+            rapor.AppendLine("  Ortam değişkeni adlandırması: bölüm ayracı İKİ ALT ÇİZGİdir.");
+            rapor.AppendLine("    ConnectionStrings:mesnet     → ConnectionStrings__mesnet");
+            rapor.AppendLine("    Keycloak:credentials:secret  → Keycloak__credentials__secret");
+            rapor.Append("  Örnek dağıtım: deploy/compose.yml + deploy/.env.example");
+            throw new InvalidOperationException(rapor.ToString());
+        }
+    }
 
     // Aspire Service Defaults (telemetry, health checks, resilience)
     builder.AddServiceDefaults();

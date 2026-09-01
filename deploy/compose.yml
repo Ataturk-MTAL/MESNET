@@ -1,0 +1,180 @@
+# MESNET — ÜRETİM (kararlı kurulum)
+#
+# Depo kökündeki docker-compose.yml'den üç noktada AYRILIR ve üçü de bilinçlidir:
+#
+#   1. KAYNAKTAN DERLEMEZ. `api` ve `caddy` sabitlenmiş GHCR etiketlerinden çekilir. Kararlı bir
+#      kurulumun çalıştırdığı ikili, sürüm etiketinde denetlenmiş olanla AYNI olmalıdır; sunucuda
+#      derlemek o bağı koparır ve "üretimde farklı derlendi" sınıfını açar.
+#
+#   2. ORTAM DEĞİŞKENİ ADLARI .NET KURALINA UYAR. Bölüm ayracı İKİ ALT ÇİZGİdir. Kök compose
+#      `KEYCLOAK_URL` gibi düz adlar veriyordu; ölçüldü, o adların HİÇBİRİ üretim kodunda
+#      okunmuyor. appsettings.Production.json'daki `${...}` yer tutucuları da genişletilmiyordu:
+#      .NET'in JSON sağlayıcısı bu sözdizimini tanımaz. Sonuç, Postgres'e kullanıcı adı olarak
+#      birebir `${POSTGRES_USER}` gitmesiydi.
+#
+#   3. HİÇBİR İMAJ `latest` DEĞİLDİR. `latest`, bir sonraki `pull`'da farklı bir yazılım demektir;
+#      "kararlı kurulum" ile bir arada duramaz.
+#
+# Kullanım:  cd deploy && cp .env.example .env && $EDITOR .env && ./install.sh
+
+name: mesnet
+
+services:
+  # ── Caddy: SPA + Docusaurus + ters vekil + otomatik TLS ────────────────────
+  caddy:
+    image: ghcr.io/ataturk-mtal/mesnet-caddy:${MESNET_VERSION:?MESNET_VERSION zorunlu, ör. v0.2.2}
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN zorunlu}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL zorunlu}
+      # Varsayılan BURADA da verilir. Caddyfile'ın `{$VAR:varsayılan}` sözdizimi yalnız TANIMSIZ
+      # değişkende devreye girer, BOŞ dizgede girmez; boş geçilirse Caddy hiç açılmaz:
+      #   Error: parsing caddyfile tokens for 'acme_ca': wrong argument count or unexpected line ending
+      ACME_CA: ${ACME_CA:-https://acme-v02.api.letsencrypt.org/directory}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - keycloak
+    restart: unless-stopped
+
+  # ── API ────────────────────────────────────────────────────────────────────
+  api:
+    image: ghcr.io/ataturk-mtal/mesnet-api:${MESNET_VERSION:?MESNET_VERSION zorunlu, ör. v0.2.2}
+    expose:
+      - "8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+
+      ConnectionStrings__mesnet: "Host=postgres;Port=5432;Database=mesnet;Username=${POSTGRES_USER:?};Password=${POSTGRES_PASSWORD:?}"
+
+      # Doluysa RabbitMQ:* bölümünün TAMAMI yok sayılır — tek anahtar, tek gerçek.
+      ConnectionStrings__rabbitmq: "amqp://${RABBITMQ_USER:?}:${RABBITMQ_PASSWORD:?}@rabbitmq:5672"
+
+      # PUBLIC adres olmak ZORUNDA — iç `http://keycloak:8080` DEĞİL. Üretimde
+      # ValidateIssuer açıktır ve token'ın issuer'ı KC_HOSTNAME'den doğar
+      # (https://auth.<alan>/realms/mesnet). İç adres yazılırsa her istek 401 alır.
+      # Aynı değer CSP'nin connect-src/frame-src girdisidir; oraya da public adres gerekir.
+      Keycloak__auth-server-url: https://auth.${APP_DOMAIN:?}/
+      Keycloak__realm: ${KEYCLOAK_REALM:-mesnet}
+      Keycloak__resource: ${KEYCLOAK_CLIENT_ID:-mesnet-api}
+      Keycloak__credentials__secret: ${KEYCLOAK_CLIENT_SECRET:?install.sh tarafından yazılır}
+
+      MinioStorage__Endpoint: minio:9000
+      MinioStorage__AccessKey: ${MINIO_ROOT_USER:?}
+      MinioStorage__SecretKey: ${MINIO_ROOT_PASSWORD:?}
+      MinioStorage__UseSSL: "false"
+      MinioStorage__DefaultBucket: payment-receipts
+
+      FrontendUrl: https://${APP_DOMAIN:?}
+
+      # Username BOŞSA hem TLS hem kimlik doğrulama KAPANIR (useSsl = !IsNullOrEmpty(user)) ve
+      # posta düz metin, kimliksiz gider. Kimlik doğrulamasız röle kullanıyorsanız bilinçli bırakın.
+      SmtpSettings__Host: ${SMTP_HOST:?}
+      SmtpSettings__Port: ${SMTP_PORT:-587}
+      SmtpSettings__Username: ${SMTP_USERNAME:-}
+      SmtpSettings__Password: ${SMTP_PASSWORD:-}
+      SmtpSettings__FromEmail: ${SMTP_FROM_EMAIL:?}
+      SmtpSettings__FromName: ${SMTP_FROM_NAME:-MESNET Sistemi}
+
+      Audit__RetentionMonths: ${AUDIT_RETENTION_MONTHS:-24}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── PostgreSQL + PostGIS ───────────────────────────────────────────────────
+  postgres:
+    image: kartoza/postgis:18-3.6
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASS: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DBNAME: mesnet
+      POSTGRES_MULTIPLE_EXTENSIONS: postgis
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d mesnet"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  # ── RabbitMQ ───────────────────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:4.2.9-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  # ── Keycloak ───────────────────────────────────────────────────────────────
+  # Realm IMPORT EDİLMEZ. Import tek seferliktir: dosyaya sonradan eklenen rol/politika/client
+  # ayakta duran bir kaba HİÇ ulaşmaz (#195 — dev realm'inde 11 rolün yalnız 6'sı vardı).
+  # Bunun yerine install.sh realm'i Admin API ile YAKINSAR; her koşuda tekrarlanabilir.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.0
+    # `--optimized` YAZILMAZ: stok imaj önceden `kc.sh build` ile derlenmemiştir ve
+    # --optimized o durumda açılışı kırar. Düz `start` ilk açılışta kendi derlemesini yapar.
+    command: start
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/mesnet
+      KC_DB_USERNAME: ${POSTGRES_USER:?}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?}
+      KC_DB_SCHEMA: keycloak
+      KC_HOSTNAME: auth.${APP_DOMAIN:?}
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:?}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?}
+    expose:
+      - "8080"
+      - "9000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── MinIO ──────────────────────────────────────────────────────────────────
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  minio-data:
+  caddy-data:      # Caddy ACME sertifikaları — SİLİNİRSE sertifika yeniden alınır (LE limiti!)
+  caddy-config:
