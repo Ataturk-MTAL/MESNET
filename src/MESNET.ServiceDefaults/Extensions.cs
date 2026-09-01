@@ -76,15 +76,38 @@ public static class Extensions
         return builder;
     }
 
+    /// <summary>
+    /// Sağlık uçlarını map eder. İki uç, iki ayrı amaç — ve <b>ikisi aynı ortam kuralına tabi
+    /// değildir</b>.
+    ///
+    /// <para><c>/alive</c> <b>her ortamda</b> açıktır. Konteynerin <c>HEALTHCHECK</c>'i buraya
+    /// gelir ve yalnız "süreç ayakta mı" sorusuna cevap verir: <c>live</c> etiketli tek kontrol
+    /// (<c>self</c>) koşar, gövde düz <c>Healthy</c>/<c>Unhealthy</c>'dir, hiçbir bağımlılık adı
+    /// ya da hata metni sızmaz.</para>
+    ///
+    /// <para><c>/health</c> yalnız Development'ta açıktır. O uç <b>tüm</b> kontrolleri koşar ve
+    /// yanıtında bağımlılık adları görünebilir; üretimde dışarı açmak topolojiyi bildirmek olurdu.</para>
+    ///
+    /// <para><b>Neden ayrıldı:</b> ikisi de Development'a kapalıyken konteyner sağlık kontrolü
+    /// üretimde <b>her zaman</b> başarısızdı — imaj <c>ASPNETCORE_ENVIRONMENT=Production</c> ile
+    /// koşuyor, <c>HEALTHCHECK</c> ise <c>/health</c>'e gidiyordu ve o uç map edilmemiş olduğu için
+    /// 404 dönüyordu. Konteyner kalıcı olarak <c>unhealthy</c> görünür, <c>depends_on:
+    /// service_healthy</c> ile bekleyen her servis süresiz bekler ve yeniden başlatma politikası
+    /// olan bir orkestratör konteyneri döngüye sokar. Belirti yanıltıcıdır: API çalışır, istekleri
+    /// yanıtlar, ama sağlık kontrolü kırmızıdır.</para>
+    /// </summary>
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
+        // Canlılık: HER ortamda. Konteyner HEALTHCHECK'inin hedefi budur.
+        app.MapHealthChecks("/alive", new HealthCheckOptions
+        {
+            Predicate = r => r.Tags.Contains("live")
+        });
+
+        // Ayrıntılı sağlık: yalnız Development — yanıtı bağımlılık adı taşıyabilir.
         if (app.Environment.IsDevelopment())
         {
             app.MapHealthChecks("/health");
-            app.MapHealthChecks("/alive", new HealthCheckOptions
-            {
-                Predicate = r => r.Tags.Contains("live")
-            });
         }
 
         return app;

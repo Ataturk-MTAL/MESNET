@@ -43,7 +43,9 @@ Kullanım: deploy-prereqs.sh [seçenekler]
   --dev               URL'leri yerel geliştirme değerlerine kurar (kimlik bilgisi YİNE gerekir)
   --only <faz-id>     Yalnız o fazı koşturur (sıra denetimi çağıranın sorumluluğundadır)
   --allow-once        İdempotent OLMAYAN, "tam bir kez" işaretli fazları koşturmaya izin verir
-  --include-broken    Bilinen bozuk fazları da koşturur (#290, #291, #292) — VERİ BOZAR
+  --include-broken    "broken" işaretli fazları da koşturur — VERİ BOZAR.
+                      Bugün bu sınıfta HİÇBİR faz yok (#290, #291, #292 kapandı); bayrak,
+                      bir sonraki bozuk uç çıktığında yeniden yazılmasın diye duruyor
   -h, --help          Bu metin
 
 Ortam değişkenleri (varsayılanı olmayanlar zorunludur):
