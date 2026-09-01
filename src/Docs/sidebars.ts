@@ -30,6 +30,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Altyapı',
       items: [
+        'infrastructure/yapilandirma',
         'infrastructure/keycloak',
         'infrastructure/gis-osrm',
         'infrastructure/dagitim-on-kosullari',

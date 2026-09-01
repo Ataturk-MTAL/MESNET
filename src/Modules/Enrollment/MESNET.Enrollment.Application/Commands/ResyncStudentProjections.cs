@@ -9,4 +9,10 @@ namespace MESNET.Enrollment.Application.Commands;
 /// </summary>
 public sealed record ResyncStudentProjections;
 
-public sealed record ResyncStudentProjectionsResult(int StudentCount);
+/// <param name="StudentCount">Onarım olayı yayınlanan öğrenci sayısı.</param>
+/// <param name="CountScopesSynced">
+/// Şube sayacı yeniden hesaplanan (kurum, akademik dönem) çifti sayısı (#290). Sıfır öğrenci
+/// sıfır kapsam demektir; ikisinin ayrı raporlanması, sayacın gerçekten tazelenip
+/// tazelenmediğini yanıttan görünür kılar.
+/// </param>
+public sealed record ResyncStudentProjectionsResult(int StudentCount, int CountScopesSynced);

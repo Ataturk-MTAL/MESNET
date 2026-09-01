@@ -231,6 +231,12 @@ public sealed class InstitutionScopeDriftTests
         // Ağacı kurmak tanımı gereği bütün düğümleri görmeyi gerektirir; uç kurum üstü izinle
         // korunur (platform:tenant:manage) ve komut hiçbir kurum kimliği taşımaz.
         "RebuildInstitutionHierarchyHandler.cs",
+        // Dağıtım ön koşulu sondaları: yalnız SAYARLAR — satır içeriği okunmaz, hiçbir şey
+        // yazılmaz ve hiçbir kullanıcı isteğine bağlı değildirler (açılışta koşarlar). Ölçtükleri
+        // şey zaten "kaç okulun ağaç yolu boş" ve "görünüm tümden boş mu"; kuruma daraltılmış bir
+        // sayı bu iki soruyu cevaplayamaz.
+        "InstitutionHierarchyProbe.cs",
+        "InstitutionManagerLinkProbe.cs",
     };
 
     /// <summary>

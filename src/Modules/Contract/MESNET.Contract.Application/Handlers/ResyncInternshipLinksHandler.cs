@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Contract.Application.Commands;
 using MESNET.Contract.Core.Aggregates;
 using MESNET.Contract.Core.Enums;
@@ -25,26 +26,54 @@ namespace MESNET.Contract.Application.Handlers;
 /// <c>ContractActivated</c> ise yan etkisizdir: saga yalnız <c>ContractId</c> yazar ve
 /// <c>Active</c> fazına geçer, aynı olay iki kez gelse sonuç değişmez.</para>
 ///
-/// <para><b>Kiracı başına çalışır</b> — istek bağlamındaki okulun sözleşmeleri.</para>
+/// <para><b>BÜTÜN kiracıları dolaşır — istek kiracısında çalışmaz (#292).</b> Uç
+/// <c>platform:tenant:manage</c> ile korunuyor ve o izni taşıyan aktör <b>platform kiracısına</b>
+/// düşer; <c>InternshipContract</c> ise kiracı damgalıdır ve orada hiçbir satırı yoktur. Eski
+/// sürüm bu yüzden <b>200 döner ve sıfır olay yayınlardı</b> — onarımın yapıldığı sanılırdı.</para>
+///
+/// <para><b>Olay da kiracıya damgalanır.</b> <c>DeliveryOptions.TenantId</c> verilmeseydi
+/// yayınlanan <c>ContractActivated</c> yayınlayanın kiracısını (platform) devralırdı; tüketici
+/// saga'yı <b>yanlış kiracıda</b> arayıp bulamaz, hiçbir hata da vermezdi. Kiracı çözümünü
+/// yalnız sorgu tarafında düzeltip yayın tarafını unutmak, hatanın yarısını taşımak olurdu.</para>
 /// </summary>
 public static class ResyncInternshipLinksHandler
 {
     public static async Task<ResyncInternshipLinksResult> Handle(
-        ResyncInternshipLinks _, IDocumentSession session, IMessageBus bus)
+        ResyncInternshipLinks _,
+        IDocumentStore store,
+        ITenantDirectory tenantDirectory,
+        IMessageBus bus,
+        CancellationToken cancellationToken)
     {
+        var tenants = await tenantDirectory.GetActiveTenantsAsync(cancellationToken);
+
         // SmartEnum Marten LINQ'inde kullanılamaz; düz string kopya üzerinden süzülür
         // (bkz. CLAUDE.md — Marten SmartEnum LINQ Kuralları).
         var activeName = ContractStatus.Active.Name;
 
-        var all = await session.Query<InternshipContract>().ToListAsync();
-        var active = all.Where(c => c.StatusName == activeName).ToList();
+        var republished = 0;
+        var skippedNonActive = 0;
 
-        foreach (var contract in active)
+        foreach (var tenant in tenants)
         {
-            await bus.PublishAsync(new ContractActivated(
-                contract.Id, contract.StudentId, contract.BusinessId, DateTime.UtcNow));
+            // Kiracı AÇIKÇA verilir; argümansız session bu depoda yasaktır.
+            await using var session = store.QuerySession(tenant);
+
+            var all = await session.Query<InternshipContract>().ToListAsync(cancellationToken);
+            var active = all.Where(c => c.StatusName == activeName).ToList();
+
+            foreach (var contract in active)
+            {
+                await bus.PublishAsync(
+                    new ContractActivated(
+                        contract.Id, contract.StudentId, contract.BusinessId, DateTime.UtcNow),
+                    new DeliveryOptions { TenantId = tenant });
+            }
+
+            republished += active.Count;
+            skippedNonActive += all.Count - active.Count;
         }
 
-        return new ResyncInternshipLinksResult(active.Count, all.Count - active.Count);
+        return new ResyncInternshipLinksResult(republished, skippedNonActive, tenants.Count);
     }
 }

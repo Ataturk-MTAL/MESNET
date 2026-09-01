@@ -19,6 +19,11 @@ services:
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
       ACME_EMAIL: ${ACME_EMAIL}
+      # ÖLÇÜLDÜ: Caddy'ye BOŞ değer geçmek "acme_ca" direktifini argümansız bırakır ve Caddy
+      # HİÇ AÇILMAZ ("wrong argument count ... after 'acme_ca'"). Caddyfile'daki {$VAR:default}
+      # sözdizimi yalnız TANIMSIZ değişkende devreye girer, boş string'te DEĞİL. Varsayılan bu
+      # yüzden burada da verilir: .env'de satır olmasa da, boş bırakılsa da üretim LE gelir.
+      ACME_CA: ${ACME_CA:-https://acme-v02.api.letsencrypt.org/directory}
     volumes:
       - caddy-data:/data      # ACME sertifikaları (kalıcı — yeniden başlatmada yeniden almaz)
       - caddy-config:/config

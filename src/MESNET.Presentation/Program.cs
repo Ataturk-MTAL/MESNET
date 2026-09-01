@@ -159,6 +159,14 @@ try
     builder.Services.AddHostedService<
         MESNET.Common.Infrastructure.Tenancy.DocumentTenancyVerificationHostedService>();
 
+    // Dağıtım ön koşulları atlandı mı — modüller kaydolduktan SONRA (sondalar modüllerden gelir).
+    // Bu servis yalnız ÖLÇER. Açılıştan resync ucu çağırmak mümkün değildir: Wolverine
+    // UseWolverine ile host'tan SONRA başlar, açılıştan yapılan yayın
+    // WolverineHasNotStartedException fırlatır. Koşturma sırası operatördedir:
+    // src/Docs/docs/infrastructure/dagitim-on-kosullari.md
+    builder.Services.AddHostedService<
+        MESNET.Common.Infrastructure.Deployment.DeploymentPrerequisiteVerificationHostedService>();
+
     // ────────────────────────────────────────────────────────────────────────────────
     // Authentication + Authorization
     // ────────────────────────────────────────────────────────────────────────────────

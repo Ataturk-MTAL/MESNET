@@ -1,4 +1,5 @@
 using Marten;
+using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Internship.Application.Commands;
 using MESNET.Internship.Application.Sagas;
 using MESNET.Internship.Core.Services;
@@ -18,15 +19,56 @@ namespace MESNET.Internship.Application.Handlers;
 /// iptal etmek olurdu (canlı ölçümde tam bu manzara vardı: 1 saga
 /// <c>TerminationInProgress</c>, 23'ü <c>AwaitingContract</c>).</para>
 ///
-/// <para><b>Kiracı başına çalışır:</b> saga kiracıya ait bir belgedir ve bu uç istek
-/// bağlamındadır — her okul için ayrı çağrılmalıdır.</para>
+/// <para><b>BÜTÜN kiracıları dolaşır — istek kiracısında çalışmaz (#292).</b> Uç
+/// <c>platform:tenant:manage</c> ile korunuyor ve o izni taşıyan aktör <b>platform
+/// kiracısına</b> düşer; <c>InternshipSaga</c> ise kiracı damgalıdır ve platform kiracısında
+/// <b>hiçbir satırı yoktur</b>. Enjekte edilen <c>IDocumentSession</c> ile çalışan eski sürüm
+/// bu yüzden <b>200 döner ve sıfır kayıt işlerdi</b>: operatör onarımın yapıldığını sanırdı,
+/// fesih zinciri onarılmamış kalırdı. Dev'de görünmemesinin nedeni <c>admin</c> hesabının
+/// <c>InstitutionManager</c> ve <c>SystemAdmin</c> rollerini <b>birlikte</b> taşımasıydı.</para>
+///
+/// <para><b>Neden izin okul düzeyine indirilmedi:</b> bu uç saga kimliğini yeniden yazıp kayıt
+/// siler. Okul rollerine vermek, her müdüre yürüyen fesih zincirlerini yeniden şekillendirebilen
+/// bir araç vermek olurdu. Eylem gerçekten kurum üstüdür; düzeltilmesi gereken şey izin değil,
+/// kiracı çözümüydü.</para>
+///
+/// <para><b>Kiracı sayısı yanıtta döner</b> (<c>TenantsProcessed</c>): sıfır kiracı, sıfır
+/// bulgudan farklı bir şeydir ve ayırt edilebilir olmalıdır.</para>
 /// </summary>
 public static class ResyncInternshipSagasHandler
 {
     public static async Task<ResyncInternshipSagasResult> Handle(
-        ResyncInternshipSagas _, IDocumentSession session)
+        ResyncInternshipSagas _,
+        IDocumentStore store,
+        ITenantDirectory tenantDirectory,
+        CancellationToken cancellationToken)
     {
-        var all = await session.Query<InternshipSaga>().ToListAsync();
+        var tenants = await tenantDirectory.GetActiveTenantsAsync(cancellationToken);
+
+        var merged = 0;
+        var placements = 0;
+        var alreadyCanonical = 0;
+
+        foreach (var tenant in tenants)
+        {
+            // Kiracı AÇIKÇA verilir. Argümansız session kiracısızdır ve bu depoda yasaktır
+            // (TenantlessSessionDriftTests).
+            await using var session = store.LightweightSession(tenant);
+
+            var result = await MergeTenantAsync(session, cancellationToken);
+
+            merged += result.Merged;
+            placements += result.Placements;
+            alreadyCanonical += result.AlreadyCanonical;
+        }
+
+        return new ResyncInternshipSagasResult(merged, placements, alreadyCanonical, tenants.Count);
+    }
+
+    private static async Task<(int Merged, int Placements, int AlreadyCanonical)> MergeTenantAsync(
+        IDocumentSession session, CancellationToken cancellationToken)
+    {
+        var all = await session.Query<InternshipSaga>().ToListAsync(cancellationToken);
 
         var merged = 0;
         var alreadyCanonical = 0;
@@ -58,9 +100,9 @@ public static class ResyncInternshipSagasHandler
             session.Store(WithId(winner, canonicalId));
         }
 
-        await session.SaveChangesAsync();
+        await session.SaveChangesAsync(cancellationToken);
 
-        return new ResyncInternshipSagasResult(merged, groups.Count, alreadyCanonical);
+        return (merged, groups.Count, alreadyCanonical);
     }
 
     private static InternshipSaga WithId(InternshipSaga source, Guid id) => new()
@@ -77,5 +119,10 @@ public static class ResyncInternshipSagasHandler
         TerminationReasonType = source.TerminationReasonType,
         RequiresParentApproval = source.RequiresParentApproval,
         ApprovalChain = source.ApprovalChain,
+        // BU ALAN UNUTULMUŞTU (#297). D2 ile eklendi ve kimlik yeniden yazılırken kopyalanmıyordu:
+        // kanonik olmayan kimlikli her saga, onarımdan TerminationRequestedAt = null olarak
+        // çıkıyordu. StuckApprovalPolicy null'u "eksik veri sınırı gevşetemez" gerekçesiyle
+        // TIKANMIŞ sayar — yani onarım, müdürlük panosunda olmayan tıkanmalar üretirdi.
+        TerminationRequestedAt = source.TerminationRequestedAt,
     };
 }

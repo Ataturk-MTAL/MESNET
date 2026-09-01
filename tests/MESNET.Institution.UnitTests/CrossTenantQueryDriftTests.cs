@@ -37,6 +37,11 @@ public sealed class CrossTenantQueryDriftTests
     [
         "src/MESNET.Common.Infrastructure/Tenancy/SubtreeTenantScope.cs",
         "src/Modules/Internship/MESNET.Internship.Application/Handlers/GetStuckApprovalsHandler.cs",
+        // Dağıtım ön koşulu sondası (açılışta ÖLÇER, yazmaz). Kapsamı istekten DEĞİL
+        // ITenantDirectory'den alır — girdisi bir kullanıcı isteği değil, kiracı listesinin
+        // kendisidir. Tek kiracıda okusaydı yalnız bir okulun kopyalarını görürdü; platform
+        // kiracısında okusaydı hiçbir satır görmezdi — hata değil, sessiz sıfır.
+        "src/Modules/Internship/MESNET.Internship.Application/Deployment/InternshipSagaDuplicateProbe.cs",
     ];
 
     /// <summary>

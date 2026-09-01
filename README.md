@@ -4,6 +4,51 @@
 
 Mesleki eğitim staj süreçlerinin uçtan uca dijitalleştirilmesini hedefleyen modüler monolit bir uygulamadır.
 
+## Belgeler
+
+Tüm mimari belgeler depoda, Markdown olarak: [`src/Docs/docs/`](src/Docs/docs/). Docusaurus
+sitesi olarak da derlenir (`src/Docs`), ama dosyalar GitHub üzerinde doğrudan okunur.
+
+### Başlarken
+
+| Belge | Ne anlatır |
+|---|---|
+| [Proje Kapsamı](src/Docs/docs/architecture/project-scope.md) | Phase 1 / Phase 2 ayrımı — neyin kapsamda **olmadığı** dahil |
+| [Modül Tasarımı](src/Docs/docs/architecture/module-design.md) | Modül sınırları, şema izolasyonu, modüller arası iletişim |
+| [Senaryolar](src/Docs/docs/scenarios.md) | Uçtan uca iş akışları |
+| [3308 Sayılı Kanun — Özet](src/Docs/docs/architecture/3308-kanun-ozeti.md) | Mevzuat temeli; ücret ve devlet katkısı kuralları buradan türer |
+| [İş Kuralları](src/Docs/docs/architecture/business-rules.md) | Domain kuralları tek yerde |
+
+### Mimari kararlar (ADR)
+
+| ADR | Karar |
+|---|---|
+| [ADR-0001](src/Docs/docs/architecture/adr-0001-yetkilendirme-permission-bazli.md) | Yetkilendirme **permission** bazlıdır, rol bazlı değil |
+| [ADR-0002](src/Docs/docs/architecture/adr-0002-izin-agaci-ve-onek-secimi.md) | İzin ağacı ve önek seçimi — wildcard tuzağı |
+| [ADR-0003](src/Docs/docs/architecture/adr-0003-cok-kiracilik.md) | Çok kiracılık: **kiracı = okul**, izolasyon satır bazlı |
+| [ADR-0004](src/Docs/docs/architecture/adr-0004-isletme-kimlik-iliski-ayrimi.md) | İşletme kimlik/ilişki ayrımı |
+
+### Aktörler ve yetkiler
+
+| Belge | Ne anlatır |
+|---|---|
+| [Aktör Tanımları](src/Docs/docs/actors/actors.md) | Roller ve sorumlulukları |
+| [İzin Matrisi](src/Docs/docs/actors/permissions.md) | Hangi rol hangi izni taşıyor — koddan üretilir, testle kilitli |
+| [Kullanıcı Kayıt Akışı](src/Docs/docs/architecture/user-onboarding.md) | Davet, onay ve hesap açma zinciri |
+
+### Geliştirme ve altyapı
+
+| Belge | Ne anlatır |
+|---|---|
+| [Wolverine Kalıpları](src/Docs/docs/architecture/wolverine-patterns.md) | Handler, saga ve cascading mesaj kuralları — tuzaklarıyla |
+| [Web UI](src/Docs/docs/architecture/web-ui.md) | Vue/Quasar bileşen ve durum yönetimi kuralları |
+| [Yapılandırma ve Ortam Değişkenleri](src/Docs/docs/infrastructure/yapilandirma.md) | `.env`, `appsettings`, test/staging dağıtımı ve sır hijyeni — dört yapılandırma yüzeyi tek yerde |
+| [Keycloak](src/Docs/docs/infrastructure/keycloak.md) | Realm, client ve claim yapılandırması |
+| [GIS & OSRM](src/Docs/docs/infrastructure/gis-osrm.md) | PostGIS ve rota servisi kurulumu |
+| [**Dağıtım Ön Koşulları**](src/Docs/docs/infrastructure/dagitim-on-kosullari.md) | Dağıtımdan sonra elle koşturulması gereken adımlar — **atlanırsa sistem hata vermez, özellik sessizce çalışmaz** |
+
+Ayrıca depo kökünde: [Sürümleme Kuralı](VERSIONING.md), [Claude Code talimatları](CLAUDE.md).
+
 ## Teknoloji Yığını
 
 | Katman | Teknoloji |
@@ -41,33 +86,40 @@ Mesleki eğitim staj süreçlerinin uçtan uca dijitalleştirilmesini hedefleyen
 | **Coordination** | Öğretmen-öğrenci-işletme koordinasyonu |
 | **Internship** | Staj yaşam döngüsü orkestrasyonu (Wolverine saga) |
 | **Reporting** | Raporlama ve PDF üretimi (QuestPDF) |
+| **Security** | Kullanıcı hesapları, davet zinciri, rol/izin senkronizasyonu |
+| **Audit** | Denetim izi — kim, ne zaman, hangi kayda dokundu |
 
 ## Proje Yapısı
 
 ```
 src/
-├── Arch/                    # Mimari dokümanlar, C4 diyagramları
-├── MESNET.Presentation/     # Ana API host (Aspire entegrasyonu)
+├── MESNET.AppHost/          # .NET Aspire orkestrasyonu — geliştirmede tüm servisleri ayağa kaldırır
+├── MESNET.Presentation/     # Ana API host
+├── MESNET.ServiceDefaults/  # Aspire ortak yapılandırması (telemetri, sağlık, dayanıklılık)
+├── MESNET.Seeder/           # Geliştirme verisi üreticisi (HTTP üzerinden, idempotent)
+├── MESNET.Common.Shared/    # Ortak tipler, SmartEnum'lar, izin sabitleri, kiracılık haritası
+├── MESNET.Common.Infrastructure/  # Ortak altyapı (kimlik, kiracılık, sayfalama, depolama)
 ├── Modules/
 │   ├── Business/
-│   │   ├── MESNET.Business.Core/          # Domain entities, value objects
-│   │   ├── MESNET.Business.Application/   # Wolverine handler'ları
-│   │   ├── MESNET.Business.Api/           # HTTP endpoints
-│   │   ├── MESNET.Business.Persistence/   # Marten konfigürasyonu
-│   │   └── MESNET.Business.Shared/        # Domain events (modüller arası)
-│   ├── Institution/
-│   ├── Enrollment/
-│   ├── Contract/
-│   ├── Attendance/
-│   ├── Payment/
-│   ├── Coordination/
-│   ├── Internship/
-│   └── Reporting/
-├── Common/
-│   ├── MESNET.Common.Shared/              # Ortak tipler, helper'lar
-│   └── MESNET.Common.Infrastructure/      # Ortak altyapı (auth, storage)
-└── WebUI/                   # Vue 3 + Quasar frontend
+│   │   ├── MESNET.Business.Core/          # Domain entity'leri, value object'ler, saf politikalar
+│   │   ├── MESNET.Business.Application/   # Wolverine handler'ları ve tüketicileri
+│   │   ├── MESNET.Business.Api/           # HTTP uç noktaları (ince adaptör)
+│   │   ├── MESNET.Business.Persistence/   # Marten yapılandırması, şema adı
+│   │   └── MESNET.Business.Shared/        # Modüller arası domain olayları
+│   ├── Institution/  Enrollment/  Contract/  Attendance/
+│   ├── Payment/      Coordination/  Internship/  Reporting/
+│   ├── Security/     Audit/
+│   └── …             # her modül yukarıdaki beş katmanı taşır
+├── WebUI/                   # Vue 3 + Quasar frontend
+├── Docs/                    # Docusaurus belge sitesi — belge kaynağı `Docs/docs/`
+└── caddy/                   # Ters vekil yapılandırması
+
+tests/                       # Modül başına birim testleri + kara kutu API testleri
+scripts/                     # Yerel CI, dağıtım ön koşul koşucusu, geliştirme yardımcıları
 ```
+
+> **Not:** Mimari belgeler eskiden `src/Arch/` altındaydı; tek kaynak artık
+> [`src/Docs/docs/`](src/Docs/docs/).
 
 ## Gereksinimler
 
@@ -77,6 +129,7 @@ src/
 - Keycloak 26+
 - MinIO
 - .NET Aspire workload (`dotnet workload install aspire`)
+- **Podman** (Docker değil) — Aspire kapsayıcıları bununla koşar
 
 ## Başlangıç
 
@@ -111,6 +164,45 @@ pnpm install
 pnpm dev
 ```
 
+## Test ve kalite kapıları
+
+```bash
+# Tüm birim testleri
+dotnet test MESNET.slnx
+
+# Frontend
+cd src/WebUI && pnpm vitest run && pnpm exec vue-tsc --noEmit
+
+# CI işlerini yerelde koş (GitHub Actions'ın aynası)
+./scripts/ci-local.sh all      # backend | frontend | docs | integration | all
+```
+
+Depoda çok sayıda **sapma testi** (drift test) var: kaynak tarayarak mimari kuralları
+kilitlerler — kiracısız Marten session'ı, rol adına bakan kapsam kararı, kiracılar arası sorgu,
+onarım ucundan yaşam döngüsü olayı yayınlamak gibi. Bunlar derleyicinin göremediği, davranış
+testinin kırılmadığı ve **sessizce yanlış çalışan** sınıfı yakalar. Bir sapma testi kırmızıya
+döndüğünde hata mesajı hem nedeni hem çıkış yolunu yazar.
+
+## Dağıtım
+
+Bazı değişiklikler dağıtımdan sonra **elle bir adım** gerektirir. Atlanınca sistem hata
+**vermez** — özellik sessizce çalışmaz; belirti hep aynıdır: liste boş gelir, sayı sıfır çıkar.
+
+```bash
+./scripts/deploy-prereqs.sh --dry-run    # önce planı gör
+./scripts/deploy-prereqs.sh              # sonra koştur
+```
+
+Açılışta ayrıca `DeploymentPrerequisiteVerificationHostedService` bu adımların **belirtisini
+ölçer** ve eksik olanı kritik log satırı olarak bildirir.
+
+Ayrıntı ve sıra gerekçeleri: [Dağıtım Ön Koşulları](src/Docs/docs/infrastructure/dagitim-on-kosullari.md).
+
+## Sürümleme
+
+SemVer üzerine **minör parite kanalı**: tek minör ön-sürüm (`v0.1.0`), çift minör kararlı
+sürüm (`v0.2.0`). Tam kural: [VERSIONING.md](VERSIONING.md).
+
 ## Lisans
 
 **Kod: [GNU AGPL-3.0-or-later](LICENSE). Belgeler: [CC BY-SA 4.0](LICENSE-DOCS).**
@@ -138,7 +230,7 @@ Ticari kaygımız yok; amaç bu altyapının **açık kalmasıdır**.
 AGPL ticari kullanımı **yasaklamaz**; kapalı ürüne dönüştürmeyi yasaklar. Barındırma ve destek
 hizmeti satmak serbesttir — yeter ki kod açık kalsın.
 
-### Belgeler
+### Belgelerin lisansı
 
 `src/Docs/` altındaki belge **içeriği** CC BY-SA 4.0 ile lisanslanmıştır: atıf vererek ve aynı
 lisansla paylaşmak koşuluyla kopyalayabilir, uyarlayabilir, çevirebilirsiniz. Belge sitesinin
