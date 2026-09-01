@@ -185,6 +185,25 @@ döndüğünde hata mesajı hem nedeni hem çıkış yolunu yazar.
 
 ## Dağıtım
 
+### Sıfırdan kurulum
+
+Temiz bir sunucuya üretim kurulumu [`deploy/`](deploy/) dizininden yapılır: sabitlenmiş GHCR
+imajları, parolasız realm şablonu ve uçtan uca kurulum betiği.
+
+```bash
+cd deploy
+cp .env.example .env && chmod 600 .env && $EDITOR .env
+./install.sh --dry-run    # önce ön kontroller
+./install.sh
+```
+
+Kurulum kılavuzu, ön koşullar ve sorun giderme: [`deploy/README.md`](deploy/README.md).
+
+> Depo kökündeki `docker-compose.yml` **geliştirme/deneme** içindir; üretimde
+> `deploy/compose.yml` kullanılır.
+
+### Dağıtım ön koşulları
+
 Bazı değişiklikler dağıtımdan sonra **elle bir adım** gerektirir. Atlanınca sistem hata
 **vermez** — özellik sessizce çalışmaz; belirti hep aynıdır: liste boş gelir, sayı sıfır çıkar.
 

@@ -20,7 +20,10 @@ EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD wget -q --spider http://localhost:8080/health || exit 1
+# /alive — canlılık ucu, HER ortamda map edilir. /health DEĞİL: o uç yalnız Development'ta
+# açıktır ve bu imaj Production ile koşar; /health'e giden bir HEALTHCHECK 404 alır ve konteyner
+# kalıcı olarak unhealthy görünür (bkz. ServiceDefaults.MapDefaultEndpoints).
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD wget -q --spider http://localhost:8080/alive || exit 1
 
 ENTRYPOINT ["dotnet", "MESNET.Presentation.dll"]

@@ -30,6 +30,14 @@
     <Content Include="../../src/MESNET.AppHost/keycloak/mesnet-realm.json"
              Link="mesnet-realm.json"
              CopyToOutputDirectory="PreserveNewest" />
+    <!--
+      Üretim realm şablonu da aynı değişmezlere bağlıdır. İki dosya ayrı yaşadığı için
+      kilitlenmezse sapma KESİNDİR: yeni bir rol dev realm'ine eklenir, üretim şablonunda
+      unutulur ve yalnız gerçek kurulumda ortaya çıkar.
+    -->
+    <Content Include="../../deploy/keycloak/mesnet-realm.production.json"
+             Link="mesnet-realm.production.json"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

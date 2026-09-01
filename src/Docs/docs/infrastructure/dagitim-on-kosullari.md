@@ -11,6 +11,13 @@ liste boş gelir, sayı sıfır çıkar, buton hiçbir işe yaramaz.
 
 Bu sayfa, o adımların tamamını tek yerde toplar.
 
+:::tip Sıfırdan kurulum yapıyorsanız
+Bu sayfa **var olan** bir kurulumun dağıtım sonrası adımlarını anlatır. Temiz bir sunucuya ilk
+kurulum ayrı bir yerdedir: `deploy/` — sabitlenmiş GHCR imajları, parolasız realm şablonu ve
+uçtan uca kurulum betiği. Kurulum betiği bu sayfadaki adımları **koşturmaz**; sonunda hangi
+komutun çağrılacağını yazar. Kılavuz: `deploy/README.md`.
+:::
+
 ## Ne zaman gerekir?
 
 | Değişiklik | Gereken adım |
