@@ -569,6 +569,36 @@ gönderim **başarısız olur ve loglanır** — sessiz düşmez.
 
 ---
 
+## Rapor görünümünün kimliği değişti — göç KENDİNİ ONARIR (#296)
+
+`StudentPlacementReportView`'un kimliği artık `(StudentId, AcademicPeriodId)` ikilisinden
+deterministik üretiliyor. Eskiden kimlik iki ayrı yoldan, iki ayrı biçimde geliyordu — öğrenci
+yolunda `StudentId`, yerleştirme yolunda `PlacementId` — ve hangisinin geçerli olduğu hangi
+olayın önce geldiğine bağlıydı.
+
+**Asıl kusur `Id = StudentId`'ydi:** satırın mantıksal anahtarı (öğrenci, dönem) ikilisidir;
+öğrenci kimliğini anahtar yapmak, öğrencinin **ikinci akademik döneminin birincisini ezmesi**
+demekti. Ölçüldü (01.09.2026): 363 satırın 363'ünde `Id == StudentId` ve henüz tek dönem olduğu
+için kayıp görünmüyordu — hata gelecek öğretim yılında doğacaktı.
+
+:::tip Ayrı bir temizlik adımı YOK
+Göç tüketicinin içinde: satır yeni kimlikle yazılırken eski kimlikli satır **aynı işlemde
+silinir** ve alanları yeni satıra devralınır. Ayrı bir dağıtım adımı konmadı çünkü
+**atlanabilecek bir adım, atlanmayacak bir koda tercih edilmez** — atlansaydı okuyan sorgular
+aynı öğrenciyi iki kez görürdü (aylık devamsızlık formunda ve toplu belge üretiminde çift satır).
+:::
+
+Göçün **tamamlanması** için her öğrencinin bir olay görmesi gerekir; bunu zaten koşturulan uç
+sağlar:
+
+```bash
+POST /api/students/resync-projections
+```
+
+Bu uç `deploy-prereqs.sh`'de var ve idempotenttir. Koşturulmazsa eski kimlikli satırlar canlı
+bir olay gelene kadar yerinde kalır; **veri kaybı olmaz** (alanlar devralınır), yalnız göç
+yavaş tamamlanır.
+
 ## Resync / backfill uçları
 
 Hepsi **idempotent**tir ve birden çok kez çağrılabilir — ama bu güvence **tüketicilerin upsert
