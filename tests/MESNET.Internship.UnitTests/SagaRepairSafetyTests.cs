@@ -8,7 +8,7 @@ using Xunit;
 namespace MESNET.Internship.UnitTests;
 
 /// <summary>
-/// Onarım uçlarının saga durumunu <b>bozmadığını</b> kilitler (#295).
+/// Onarım uçlarının saga durumunu <b>bozmadığını</b> kilitler (#297).
 ///
 /// <para>İkisi de #292 düzeltmesiyle ortaya çıktı: o uçlar fiilen ölüydü (platform aktörü kiracı
 /// damgalı satırı görmüyordu, 200 + sıfır), canlandıklarında taşıdıkları kusurlar da

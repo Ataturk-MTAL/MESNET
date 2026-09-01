@@ -29,7 +29,7 @@ public static class ResyncBusinessProjectionsHandler
                 business.MasterInstructor?.FullName,
                 business.PersonnelCount,
                 business.PrimaryRepresentativeName(),
-                // 11. ARGÜMAN ZORUNLU (#295). Varsayılanı false olduğu için geçilmediğinde
+                // 11. ARGÜMAN ZORUNLU (#297). Varsayılanı false olduğu için geçilmediğinde
                 // derleyici susuyordu; tüketici (Payment.BusinessPaymentProfileConsumer) alanı
                 // KOŞULSUZ yazdığı için her yayın kamu kurumu bayrağını siliyordu — ve o bayrak
                 // 3308 Geçici Md.12 ile devlet katkısı hesabına giriyor.

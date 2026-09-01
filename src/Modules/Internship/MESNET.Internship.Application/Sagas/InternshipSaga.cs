@@ -88,7 +88,7 @@ public class InternshipSaga : Saga
         // tam olarak budur.
         ContractId = e.ContractId;
 
-        // FAZ GERİ ALINMAZ (#295). Eskiden koşulsuz Active yazılıyordu. Zararsızdı çünkü uç
+        // FAZ GERİ ALINMAZ (#297). Eskiden koşulsuz Active yazılıyordu. Zararsızdı çünkü uç
         // fiilen ölüydü (#292: platform aktörü kiracı damgalı satırı görmüyor, 200 + sıfır);
         // uç canlanınca zararlı hâle geldi: SagaCorrelationPolicy.IsOpen TerminationInProgress'i
         // BİLEREK açık sayar, yani fesih onay zinciri yürüyen bir saga da bu yolu görür ve

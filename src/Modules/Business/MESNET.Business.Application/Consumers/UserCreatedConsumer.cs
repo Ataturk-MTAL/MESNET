@@ -47,7 +47,7 @@ public static class UserCreatedConsumer
             business.MasterInstructor?.FullName,
             business.PersonnelCount,
             business.PrimaryRepresentativeName(),
-            // 11. argüman — resync ucuyla aynı kusur, ikinci nüsha (#295). Bu yol resync
+            // 11. argüman — resync ucuyla aynı kusur, ikinci nüsha (#297). Bu yol resync
             // çağrılmasa bile koşuyor: CompanyManager kullanıcısı oluşturulduğunda o işletmenin
             // kamu bayrağı siliniyordu.
             business.IsPublicInstitution));
