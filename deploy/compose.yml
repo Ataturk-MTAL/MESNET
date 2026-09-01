@@ -22,7 +22,7 @@ name: mesnet
 services:
   # ── Caddy: SPA + Docusaurus + ters vekil + otomatik TLS ────────────────────
   caddy:
-    image: ghcr.io/ataturk-mtal/mesnet-caddy:${MESNET_VERSION:?MESNET_VERSION zorunlu, ör. v0.2.2}
+    image: ghcr.io/ataturk-mtal/mesnet-caddy:${MESNET_VERSION:?MESNET_VERSION zorunlu, ör. v0.2.3}
     ports:
       - "80:80"
       - "443:443"
@@ -43,7 +43,7 @@ services:
 
   # ── API ────────────────────────────────────────────────────────────────────
   api:
-    image: ghcr.io/ataturk-mtal/mesnet-api:${MESNET_VERSION:?MESNET_VERSION zorunlu, ör. v0.2.2}
+    image: ghcr.io/ataturk-mtal/mesnet-api:${MESNET_VERSION:?MESNET_VERSION zorunlu, ör. v0.2.3}
     expose:
       - "8080"
     environment:
