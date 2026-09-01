@@ -38,6 +38,7 @@ public class ResyncEventDriftTests
     [
         ("StudentPlaced", "InternshipSaga'nın başlatıcı olayı (#291) — ikinci yayın tekil kısıt ihlaliyle ölü mektuba düşer"),
         ("StudentRegistered", "Coordination.StudentRegisteredCountConsumer şube sayacını ARTIRIR (#290) — görünüm şube başına tek satır"),
+        ("CalculateMonthlySalary", "PaymentSaga'nın başlatıcı mesajı (PaymentSaga.StartAsync) — ikinci yayın ikinci saga doğurur"),
     ];
 
     [Fact]
@@ -101,13 +102,41 @@ public class ResyncEventDriftTests
     public void Kilit_gercek_dosya_tariyor()
     {
         // Tarama boş küme dönerse yukarıdaki iki test hiçbir şey kanıtlamadan yeşil kalırdı.
-        ResyncHandlerFiles().ShouldNotBeEmpty("Hiç resync handler'ı bulunamadı — desen değişmiş olabilir.");
+        var files = ResyncHandlerFiles();
+
+        files.ShouldNotBeEmpty("Hiç onarım handler'ı bulunamadı — adlandırma deseni değişmiş olabilir.");
+
+        // Tarama üç önekin de gerçekten dosya bulduğunu göstermeli; biri sıfır dönerse kilit o
+        // sınıfı sessizce korumuyor demektir.
+        foreach (var prefix in RepairPrefixes)
+        {
+            files.ShouldContain(
+                f => Path.GetFileName(f).StartsWith(prefix, StringComparison.Ordinal),
+                $"'{prefix}' önekiyle hiçbir handler bulunamadı — kilit o sınıfı korumuyor.");
+        }
     }
+
+    /// <summary>
+    /// Onarım/dolgu amaçlı handler'lar — <b>ada göre</b>.
+    ///
+    /// <para><b>İlk sürüm yalnız "Resync" arıyordu ve dar kalıyordu:</b> aynı işi yapan
+    /// <c>Backfill*</c> ve <c>Replay*</c> handler'ları taramanın dışındaydı, yani
+    /// <c>ReplayUserAccountsHandler</c>'ın <c>UserCreated</c> yerine <c>UserAccountReplayed</c>
+    /// yayınlama kararı yalnız yorumla korunuyordu, testle değil.</para>
+    ///
+    /// <para><b>Ad temelli tespitin sınırı yazılıdır:</b> zamanlanmış bir iş, adında bu ekler
+    /// olmadığı için taranmaz — ve doğrusu budur. <c>OpenMonthlySalaryPeriodsHandler</c>
+    /// <c>CalculateMonthlySalary</c> yayınlar ve o bir saga başlatıcısıdır, ama orada yayın
+    /// <b>onarım değil ASIL İŞTİR</b>: aylık dönem açmak saga başlatmaktır. Onu ihlal saymak
+    /// kilidi yanlış alarma boğar ve muafiyet listesine yazılmasına yol açardı.</para>
+    /// </summary>
+    private static readonly string[] RepairPrefixes = ["Resync", "Backfill", "Replay"];
 
     private static List<string> ResyncHandlerFiles() =>
         Directory.EnumerateFiles(Path.Combine(RepoRoot(), "src", "Modules"), "*.cs", SearchOption.AllDirectories)
-            .Where(f => Path.GetFileName(f).Contains("Resync", StringComparison.Ordinal)
-                     && Path.GetFileName(f).EndsWith("Handler.cs", StringComparison.Ordinal))
+            .Where(f => Path.GetFileName(f).EndsWith("Handler.cs", StringComparison.Ordinal)
+                     && RepairPrefixes.Any(prefix =>
+                            Path.GetFileName(f).StartsWith(prefix, StringComparison.Ordinal)))
             .ToList();
 
     private static string RepoRoot()

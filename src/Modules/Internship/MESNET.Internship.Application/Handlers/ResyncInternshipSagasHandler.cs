@@ -119,5 +119,10 @@ public static class ResyncInternshipSagasHandler
         TerminationReasonType = source.TerminationReasonType,
         RequiresParentApproval = source.RequiresParentApproval,
         ApprovalChain = source.ApprovalChain,
+        // BU ALAN UNUTULMUŞTU (#295). D2 ile eklendi ve kimlik yeniden yazılırken kopyalanmıyordu:
+        // kanonik olmayan kimlikli her saga, onarımdan TerminationRequestedAt = null olarak
+        // çıkıyordu. StuckApprovalPolicy null'u "eksik veri sınırı gevşetemez" gerekçesiyle
+        // TIKANMIŞ sayar — yani onarım, müdürlük panosunda olmayan tıkanmalar üretirdi.
+        TerminationRequestedAt = source.TerminationRequestedAt,
     };
 }

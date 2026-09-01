@@ -84,8 +84,21 @@ public class InternshipSaga : Saga
     // Çeviriyi SagaRelayConsumer yapar.
     public void Handle(LinkInternshipContract e)
     {
+        // Bağ her zaman yazılır — onarımın (POST /api/contracts/resync-internship-links) amacı
+        // tam olarak budur.
         ContractId = e.ContractId;
-        Phase = InternshipPhase.Active;
+
+        // FAZ GERİ ALINMAZ (#295). Eskiden koşulsuz Active yazılıyordu. Zararsızdı çünkü uç
+        // fiilen ölüydü (#292: platform aktörü kiracı damgalı satırı görmüyor, 200 + sıfır);
+        // uç canlanınca zararlı hâle geldi: SagaCorrelationPolicy.IsOpen TerminationInProgress'i
+        // BİLEREK açık sayar, yani fesih onay zinciri yürüyen bir saga da bu yolu görür ve
+        // koşulsuz atama onu Active'e geri çekip zinciri SESSİZCE iptal ederdi.
+        //
+        // SmartEnum'un Value'su faz sırasını taşır (Placed 1 … Completed 6); yürüyen bir süreç
+        // geriye alınamaz — ResyncInternshipSagasHandler'ın "en ileri faz kazanır" kuralıyla
+        // aynı ilke.
+        if (Phase.Value < InternshipPhase.Active.Value)
+            Phase = InternshipPhase.Active;
     }
 
     // Devamsızlık sınırı aşıldığında ayrı bir giriş noktası YOKTUR (#248): aktarıcı
