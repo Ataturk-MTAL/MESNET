@@ -110,7 +110,7 @@ PHASES=(
   "students|once|POST|/api/students/resync-projections||Öğrenci kapsam otoritesi + veli bağı ön koşulu (#290: şube sayacını şişirir)"
   "businesses|safe|POST|/api/businesses/resync-projections||İşletme görünümleri"
   "branch-auth|safe|POST|/api/placements/backfill-branch-authorizations||İşletme alan yetkileri — koordinasyondan ÖNCE"
-  "placements|broken|POST|/api/placements/resync-projections||#291: kapasite çift sayılır + saga INSERT çakışır, uç yine 200 döner"
+  "placements|safe|POST|/api/placements/resync-projections|.data.published > 0|Yerleştirme görünümleri (Payment, Coordination, Reporting) — #291 onarıldı"
   "coord-teachers|safe|POST|/api/coordination/teachers/resync-views||Koordinasyon öğretmen görünümleri"
   "coord-visits|safe|POST|/api/coordination/weekly-visits/resync||Haftalık ziyaret olayları"
   "attendance|safe|POST|/api/attendance/resync-snapshots||Devamsızlık anlık görüntüleri (Payment + Reporting)"

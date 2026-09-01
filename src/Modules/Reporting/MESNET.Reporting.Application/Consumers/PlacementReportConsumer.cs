@@ -31,7 +31,21 @@ public static class PlacementReportConsumer
         session.Store(view);
     }
 
-    public static async Task Consume(StudentPlaced @event, IDocumentSession session)
+    /// <summary>
+    /// Yerleştirme yaşam döngüsü olayı — canlı yol.
+    /// </summary>
+    public static Task Consume(StudentPlaced @event, IDocumentSession session)
+        => Apply(@event.ToSnapshot(), session);
+
+    /// <summary>
+    /// Onarım yolu (#291): <c>POST /api/placements/resync-projections</c> bu olayı yayınlar.
+    /// <c>StudentPlaced</c> yeniden yayınlanamaz — o, saga'nın başlatıcı olayıdır ve yeniden
+    /// yayını tekil kısıt ihlaliyle ölü mektuba düşerdi (uç yine 200 dönerek).
+    /// </summary>
+    public static Task Consume(PlacementSnapshotResynced @event, IDocumentSession session)
+        => Apply(@event, session);
+
+    private static async Task Apply(PlacementSnapshotResynced @event, IDocumentSession session)
     {
         // Mevcut view'ı bul (StudentRegistered ile oluşturulmuş olabilir)
         var view = await session.Query<StudentPlacementReportView>()

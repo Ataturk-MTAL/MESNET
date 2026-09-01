@@ -123,8 +123,25 @@ dağıtım betiği, koşmayan betikten kötüdür. Geliştirme için `--dev`.
 | `broken` | Bilinen hatalı, veri bozar | **Atlanır**; `--include-broken` |
 
 Bugün `once`: `students/resync-projections` (#290 — şube öğrenci sayacını her koşuda şişirir).
-Bugün `broken`: `placements/resync-projections` (#291), `internships/resync-sagas` ve
-`contracts/resync-internship-links` (#292).
+Bugün `broken`: `internships/resync-sagas` ve `contracts/resync-internship-links` (#292).
+
+`placements/resync-projections` **onarıldı (#291)** ve artık `safe`: uç yaşam döngüsü olayını
+(`StudentPlaced`) değil, onarım olayını (`PlacementSnapshotResynced`) yayınlıyor. Ayrıntı aşağıda.
+
+### Onarım olayı yayınlanır, yaşam döngüsü olayı değil (#291)
+
+`POST /api/placements/resync-projections` eskiden `StudentPlaced`'i yeniden yayınlıyordu. O olay
+`InternshipSaga`'nın **başlatıcı** olayıdır; deterministik saga kimliği (#251) yüzünden ikinci
+yayın **tekil kısıt ihlali** üretiyor, o kuyruk ölü mektuba düşüyor ve
+`MultipleHandlerBehavior.Separated` yüzünden kardeş kuyruklar commit etmeye devam ediyordu.
+Sonuç: **uç 200 döner**, saga yazılmaz, kapasite bozulur, hiçbir yerde hata görünmez.
+
+Ayrıca `Business.StudentPlacedConsumer` kapasiteyi `CountAsync() + 1` ile yazıyordu; onarım
+yolunda satır zaten sayıldığı için **her koşuda kapasite bir artıyordu**. Artık küme kullanılıyor
+(`Coordination.StudentPlacedConsumer` ile aynı desen) — canlı yolda sonuç değişmez.
+
+Kilitleyen testler: `ResyncEventDriftTests` (onarım handler'ı başlatıcı olay yayınlayamaz;
+onarım olayını saga tüketemez).
 
 ### 200 dönmek "yapıldı" demek değildir
 
