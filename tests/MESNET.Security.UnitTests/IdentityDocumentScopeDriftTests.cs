@@ -38,18 +38,17 @@ namespace MESNET.Security.UnitTests;
 /// (çağrı-bazlı işaretleme AST/Roslyn analizi gerektirir, basit metin taramasıyla güvenilir
 /// yapılamaz); kayıt burada tutulur ki gelecekte biri "test yeşil, öyleyse güvenli" sanmasın.</para>
 ///
-/// <para><b><c>RoleIntegrityHandler.cs</c> (role-integrity) BİLEREK izin listesinde
-/// DEĞİL — test bu dosya yüzünden KIRMIZI kalır ve bu bir hata değil, henüz verilmemiş açık
-/// bir ürün kararının kaydıdır (#283).</b> Ucun <c>GET /api/security/role-integrity</c> hiçbir kapsam
-/// taşımıyor: rapor tüm okulların <c>UserAccount</c>/<c>UserInvitation</c> kayıtlarını tarıyor.
-/// Karar verilmesi gereken şey şu: bu tanılama <b>kurum düzeyinde</b> mi olmalı (yalnız kendi
-/// okulunun bozuk kayıtlarını gösteren bir uç) yoksa <b>platform düzeyinde</b> mi (bilerek
-/// kurum-üstü, <c>platform:</c> önekli bir izinle korunan bir sistem-sağlığı ucu)? İkisi de
-/// meşru bir tasarımdır ama ikisi ayrı bir izin/kapsam sözleşmesi gerektirir ve o seçim henüz
-/// yapılmadı. <b>Bu dosyayı izin listesine eklemek o kararı VERMEK anlamına gelir</b> — testi
-/// susturmak değil. Ekleyen kişi aynı zamanda ucun kapsamını (ya <c>UserScopeResolver</c>'a
-/// bağlayarak ya da <c>platform:</c> önekli bir izinle kilitleyerek) de karara bağlamış
-/// olmalıdır; yalnız satırı eklemek bu kilidin amacını boşa çıkarır.</para>
+/// <para><b>Karara bağlandı — <c>RoleIntegrityHandler.cs</c> artık çözücüyü çağırıyor (#283).</b>
+/// <c>GET /api/security/role-integrity</c> uzun süre kapsamsızdı ve bu test onun yüzünden
+/// bilerek KIRMIZI bırakılmıştı. Karar <b>kurum düzeyi</b> oldu: yerel iki bacak (davetler,
+/// hesaplar) diğer üç uçla aynı kapıdan (<see cref="ResolverMarker"/>) geçiyor. Belirleyici
+/// gerekçe, ucun kendi tasarımıydı — raporu görmesi gereken kişi düzeltmeyi de yapacak olandır
+/// ve düzeltme ucu (<c>POST /api/security/users/{id}/roles</c>) kurum kapsamlıdır; rapor
+/// platforma çekilseydi gören ile düzeltebilen ayrılırdı. Realm bacağı (Keycloak'ta hiç rolü
+/// olmayan hesaplar) daraltılamaz — orada kurum kavramı yok — ve ayrı bir izne
+/// (<c>platform:tenant:manage</c>) bağlandı; yetkisi olmayanda boş döner ve boş olduğu
+/// <c>RealmScanPermitted</c> ile SÖYLENİR.</para>
+///
 /// </summary>
 public sealed class IdentityDocumentScopeDriftTests
 {
@@ -80,8 +79,8 @@ public sealed class IdentityDocumentScopeDriftTests
     /// — yukarıdaki "Belgelenmiş sınırlama" paragrafına bakınız) ve tarama TEKRARLANDI: sonuç
     /// KÜMESİ değişmedi, yine aynı on bir dosya eşleşti. On birinden ikisi (<c>UserQueryHandler.cs</c>,
     /// <c>InvitationHandler.cs</c>) artık <see cref="ResolverMarker"/>'ı çağırıyor ve bu listede
-    /// DEĞİL. Sekizi aşağıda, gerekçesiyle. Onbirincisi — <c>RoleIntegrityHandler.cs</c> —
-    /// BİLEREK burada değil (yukarıdaki sınıf açıklamasına, #283'e bakınız).</para>
+    /// DEĞİL. Onbirincisi — <c>RoleIntegrityHandler.cs</c> — #283 kararından sonra o da çözücüyü
+    /// çağırıyor ve listede DEĞİL. Sekizi aşağıda, gerekçesiyle.</para>
     ///
     /// <para><b>Her gerekçe dosya okunarak doğrulandı, tarama sonucundan kopyalanmadı:</b></para>
     ///
@@ -133,10 +132,6 @@ public sealed class IdentityDocumentScopeDriftTests
         "src/Modules/Security/MESNET.Security.Application/Consumers/StudentAccountSyncConsumer.cs",
     ];
 
-    /// <summary>role-integrity ucunun handler'ı — BİLEREK <see cref="AllowedFiles"/>'ta değil.</summary>
-    private const string RoleIntegrityHandlerPath =
-        "src/Modules/Security/MESNET.Security.Application/Handlers/RoleIntegrityHandler.cs";
-
     /// <summary>
     /// Bu kilidin KENDİ dosyası. Tarama <c>tests/</c> ağacını da kapsıyor ve bu dosyanın XML
     /// doc'u yasak çağrının adını (yorum olarak) taşıyor — <see cref="StripComments"/> onu siler,
@@ -167,40 +162,21 @@ public sealed class IdentityDocumentScopeDriftTests
             violations.Add(relative);
         }
 
-        violations.ShouldBeEmpty(BuildFailureMessage(violations));
+        violations.ShouldBeEmpty(FailureMessage(violations));
     }
 
     /// <summary>
-    /// İhlal mesajı kendini savunmalıdır: genel kural + (varsa) role-integrity için ayrı,
-    /// kendi kendine yeten bir paragraf. Böylece "neden RoleIntegrityHandler.cs kırmızı"
-    /// sorusunun cevabı test çıktısının İÇİNDE olur, koda gömülü bir doküman aranmaz.
+    /// İhlal mesajı kendini savunmalıdır: kuralın NEDENİ ve iki çıkış yolu test çıktısının
+    /// İÇİNDE olur, koda gömülü bir doküman aranmaz.
     /// </summary>
-    private static string BuildFailureMessage(IReadOnlyList<string> violations)
-    {
-        var general =
-            "UserAccount/UserInvitation sorgulayan dosya UserScopeResolver çağırmıyor ve izin "
-            + "listesinde de değil. Bu ikisi Identity sınıfındadır — Marten kiracılığı onları "
-            + "SÜZMEZ, kapsam kararı burada elle verilmek zorunda. UserScopeResolver.ResolveAsync "
-            + "ile aktörün kurum kimliğinden kapsam türetin; gerçekten kiracı-üstü/kimlik-temelli "
-            + "bir okumaysa gerekçesiyle izin listesine ekleyin (bu kilidin amacı mevcut dosyaları "
-            + $"yasaklamak değil, YENİ bir dosyayı gerekçelenmeye zorlamaktır). İhlaller: "
-            + $"{string.Join(" | ", violations)}";
-
-        if (!violations.Contains(RoleIntegrityHandlerPath, StringComparer.Ordinal))
-            return general;
-
-        var roleIntegrityNote =
-            "\n\nRoleIntegrityHandler.cs İÇİN: bu bir gözden kaçma DEĞİL, verilmemiş bir ürün "
-            + "kararının kaydı. GET /api/security/role-integrity hiçbir kurum kapsamı taşımıyor "
-            + "ve karar şudur: bu tanılama uç KURUM DÜZEYİNDE mi olmalı (yalnız kendi okulunun "
-            + "bozuk kayıtlarını gösterir) yoksa PLATFORM DÜZEYİNDE mi (bilerek kurum-üstü bir "
-            + "sistem-sağlığı ucu, platform: önekli izinle korunur)? Takip: #283. Bu dosyayı izin "
-            + "listesine eklemek o kararı VERMEK anlamına gelir, testi susturmak değil — "
-            + "ekleyen kişi ucun kapsamını da (UserScopeResolver'a bağlayarak ya da platform: "
-            + "önekli bir izinle) karara bağlamalıdır.";
-
-        return general + roleIntegrityNote;
-    }
+    private static string FailureMessage(IReadOnlyList<string> violations) =>
+        "UserAccount/UserInvitation sorgulayan dosya UserScopeResolver çağırmıyor ve izin "
+        + "listesinde de değil. Bu ikisi Identity sınıfındadır — Marten kiracılığı onları "
+        + "SÜZMEZ, kapsam kararı burada elle verilmek zorunda. UserScopeResolver.ResolveAsync "
+        + "ile aktörün kurum kimliğinden kapsam türetin; gerçekten kiracı-üstü/kimlik-temelli "
+        + "bir okumaysa gerekçesiyle izin listesine ekleyin (bu kilidin amacı mevcut dosyaları "
+        + "yasaklamak değil, YENİ bir dosyayı gerekçelenmeye zorlamaktır). İhlaller: "
+        + $"{string.Join(" | ", violations)}";
 
     /// <summary>
     /// Satır ve blok yorumlarını atar: bu kuralın NEDENİNİ anlatan XML doc'lar yasak çağrının

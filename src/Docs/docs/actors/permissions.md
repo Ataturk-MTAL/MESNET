@@ -175,6 +175,34 @@ belge doğrulama, devamsızlık takibi, maaş hesaplamaları — **yürütür, o
 }
 ```
 
+#### Rol tutarlılık taraması — izin erişimi açar, kapsamı belirlemez (#283)
+
+`GET /api/security/role-integrity` bozuk rol kaydını **tespit eder, düzeltmez**. İzni
+`user:roles:manage`'dir ve öyle kaldı; gerekçesi ucun kendi tasarımıdır: **raporu görmesi gereken
+kişi, düzeltmeyi de yapacak olandır**. Düzeltme ucu (`POST /api/security/users/{id}/roles`) kurum
+kapsamlıdır — rapor kurum üstü olsaydı gören ile düzeltebilen ayrılır, müdür düzeltebildiği tek
+kaydı göremez olurdu.
+
+Kapsam **ayrı bir karardır** ve üç bacakta üç ayrı sonuca varır:
+
+| Bacak | Kaynak | Kapsam |
+| --- | --- | --- |
+| Tanınmayan rolle davetler | `UserInvitation` | **Kurum** — `UserScopeResolver` |
+| Tanınmayan rol taşıyan hesaplar | `UserAccount` | **Kurum** — `UserScopeResolver` |
+| Hiç realm rolü olmayan hesaplar | Keycloak | **Platform** — `platform:tenant:manage` |
+
+`UserAccount` ve `UserInvitation` `DocumentTenancyMap`'te **kimlik katmanındadır**; conjoined
+kiracılık onları **süzmez**. Süzülmeselerdi `user:roles:manage` taşıyan her müdür bütün okulların
+e-posta, ad ve kullanıcı adı bilgisini görürdü — kullanıcı ve davet listeleri daraltıldıktan sonra
+aynı kişisel veri **ikinci bir kapıdan** açık kalırdı.
+
+Realm bacağı daraltılamaz: Keycloak'ta kurum kavramı yoktur. Yetkisi olmayan aktörde bu bacak
+**hiç sorulmaz** ve boş döner — ama **boş olduğu söylenir** (`realmScanPermitted: false`). Sessiz
+boş liste "sorun yok" diye okunurdu; ekran bu yüzden "taranmadı" ile "temiz"i asla aynı
+göstermez.
+
+Kilitleyen test: `IdentityDocumentScopeDriftTests`.
+
 #### `DeputyDirector` izin demetinin gerekçesi
 
 Kaynak: actors.md → "Müdür Yardımcısı" (staj işlemleri koordinasyonu, evrak takibi ve onayı,

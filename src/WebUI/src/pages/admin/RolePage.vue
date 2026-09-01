@@ -116,16 +116,33 @@
         <q-separator v-if="integrity" />
 
         <q-card-section v-if="integrity">
+          <!--
+            Üç ayrı hâl, üç ayrı mesaj (#283). "Taranmadı" ile "temiz" asla aynı görünmemeli:
+            yetkisiz bacak boş döner ve boş liste sessizce "sorun yok" diye okunurdu.
+          -->
           <AppNotice
-            v-if="!integrity.keycloakChecked"
+            v-if="!integrity.realmScanPermitted"
+            type="info"
+            class="q-mb-md"
+            message="Realm taraması (hiç rolü olmayan hesaplar) kurum üstü yetki ister ve yapılmadı. Aşağıdaki sonuç yalnız kendi kurumunuzun davet ve hesap kayıtlarını kapsar."
+          />
+          <AppNotice
+            v-else-if="!integrity.keycloakChecked"
             type="warning"
             class="q-mb-md"
             :message="`Kimlik sunucusu taraması yapılamadı — sonuç eksiktir. ${integrity.keycloakCheckError ?? ''}`"
           />
+
           <AppNotice
-            v-else-if="integrity.totalFindings === 0"
+            v-if="integrity.totalFindings === 0 && integrity.keycloakChecked"
             type="success"
             message="Bozuk rol kaydı bulunamadı."
+          />
+          <AppNotice
+            v-else-if="integrity.totalFindings === 0 && !integrity.realmScanPermitted"
+            type="success"
+            class="q-mb-md"
+            message="Kurumunuzun kayıtlarında bozuk rol bulunamadı."
           />
 
           <div

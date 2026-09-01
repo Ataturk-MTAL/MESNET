@@ -19,6 +19,12 @@ public static class RoleIntegrityEndpoints
         var group = app.MapGroup("/api/security").WithTags("RoleIntegrity");
 
         // Raporu görmesi gereken kişi, düzeltmeyi de yapacak olandır → user:roles:manage.
+        //
+        // İZİN aynı kaldı, KAPSAM eklendi (#283). İzin erişimi açar, kapsamı belirlemez:
+        // handler yerel iki bacağı UserScopeResolver'dan geçirir, çünkü UserAccount ve
+        // UserInvitation kimlik katmanındadır ve conjoined kiracılık onları SÜZMEZ. Realm
+        // bacağı (Keycloak'ta hiç rolü olmayan hesaplar) daraltılamaz ve ayrı bir izne
+        // (platform:tenant:manage) bağlıdır — gerekçe GetRoleIntegrityReportHandler'da.
         group.MapGet("/role-integrity", GetRoleIntegrity)
             .RequireAuthorization(Permissions.UserManagement.RolesManage);
     }
