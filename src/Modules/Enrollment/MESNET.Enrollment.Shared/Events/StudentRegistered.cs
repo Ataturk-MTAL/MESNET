@@ -24,4 +24,17 @@ public sealed record StudentRegistered(
     /// <para><b>Sona eklendi ve varsayılanı var:</b> mevcut tüketiciler kırılmasın. Boş değer
     /// "eşleştirilemez" demektir ve tüketici sessizce atlar — uydurmaz.</para>
     /// </summary>
-    Guid KeycloakUserId = default);
+    Guid KeycloakUserId = default)
+{
+    /// <summary>
+    /// Görünüm besleyen tüketicilerin <b>onarım</b> girdisine çevirir (#290).
+    ///
+    /// <para>Yön bilerek tek taraflıdır: kayıt olayı anlık görüntüye çevrilir, tersi
+    /// <b>yoktur</b>. Ters çevrim olsaydı bir onarım yolu şube sayacını yeniden şişirebilirdi —
+    /// düzeltilen hatanın ta kendisi.</para>
+    /// </summary>
+    public StudentSnapshotResynced ToSnapshot() => new(
+        StudentId, FullName, InstitutionId, AcademicPeriodId, BranchCode, ClassYear,
+        EducationType, StudentNumber, HasJourneymanQualification, BirthDate, Category,
+        KeycloakUserId);
+}

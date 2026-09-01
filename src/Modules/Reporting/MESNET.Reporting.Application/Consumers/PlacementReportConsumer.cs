@@ -10,7 +10,19 @@ namespace MESNET.Reporting.Application.Consumers;
 /// </summary>
 public static class PlacementReportConsumer
 {
-    public static async Task Consume(StudentRegistered @event, IDocumentSession session)
+    /// <summary>Öğrenci kaydı olayı — canlı yol.</summary>
+    public static Task Consume(StudentRegistered @event, IDocumentSession session)
+        => ApplyStudent(@event.ToSnapshot(), session);
+
+    /// <summary>
+    /// Onarım yolu (#290): <c>POST /api/students/resync-projections</c> bu olayı yayınlar.
+    /// <c>StudentRegistered</c> yeniden yayınlanamaz — tüketicilerinden biri şube sayacını
+    /// ARTIRIYOR ve her yeniden yayın sayacı şişirirdi.
+    /// </summary>
+    public static Task Consume(StudentSnapshotResynced @event, IDocumentSession session)
+        => ApplyStudent(@event, session);
+
+    private static async Task ApplyStudent(StudentSnapshotResynced @event, IDocumentSession session)
     {
         // Henüz placement yapılmamış — öğrenci bilgilerini sakla
         // StudentPlaced event'i geldiğinde BusinessId ile eşleştirilecek

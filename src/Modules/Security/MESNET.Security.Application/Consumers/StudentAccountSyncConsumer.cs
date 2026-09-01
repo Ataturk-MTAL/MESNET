@@ -30,8 +30,28 @@ namespace MESNET.Security.Application.Consumers;
 /// </summary>
 public static class StudentAccountSyncConsumer
 {
-    public static async Task Consume(
-        StudentRegistered @event,
+    /// <summary>Öğrenci kaydı olayı — canlı yol.</summary>
+    public static Task Consume(StudentRegistered @event,
+        IDocumentSession session,
+        IMemoryCache cache,
+        ILogger<StudentRegistered> logger,
+        CancellationToken cancellationToken)
+        => Apply(@event.ToSnapshot(), session, cache, logger, cancellationToken);
+
+    /// <summary>
+    /// Onarım yolu (#290): <c>POST /api/students/resync-projections</c> bu olayı yayınlar.
+    /// <c>StudentRegistered</c> yeniden yayınlanamaz — tüketicilerinden biri şube sayacını
+    /// ARTIRIYOR ve her yeniden yayın sayacı şişirirdi.
+    /// </summary>
+    public static Task Consume(StudentSnapshotResynced @event,
+        IDocumentSession session,
+        IMemoryCache cache,
+        ILogger<StudentRegistered> logger,
+        CancellationToken cancellationToken)
+        => Apply(@event, session, cache, logger, cancellationToken);
+
+    private static async Task Apply(
+        StudentSnapshotResynced @event,
         IDocumentSession session,
         IMemoryCache cache,
         ILogger<StudentRegistered> logger,

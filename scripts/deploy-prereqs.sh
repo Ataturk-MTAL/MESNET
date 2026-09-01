@@ -107,7 +107,7 @@ PHASES=(
   "staff-scope|safe|POST|/api/institutions/staff/resync-branch-codes||Personel kaydından kullanıcıya kurum + alan kapsamı"
   "users-sync|safe|POST|/api/security/users/sync||Keycloak kullanıcılarını yerel kayda çeker"
   "users-replay|safe|POST|/api/security/users/replay|.data.replayed > 0|Yönetici bağı görünümü (müdürlük panosu)"
-  "students|once|POST|/api/students/resync-projections||Öğrenci kapsam otoritesi + veli bağı ön koşulu (#290: şube sayacını şişirir)"
+  "students|safe|POST|/api/students/resync-projections|.data.studentCount > 0|Öğrenci kapsam otoritesi + veli bağı ön koşulu; şube sayacını da mutlak tazeler (#290 onarıldı)"
   "businesses|safe|POST|/api/businesses/resync-projections||İşletme görünümleri"
   "branch-auth|safe|POST|/api/placements/backfill-branch-authorizations||İşletme alan yetkileri — koordinasyondan ÖNCE"
   "placements|safe|POST|/api/placements/resync-projections|.data.published > 0|Yerleştirme görünümleri (Payment, Coordination, Reporting) — #291 onarıldı"
@@ -253,7 +253,13 @@ done
 
 echo ""
 echo "=== Özet ==="
-for line in "${REPORT[@]}"; do echo "  $line"; done
+# Boş dizi + `set -u` = "unbound variable". Hiçbir faz atlanmadığında (yani her şey yolunda
+# gittiğinde) dizi boş kalır; koruma olmadan betik tam da başarı durumunda çökerdi.
+if [[ ${#REPORT[@]} -eq 0 ]]; then
+    echo "  (rapor satırı yok)"
+else
+    for line in "${REPORT[@]}"; do echo "  $line"; done
+fi
 echo ""
 printf '  %d faz: %d koştu, %d atlandı, %d şüpheli, %d hata\n' \
     "$TOTAL" "$RAN" "$SKIPPED" "$SUSPECT" "$FAILED"

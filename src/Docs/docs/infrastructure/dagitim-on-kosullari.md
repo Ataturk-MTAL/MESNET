@@ -48,8 +48,8 @@ olurdu. Kilitleyen test: `DeploymentPrerequisiteVerificationTests.Bulgu_varken_b
 :::warning Ölçer, koşturmaz
 Doğrulayıcı hiçbir resync ucunu **çağırmaz** ve hiçbir şey **yazmaz**. Açılıştan koşturmak bu
 depoda mümkün değildir: `UseWolverine` host'tan **sonra** başlar, açılıştan yapılan her yayın
-`WolverineHasNotStartedException` fırlatır. Ayrıca iki uç idempotent değildir (#290, #291) ve her
-yeniden başlatmada sayacı biraz daha bozardı. Koşturma sırası ve kimliği **operatördedir**.
+`WolverineHasNotStartedException` fırlatır. (#290 ve #291 kapandı; uçlar artık idempotent — ama
+açılış kısıtı Wolverine sıralaması yüzünden yerinde duruyor.) Koşturma sırası ve kimliği **operatördedir**.
 :::
 
 ### Neyin ölçüldüğü — ve neyin ölçülmediği
@@ -122,8 +122,8 @@ dağıtım betiği, koşmayan betikten kötüdür. Geliştirme için `--dev`.
 | `once` | Gerekli ama idempotent **değil** — tam bir kez | **Atlanır**; `--allow-once` + damga dosyası |
 | `broken` | Bilinen hatalı, veri bozar | **Atlanır**; `--include-broken` |
 
-Bugün `once`: `students/resync-projections` (#290 — şube öğrenci sayacını her koşuda şişirir).
-Bugün `broken`: **yok**.
+Bugün `once`: **yok**. Bugün `broken`: **yok**. Üç sınıf da tanımlı kalıyor — bir sonraki
+idempotent olmayan uç çıktığında yeniden yazılmasınlar diye.
 
 `placements/resync-projections` **onarıldı (#291)** ve artık `safe`: uç yaşam döngüsü olayını
 (`StudentPlaced`) değil, onarım olayını (`PlacementSnapshotResynced`) yayınlıyor. Ayrıntı aşağıda.
@@ -571,13 +571,57 @@ gönderim **başarısız olur ve loglanır** — sessiz düşmez.
 
 ## Resync / backfill uçları
 
-Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden çok kez
-çağrılabilir.
+Hepsi **idempotent**tir ve birden çok kez çağrılabilir — ama bu güvence **tüketicilerin upsert
+yapmasından kendiliğinden gelmez**. İki kez ölçülerek yanlış çıktı:
+
+- **#291:** `placements/resync-projections`, `StudentPlaced`'i yeniden yayınlıyordu. O olay
+  `InternshipSaga`'nın **başlatıcısıdır**; ikinci yayın tekil kısıt ihlaliyle ölü mektuba
+  düşüyordu. Ayrıca `Business` tüketicisi kapasiteyi `CountAsync() + 1` ile yazıyordu.
+- **#290:** `students/resync-projections`, `StudentRegistered`'ı yeniden yayınlıyordu.
+  `Coordination.StudentRegisteredCountConsumer` şube sayacını **artırıyor** ve görünüm öğrenci
+  başına değil **şube başına** tek satır — her koşu sayacı o şubedeki öğrenci sayısı kadar
+  şişiriyordu.
+
+İkisi de sessizdi: uç 200 dönüyor, log temiz kalıyordu. Düzeltme aynı desenle yapıldı — onarım
+yolu **ayrı bir anlık görüntü olayı** yayınlar (`PlacementSnapshotResynced`,
+`StudentSnapshotResynced`, `AttendanceSnapshotResynced`) ve tekrarı zararlı olan tüketici o
+olayı **dinlemez**.
+
+:::danger Sayacı besleyen sorgu, GİDENİ de yayınlamak zorundadır (#290)
+`SyncStudentCounts` eskiden **yalnız aktif öğrencisi olan** (şube, öğretim türü) gruplarını
+yayınlıyordu. Aktif öğrencisi sıfıra düşmüş bir şube için hiç olay çıkmıyor, tüketici o satıra
+hiç dokunmuyor ve sayaç **eski değerinde donuyordu**.
+
+Bu bir görüntü hatası değil, **para kararıdır**. Zincir ölçüldü:
+
+```
+BranchStudentCountView.StudentCountByClassYear
+  → UpsertBranchWorkloadConfigHandler  (GetValueOrDefault)
+  → GroupCalculator.CalculateGroups    (Norm Kadro Yön. Md.22)
+  → BranchWorkloadConfig.TotalWorkloadPool
+  → AssignBusinessToTeacherHandler     SERT TAVAN: WorkloadPoolExceeded
+```
+
+Yani öğrencisi kalmamış bir alanın koordinasyon saati tavanı sıfıra düşmüyor ve o alana
+**ücret doğuran** saat dağıtılmaya devam edilebiliyordu.
+
+Artık gruplama **tüm** öğrenciler üzerinden, sayım yalnız aktifler üzerinden yapılıyor; aktifi
+kalmamış şube **boş sözlükle** yayınlanıyor. "Dokunma" ile "sıfırla" farklı şeylerdir.
+Kilitleyen test: `StudentCountPolicyTests`.
+:::
+
+:::warning Yeni bir resync ucu yazarken
+Tüketicilerin `session.Store` yapması yetmez. Şunu sorun: bu olayın tüketicilerinden herhangi
+biri **sayaç artırıyor**, **listeye ekliyor**, **`Guid.NewGuid()` ile satır kimliği üretiyor**
+ya da bir **saga başlatıyor** mu? Biri bile evetse yaşam döngüsü olayını yeniden yayınlamayın.
+Kilitleyen test: `ResyncEventDriftTests`.
+:::
 
 | Uç | Ne yapar |
 | --- | --- |
 | `POST /api/attendance/resync-snapshots` | Devamsızlık kayıtlarının **bugünkü hâlini** yeniden yayınlar (#256). Payment'ın `StudentAbsenceView` **ve** Reporting'in `StudentAttendanceReportView` satırlarını onarır: donmuş `Pending` durumlar, işlenmemiş sağlık raporu onayları, silinmemiş satırlar (#256, #257). `attendance:report` ister (`attendance:manage` **değil** — o izin işletme rollerinde de var). İsteğe bağlı `?academicPeriodId=` ile daraltılır. **Kiracı başına** çağrılır. `AttendanceMarked` yayınlamaz, fesih zinciri tetiklenmez |
-| `POST /api/students/resync-projections` | Tüm öğrenciler için `StudentRegistered` yeniden yayınlanır — Attendance/Contract `StudentNameView`, Reporting ve Payment görünümlerini tazeler |
+| `POST /api/students/resync-projections` | Tüm öğrenciler için **`StudentSnapshotResynced`** yayınlanır (`StudentRegistered` **değil** — #290) — Attendance/Contract `StudentNameView`, Reporting, Payment ve Security görünümlerini tazeler. Şube öğrenci sayacı ayrıca **mutlak** olarak yeniden hesaplanır: uç, kurum + dönem başına `SyncStudentCounts` yayınlar. Yanıttaki `countScopesSynced` kaç kapsamın tazelendiğini gösterir. **Ayrıca `sync-counts` çağırmaya gerek yoktur** |
+| `POST /api/students/sync-counts` | Şube öğrenci sayacını (`BranchStudentCountView`) **mutlak** olarak yeniden hesaplar — artırmaz, **değiştirir**. `resync-projections` bunu zaten tetikler; ayrıca çağırmak gerekmez. Kurum + akademik dönem alır |
 | `POST /api/placements/resync-projections` | Tüm **aktif** yerleştirmeler için `StudentPlaced` yeniden yayınlanır — Payment `PlacementView`, Coordination not giriş görünümleri |
 | `POST /api/placements/backfill-branch-authorizations` | İşletmelerin alan yetkilerini mevcut yerleştirmelerden doldurur |
 | `POST /api/businesses/resync-projections` | Tüm işletmeler için `BusinessUpdated` yeniden yayınlanır — diğer modüllerin işletme görünümleri |

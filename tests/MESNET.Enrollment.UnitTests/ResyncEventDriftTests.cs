@@ -5,7 +5,8 @@ using Xunit;
 namespace MESNET.Enrollment.UnitTests;
 
 /// <summary>
-/// Onarım (resync) yolları <b>yaşam döngüsü başlatıcı</b> olay yayınlayamaz (#291).
+/// Onarım (resync) yolları, <b>tekrarı zararlı</b> olan olayları yeniden yayınlayamaz
+/// (#291, #290).
 ///
 /// <para><b>Neden kilit gerekiyor:</b> <c>bus.PublishAsync(new StudentPlaced(...))</c> bir
 /// resync handler'ında tamamen masum görünür ve derlenir, testler yeşil kalır, uç <b>200
@@ -16,17 +17,31 @@ namespace MESNET.Enrollment.UnitTests;
 ///
 /// <para>Ölçüldü (#291): <c>POST /api/placements/resync-projections</c> tam olarak bunu
 /// yapıyordu.</para>
+///
+/// <para><b>İkinci zarar türü — SAYAÇ (#290).</b> <c>StudentRegistered</c> tüketicilerinden
+/// biri şube sayacını <b>artırıyor</b> ve görünüm öğrenci başına değil <b>şube başına</b> tek
+/// satır. Yeniden yayın her koşuda sayacı o şubedeki öğrenci sayısı kadar şişiriyordu; sayı
+/// <c>UpsertBranchWorkloadConfigHandler</c> üzerinden öğretmen/grup ihtiyacına giriyor. Yine
+/// sessiz: uç 200 döner, log temiz kalır, tek iz yanlış bir sayıdır.</para>
 /// </summary>
 public class ResyncEventDriftTests
 {
     /// <summary>
-    /// Saga'yı başlatan olaylar. Yeni bir <c>Start(...)</c> girişi eklenirse bu liste de
-    /// büyümelidir — aksi hâlde kilit yeni başlatıcıyı görmez.
+    /// Onarım yolundan <b>yeniden yayınlanamayacak</b> olaylar ve nedenleri.
+    ///
+    /// <para>Liste elle tutulur çünkü "zararlı tekrar"ın iki ayrı biçimi var ve ikisi de metin
+    /// taramasıyla türetilemez: yaşam döngüsü başlatmak (saga <c>Start</c>) ve sayaç artırmak.
+    /// Yeni bir saga başlatıcısı ya da yeni bir artırımlı tüketici eklendiğinde bu liste de
+    /// büyümelidir — aksi hâlde kilit onu görmez.</para>
     /// </summary>
-    private static readonly string[] SagaStartingEvents = ["StudentPlaced"];
+    private static readonly (string Event, string Reason)[] NonRepublishableEvents =
+    [
+        ("StudentPlaced", "InternshipSaga'nın başlatıcı olayı (#291) — ikinci yayın tekil kısıt ihlaliyle ölü mektuba düşer"),
+        ("StudentRegistered", "Coordination.StudentRegisteredCountConsumer şube sayacını ARTIRIR (#290) — görünüm şube başına tek satır"),
+    ];
 
     [Fact]
-    public void Resync_handlerlari_yasam_dongusu_baslatici_olay_yayinlamaz()
+    public void Resync_handlerlari_tekrari_zararli_olay_yayinlamaz()
     {
         var violations = new List<string>();
 
@@ -34,19 +49,40 @@ public class ResyncEventDriftTests
         {
             var code = File.ReadAllText(file);
 
-            foreach (var starter in SagaStartingEvents)
+            foreach (var (name, reason) in NonRepublishableEvents)
             {
-                var publish = new Regex($@"PublishAsync\s*\(\s*new\s+{starter}\s*\(");
+                var publish = new Regex($@"PublishAsync\s*\(\s*new\s+{name}\s*\(");
                 if (publish.IsMatch(code))
-                    violations.Add($"{Path.GetFileName(file)} → {starter}");
+                    violations.Add($"{Path.GetFileName(file)} → {name} ({reason})");
             }
         }
 
         violations.ShouldBeEmpty(
-            "Onarım handler'ı saga başlatıcı olayı yeniden yayınlıyor. Uç 200 döner ama saga "
-            + "INSERT'i tekil kısıt ihlaliyle ölü mektuba düşer ve kapasite bozulur — hiçbir "
-            + "yerde hata görünmez. Onarım için ayrı bir anlık görüntü olayı yayınlayın "
-            + $"(PlacementSnapshotResynced, AttendanceSnapshotResynced deseni). İhlaller: {string.Join(", ", violations)}");
+            "Onarım handler'ı, tekrarı zararlı bir olayı yeniden yayınlıyor. Her iki zarar türü "
+            + "de SESSİZDİR: uç 200 döner, log temiz kalır. Onarım için ayrı bir anlık görüntü "
+            + "olayı yayınlayın (PlacementSnapshotResynced / StudentSnapshotResynced / "
+            + $"AttendanceSnapshotResynced deseni). İhlaller: {string.Join(", ", violations)}");
+    }
+
+    [Fact]
+    public void Onarim_olayini_sayac_tuketicisi_TUKETMEZ()
+    {
+        var counters = new[]
+        {
+            "src/Modules/Coordination/MESNET.Coordination.Application/Consumers/StudentRegisteredCountConsumer.cs",
+            "src/Modules/Coordination/MESNET.Coordination.Application/Consumers/StudentDeregisteredCountConsumer.cs",
+        };
+
+        foreach (var relative in counters)
+        {
+            var file = Path.Combine(RepoRoot(), relative);
+            File.Exists(file).ShouldBeTrue($"Sayaç tüketicisi taşınmış: {relative}. Kilit artık hiçbir şey korumuyor.");
+
+            // Bu dosyaya StudentSnapshotResynced aşırı yüklemesi eklemek, #290'ı geri alır:
+            // onarım yolu sayacı yeniden artırmaya başlar. Sayacın onarımı MUTLAK yoldan
+            // (SyncStudentCounts) gelir, artırımla değil.
+            File.ReadAllText(file).ShouldNotContain("StudentSnapshotResynced");
+        }
     }
 
     [Fact]
