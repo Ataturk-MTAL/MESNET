@@ -20,6 +20,10 @@ public static class ServiceRegistration
         });
         services.AddScoped<IUserPermissionProvider, UserPermissionProvider>();
 
+        // Kullanıcı ve davet okumalarının tek kapsam kapısı. UserAccount/UserInvitation
+        // kimlik katmanındadır; conjoined kiracılık onları süzmez.
+        services.AddScoped<UserScopeResolver>();
+
         // Açılışta realm'in depodaki tanımdan sapmadığını doğrular (#195). Realm import tek
         // seferlik olduğu için sapmayı görebilecek tek yer, realm'e gerçekten bağlanan süreçtir.
         services.AddHostedService<RealmVerificationHostedService>();

@@ -10,17 +10,15 @@
     :save-disabled="!file"
     @save="handleSave"
   >
-    <q-banner
+    <AppNotice
       v-if="requiresApproval"
+      type="info"
       dense
-      class="bg-blue-1 text-primary q-mb-sm"
+      class="q-mb-sm"
     >
-      <template #avatar>
-        <q-icon name="info" />
-      </template>
       Yüklediğiniz rapor koordinatör öğretmen onayına düşer. Onaylanana kadar devamsızlık türü
       değişmez.
-    </q-banner>
+    </AppNotice>
 
     <q-file
       v-model="file"
@@ -46,6 +44,7 @@ import { ref, watch } from 'vue'
 import { attendanceApi, HEALTH_REPORT_ACCEPT, HEALTH_REPORT_MAX_BYTES } from 'src/api/attendance'
 import { useNotify } from 'src/composables/useNotify'
 import FormDialog from 'components/FormDialog.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const open = defineModel<boolean>({ required: true })
 

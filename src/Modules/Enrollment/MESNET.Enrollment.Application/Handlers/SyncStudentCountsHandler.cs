@@ -2,6 +2,7 @@ using Marten;
 using MESNET.Enrollment.Application.Commands;
 using MESNET.Enrollment.Core.Entities;
 using MESNET.Enrollment.Core.Enums;
+using MESNET.Enrollment.Core.Policies;
 using MESNET.Enrollment.Shared.Events;
 using Wolverine;
 
@@ -25,19 +26,16 @@ public static class SyncStudentCountsHandler
                 s.AcademicPeriodId == command.AcademicPeriodId)
             .ToListAsync(cancellationToken);
 
-        // Kayıt silindi ve tamamladı hariç aktif öğrencileri filtrele
-        var active = allStudents
-            .Where(s => !s.Status.IsFinal);
-
-        var events = active
-            .GroupBy(s => new { s.BranchCode, s.EducationTypeName })
-            .Select(g => new StudentCountsSynced(
+        // Karar saf StudentCountPolicy'dedir; handler yalnız girdi toplar ve olaya çevirir.
+        // Gruplama TÜM öğrenciler üzerinden, sayım yalnız aktifler üzerinden yapılır —
+        // gerekçesi ve ölçümü politikanın belgesinde (#290).
+        var events = StudentCountPolicy.ActiveCountsByBranch(allStudents)
+            .Select(c => new StudentCountsSynced(
                 command.InstitutionId,
                 command.AcademicPeriodId,
-                g.Key.BranchCode,
-                g.Key.EducationTypeName,
-                g.GroupBy(s => s.ClassYear)
-                    .ToDictionary(cg => cg.Key, cg => cg.Count())))
+                c.BranchCode,
+                c.EducationTypeName,
+                c.Counts))
             .ToList();
 
         // Event yayınlama handler'ın işidir (cross-module → PublishAsync). Endpoint artık publish ETMEZ.

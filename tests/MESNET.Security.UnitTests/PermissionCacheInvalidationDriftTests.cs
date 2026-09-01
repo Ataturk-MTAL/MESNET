@@ -35,7 +35,7 @@ public sealed class PermissionCacheInvalidationDriftTests
     /// hiçbir şey önbelleğe koymaz.</para>
     /// </summary>
     private static readonly Regex PermissionFieldWrite = new(
-        @"\w+\.(Roles|IsEnabled|DirectPermissions|BranchCodes|LinkedStudentIds|DeletedAt|InstitutionId|BusinessId)\s*=(?!=)",
+        @"\w+\.(Roles|IsEnabled|DirectPermissions|BranchCodes|LinkedStudentIds|DeletedAt|InstitutionId|BusinessId|ActiveInstitutionId|ActiveContextSessionId)\s*=(?!=)",
         RegexOptions.Compiled);
 
     private static readonly Regex ClassHeader = new(

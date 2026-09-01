@@ -1,6 +1,10 @@
 <template>
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
+      <a
+        class="atlama-baglantisi"
+        href="#ana-icerik"
+      >İçeriğe atla</a>
       <q-toolbar>
         <q-btn
           flat
@@ -8,9 +12,67 @@
           round
           icon="menu"
           aria-label="Menüyü aç/kapat"
+          :aria-expanded="drawerOpen ? 'true' : 'false'"
           @click="drawerOpen = !drawerOpen"
-        />
-        <q-toolbar-title>MESNET</q-toolbar-title>
+        >
+          <q-tooltip>Menüyü aç/kapat</q-tooltip>
+        </q-btn>
+        <q-toolbar-title class="baslik-daralmaz">MESNET</q-toolbar-title>
+
+        <!--
+          Bağlam göstergesi — HEADER'DA, "MESNET"in hemen sağında (ürün ilkesi #3: kapsam her
+          zaman ekranda okunur; kenar çubuğu kapanabilir, header kapanmaz). Eskiden çekmecenin
+          tepesindeydi ve ince bir rozetti — buradan kaldırıldı (aşağıdaki drawer'da izi yok).
+        -->
+        <template v-if="hasActiveContext || showContextSelectButton">
+          <span
+            class="baglam-ayrac"
+            aria-hidden="true"
+          />
+          <q-chip
+            v-if="hasActiveContext"
+            clickable
+            square
+            color="warning"
+            text-color="white"
+            icon="swap_horiz"
+            class="baglam-cip"
+            :aria-label="
+              activeInstitutionName
+                ? `Aktif kurum bağlamını değiştir — ${activeInstitutionName}`
+                : 'Aktif kurum bağlamını değiştir'
+            "
+            @click="goToContextSelect"
+          >
+            <!-- Ad çözülene kadar yer tutucu METİN gösterilmez (bulgu 2) — yalnız iskelet. -->
+            <q-skeleton
+              v-if="!activeInstitutionName"
+              type="text"
+              width="140px"
+              class="baglam-cip-iskelet"
+            />
+            <span
+              v-else
+              class="baglam-cip-metin"
+            >{{ activeInstitutionName }}</span>
+            <q-tooltip v-if="activeInstitutionName">
+              {{ activeInstitutionName }}
+            </q-tooltip>
+          </q-chip>
+          <q-btn
+            v-else
+            outline
+            no-caps
+            dense
+            color="white"
+            text-color="white"
+            icon="swap_horiz"
+            label="Kurum Seç"
+            class="baglam-buton"
+            @click="goToContextSelect"
+          />
+        </template>
+
         <q-space />
         <span
           v-if="authStore.user"
@@ -23,13 +85,15 @@
           round
           dense
           icon="notifications"
-          aria-label="Bildirimler"
+          :aria-label="unreadCount > 0 ? `Bildirimler — ${unreadCount} okunmamış` : 'Bildirimler — okunmamış yok'"
           class="q-mr-xs"
         >
           <q-badge
             v-if="unreadCount > 0"
             color="negative"
             floating
+            aria-hidden="true"
+            class="tabular-nums"
           >
             {{ unreadCount }}
           </q-badge>
@@ -45,7 +109,7 @@
                 v-if="notificationStore.notifications.length === 0"
                 dense
               >
-                <q-item-section class="text-grey text-caption text-center q-pa-md">
+                <q-item-section class="text-grey-7 text-caption text-center q-pa-md">
                   Bildirim yok
                 </q-item-section>
               </q-item>
@@ -66,9 +130,17 @@
                   <q-item-label class="text-caption text-weight-medium">
                     {{ eventLabel(n.eventType) }}
                   </q-item-label>
+                  <!--
+                    Zaman damgası grey-7 DEĞİL grey-8: bu satırın zemini okunmamış
+                    bildirimde bg-info-soft (#e8edf1) oluyor — yukarıdaki :class koşulu.
+                    Ölçüldü: grey-7 (#757575) o zeminde 3,91:1 ile 4,5:1 eşiğinin altında
+                    kalıyor; grey-8 (#616161) beyazda 6,19:1, #e8edf1 üzerinde 5,25:1 —
+                    her iki zemini de geçiyor. Quasar'ın kendi .q-item__label--caption
+                    rengini bu sınıf !important ile eziyor, yani devreye giren renk budur.
+                  -->
                   <q-item-label
                     caption
-                    class="text-grey"
+                    class="text-grey-8"
                   >
                     {{ timeAgo(n.occurredAt) }}
                   </q-item-label>
@@ -81,8 +153,11 @@
                     size="xs"
                     icon="close"
                     aria-label="Bildirimi kaldır"
+                    class="notif-remove-btn"
                     @click.stop="notificationStore.remove(i)"
-                  />
+                  >
+                    <q-tooltip>Bildirimi kaldır</q-tooltip>
+                  </q-btn>
                 </q-item-section>
               </q-item>
               <q-item
@@ -91,7 +166,7 @@
                 clickable
                 @click="notificationStore.clear()"
               >
-                <q-item-section class="text-center text-caption text-grey">
+                <q-item-section class="text-center text-caption text-grey-7">
                   Tümünü temizle
                 </q-item-section>
               </q-item>
@@ -105,7 +180,9 @@
           icon="logout"
           aria-label="Çıkış yap"
           @click="onLogout"
-        />
+        >
+          <q-tooltip>Çıkış yap</q-tooltip>
+        </q-btn>
       </q-toolbar>
     </q-header>
 
@@ -116,6 +193,12 @@
     >
       <q-scroll-area class="fit">
         <q-list padding>
+          <!--
+            Bağlam göstergesi/seçici artık HEADER'da ("MESNET"in sağında, q-toolbar) —
+            kenar çubuğu kapanabilir, header kapanmaz (ürün ilkesi #3). Eski rozet ve
+            "Kurum Seç" düğmesi buradan kaldırıldı; iki yerde durmasın.
+          -->
+
           <!-- Dönem Seçici -->
           <q-item
             v-if="periodStore.isLoaded && periodStore.periods.length > 0"
@@ -139,8 +222,17 @@
                       <q-item-label>{{ opt.label }}</q-item-label>
                     </q-item-section>
                     <q-item-section side>
+                      <!--
+                        Kapalı dönem rozeti grey-5 olamaz: q-badge metni her zaman beyazdır
+                        (quasar.css .q-badge → color: #fff, 12px normal ağırlık → metin
+                        eşiği 4,5:1) ve grey-5 (#bdbdbd) beyaz metinle 1,88:1 veriyordu —
+                        ne 4,5:1 metin eşiğini ne 3:1 grafik eşiğini geçiyor. grey-9
+                        (#424242) beyaz metinle 10,05:1. Ton keyfî değil: StatusBadge.vue
+                        "kapatılmış" durumunu da grey-9 ile gösterir (CLOSED sabiti);
+                        "taslak/pasif" orada grey-8'dir.
+                      -->
                       <q-badge
-                        :color="opt.active ? 'positive' : 'grey-5'"
+                        :color="opt.active ? 'positive' : 'grey-9'"
                         :label="opt.active ? 'Aktif' : 'Kapalı'"
                       />
                     </q-item-section>
@@ -244,7 +336,11 @@
       </q-scroll-area>
     </q-drawer>
 
-    <q-page-container>
+    <q-page-container
+      id="ana-icerik"
+      role="main"
+      tabindex="-1"
+    >
       <router-view v-slot="{ Component }">
         <transition
           :name="transitionName"
@@ -298,7 +394,7 @@
         </div>
       </q-card-section>
 
-      <q-card-section class="text-center text-caption text-grey-6 q-pt-none">
+      <q-card-section class="text-center text-caption text-grey-7 q-pt-none">
         &copy; {{ currentYear }} MESNET — Tüm hakları saklıdır.
       </q-card-section>
     </DetailDialog>
@@ -311,6 +407,8 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 import { useNotificationStore } from 'stores/notifications'
 import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
+import { useInstitutionStore } from 'stores/institution'
+import { Permissions } from 'utils/permissions'
 import { logout } from 'boot/auth'
 import { useNavigation } from 'src/composables/useNavigation'
 import { eventLabel, timeAgo } from 'src/utils/notificationFormat'
@@ -321,6 +419,7 @@ const authStore = useAuthStore()
 const { filteredMenu, isExpanded, toggleGroup, activeGroupKey } = useNavigation()
 const notificationStore = useNotificationStore()
 const periodStore = useAcademicPeriodStore()
+const institutionStore = useInstitutionStore()
 
 // Sayfa geçişi yönü: form route'una giriş → liste sola kayar/form sağdan girer; çıkış → tersi; diğer nav → fade
 const router = useRouter()
@@ -336,6 +435,53 @@ const appVersion = '0.1.0'
 const currentYear = new Date().getFullYear()
 
 const unreadCount = computed(() => notificationStore.unreadCount)
+
+/**
+ * Bağlam KURULU mu — `authStore.user?.activeInstitutionId` dolu mu sorusu. Ada (isme)
+ * BAKMAZ: kurum adı henüz yüklenmemişken de bağlam kuruludur (bulgu 2). Header'daki çip bu
+ * bayrağa göre görünür; içindeki metin/iskelet ayrımı `activeInstitutionName`'e bakar.
+ */
+const hasActiveContext = computed(() => Boolean(authStore.user?.activeInstitutionId))
+
+/**
+ * Aktif bağlamdaki kurumun adı — `null` iki ayrı anlama gelebilir: bağlam yok ya da bağlam
+ * var ama ad henüz yüklenmedi (`hasActiveContext` bu ikisini ayırır, bkz. yukarısı).
+ *
+ * <p>Ad `institutionStore.institution`'dan gelir: bağlam aktifken store `authStore.
+ * currentInstitutionId`'yi (Görev 8 → aktif bağlam varsa o) okuyarak zaten AKTİF okulun
+ * profilini yükler (bkz. `stores/institution.ts`), ikinci bir sorgu yazılmaz.</p>
+ *
+ * <p><b>Yer tutucu METİN döndürülmez</b> (bulgu 2) — ad gelene kadar `null` kalır ve şablon
+ * bunun yerine `q-skeleton` gösterir. Yanlış-tanıdık bir metin ("seçili kurum adına
+ * çalışıyorsunuz") kullanıcının bir an hangi okulda olduğunu okumasını engellerdi.</p>
+ */
+const activeInstitutionName = computed(() =>
+  hasActiveContext.value ? (institutionStore.institution?.fullName ?? null) : null,
+)
+
+/**
+ * "Kurum Seç" butonu yalnız bağlam YOKKEN ve kullanıcının kendi düğümü bir üst düğümse
+ * (il/ilçe müdürlüğü) görünür. Okul kullanıcısında ikisi de görünmez.
+ *
+ * <b>`hasActiveContext`'e bakar, `activeInstitutionName`'e DEĞİL</b> — ad henüz yüklenmemişken
+ * (bulgu 2'deki yükleme penceresi) bağlam yine de kuruludur; ada bakılsaydı o pencerede bu
+ * buton bir an yanlışlıkla görünürdü.
+ *
+ * <b>Rol adına BAKILMAZ</b> (depo kuralı) — `useNavigation.ts`'teki `visibilityContext` ile
+ * aynı sinyal: `institutionStore`'daki yüklü kurumun `nodeType`'ı. Bağlam yokken bu alan
+ * kullanıcının EV kurumunu taşır (yine `currentInstitutionId` üzerinden), yani il/ilçe
+ * müdürlüğü mü sorusuna doğru cevabı verir. Yeni bir `authStore` yardımcısına gerek yok —
+ * `institutionStore.institution?.nodeType` zaten menüde aynı amaçla kullanılan mevcut sinyal.
+ */
+const showContextSelectButton = computed(() => {
+  if (hasActiveContext.value) return false
+  const nodeType = institutionStore.institution?.nodeType
+  return nodeType === 'Province' || nodeType === 'District'
+})
+
+function goToContextSelect() {
+  router.push('/context').catch(() => {})
+}
 
 const semesterOpts = [...semesterOptions]
 
@@ -369,6 +515,27 @@ onMounted(async () => {
   if (authStore.isAuthenticated && !periodStore.isLoaded) {
     await periodStore.loadPeriods()
   }
+})
+
+/*
+ * Kiracının marka teması (#brand-palette).
+ *
+ * Tetikleyici burada duruyor çünkü MainLayout kimliği doğrulanmış kabuktur: her sayfa
+ * bunun içinde açılır, yani tema hangi rotadan girilirse girilsin uygulanır. Temayı asıl
+ * UYGULAYAN yer store'dur (`loadInstitution` → `applyBrandTheme`); burada yalnız yükleme
+ * tetiklenir, renk mantığı tekrarlanmaz.
+ *
+ * Kapı `institution:view`: kurum ucu o izni ister ve izni olmayan rol (ör. işletme
+ * yetkilisi) için istek 403 dönerdi. İzinsiz kullanıcı derleme zamanı varsayılanını
+ * (Mührü Lacivert) görür — bu bir kırılma değil, kapsamın dürüst sonucudur.
+ *
+ * `await` edilmiyor: tema kozmetiktir, dönem yüklemesini ya da ilk boyamayı bekletmemeli.
+ * `void` yerine `.catch(() => {})` — CLAUDE.md fire-and-forget kuralı.
+ */
+onMounted(() => {
+  if (!authStore.isAuthenticated) return
+  if (!authStore.hasPermission(Permissions.Institution.View)) return
+  institutionStore.loadInstitution().catch(() => {})
 })
 
 async function onLogout() {
@@ -416,5 +583,132 @@ async function onLogout() {
 .slide-right-leave-to {
   transform: translateX(40px);
   opacity: 0;
+}
+</style>
+
+<style scoped>
+/*
+ * Başlık büyümesin — "MESNET"in HEMEN SAĞINDA bir ayraç+çip istiyoruz. Quasar'ın
+ * `.q-toolbar__title` varsayılanı `flex: 1 1 0%`tir (node_modules/quasar/.../QToolbar.sass):
+ * kutu büyür ama metin sola yaslı kaldığı için ayraç/çip "MESNET"ten UZAKLAŞIP q-space'e
+ * yapışırdı. `flex: 0 0 auto` kutuyu içeriğine küçültür, ayraç hemen bitişik durur.
+ */
+.baslik-daralmaz {
+  flex: 0 0 auto;
+}
+
+/*
+ * Bağlam ayracı — "MESNET" ile göstergeyi ayıran saç teli (1px). Header zemini mührü lacivert
+ * (ya da kiracının kaydırdığı primary); beyaz %24 opaklık zeminden ayrılan ama bağırmayan bir
+ * çizgi verir. Renkli `border-left` YASAK (craft floor) — bu bir DIŞ ayraç, kenarlık değil.
+ */
+.baglam-ayrac {
+  display: inline-block;
+  width: 1px;
+  align-self: stretch;
+  margin: 8px 12px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+/*
+ * Bağlam çipi — "gösterge ince olamaz": il/ilçe yetkilisinin bütün zamanı bir bağlamın
+ * içinde geçer, hangi okul adına davrandığı her an tartışmasız görünmeli. Dolu `warning`
+ * zemini + beyaz metin bu depoda 4,8:1 için özel ayarlandı (`$warning` = #9A6B00, bkz.
+ * quasar-variables.sass yorumu) — anlamsal renkler kiracıdan bağımsızdır (DESIGN.md), yani
+ * bu çift her kiracıda aynı kalır.
+ */
+.baglam-cip {
+  font-weight: 600;
+}
+
+/* Geniş görünümde ad TAM görünür — kesilme yok. Dar görünümde ellipsis (aşağıdaki media query). */
+.baglam-cip-metin {
+  white-space: nowrap;
+}
+
+.baglam-cip-iskelet {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+@media (max-width: 599px) {
+  /* Kesilme yalnız DAR görünümde: çip amberliğini ve ikonunu korur, yalnız metin kısalır. */
+  .baglam-cip-metin {
+    display: inline-block;
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+}
+
+/*
+ * "Kurum Seç" outline butonu HEADER zemininde: `color="primary"` burada YANLIŞ olurdu —
+ * header'ın kendi zemini primary, yani kenarlık/metin görünmez kaybolurdu. Beyaz seçildi;
+ * küratörlü sekiz paletin hepsinde primary beyaz metinle en az 11,2:1 verir (DESIGN.md), yani
+ * bu kontrast kiracıdan BAĞIMSIZ garantilidir — tema kaymasıyla kırılmaz.
+ */
+.baglam-buton {
+  font-weight: 600;
+}
+
+/*
+ * Odak halkası — HEADER zemininde görünür olmalı (craft floor: "browser surfaces", asla
+ * kaldırılmaz). Site geneli odak rengi 2px mührü lacivert'tir (DESIGN.md → Buttons); o renk
+ * TAM DA bu header'ın kendi zemini olduğu için burada kullanılırsa halka görünmez olurdu.
+ * Beyaz, yukarıdaki "Kurum Seç" gerekçesiyle aynı garantiye (≥11,2:1) dayanır.
+ */
+.baglam-cip:focus-visible,
+.baglam-buton:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Dokunma hedefi WCAG 2.2 SC 2.5.8 (24x24 CSS px) — size="xs" görsel olarak küçük kalıyor. */
+.notif-remove-btn {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+/*
+ * Blok atlama (WCAG 2.4.1) — kalıcı sol çekmece her sayfada onlarca menü bağlantısını
+ * tekrarlıyor; klavye kullanıcısı buradan doğrudan #ana-icerik'e geçer.
+ *
+ * Zemin ÜST BARIN RENGİ OLAMAZ: Quasar'ın kendi kuralı
+ * `.q-layout__section--marginal { background-color: var(--q-primary) }`
+ * (node_modules/quasar/src/components/layout/QLayout.sass) üst bara zaten aynı rengi
+ * veriyor — bağlantı odaklandığında üst barla birebir aynı zemine oturur ve ayrı bir
+ * kontrol olarak hiç görünmez. Bu yüzden kağıt beyazı zemin + lacivert metin
+ * (ölçüldü: #1E3A5F / #FFFFFF = 11,50:1, metin eşiği 4,5:1) ve 2px lacivert dış çizgi
+ * (11,50:1 — grafik nesnesi eşiği 3:1).
+ *
+ * Dış çizginin arkasındaki zemin TARAYICI VARSAYILANI BEYAZDIR, #EDEFF2 değil: bu
+ * uygulamada sayfa zeminine hiç renk verilmiyor. Quasar çekirdeği `body`ye arka plan
+ * koymuyor (core/typography.sass'taki `body` bloğunda `background` yok; tek tanım
+ * `body.body--dark` altında, core/dark.sass), src/assets/app.css'te body/`.q-layout`/
+ * `.q-page-container` için arka plan kuralı yok ve index.html stil taşımıyor. #EDEFF2
+ * yalnızca `.bg-neutral-soft` BİLEŞEN yüzeyi olarak var (app.css). Odaklı bağlantı böyle
+ * bir yüzeyin üstüne denk gelirse oran 9,99:1'e iner — o da 3:1 eşiğini rahat geçer.
+ *
+ * Konum üst barın ALTINA iner (`top: 100%`): `top: 8px; left: 8px` bağlantıyı toolbar'ın
+ * sol başındaki menü butonunun üzerine oturtuyordu.
+ *
+ * Metin/dış çizgi rengi `var(--q-primary)`; düz hex yedeği bilerek yazılmadı — kimlik
+ * kiracıdan gelebilir, sabit bir kopya tema değişince yerinde donar.
+ */
+.atlama-baglantisi {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: #fff;
+  color: var(--q-primary);
+  border-radius: 8px;
+  outline: 2px solid var(--q-primary);
+  outline-offset: 2px;
+}
+.atlama-baglantisi:focus {
+  left: 8px;
+  top: calc(100% + 10px);
 }
 </style>

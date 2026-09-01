@@ -2,6 +2,7 @@
   "name": "mesnet-web",
   "version": "0.1.0",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "dev": "vite",

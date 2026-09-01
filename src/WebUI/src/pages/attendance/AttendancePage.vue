@@ -4,6 +4,7 @@
       <PermissionGuard :permission="Permissions.Attendance.Manage">
         <q-btn
           :disable="periodStore.isReadOnly"
+          unelevated
           color="primary"
           icon="add"
           label="Devamsızlık Ekle"
@@ -101,6 +102,17 @@
       />
     </div>
 
+    <!-- Hepsi sıradaysa satır rozeti hiçbir şeyi AYIRT ETMEZ: yirmi rozet yerine tek cümle.
+         Bilgi mavisi (`bg-info-soft` / `text-info-strong`) kullanılır, hardal DEĞİL — iki yüzey
+         birbirini dışlar (`showRowTurnSignal` ile `allRowsAwaitMe` aynı anda doğru olamaz),
+         böylece ekranda tek hardal bağlamı korunur. -->
+    <AppNotice
+      v-if="allRowsAwaitMe"
+      type="info"
+      class="q-mb-md"
+      :message="`Bu sayfadaki ${records.length} kaydın tamamı sizin onayınızı bekliyor.`"
+    />
+
     <AppTable
       :rows="records"
       :columns="columns"
@@ -113,9 +125,10 @@
           <div class="text-weight-medium">
             {{ studentMap[row.studentId]?.fullName ?? '—' }}
           </div>
+          <!-- grey-6 (#9e9e9e) beyaz q-td zemininde 2,68:1 idi; grey-7 (#757575) 4,61:1. -->
           <div
             v-if="studentMap[row.studentId]?.info"
-            class="text-caption text-grey-6"
+            class="text-caption text-grey-7"
           >
             {{ studentMap[row.studentId].info }}
           </div>
@@ -131,7 +144,34 @@
         <q-td><StatusBadge :slug="row.absenceTypeSlug" /></q-td>
       </template>
       <template #body-cell-statusSlug="{ row }">
-        <q-td><StatusBadge :slug="row.statusSlug" /></q-td>
+        <q-td>
+          <StatusBadge :slug="row.statusSlug" />
+          <!-- "SIRA SİZDE" — bu ekrandaki TEK hardal bağlamı (DESIGN.md "Tek Ses Kuralı").
+               Bu sayfada İKİ ayrı onay kuyruğu var (devamsızlık kaydı ve sağlık raporu) ve ikisi
+               de aynı izne bağlı; ayrı ayrı işaretlemek aynı ekranda iki hardal bağlamı yaratır
+               ve nadirliği — yani anlamı — öldürürdü. Bu yüzden TEK boolean, TEK rozet; hangi
+               kuyruk olduğunu tooltip yazar. Rozet "Sağlık Raporu" sütununa değil "Durum"
+               sütununa konur: sorumluyu bildiren sütun budur.
+
+               `showRowTurnSignal` kapısı ZORUNLUDUR, süs değil: rozet yalnız görünür satırların
+               BİR KISMI sıradayken çıkar. Tamamı sıradaysa tablonun üstündeki tek AppNotice
+               devreye girer (gerekçe: script, `showRowTurnSignal`). Ayırt etmeyen rozet Durum
+               sütununu tekrar etmekten başka iş yapmaz.
+
+               Kontrast (bu düzenlemede yeniden hesaplandı, sRGB relative luminance / WCAG 2.x):
+               #796117 → L = 0,1268; beyaza karşı 1,05/0,1768 = 5,94:1 (metin eşiği 4,5:1).
+               q-badge metni her zaman #fff (QBadge.sass:3). Saf #C9A227 yasak: 2,42:1 ile
+               metin eşiğini de grafik nesnesi eşiğini (3:1) de geçemez.
+               Renk Yalnız Kanıt Kuralı: rozet metin etiketi taşır. -->
+          <q-badge
+            v-if="showRowTurnSignal && isMyTurn(row)"
+            color="accent-strong"
+            class="text-body2 q-px-sm q-py-xs q-ml-xs"
+            label="Sıra sizde"
+          >
+            <q-tooltip>{{ myTurnHint(row) }}</q-tooltip>
+          </q-badge>
+        </q-td>
       </template>
       <template #body-cell-healthReport="{ row }">
         <q-td>
@@ -139,9 +179,13 @@
             v-if="row.healthReportStatus !== 'None'"
             :slug="row.healthReportStatusSlug"
           />
+          <!--
+            Sağlık raporu yoksa StatusBadge'in yerine geçen bilgi taşıyıcı metin; dekoratif
+            değil. grey-6 (#9e9e9e) beyaz zeminde 2,68:1 idi, grey-7 (#757575) 4,61:1.
+          -->
           <span
             v-else
-            class="text-grey-6"
+            class="text-grey-7"
           >—</span>
           <q-tooltip v-if="row.healthReportRejectionReason">
             {{ row.healthReportRejectionReason }}
@@ -315,6 +359,51 @@ const healthReportRejectDialog = ref(false)
 const canEnterHealthReportDirectly = computed(() =>
   authStore.hasPermission(Permissions.Attendance.HealthReportDirect),
 )
+
+/**
+ * "Sıra sizde" — hardal bu ekranda başka hiçbir anlama gelmez.
+ *
+ * **Sinyal, kaydı İLERLETEN ucun iznine bağlıdır — listeyi açan izne değil.** Her iki kuyruğu da
+ * ilerleten uçlar aynı izni ister: `attendance:approve` (AttendanceEndpoints.cs:40 `/approve`,
+ * :58 `/health-report/approve`, :60 `/health-report/reject`). Listeyi açan izin ise
+ * `PermissionPolicies.AttendanceViewOrOwn`'dur (:65) ve çok daha geniştir.
+ * Ölçüldü: DepartmentHead `attendance:view` + `attendance:report` + `attendance:delete` taşır,
+ * `attendance:approve` TAŞIMAZ (RolePermissionMap.cs:185-187) ve tek wildcard'ı `department:*`
+ * (:177) `attendance:` önekini kapsamaz — o kullanıcıda rozet hiç yanmaz, doğrusu da budur.
+ * Kiracı ve kapsam süzmesi zaten sunucuda; rozet sunucunun kabul edeceğinden fazlasını vaat etmez.
+ *
+ * **`Recorded` bilerek DIŞARIDA.** "Doğrula" da aynı izinle çalışır ama `Recorded` bir kuyruk
+ * değil, kayıtların olağan hâlidir: sayılsaydı listenin büyük kısmı hardala döner ve nadirlik —
+ * sinyalin tek anlamı — ölürdü. Sıra sizde "onay bekleyen iş var" demektir, "el atılabilir kayıt
+ * var" değil.
+ *
+ * **Kapalı dönemde bastırılır — ama satır "kilitli" değil, gerekçe budur.** Dört onay komutu da
+ * `IAttendancePeriodScoped` uygular (ApproveAttendance, VerifyAttendance, ApproveHealthReport,
+ * RejectHealthReport) ve `AttendancePeriodGuardMiddleware` kaydın dönemi kapalıysa
+ * `AttendanceErrors.AcademicPeriodClosed` fırlatır — yani istek SUNUCUDA reddedilir. Rozet
+ * "sıra sizde" derken sunucunun geri çevireceği bir işi vaat edemez.
+ *
+ * Doğrulandı ve BORÇ olarak duruyor: bu sayfada onay butonları kapalı dönemde devre dışı DEĞİL.
+ * `:disable="periodStore.isReadOnly"` yalnız başlıktaki "Devamsızlık Ekle" ve satırdaki
+ * "Sağlık raporu yükle" butonlarında var; "Onayla", "Doğrula", "Sağlık raporunu onayla" ve
+ * "Sağlık raporunu reddet" hâlâ tıklanabilir ve hata ancak sunucudan döner. CLAUDE.md "Geçmiş
+ * Dönem Kuralı" ve DESIGN.md ("kapalı dönemde tüm girdiler disable — gizlenmez, kilitli görünür")
+ * bunu ister; bu tur davranışa dokunmadığı için düzeltilmedi. Rozetin bastırılması o borcu
+ * kapatmaz, yalnız yanlış vaadi tekrarlamaz.
+ */
+function isMyTurn(row: AttendanceRecordDto): boolean {
+  if (periodStore.isReadOnly) return false
+  if (!authStore.hasPermission(Permissions.Attendance.Approve)) return false
+  return row.status === 'Pending' || row.healthReportStatus === 'Pending'
+}
+
+/** Hangi kuyruğun beklediğini yazar — renk tek sinyal olmasın (Renk Yalnız Kanıt Kuralı). */
+function myTurnHint(row: AttendanceRecordDto): string {
+  const waiting: string[] = []
+  if (row.status === 'Pending') waiting.push('devamsızlık onayı')
+  if (row.healthReportStatus === 'Pending') waiting.push('sağlık raporu onayı')
+  return `Bu kayıtta ${waiting.join(' ve ')} sizi bekliyor`
+}
 const studentIdFilter = ref('')
 const statusFilter = ref<string | null>(null)
 const monthFilter = ref<number | null>(null)
@@ -336,6 +425,27 @@ const { rows: records, loading, pagination, onRequest, load } = useServerPaginat
   defaultSortBy: 'date',
   defaultDescending: true,
 })
+
+/**
+ * Sinyal AYIRT ETTİĞİ yerde durur.
+ *
+ * Ölçülen tuzak: "Durum" süzgecinde "Onay Bekliyor" seçilince (statusOptions'ın ilk seçeneği,
+ * `value: 'Pending'`) sunucu yalnız Pending satır döndürür — o an EKRANDAKİ HER SATIR yanar ve
+ * rozet Durum sütununu tekrar etmekten başka bir iş yapmaz. Aynı şey süzgeçsiz de olabilir:
+ * kuyruğun tek başına kaldığı bir sayfada tüm satırlar sıradadır.
+ *
+ * Bu yüzden üç durum ayrılır:
+ *   - bir KISMI sırada  → satır rozeti (ayırt eder)
+ *   - TAMAMI sırada     → tek yüzey bildirimi (AppNotice, şablonun üstünde)
+ *   - hiçbiri sırada    → hiçbir şey
+ */
+const turnRows = computed(() => records.value.filter(isMyTurn))
+const showRowTurnSignal = computed(
+  () => turnRows.value.length > 0 && turnRows.value.length < records.value.length,
+)
+const allRowsAwaitMe = computed(
+  () => records.value.length > 0 && turnRows.value.length === records.value.length,
+)
 
 // ID → metadata lookup map'leri (tablo satırlarında isim göstermek için)
 const studentMap = computed<Record<string, { fullName: string; info: string; branchCode: string }>>(() => {

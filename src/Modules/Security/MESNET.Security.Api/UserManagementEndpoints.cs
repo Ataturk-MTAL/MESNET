@@ -17,6 +17,12 @@ public static class UserManagementEndpoints
     {
         var group = app.MapGroup("/api/security/users").WithTags("UserManagement");
 
+        // Aktif bağlam — kullanıcının KENDİ bağlamı, başkasınınki değil; bu yüzden yolda
+        // kullanıcı kimliği YOK. Ek izin gerektirmez: kapı alt ağaç kontrolüdür ve o
+        // handler'dadır. Sabit segmentli rota, aşağıdaki "/{userAccountId:guid}" kalıbından
+        // ÖNCE kaydedilir — aynı gerekçe InstitutionEndpoints'te "/provinces" için de geçerli.
+        group.MapPost("/me/context", SetContext).RequireAuthorization();
+
         group.MapPost("/", CreateUser).RequireAuthorization(Permissions.UserManagement.Create);
         group.MapGet("/", GetUsers).RequireAuthorization(Permissions.UserManagement.View);
         group.MapGet("/{userAccountId:guid}", GetUser).RequireAuthorization(Permissions.UserManagement.View);
@@ -29,7 +35,13 @@ public static class UserManagementEndpoints
         // YENİ İZİN TANIMLANMADI: "hangi kuruma" sorusunu izin değil aktörün kendi kurum
         // kapsamı cevaplar (UserInstitutionScopePolicy). Ayrı bir izin, "user:*" wildcard'ı
         // üzerinden zaten aynı iki role düşerdi (ADR-0002) — erişimi hiç daraltmazdı.
-        group.MapPost("/{userAccountId:guid}/institution", ChangeInstitution).RequireAuthorization(Permissions.UserManagement.RolesManage);
+        //
+        // Birleşik policy (B parçası): il/ilçe yetkilisi rollerinde user:roles:manage YOKTUR
+        // (kasıtlı — alt ağaçtaki her okulda her kullanıcının rollerini değiştirmek istenenden
+        // kat kat geniş). Yalnız RolesManage ile korunsaydı müdahale yolu (ChangeUserInstitutionHandler
+        // içindeki InstitutionBootstrapPolicy dalı) hiç tetiklenmezdi — ucun kendisi kapalı kalırdı.
+        group.MapPost("/{userAccountId:guid}/institution", ChangeInstitution)
+            .RequireAuthorization(PermissionPolicies.UserInstitutionAssignOrBootstrap);
         // İşletme kapsamı (#229) — claim kayıttan üretildiği için yanlış bağı düzeltebilecek
         // TEK yol budur; Keycloak'a yazmak okunmaz, senkronizasyon kaydı ezmez.
         group.MapPost("/{userAccountId:guid}/business", ChangeBusiness).RequireAuthorization(Permissions.UserManagement.RolesManage);
@@ -40,6 +52,10 @@ public static class UserManagementEndpoints
         group.MapDelete("/{userAccountId:guid}", DeleteUser).RequireAuthorization(Permissions.UserManagement.Delete);
         group.MapPost("/sync", SyncUsers).RequireAuthorization(Permissions.UserManagement.Create);
         group.MapPost("/resync-display-names", ResyncDisplayNames).RequireAuthorization(Permissions.UserManagement.Create);
+        // Kullanıcı kayıtlarını olay olarak yeniden yayınlar (D2) — diğer modüllerin yerel
+        // görünümlerini doldurur. DAĞITIM ÖN KOŞULU, idempotent.
+        group.MapPost("/replay", PostReplayUserAccounts)
+            .RequireAuthorization(Permissions.Platform.TenantManage);
 
         // Velisi bağlı olmayan öğrenciler (#271) — eksiği ölçülebilir kılar. Bağ kurulmadan
         // md. 36 (4) tebligatı (#247) veliye hiç ulaşmıyor ve bu sessiz.
@@ -191,6 +207,16 @@ public static class UserManagementEndpoints
         return Results.Ok(ResponseBuilder.Success().AddMessage(message).Build());
     }
 
+    /// <summary>
+    /// Aktörün aktif bağlamını değiştirir/temizler (B parçası). Kapsam kontrolü
+    /// <c>SetActiveInstitutionHandler</c>'da yapılır — burada iş mantığı yoktur.
+    /// </summary>
+    private static async Task<IResult> SetContext(SetActiveInstitution command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command);
+        return Results.Ok(ResponseBuilder.Success().Build());
+    }
+
     private static async Task<IResult> ChangeStudents(
         Guid userAccountId, ChangeUserStudents command, IMessageBus bus)
     {
@@ -270,6 +296,25 @@ public static class UserManagementEndpoints
         return Results.Ok(ResponseBuilder.Success()
             .AddData(result)
             .AddMessage($"{result.Published} kullanıcının adı yeniden yayınlandı ({result.Skipped} atlandı).")
+            .Build());
+    }
+
+    /// <summary>
+    /// Mevcut hesapları <c>UserAccountReplayed</c> olarak yeniden yayınlar (D2, I-2) —
+    /// Institution modülünün <c>InstitutionManagerLink</c> read-model'ini geriye dönük
+    /// doldurur. İdempotenttir. Etkinlik durumu olayın kendisiyle taşındığı için ayrı bir
+    /// "pasif işaretlenen" sayacına gerek yoktur.
+    ///
+    /// <para><b>Asenkron:</b> bu uç 200 döndüğünde olaylar yalnız yayınlanmıştır, işlenmiş
+    /// olması gerekmez — durum kuyruk üzerinden ayrıca ilerler.</para>
+    /// </summary>
+    private static async Task<IResult> PostReplayUserAccounts(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<ReplayUserAccountsResult>(new ReplayUserAccounts());
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage($"{result.Replayed} kullanıcı hesabı yeniden yayınlandı.")
             .Build());
     }
 

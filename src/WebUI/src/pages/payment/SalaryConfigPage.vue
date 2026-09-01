@@ -4,18 +4,7 @@
       class="q-mx-auto"
       style="max-width: 1000px"
     >
-      <div class="row items-center q-mb-md">
-        <div class="col">
-          <h1 class="text-h5 text-weight-bold q-my-none">
-            Asgari Ücret Yönetimi
-          </h1>
-          <div class="text-caption text-grey-7">
-            Maaş ve devlet katkısı hesabının tabanı. Asgari ücret yıl içinde birden fazla kez
-            artabilir — her artış <strong>yürürlük tarihiyle</strong> girilir ve o tarihten
-            itibaren hesaplanan aylara uygulanır. Geçmiş aylar kendi dönemlerinin tutarıyla
-            hesaplanmaya devam eder.
-          </div>
-        </div>
+      <PageHeader title="Asgari Ücret Yönetimi">
         <!-- Görme ile değiştirme ayrı izinler (#147): okul rolleri yürürlükteki tutarı
              görür, ulusal parametreyi yazamaz. Buton yalnız yazma izniyle görünür. -->
         <q-btn
@@ -25,24 +14,36 @@
           icon="add"
           label="Yeni Yürürlük"
           :disable="loading"
-          class="q-ml-md"
           @click="openForm"
         />
+      </PageHeader>
+
+      <!-- Açıklama PageHeader'ın subtitle prop'una taşınamadı: o prop düz metin basar,
+           buradaki metin ise strong vurgusu taşıyor. Bu yüzden PageHeader'ın DIŞINDA,
+           ayrı bir caption satırı olarak duruyor.
+           Aralık düzeltmesi: PageHeader kendi sarmalayıcı satırına q-mb-lg basıyor
+           (PageHeader.vue:2), yani başlık bloğunun altında 24px boşluk var. O boşlukla
+           bu metin, başlığın alt başlığı gibi değil, buton satırının altında bağımsız
+           bir paragraf gibi okunuyordu. `page-lead` 16px'ini geri alır; net aralık 8px
+           (spacing.sm) kalır ve metin başlıkla aynı blok olarak okunur. -->
+      <div class="text-caption text-grey-7 q-mb-md page-lead">
+        Maaş ve devlet katkısı hesabının tabanı. Asgari ücret yıl içinde birden fazla kez
+        artabilir — her artış <strong>yürürlük tarihiyle</strong> girilir ve o tarihten
+        itibaren hesaplanan aylara uygulanır. Geçmiş aylar kendi dönemlerinin tutarıyla
+        hesaplanmaya devam eder.
       </div>
 
-      <q-banner
+      <AppNotice
         v-if="!current && !loading"
-        class="bg-orange-1 text-orange-10 q-mb-md"
-        rounded
+        type="warning"
+        icon="report_problem"
+        class="q-mb-md"
       >
-        <template #avatar>
-          <q-icon name="report_problem" />
-        </template>
         Asgari ücret tanımlı değil. Tanımlanana kadar maaş hesabı yapılamaz.
         <span v-if="!canManageParameters">
           Ulusal parametre olduğu için girişi sistem yöneticisi yapar.
         </span>
-      </q-banner>
+      </AppNotice>
 
       <div class="row q-col-gutter-md q-mb-md">
         <div class="col-12 col-sm-6">
@@ -54,7 +55,7 @@
               <div class="text-caption text-grey-7">
                 Yürürlükteki asgari ücret
               </div>
-              <div class="text-h5 text-weight-bold">
+              <div class="text-h5 text-weight-bold stat-value">
                 {{ current ? formatCurrency(current.minimumWage) : '—' }}
               </div>
               <div class="text-caption text-grey-7">
@@ -72,7 +73,7 @@
               <div class="text-caption text-grey-7">
                 16 yaş altı asgari ücret
               </div>
-              <div class="text-h5 text-weight-bold">
+              <div class="text-h5 text-weight-bold stat-value">
                 {{
                   current?.minimumWageUnder16
                     ? formatCurrency(current.minimumWageUnder16)
@@ -87,14 +88,12 @@
         </div>
       </div>
 
-      <q-banner
+      <AppNotice
         v-if="scheduled.length > 0"
-        class="bg-blue-1 text-blue-10 q-mb-md"
-        rounded
+        type="info"
+        icon="event_upcoming"
+        class="q-mb-md"
       >
-        <template #avatar>
-          <q-icon name="event_upcoming" />
-        </template>
         <span
           v-for="s in scheduled"
           :key="s.id"
@@ -102,7 +101,7 @@
           {{ formatDate(s.effectiveFrom) }} tarihinde {{ formatCurrency(s.minimumWage) }} yürürlüğe
           girecek.
         </span>
-      </q-banner>
+      </AppNotice>
 
       <AppTable
         :rows="history"
@@ -237,14 +236,13 @@
         </template>
       </q-input>
 
-      <q-banner
-        class="bg-grey-2 text-grey-9"
+      <AppNotice
+        type="info"
         dense
-        rounded
       >
         Yeni kayıt, yürürlükteki kaydı bir gün öncesinde kapatır. Geriye dönük tarih girilemez —
         geçmiş ayların hesabı bozulmasın diye engellenir.
-      </q-banner>
+      </AppNotice>
     </FormDialog>
   </q-page>
 </template>
@@ -257,7 +255,9 @@ import { useAuthStore } from 'stores/auth'
 import { Permissions } from 'src/utils/permissions'
 import { useNotify } from 'src/composables/useNotify'
 import AppTable from 'components/AppTable.vue'
+import PageHeader from 'components/PageHeader.vue'
 import FormDialog from 'components/FormDialog.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const authStore = useAuthStore()
 const notify = useNotify()
@@ -379,3 +379,14 @@ onMounted(() => {
   loadHistory().catch(() => {})
 })
 </script>
+
+<style scoped>
+/*
+ * PageHeader'ın q-mb-lg (24px) boşluğunu kısmen geri alır — bkz. şablondaki not.
+ * Renk/punto değişmiyor: metin text-caption + text-grey-7 (#757575) olarak kalıyor,
+ * beyaz zeminde 4,61:1 (ölçüldü, WCAG AA gövde eşiği 4,5:1).
+ */
+.page-lead {
+  margin-top: -16px;
+}
+</style>

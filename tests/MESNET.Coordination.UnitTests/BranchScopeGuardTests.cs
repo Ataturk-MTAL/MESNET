@@ -37,6 +37,11 @@ public sealed class BranchScopeGuardTests
 
         // Veli kapsamı (#174) bu testlerin konusu değil — bağ yok.
         public IReadOnlyList<Guid> GetLinkedStudentIds() => [];
+
+        // Kurum ağacı yolu (institution_path) bu testlerin konusu değil.
+        public string? GetInstitutionPath() => null;
+
+        public string? GetSessionId() => null;
     }
 
     private static ICurrentUserService DepartmentHead(params string[] branchCodes) =>

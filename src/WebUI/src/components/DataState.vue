@@ -77,7 +77,7 @@ const emit = defineEmits<{ retry: [] }>()
     />
     <div
       v-if="loadingText"
-      class="text-caption text-grey-6 q-mt-sm"
+      class="text-caption text-grey-7 q-mt-sm"
     >
       {{ loadingText }}
     </div>
@@ -85,7 +85,7 @@ const emit = defineEmits<{ retry: [] }>()
 
   <div
     v-else-if="error"
-    :class="`text-center ${padding} text-grey-6`"
+    :class="`text-center ${padding} text-grey-7`"
   >
     <slot name="error">
       <q-icon
@@ -113,7 +113,7 @@ const emit = defineEmits<{ retry: [] }>()
 
   <div
     v-else-if="empty"
-    :class="`text-center ${padding} text-grey-6`"
+    :class="`text-center ${padding} text-grey-7`"
   >
     <slot name="empty">
       <q-icon

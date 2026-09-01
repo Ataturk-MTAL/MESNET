@@ -24,10 +24,12 @@
             dense
             round
             icon="search"
-            aria-label="Ara"
+            aria-label="Adresi haritada ara"
             :loading="searching"
             @click="searchAddress"
-          />
+          >
+            <q-tooltip>Adresi haritada ara</q-tooltip>
+          </q-btn>
         </template>
       </q-input>
       <q-list
@@ -90,9 +92,12 @@
         />
       </l-map>
     </div>
+    <!-- Sabit Rakam Kuralı: marker sürüklendikçe altı ondalıklı iki sayı her karede değişir;
+         orantılı rakamda sütun kayar ve göz zıplar. app.css'teki .tabular-nums kapsamı
+         (.q-table th/td, .stat-value) bu div'i içermez, sınıf elle veriliyor. -->
     <div
       v-if="modelValue"
-      class="text-caption text-grey q-mt-xs"
+      class="text-caption text-grey-7 tabular-nums q-mt-xs"
     >
       Enlem: {{ modelValue.latitude.toFixed(6) }}, Boylam: {{ modelValue.longitude.toFixed(6) }}
     </div>

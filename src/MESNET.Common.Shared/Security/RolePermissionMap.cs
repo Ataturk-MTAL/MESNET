@@ -38,7 +38,13 @@ public static class RolePermissionMap
             // gelir; onu engelleyen izin değil business_id KAPSAMIDIR — müdürde o claim yoktur.
             Permissions.Attendance.LeaveApprove,
             // Okulda staj dönem notu (#171) — "institution:*" zaten kapsar, açıkça yazılır.
-            Permissions.Institution.SchoolGradeEnter
+            Permissions.Institution.SchoolGradeEnter,
+            // Denetim izi (C parçası). "institution:*" bunu KAPSAMAZ ve kapsamamalıdır —
+            // önek bilerek ayrıdır. Bu yüzden açıkça yazılır.
+            Permissions.Audit.ViewInstitution,
+            // Tıkanmış fesih onay zincirini açma (B parçası) — "internship:*" zaten kapsar,
+            // güvenlik kararı olduğu için açıkça yazılır (aynı gerekçe: Attendance.DirectEntry).
+            Permissions.Internship.ApprovalOverride
         ],
         // Müdür yardımcısı (#129). Kaynak: actors.md → "Müdür Yardımcısı" —
         // staj işlemleri koordinasyonu, evrak takibi ve onayı, öğretmen görevlendirmeleri,
@@ -64,6 +70,9 @@ public static class RolePermissionMap
             Permissions.Internship.Manage,     // fesih talebi başlatma, genel yönetim
             Permissions.Internship.Approve,    // fesih onay zinciri (kendi adımı)
             Permissions.Internship.Contract,   // sözleşme yönetimi
+            // Tıkanmış fesih onay zincirini açma (B parçası) — bu rol bugün internship:manage
+            // taşıyor, ucun izni daraltıldığı için geçişte kayıp olmasın diye açıkça eklenir.
+            Permissions.Internship.ApprovalOverride,
             Permissions.Salary.View,
             Permissions.Salary.Calculate,
             Permissions.Salary.Approve,        // dekont onay zinciri
@@ -95,7 +104,10 @@ public static class RolePermissionMap
             Permissions.Company.Manage,
             Permissions.Company.Document,
             Permissions.Communication.ViewMessages,
-            Permissions.Communication.SendMessage
+            Permissions.Communication.SendMessage,
+            // Denetim izi (C parçası). "institution:*" bunu KAPSAMAZ ve kapsamamalıdır —
+            // önek bilerek ayrıdır. Bu yüzden açıkça yazılır.
+            Permissions.Audit.ViewInstitution
         ],
         // Kurum yetkilendirdiği personel (#129). Kaynak: actors.md → "Kurum Yetkilendirdiği
         // Personel" — öğrenci kayıt işlemleri, belge doğrulama, devamsızlık takibi,
@@ -266,6 +278,52 @@ public static class RolePermissionMap
             Permissions.Communication.ViewMessages,
             Permissions.Communication.SendMessage,
             Permissions.Communication.ReportIssue
+        ],
+        // İl / ilçe millî eğitim yetkilisi — kurum hiyerarşisi A + müdahale yetkisi B parçası.
+        //
+        // "institution:" öneki HİÇ VERİLMEZ, "institution:*" WILDCARD'I HİÇ VERİLMEZ.
+        // "institution:" önekli her yeni izin InstitutionManager'ın "institution:*" wildcard'ı
+        // üzerinden her okul müdürüne sessizce geçer (ADR-0002 önek tuzağı — #126'da alan
+        // muafiyeti izninde bire bir yaşandı). Aşağıdaki üç izin AÇIKÇA, tek tek yazılır.
+        //
+        // Bu rollerin farkı izinde DEĞİL, ağaçtaki yerlerindedir: kapsam
+        // InstitutionScopePolicy'de "hedefin yolu benim yolumla başlıyor mu" sorusuna iner.
+        [MesnetRoles.ProvincialAdmin] =
+        [
+            Permissions.Institution.View,
+            // Müdahale yetkisi (B parçası) — dönem açma/kapatma ve kurum künyesi.
+            // Yan etki bilinçli: marka paleti ve ders programı yapılandırması da açılır,
+            // ikisi de institution:manage altındadır ve ayırmak izin ağacını tek rol için
+            // yeniden çizmek olurdu. Üçü de denetlenir.
+            Permissions.Institution.Manage,
+            // Tıkanmış onayı açma — internship:manage DEĞİL (o müdür onay adımını da açardı).
+            Permissions.Internship.ApprovalOverride,
+            // Okula ilk yöneticiyi bağlama; koşulludur (okulun hiç yöneticisi olmamalı).
+            Permissions.Directorate.InstitutionBootstrap,
+            // Fesih listesini okumak için. Müdahale (approval:override) yazma yetkisidir;
+            // liste ucu ayrıca internship:view ister. Kendi bağlamında liste boştur — yol
+            // aktif bağlamdır (#281).
+            Permissions.Internship.View,
+            // Okula ilk yöneticiyi bağlamanın (bootstrap) tek arayüzü kullanıcı listesidir.
+            // Liste aktörün alt ağacına daralır; bu daraltma olmadan bu izin verilemezdi.
+            Permissions.UserManagement.View
+        ],
+        // İlçe yetkilisi il yetkilisiyle AYNI demeti alır; farkı yalnız ağaçtaki yeridir.
+        // Demetleri ayrıştırmak, ikisinin arasındaki tek gerçek farkı (kapsam) izne taşıma
+        // isteğini doğururdu — o da yeni bir "institution:" önekli izin demekti.
+        [MesnetRoles.DistrictAdmin] =
+        [
+            Permissions.Institution.View,
+            Permissions.Institution.Manage,
+            Permissions.Internship.ApprovalOverride,
+            Permissions.Directorate.InstitutionBootstrap,
+            // Fesih listesini okumak için. Müdahale (approval:override) yazma yetkisidir;
+            // liste ucu ayrıca internship:view ister. Kendi bağlamında liste boştur — yol
+            // aktif bağlamdır (#281).
+            Permissions.Internship.View,
+            // Okula ilk yöneticiyi bağlamanın (bootstrap) tek arayüzü kullanıcı listesidir.
+            // Liste aktörün alt ağacına daralır; bu daraltma olmadan bu izin verilemezdi.
+            Permissions.UserManagement.View
         ],
         // Sistem yöneticisi (#147) — ULUSAL parametre girişi. Kurum domainlerinden HİÇBİRİ
         // yoktur: bu rol kurum verisi görmez, yalnız mevzuat sayılarını yazar. Tersi de

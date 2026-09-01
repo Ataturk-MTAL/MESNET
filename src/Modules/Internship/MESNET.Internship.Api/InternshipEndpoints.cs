@@ -29,7 +29,25 @@ public static class InternshipEndpoints
         group.MapPost("/{internshipId:guid}/approve/teacher", PostApproveTeacher).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/deputy", PostApproveDeputy).RequireAuthorization(Permissions.Internship.Approve);
         group.MapPost("/{internshipId:guid}/approve/director", PostApproveDirector).RequireAuthorization(Permissions.Internship.Manage);
-        group.MapPost("/{internshipId:guid}/approve/override", PostOverride).RequireAuthorization(Permissions.Internship.Manage);
+        // Override kendi iznine geçti (B parçası): internship:manage müdür onay adımını da
+        // açıyordu ve il yetkilisinin zincirde normal bir adım olması istenmiyor.
+        group.MapPost("/{internshipId:guid}/approve/override", PostOverride)
+            .RequireAuthorization(Permissions.Internship.ApprovalOverride);
+
+        // Tıkanmış onaylar kartı (D2). İzin BİLEREK internship:view değil approval:override:
+        // kart yalnız müdahale edebilecek aktöre bilgi taşır; görüp müdahale edemeyen
+        // kullanıcı için bilgi değil gürültüdür.
+        group.MapGet("/stuck-approvals", GetStuckApprovalSummary)
+            .RequireAuthorization(Permissions.Internship.ApprovalOverride);
+
+        // Tıkanma eşiği. OKUMA müdahale yetkisine ya da ulusal parametre yönetimine bağlıdır
+        // eşiği yalnız kartı gören kullanıcının bilmesi anlamlıdır, ama eşiği YAZAN
+        // SystemAdmin de kendi yazdığı değeri okuyabilmelidir — yoksa yönetim sayfası boş
+        // render eder. Bkz. PermissionPolicies.ApprovalConfigView.
+        group.MapGet("/approval-config", GetApprovalConfiguration)
+            .RequireAuthorization(PermissionPolicies.ApprovalConfigView);
+        group.MapPut("/approval-config", PutApprovalConfiguration)
+            .RequireAuthorization(Permissions.Platform.ParameterManage);
 
         // Tek seferlik geçiş adımı (#251): kopya saga'ları birleştirir. Kurum üstü bir bakım
         // işidir — bir okulun müdürü kendi verisinin saga kimliklerini yeniden yazamamalı.
@@ -152,5 +170,24 @@ public static class InternshipEndpoints
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("Onay zinciri override edildi.")
             .Build());
+    }
+
+    private static async Task<IResult> GetStuckApprovalSummary(IMessageBus bus)
+    {
+        var dto = await bus.InvokeAsync<StuckApprovalSummaryDto>(new GetStuckApprovals());
+        return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
+    }
+
+    private static async Task<IResult> GetApprovalConfiguration(IMessageBus bus)
+    {
+        var dto = await bus.InvokeAsync<ApprovalConfigDto>(new GetApprovalConfig());
+        return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
+    }
+
+    private static async Task<IResult> PutApprovalConfiguration(
+        UpdateApprovalConfig command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command);
+        return Results.Ok(ResponseBuilder.Success().Build());
     }
 }

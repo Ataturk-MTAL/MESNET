@@ -21,4 +21,16 @@ public sealed record StudentPlaced(
     string BusinessName = "",
     string BranchCode = "",
     string BranchName = "",
-    string PlacementType = "Business");
+    string PlacementType = "Business")
+{
+    /// <summary>
+    /// Görünüm besleyen tüketicilerin <b>tek</b> girdi tipine çevirir (#291).
+    ///
+    /// <para>Yön bilerek tek taraflıdır: yaşam döngüsü olayı anlık görüntüye çevrilir, tersi
+    /// <b>yoktur</b>. Ters çevrim olsaydı bir onarım yolu yanlışlıkla saga başlatabilirdi —
+    /// düzeltilen hatanın ta kendisi.</para>
+    /// </summary>
+    public PlacementSnapshotResynced ToSnapshot() => new(
+        PlacementId, StudentId, BusinessId, InstitutionId, AcademicPeriodId, TeacherId,
+        PlacedAt, StudentName, BusinessName, BranchCode, BranchName, PlacementType);
+}

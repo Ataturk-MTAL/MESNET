@@ -53,9 +53,25 @@ public static class TenantResolution
     /// Çözülmüş kurum kapsamı — <c>null</c> ya da boş olabilir ve bu geçerli bir durumdur.
     /// </param>
     /// <param name="permissions">Kullanıcının etkin izinleri.</param>
+    /// <param name="activeInstitutionId">
+    /// Doğrulanmış aktif bağlam (B parçası); <c>null</c> = bağlam yok.
+    ///
+    /// <para><b>Buraya ulaşan değer zaten doğrulanmıştır</b>
+    /// (<see cref="MESNET.Common.Shared.Security.ActiveContextPolicy"/>): oturumu güncel ve
+    /// hedef aktörün alt ağacında. Geçersiz bağlam claim'e hiç dönüşmediği için burada
+    /// yeniden kontrol edilmez — edilirse aynı karar iki yerde yaşar ve ayrışır.</para>
+    /// </param>
     /// <returns>Kiracı kimliği; çözülemezse <c>null</c>.</returns>
-    public static string? Resolve(Guid? institutionIdClaim, IEnumerable<string> permissions)
+    public static string? Resolve(
+        Guid? institutionIdClaim,
+        IEnumerable<string> permissions,
+        Guid? activeInstitutionId = null)
     {
+        // Aktif bağlam EN ÖNDE: il yetkilisinin okul verisine ulaşmasının tek yolu, o okulun
+        // kiracısında çalışmaktır. Ev kurumu dalı önce gelseydi bağlam hiç etkili olmazdı.
+        if (activeInstitutionId is { } active && active != Guid.Empty)
+            return ForInstitution(active);
+
         if (institutionIdClaim is { } institutionId && institutionId != Guid.Empty)
             return ForInstitution(institutionId);
 

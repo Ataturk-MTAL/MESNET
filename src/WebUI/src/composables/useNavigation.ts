@@ -1,12 +1,67 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
+import { useInstitutionStore } from 'stores/institution'
+import { isActingAsDirectorate } from 'utils/directorateContext'
+
+/**
+ * Menü görünürlüğü için izin DIŞI bağlam.
+ *
+ * `isUpperNode`: kullanıcının bağlı olduğu kurum bir il/ilçe müdürlüğü düğümü mü?
+ * İzinle çözülemez — okul müdürü de `institution:view` taşır (hatta `institution:*`).
+ */
+export interface NavVisibilityContext {
+  isUpperNode: boolean
+  /**
+   * Aktör ŞU AN müdürlük olarak mı davranıyor? `isUpperNode` ile karıştırmayın: o "aktör üst
+   * düğüm mü" der ve aktif bağlam açıkken de true kalır (Kurumlar ağacı okula geçince de
+   * görünmeli). Bu alan aktif bağlam açıkken FALSE olur — kiracı o okuldur, okul menüleri
+   * doğrudur.
+   */
+  isActingAsDirectorate: boolean
+}
 
 export interface NavItem {
   title: string
   icon: string
   to: { name: string }
   permissions: string[]
+  /**
+   * İzne EK koşul. Verilmezse yalnız izne bakılır.
+   *
+   * Bu bir GÖRÜNÜRLÜK kararıdır, yetki kararı değil — yetki sunucudadır. Menüden gizlemek,
+   * bilgi taşımayan bir girdiyi (okul kullanıcısına tek satırlık "liste") saklamak içindir.
+   */
+  visibleWhen?: (ctx: NavVisibilityContext) => boolean
+}
+
+/**
+ * Bir menü girdisi görünür mü? Saf fonksiyon — store'a dokunmaz, testte tek başına koşar.
+ */
+export function isNavItemVisible(
+  item: NavItem,
+  hasAnyPermission: (permissions: string[]) => boolean,
+  ctx: NavVisibilityContext,
+): boolean {
+  if (item.permissions.length > 0 && !hasAnyPermission(item.permissions)) return false
+  if (item.visibleWhen && !item.visibleWhen(ctx)) return false
+  return true
+}
+
+/**
+ * Üst düğüm sinyalinin SAF kararı — store'a dokunmaz, testte tek başına koşar
+ * (<c>isNavItemVisible</c> ile aynı gerekçe).
+ *
+ * `nodeType` TEK BAŞINA yeterli DEĞİL (Görev 10, B parçası son inceleme madde 6):
+ * `institutionStore` aktif bağlama bağlandığı için il yetkilisi bir okula geçtiğinde
+ * `nodeType === 'School'` olur. Aktif bağlam DOLU olması aktörün üst düğüm olduğunun
+ * KANITIDIR — okul kullanıcısı bağlam SEÇEMEZ — bu yüzden ikisi OR'lanır.
+ */
+export function resolveIsUpperNode(
+  nodeType: string | undefined,
+  activeInstitutionId: string | null | undefined,
+): boolean {
+  return nodeType === 'Province' || nodeType === 'District' || !!activeInstitutionId
 }
 
 export interface NavGroup {
@@ -18,7 +73,12 @@ export interface NavGroup {
   children: NavItem[]
 }
 
-const menuDefinition: NavGroup[] = [
+/**
+ * Gerçek menü tanımı — test dosyaları bunu import eder, kendi kopyasını kurmaz. Bir girdinin
+ * `visibleWhen` koşulu buradan silinirse (ör. "Kurumlar") testin bunu görmesi gerekir; yerel
+ * bir kopya üzerinde koşan test bu tür bir gerilemeyi asla yakalayamaz.
+ */
+export const menuDefinition: NavGroup[] = [
   {
     key: 'home',
     title: 'Ana Sayfa',
@@ -33,10 +93,28 @@ const menuDefinition: NavGroup[] = [
     icon: 'account_balance',
     permissions: [],
     children: [
+      {
+        title: 'Kurumlar',
+        icon: 'account_tree',
+        to: { name: 'InstitutionList' },
+        permissions: ['institution:view'],
+        // Okul kullanıcısına gösterilmez: onun "listesi" tek satırdır ve tıklandığında zaten
+        // açık olan sayfaya gider. Ayrım izinle yapılamaz — okul müdürü de institution:view
+        // taşır; fark bağlı olduğu düğümün TİPİNDEDİR.
+        visibleWhen: (ctx) => ctx.isUpperNode,
+      },
       { title: 'Kurum Bilgileri', icon: 'account_balance', to: { name: 'Institution' }, permissions: ['institution:view'] },
-      { title: 'Kullanıcılar', icon: 'manage_accounts', to: { name: 'UserManagement' }, permissions: ['user:view', 'user:create'] },
+      // İzin listesi rota metasıyla (router/index.ts → UserManagement) AYNI üçlüdür — biri
+      // güncellenip diğeri unutulursa girdi menüde görünür rotada kapalı ya da tersi olur.
+      { title: 'Kullanıcılar', icon: 'manage_accounts', to: { name: 'UserManagement' }, permissions: ['user:view', 'user:create', 'directorate:institution-bootstrap'] },
       { title: 'Roller', icon: 'admin_panel_settings', to: { name: 'RoleManagement' }, permissions: ['user:roles:manage'] },
       { title: 'Yetki Kapsamı', icon: 'tune', to: { name: 'PermissionScope' }, permissions: ['user:roles:manage'] },
+      // İzin listesi rota metasıyla (router/index.ts → PlatformParameters) AYNIDIR
+      // (routePermissionAlignment.spec.ts ile kilitli, Görev 11).
+      { title: 'Ulusal Parametreler', icon: 'public', to: { name: 'PlatformParameters' }, permissions: ['platform:parameter:manage'] },
+      // İzin listesi BOŞ: "İşlemlerim" kapsamı herkese açıktır. Kurum kapsamı sayfa içinde
+      // izinle açılır — menüyü izne bağlamak, kendi geçmişini göremeyen kullanıcılar üretirdi.
+      { title: 'Son İşlemler', icon: 'history', to: { name: 'AuditLog' }, permissions: [] },
     ],
   },
   {
@@ -63,13 +141,20 @@ const menuDefinition: NavGroup[] = [
     icon: 'work_history',
     permissions: [],
     children: [
-      { title: 'Staj Takibi', icon: 'work_history', to: { name: 'InternshipOverview' }, permissions: ['internship:view', 'internship:manage', 'internship:view-own'] },
-      { title: 'Sözleşmeler', icon: 'description', to: { name: 'ContractList' }, permissions: ['internship:manage', 'internship:contract:manage'] },
-      { title: 'Devamsızlık', icon: 'event_available', to: { name: 'AttendanceList' }, permissions: ['attendance:view', 'attendance:view-own'] },
-      { title: 'Ücretli İzin', icon: 'event_note', to: { name: 'PaidLeaveList' }, permissions: ['attendance:leave:request', 'attendance:leave:business-approve', 'attendance:leave:approve'] },
-      { title: 'Maaş / Dekont', icon: 'payments', to: { name: 'SalaryList' }, permissions: ['salary:view', 'salary:view-own'] },
-      { title: 'Asgari Ücret', icon: 'price_change', to: { name: 'SalaryConfig' }, permissions: ['salary:parameter:view'] },
-      { title: 'Dönem Notu Girişi', icon: 'edit_note', to: { name: 'TermGradeEntry' }, permissions: ['company:grade:enter', 'institution:school-grade:enter'] },
+      // Bu grubun tüm çocukları (Fesihler HARİÇ) müdürlük bağlamında GİZLENİR — internship:view
+      // izni müdürlük rollerine bu grubu açar ama müdürlük kiracısında (kendi bağlamında) bu
+      // sayfaların hiçbiri veri döndürmez, boş liste görünürdü. `Fesihler` istisnadır: müdürlük
+      // oraya tam olarak bir okulun bağlamına GEÇMEK için gider, o yüzden girdi kapının kendisi.
+      { title: 'Staj Takibi', icon: 'work_history', to: { name: 'InternshipOverview' }, permissions: ['internship:view', 'internship:manage', 'internship:view-own'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
+      { title: 'Sözleşmeler', icon: 'description', to: { name: 'ContractList' }, permissions: ['internship:manage', 'internship:contract:manage'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
+      // İzin listesi rota metasıyla (router/index.ts → InternshipTerminations) AYNI üçlüdür.
+      // Girdi eksikti: müdürlük rolleri sayfaya rotadan ulaşabiliyordu ama menüde hiç yoktu.
+      { title: 'Fesihler', icon: 'link_off', to: { name: 'InternshipTerminations' }, permissions: ['internship:view', 'internship:manage', 'internship:approval:override'] },
+      { title: 'Devamsızlık', icon: 'event_available', to: { name: 'AttendanceList' }, permissions: ['attendance:view', 'attendance:view-own'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
+      { title: 'Ücretli İzin', icon: 'event_note', to: { name: 'PaidLeaveList' }, permissions: ['attendance:leave:request', 'attendance:leave:business-approve', 'attendance:leave:approve'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
+      { title: 'Maaş / Dekont', icon: 'payments', to: { name: 'SalaryList' }, permissions: ['salary:view', 'salary:view-own'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
+      { title: 'Asgari Ücret', icon: 'price_change', to: { name: 'SalaryConfig' }, permissions: ['salary:parameter:view'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
+      { title: 'Dönem Notu Girişi', icon: 'edit_note', to: { name: 'TermGradeEntry' }, permissions: ['company:grade:enter', 'institution:school-grade:enter'], visibleWhen: (ctx) => !ctx.isActingAsDirectorate },
     ],
   },
   {
@@ -109,22 +194,46 @@ const STORAGE_KEY = 'mesnet-nav-expanded'
 
 export function useNavigation() {
   const authStore = useAuthStore()
+  const institutionStore = useInstitutionStore()
   const route = useRoute()
 
+  /**
+   * Kullanıcının kurumu bir üst düğüm mü?
+   *
+   * Kaynak `institutionStore` — aktörün DAVRANILAN kurumunu (`GET /api/institutions/{id}`,
+   * aktif bağlam varsa o) yükler (MainLayout mount'ta çağırır). Store dolmadan önce
+   * `false`'tur, yani menü girdisi biraz geç belirir; alternatifi `/auth/me`'ye yeni bir
+   * claim eklemekti ve o kapsam anahtarı olmayan bir görünürlük kararı için fazla ağır bir
+   * yol.
+   *
+   * `institutionStore`'un `nodeType`'ı TEK BAŞINA yeterli DEĞİL (Görev 10, B parçası): store
+   * artık aktif bağlama bağlı — il yetkilisi bir okula geçtiğinde `nodeType === 'School'`
+   * olur ve "Kurumlar" menü girdisi KAYBOLUR. Üst düğüm sinyali aktif bağlamdan
+   * ETKİLENMEMELİDİR: aktif bağlam DOLU olması aktörün tanımı gereği üst düğüm olduğunun
+   * kanıtıdır — okul kullanıcısı bağlam SEÇEMEZ (yalnız il/ilçe yetkilisi bağlama geçer).
+   */
+  const visibilityContext = computed<NavVisibilityContext>(() => ({
+    isUpperNode: resolveIsUpperNode(
+      institutionStore.institution?.nodeType,
+      authStore.user?.activeInstitutionId,
+    ),
+    isActingAsDirectorate: isActingAsDirectorate(institutionStore.institution?.nodeType),
+  }))
+
   const filteredMenu = computed(() => {
+    const ctx = visibilityContext.value
+    const hasAny = (permissions: string[]) => authStore.hasAnyPermission(permissions)
+
     return menuDefinition
       .map((group) => {
         // Top-level link (children yok)
         if (group.to && group.children.length === 0) {
-          const visible =
-            group.permissions.length === 0 || authStore.hasAnyPermission(group.permissions)
+          const visible = group.permissions.length === 0 || hasAny(group.permissions)
           return visible ? group : null
         }
 
-        // Children filtrele
-        const visibleChildren = group.children.filter(
-          (item) =>
-            item.permissions.length === 0 || authStore.hasAnyPermission(item.permissions),
+        const visibleChildren = group.children.filter((item) =>
+          isNavItemVisible(item, hasAny, ctx),
         )
 
         if (visibleChildren.length === 0) return null

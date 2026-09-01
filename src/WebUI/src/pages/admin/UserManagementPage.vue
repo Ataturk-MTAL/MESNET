@@ -1,8 +1,6 @@
 <template>
   <q-page padding>
-    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
-      Kullanıcı Yönetimi
-    </h1>
+    <PageHeader title="Kullanıcı Yönetimi" />
 
     <q-tabs
       v-model="tab"
@@ -45,6 +43,7 @@
                 <q-tooltip>Keycloak'taki kullanıcıları içe aktar / güncelle</q-tooltip>
               </q-btn>
               <q-btn
+                unelevated
                 color="primary"
                 icon="person_add"
                 label="Davet Gönder"
@@ -77,10 +76,7 @@
         >
           <template #body-cell-isEnabled="{ row }">
             <q-td>
-              <q-badge
-                :color="row.isEnabled ? 'positive' : 'grey'"
-                :label="row.isEnabled ? 'Aktif' : 'Pasif'"
-              />
+              <StatusBadge :slug="row.isEnabled ? 'Aktif' : 'Pasif'" />
             </q-td>
           </template>
           <!-- Rol çipleri Türkçe etiketle basılır (#129); etiket rol kataloğundan gelir. -->
@@ -95,7 +91,7 @@
               />
               <span
                 v-if="row.roles.length > 2"
-                class="text-caption text-grey"
+                class="text-caption text-grey-7"
               >+{{ row.roles.length - 2 }}</span>
             </q-td>
           </template>
@@ -127,7 +123,7 @@
               </template>
               <span
                 v-else
-                class="text-caption text-grey"
+                class="text-caption text-grey-7"
               >—</span>
             </q-td>
           </template>
@@ -141,7 +137,9 @@
                   icon="edit"
                   aria-label="Düzenle"
                   @click="openEditUser(row)"
-                />
+                >
+                  <q-tooltip>Kullanıcıyı düzenle</q-tooltip>
+                </q-btn>
               </PermissionGuard>
               <PermissionGuard :permission="Permissions.UserManagement.RolesManage">
                 <q-btn
@@ -165,8 +163,35 @@
                 >
                   <q-tooltip>Alanları (branş) yönet</q-tooltip>
                 </q-btn>
-                <!-- Kurum (kiracı) bağı — ADR-0003 adım 2. Token'dan gelen institution_id
-                     artık okunmuyor ve sync de yazmıyor; bağ yalnız buradan kurulur. -->
+                <!-- Veli–öğrenci bağı (#174): velinin KAPSAMI. İzinleri tüm velilerde
+                     aynıdır; erişeceği veriyi yalnız bu bağ belirler. -->
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="family_restroom"
+                  aria-label="Bağlı öğrencileri yönet"
+                  @click="openStudents(row)"
+                >
+                  <q-tooltip>Bağlı öğrencileri yönet (veli)</q-tooltip>
+                </q-btn>
+              </PermissionGuard>
+              <!--
+                Kurum (kiracı) bağı — ADR-0003 adım 2. Token'dan gelen institution_id artık
+                okunmuyor ve sync de yazmıyor; bağ yalnız buradan kurulur.
+
+                KENDİ GUARD'I VAR (RolesManage'e gömülü DEĞİL): il/ilçe
+                müdürlüğü rolleri (`ProvincialAdmin`, `DistrictAdmin`) `user:roles:manage`
+                TAŞIMAZ — bilerek, o izin alt ağaçtaki her okulun her kullanıcısının rollerini
+                değiştirmek demektir. Onlar `directorate:institution-bootstrap` taşır ve
+                sunucu bu ucu ikisinden HERHANGİ BİRİYLE açar (`AnyOf`,
+                `UserInstitutionAssignOrBootstrap`). Guard tek `RolesManage` olsaydı, sunucunun
+                kabul ettiği aktörden düğme tümüyle saklanırdı — düğme dururdu ama sahibi onu
+                hiç görmezdi.
+              -->
+              <PermissionGuard
+                :permission="[Permissions.UserManagement.RolesManage, Permissions.Directorate.InstitutionBootstrap]"
+              >
                 <q-btn
                   flat
                   round
@@ -179,18 +204,6 @@
                   <q-tooltip>
                     {{ row.institutionId ? 'Kurum bağını yönet' : 'Kurum bağı yok — kapsamlı ekranlar kapalı' }}
                   </q-tooltip>
-                </q-btn>
-                <!-- Veli–öğrenci bağı (#174): velinin KAPSAMI. İzinleri tüm velilerde
-                     aynıdır; erişeceği veriyi yalnız bu bağ belirler. -->
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="family_restroom"
-                  aria-label="Bağlı öğrencileri yönet"
-                  @click="openStudents(row)"
-                >
-                  <q-tooltip>Bağlı öğrencileri yönet (veli)</q-tooltip>
                 </q-btn>
               </PermissionGuard>
               <PermissionGuard :permission="Permissions.UserManagement.Update">
@@ -233,11 +246,23 @@
           <template #body-cell-targetRole="{ row }">
             <q-td>{{ roleCatalog.labelFor(row.targetRole) }}</q-td>
           </template>
+          <!--
+            Durum rozeti tek dilde: StatusBadge. Önceki satır-içi ternary zinciri tanınmayan
+            HER değeri sessizce "Süresi Doldu" diye yalanlıyordu; ayrıca `grey` (#9E9E9E)
+            zemin beyaz metinle 2,68:1 veriyordu (ölçüldü) — WCAG AA eşiği 4,5:1.
+          -->
           <template #body-cell-status="{ row }">
             <q-td>
+              <StatusBadge :slug="invitationStatusLabel(row.status)" />
+              <!--
+                "Sıra sizde" — koşul ve gerekçe için bkz. `isInvitationMyTurn` (script).
+                Yüzey olarak DURUM hücresi seçildi: aşama bilgisinin okunduğu yer burasıdır.
+                Dolu rozet metin etiketi taşır, yani renk ikincil sinyaldir.
+              -->
               <q-badge
-                :color="row.status === 'Approved' ? 'positive' : row.status === 'PendingApproval' ? 'warning' : row.status === 'Rejected' ? 'negative' : 'grey'"
-                :label="row.status === 'PendingApproval' ? 'Onay Bekliyor' : row.status === 'Approved' ? 'Onaylandı' : row.status === 'Rejected' ? 'Reddedildi' : row.status === 'Completed' ? 'Tamamlandı' : 'Süresi Doldu'"
+                v-if="isInvitationMyTurn(row)"
+                class="bg-accent-strong text-body2 q-px-sm q-py-xs q-ml-xs"
+                label="Sıra sizde"
               />
             </q-td>
           </template>
@@ -287,259 +312,148 @@
       </q-tab-panel>
     </q-tab-panels>
 
-    <!-- Davet Gönder Dialog -->
-    <q-dialog
+    <!-- Davet Gönder — sağdan kayan yan-panel (Form Sayfa Kuralı: merkezî modal yoktur) -->
+    <FormDialog
       v-model="inviteDialog"
-      persistent
-      :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
+      title="Kullanıcı Davet Et"
+      icon="person_add"
+      color="primary"
+      save-label="Davet Gönder"
+      :saving="saving"
+      @save="sendInvitation"
     >
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-primary text-white">
-          <q-icon
-            name="person_add"
-            class="q-mr-sm"
-          />
-          <q-toolbar-title>Kullanıcı Davet Et</q-toolbar-title>
-          <q-btn
-            v-close-popup
-            flat
-            round
-            dense
-            icon="close"
-            aria-label="Kapat"
-            color="white"
-          />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-input
-            v-model="inviteForm.email"
-            label="E-posta"
-            outlined
-            type="email"
-          >
-            <template #prepend>
-              <q-icon name="email" />
-            </template>
-          </q-input>
-          <q-input
-            v-model="inviteForm.firstName"
-            label="Ad"
-            outlined
-          >
-            <template #prepend>
-              <q-icon name="person" />
-            </template>
-          </q-input>
-          <q-input
-            v-model="inviteForm.lastName"
-            label="Soyad"
-            outlined
-          >
-            <template #prepend>
-              <q-icon name="person" />
-            </template>
-          </q-input>
-          <q-select
-            v-model="inviteForm.targetRole"
-            :options="roleOptions"
-            label="Hedef Rol"
-            outlined
-            emit-value
-            map-options
-          >
-            <template #prepend>
-              <q-icon name="manage_accounts" />
-            </template>
-          </q-select>
-          <!--
-            Alan (branş) kayıt sırasında girilir (#126). Zorunlu değildir — yöneticiler
-            hiçbir alana bağlı değildir. Davet tamamlandığında bu değer kullanıcı kaydının
-            birinci sınıf alanına ve `branch_codes` claim'ine akar.
-          -->
-          <q-select
-            v-model="inviteForm.branchCodes"
-            :options="branchOpts.options.value"
-            :loading="branchOpts.loading.value"
-            label="Alanlar (branş)"
-            hint="Alan şefi / koordinatör için gereklidir; yöneticide boş bırakılabilir."
-            outlined
-            multiple
-            use-chips
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            @filter="branchOpts.filter"
-          >
-            <template #prepend>
-              <q-icon name="school" />
-            </template>
-            <template #no-option>
-              <SelectEmptyOption />
-            </template>
-          </q-select>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions
-          align="right"
-          class="q-pa-md"
-        >
-          <q-btn
-            v-close-popup
-            flat
-            label="İptal"
-            color="grey-7"
-          />
-          <q-btn
-            unelevated
-            color="primary"
-            label="Davet Gönder"
-            :loading="saving"
-            @click="sendInvitation"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+      <q-input
+        v-model="inviteForm.email"
+        label="E-posta"
+        outlined
+        type="email"
+      >
+        <template #prepend>
+          <q-icon name="email" />
+        </template>
+      </q-input>
+      <q-input
+        v-model="inviteForm.firstName"
+        label="Ad"
+        outlined
+      >
+        <template #prepend>
+          <q-icon name="person" />
+        </template>
+      </q-input>
+      <q-input
+        v-model="inviteForm.lastName"
+        label="Soyad"
+        outlined
+      >
+        <template #prepend>
+          <q-icon name="person" />
+        </template>
+      </q-input>
+      <q-select
+        v-model="inviteForm.targetRole"
+        :options="roleOptions"
+        label="Hedef Rol"
+        outlined
+        emit-value
+        map-options
+      >
+        <template #prepend>
+          <q-icon name="manage_accounts" />
+        </template>
+      </q-select>
+      <!--
+        Alan (branş) kayıt sırasında girilir (#126). Zorunlu değildir — yöneticiler
+        hiçbir alana bağlı değildir. Davet tamamlandığında bu değer kullanıcı kaydının
+        birinci sınıf alanına ve `branch_codes` claim'ine akar.
+      -->
+      <q-select
+        v-model="inviteForm.branchCodes"
+        :options="branchOpts.options.value"
+        :loading="branchOpts.loading.value"
+        label="Alanlar (branş)"
+        hint="Alan şefi / koordinatör için gereklidir; yöneticide boş bırakılabilir."
+        outlined
+        multiple
+        use-chips
+        use-input
+        input-debounce="0"
+        emit-value
+        map-options
+        option-label="label"
+        option-value="value"
+        @filter="branchOpts.filter"
+      >
+        <template #prepend>
+          <q-icon name="school" />
+        </template>
+        <template #no-option>
+          <SelectEmptyOption />
+        </template>
+      </q-select>
+    </FormDialog>
 
-    <!-- Roller Dialog -->
-    <q-dialog
+    <!-- Roller — sağdan kayan yan-panel -->
+    <FormDialog
       v-model="rolesDialog"
-      persistent
-      :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
+      :title="`Roller: ${selectedUser?.fullName ?? ''}`"
+      icon="manage_accounts"
+      color="secondary"
+      :saving="saving"
+      @save="saveRoles"
     >
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-secondary text-white">
-          <q-icon
-            name="manage_accounts"
-            class="q-mr-sm"
-          />
-          <q-toolbar-title>Roller: {{ selectedUser?.fullName }}</q-toolbar-title>
-          <q-btn
-            v-close-popup
-            flat
-            round
-            dense
-            icon="close"
-            aria-label="Kapat"
-            color="white"
-          />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <q-option-group
-            v-model="selectedRoles"
-            :options="roleOptions"
-            type="checkbox"
-          />
-        </q-card-section>
-        <q-separator />
-        <q-card-actions
-          align="right"
-          class="q-pa-md"
-        >
-          <q-btn
-            v-close-popup
-            flat
-            label="İptal"
-            color="grey-7"
-          />
-          <q-btn
-            unelevated
-            color="secondary"
-            label="Kaydet"
-            :loading="saving"
-            @click="saveRoles"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+      <q-option-group
+        v-model="selectedRoles"
+        :options="roleOptions"
+        type="checkbox"
+        role="group"
+        aria-label="Kullanıcıya atanacak roller"
+      />
+    </FormDialog>
 
-    <!-- Alanlar (branş) Dialog — kapsam kararı, roller/yetkiler ile aynı izin seviyesi (#126) -->
-    <q-dialog
+    <!-- Alanlar (branş) — kapsam kararı, roller/yetkiler ile aynı izin seviyesi (#126) -->
+    <FormDialog
       v-model="branchesDialog"
-      persistent
-      :maximized="$q.screen.lt.sm"
-      transition-show="slide-up"
-      transition-hide="slide-down"
+      :title="`Alanlar: ${selectedUser?.fullName ?? ''}`"
+      icon="school"
+      color="secondary"
+      :saving="saving"
+      @save="saveBranches"
     >
-      <q-card :style="$q.screen.gt.xs ? 'width: 480px; max-width: 95vw' : ''">
-        <q-toolbar class="bg-secondary text-white">
-          <q-icon
-            name="school"
-            class="q-mr-sm"
-          />
-          <q-toolbar-title>Alanlar: {{ selectedUser?.fullName }}</q-toolbar-title>
-          <q-btn
-            v-close-popup
-            flat
-            round
-            dense
-            icon="close"
-            aria-label="Kapat"
-            color="white"
-          />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <AppNotice
-            v-if="selectedUser?.branchRequired"
-            type="info"
-            message="Bu kullanıcı alan bazlı koordinasyon verisine yazabiliyor; en az bir alan seçilmelidir."
-          />
-          <AppNotice
-            v-else
-            type="info"
-            message="Bu kullanıcı kurum genelinde yetkilidir; alan seçimi zorunlu değildir ve boş bırakılabilir."
-          />
-          <q-select
-            v-model="selectedBranches"
-            :options="branchOpts.options.value"
-            :loading="branchOpts.loading.value"
-            label="Alanlar"
-            outlined
-            multiple
-            use-chips
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            @filter="branchOpts.filter"
-          >
-            <template #prepend>
-              <q-icon name="school" />
-            </template>
-            <template #no-option>
-              <SelectEmptyOption />
-            </template>
-          </q-select>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions
-          align="right"
-          class="q-pa-md"
-        >
-          <q-btn
-            v-close-popup
-            flat
-            label="İptal"
-            color="grey-7"
-          />
-          <q-btn
-            unelevated
-            color="secondary"
-            label="Kaydet"
-            :loading="saving"
-            @click="saveBranches"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+      <AppNotice
+        v-if="selectedUser?.branchRequired"
+        type="info"
+        message="Bu kullanıcı alan bazlı koordinasyon verisine yazabiliyor; en az bir alan seçilmelidir."
+      />
+      <AppNotice
+        v-else
+        type="info"
+        message="Bu kullanıcı kurum genelinde yetkilidir; alan seçimi zorunlu değildir ve boş bırakılabilir."
+      />
+      <q-select
+        v-model="selectedBranches"
+        :options="branchOpts.options.value"
+        :loading="branchOpts.loading.value"
+        label="Alanlar"
+        outlined
+        multiple
+        use-chips
+        use-input
+        input-debounce="0"
+        emit-value
+        map-options
+        option-label="label"
+        option-value="value"
+        @filter="branchOpts.filter"
+      >
+        <template #prepend>
+          <q-icon name="school" />
+        </template>
+        <template #no-option>
+          <SelectEmptyOption />
+        </template>
+      </q-select>
+    </FormDialog>
 
     <!--
       Kurum (kiracı) bağı — ADR-0003 adım 2.
@@ -547,150 +461,137 @@
       Kurum SEÇİCİSİ yoktur ve olmamalıdır: sunucu yalnız aktörün kendi kurumunu kabul eder
       (UserInstitutionScopePolicy). Seçici koymak, istemciye gerçekte var olmayan bir karar
       sunardı — kullanıcı başka kurum seçer, sunucu 422 döner.
+
+      KAPATMA DAVRANIŞI (bilinçli): FormDialog kökünde `persistent` taşır, yani bu panel
+      ESC veya arka plana tıklamayla kapanmaz — düz `q-dialog` hâlinde kapanıyordu. Kabul
+      edildi: buradaki iki eylem de tek tıkla hüküm doğurur ("Bağı çöz" kurum kapsamını
+      anında kaldırır, kullanıcının kapsamlı ekranları kapanır), dolayısıyla kapatma açık
+      bir karar olmalıdır. Kullanıcı kilitlenmez: toolbar'daki kapatma düğmesi ve İptal
+      butonu yerinde durur.
     -->
-    <q-dialog v-model="institutionDialog">
-      <q-card style="min-width: 420px">
-        <q-toolbar class="bg-secondary text-white">
-          <q-icon
-            name="domain"
-            size="sm"
-            class="q-mr-sm"
-          />
-          <q-toolbar-title>Kurum Bağı</q-toolbar-title>
-          <q-btn
-            v-close-popup
-            flat
-            round
-            dense
-            icon="close"
-            aria-label="Kapat"
-            color="white"
-          />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <div class="text-body2">
-            {{ selectedUser?.fullName }}
-          </div>
+    <FormDialog
+      v-model="institutionDialog"
+      title="Kurum Bağı"
+      icon="domain"
+      color="secondary"
+    >
+      <div class="text-body2">
+        {{ selectedUser?.fullName }}
+      </div>
 
-          <AppNotice
-            v-if="selectedUser?.institutionId"
-            type="info"
-            :message="`Bağlı olduğu kurum: ${institutionStore.institution?.fullName ?? selectedUser.institutionId}`"
-          />
-          <AppNotice
-            v-else
-            type="warning"
-            message="Bu kullanıcının kurum bağı yok. Kurum kapsamı isteyen ekranlar ona kapalıdır."
-          />
+      <AppNotice
+        v-if="selectedUser?.institutionId"
+        type="info"
+        :message="`Bağlı olduğu kurum: ${institutionStore.institution?.fullName ?? selectedUser.institutionId}`"
+      />
+      <AppNotice
+        v-else
+        type="warning"
+        message="Bu kullanıcının kurum bağı yok. Kurum kapsamı isteyen ekranlar ona kapalıdır."
+      />
 
-          <div class="text-caption text-grey-7">
-            Kurum bağı kullanıcının hangi okulun verisini göreceğini belirler. Yalnız kendi
-            kurumunuza bağlayabilirsiniz.
-          </div>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions
-          align="right"
-          class="q-pa-md"
-        >
-          <q-btn
-            v-if="selectedUser?.institutionId"
-            flat
-            color="negative"
-            label="Bağı çöz"
-            :loading="saving"
-            @click="saveInstitution(null)"
-          />
-          <q-btn
-            v-else
-            unelevated
-            color="secondary"
-            label="Kuruma bağla"
-            :loading="saving"
-            :disable="!institutionStore.institution"
-            @click="saveInstitution(institutionStore.institution?.id ?? null)"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+      <!--
+        Hedef kurum adı — BULGU 2. `saveInstitution` seçici SUNMAZ (yukarıdaki not); aktörün
+        O AN davrandığı kurumu bağlar (`institutionStore.institution`). Müdürlük kendi
+        bağlamındaysa bu müdürlük düğümünün kendisidir — bu, müdürlük personeli için doğru
+        sonuçtur. Ama bir OKUL müdürünü bağlamak isteniyorsa aktör önce O OKULUN bağlamına
+        GEÇMİŞ olmalıdır; aksi hâlde kullanıcı sessizce müdürlük düğümüne bağlanır. Ad burada
+        adıyla göründüğü için "Kuruma bağla"ya basmadan ÖNCE yanlış bağlamda olunduğu görülür.
+      -->
+      <div
+        v-if="!selectedUser?.institutionId"
+        class="text-body2 text-weight-medium q-mt-sm"
+      >
+        Bağlanacak kurum:
+        <span class="text-secondary">{{ institutionStore.institution?.fullName ?? 'Yükleniyor…' }}</span>
+      </div>
 
-    <!-- Veli–öğrenci bağı (#174) -->
-    <q-dialog v-model="studentsDialog">
-      <q-card style="min-width: 420px">
-        <q-toolbar class="bg-secondary text-white">
-          <q-icon
-            name="family_restroom"
-            size="sm"
-            class="q-mr-sm"
-          />
-          <q-toolbar-title>Bağlı Öğrenciler</q-toolbar-title>
-          <q-btn
-            v-close-popup
-            flat
-            round
-            dense
-            icon="close"
-            aria-label="Kapat"
-            color="white"
-          />
-        </q-toolbar>
-        <q-card-section class="q-pt-lg q-gutter-md">
-          <AppNotice
-            type="info"
-            message="Velinin erişebileceği veriyi yalnız bu liste belirler. Boş bırakmak bağı kaldırır; veli hiçbir öğrencinin verisine erişemez."
-          />
-          <q-select
-            v-model="selectedStudents"
-            :options="studentOpts.options.value"
-            :loading="studentOpts.loading.value"
-            label="Öğrenciler"
-            outlined
-            multiple
-            use-chips
-            use-input
-            input-debounce="0"
-            emit-value
-            map-options
-            option-label="label"
-            option-value="value"
-            @filter="studentOpts.filter"
-          >
-            <template #prepend>
-              <q-icon name="school" />
-            </template>
-            <template #no-option>
-              <SelectEmptyOption />
-            </template>
-          </q-select>
-        </q-card-section>
-        <q-separator />
-        <q-card-actions
-          align="right"
-          class="q-pa-md"
-        >
-          <q-btn
-            v-close-popup
-            flat
-            label="İptal"
-            color="grey-7"
-          />
-          <q-btn
-            unelevated
-            color="secondary"
-            label="Kaydet"
-            :loading="saving"
-            @click="saveStudents"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+      <div class="text-caption text-grey-7">
+        Kurum bağı kullanıcının hangi okulun verisini göreceğini belirler. Yalnız kendi
+        kurumunuza bağlayabilirsiniz.
+      </div>
+
+      <!--
+        İki koşullu eylem tek save-label'a sığmadığı için varsayılan eylem çubuğu
+        değiştirildi; İptal butonu bu yüzden elle eklendi.
+      -->
+      <template #actions>
+        <q-btn
+          v-close-popup
+          flat
+          label="İptal"
+          color="grey-7"
+        />
+        <q-btn
+          v-if="selectedUser?.institutionId"
+          flat
+          color="negative"
+          label="Bağı çöz"
+          :loading="saving"
+          @click="saveInstitution(null)"
+        />
+        <q-btn
+          v-else
+          unelevated
+          color="secondary"
+          label="Kuruma bağla"
+          :loading="saving"
+          :disable="!institutionStore.institution"
+          @click="saveInstitution(institutionStore.institution?.id ?? null)"
+        />
+      </template>
+    </FormDialog>
+
+    <!--
+      Veli–öğrenci bağı (#174).
+
+      KAPATMA DAVRANIŞI (bilinçli): FormDialog `persistent`tir — ESC ve arka plana tıklama
+      bu paneli kapatmaz, düz `q-dialog` hâlinde kapatıyordu. Kabul edildi: çoklu seçim
+      kaydedilmeden kapanırsa velinin öğrenci listesinde yapılan tüm düzenleme sessizce
+      kaybolur. Kapatma yolu açık kalır: toolbar'daki kapatma düğmesi ve İptal butonu.
+    -->
+    <FormDialog
+      v-model="studentsDialog"
+      title="Bağlı Öğrenciler"
+      icon="family_restroom"
+      color="secondary"
+      :saving="saving"
+      @save="saveStudents"
+    >
+      <AppNotice
+        type="info"
+        message="Velinin erişebileceği veriyi yalnız bu liste belirler. Boş bırakmak bağı kaldırır; veli hiçbir öğrencinin verisine erişemez."
+      />
+      <q-select
+        v-model="selectedStudents"
+        :options="studentOpts.options.value"
+        :loading="studentOpts.loading.value"
+        label="Öğrenciler"
+        outlined
+        multiple
+        use-chips
+        use-input
+        input-debounce="0"
+        emit-value
+        map-options
+        option-label="label"
+        option-value="value"
+        @filter="studentOpts.filter"
+      >
+        <template #prepend>
+          <q-icon name="school" />
+        </template>
+        <template #no-option>
+          <SelectEmptyOption />
+        </template>
+      </q-select>
+    </FormDialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import type { QTableProps } from 'quasar'
-import { useQuasar } from 'quasar'
 import { securityApi, type UserAccountDto, type InvitationDto } from 'src/api/security'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
@@ -701,12 +602,14 @@ import { useRoleCatalogStore } from 'stores/roleCatalog'
 import { useInstitutionStore } from 'stores/institution'
 import AppTable from 'components/AppTable.vue'
 import AppNotice from 'components/AppNotice.vue'
+import FormDialog from 'components/FormDialog.vue'
+import PageHeader from 'components/PageHeader.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
+import StatusBadge from 'components/StatusBadge.vue'
 import { useBranchOptions, useStudentOptions } from 'src/composables/useEntityOptions'
 import { resolveBranchCellState } from 'utils/branchAssignment'
 
-const $q = useQuasar()
 const notify = useNotify()
 const authStore = useAuthStore()
 const entityOptionsStore = useEntityOptionsStore()
@@ -774,6 +677,47 @@ const userColumns: QTableProps['columns'] = [
   { name: 'isEnabled', label: 'Durum', field: 'isEnabled', align: 'center' },
   { name: 'userActions', label: '', field: 'id', align: 'right' },
 ]
+
+// Davet durumu backend'den SmartEnum'un İngilizce Name'i olarak gelir (StatusName).
+// Kullanıcıya Türkçe slug gösterilir; slug'lar StatusBadge'in ton haritasında zaten tanımlı.
+// Tanınmayan değer HAM basılır — bozuk kaydın görünür kalması doğrudur, gizlenmesi değil.
+//
+// Aynı harita RolePage.vue'de de duruyor (davet tutarlılık taraması listesi). İkisi birebir
+// aynıdır ve öyle kalmalıdır; ortak bir modüle taşınması bu grubun yazma kapsamı dışındadır.
+const INVITATION_STATUS_LABELS: Record<string, string> = {
+  PendingApproval: 'Onay Bekliyor',
+  Approved: 'Onaylandı',
+  Rejected: 'Reddedildi',
+  Completed: 'Tamamlandı',
+  Expired: 'Süresi Doldu',
+}
+
+function invitationStatusLabel(status: string): string {
+  return INVITATION_STATUS_LABELS[status] ?? status
+}
+
+/**
+ * "SIRA SİZDE" — Tek Ses Kuralı: bu ekranda hardal TEK bağlamda görünür, o da DAVETLER
+ * sekmesindeki onay kararıdır. Kullanıcılar sekmesinde bekleyen bir karar yoktur.
+ *
+ * Koşul VERİDEN türer, rol adından DEĞİL (ADR-0001):
+ *  • `status === 'PendingApproval'` — onay/red butonlarını açan aşamanın ta kendisi
+ *    (bkz. #body-cell-invActions). Sinyal o butonların durum sütunundaki izdüşümüdür.
+ *  • `Permissions.UserManagement.Approve` — o butonları açan izin.
+ *
+ * Sekme görünürlüğü de aynı izne bakıyor olsa bile koşul burada AÇIKÇA yazılır: sekme
+ * koşulu ileride gevşerse (ör. görüntüleme amaçlı açılırsa) sinyal sessizce yetkisiz
+ * kullanıcıda yanardı.
+ *
+ * Akademik dönem kapalılığı sorgulanmadı: davet onayı döneme bağlı değildir, bu sayfa
+ * dönem store'una hiç dokunmaz.
+ */
+function isInvitationMyTurn(row: InvitationDto): boolean {
+  return (
+    row.status === 'PendingApproval' &&
+    authStore.hasPermission(Permissions.UserManagement.Approve)
+  )
+}
 
 const invitationColumns: QTableProps['columns'] = [
   { name: 'fullName', label: 'Ad Soyad', field: 'fullName', align: 'left' },

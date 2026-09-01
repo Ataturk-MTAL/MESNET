@@ -133,7 +133,7 @@ async function handleSave() {
     notify.success('Akademik dönem oluşturuldu.')
     open.value = false
     emit('saved')
-    await periodStore.loadPeriods()
+    await periodStore.loadPeriods(true)
   } catch (e) {
     notify.apiError(e, 'Dönem oluşturulurken bir hata oluştu.')
   } finally {

@@ -38,6 +38,35 @@ public class UserAccount
     /// <see cref="StudentId"/> (öğrencinin kendi hesabı) ile karıştırılmamalıdır.</para>
     /// </summary>
     public List<Guid> LinkedStudentIds { get; set; } = [];
+
+    /// <summary>
+    /// Aktif bağlam — il/ilçe yetkilisinin adına davrandığı okul (B parçası).
+    /// <c>null</c> = kendi kurumunda çalışıyor.
+    /// </summary>
+    /// <remarks>
+    /// <b>Kiracı anahtarıdır ve istekten ALINMAZ.</b> Yalnız
+    /// <c>POST /api/security/users/me/context</c> ucundan yazılır; o uç hedefin aktörün alt
+    /// ağacında olduğunu doğrular. Her çözümlemede kontrol TEKRARLANIR
+    /// (<see cref="MESNET.Common.Shared.Security.ActiveContextPolicy"/>) — ağaç değişebilir.
+    /// </remarks>
+    public Guid? ActiveInstitutionId { get; set; }
+
+    /// <summary>
+    /// <see cref="ActiveInstitutionId"/>'yi kuran token'ın oturum kimliği (<c>sid</c>).
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Oturum burada TAKİP EDİLMEZ.</b> Oturumu Keycloak yönetir; burada yalnız bir
+    /// kopya durur ve tek işi "bu bağlam hangi oturumda kuruldu" sorusuna cevap vermektir.
+    /// Yetki kararında kullanılmaz.</para>
+    ///
+    /// <para><b>Ölçüldü (29.08.2026):</b> <c>sid</c> kullanıcı access token'ında geliyor,
+    /// token yenilemede sabit kalıyor, yeni girişte değişiyor. Bağlam bu yüzden oturum içinde
+    /// serbestçe değişir ama oturumlar arası taşınmaz.</para>
+    ///
+    /// <para><b>Sınırı:</b> ömür SSO oturumunun ömrüdür, tarayıcı sekmesinin değil. Sekmeyi
+    /// kapatıp dönen kullanıcı, SSO oturumu canlıysa aynı bağlamda devam eder.</para>
+    /// </remarks>
+    public string? ActiveContextSessionId { get; set; }
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }

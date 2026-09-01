@@ -27,10 +27,17 @@
             type="text"
             width="120px"
           />
+          <!-- Zincirin istisna hâli ile normal bekleme hâli AYNI TONA düşmemeli: ikisi de düz
+               "warning" iken sütun tarandığında ayrımı yalnız ikon taşıyordu. Tonlar artık
+               StatusBadge merdiveninden geliyor (TerminationsPage.vue ile aynı düzen) —
+               istisna "uyarı" basamağı (koyu hardal), bekleme "bekleyen" basamağı (hardal).
+               Ölçüldü (beyaz metin, sRGB): status-warning #785300 = 6,92:1, status-pending
+               #9A6B00 = 4,69:1; aradaki ton farkı 1,47:1. Ayrımı ikon (bolt / schedule) ile
+               etiket metni tamamlar — renk tek sinyal değildir. -->
           <q-chip
             v-else-if="chainOf(props.row.id)?.chain?.isOverridden"
             dense
-            color="warning"
+            color="status-warning"
             text-color="white"
             icon="bolt"
             label="Okul yönetimi tamamladı"
@@ -43,11 +50,15 @@
             icon="check"
             label="Onaylar tamam"
           />
+          <!-- Bu çip "bekleniyor" der, "SIRA SİZDE" demez: tonu `status-pending`
+               (`--q-warning`), Resmî Hardal (`--q-accent`) DEĞİL. Buraya hardal
+               eklemeyin — gerekçesi dosya başındaki script yorumunda. -->
           <q-chip
             v-else
             dense
-            outline
-            color="orange-9"
+            color="status-pending"
+            text-color="white"
+            icon="schedule"
             :label="`${nextStepOf(props.row.id)?.slug} onayı bekleniyor`"
           />
         </q-td>
@@ -119,13 +130,31 @@
             :key="view.name"
           >
             <q-item-section avatar>
+              <!-- Ton birliği: satırdaki "sıradaki adım" çipi ile bu panel ikonu AYNI kaydın
+                   AYNI durumunu gösterir, aynı tonda olmalıdır. Çip `status-pending`
+                   kullanıyor; o sınıf `background-color: var(--q-warning)` (app.css), yani
+                   #9A6B00. İkon da `warning` ile aynı tema değişkenine bağlandı — Quasar
+                   `.text-warning { color: var(--q-warning) !important }` basar
+                   (quasar/src/css/core/colors.sass), yani kiracı rengi değişince ikisi
+                   birlikte kayar. Ham palet tonu `orange-9` bırakıldı (#ef6c00,
+                   quasar/src/css/variables.sass:317): DESIGN.md "Don't" listesinde adıyla
+                   geçer ve tema dışına düşer.
+                   Ölçüldü (beyaz FormDialog paneli): #9A6B00 = 4,69:1, WCAG 1.4.11 grafik
+                   nesnesi eşiğini (3:1) rahat geçer; #ef6c00 = 3,08:1 ile eşiğe teğetti ve
+                   çipten 1,52:1 ayrı düşüyordu.
+                   Sırası gelmemiş adımda "Onayı bekleniyor" caption'ı BASILMAZ (yalnız
+                   isNext'te var), yani adımın durumunu tek başına ikon taşır — anlamlı
+                   grafik nesnesi, eşik 3:1. grey-5 (#bdbdbd) 1,88:1 ile eşiğin altındaydı;
+                   grey-7 (#757575) 4,61:1. -->
               <q-icon
                 :name="view.approved ? 'check_circle' : 'radio_button_unchecked'"
-                :color="view.approved ? 'positive' : view.isNext ? 'orange-9' : 'grey-5'"
+                :color="view.approved ? 'positive' : view.isNext ? 'warning' : 'grey-7'"
               />
             </q-item-section>
             <q-item-section>
-              <q-item-label :class="{ 'text-grey-6': !view.approved && !view.isNext }">
+              <!-- Adım adı okunması gereken zincir bilgisi, devre dışı form bileşeni değil:
+                   eşik 4,5:1. grey-6 (#9e9e9e) 2,68:1 idi; grey-7 (#757575) 4,61:1. -->
+              <q-item-label :class="{ 'text-grey-7': !view.approved && !view.isNext }">
                 {{ view.label }}
               </q-item-label>
               <q-item-label
@@ -153,6 +182,40 @@
  * Sayfa yine de değerli: veli çocuğunun, işletme kendi öğrencisinin fesih sürecinin hangi
  * aşamada olduğunu görebilmeli. Kapsamı sunucu çözer (veli bağı ya da işletme kimliği, ikisi
  * de claim'den) — burada ek filtre yok.
+ *
+ * **Resmî Hardal ("Sıra sizde") bu sayfaya KOYULMAZ — bilerek. Tekrar denemeyin.**
+ * Sinyalin tanımı dar: kaydı bekleten taraf, ekrana bakan kullanıcının KENDİSİ
+ * (app.css → `.bg-accent-soft` / `.bg-accent-strong`). Burada bekleyen taraf HER ZAMAN
+ * okuldur; sayfanın hedef kitlesi (veli, öğrenci, işletme yetkilisi) hiçbir zaman sırada
+ * değildir. Rotayı açabilen tek okul rolü aşağıda ayrıca ele alınıyor.
+ *
+ * Dosya adı ("MyApprovals") sistemdeki en davetkâr yer ve tam bu yüzden en yanıltıcı yer.
+ * **Kuyruğu AÇAN izin ile kaydı İLERLETEN iznin ayrı olduğu yer burası.** Rota
+ * `internship:view-own` VEYA `company:student:manage` ile açılır (router/index.ts,
+ * `termination-status`; kapı `hasAnyPermission`, yani OR). Adımı ilerleten uç ise başka
+ * izin ister: `TerminationStep` (Internship.Core/Policies/TerminationChainPolicy.cs)
+ * Teacher ve Deputy adımlarına `internship:approve`, Director adımına `internship:manage`
+ * bağlar.
+ *
+ * Koşulu veriden kurmayı denemek de çözüm değil — ama gerekçe "koşul hiç tutmaz" DEĞİL.
+ * Ölçüldü (RolePermissionMap.cs + stores/auth.ts `hasPermission`):
+ *   • Rol haritasında rotayı açabilen roller: Student, Parent, CompanyManager,
+ *     InstitutionManager (başka rolde bu iki izin ya da onları yutan wildcard yok).
+ *   • İlk üçünde adım izni (`internship:approve` / `internship:manage`) HİÇ yoktur →
+ *     `useTerminationChain().canActOn(id)` onlar için zaten false; sinyal hiç yanmaz.
+ *   • InstitutionManager `internship:*` (ve `company:*`) wildcard'ı taşır; `hasPermission`
+ *     wildcard'ı ÖNEK olarak açar (`p.endsWith(':*') && permission.startsWith(...)`), yani
+ *     o rolde koşul TRUE döner. Koşul ölü kod değil — yanlış ekranda canlı kod olurdu.
+ *
+ * Müdürün "sıra sizde" sinyalini gördüğü yer bu salt-okunur durum sayfası değil,
+ * `/internship/terminations`'tır: TerminationsPage'de rozet `color="accent-strong"` ile
+ * basılır ve `isMyTurn` = `!periodStore.isReadOnly && canActOn(id)` ile, yani ADIM iznine
+ * bağlıdır. Aynı sinyali iki ekranda birden yakmak Tek Ses Kuralı'nı bozar — nadirlik
+ * sinyalin kendisidir (DESIGN.md). Bu yüzden burası boş bırakıldı.
+ *
+ * Bu ekrandaki "bekliyor" hâli zaten anlatılıyor: StatusBadge merdiveninin
+ * `status-pending` basamağı (`--q-warning`, uyarı hardalı). O ton Resmî Hardal DEĞİLDİR;
+ * genel bekleme durumunun yeridir ve hardalın rolünü işgal etmez.
  */
 import { ref, computed, watch } from 'vue'
 import type { QTableProps } from 'quasar'

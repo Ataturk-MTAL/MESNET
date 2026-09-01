@@ -1,18 +1,22 @@
 <template>
   <div class="assignment-grid">
     <table
-      class="full-width"
+      class="full-width tabular-nums"
       aria-label="Ders programı ve işletme atama tablosu. Hücreler gün ve saate göre düzenlenmiştir; her hücre dolu (ders), boş veya atanmış işletme durumunu gösterir."
     >
       <thead>
         <tr>
-          <th class="period-header text-caption text-grey-7">
+          <th
+            scope="col"
+            class="period-header text-caption text-weight-medium text-grey-8"
+          >
             Saat
           </th>
           <th
             v-for="day in days"
             :key="day.value"
-            class="day-header text-caption text-grey-7"
+            scope="col"
+            class="day-header text-caption text-weight-medium text-grey-8"
           >
             {{ day.label }}
           </th>
@@ -23,9 +27,12 @@
           v-for="period in periodCount"
           :key="period"
         >
-          <td class="period-label text-weight-medium text-grey-8">
+          <th
+            scope="row"
+            class="period-label text-weight-medium text-grey-8"
+          >
             {{ period }}.
-          </td>
+          </th>
           <td
             v-for="day in days"
             :key="day.value"
@@ -38,12 +45,19 @@
               v-if="isOccupied(day.value, period)"
               class="occupied-cell"
             >
+              <!-- İkon dekoratif (yanındaki metin aynı bilgiyi veriyor, aria-label de öyle),
+                   yine de grey-5 (#bdbdbd, .cell-occupied zemini #edeff2 üzerinde 1,63:1)
+                   opaklık kalkınca yıkanmış duruyordu; grey-7 (#757575) aynı zeminde 4,00:1
+                   ile metinden hafif kalır, hiyerarşi korunur. -->
               <q-icon
                 name="menu_book"
                 size="14px"
-                color="grey-5"
+                color="grey-7"
               />
-              <span class="text-caption text-grey-6">
+              <!-- Ders adı hücrenin TAŞIDIĞI bilgi, dekor değil: metin eşiği 4,5:1 geçerli.
+                   grey-6 (#9e9e9e) .cell-occupied zemininde (#edeff2) yalnız 2,33:1;
+                   grey-8 (#616161) 5,38:1 — kardeş ScheduleGrid'in "Dolu" hücresiyle aynı ton. -->
+              <span class="text-caption text-grey-8">
                 {{ getCourseName(day.value, period) || 'Ders' }}
               </span>
             </div>
@@ -74,7 +88,11 @@
                 color="positive"
               />
               <!-- -strong ton şart: düz `text-positive` (#2e7d5b) .cell-free zemininde
-                   (#e2ede8) 4,17:1 veriyor — metin eşiği 4,5:1'in altında. -strong 5,38:1. -->
+                   (#e2ede8) 4,17:1 veriyor — metin eşiği 4,5:1'in altında. -strong 5,38:1.
+                   Bu 5,38 ancak .drop-zone'da OPAKLIK OLMADIĞI için geçerlidir: eski
+                   `opacity: 0.6` altında efektif metin #729e8b'ye düşüyor ve oran 2,51:1
+                   oluyordu (ölçüldü). Drop-zone devre dışı bir bileşen değildir, WCAG
+                   1.4.3 muafiyeti geçmez — opaklık geri konmamalıdır. -->
               <span class="text-caption text-positive-strong">Boş</span>
             </div>
 
@@ -130,10 +148,15 @@
     </table>
 
     <!-- Özet Chip'leri -->
-    <div class="row q-mt-md q-gutter-sm">
+    <!-- Sabit Rakam Kuralı: bu satır tablonun DIŞINDA, yani app.css'in .q-table th/td
+         kapsamı buraya ulaşmıyor. Kardeş ScheduleGrid'in özet satırı da aynı sınıfı taşır. -->
+    <div class="row q-mt-md q-gutter-sm tabular-nums">
+      <!-- Ham palet tonu (grey-2 #f5f5f5) tema değişince yerinde donardı. Çip, özetlediği
+           .cell-occupied hücresiyle AYNI tonu kullanır: bg-neutral-soft (#edeff2) + grey-8
+           (#616161) = 5,38:1 (ölçüldü, eşik 4,5:1). Kardeş çipler de tema türevi. -->
       <q-chip
         icon="menu_book"
-        color="grey-2"
+        color="neutral-soft"
         text-color="grey-8"
         dense
         size="sm"
@@ -390,25 +413,33 @@ function onRemoveClick(day: string, period: number) {
 
 .assignment-grid th,
 .assignment-grid td {
-  border: 1px solid #e0e0e0;
+  border: 1px solid rgba(30, 58, 95, 0.14);
+  border: 1px solid color-mix(in srgb, var(--q-primary) 14%, transparent);
   padding: 4px 6px;
+}
+
+/* Başlık bandı dolu hücreden BİR BASAMAK koyu: ikisi de primary türevi olduğu için tema
+   değişince birlikte kayar, ama rolleri ayrışır (bant %12 = #e4e7ec, .cell-occupied %8 =
+   #edeff2). Ayrım tek başına tonla bırakılmıyor; başlık ayrıca text-weight-medium taşır.
+   ÖLÇÜLDÜ: text-grey-8 (#616161) bu bant üzerinde 4,996:1 (eşik 4,5:1). */
+.period-header,
+.day-header {
+  background: #e4e7ec;
+  background: color-mix(in srgb, var(--q-primary) 12%, #fff);
+  text-align: center;
 }
 
 .period-header {
   width: 50px;
-  background: #fafafa;
-  text-align: center;
 }
 
 .day-header {
-  text-align: center;
-  background: #fafafa;
   min-width: 120px;
 }
 
+/* Renk yok: satır başlığı şablondaki `text-grey-8` yardımcı sınıfını kullanır. */
 .period-label {
   text-align: center;
-  color: #555;
 }
 
 .grid-cell {
@@ -417,7 +448,8 @@ function onRemoveClick(day: string, period: number) {
 }
 
 .cell-occupied {
-  background: #f5f5f5;
+  background: #edeff2;
+  background: color-mix(in srgb, var(--q-primary) 8%, #fff);
 }
 
 /* Ham Material tonları yerine tema türevi (#104): tema değişince hücre zeminleri de kayar. */
@@ -431,23 +463,24 @@ function onRemoveClick(day: string, period: number) {
   background: color-mix(in srgb, var(--q-info) 12%, #fff);
 }
 
+/* Bu dosyada HİÇBİR hücre kabında `opacity` YOKTUR ve geri konmamalıdır: opaklık öğeyi
+   tümüyle zemine kompozitler, yani içindeki her rengi birlikte söndürür. ÖLÇÜLDÜ — 0,6
+   opaklıkta #edeff2 zemini üzerinde grey-6 1,61:1, grey-7 2,12:1, grey-8 2,45:1; grey-10
+   (#212121) bile yalnız 4,11:1 verir, yani hiçbir gri metin eşiğini (4,5:1) geçemez.
+   Aynı tuzak .drop-zone'da da vardı: `opacity: 0.6` altında text-positive-strong (#276a4d)
+   .cell-free zemininde (#e2ede8) efektif #729e8b olup 2,51:1'e düşüyordu; opaklık kalkınca
+   5,38:1. Vurgu azaltma opaklıkla değil ton seçimiyle yapılır. */
 .occupied-cell {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  opacity: 0.6;
 }
 
 /* Klavyeyle seçili chip ve seçim varken vurgulanan boş hücreler (#88) */
 .assigned-slot--selected {
   outline: 2px solid var(--q-primary);
   outline-offset: 1px;
-}
-
-.drop-zone--target {
-  border-style: dashed;
-  border-color: var(--q-primary);
 }
 
 .drop-zone {
@@ -459,25 +492,54 @@ function onRemoveClick(day: string, period: number) {
   border: 2px dashed transparent;
   border-radius: 4px;
   /* transition: all yerine değişen özellikler — tarayıcı her özelliği izlemesin,
-     layout özellikleri yanlışlıkla animasyonlanmasın. */
-  transition-property: border-color, background-color, opacity;
+     layout özellikleri yanlışlıkla animasyonlanmasın. `opacity` listede YOK: artık
+     hiçbir durumda opaklık değişmiyor (bkz. yukarıdaki kilit). */
+  transition-property: border-color, background-color;
   transition-duration: 0.2s;
   transition-timing-function: ease-out;
-  opacity: 0.6;
 }
 
+/*
+ * SIRA ÖNEMLİ — durum kuralları `.drop-zone`'dan SONRA gelir.
+ *
+ * `.drop-zone` kenarlığı `border: 2px dashed transparent` KISAYOLUYLA yazıyor; kısayol
+ * `border-color`'ı da sıfırlar. Üç durum kuralı da tek sınıf seçicidir, yani özgüllükleri
+ * `.drop-zone` ile EŞİTTİR (scoped derleyici hepsine aynı [data-v-…] ekler) — eşitlikte
+ * kaynak sırası kazanır. Bu blok daha önce `.drop-zone`'un ÜSTÜNDEYDİ ve `--target`
+ * kuralı hiç uygulanmıyordu: klavyeyle işletme seçildiğinde hedef hücreler görsel olarak
+ * hiç işaretlenmiyordu, sinyal yalnız aria-label metninde kalıyordu (#88).
+ *
+ * Sıra artan güçtedir: hover < klavye hedefi < sürükleme hedefi.
+ *
+ * Kontrast — WCAG 1.4.11 arayüz bileşeni eşiği 3:1 (ölçüldü, dinlenen boş hücre
+ * zemini `.cell-free` #e2ede8'e karşı):
+ *   ESKİ hover  color-mix(positive 45%)  #a1c4b5 → 1,58:1  KALIR
+ *   ESKİ active color-mix(positive 65%)  #77aa94 → 1,88:1  KALIR (kendi zeminine karşı)
+ * Bu iki ton yalnız `opacity: 0.6 → 1` geçişiyle birlikte fark ediliyordu; opaklık
+ * kaldırılınca (vurgu azaltma opaklıkla değil ton seçimiyle yapılır) tek sinyal kaldılar
+ * ve eşiğin yarısına düştüler. Tam doygun tona çekildiler:
+ *   YENİ hover  var(--q-positive) #2E7D5B → 4,17:1  GEÇER
+ *   YENİ active aynı kenarlık, zemin #cbdfd6 üzerinde → 3,59:1  GEÇER
+ *   klavye hedefi var(--q-primary) #1E3A5F → 9,59:1  (en güçlü sinyal, olması gereken)
+ * hover ile active artık aynı kenarlık rengini paylaşıyor; ikisini ayıran şey active'in
+ * zemin dolgusu. Kenarlık tonunu tekrar açmadan önce oranı yeniden ölç.
+ */
 .drop-zone:not(.drop-zone--disabled):hover {
-  border-color: #a1c4b5;
-  border-color: color-mix(in srgb, var(--q-positive) 45%, #fff);
-  opacity: 1;
+  border-color: #2e7d5b;
+  border-color: var(--q-positive);
+}
+
+.drop-zone--target {
+  border-style: dashed;
+  border-color: #1e3a5f;
+  border-color: var(--q-primary);
 }
 
 .drop-zone--active {
-  border-color: #77aa94 !important;
-  border-color: color-mix(in srgb, var(--q-positive) 65%, #fff) !important;
-  background: #cbded6 !important;
+  border-color: #2e7d5b !important;
+  border-color: var(--q-positive) !important;
+  background: #cbdfd6 !important;
   background: color-mix(in srgb, var(--q-positive) 25%, #fff) !important;
-  opacity: 1 !important;
 }
 
 .drop-zone--disabled {

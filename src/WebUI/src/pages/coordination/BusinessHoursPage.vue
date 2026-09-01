@@ -1,12 +1,9 @@
 <template>
   <q-page padding>
-    <h1 class="text-h5 text-weight-bold q-mb-xs q-mt-none">
-      İşletme Saat Ayarları
-    </h1>
-    <div class="text-caption text-grey-7 q-mb-lg">
-      İşletme dağıtımından ÖNCE yapılır: her işletmeye takdir edilen koordinasyon saati
-      burada belirlenir. Toplam, alanın ders yükü havuzunu aşamaz.
-    </div>
+    <PageHeader
+      title="İşletme Saat Ayarları"
+      subtitle="İşletme dağıtımından ÖNCE yapılır: her işletmeye takdir edilen koordinasyon saati burada belirlenir. Toplam, alanın ders yükü havuzunu aşamaz."
+    />
 
     <!-- Alan Seçici -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
@@ -70,6 +67,7 @@
               :max="20"
             />
             <q-btn
+              unelevated
               color="primary"
               icon="refresh"
               label="Kümele"
@@ -82,6 +80,7 @@
               class="q-mx-sm"
             />
             <q-btn
+              unelevated
               color="secondary"
               icon="route"
               label="Mesafe Hesapla"
@@ -172,6 +171,7 @@
             Öneri KAYDETMEZ: değerleri tabloya doldurur, karar koordinatörde kalır. -->
           <div class="row items-center q-gutter-sm q-mb-md">
             <q-btn
+              unelevated
               color="primary"
               icon="auto_awesome"
               label="Otomatik Dağıt"
@@ -376,9 +376,9 @@
                     round
                     dense
                     icon="history"
-                    color="grey-6"
+                    color="grey-7"
                     size="xs"
-                    class="q-ml-xs"
+                    class="q-ml-xs history-btn"
                     aria-label="Atama geçmişini göster"
                     @click="showHistory(biz.businessId, biz.businessName, biz.branchCode, periodStore.selectedPeriodId ?? '')"
                   >
@@ -422,6 +422,7 @@
                     type="number"
                     dense
                     outlined
+                    :aria-label="`${biz.businessName} — takdir edilen koordinatörlük saati`"
                     :min="1"
                     :max="biz.maxCoordinationHours"
                     style="max-width: 90px; margin: 0 auto"
@@ -438,7 +439,7 @@
                     dense
                     size="sm"
                     :icon="isPinned(biz.businessId) ? 'lock' : 'lock_open'"
-                    :color="isPinned(biz.businessId) ? 'primary' : 'grey-6'"
+                    :color="isPinned(biz.businessId) ? 'primary' : 'grey-7'"
                     :disable="periodStore.isReadOnly"
                     :aria-label="isPinned(biz.businessId)
                       ? `${biz.businessName} — satır kilidini aç`
@@ -459,11 +460,11 @@
 
           <!-- Özet + Kaydet -->
           <div class="row items-center q-mt-md">
-            <div class="text-body2">
+            <div class="text-body2 tabular-nums">
               Havuz: <strong :class="workloadPoolToneClass(hoursWorkloadPool)">{{ workloadPoolLabel(hoursWorkloadPool) }}</strong>
               &nbsp;|&nbsp; Σ Takdir: <strong :class="hoursTotalAssignedClass">{{ hoursTotalAssigned }}</strong>
               &nbsp;|&nbsp; Kalan: <strong :class="hoursRemainingClass">{{ hoursRemainingLabel }}</strong>
-              &nbsp;|&nbsp; Σ Maks: <strong class="text-grey-6">{{ hoursTotalMaxHours }}</strong>
+              &nbsp;|&nbsp; Σ Maks: <strong class="text-grey-7">{{ hoursTotalMaxHours }}</strong>
               <span v-if="honoraryCount > 0">
                 &nbsp;|&nbsp; Fahri: <strong class="text-neutral-strong">{{ honoraryCount }}</strong> işletme
                 <q-tooltip>Fahri ziyaretler havuz toplamına girmez — ek ders ücreti doğurmaz.</q-tooltip>
@@ -471,6 +472,7 @@
             </div>
             <q-space />
             <q-btn
+              unelevated
               color="primary"
               icon="save"
               label="Saatleri Kaydet"
@@ -482,6 +484,7 @@
                 v-if="changedHoursCount > 0"
                 color="negative"
                 floating
+                class="tabular-nums"
               >
                 {{ changedHoursCount }}
               </q-badge>
@@ -594,6 +597,7 @@ import { HONORARY_LABEL, HONORARY_HINT } from 'src/utils/coordinationHours'
 import { bucketPresentation } from 'src/utils/allocationBuckets'
 import BranchSelector from 'components/BranchSelector.vue'
 import BusinessClusterMap from 'components/BusinessClusterMap.vue'
+import PageHeader from 'components/PageHeader.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
 import DetailDialog from 'components/DetailDialog.vue'
@@ -723,3 +727,14 @@ onMounted(() => {
   if (branchFilter.value) onBranchChange().catch(() => {})
 })
 </script>
+
+<style scoped>
+/*
+ * Dokunma hedefi WCAG 2.2 SC 2.5.8 (en az 24x24 CSS px) — size="xs" ikon butonu
+ * görsel olarak bunun altında kalıyor, hedef alanı burada geri veriliyor.
+ */
+.history-btn {
+  min-width: 24px;
+  min-height: 24px;
+}
+</style>

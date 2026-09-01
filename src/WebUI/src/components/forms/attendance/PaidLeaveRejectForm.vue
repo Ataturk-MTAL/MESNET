@@ -11,16 +11,14 @@
     :save-disabled="!reason.trim()"
     @save="handleSave"
   >
-    <q-banner
+    <AppNotice
+      type="warning"
       dense
-      class="bg-orange-1 text-warning q-mb-sm"
+      class="q-mb-sm"
     >
-      <template #avatar>
-        <q-icon name="warning" />
-      </template>
       Reddedilen başvuru kapanır ve izin günleri için devamsızlık kaydı açılmaz. Öğrenci aynı
       tarihler için yeniden başvurabilir.
-    </q-banner>
+    </AppNotice>
 
     <q-input
       v-model="reason"
@@ -42,6 +40,7 @@ import { ref, watch } from 'vue'
 import { paidLeaveApi } from 'src/api/paidLeave'
 import { useNotify } from 'src/composables/useNotify'
 import FormDialog from 'components/FormDialog.vue'
+import AppNotice from 'components/AppNotice.vue'
 
 const open = defineModel<boolean>({ required: true })
 

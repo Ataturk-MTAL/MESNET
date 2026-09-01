@@ -26,6 +26,129 @@ Ortak kök neden: olay-beslemeli read-model'ler yalnız **bundan sonra** gelen o
 Seeder idempotent olduğu için kaynağı yeniden yaratmaz, yani olay bir daha yayınlanmaz ve mevcut
 kayıtlar için görünüm hiç dolmaz.
 
+## Atlanan adım artık açılışta bildiriliyor
+
+Bu sayfadaki adımların bir kısmı atlandığında **belirtisi ölçülebilir**. Açılışta
+`DeploymentPrerequisiteVerificationHostedService` o belirtileri okur:
+
+- Bulgu **`LogCritical`** olarak yazılır: ölçüm + sonuç + birebir çağrılabilir adım, tek blokta
+- **Hiçbir ortamda açılış durmaz** — gerekçesi aşağıda
+- **Ölçüm yapılamaması bulgu sayılmaz** — ilk açılışta tablo henüz yoksa kontrol atlanır ve
+  uyarı yazılır
+
+:::note Neden Realm doğrulaması gibi Development'ta durdurmuyor
+`RealmVerificationHostedService` ve `DocumentTenancyVerificationHostedService` Development'ta
+**açılışı durdurur**, çünkü onların çaresi süreç dışındadır (Keycloak ayarı, kaynak kodda
+sınıflandırma). Buradaki çare ise **bu API'nin kendi ucudur**. Açılış dursaydı uç ulaşılamaz
+olur ve sistem **kendi çaresine erişemeyen** bir kilitlenmeye girerdi — üstelik her yeni
+kurulumda, çünkü boş bir veritabanında bu bulgular tanımı gereği vardır. Koruma değil tuzak
+olurdu. Kilitleyen test: `DeploymentPrerequisiteVerificationTests.Bulgu_varken_bile_acilis_DURMAZ`.
+:::
+
+:::warning Ölçer, koşturmaz
+Doğrulayıcı hiçbir resync ucunu **çağırmaz** ve hiçbir şey **yazmaz**. Açılıştan koşturmak bu
+depoda mümkün değildir: `UseWolverine` host'tan **sonra** başlar, açılıştan yapılan her yayın
+`WolverineHasNotStartedException` fırlatır. (#290 ve #291 kapandı; uçlar artık idempotent — ama
+açılış kısıtı Wolverine sıralaması yüzünden yerinde duruyor.) Koşturma sırası ve kimliği **operatördedir**.
+:::
+
+### Neyin ölçüldüğü — ve neyin ölçülmediği
+
+| Ön koşul | Ölçülen belirti | Adım |
+| --- | --- | --- |
+| Kurum ağacı | Okul var, ama `Path` alanı boş olan okul var | `POST /api/institutions/rebuild-hierarchy` |
+| Yönetici bağı görünümü | Okul var, `InstitutionManagerLink` görünümünde **0 satır** | `POST /api/security/users/replay` |
+| Staj saga'sı kopyaları | Saga sayısı, işaret ettiği tekil yerleştirme sayısından fazla | `POST /api/internships/resync-sagas` → `POST /api/contracts/resync-internship-links` |
+
+Kalan adımların belirtisi **tek modül içinden ölçülemez** (ör. "öğrenci var ama `StudentNameView`
+boş" iki modülü birden görmeyi gerektirir; şema izolasyonu buna izin vermez). Onlar bu listede
+**yoktur** ve doğrulayıcının sessizliği onlar için bir şey söylemez. Kapsam her açılışta loglanır:
+
+```
+Dağıtım ön koşulları: 3/3 ölçüldü, 0 eksik bulundu.
+```
+
+Yeni bir sonda eklemek tek dosyadır: `IDeploymentPrerequisiteProbe` uygulayın ve modülün
+`ServiceRegistration`'ında kaydedin. Sonda **yalnız okur**.
+
+## Şema göçü betikle YAPILMAZ — elden uygulanır
+
+`scripts/migrate.sh` ve `scripts/migrate.ps1` **silindi** (#293). İkisi de
+`dotnet run -- marten-apply` çağırıyordu; depoda böyle bir komut ana bilgisayarı **yok**
+(`RunJasperFxCommands` / `AddJasperFx` araması: 0 sonuç, Oakton/JasperFx paket referansı: 0).
+Argüman yutuluyor, API normal açılıyor ve betik **0 ile çıkıyordu** — yani "göç uygulandı"
+diyen, hiçbir şey yapmamış bir betik.
+
+Yerine konmadı, çünkü doğru yol zaten elden uygulamaktır:
+
+```bash
+psql "$CONNECTION" -f src/Docs/docs/infrastructure/sql/149-conjoined-kiracilik.sql
+psql "$CONNECTION" -f src/Docs/docs/infrastructure/sql/149-kiraci-damgalama.sql
+```
+
+`ApplyAllDatabaseChangesOnStartup()` bu depoda kullanılmaz: Marten'ın kendisiyle çelişen deltası
+(`42710: constraint "fkey_mt_events_stream_id_tenant_id" ... already exists`) API'yi öldürür.
+Aynı delta `marten-apply` üzerinden de gelirdi — bir komut ana bilgisayarı eklemek, bilinen bozuk
+yolu diriltmek olurdu. **Gözden geçirilebilir SQL** bilinçli bir karardır; otomatik uygulayan bir
+sarmalayıcı o gözden geçirmeyi ortadan kaldırır.
+
+## Koşturma — `scripts/deploy-prereqs.sh`
+
+Adımları **sırasıyla** koşturan betik. Sıra betiğin içinde gerekçesiyle yazılıdır.
+
+```bash
+export MESNET_API_URL=https://mesnet.example.gov.tr
+export MESNET_KEYCLOAK_TOKEN_URL=https://kc.example.gov.tr/realms/mesnet/protocol/openid-connect/token
+export MESNET_OPERATOR_USER=<platform:tenant:manage taşıyan gerçek kullanıcı>
+
+./scripts/deploy-prereqs.sh --dry-run     # önce planı görün
+./scripts/deploy-prereqs.sh               # sonra koşturun (parola terminalden sorulur)
+```
+
+**Kimlik: adlandırılmış operatör hesabı** — kalıcı bir `DeploymentOperator` servis hesabı
+**değil**. Servis hesabı, yılda beş kez kullanılmak için 365 gün boyunca bütün okulların verisine
+yazma yetkisi taşıyan kalıcı bir anahtar olurdu. Parola betikte saklanmaz; çalışma anında ortam
+değişkeninden ya da terminalden alınır ve süreçle birlikte ölür. Denetim kaydı gerçek bir kişinin
+`sub`'unu taşır.
+
+**Varsayılan hedef yoktur.** URL de kimlik de tahmin edilmez; yanlış hedefe sessizce koşan bir
+dağıtım betiği, koşmayan betikten kötüdür. Geliştirme için `--dev`.
+
+### Betik üç sınıf tanır
+
+| Sınıf | Anlamı | Varsayılan |
+| --- | --- | --- |
+| `safe` | İdempotent, serbestçe yeniden koşturulur | Koşar |
+| `once` | Gerekli ama idempotent **değil** — tam bir kez | **Atlanır**; `--allow-once` + damga dosyası |
+| `broken` | Bilinen hatalı, veri bozar | **Atlanır**; `--include-broken` |
+
+Bugün `once`: **yok**. Bugün `broken`: **yok**. Üç sınıf da tanımlı kalıyor — bir sonraki
+idempotent olmayan uç çıktığında yeniden yazılmasınlar diye.
+
+`placements/resync-projections` **onarıldı (#291)** ve artık `safe`: uç yaşam döngüsü olayını
+(`StudentPlaced`) değil, onarım olayını (`PlacementSnapshotResynced`) yayınlıyor. Ayrıntı aşağıda.
+
+### Onarım olayı yayınlanır, yaşam döngüsü olayı değil (#291)
+
+`POST /api/placements/resync-projections` eskiden `StudentPlaced`'i yeniden yayınlıyordu. O olay
+`InternshipSaga`'nın **başlatıcı** olayıdır; deterministik saga kimliği (#251) yüzünden ikinci
+yayın **tekil kısıt ihlali** üretiyor, o kuyruk ölü mektuba düşüyor ve
+`MultipleHandlerBehavior.Separated` yüzünden kardeş kuyruklar commit etmeye devam ediyordu.
+Sonuç: **uç 200 döner**, saga yazılmaz, kapasite bozulur, hiçbir yerde hata görünmez.
+
+Ayrıca `Business.StudentPlacedConsumer` kapasiteyi `CountAsync() + 1` ile yazıyordu; onarım
+yolunda satır zaten sayıldığı için **her koşuda kapasite bir artıyordu**. Artık küme kullanılıyor
+(`Coordination.StudentPlacedConsumer` ile aynı desen) — canlı yolda sonuç değişmez.
+
+Kilitleyen testler: `ResyncEventDriftTests` (onarım handler'ı başlatıcı olay yayınlayamaz;
+onarım olayını saga tüketemez).
+
+### 200 dönmek "yapıldı" demek değildir
+
+Betik, yanıtı **doğrulayabildiği** fazlarda doğrular ve doğrulayamadığını `DOĞRULANMADI` diye
+yazar — "TAMAM" demez. Gerekçe #292'de ölçüldü: uç 200 döndü ve **sıfır** satır işledi. Doğrulama
+tutmayan faz `ŞÜPHELİ` sayılır ve betik sıfırdan farklı kodla çıkar.
+
 ## Realm ayarları — artık otomatik yakalanıyor
 
 Keycloak realm import **tek seferliktir**: `mesnet-realm.json`'a sonradan eklenen rol, politika
@@ -448,13 +571,57 @@ gönderim **başarısız olur ve loglanır** — sessiz düşmez.
 
 ## Resync / backfill uçları
 
-Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden çok kez
-çağrılabilir.
+Hepsi **idempotent**tir ve birden çok kez çağrılabilir — ama bu güvence **tüketicilerin upsert
+yapmasından kendiliğinden gelmez**. İki kez ölçülerek yanlış çıktı:
+
+- **#291:** `placements/resync-projections`, `StudentPlaced`'i yeniden yayınlıyordu. O olay
+  `InternshipSaga`'nın **başlatıcısıdır**; ikinci yayın tekil kısıt ihlaliyle ölü mektuba
+  düşüyordu. Ayrıca `Business` tüketicisi kapasiteyi `CountAsync() + 1` ile yazıyordu.
+- **#290:** `students/resync-projections`, `StudentRegistered`'ı yeniden yayınlıyordu.
+  `Coordination.StudentRegisteredCountConsumer` şube sayacını **artırıyor** ve görünüm öğrenci
+  başına değil **şube başına** tek satır — her koşu sayacı o şubedeki öğrenci sayısı kadar
+  şişiriyordu.
+
+İkisi de sessizdi: uç 200 dönüyor, log temiz kalıyordu. Düzeltme aynı desenle yapıldı — onarım
+yolu **ayrı bir anlık görüntü olayı** yayınlar (`PlacementSnapshotResynced`,
+`StudentSnapshotResynced`, `AttendanceSnapshotResynced`) ve tekrarı zararlı olan tüketici o
+olayı **dinlemez**.
+
+:::danger Sayacı besleyen sorgu, GİDENİ de yayınlamak zorundadır (#290)
+`SyncStudentCounts` eskiden **yalnız aktif öğrencisi olan** (şube, öğretim türü) gruplarını
+yayınlıyordu. Aktif öğrencisi sıfıra düşmüş bir şube için hiç olay çıkmıyor, tüketici o satıra
+hiç dokunmuyor ve sayaç **eski değerinde donuyordu**.
+
+Bu bir görüntü hatası değil, **para kararıdır**. Zincir ölçüldü:
+
+```
+BranchStudentCountView.StudentCountByClassYear
+  → UpsertBranchWorkloadConfigHandler  (GetValueOrDefault)
+  → GroupCalculator.CalculateGroups    (Norm Kadro Yön. Md.22)
+  → BranchWorkloadConfig.TotalWorkloadPool
+  → AssignBusinessToTeacherHandler     SERT TAVAN: WorkloadPoolExceeded
+```
+
+Yani öğrencisi kalmamış bir alanın koordinasyon saati tavanı sıfıra düşmüyor ve o alana
+**ücret doğuran** saat dağıtılmaya devam edilebiliyordu.
+
+Artık gruplama **tüm** öğrenciler üzerinden, sayım yalnız aktifler üzerinden yapılıyor; aktifi
+kalmamış şube **boş sözlükle** yayınlanıyor. "Dokunma" ile "sıfırla" farklı şeylerdir.
+Kilitleyen test: `StudentCountPolicyTests`.
+:::
+
+:::warning Yeni bir resync ucu yazarken
+Tüketicilerin `session.Store` yapması yetmez. Şunu sorun: bu olayın tüketicilerinden herhangi
+biri **sayaç artırıyor**, **listeye ekliyor**, **`Guid.NewGuid()` ile satır kimliği üretiyor**
+ya da bir **saga başlatıyor** mu? Biri bile evetse yaşam döngüsü olayını yeniden yayınlamayın.
+Kilitleyen test: `ResyncEventDriftTests`.
+:::
 
 | Uç | Ne yapar |
 | --- | --- |
 | `POST /api/attendance/resync-snapshots` | Devamsızlık kayıtlarının **bugünkü hâlini** yeniden yayınlar (#256). Payment'ın `StudentAbsenceView` **ve** Reporting'in `StudentAttendanceReportView` satırlarını onarır: donmuş `Pending` durumlar, işlenmemiş sağlık raporu onayları, silinmemiş satırlar (#256, #257). `attendance:report` ister (`attendance:manage` **değil** — o izin işletme rollerinde de var). İsteğe bağlı `?academicPeriodId=` ile daraltılır. **Kiracı başına** çağrılır. `AttendanceMarked` yayınlamaz, fesih zinciri tetiklenmez |
-| `POST /api/students/resync-projections` | Tüm öğrenciler için `StudentRegistered` yeniden yayınlanır — Attendance/Contract `StudentNameView`, Reporting ve Payment görünümlerini tazeler |
+| `POST /api/students/resync-projections` | Tüm öğrenciler için **`StudentSnapshotResynced`** yayınlanır (`StudentRegistered` **değil** — #290) — Attendance/Contract `StudentNameView`, Reporting, Payment ve Security görünümlerini tazeler. Şube öğrenci sayacı ayrıca **mutlak** olarak yeniden hesaplanır: uç, kurum + dönem başına `SyncStudentCounts` yayınlar. Yanıttaki `countScopesSynced` kaç kapsamın tazelendiğini gösterir. **Ayrıca `sync-counts` çağırmaya gerek yoktur** |
+| `POST /api/students/sync-counts` | Şube öğrenci sayacını (`BranchStudentCountView`) **mutlak** olarak yeniden hesaplar — artırmaz, **değiştirir**. `resync-projections` bunu zaten tetikler; ayrıca çağırmak gerekmez. Kurum + akademik dönem alır |
 | `POST /api/placements/resync-projections` | Tüm **aktif** yerleştirmeler için `StudentPlaced` yeniden yayınlanır — Payment `PlacementView`, Coordination not giriş görünümleri |
 | `POST /api/placements/backfill-branch-authorizations` | İşletmelerin alan yetkilerini mevcut yerleştirmelerden doldurur |
 | `POST /api/businesses/resync-projections` | Tüm işletmeler için `BusinessUpdated` yeniden yayınlanır — diğer modüllerin işletme görünümleri |
@@ -462,6 +629,8 @@ Hepsi **idempotent**tir (tüketiciler `session.Store` ile upsert yapar), birden 
 | `POST /api/coordination/weekly-visits/resync` | Haftalık ziyaret olaylarını yeniden yayınlar |
 | `POST /api/institutions/staff/resync-branch-codes` | Personel kaydından kullanıcı hesabına **kurum (kiracı anahtarı) ve alan kapsamı** backfill'i — **uydurmaz, üzerine yazmaz**; yalnız boş alanı doldurur. **Yalnız çağıranın kendi okulu** için çalışır (#131); kurum üstü aktör `?institutionId=` ile hedef verir |
 | `POST /api/security/users/resync-display-names` | Kullanıcı görünen adlarını tazeler |
+| `POST /api/institutions/rebuild-hierarchy` | Kurum **ağacını** mevcut okul künyelerinden (`ProvinceCode` / `DistrictName`) kurar: il ve ilçe müdürlüğü düğümlerini açar, `ParentId` ve `Path` yazar. `platform:tenant:manage` ister. **İdempotent** — ikinci koşu düğüm çoğaltmaz, bozulmuş yolu onarır |
+| `POST /api/security/users/replay` | Mevcut kullanıcı hesaplarını `UserAccountReplayed` olarak yeniden yayınlar — Institution modülünün `InstitutionManagerLink` görünümünü doldurur (bkz. aşağıdaki bölüm). `platform:tenant:manage` ister. **İdempotent** |
 
 ### Personel backfill'i tek okulludur (#131)
 
@@ -480,6 +649,49 @@ POST /api/institutions/staff/resync-branch-codes?institutionId=<id>   → platfo
 ```
 
 Yabancı hedef veren okul aktörü **422** alır.
+
+### `rebuild-hierarchy` ZORUNLUDUR — atlanırsa hata değil boş liste
+
+Kurum kapsamı artık ağaçtan geliyor: bir aktörün göreceği kurumlar `Path.StartsWith(aktörünYolu)`
+ile bulunur. Geçiş koşturulmazsa **hiçbir kaydın yolu yoktur**, `StartsWith` hiçbir şeyle
+eşleşmez ve il/ilçe yetkilisi **boş liste** görür — istek 200 döner, log temiz kalır.
+
+Okul kullanıcıları etkilenmez: kapsam kararı kimlik eşitliğini yol kontrolünden **önce**
+sorar, yani herkes kendi kurumunu yolsuz da görür. Kaybolan yalnız **yeni** il/ilçe
+yeteneğidir.
+
+Uç kurum üstü izinle korunur ve tüm ağacı bir kerede kurar; kiracı başına çağırmak gerekmez:
+
+```bash
+curl -X POST http://localhost:5270/api/institutions/rebuild-hierarchy \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Yanıttaki `skippedNoProvince` sıfırdan büyükse, o okulların **il kodu yoktur** ve kapsamsız
+kalmışlardır — hiçbir il yetkilisinin listesinde görünmezler. Künyeleri tamamlayıp ucu yeniden
+çağırın.
+
+**Denetim izi bu ön koşula farklı bir şekilde bağlıdır — sıraya, listeye değil.**
+`rebuild-hierarchy` hiç koşmamış bir kurulumda kurum kapsamlı denetim listesi (`GET
+/api/audit/institution`) **normal çalışır**: yol yoksa `InstitutionScopePolicy.VisibleScope`
+aktörün kimliğine düşer (`SubjectInstitutionId == institutionId`) ve bu alan her satırda
+doludur (`AuditEntryFactory.ResolveSubject` konu kurumu bulamazsa aktörün kurumuna düşer) —
+boş liste görülmez.
+
+Asıl tehlike **kısmi sıradır**. Aktörün kurum yolu boşken (`rebuild-hierarchy` henüz
+koşturulmamışken) yazılan satırlara `SubjectInstitutionPath = null` işlenir — sıcak yolda ek
+okuma yapılmaz, yol doğrudan aktörün claim'inden kopyalanır. `rebuild-hierarchy` **sonradan**
+koşup aktör yol kazanınca `VisibleScope` yol-önekiyle süzen dala geçer
+(`SubjectInstitutionPath != null && StartsWith(...)`) ve **arada yazılmış o satırlar kurum
+kapsamlı görünümde kalıcı olarak görünmez olur** — hata dönmez, sayaç yok, uç 200 ve liste
+eksik gelir. Bunu geri dolduracak bir uç yoktur: `rebuild-hierarchy` yalnız `Institution`
+belgelerini yazar, `AuditEntry.SubjectInstitutionPath` yazma anında donmuş bir kopyadır ve
+geri işlenmez.
+
+**Bu yüzden kurum hiyerarşisi geçişi denetim izi dağıtılmadan önce koşturulmalıdır.**
+Sonrasına kalırsa aradaki satırlar yalnız kurum kapsamlı görünümden kaybolur; aktörün kendi
+"İşlemlerim" görünümü (`ActorId` ile süzülür, yol kontrolü yapmaz) onları göstermeye devam
+eder.
 
 ### Yerleştirme resync'i: atlanan kayıtlar
 
@@ -757,6 +969,37 @@ FROM security.mt_doc_useraccount WHERE data->'roles' ? 'Student';
 değilse (dev tohum verisinde çoğu böyledir) tüketici sessizce atlar — uydurmaz. Bu öğrencilerin
 sistemde hesabı yoktur, dolayısıyla kapsam da gerekmez.
 
+## Müdürlük panosu: yöneticisiz okul listesi — replay ZORUNLU
+
+Müdürlük panosunun "yöneticisiz okullar" kartı `InstitutionManagerLink` görünümünden okur. Bu
+görünüm Security modülünün `UserCreated` / `UserRolesChanged` / `UserActivated` /
+`UserDeactivated` / `UserDeleted` olaylarıyla **bundan sonra** beslenir — dağıtım öncesi var
+olan kullanıcı hesapları için satır **hiç yoktur**.
+
+```
+POST /api/security/users/replay      (platform:tenant:manage)
+```
+
+**Ne zaman çalıştırılır:** bu işi dağıttıktan sonra **bir kez**. **İdempotenttir** — birden
+çok kez çağrılabilir, ikinci koşu satırları aynı değerle yeniden yazar.
+
+**Ne yapar:** `DeletedAt == null` olan tüm kullanıcı hesaplarını `UserAccountReplayed` olarak
+yeniden yayınlar (`UserCreated` **değil** — bkz. `UserAccountReplayed` XML doc, I-2); Institution
+modülünün `InstitutionManagerLinkConsumer`'ı bu olayı dinleyip kurum bağı, etkinlik durumu ve
+`institution:manage` yetkisini satıra mutlak olarak yazar.
+
+:::danger Atlanırsa ne olur
+Görünüm **boş kalır**, dolayısıyla "yöneticisiz okul" sorgusu **HER okulu** yöneticisiz sayar —
+gerçekte yöneticisi olan okullar da dahil. Hata dönmez, log basılmaz; panoda yalnız yanlış bir
+liste görünür.
+:::
+
+:::note Olaylar asenkron işlenir
+Uç 200 döndüğünde olaylar yalnız **yayınlanmıştır**, işlenmiş olması gerekmez —
+`InstitutionManagerLinkConsumer`'ın kuyruğu ayrıca ilerler. Yanıttan hemen sonra panoyu
+kontrol etmek eksik görünebilir; kuyruk boşalana kadar bekleyin.
+:::
+
 ## Sırayı bozmayın
 
 Bir adım başka bir adımın verisini üretiyorsa sıra önemlidir. Örnek: koordinasyon zinciri
@@ -770,12 +1013,31 @@ yerleştirme tümden durur. Aynı biçimde kiracı anahtarında önce **backfill
 24 kardeşten rastgele birine bağlamak demektir.
 
 ```bash
-# 1) Kopya saga'ları birleştir — kiracı başına, platform:tenant:manage
+# 1) Kopya saga'ları birleştir — TÜM kiracılar, tek çağrı, platform:tenant:manage
 curl -X POST /api/internships/resync-sagas
 
-# 2) Aktif sözleşmeleri saga'ya yeniden bağla — kiracı başına, platform:tenant:manage
+# 2) Aktif sözleşmeleri saga'ya yeniden bağla — TÜM kiracılar, tek çağrı, platform:tenant:manage
 curl -X POST /api/contracts/resync-internship-links
 ```
+
+:::warning Bu iki uç eskiden 200 dönüp SIFIR kayıt işliyordu (#292)
+`platform:tenant:manage` taşıyan aktörün kurumu yoktur, dolayısıyla **platform kiracısına**
+düşer. `InternshipSaga` ve `InternshipContract` ise kiracı damgalıdır ve orada **hiçbir satırı
+yoktur**. Enjekte edilen istek session'ıyla çalışan eski sürüm bu yüzden boş sonuç buluyor,
+uç 200 veriyordu — operatör onarımın yapıldığını sanıyordu.
+
+Dev'de görünmemesinin nedeni: `admin` hesabı `InstitutionManager` **ve** `SystemAdmin`
+rollerini birlikte taşıyor, yani kendi okulunun kiracısında koşuyordu.
+
+Her iki uç artık `ITenantDirectory` ile **bütün kiracıları dolaşıyor** ve yanıtta
+`tenantsProcessed` dönüyor — sıfır kiracı, sıfır bulgudan farklı bir şeydir ve ayırt
+edilebilmelidir. Yayınlanan `ContractActivated` da `DeliveryOptions.TenantId` ile
+damgalanıyor; damgalanmasaydı olay yayınlayanın (platform) kiracısını devralır, tüketici
+saga'yı yanlış kiracıda arar ve hiçbir hata vermezdi.
+
+Kilitleyen test: `PlatformScopedTenantDocumentDriftTests` — `platform:tenant:manage` ile
+korunan bir ucun kiracı damgalı belgeye enjekte session'la dokunmasını kırmızıya çevirir.
+:::
 
 **Neden gerekli:** saga'nın modüller arası yarısı çalışmıyordu (#248) — `ContractActivated`,
 `ContractTerminated`, `ContractCompleted` ve `AttendanceLimitExceeded` saga kimliği

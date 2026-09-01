@@ -25,7 +25,7 @@
     />
     <div
       v-if="form.isSchoolBased"
-      class="text-caption text-orange-9 q-mb-sm"
+      class="text-caption text-warning-strong q-mb-sm"
     >
       Ücret ve devlet katkısı ödenmez, dekont beklenmez. Öğretmen alanı bu durumda
       <strong>gözetmen</strong> (alan/atölye şefi) anlamına gelir ve ücret doğurmaz.
@@ -69,7 +69,7 @@
     </q-select>
     <div
       v-if="!form.isSchoolBased && studentBranchCode && businessOpts.allOptions.value.length === 0 && !businessOpts.loading.value"
-      class="text-caption text-grey q-mt-sm"
+      class="text-caption text-grey-7 q-mt-sm"
     >
       Bu alandan öğrenci almaya yetkili işletme yok. İdare, işletmenin belgelerini inceleyip
       alan yetkisi verdikten sonra yerleştirme yapılabilir.

@@ -207,7 +207,9 @@ export function useDashboardStats(options: UseDashboardStatsOptions) {
 
     if (authStore.hasPermission(Permissions.UserManagement.View)) {
       tasks.push(
-        securityApi.listInvitations({ status: 'Pending', pageSize: 1 })
+        // 'Pending' geçerli bir InvitationStatus adı DEĞİLDİR; TryFromName başarısız olur ve
+        // durum süzgeci SESSİZCE düşerdi — kart tüm durumların davetini sayıyordu.
+        securityApi.listInvitations({ status: 'PendingApproval', pageSize: 1 })
           .then((res) => { total += res.data?.totalCount ?? 0 })
           .catch(() => {}),
       )

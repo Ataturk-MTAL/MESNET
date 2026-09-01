@@ -18,8 +18,26 @@ namespace MESNET.Coordination.Application.Consumers;
 /// </summary>
 public static class StudentPlacedConsumer
 {
-    public static async Task Consume(
-        StudentPlaced @event,
+    /// <summary>
+    /// Yerleştirme yaşam döngüsü olayı — canlı yol.
+    /// </summary>
+    public static Task Consume(StudentPlaced @event,
+        IDocumentSession session,
+        CancellationToken cancellationToken)
+        => Apply(@event.ToSnapshot(), session, cancellationToken);
+
+    /// <summary>
+    /// Onarım yolu (#291): <c>POST /api/placements/resync-projections</c> bu olayı yayınlar.
+    /// <c>StudentPlaced</c> yeniden yayınlanamaz — o, saga'nın başlatıcı olayıdır ve yeniden
+    /// yayını tekil kısıt ihlaliyle ölü mektuba düşerdi (uç yine 200 dönerek).
+    /// </summary>
+    public static Task Consume(PlacementSnapshotResynced @event,
+        IDocumentSession session,
+        CancellationToken cancellationToken)
+        => Apply(@event, session, cancellationToken);
+
+    private static async Task Apply(
+        PlacementSnapshotResynced @event,
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
@@ -50,7 +68,7 @@ public static class StudentPlacedConsumer
     private static async Task<BusinessCoordinationView> CreateBranchRowAsync(
         Guid rowId,
         Guid businessId,
-        StudentPlaced @event,
+        PlacementSnapshotResynced @event,
         IDocumentSession session,
         CancellationToken cancellationToken)
     {
@@ -84,7 +102,7 @@ public static class StudentPlacedConsumer
     /// yeniden oynatmada da mükerrer sayım olmaz.
     /// </summary>
     private static async Task<int> CountActiveStudentsAsync(
-        StudentPlaced @event,
+        PlacementSnapshotResynced @event,
         IDocumentSession session,
         CancellationToken cancellationToken)
     {

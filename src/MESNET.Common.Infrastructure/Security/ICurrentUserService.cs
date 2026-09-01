@@ -23,4 +23,19 @@ public interface ICurrentUserService
     /// Bilgi yoksa boş liste döner — boş liste "hiçbir öğrenciye erişemez" demektir.
     /// </summary>
     IReadOnlyList<Guid> GetLinkedStudentIds();
+
+    /// <summary>
+    /// Aktörün kurum ağacındaki yolu — <c>institution_path</c> claim'i.
+    /// Kapsam kararı için kullanılır; erişim kararı için değil (o permission'ın işidir).
+    /// Bilgi yoksa <c>null</c> döner ve kapsam kimlik eşitliğine düşer.
+    /// </summary>
+    string? GetInstitutionPath();
+
+    /// <summary>
+    /// Token'ın oturum kimliği — <c>sid</c> claim'i. Aktif bağlamın hangi oturumda
+    /// kurulduğunu işaretlemek için kullanılır; <b>yetki kararında kullanılmaz</b>.
+    /// Ölçüldü (29.08.2026): Keycloak bunu kullanıcı access token'ında gönderiyor, token
+    /// yenilemede sabit tutuyor, yeni girişte değiştiriyor.
+    /// </summary>
+    string? GetSessionId();
 }

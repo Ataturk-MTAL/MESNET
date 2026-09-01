@@ -27,7 +27,9 @@
           icon="close"
           aria-label="Kapat"
           color="white"
-        />
+        >
+          <q-tooltip>Kapat</q-tooltip>
+        </q-btn>
       </q-toolbar>
 
       <!-- İçerik: kalan yüksekliği alır ve uzun formlarda kendi içinde kayar -->

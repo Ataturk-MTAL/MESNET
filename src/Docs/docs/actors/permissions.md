@@ -175,6 +175,34 @@ belge doğrulama, devamsızlık takibi, maaş hesaplamaları — **yürütür, o
 }
 ```
 
+#### Rol tutarlılık taraması — izin erişimi açar, kapsamı belirlemez (#283)
+
+`GET /api/security/role-integrity` bozuk rol kaydını **tespit eder, düzeltmez**. İzni
+`user:roles:manage`'dir ve öyle kaldı; gerekçesi ucun kendi tasarımıdır: **raporu görmesi gereken
+kişi, düzeltmeyi de yapacak olandır**. Düzeltme ucu (`POST /api/security/users/{id}/roles`) kurum
+kapsamlıdır — rapor kurum üstü olsaydı gören ile düzeltebilen ayrılır, müdür düzeltebildiği tek
+kaydı göremez olurdu.
+
+Kapsam **ayrı bir karardır** ve üç bacakta üç ayrı sonuca varır:
+
+| Bacak | Kaynak | Kapsam |
+| --- | --- | --- |
+| Tanınmayan rolle davetler | `UserInvitation` | **Kurum** — `UserScopeResolver` |
+| Tanınmayan rol taşıyan hesaplar | `UserAccount` | **Kurum** — `UserScopeResolver` |
+| Hiç realm rolü olmayan hesaplar | Keycloak | **Platform** — `platform:tenant:manage` |
+
+`UserAccount` ve `UserInvitation` `DocumentTenancyMap`'te **kimlik katmanındadır**; conjoined
+kiracılık onları **süzmez**. Süzülmeselerdi `user:roles:manage` taşıyan her müdür bütün okulların
+e-posta, ad ve kullanıcı adı bilgisini görürdü — kullanıcı ve davet listeleri daraltıldıktan sonra
+aynı kişisel veri **ikinci bir kapıdan** açık kalırdı.
+
+Realm bacağı daraltılamaz: Keycloak'ta kurum kavramı yoktur. Yetkisi olmayan aktörde bu bacak
+**hiç sorulmaz** ve boş döner — ama **boş olduğu söylenir** (`realmScanPermitted: false`). Sessiz
+boş liste "sorun yok" diye okunurdu; ekran bu yüzden "taranmadı" ile "temiz"i asla aynı
+göstermez.
+
+Kilitleyen test: `IdentityDocumentScopeDriftTests`.
+
 #### `DeputyDirector` izin demetinin gerekçesi
 
 Kaynak: actors.md → "Müdür Yardımcısı" (staj işlemleri koordinasyonu, evrak takibi ve onayı,
@@ -1211,6 +1239,46 @@ Kullanıcı yönetimi ekranında (`UserManagementPage`):
 - Satır aksiyonlarındaki 🎓 düğmesi alan kapsamını düzenler (çoklu seçim, kurum branş
   kataloğundan)
 - Davet formunda alan çoklu seçimi vardır; zorunlu değildir
+
+## Denetim İzi
+
+`audit:view:institution` iznine yalnız `InstitutionManager` ve `DeputyDirector` sahiptir; kapsam
+kendi kurum ağacının yol önekiyle sınırlıdır. Önek bilerek `institution:` **değil** `audit:`
+seçildi — aksi hâlde `InstitutionManager`'ın `institution:*` wildcard'ı üzerinden karar sessizce
+her okul müdürüne geçerdi, oysa denetim görünürlüğü açıkça verilmesi gereken bir karardır.
+
+## Kurum Kapsamı Ağaçtan Gelir
+
+Kurumlar bir ağaçtır: il müdürlüğü → ilçe müdürlüğü → okul. Kapsam kararı tek soruya iner —
+**hedefin yolu aktörün yoluyla başlıyor mu** (`InstitutionScopePolicy`).
+
+- Aktörün kendi düğümü kapsamındadır
+- **Üst düğüm kapsam DIŞIDIR** — okul müdürü ilçe müdürlüğünün kaydını göremez
+- Kardeş düğümler kapsam dışıdır
+- `platform:tenant:manage` taşıyan aktör ağacın tamamını görür
+
+`ProvincialAdmin` ve `DistrictAdmin` rolleri A parçasında **yeni izin almıyordu**: ikisi de düz
+`institution:view` taşıyordu. `institution:` önekli her yeni izin `institution:*` wildcard'ı
+üzerinden **her okul müdürüne** sessizce geçerdi (ADR-0002 önek tuzağı) — bu yüzden yazma yetkisi
+denetim izi (Audit, C parçası) yazılana kadar bilerek ertelendi. B parçasında (müdahale yetkisi)
+sıra tamamlandı; bkz. "Müdürlük Katmanı" aşağıda. Bu rollerin farkı hâlâ izinde değil, ağaçtaki
+yerindedir — yalnız artık ağaçtaki yerlerinde **yazabiliyorlar** da.
+
+Aktörün yolu `institution_path` claim'inden okunur ve claim **kurum kaydından** üretilir;
+token'daki değer her istekte silinir. Kullanıcının yazabildiği bir yol, kullanıcının kendi
+kapsamını seçmesi demektir — kök yazan biri her okulu görürdü.
+
+## Müdürlük Katmanı — Müdahale Yetkisi (B parçası)
+
+`ProvincialAdmin` (kendi ilinin alt ağacında) ve `DistrictAdmin` (kendi ilçesinin alt ağacında)
+aynı üç müdahaleyi yapabilir: kurum künyesini düzenleme/dönem açma-kapatma
+(`institution:manage`), tıkanmış fesih onay zincirini atlama (`internship:approval:override` —
+`internship:manage` DEĞİL, o müdür onay adımını da açardı) ve hiç yöneticisi olmayan bir okula
+ilk yöneticiyi bağlama (`directorate:institution-bootstrap`, koşullu — okulun yöneticisi olduğu
+an kapanır). Kapsam üçünde de **aktif bağlamdan** (ağaçtaki yerden) gelir, izinden değil —
+`InstitutionScopePolicy` "hedefin yolu benim yolumla başlıyor mu" sorusuna iner. `directorate:`
+öneki bilerek yenidir: `institution:` seçilseydi izin `InstitutionManager`'ın `institution:*`
+wildcard'ı üzerinden her okul müdürüne geçerdi, `platform:` seçilseydi kapsam bütün ülkeye açılırdı.
 
 ## Kurum Geneli Koordinasyon Yapılandırması (#130)
 

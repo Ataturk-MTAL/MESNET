@@ -67,7 +67,7 @@
           </template>
           <template #no-option>
             <q-item>
-              <q-item-section class="text-grey">
+              <q-item-section class="text-grey-7">
                 Sonuç bulunamadı
               </q-item-section>
             </q-item>
@@ -93,7 +93,7 @@
           </template>
           <template #no-option>
             <q-item>
-              <q-item-section class="text-grey">
+              <q-item-section class="text-grey-7">
                 Sonuç bulunamadı
               </q-item-section>
             </q-item>
@@ -169,10 +169,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { institutionApi, type ProvinceDto } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { useInstitutionStore } from 'stores/institution'
+import { useAuthStore } from 'stores/auth'
+import { resolveEditableInstitutionId, isActiveContextInstitution } from 'src/utils/institutionScope'
+import { institutionReturnRoute } from 'utils/institutionRoutes'
 import { isSafeUrl } from 'utils/safeUrl'
 
 /** Boş geçilebilir; doluysa yalnız http(s) kabul edilir. */
@@ -193,8 +196,10 @@ function institutionCodeRule(value: number | null): true | string {
 }
 
 const router = useRouter()
+const route = useRoute()
 const notify = useNotify()
 const institutionStore = useInstitutionStore()
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -295,18 +300,28 @@ function filterProvinces(needle: string, update: (fn: () => void) => void) {
 }
 
 function goBack() {
-  router.push('/institution').catch(() => {})
+  const routeId = typeof route.params.id === 'string' ? route.params.id : null
+  router.push(institutionReturnRoute(routeId)).catch(() => {})
 }
 
 async function loadInstitution() {
   loading.value = true
   try {
-    const { data: institutions } = await institutionApi.list()
-    if (!institutions || institutions.length === 0) {
+    // AYNI HATA burada da vardı: "listenin ilk satırı" sıralaması olmayan bir sorguya
+    // güvenmekti ve platform aktöründe her yazmadan sonra başka bir okulu düzenletiyordu.
+    // InstitutionPage 27.08.2026'da düzeltilmişti; bu çağrı yeri gözden kaçmıştı.
+    const routeId = typeof route.params.id === 'string' ? route.params.id : null
+    // authStore.currentInstitutionId OKUNUR — user.institutionId DEĞİL: aktif bağlam varsa
+    // düzenlenen kurum davranılan (bağlamdaki) okul olmalı, il yetkilisinin kendi İl MEM
+    // kaydı değil (Görev 10 ile aynı disiplin — üçüncü kopya, InstitutionPage ile aynı).
+    const ownId = authStore.currentInstitutionId ?? null
+    const listRes = routeId || ownId ? null : await institutionApi.list({ pageSize: 100 })
+    const resolved = resolveEditableInstitutionId(routeId, ownId, listRes?.data?.items ?? [])
+    if (!resolved) {
       goBack()
       return
     }
-    institutionId.value = institutions[0].id
+    institutionId.value = resolved
     const { data: inst } = await institutionApi.get(institutionId.value)
     form.fullName = inst.fullName
     form.address = inst.address ?? ''
@@ -347,7 +362,12 @@ async function handleSave() {
       email: form.email || undefined,
       webUrl: form.webUrl || undefined,
     })
-    institutionStore.clear()
+    // InstitutionPage ile aynı gerekçe (bkz. o dosyadaki isActiveContext yorumu): bu form
+    // BAŞKA bir kurumu (rota parametresiyle açılan) düzenleyebilir; global store'u yalnız
+    // düzenlenen kurum aktif bağlamın kendisiyse geçersiz kıl.
+    if (isActiveContextInstitution(institutionId.value, authStore.currentInstitutionId)) {
+      institutionStore.clear()
+    }
     notify.success('Kurum bilgileri güncellendi.')
     goBack()
   } catch (e) {

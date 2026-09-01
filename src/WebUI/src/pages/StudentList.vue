@@ -6,6 +6,7 @@
           color="primary"
           icon="person_add"
           label="Yeni Öğrenci"
+          unelevated
           @click="openAddDialog"
         />
       </PermissionGuard>
@@ -54,7 +55,9 @@
             icon="visibility"
             aria-label="Detayları görüntüle"
             @click="openDetail(row)"
-          />
+          >
+            <q-tooltip>Detayları görüntüle</q-tooltip>
+          </q-btn>
           <PermissionGuard :permission="Permissions.Student.Manage">
             <q-btn
               flat

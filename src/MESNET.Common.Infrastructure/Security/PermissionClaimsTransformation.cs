@@ -32,6 +32,26 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
     private const string StudentClaimType = "student_id";
 
     /// <summary>
+    /// Aktif bağlam claim'i (B parçası). Otoritesi <c>UserAccount.ActiveInstitutionId</c>'dir.
+    /// Yalnız <see cref="ActiveContextPolicy.Resolve"/> <c>null</c> DEĞİL dönerse eklenir —
+    /// yokluğu "bağlam yok, ev kurumunda çalışıyor" demektir.
+    /// </summary>
+    public const string ActiveInstitutionClaimType = "active_institution_id";
+
+    /// <summary>
+    /// Aktif bağlamı (<c>UserAccount.ActiveInstitutionId</c> + <c>ActiveContextSessionId</c>)
+    /// keycloakId ile bulan raw SQL. Modül entity referansı kullanmaz — schema izolasyonuna
+    /// uyar; aynı gerekçeyle diğer lookup SQL'leri de burada.
+    /// </summary>
+    private const string ActiveContextLookupSql = """
+        SELECT data->>'activeInstitutionId' AS active_institution_id,
+               data->>'activeContextSessionId' AS active_context_session_id
+        FROM security.mt_doc_useraccount
+        WHERE data->>'keycloakUserId' = @keycloakId
+        LIMIT 1
+        """;
+
+    /// <summary>
     /// Institution staff tablosundan keycloakId ile kurum ID'si bulan raw SQL.
     /// Modül entity referansı kullanmaz — schema izolasyonuna uyar.
     /// </summary>
@@ -44,6 +64,25 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         )
         LIMIT 1
         """;
+
+    /// <summary>
+    /// Kurum ağacındaki yolu kurum kimliğinden bulan raw SQL.
+    ///
+    /// <para>Modül entity referansı kullanmaz — schema izolasyonuna uyar; aynı gerekçeyle
+    /// <c>InstitutionLookupSql</c> de burada.</para>
+    ///
+    /// <para><c>NULL</c> dönebilir: geçiş ucu (<c>POST /api/institutions/rebuild-hierarchy</c>)
+    /// bu kayıt için henüz koşmamıştır. Bu bir hata DEĞİLDİR; kapsam kimlik eşitliğine düşer.</para>
+    /// </summary>
+    private const string InstitutionPathLookupSql = """
+        SELECT data->>'path' AS path
+        FROM institution.mt_doc_institution
+        WHERE data->>'id' = @institutionId
+        LIMIT 1
+        """;
+
+    /// <summary>Kurum ağacındaki yol claim'i. Otoritesi <c>Institution.Path</c> alanıdır.</summary>
+    private const string InstitutionPathClaimType = "institution_path";
 
     /// <summary>
     /// Personel kaydındaki alan (branş) kodlarını keycloakId ile bulan raw SQL (#126).
@@ -118,6 +157,20 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         // (Eskiden bu çağrı entry yüklenmeden önce yapılıyor ve token'daki claim varsa
         // kayda hiç bakılmıyordu.)
         await EnrichInstitutionClaimAsync(principal, sub, entry?.InstitutionId);
+
+        // ── Aktif bağlam claim enrichment (B parçası) ──
+        // institution_path claim'i YUKARIDA kuruldu ve AKTİF BAĞLAMLA DEĞİŞMEZ: o, aktörün
+        // KENDİ ağaçtaki yeridir ve alt ağaç kontrolünün girdisidir — bağlamla değiştirilseydi
+        // kontrol kendi kendini doğrular hâle gelirdi. Bu yüzden bu adım institution_path'ten
+        // SONRA çalışır: ActiveContextPolicy.Resolve aktörün yolunu (institution_path claim'i)
+        // GİRDİ olarak okur.
+        //
+        // hasPlatformScope BURADA türetilir, yeni bir arama EKLENMEZ: `entry` bu metodun
+        // üstünde zaten Marten'dan (ya da önbellekten) yüklendi. Ölçüldü (canlı, sessiz
+        // hata): SetActiveInstitutionHandler platform muafiyetini alırken bu çözümleme adımı
+        // almıyordu — kayıt activeInstitutionId'yi taşıyordu ama claim hiç doğmuyordu, admin
+        // "geçti" görünüp ev kurumunda kalmaya devam ediyordu.
+        await EnrichActiveContextClaimAsync(principal, sub, HasPlatformScope(entry, principal));
 
         // ── Alan (branş) kapsamı claim enrichment (#126) ──
         // Sıra: token claim → kullanıcı kaydındaki BranchCodes → personel kaydı yedeği.
@@ -282,6 +335,7 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
         cache.Remove($"user-institution:{keycloakUserId}");
         cache.Remove($"user-institution-warned:{keycloakUserId}");
         cache.Remove($"user-branch-codes:{keycloakUserId}");
+        cache.Remove($"active-context:{keycloakUserId}");
     }
 
     /// <summary>
@@ -607,14 +661,34 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
             return;
 
         // Token'daki değer HER DURUMDA atılır — sunucu tarafı kaynak bulunamasa bile.
-        // Aksi hâlde "kaynak yoksa token'a düş" davranışı geri gelirdi.
+        // Aksi hâlde "kaynak yoksa token'a düş" davranışı geri gelirdi. Yol claim'i de aynı
+        // kurala tabidir: yol aktörün göreceği ALT AĞACI belirler, yani kullanıcının
+        // yazabildiği bir yol kendi kapsamını seçmesi demektir.
         RemoveInstitutionClaims(principal);
+        RemoveInstitutionPathClaims(principal);
 
+        var resolvedInstitutionId = await ResolveInstitutionIdAsync(
+            identity, keycloakUserId, accountInstitutionId);
+
+        if (resolvedInstitutionId is null)
+            return;
+
+        await EnrichInstitutionPathClaimAsync(identity, resolvedInstitutionId);
+    }
+
+    /// <summary>
+    /// Kurum kimliğini çözer ve claim olarak ekler; çözülen değeri döndürür.
+    /// Sıra: (1) kullanıcı kaydı — otorite, (2) personel kaydı yedeği — geçiş adımı.
+    /// </summary>
+    private async Task<string?> ResolveInstitutionIdAsync(
+        ClaimsIdentity identity, string keycloakUserId, Guid? accountInstitutionId)
+    {
         // (1) Kullanıcı kaydı — kiracı anahtarının otoritesi.
         if (accountInstitutionId is { } institution && institution != Guid.Empty)
         {
-            identity.AddClaim(new Claim("institution_id", institution.ToString()));
-            return;
+            var value = institution.ToString();
+            identity.AddClaim(new Claim("institution_id", value));
+            return value;
         }
 
         // (2) Personel kaydı yedeği — mevcut kullanıcılar için geçiş adımı.
@@ -629,26 +703,289 @@ public sealed class PermissionClaimsTransformation : IClaimsTransformation
             // Eskiden boş sonuç da CacheDuration boyunca saklanıyordu ve bu, geçici bir
             // durumu 5 dakikalık bir kesintiye çeviriyordu: kullanıcı personel kaydına
             // eklendikten SONRA bile kapsamsız kalıyordu, çünkü önbellekte "kurumu yok"
-            // yazıyordu. Kaydı olmayan kullanıcıda (henüz senkronize edilmemiş) tüketici
-            // tarafı da devreye giremez — `StaffBranchSyncConsumer` hesap bulamayınca erken
-            // döner, yani önbelleği temizleyecek kimse yoktur.
-            //
-            // Boş veritabanında tam olarak bu yaşandı: kurum oluşturulurken önbelleğe "yok"
-            // yazıldı, saniyeler sonra personel eklendi ve kurum kapsamı isteyen işletme
-            // kaydı 422 döndü. Token yolu bunu maskeliyordu (#204/#208 ile aynı sınıf hata).
-            //
-            // Bedel: kapsamsız kullanıcı için istek başına bir sorgu. Kapsamsızlık zaten
-            // düzeltilmesi gereken bir anomalidir, sürekli bir durum değil; o kullanıcının
-            // istekleri de çoğunlukla reddedilecektir.
+            // yazıyordu.
             if (!string.IsNullOrEmpty(institutionId))
                 _cache.Set(cacheKey, institutionId, CacheDuration);
             else
                 WarnScopeless(keycloakUserId);
         }
 
-        if (!string.IsNullOrEmpty(institutionId))
+        if (string.IsNullOrEmpty(institutionId))
+            return null;
+
+        identity.AddClaim(new Claim("institution_id", institutionId));
+        return institutionId;
+    }
+
+    /// <summary>
+    /// Kurum ağacındaki yolu claim olarak ekler.
+    ///
+    /// <para><b>Yolun boş olması hata değildir</b> — geçiş ucu o kurum için henüz koşmamış
+    /// olabilir. Claim eklenmez ve kapsam kararı kimlik eşitliğine düşer, yani bugünkü
+    /// davranış korunur. Uyarı da basılmaz: geçiş öncesi bu <b>normal</b> durumdur ve her
+    /// istekte log üretmek uyarıyı görünmez yapardı.</para>
+    /// </summary>
+    private async Task EnrichInstitutionPathClaimAsync(ClaimsIdentity identity, string institutionId)
+    {
+        var cacheKey = $"institution-path:{institutionId}";
+
+        if (!_cache.TryGetValue(cacheKey, out string? path))
         {
-            identity.AddClaim(new Claim("institution_id", institutionId));
+            path = await LookupInstitutionPathAsync(institutionId);
+
+            // Boş sonuç önbelleğe ALINMAZ: geçiş ucu koşturulduğu anda yol doğar ve
+            // kullanıcının 5 dakika daha kapsamsız kalması için bir neden yoktur
+            // (institution_id yedeğiyle aynı gerekçe).
+            if (!string.IsNullOrEmpty(path))
+                _cache.Set(cacheKey, path, CacheDuration);
+        }
+
+        if (!string.IsNullOrEmpty(path))
+            identity.AddClaim(new Claim(InstitutionPathClaimType, path));
+    }
+
+    private async Task<string?> LookupInstitutionPathAsync(string institutionId)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var store = scope.ServiceProvider.GetService<Marten.IDocumentStore>();
+            if (store is null)
+                return null;
+
+            var conn = store.Storage.Database.CreateConnection();
+            await conn.OpenAsync();
+            await using (conn)
+            {
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = InstitutionPathLookupSql;
+                cmd.Parameters.Add(new NpgsqlParameter("institutionId", institutionId));
+
+                var result = await cmd.ExecuteScalarAsync();
+                if (result is string path && !string.IsNullOrEmpty(path))
+                    return path;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Institution path lookup hatası: {InstitutionId}", institutionId);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Token'dan gelen <c>institution_path</c> claim'lerini siler.
+    ///
+    /// <para><b>Tüm</b> identity'ler taranır, yalnız birincil olan değil: okuma tarafı
+    /// <c>ClaimsPrincipal.FindFirst</c> kullanır ve bütün identity'lerdeki claim'leri görür
+    /// (<see cref="RemoveInstitutionClaims"/> ile aynı gerekçe).</para>
+    /// </summary>
+    private void RemoveInstitutionPathClaims(ClaimsPrincipal principal)
+    {
+        foreach (var identity in principal.Identities)
+        {
+            var existing = identity.FindAll(InstitutionPathClaimType).ToList();
+
+            foreach (var claim in existing)
+            {
+                if (identity.TryRemoveClaim(claim))
+                    continue;
+
+                _logger.LogWarning(
+                    "Token'daki institution_path claim'i kaldırılamadı: {ClaimValue}. " +
+                    "Kapsam kararı yine de kurum kaydından verilir.", claim.Value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// <c>active_institution_id</c> claim'ini <b>kullanıcı kaydından</b> kurar (B parçası).
+    ///
+    /// <para><b>Token'daki değer HER DURUMDA silinir</b> — kayıt boş olsa bile, KOŞULSUZ.
+    /// "Kaynak yoksa token'a düş" davranışı, kaydı olmayan kullanıcıya <b>kendi bağlamını</b>
+    /// seçtirirdi. <c>active_institution_id</c> Keycloak'ta <i>unmanaged</i> bir öznitelik
+    /// olabilir; realm politikası yanlış kurulursa kullanıcı <c>manage-account</c> ile onu
+    /// kendi yazabilir. Token imzalı olması içeriğin kullanıcı tarafından belirlenmediği
+    /// anlamına gelmez (ADR-0003 adım 2 ile aynı disiplin).</para>
+    ///
+    /// <para><b>Boş sonuç önbelleğe ALINMAZ:</b> bağlam değişimi (<c>SetActiveInstitutionHandler</c>)
+    /// anında görünmeli — <c>InstitutionId</c> yedeği ile aynı gerekçe. Bağlam kurulduğunda
+    /// zaten <see cref="InvalidateCache"/> çağrılır; burada ayrıca boş sonucu önbelleklememek,
+    /// o çağrının unutulduğu bir yolda bile bağlamın 5 dakika gecikmeden görünmesini sağlar.</para>
+    ///
+    /// <para>Karar saf <see cref="ActiveContextPolicy.Resolve"/> içindedir: iki koşul birlikte
+    /// aranır — bağlam bu OTURUMDA kurulmuş olmalı (<c>sid</c> eşleşmesi) ve hedef hâlâ aktörün
+    /// alt ağacında olmalı (platform aktöründe ikinci koşul <paramref name="hasPlatformScope"/>
+    /// ile atlanır — sid koşulu ATLANMAZ). <c>institution_path</c> claim'i (aktörün KENDİ yolu)
+    /// girdi olarak kullanılır ve bu adımla DEĞİŞTİRİLMEZ.</para>
+    ///
+    /// <para><b>Doğrulama İKİ yerde yapılır</b> (spec §1) — burası ikincisi, her çözümlemede
+    /// çalışır. <c>SetActiveInstitutionHandler</c> (değiştirme anı) platform muafiyetini
+    /// alırken bu adım almıyordu: kayıt <c>activeInstitutionId</c>'yi taşıyor, ama bu metod
+    /// platformsuz aktörmüş gibi <c>CanAccessByPath</c>'e düşüp reddediyor ve
+    /// <c>active_institution_id</c> claim'i hiç doğmuyordu — kullanıcı hatasız biçimde ev
+    /// kurumunda kalmaya devam ediyordu (canlıda ölçüldü).</para>
+    /// </summary>
+    /// <param name="hasPlatformScope">
+    /// <c>platform:tenant:manage</c> — çağıran (<see cref="TransformAsync"/>) tarafından zaten
+    /// yüklenmiş <c>entry</c>'den türetilir (<see cref="HasPlatformScope"/>); burada yeni bir
+    /// Marten/SQL araması YAPILMAZ.
+    /// </param>
+    private async Task EnrichActiveContextClaimAsync(
+        ClaimsPrincipal principal, string keycloakUserId, bool hasPlatformScope)
+    {
+        if (principal.Identity is not ClaimsIdentity identity)
+            return;
+
+        // Token'daki değer HER DURUMDA atılır — sunucu tarafı kaynak bulunamasa bile.
+        RemoveActiveInstitutionClaims(principal);
+
+        var cacheKey = $"active-context:{keycloakUserId}";
+
+        if (!_cache.TryGetValue(cacheKey, out (string? InstitutionId, string? SessionId) stored))
+        {
+            stored = await LookupActiveContextAsync(keycloakUserId);
+
+            // ── SONUÇSUZ ARAMA ÖNBELLEĞE ALINMAZ ── (institution_id yedeğiyle aynı gerekçe)
+            if (!string.IsNullOrEmpty(stored.InstitutionId))
+                _cache.Set(cacheKey, stored, CacheDuration);
+        }
+
+        if (string.IsNullOrEmpty(stored.InstitutionId)
+            || !Guid.TryParse(stored.InstitutionId, out var activeInstitutionId))
+        {
+            return;
+        }
+
+        var currentSessionId = principal.FindFirst("sid")?.Value;
+        var actorPath = principal.FindFirst(InstitutionPathClaimType)?.Value;
+        var targetPath = await LookupTargetInstitutionPathAsync(stored.InstitutionId);
+
+        var resolved = ActiveContextPolicy.Resolve(
+            activeInstitutionId, stored.SessionId, currentSessionId, actorPath, targetPath,
+            hasPlatformScope);
+
+        if (resolved is not { } resolvedInstitutionId)
+            return;
+
+        identity.AddClaim(new Claim(ActiveInstitutionClaimType, resolvedInstitutionId.ToString()));
+    }
+
+    /// <summary>
+    /// <c>platform:tenant:manage</c> — <see cref="EnrichActiveContextClaimAsync"/>'in
+    /// <c>hasPlatformScope</c> girdisi. <b>Yeni bir arama EKLEMEZ:</b> <paramref name="entry"/>
+    /// <see cref="TransformAsync"/> içinde bu çağrıdan ÖNCE zaten Marten'dan (ya da
+    /// önbellekten) yüklendi; burada yalnız <c>allPermissions</c>'ın aşağıda (identity null
+    /// kontrolünden sonra) yapılan hesabıyla AYNI mantık — rol + doğrudan izin birleşimi —
+    /// daha erken ve dar bir soru için (yalnız bu bir izin mi) tekrarlanır.
+    ///
+    /// <para>Hesap devre dışıysa <c>false</c> döner — aşağıdaki <c>allPermissions</c> bloğu da
+    /// aynı durumda hiçbir izin eklemez, tutarlı.</para>
+    /// </summary>
+    private bool HasPlatformScope(PermissionCacheEntry? entry, ClaimsPrincipal principal)
+    {
+        IReadOnlyList<string> roles;
+        IEnumerable<string> directPermissions;
+
+        if (entry is not null)
+        {
+            if (!entry.IsEnabled)
+                return false;
+
+            roles = entry.Roles;
+            directPermissions = entry.DirectPermissions;
+        }
+        else
+        {
+            // UserAccount henüz yok — allPermissions'daki token-fallback dalıyla aynı kaynak.
+            roles = ExtractRealmRolesFromToken(principal);
+            directPermissions = [];
+        }
+
+        return RolePermissionMap.GetPermissionsForRoles(roles)
+            .Concat(directPermissions)
+            .Any(p => RolePermissionMap.MatchesPermission(p, Permissions.Platform.TenantManage));
+    }
+
+    /// <summary>
+    /// Hedef kurumun ağaç yolunu bulur — <see cref="LookupInstitutionPathAsync"/>'in kendisidir,
+    /// yalnız <c>institution-path:{id}</c> önbellek anahtarını burada da sarar. Aktörün kendi
+    /// yolu için kullanılan anahtarla AYNIDIR: aynı kurum ikisinde de aranıyorsa önbellek
+    /// paylaşılır.
+    /// </summary>
+    private async Task<string?> LookupTargetInstitutionPathAsync(string institutionId)
+    {
+        var cacheKey = $"institution-path:{institutionId}";
+
+        if (_cache.TryGetValue(cacheKey, out string? path))
+            return path;
+
+        path = await LookupInstitutionPathAsync(institutionId);
+
+        // Boş sonuç önbelleğe ALINMAZ — institution_path yedeğiyle aynı gerekçe.
+        if (!string.IsNullOrEmpty(path))
+            _cache.Set(cacheKey, path, CacheDuration);
+
+        return path;
+    }
+
+    private async Task<(string? InstitutionId, string? SessionId)> LookupActiveContextAsync(
+        string keycloakUserId)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var store = scope.ServiceProvider.GetService<Marten.IDocumentStore>();
+            if (store is null)
+                return (null, null);
+
+            var conn = store.Storage.Database.CreateConnection();
+            await conn.OpenAsync();
+            await using (conn)
+            {
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = ActiveContextLookupSql;
+                cmd.Parameters.Add(new NpgsqlParameter("keycloakId", keycloakUserId));
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    var institutionId = reader.IsDBNull(0) ? null : reader.GetString(0);
+                    var sessionId = reader.IsDBNull(1) ? null : reader.GetString(1);
+                    return (institutionId, sessionId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Aktif bağlam lookup hatası: {KeycloakUserId}", keycloakUserId);
+        }
+
+        return (null, null);
+    }
+
+    /// <summary>
+    /// Token'dan gelen <c>active_institution_id</c> claim'lerini siler; silinemezse loglanır.
+    /// Tüm identity'ler taranır — <see cref="RemoveInstitutionClaims"/> ile aynı gerekçe.
+    /// </summary>
+    private void RemoveActiveInstitutionClaims(ClaimsPrincipal principal)
+    {
+        foreach (var identity in principal.Identities)
+        {
+            var existing = identity.FindAll(ActiveInstitutionClaimType).ToList();
+
+            foreach (var claim in existing)
+            {
+                if (identity.TryRemoveClaim(claim))
+                    continue;
+
+                _logger.LogWarning(
+                    "Token'daki active_institution_id claim'i kaldırılamadı: {ClaimValue}. " +
+                    "Kapsam kararı yine de kullanıcı kaydından verilir.", claim.Value);
+            }
         }
     }
 

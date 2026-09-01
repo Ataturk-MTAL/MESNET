@@ -1,8 +1,6 @@
 <template>
   <q-page padding>
-    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
-      Ders Yükü Havuzu
-    </h1>
+    <PageHeader title="Ders Yükü Havuzu" />
 
     <!-- Alan Seçici -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
@@ -128,7 +126,7 @@
             />
           </div>
         </div>
-        <div class="text-body2 q-mb-md">
+        <div class="text-body2 tabular-nums q-mb-md">
           Şeflik Toplamı: <strong class="text-secondary-strong">{{ wlSupervisorTotal }}</strong> saat
           <span class="text-caption text-grey-7">
             ({{ wlDeptHeadCount }} × {{ wlDeptHeadHours }} + {{ wlWorkshopHeadCount }} × {{ wlWorkshopHeadHours }})
@@ -196,6 +194,7 @@
                   type="number"
                   dense
                   outlined
+                  :aria-label="`${cl.classYear}. sınıf — haftalık ders saati`"
                   :min="0"
                   style="max-width: 100px; margin: 0 auto"
                   :disable="periodStore.isReadOnly"
@@ -213,13 +212,14 @@
 
         <!-- Toplamlar + Kaydet -->
         <div class="row items-center">
-          <div class="text-body2">
+          <div class="text-body2 tabular-nums">
             Ders Yükü: <strong class="text-info-strong">{{ wlTeachingTotal }}</strong>
             &nbsp;+&nbsp; Şeflik: <strong class="text-secondary-strong">{{ wlSupervisorTotal }}</strong>
-            &nbsp;=&nbsp; <strong class="text-positive-strong text-h6">HAVUZ: {{ wlPoolTotal }} saat</strong>
+            &nbsp;=&nbsp; <strong class="text-positive-strong">HAVUZ: {{ wlPoolTotal }} saat</strong>
           </div>
           <q-space />
           <q-btn
+            unelevated
             color="positive"
             icon="save"
             label="Yapılandırmayı Kaydet"
@@ -241,6 +241,7 @@ import { useAuthStore } from 'stores/auth'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
+import PageHeader from 'components/PageHeader.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()

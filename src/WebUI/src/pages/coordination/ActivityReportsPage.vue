@@ -1,8 +1,6 @@
 <template>
   <q-page padding>
-    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
-      Aylık Faaliyet Raporları
-    </h1>
+    <PageHeader title="Aylık Faaliyet Raporları" />
 
     <AppTable
       :rows="activityReports"
@@ -13,10 +11,7 @@
     >
       <template #body-cell-status="{ row }">
         <q-td>
-          <q-badge
-            :color="row.status === 'Approved' ? 'positive' : row.status === 'Submitted' ? 'info' : 'grey'"
-            :label="row.status === 'Approved' ? 'Onaylandı' : row.status === 'Submitted' ? 'Gönderildi' : 'Taslak'"
-          />
+          <StatusBadge :slug="statusLabel(row.status)" />
         </q-td>
       </template>
       <template #body-cell-reportActions="{ row }">
@@ -62,6 +57,8 @@ import { useServerPagination } from 'src/composables/useServerPagination'
 import { Permissions } from 'utils/permissions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import AppTable from 'components/AppTable.vue'
+import PageHeader from 'components/PageHeader.vue'
+import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 
 const notify = useNotify()
@@ -85,6 +82,16 @@ const reportColumns: QTableProps['columns'] = [
   { name: 'status', label: 'Durum', field: 'status', align: 'left' },
   { name: 'reportActions', label: '', field: 'id', align: 'right' },
 ]
+
+/**
+ * Rapor durumunun Türkçe etiketi. DTO `statusSlug` taşımadığı için eşleme burada;
+ * renk kararı StatusBadge'in STATUS_COLORS haritasına aittir.
+ */
+function statusLabel(status: string) {
+  if (status === 'Approved') return 'Onaylandı'
+  if (status === 'Submitted') return 'Gönderildi'
+  return 'Taslak'
+}
 
 async function submitReport(row: MonthlyActivityReportDto) {
   saving.value = true

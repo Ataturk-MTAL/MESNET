@@ -39,6 +39,27 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         // Then — sunucu hatası değil, başarılı (200) döner
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // Yanıt artık PagedResult sarmalayıcısıdır: data.items + data.totalCount.
+        // Çıplak dizi bekleyen bir iddia burada sessizce boş listeye düşerdi.
+        var body = await response.Content.ReadAsStringAsync();
+        body.ShouldContain("\"items\"");
+        body.ShouldContain("\"totalCount\"");
+    }
+
+    /// <summary>
+    /// Düğüm tipi süzgeci. <c>Institution</c> artık "okul" demek değil; süzgeç çalışmazsa
+    /// il/ilçe müdürlükleri okul listesinde belirir ve bu SESSİZCE olur.
+    /// </summary>
+    [Fact]
+    public async Task Kurum_listesi_dugum_tipine_gore_suzulur()
+    {
+        var response = await _fixture.Client.GetAsync("/api/institutions/?nodeType=Province");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadAsStringAsync();
+        body.ShouldContain("\"items\"");
     }
 
     [Fact]

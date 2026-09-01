@@ -1,12 +1,9 @@
 <template>
   <q-page padding>
-    <h1 class="text-h5 text-weight-bold q-mb-xs q-mt-none">
-      Kurum Koordinasyon Yapılandırması
-    </h1>
-    <div class="text-caption text-grey-7 q-mb-lg">
-      Mesafe-saat mevzuat tablosu, büyükşehir sınırı ve azami haftalık ek ders saati.
-      Bu ayarlar kurum genelidir ve akademik dönemden bağımsızdır.
-    </div>
+    <PageHeader
+      title="Kurum Koordinasyon Yapılandırması"
+      subtitle="Mesafe-saat mevzuat tablosu, büyükşehir sınırı ve azami haftalık ek ders saati. Bu ayarlar kurum genelidir ve akademik dönemden bağımsızdır."
+    />
 
     <!--
       Etki uyarısı: bu ayarlar sessizce değişmemeli. Mesafe kuralları ve azami haftalık
@@ -149,7 +146,7 @@
                 <q-icon
                   v-else-if="isCatchAllRule(rule)"
                   name="lock"
-                  color="grey-6"
+                  color="grey-7"
                   size="18px"
                 >
                   <q-tooltip>
@@ -247,6 +244,7 @@
         <!-- Tooltip devre dışı düğmede açılmaz; sarmalayıcıya bağlanır. -->
         <div class="inline-block">
           <q-btn
+            unelevated
             color="positive"
             icon="save"
             label="Yapılandırmayı Kaydet"
@@ -280,6 +278,7 @@ import {
 import { useAuthStore } from 'stores/auth'
 import { Permissions } from 'src/utils/permissions'
 import AppNotice from 'components/AppNotice.vue'
+import PageHeader from 'components/PageHeader.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()

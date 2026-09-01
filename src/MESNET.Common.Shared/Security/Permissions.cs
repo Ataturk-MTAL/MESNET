@@ -221,6 +221,18 @@ public static class Permissions
 
         /// <summary>Staj raporlarını oluşturma ve yönetme.</summary>
         public const string Report = "internship:report:manage";
+
+        /// <summary>
+        /// Tıkanmış fesih onay zincirini yönetici kararıyla atlama.
+        /// </summary>
+        /// <remarks>
+        /// <b><c>internship:manage</c>'den ayrıldı (B parçası):</b> o izin override ile
+        /// birlikte <b>müdür onay adımını</b> da açıyordu. İl yetkilisinin onay zincirinde
+        /// normal bir adım olması istenmez — istenen tıkanıklığı açmaktır. Geçişte kayıp
+        /// olmaması için bugün <c>internship:manage</c> taşıyan her rol bu izni de açıkça
+        /// alır; kilitleyen test: <c>DirectoratePermissionMappingTests</c>.
+        /// </remarks>
+        public const string ApprovalOverride = "internship:approval:override";
     }
 
     /// <summary>
@@ -405,6 +417,49 @@ public static class Permissions
         /// O pencere kapanınca ikinci okulu açmak için <b>bilinçli</b> bir yol gerekti.</para>
         /// </summary>
         public const string TenantManage = "platform:tenant:manage";
+    }
+
+    /// <summary>
+    /// İl/ilçe millî eğitim müdürlüğü katmanı (B parçası).
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Neden ayrı bir önek:</b> <c>institution:</c> önekli bir izin
+    /// <c>InstitutionManager</c>'ın <c>institution:*</c> wildcard'ı üzerinden her okul
+    /// müdürüne geçerdi (ADR-0002 önek tuzağı) ve okul müdürü kullanıcıları başka okullara
+    /// bağlayabilirdi. <c>platform:</c> de kullanılamaz — o önek kurum üstü yetkiyi işaret
+    /// eder ve kapsamı bütün ülkeye açardı. Müdürlük katmanı ikisinin arasındadır: bir alt
+    /// ağacı vardır, ülkesi yoktur.</para>
+    /// </remarks>
+    public static class Directorate
+    {
+        /// <summary>
+        /// Alt ağaçtaki bir okula <b>ilk yöneticiyi</b> bağlama.
+        ///
+        /// <para><b>Tek başına yetmez:</b> hedef okulun hiç yöneticisi olmamalıdır
+        /// (<c>InstitutionBootstrapPolicy</c>). Müdahale, tıkanıklık fiilen varken açmaktır;
+        /// okulun yöneticisi olduğu anda kapı kapanır ve yetki okula döner.</para>
+        /// </summary>
+        public const string InstitutionBootstrap = "directorate:institution-bootstrap";
+    }
+
+    /// <summary>
+    /// Denetim izi (C parçası).
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Neden ayrı bir önek, neden <c>institution:</c> DEĞİL:</b> <c>institution:</c>
+    /// önekli bir izin <c>InstitutionManager</c>'ın <c>institution:*</c> wildcard'ı üzerinden
+    /// her okul müdürüne sessizce geçerdi (ADR-0002 önek tuzağı). Okul müdürünün kendi
+    /// okulunun izini görmesi istenen bir şeydir; ama kararın wildcard'ın yan etkisiyle değil
+    /// AÇIKÇA verilmesi gerekir. Yeni ve çakışmasız önek bunu sağlar.</para>
+    ///
+    /// <para><b>"Kendi işlemlerim" için izin YOKTUR</b> ve bu bilinçlidir: kullanıcının kendi
+    /// geçmişini görmesi bir yetki sorusu değildir. Kapsam <c>ActorId == aktör</c> ile
+    /// sunucuda daraltılır.</para>
+    /// </remarks>
+    public static class Audit
+    {
+        /// <summary>Kendi kurum ağacının (yol öneki) denetim izini okuma.</summary>
+        public const string ViewInstitution = "audit:view:institution";
     }
 
     /// <summary>

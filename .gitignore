@@ -74,3 +74,6 @@ src/Docs/static/diagrams/out/
 
 # Örnek raporlar (yerel referans — repoya gitmesine gerek yok)
 src/Modules/Reporting/MESNET.Reporting.Core/SampleReports/
+
+# Dağıtım ön koşul koşucusunun "tam bir kez" damgaları — ortama özgüdür, depoya girmez.
+scripts/.deploy-prereqs-state

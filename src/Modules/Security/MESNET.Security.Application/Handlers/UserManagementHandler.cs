@@ -1,6 +1,7 @@
 using Marten;
 using Microsoft.Extensions.Logging;
 using MESNET.Common.Infrastructure.Security;
+using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Security.Application.Commands;
@@ -162,16 +163,85 @@ public static class ChangeUserBranchesHandler
 public static class ChangeUserInstitutionHandler
 {
     public static async Task<UserInstitutionChanged> Handle(
-        ChangeUserInstitution command, IDocumentSession session, IMemoryCache cache)
+        ChangeUserInstitution command, IDocumentSession session, IMemoryCache cache,
+        ICurrentUserService currentUser, IInstitutionPathLookup pathLookup,
+        CancellationToken cancellationToken)
     {
         var account = await session.LoadAsync<UserAccount>(command.UserAccountId);
         // Mezar taşı yönetim yüzeyinde yok sayılır (#210).
         if (account is null || account.DeletedAt is not null)
             throw new DomainException(SecurityErrors.UserNotFound(command.UserAccountId));
 
-        if (!UserInstitutionScopePolicy.CanAssign(
-                command.ActorInstitutionId, account.InstitutionId, command.InstitutionId))
-            throw new DomainException(SecurityErrors.InstitutionScopeNotAllowed());
+        // Uç artık OR-policy ile korunuyor (UserInstitutionAssignOrBootstrap): yalnız
+        // directorate:institution-bootstrap taşıyan (user:roles:manage'i OLMAYAN) bir aktör de
+        // buraya girebilir. CanAssign yalnız KAPSAMA bakar, İZNE bakmaz — o yüzden izin
+        // kontrolünü burada AÇIKÇA eklemek zorundayız. Eklenmeseydi bootstrap-yalnız aktör
+        // normal yoldan (ör. kendi il/ilçe düğümüne bağlı/bağsız kullanıcılarla) CanAssign'ı
+        // geçebilir ve müdahale kapısına HİÇ uğramadan bağ değiştirebilirdi — brief'in "yalnız
+        // yöneticisiz okula ilk yönetici" sınırını atlayan yeni bir yetenek. user:roles:manage
+        // taşıyan mevcut aktörlerin davranışı DEĞİŞMEZ: zaten bu izne sahiptiler.
+        // PLATFORM MUAFİYETİ DÖRDÜNCÜ ARGÜMANLA GEÇİLİR — geçilmezse varsayılan false olur ve
+        // platform:tenant:manage taşıyan aktör kullanıcıyı BAŞKA kuruma bağlayamaz. Oysa
+        // ADR-0003'te o iznin var olma sebebi tam olarak budur ("yeni okul açmak, bir
+        // kullanıcıyı herhangi bir okula bağlamak") ve UserInstitutionScopePolicy.CanAssign'ın
+        // kendi yorumu da "bu parametre olmadan ikinci okul HİÇ açılamazdı" diyor.
+        //
+        // Ölçüldü (30.08.2026, canlı yığın): argüman yokken SystemAdmin bir kullanıcıyı İl MEM
+        // düğümüne bağlayamıyordu — 422 Security.ActiveContextOutOfScope. CreateUser aynı
+        // politikayı zaten dört argümanla çağırıyordu (bkz. yukarıdaki CreateUser handler'ı);
+        // asimetri bir gözden kaçmaydı.
+        var normalYol = currentUser.HasPermission(Permissions.UserManagement.RolesManage)
+            && UserInstitutionScopePolicy.CanAssign(
+                command.ActorInstitutionId, account.InstitutionId, command.InstitutionId,
+                currentUser.HasPermission(Permissions.Platform.TenantManage));
+
+        if (!normalYol)
+        {
+            // Müdahale yolu (B parçası): il/ilçe yetkilisi alt ağacındaki YÖNETİCİSİZ bir okula
+            // ilk yöneticiyi bağlayabilir. Normal yol reddettiğinde denenen İKİNCİ bir yoldur —
+            // UserInstitutionScopePolicy.CanAssign'ın kararını bozmaz, yalnız o false döndüğünde
+            // ayrı bir kapı açar.
+            var hedefKurum = command.InstitutionId ?? Guid.Empty;
+            var hedefYolu = await pathLookup.GetPathAsync(hedefKurum, cancellationToken);
+
+            var hasBootstrapPermission = currentUser.HasPermission(Permissions.Directorate.InstitutionBootstrap);
+            var targetInSubtree = InstitutionScopePolicy.CanAccessByPath(
+                currentUser.GetCurrentUser()?.InstitutionPath, hedefYolu);
+
+            // İZİN + ALT AĞAÇ kontrolü yöneticilik sorgusundan ÖNCE biter ve erken döner.
+            // SecurityErrors.ActiveContextOutOfScope'un kendi yorumu bunu söylüyor: kapsamsız
+            // (ya da alt ağaç dışı) bir aktöre "bu kurumun yöneticisi var mı" cevabını vermek,
+            // kimin var olduğunu tahminle taramanın kapısını açar — bilgi sızıntısı. Bu satır
+            // olmasaydı user:roles:manage taşıyan ama başka bir alt ağaçtaki bir okul müdürü
+            // bile rastgele bir InstitutionId deneyip yönetici-var-mı bilgisini sızdırabilirdi.
+            if (!hasBootstrapPermission || !targetInSubtree)
+                throw new DomainException(SecurityErrors.ActiveContextOutOfScope(hedefKurum));
+
+            // MesnetRoles.InstitutionManager burada bir KAPSAM KONTROLÜ için değil, "okulun
+            // etkin bir yöneticisi var mı" ÖLÇÜMÜ için kullanılıyor — yetki kararı yukarıdaki
+            // hasBootstrapPermission'dadır. Depo kuralı "rol adına bakan yeni kapsam kontrolü
+            // yazılmaz" der; bu bir kapsam kontrolü değil, kapıyı açık/kapalı tutan bir
+            // tıkanıklık ölçümüdür. Mezar taşı (#210) ve devre dışı hesap "etkin yönetici"
+            // sayılmaz — aksi hâlde silinmiş/devre dışı bırakılmış bir yönetici, okulu süresiz
+            // kilitli tutardı. Buraya YALNIZ izin + alt ağaç kontrolü geçtikten SONRA girilir.
+            var yoneticisiVar = await session.Query<UserAccount>()
+                .AnyAsync(a => a.InstitutionId == hedefKurum
+                               && a.DeletedAt == null
+                               && a.IsEnabled
+                               && a.Roles.Contains(MesnetRoles.InstitutionManager),
+                          cancellationToken);
+
+            // NOT (bilinçli, Bulgu 4): CanBootstrap'in üç koşulu "başka kuruma bağlı kullanıcı
+            // devralınamaz" kuralına (UserInstitutionScopePolicy.CanAssign'daki üçüncü kural)
+            // bakmaz. Yani alt ağaçtaki A okulunun kullanıcısı, A'ya sorulmadan yöneticisiz B
+            // okuluna taşınabilir. Brief'in üç koşulu bunu öngörmüyor — spec'e uygun, davranış
+            // BİLEREK değiştirilmedi.
+            var mudahale = InstitutionBootstrapPolicy.CanBootstrap(
+                hasBootstrapPermission, targetInSubtree, yoneticisiVar);
+
+            if (!mudahale)
+                throw new DomainException(SecurityErrors.InstitutionAlreadyHasManager(hedefKurum));
+        }
 
         var previous = account.InstitutionId;
 

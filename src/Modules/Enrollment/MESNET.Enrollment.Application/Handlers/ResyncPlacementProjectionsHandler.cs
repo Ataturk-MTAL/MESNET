@@ -32,9 +32,9 @@ public static class ResyncPlacementProjectionsHandler
 
         foreach (var placement in placements)
         {
-            // StudentPlaced'i 4 consumer tüketiyor ve StudentName/BusinessName/BranchName
-            // alanlarını denormalize tutuyor. Bu adlar olmadan yayınlarsak onların verisini
-            // boş string'le eziyoruz — kaynak kayıt eksikse yayınlamak yerine atlıyoruz.
+            // Görünüm tüketicileri StudentName/BusinessName/BranchName alanlarını denormalize
+            // tutuyor. Bu adlar olmadan yayınlarsak onların verisini boş string'le eziyoruz —
+            // kaynak kayıt eksikse yayınlamak yerine atlıyoruz.
             var student = await session.LoadAsync<StudentProfile>(placement.StudentId, ct);
 
             // Okulda staj yerleştirmesinde işletme YOKTUR ve bu eksik veri değildir (#159) —
@@ -48,7 +48,13 @@ public static class ResyncPlacementProjectionsHandler
             if (PlacementResyncPolicy.ShouldSkip(student, placement.BusinessId, business is not null))
             { skipped++; continue; }
 
-            await bus.PublishAsync(new StudentPlaced(
+            // ONARIM OLAYI YAYINLANIR, YAŞAM DÖNGÜSÜ OLAYI DEĞİL (#291). StudentPlaced,
+            // InternshipSaga'nın BAŞLATICI olayıdır; yeniden yayınlandığında Wolverine
+            // deterministik kimlikli (#251) saga'yı yeniden INSERT etmeye çalışır, tekil kısıt
+            // ihlaliyle o kuyruk ölü mektuba düşer ve MultipleHandlerBehavior.Separated yüzünden
+            // kardeş kuyruklar commit etmeye devam eder: uç 200 döner, saga yazılmaz, kapasite
+            // bozulur. Saga'nın onarımı ayrı yoldadır: POST /api/internships/resync-sagas.
+            await bus.PublishAsync(new PlacementSnapshotResynced(
                 placement.Id,
                 placement.StudentId,
                 placement.BusinessId,

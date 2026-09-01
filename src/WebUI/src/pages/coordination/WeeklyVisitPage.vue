@@ -1,8 +1,6 @@
 <template>
   <q-page padding>
-    <h1 class="text-h5 text-weight-bold q-mb-lg q-mt-none">
-      Haftalık Ziyaretler
-    </h1>
+    <PageHeader title="Haftalık Ziyaretler" />
 
     <!-- Filtreler -->
     <div class="row q-col-gutter-md q-mb-lg items-end">
@@ -63,6 +61,7 @@
       <!-- Oluştur butonu -->
       <div class="col-12 col-sm-auto">
         <q-btn
+          unelevated
           color="primary"
           icon="add"
           label="Ziyaret Oluştur"
@@ -148,6 +147,7 @@
     >
       <template #toolbar-actions>
         <q-btn
+          unelevated
           color="primary"
           icon="add"
           label="Eksik Atama Ekle"
@@ -205,117 +205,106 @@
     </DetailDialog>
 
     <!-- Eksik Atama Ekle Dialog -->
-    <q-dialog
+    <FormDialog
       v-model="addDialogOpen"
-      persistent
+      title="Eksik Ziyaret Atamaları"
+      icon="playlist_add"
+      color="primary"
+      width="720px"
     >
-      <q-card style="min-width: 700px; max-width: 900px">
-        <q-card-section class="row items-center">
-          <div>
-            <h2 class="text-h6 q-my-none">
-              Eksik Ziyaret Atamaları
-            </h2>
-            <div class="text-caption text-grey-7">
-              Koordinasyon atamalarında olup bu planda bulunmayan kayıtlar alan bazında listeleniyor.
+      <div class="text-caption text-grey-7">
+        Koordinasyon atamalarında olup bu planda bulunmayan kayıtlar alan bazında listeleniyor.
+      </div>
+
+      <DataState
+        :loading="missingLoading"
+        :empty="missingAssignments.length === 0"
+        empty-icon="playlist_add_check"
+        empty-text="Tüm atamalar zaten planda mevcut — eklenecek eksik kayıt yok."
+        padding="q-pa-lg"
+      >
+        <div
+          v-for="group in missingGrouped"
+          :key="group.branchCode"
+        >
+          <div class="row items-center q-mb-xs q-mt-md">
+            <div class="text-subtitle2 text-weight-bold">
+              {{ group.branchName }}
             </div>
-          </div>
-          <q-space />
-          <q-btn
-            v-if="missingAssignments.length > 0"
-            color="primary"
-            label="Tümünü Ekle"
-            icon="playlist_add"
-            size="sm"
-            :loading="bulkAdding"
-            @click="addAllMissing"
-          />
-        </q-card-section>
-
-        <q-card-section>
-          <q-linear-progress
-            v-if="missingLoading"
-            indeterminate
-            color="primary"
-            class="q-mb-md"
-          />
-
-          <div
-            v-if="!missingLoading && missingAssignments.length === 0"
-            class="text-center text-grey-6 q-pa-lg"
-          >
-            Tüm atamalar zaten planda mevcut — eklenecek eksik kayıt yok.
-          </div>
-
-          <div
-            v-for="group in missingGrouped"
-            :key="group.branchCode"
-          >
-            <div class="row items-center q-mb-xs q-mt-md">
-              <div class="text-subtitle2 text-weight-bold">
-                {{ group.branchName }}
-              </div>
-              <q-badge
-                color="grey-6"
-                class="q-ml-sm"
-              >
-                {{ group.items.length }}
-              </q-badge>
-              <q-space />
-              <q-btn
-                dense
-                flat
-                color="primary"
-                label="Alan Ekle"
-                icon="add"
-                size="sm"
-                :loading="bulkAdding"
-                @click="addBranchMissing(group.branchCode)"
-              />
-            </div>
-            <q-list
-              bordered
-              separator
-              class="rounded-borders q-mb-sm"
+            <!-- Sayaç rozeti anlamsal durum taşımaz → bg-neutral (#465a73), beyaz metinle
+                 7,07:1. grey-6 (#9e9e9e) zemininde QBadge'in varsayılan #fff metni 2,68:1'de
+                 kalıyordu — ÖLÇÜLDÜ. -->
+            <q-badge
+              color="neutral"
+              class="q-ml-sm"
             >
-              <q-item
-                v-for="item in group.items"
-                :key="`${item.businessId}-${item.day}`"
-                dense
-              >
-                <q-item-section>
-                  <q-item-label>{{ item.businessName }}</q-item-label>
-                  <q-item-label caption>
-                    {{ item.teacherName }} — {{ dayLabel(item.day) }} — {{ item.periodCount }} saat
-                  </q-item-label>
-                </q-item-section>
-                <q-item-section side>
-                  <q-btn
-                    dense
-                    flat
-                    color="primary"
-                    icon="add"
-                    size="sm"
-                    :loading="addingAssignment"
-                    aria-label="Eksik ziyaret atamasını ekle"
-                    @click="submitMissingAssignment(item)"
-                  >
-                    <q-tooltip>Ekle</q-tooltip>
-                  </q-btn>
-                </q-item-section>
-              </q-item>
-            </q-list>
+              {{ group.items.length }}
+            </q-badge>
+            <q-space />
+            <q-btn
+              dense
+              flat
+              color="primary"
+              label="Alan Ekle"
+              icon="add"
+              size="sm"
+              :loading="bulkAdding"
+              @click="addBranchMissing(group.branchCode)"
+            />
           </div>
-        </q-card-section>
+          <q-list
+            bordered
+            separator
+            class="rounded-borders q-mb-sm"
+          >
+            <q-item
+              v-for="item in group.items"
+              :key="`${item.businessId}-${item.day}`"
+              dense
+            >
+              <q-item-section>
+                <q-item-label>{{ item.businessName }}</q-item-label>
+                <q-item-label caption>
+                  {{ item.teacherName }} — {{ dayLabel(item.day) }} — {{ item.periodCount }} saat
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn
+                  dense
+                  flat
+                  color="primary"
+                  icon="add"
+                  size="sm"
+                  :loading="addingAssignment"
+                  aria-label="Eksik ziyaret atamasını ekle"
+                  @click="submitMissingAssignment(item)"
+                >
+                  <q-tooltip>Ekle</q-tooltip>
+                </q-btn>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </div>
+      </DataState>
 
-        <q-card-actions align="right">
-          <q-btn
-            flat
-            label="Kapat"
-            @click="addDialogOpen = false"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+      <template #actions>
+        <q-btn
+          flat
+          label="Kapat"
+          color="grey-7"
+          @click="addDialogOpen = false"
+        />
+        <q-btn
+          v-if="missingAssignments.length > 0"
+          unelevated
+          color="primary"
+          label="Tümünü Ekle"
+          icon="playlist_add"
+          :loading="bulkAdding"
+          @click="addAllMissing"
+        />
+      </template>
+    </FormDialog>
   </q-page>
 </template>
 
@@ -327,6 +316,9 @@ import AppTable from 'src/components/AppTable.vue'
 import BranchSelector from 'src/components/BranchSelector.vue'
 import AppNotice from 'src/components/AppNotice.vue'
 import DetailDialog from 'src/components/DetailDialog.vue'
+import FormDialog from 'src/components/FormDialog.vue'
+import DataState from 'src/components/DataState.vue'
+import PageHeader from 'src/components/PageHeader.vue'
 import { useAcademicPeriodStore } from 'src/stores/academicPeriod'
 import { useWeeklyVisits, dayLabel, scopeLabel } from 'src/composables/useWeeklyVisits'
 import { useMissingAssignments } from 'src/composables/useMissingAssignments'

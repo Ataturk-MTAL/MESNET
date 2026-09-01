@@ -70,6 +70,10 @@ public static class DocumentTenancyMap
 
         ["AcademicPeriod"] = Tenant,
         ["AcademicPeriodView"] = Tenant,
+        // Denetim izi (C parçası). Satır bir okulun verisi HAKKINDADIR ve satır düzeyinde
+        // süzülmelidir: bir okulun müdürü diğer okulun iz satırını görmemelidir. Kurum üstü
+        // işler (ulusal parametre, rebuild-hierarchy) platform kiracısına düşer.
+        ["AuditEntry"] = Tenant,
         ["BranchStudentCountView"] = Tenant,
         ["BranchWorkloadConfig"] = Tenant,
         ["BusinessCoordinationView"] = Tenant,
@@ -135,6 +139,10 @@ public static class DocumentTenancyMap
         // Devamsızlık sınırları da ulusal parametredir (#183): MEB Yönetmeliği md. 36'dan
         // türer, okul başına değişemez. Damgalanırsa her okul kendi sınırını belirlerdi.
         ["AttendanceLimitConfig"] = Shared,
+        // Fesih onay zinciri tıkanma eşiği (D2) de ulusal parametredir: bir işletim
+        // politikasıdır, okul başına değişmez. Damgalanırsa her okul kendi eşiğini belirlerdi
+        // ve müdürlük panosu okuldan okula başka sayı gösterirdi.
+        ["InternshipApprovalConfig"] = Shared,
         // Kullanıcı adı çözümlemesi — kimlik katmanı (Keycloak), kiracıya ait değil
         ["UserNameView"] = Shared,
 
@@ -142,15 +150,17 @@ public static class DocumentTenancyMap
         // Kimlik katmanı; InstitutionId taşır ama kiracı sınırı DEĞİL — kullanıcı kurumlar arası taşınabilir
         ["UserAccount"] = Identity,
 
+        // Kullanıcının kurum bağı ve yönetme yetkisinin Institution modülündeki yerel görünümü
+        // (D2). Kaynağı UserAccount, hedefi Institution — ikisi de kimlik katmanında ve kiracı
+        // damgası taşımıyor; damgalansaydı müdürlük onu hiç göremezdi.
+        ["InstitutionManagerLink"] = Identity,
+
         // Davet, kimlik katmanının ONBOARDING kenarıdır: daveti tamamlayan kişinin henüz
         // kullanıcı kaydı, dolayısıyla kiracısı YOKTUR — uç anonimdir. Kiracıya ait
         // sınıflandırılsaydı daveti okumak için önce kiracıyı bilmek gerekirdi; daveti okumadan
         // da kiracı bilinemez. Aynı döngüsellik UserAccount'ta da var (#149).
         // Ölçüldü: Tenant iken anonim POST /api/security/invitations/{id}/complete
         // DefaultTenantUsageDisabledException ile 500 döndü.
-        // KALAN BORÇ: davet listeleme kapsamı isteğe bağlı InstitutionId filtresiyle çalışıyor
-        // (InvitationHandler). Kiracılık artık o listeyi ARKADAN DESTEKLEMİYOR; kapsam kararı
-        // sunucuda verilmeli.
         ["UserInvitation"] = Identity,
 
         // ── BOŞLUK: kiracıya ait veri taşıyıp kiracı anahtarı olmayan belge KALMADI ────

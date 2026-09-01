@@ -23,4 +23,12 @@ public static class InternshipErrors
 
     public static Error OperationFailed(string operation, string message) =>
         new($"Internship.{operation}Failed", message);
+
+    /// <summary>
+    /// Eşik aralık dışı. Sıfır ve negatif her açık zinciri tıkanmış yapar; üst sınır yazım
+    /// hatasının kartı sessizce boşaltmasını engeller.
+    /// </summary>
+    public static Error InvalidStuckApprovalThreshold(int days) =>
+        new("Internship.InvalidStuckApprovalThreshold",
+            $"Tıkanma eşiği 1 ile 365 gün arasında olmalıdır. Girilen: {days}");
 }

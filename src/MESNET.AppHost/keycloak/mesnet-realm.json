@@ -118,6 +118,14 @@
         "description": "İşletme insan kaynakları — belge ve sağlık raporu girer, girişleri okul onayına tabidir"
       },
       {
+        "name": "ProvincialAdmin",
+        "description": "İl MEM yetkilisi — kendi ilindeki okulları listeler ve görüntüler"
+      },
+      {
+        "name": "DistrictAdmin",
+        "description": "İlçe MEM yetkilisi — kendi ilçesindeki okulları listeler ve görüntüler"
+      },
+      {
         "name": "SystemAdmin",
         "description": "Sistem yöneticisi — ulusal parametreler (asgari ücret, 3308 oranları)"
       }

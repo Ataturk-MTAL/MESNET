@@ -68,6 +68,25 @@ public static class MesnetRoles
     /// </summary>
     public const string SystemAdmin = "SystemAdmin";
 
+    /// <summary>
+    /// İl millî eğitim yetkilisi. Kendi <b>ilinin</b> okullarını listeler ve okur.
+    ///
+    /// <para><b>Kapsamı izinden gelmez, ağaçtaki YERİNDEN gelir.</b> İzni okul müdürününkinden
+    /// dar (<c>institution:view</c>, wildcard yok); farkı, bağlı olduğu kurumun bir il
+    /// müdürlüğü düğümü olması ve alt ağacındaki okulları görmesi.</para>
+    ///
+    /// <para><b>A parçasında YAZMA YOKTUR.</b> Tam yetki, denetim izi (C parçası) yazılmadan
+    /// verilmez: izi olmayan tam yetkide bir kişi bütün okulların kiracı sınırını taşır ve
+    /// hiçbir kayıt kalmaz.</para>
+    /// </summary>
+    public const string ProvincialAdmin = "ProvincialAdmin";
+
+    /// <summary>
+    /// İlçe millî eğitim yetkilisi. <see cref="ProvincialAdmin"/> ile aynı izin demetine
+    /// sahiptir; farkı yalnız ağaçtaki yeridir — alt ağacı kendi ilçesiyle sınırlıdır.
+    /// </summary>
+    public const string DistrictAdmin = "DistrictAdmin";
+
     /// <summary>Rol kataloğu: ad + Türkçe etiket + açıklama. Arayüz etiketleri buradan gelir.</summary>
     public static IReadOnlyList<MesnetRoleInfo> Catalog { get; } =
     [
@@ -91,6 +110,10 @@ public static class MesnetRoles
             "Kendi staj, devamsızlık ve ödeme bilgilerini görüntüler."),
         new(Parent, "Veli",
             "Bağlı olduğu öğrencinin devam ve staj sürecini izler; sağlık raporu ve izin başvurusu girer."),
+        new(ProvincialAdmin, "İl MEM Yetkilisi",
+            "Kendi ilindeki okulların bilgilerini listeler ve görüntüler."),
+        new(DistrictAdmin, "İlçe MEM Yetkilisi",
+            "Kendi ilçesindeki okulların bilgilerini listeler ve görüntüler."),
         new(SystemAdmin, "Sistem Yöneticisi",
             "Ulusal hesaplama parametrelerini (asgari ücret, 3308 oranları) girer; kurum verisine yetkisi yoktur."),
     ];

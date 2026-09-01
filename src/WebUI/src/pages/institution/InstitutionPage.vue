@@ -1,532 +1,455 @@
 <template>
   <q-page padding>
-    <div
-      v-if="loading"
-      class="flex flex-center q-pa-xl"
+    <DataState
+      :loading="loading"
+      :error="!!error"
+      :error-text="error ?? undefined"
+      retryable
+      gears
+      spinner-size="48px"
+      padding="q-pa-xl"
+      @retry="load"
     >
-      <q-spinner-gears
-        size="48px"
-        color="primary"
-      />
-    </div>
+      <template v-if="institution">
+        <PageHeader
+          :title="institution.fullName"
+          :subtitle="institutionCodeSubtitle"
+        >
+          <PermissionGuard :permission="Permissions.Institution.Manage">
+            <q-btn
+              unelevated
+              color="primary"
+              icon="edit"
+              label="Düzenle"
+              @click="router.push(institutionEditRoute(routeInstitutionId))"
+            />
+          </PermissionGuard>
+        </PageHeader>
 
-    <q-banner
-      v-else-if="error"
-      type="negative"
-      class="q-mb-md"
-    >
-      {{ error }}
-      <template #action>
-        <q-btn
-          flat
-          label="Tekrar Dene"
-          @click="load"
-        />
-      </template>
-    </q-banner>
-
-    <template v-else-if="institution">
-      <PageHeader
-        :title="institution.fullName"
-        :subtitle="`Kurum Kodu: ${institution.institutionCode}`"
-      >
-        <PermissionGuard :permission="Permissions.Institution.Manage">
-          <q-btn
-            color="primary"
-            icon="edit"
-            label="Düzenle"
-            @click="router.push('/institution/edit')"
-          />
-        </PermissionGuard>
-      </PageHeader>
-
-      <q-tabs
-        v-model="tab"
-        align="left"
-        class="q-mb-md"
-      >
-        <q-tab
-          name="info"
-          label="Genel Bilgi"
-          icon="info"
-        />
-        <q-tab
-          name="branches"
-          label="Alanlar"
-          icon="category"
-        />
-        <q-tab
-          name="staff"
-          label="Personel"
-          icon="people"
-        />
-        <q-tab
-          name="periods"
-          label="Dönemler"
-          icon="date_range"
-        />
-      </q-tabs>
-
-      <q-tab-panels
-        v-model="tab"
-        animated
-      >
-        <!-- GENEL BİLGİ -->
-        <q-tab-panel name="info">
-          <q-card
-            flat
-            bordered
-            class="q-mb-lg"
+        <!--
+          Okul-özel sekmeler (Alanlar/Personel/Dönemler) ve "Kurum Teması" yalnız School
+          düğümünde anlamlıdır: bir il/ilçe müdürlüğünün alanı/dalı, öğretmen kadrosu, akademik
+          dönemi yoktur — sekmeler boş kutu gösterirdi. Marka paleti de okulun kimliğidir,
+          müdürlüğün değil (DESIGN.md). Üst düğümde bunun yerine alt kurum ağacı görünür
+          (aşağıdaki v-else).
+        -->
+        <template v-if="isSchool">
+          <q-tabs
+            v-model="tab"
+            align="left"
+            class="q-mb-md"
           >
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-medium q-mb-md">
-                Kurum Bilgileri
-              </div>
-              <div class="row q-col-gutter-md">
-                <div class="col-12 col-md-6">
-                  <q-item dense>
-                    <q-item-section avatar>
-                      <q-icon
-                        name="location_on"
-                        color="grey-6"
-                      />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label caption>
-                        Adres
-                      </q-item-label>
-                      <q-item-label>{{ institution.address ?? '—' }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </div>
-                <div class="col-12 col-md-6">
-                  <q-item dense>
-                    <q-item-section avatar>
-                      <q-icon
-                        name="map"
-                        color="grey-6"
-                      />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label caption>
-                        İl / İlçe
-                      </q-item-label>
-                      <!-- Ad görüntü, kod yetkili (#147) — ikisi birlikte gösterilir ki
-                           kaydın hangi il koduyla saklandığı ekrandan doğrulanabilsin. -->
-                      <q-item-label>
-                        <template v-if="institution.provinceName">
-                          {{ institution.provinceName }} ({{ institution.provinceCode }})
-                          <template v-if="institution.districtName">
-                            / {{ institution.districtName }}
-                          </template>
-                        </template>
-                        <span v-else>—</span>
-                      </q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </div>
-                <div class="col-12 col-md-6">
-                  <q-item dense>
-                    <q-item-section avatar>
-                      <q-icon
-                        name="phone"
-                        color="grey-6"
-                      />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label caption>
-                        Telefon
-                      </q-item-label>
-                      <q-item-label>{{ institution.phoneNumber ?? '—' }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </div>
-                <div class="col-12 col-md-6">
-                  <q-item dense>
-                    <q-item-section avatar>
-                      <q-icon
-                        name="email"
-                        color="grey-6"
-                      />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label caption>
-                        E-posta
-                      </q-item-label>
-                      <q-item-label>{{ institution.email ?? '—' }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </div>
-                <div class="col-12 col-md-6">
-                  <q-item dense>
-                    <q-item-section avatar>
-                      <q-icon
-                        name="language"
-                        color="grey-6"
-                      />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label caption>
-                        Web Sitesi
-                      </q-item-label>
-                      <q-item-label>
-                        <!-- href yalnız süzülmüş http(s) URL'i alır: serbest metin alanına
-                          yazılmış javascript:/data: adresi tıklayanın oturumunda çalışırdı.
-                          rel="noopener noreferrer" ters sekme ele geçirmesini kapatır. -->
-                        <a
-                          v-if="safeWebUrl"
-                          :href="safeWebUrl"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="text-primary"
-                        >
-                          {{ institution.webUrl }}
-                        </a>
-                        <span v-else-if="institution.webUrl">{{ institution.webUrl }}</span>
-                        <span v-else>—</span>
-                      </q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </div>
-                <div class="col-12 col-md-6">
-                  <q-item dense>
-                    <q-item-section avatar>
-                      <q-icon
-                        name="my_location"
-                        color="grey-6"
-                      />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label caption>
-                        Konum
-                      </q-item-label>
-                      <q-item-label>
-                        <template v-if="institution.location">
-                          {{ institution.location.latitude.toFixed(6) }}, {{ institution.location.longitude.toFixed(6) }}
-                        </template>
-                        <span
-                          v-else
-                          class="text-grey"
-                        >Konum eklenmemiş</span>
-                      </q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </div>
-              </div>
-            </q-card-section>
-          </q-card>
+            <q-tab
+              name="info"
+              label="Genel Bilgi"
+              icon="info"
+            />
+            <q-tab
+              name="branches"
+              label="Alanlar"
+              icon="category"
+            />
+            <q-tab
+              name="staff"
+              label="Personel"
+              icon="people"
+            />
+            <q-tab
+              name="periods"
+              label="Dönemler"
+              icon="date_range"
+            />
+          </q-tabs>
 
-          <q-card
-            flat
-            bordered
+          <q-tab-panels
+            v-model="tab"
+            animated
           >
-            <q-card-section>
+            <!-- GENEL BİLGİ -->
+            <q-tab-panel name="info">
+              <InstitutionInfoCard
+                :institution="institution"
+                class="q-mb-lg"
+              />
+
+              <!--
+              Kurum teması — kiracının marka paleti.
+
+              Seçim küratörlüdür: serbest renk girilmez, sekiz ölçülmüş seçenekten biri
+              seçilir. Renk kutusu tek başına yetmez, paletin Türkçe adı görünür metin
+              olarak yanında durur (DESIGN.md "Renk Yalnız Kanıt Kuralı").
+            -->
+              <q-card
+                flat
+                bordered
+                class="q-mb-lg"
+              >
+                <q-card-section>
+                  <div class="row items-center q-mb-md">
+                    <div class="col text-subtitle1 text-weight-medium">
+                      Kurum Teması
+                    </div>
+                    <div class="col-auto">
+                      <PermissionGuard :permission="Permissions.Institution.Manage">
+                        <q-btn
+                          unelevated
+                          color="primary"
+                          icon="palette"
+                          label="Değiştir"
+                          @click="openBrandPaletteDialog"
+                        />
+                      </PermissionGuard>
+                    </div>
+                  </div>
+                  <div class="row items-center no-wrap q-gutter-sm">
+                    <BrandPaletteSwatch
+                      :primary="institution.brandPrimary"
+                      :secondary="institution.brandSecondary"
+                    />
+                    <div class="col">
+                      <div class="text-body2 text-weight-medium">
+                        {{ institution.brandPaletteSlug }}
+                      </div>
+                      <div class="text-caption text-grey-7">
+                        Üst bar, birincil butonlar ve rozetler bu renkten türer. Durum renkleri
+                        (onay, ret, uyarı, bilgi) kiracıya göre değişmez.
+                      </div>
+                    </div>
+                  </div>
+                </q-card-section>
+              </q-card>
+
+              <q-card
+                flat
+                bordered
+              >
+                <q-card-section>
+                  <div class="row items-center q-mb-md">
+                    <div class="col text-subtitle1 text-weight-medium">
+                      Ders Programı Ayarları
+                    </div>
+                    <div class="col-auto">
+                      <PermissionGuard :permission="Permissions.Institution.Manage">
+                        <q-btn
+                          unelevated
+                          color="primary"
+                          :icon="scheduleConfig?.configured ? 'edit' : 'settings'"
+                          :label="scheduleConfig?.configured ? 'Düzenle' : 'Ayarla'"
+                          @click="openScheduleDialog"
+                        />
+                      </PermissionGuard>
+                    </div>
+                  </div>
+                  <div
+                    v-if="!scheduleConfig || !scheduleConfig.configured"
+                    class="text-grey-7 q-pa-sm"
+                  >
+                    <q-icon
+                      name="info"
+                      class="q-mr-xs"
+                    />
+                    Henüz ayarlanmamış.
+                  </div>
+                  <div
+                    v-else
+                    class="info-items"
+                  >
+                    <InfoItem
+                      icon="schedule"
+                      label="Günlük Ders Sayısı"
+                    >
+                      <span class="text-h6">{{ scheduleConfig.dailyPeriodCount }}</span>
+                    </InfoItem>
+                    <div class="text-caption text-grey-7 q-ml-lg q-mt-xs">
+                      Son güncelleme: {{ formatDate(scheduleConfig.updatedAt ?? '') }}
+                    </div>
+                  </div>
+                </q-card-section>
+              </q-card>
+            </q-tab-panel>
+
+            <!-- ALANLAR -->
+            <q-tab-panel name="branches">
               <div class="row items-center q-mb-md">
                 <div class="col text-subtitle1 text-weight-medium">
-                  Ders Programı Ayarları
+                  Eğitim Alanları
                 </div>
                 <div class="col-auto">
                   <PermissionGuard :permission="Permissions.Institution.Manage">
                     <q-btn
+                      unelevated
                       color="primary"
-                      :icon="scheduleConfig?.configured ? 'edit' : 'settings'"
-                      :label="scheduleConfig?.configured ? 'Düzenle' : 'Ayarla'"
-                      @click="openScheduleDialog"
+                      icon="add"
+                      label="Alan Ekle"
+                      @click="openBranchDialog"
                     />
                   </PermissionGuard>
                 </div>
               </div>
-              <div
-                v-if="!scheduleConfig || !scheduleConfig.configured"
-                class="text-grey q-pa-sm"
+
+              <DataState
+                :empty="activeBranches.length === 0"
+                padding="q-pa-xl"
               >
-                <q-icon
-                  name="info"
-                  class="q-mr-xs"
-                />
-                Henüz ayarlanmamış.
-              </div>
-              <div v-else>
-                <q-item dense>
-                  <q-item-section avatar>
-                    <q-icon
-                      name="schedule"
-                      color="grey-6"
+                <!-- Boş durum ölçeği aynı sayfadaki Dönemler sekmesiyle (AppTable) ortak
+                   tutulur: 48px nötr ikon + 14px gövde metni. DataState'in varsayılanı
+                   2em ikon + 12px caption'dır ve bu sayfada iki ayrı ölçek doğururdu. -->
+                <template #empty>
+                  <q-icon
+                    name="category"
+                    size="48px"
+                    class="q-mb-sm"
+                  />
+                  <div>Henüz alan eklenmemiş.</div>
+                </template>
+                <div class="q-gutter-md">
+                  <q-card
+                    v-for="branch in activeBranches"
+                    :key="branch.fieldCode"
+                    flat
+                    bordered
+                  >
+                    <q-card-section>
+                      <div class="row items-center">
+                        <div class="col">
+                          <div class="text-subtitle1 text-weight-medium">
+                            {{ branch.fieldName }}
+                          </div>
+                          <StatusBadge
+                            :slug="branch.typeSlug"
+                            class="q-mt-xs"
+                          />
+                        </div>
+                        <div class="col-auto q-gutter-sm">
+                          <PermissionGuard :permission="Permissions.Institution.Manage">
+                            <q-btn
+                              flat
+                              dense
+                              size="sm"
+                              icon="tune"
+                              label="Uzmanlıklar"
+                              color="primary"
+                              @click="openSpecializationDialog(branch)"
+                            />
+                            <q-btn
+                              flat
+                              dense
+                              size="sm"
+                              icon="block"
+                              label="Pasife Al"
+                              color="negative"
+                              @click="confirmDeactivateBranch(branch)"
+                            />
+                          </PermissionGuard>
+                        </div>
+                      </div>
+
+                      <div class="q-mt-md">
+                        <div class="row items-center q-mb-xs">
+                          <div class="col text-caption text-grey-7">
+                            Kapasite
+                          </div>
+                          <div class="col-auto text-caption">
+                            {{ branch.atWorkCount }} / {{ branch.totalCount }}
+                            <span class="text-grey-7">(Müsait: {{ branch.availableCount }})</span>
+                          </div>
+                        </div>
+                        <q-linear-progress
+                          :value="branch.totalCount > 0 ? branch.atWorkCount / branch.totalCount : 0"
+                          color="primary"
+                          style="height: 8px; border-radius: 4px"
+                        />
+                      </div>
+
+                      <div
+                        v-if="branch.activeSpecializations.length > 0"
+                        class="q-mt-md"
+                      >
+                        <div class="text-caption text-grey-7 q-mb-xs">
+                          Aktif Uzmanlıklar
+                        </div>
+                        <div class="q-gutter-xs">
+                          <q-chip
+                            v-for="spec in branch.activeSpecializations"
+                            :key="spec"
+                            dense
+                            size="sm"
+                            color="primary"
+                            text-color="white"
+                            :label="getSpecializationName(branch.fieldCode, spec)"
+                          />
+                        </div>
+                      </div>
+                      <div
+                        v-else
+                        class="q-mt-sm text-caption text-grey-7"
+                      >
+                        Uzmanlık alanı tanımlanmamış.
+                      </div>
+                    </q-card-section>
+                  </q-card>
+                </div>
+              </DataState>
+            </q-tab-panel>
+
+            <!-- PERSONEL -->
+            <q-tab-panel name="staff">
+              <div class="row items-center q-mb-md">
+                <div class="col text-subtitle1 text-weight-medium">
+                  Personel
+                </div>
+                <div class="col-auto">
+                  <PermissionGuard :permission="Permissions.Institution.Staff">
+                    <q-btn
+                      unelevated
+                      color="primary"
+                      icon="person_add"
+                      label="Personel Ekle"
+                      @click="openStaffDialog"
                     />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label caption>
-                      Günlük Ders Sayısı
-                    </q-item-label>
-                    <q-item-label class="text-h6">
-                      {{ scheduleConfig.dailyPeriodCount }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-                <div class="text-caption text-grey q-ml-lg q-mt-xs">
-                  Son güncelleme: {{ formatDate(scheduleConfig.updatedAt ?? '') }}
+                  </PermissionGuard>
                 </div>
               </div>
-            </q-card-section>
-          </q-card>
-        </q-tab-panel>
-
-        <!-- ALANLAR -->
-        <q-tab-panel name="branches">
-          <div class="row items-center q-mb-md">
-            <div class="col text-subtitle1 text-weight-medium">
-              Eğitim Alanları
-            </div>
-            <div class="col-auto">
-              <PermissionGuard :permission="Permissions.Institution.Manage">
-                <q-btn
-                  color="primary"
-                  icon="add"
-                  label="Alan Ekle"
-                  @click="openBranchDialog"
-                />
-              </PermissionGuard>
-            </div>
-          </div>
-
-          <div
-            v-if="activeBranches.length === 0"
-            class="text-center q-pa-xl text-grey-6"
-          >
-            <q-icon
-              name="category"
-              size="48px"
-              class="q-mb-sm"
-            />
-            <div>Henüz alan eklenmemiş.</div>
-          </div>
-
-          <div class="q-gutter-md">
-            <q-card
-              v-for="branch in activeBranches"
-              :key="branch.fieldCode"
-              flat
-              bordered
-            >
-              <q-card-section>
-                <div class="row items-center">
-                  <div class="col">
-                    <div class="text-subtitle1 text-weight-medium">
-                      {{ branch.fieldName }}
-                    </div>
-                    <StatusBadge
-                      :slug="branch.typeSlug"
-                      class="q-mt-xs"
+              <AppTable
+                :rows="institution?.staff ?? []"
+                :columns="staffColumns"
+              >
+                <template #body-cell-roleSlug="{ row }">
+                  <q-td>
+                    <q-badge
+                      color="neutral"
+                      :label="row.roleSlug"
                     />
-                  </div>
-                  <div class="col-auto q-gutter-sm">
+                  </q-td>
+                </template>
+                <template #body-cell-branchName="{ row }">
+                  <q-td>{{ getBranchName(row.branchCode) }}</q-td>
+                </template>
+                <template #body-cell-authorizedAt="{ row }">
+                  <q-td>{{ formatDate(row.authorizedAt) }}</q-td>
+                </template>
+              </AppTable>
+            </q-tab-panel>
+
+            <!-- DÖNEMLER -->
+            <q-tab-panel name="periods">
+              <div class="row items-center q-mb-md">
+                <div class="col text-subtitle1 text-weight-medium">
+                  Akademik Dönemler
+                </div>
+                <div class="col-auto">
+                  <PermissionGuard :permission="Permissions.Institution.Manage">
+                    <q-btn
+                      unelevated
+                      color="primary"
+                      icon="add"
+                      label="Yeni Dönem"
+                      @click="openPeriodDialog"
+                    />
+                  </PermissionGuard>
+                </div>
+              </div>
+
+              <AppTable
+                :rows="periods"
+                :columns="periodColumns"
+                no-data-label="Henüz dönem oluşturulmamış."
+              >
+                <template #empty-action>
+                  <PermissionGuard :permission="Permissions.Institution.Manage">
+                    <q-btn
+                      unelevated
+                      color="primary"
+                      icon="add"
+                      label="İlk dönemi oluştur"
+                      @click="openPeriodDialog"
+                    />
+                  </PermissionGuard>
+                </template>
+                <template #body-cell-status="{ row }">
+                  <q-td>
+                    <StatusBadge :slug="row.statusSlug" />
+                  </q-td>
+                </template>
+                <template #body-cell-startDate="{ row }">
+                  <q-td>{{ formatDate(row.startDate) }}</q-td>
+                </template>
+                <template #body-cell-endDate="{ row }">
+                  <q-td>{{ formatDate(row.endDate) }}</q-td>
+                </template>
+                <template #body-cell-createdAt="{ row }">
+                  <q-td>{{ formatDate(row.createdAt) }}</q-td>
+                </template>
+                <template #body-cell-gradeWindow="{ row }">
+                  <q-td>
+                    <q-badge
+                      v-if="row.gradeEntryStartDate && row.gradeEntryEndDate"
+                      color="positive"
+                      :label="`${formatDate(row.gradeEntryStartDate)} – ${formatDate(row.gradeEntryEndDate)}`"
+                    />
+                    <span
+                      v-else
+                      class="text-grey-7"
+                    >—</span>
+                  </q-td>
+                </template>
+                <template #body-cell-actions="{ row }">
+                  <q-td class="text-right">
+                    <PermissionGuard :permission="Permissions.Institution.ManageGradeWindow">
+                      <q-btn
+                        v-if="row.status === 'Active'"
+                        flat
+                        dense
+                        size="sm"
+                        icon="event_available"
+                        label="Not Girişi"
+                        color="positive"
+                        @click="openGradeWindowDialog(row)"
+                      >
+                        <q-tooltip>Dönem sonu not giriş penceresini aç/güncelle</q-tooltip>
+                      </q-btn>
+                    </PermissionGuard>
                     <PermissionGuard :permission="Permissions.Institution.Manage">
                       <q-btn
+                        v-if="row.status === 'Active'"
                         flat
                         dense
                         size="sm"
-                        icon="tune"
-                        label="Uzmanlıklar"
-                        color="primary"
-                        @click="openSpecializationDialog(branch)"
-                      />
-                      <q-btn
-                        flat
-                        dense
-                        size="sm"
-                        icon="block"
-                        label="Pasife Al"
-                        color="negative"
-                        @click="confirmDeactivateBranch(branch)"
+                        icon="lock"
+                        label="Kapat"
+                        color="warning"
+                        @click="confirmClosePeriod(row)"
                       />
                     </PermissionGuard>
-                  </div>
-                </div>
+                  </q-td>
+                </template>
+              </AppTable>
+            </q-tab-panel>
+          </q-tab-panels>
+        </template>
 
-                <div class="q-mt-md">
-                  <div class="row items-center q-mb-xs">
-                    <div class="col text-caption text-grey">
-                      Kapasite
-                    </div>
-                    <div class="col-auto text-caption">
-                      {{ branch.atWorkCount }} / {{ branch.totalCount }}
-                      <span class="text-grey">(Müsait: {{ branch.availableCount }})</span>
-                    </div>
-                  </div>
-                  <q-linear-progress
-                    :value="branch.totalCount > 0 ? branch.atWorkCount / branch.totalCount : 0"
-                    color="primary"
-                    style="height: 8px; border-radius: 4px"
-                  />
-                </div>
+        <!--
+          İl/ilçe müdürlüğü: okul profili şablonu yerine altındaki kurum ağacı. İl → ilçeler
+          (açılabilir, her ilçe kendi okullarını gösterir), ilçe → doğrudan okullar.
+        -->
+        <template v-else>
+          <InstitutionInfoCard
+            :institution="institution"
+            class="q-mb-lg"
+          />
 
-                <div
-                  v-if="branch.activeSpecializations.length > 0"
-                  class="q-mt-md"
-                >
-                  <div class="text-caption text-grey q-mb-xs">
-                    Aktif Uzmanlıklar
-                  </div>
-                  <div class="q-gutter-xs">
-                    <q-chip
-                      v-for="spec in branch.activeSpecializations"
-                      :key="spec"
-                      dense
-                      size="sm"
-                      color="primary"
-                      text-color="white"
-                      :label="getSpecializationName(branch.fieldCode, spec)"
-                    />
-                  </div>
-                </div>
-                <div
-                  v-else
-                  class="q-mt-sm text-caption text-grey"
-                >
-                  Uzmanlık alanı tanımlanmamış.
-                </div>
-              </q-card-section>
-            </q-card>
-          </div>
-        </q-tab-panel>
-
-        <!-- PERSONEL -->
-        <q-tab-panel name="staff">
           <div class="row items-center q-mb-md">
             <div class="col text-subtitle1 text-weight-medium">
-              Personel
-            </div>
-            <div class="col-auto">
-              <PermissionGuard :permission="Permissions.Institution.Staff">
-                <q-btn
-                  color="primary"
-                  icon="person_add"
-                  label="Personel Ekle"
-                  @click="openStaffDialog"
-                />
-              </PermissionGuard>
+              {{ childSectionTitle }}
             </div>
           </div>
-          <AppTable
-            :rows="institution?.staff ?? []"
-            :columns="staffColumns"
-          >
-            <template #body-cell-roleSlug="{ row }">
-              <q-td>
-                <q-badge
-                  color="neutral"
-                  :label="row.roleSlug"
-                />
-              </q-td>
-            </template>
-            <template #body-cell-branchName="{ row }">
-              <q-td>{{ getBranchName(row.branchCode) }}</q-td>
-            </template>
-            <template #body-cell-authorizedAt="{ row }">
-              <q-td>{{ formatDate(row.authorizedAt) }}</q-td>
-            </template>
-          </AppTable>
-        </q-tab-panel>
-
-        <!-- DÖNEMLER -->
-        <q-tab-panel name="periods">
-          <div class="row items-center q-mb-md">
-            <div class="col text-subtitle1 text-weight-medium">
-              Akademik Dönemler
-            </div>
-            <div class="col-auto">
-              <PermissionGuard :permission="Permissions.Institution.Manage">
-                <q-btn
-                  color="primary"
-                  icon="add"
-                  label="Yeni Dönem"
-                  @click="openPeriodDialog"
-                />
-              </PermissionGuard>
-            </div>
-          </div>
-
-          <div
-            v-if="periods.length === 0"
-            class="text-center q-pa-xl text-grey-6"
-          >
-            <q-icon
-              name="date_range"
-              size="48px"
-              class="q-mb-sm"
-            />
-            <div>Henüz dönem oluşturulmamış.</div>
-          </div>
-
-          <AppTable
-            v-else
-            :rows="periods"
-            :columns="periodColumns"
-          >
-            <template #body-cell-status="{ row }">
-              <q-td>
-                <q-badge
-                  :color="row.status === 'Active' ? 'positive' : 'grey-5'"
-                  :label="row.statusSlug"
-                />
-              </q-td>
-            </template>
-            <template #body-cell-startDate="{ row }">
-              <q-td>{{ formatDate(row.startDate) }}</q-td>
-            </template>
-            <template #body-cell-endDate="{ row }">
-              <q-td>{{ formatDate(row.endDate) }}</q-td>
-            </template>
-            <template #body-cell-createdAt="{ row }">
-              <q-td>{{ formatDate(row.createdAt) }}</q-td>
-            </template>
-            <template #body-cell-gradeWindow="{ row }">
-              <q-td>
-                <q-badge
-                  v-if="row.gradeEntryStartDate && row.gradeEntryEndDate"
-                  color="positive"
-                  :label="`${formatDate(row.gradeEntryStartDate)} – ${formatDate(row.gradeEntryEndDate)}`"
-                />
-                <span
-                  v-else
-                  class="text-grey-5"
-                >—</span>
-              </q-td>
-            </template>
-            <template #body-cell-actions="{ row }">
-              <q-td class="text-right">
-                <PermissionGuard :permission="Permissions.Institution.ManageGradeWindow">
-                  <q-btn
-                    v-if="row.status === 'Active'"
-                    flat
-                    dense
-                    size="sm"
-                    icon="event_available"
-                    label="Not Girişi"
-                    color="positive"
-                    @click="openGradeWindowDialog(row)"
-                  >
-                    <q-tooltip>Dönem sonu not giriş penceresini aç/güncelle</q-tooltip>
-                  </q-btn>
-                </PermissionGuard>
-                <PermissionGuard :permission="Permissions.Institution.Manage">
-                  <q-btn
-                    v-if="row.status === 'Active'"
-                    flat
-                    dense
-                    size="sm"
-                    icon="lock"
-                    label="Kapat"
-                    color="warning"
-                    @click="confirmClosePeriod(row)"
-                  />
-                </PermissionGuard>
-              </q-td>
-            </template>
-          </AppTable>
-        </q-tab-panel>
-      </q-tab-panels>
-    </template>
+          <InstitutionChildrenTree
+            :institution-id="institutionId"
+            :node-type="institution.nodeType"
+          />
+        </template>
+      </template>
+    </DataState>
 
     <AddStaffForm
       v-model="staffDialog"
@@ -547,6 +470,12 @@
       :field-name="specTarget?.fieldName ?? ''"
       :all-specializations="specTarget?.allSpecializations ?? []"
       :active-specializations="specTarget?.activeSpecializations ?? []"
+      @saved="load"
+    />
+    <BrandPaletteForm
+      v-model="brandPaletteDialog"
+      :institution-id="institutionId"
+      :current-palette-name="institution?.brandPaletteName ?? ''"
       @saved="load"
     />
     <ScheduleConfigForm
@@ -583,26 +512,37 @@ import {
 } from 'src/api/institution'
 import { useNotify } from 'src/composables/useNotify'
 import { Permissions } from 'utils/permissions'
-import { toSafeUrl } from 'utils/safeUrl'
+import { isSchoolNode } from 'utils/institutionTree'
 import AppTable from 'components/AppTable.vue'
+import DataState from 'components/DataState.vue'
+import InfoItem from 'components/InfoItem.vue'
+import InstitutionInfoCard from 'components/InstitutionInfoCard.vue'
+import InstitutionChildrenTree from 'components/InstitutionChildrenTree.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import PageHeader from 'components/PageHeader.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useInstitutionStore } from 'stores/institution'
-import { useRouter } from 'vue-router'
+import { useAuthStore } from 'stores/auth'
+import { resolveEditableInstitutionId, isActiveContextInstitution } from 'utils/institutionScope'
+import { institutionEditRoute } from 'utils/institutionRoutes'
+import { useRoute, useRouter } from 'vue-router'
 import AddStaffForm from 'components/forms/institution/AddStaffForm.vue'
 import AddBranchForm from 'components/forms/institution/AddBranchForm.vue'
 import EditSpecializationsForm from 'components/forms/institution/EditSpecializationsForm.vue'
 import ScheduleConfigForm from 'components/forms/institution/ScheduleConfigForm.vue'
+import BrandPaletteForm from 'components/forms/institution/BrandPaletteForm.vue'
+import BrandPaletteSwatch from 'components/BrandPaletteSwatch.vue'
 import CreatePeriodForm from 'components/forms/institution/CreatePeriodForm.vue'
 import GradeEntryWindowForm from 'components/forms/institution/GradeEntryWindowForm.vue'
 
 const periodStore = useAcademicPeriodStore()
 const institutionStore = useInstitutionStore()
+const authStore = useAuthStore()
 const notify = useNotify()
 const router = useRouter()
+const route = useRoute()
 const confirmDialog = useConfirmDialog()
 
 // ── Core State ──
@@ -611,14 +551,55 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 const institution = ref<InstitutionDto | null>(null)
 
-// Bağlantı olarak SADECE http(s) adres verilir; güvenli değilse metin olarak gösterilir.
-const safeWebUrl = computed(() => toSafeUrl(institution.value?.webUrl))
 const scheduleConfig = ref<ScheduleConfigDto | null>(null)
 const fieldCatalog = ref<FieldOfStudyDto[]>([])
 
 const tab = ref('info')
+// Rota parametresi: "hangi kurumu GÖRÜNTÜLÜYORUM". `institutionId` çözümlenmiş hedeftir
+// (parametre yoksa davranılan kuruma düşer); Düzenle rotası ise parametreyi AYNEN taşımalı
+// ki form da aynı kuruma açılsın.
+const routeInstitutionId = computed(() =>
+  typeof route.params.id === 'string' ? route.params.id : null,
+)
 const institutionId = ref<string>('')
 const periods = ref<AcademicPeriodDto[]>([])
+
+/**
+ * Görüntülenen kurum aktif bağlamın KENDİSİ mi?
+ *
+ * Bu sayfa BAŞKA bir kurumu (il/ilçe yetkilisinin `Kurumlar` ağacında gezdiği bir okul)
+ * gösterebilir — o veri her zaman yukarıdaki YEREL `institution`/`periods` ref'lerinde durur.
+ * `institutionStore`/`academicPeriodStore` ise "aktörün DAVRANILAN (aktif bağlamdaki) kurumu"
+ * sorusuna cevap verir (header çipi, dönem seçici, menü, tema — bkz. `stores/institution.ts`).
+ * İki soru SADECE bu koşul doğruyken aynı cevaba sahiptir; global store'a yazan/tazeleyen her
+ * çağrı bu koşulla korunur (karar `utils/institutionScope.ts#isActiveContextInstitution`).
+ */
+const isActiveContext = computed(() =>
+  isActiveContextInstitution(institutionId.value, authStore.currentInstitutionId),
+)
+
+/**
+ * Okul-özel sekmeler (Alanlar/Personel/Dönemler) ve Kurum Teması yalnız School düğümünde
+ * anlamlıdır — bkz. şablondaki `v-if="isSchool"` yorumu.
+ */
+const isSchool = computed(() => isSchoolNode(institution.value?.nodeType ?? ''))
+
+/**
+ * "Kurum Kodu" yalnız ANLAMLI olduğunda gösterilir — 0/boş satırı hiç çıkmaz. İl/ilçe
+ * müdürlüğünün MEB kurum kodu yoktur (yalnız okullar kod taşır); "Kurum Kodu: 0" gürültüydü.
+ */
+const institutionCodeSubtitle = computed(() =>
+  institution.value && institution.value.institutionCode > 0
+    ? `Kurum Kodu: ${institution.value.institutionCode}`
+    : undefined,
+)
+
+/** Alt kurum ağacı başlığı — İl müdürlüğünde ilçeler, ilçe müdürlüğünde doğrudan okullar. */
+const childSectionTitle = computed(() => {
+  if (institution.value?.nodeType === 'Province') return 'İlçe Müdürlükleri'
+  if (institution.value?.nodeType === 'District') return 'Okullar'
+  return 'Bağlı Kurumlar'
+})
 
 // ── Computed ──
 const activeBranches = computed(() =>
@@ -634,6 +615,7 @@ const staffDialog = ref(false)
 const branchDialog = ref(false)
 const specDialog = ref(false)
 const scheduleDialog = ref(false)
+const brandPaletteDialog = ref(false)
 const periodDialog = ref(false)
 const gradeWindowDialog = ref(false)
 const gradeWindowTarget = ref<AcademicPeriodDto | null>(null)
@@ -692,13 +674,22 @@ async function load() {
   error.value = null
   try {
     if (!institutionId.value) {
-      const listRes = await institutionApi.list()
-      const institutions = listRes.data
-      if (!institutions || institutions.length === 0) {
+      // Sıra: rota parametresi → aktörün kendi kurumu → liste. Liste yalnız kurumu olmayan
+      // platform aktörü için yedektir. "Listenin ilk satırı" demek, sıralaması olmayan bir
+      // sorguya güvenmekti ve platform aktöründe her yazmadan sonra başka bir okulu
+      // düzenletiyordu — bkz. utils/institutionScope.ts.
+      const routeId = typeof route.params.id === 'string' ? route.params.id : null
+      // authStore.currentInstitutionId OKUNUR — user.institutionId DEĞİL: aktif bağlam
+      // varsa rota parametresi yokken de davranılan (bağlamdaki) okul düzenlenmeli, il
+      // yetkilisinin kendi İl MEM kaydı değil (Görev 10 ile aynı disiplin — üçüncü kopya).
+      const ownId = authStore.currentInstitutionId ?? null
+      const listRes = routeId || ownId ? null : await institutionApi.list({ pageSize: 100 })
+      const resolved = resolveEditableInstitutionId(routeId, ownId, listRes?.data?.items ?? [])
+      if (!resolved) {
         error.value = 'Kayıtlı kurum bulunamadı.'
         return
       }
-      institutionId.value = institutions[0].id
+      institutionId.value = resolved
     }
 
     const [instRes, schedRes, periodsRes] = await Promise.all([
@@ -709,9 +700,12 @@ async function load() {
     institution.value = instRes.data
     scheduleConfig.value = schedRes.data
     periods.value = periodsRes.data?.items ?? []
-    // Bu yönetim sayfası kurum/branş/program verisini değiştirir; paylaşılan store
-    // cache'ini geçersiz kıl → diğer sayfalar bir sonraki erişimde taze veri çeker.
-    institutionStore.clear()
+    // Bu yönetim sayfası kurum/branş/program verisini değiştirir; paylaşılan store cache'ini
+    // geçersiz kıl → diğer sayfalar bir sonraki erişimde taze veri çeker. AMA SADECE
+    // görüntülenen kurum aktif bağlamın kendisiyse — aksi hâlde bu, BAŞKA bir kurumu (il/ilçe
+    // ağacında gezilen bir okul) görüntülerken aktif bağlamın önbelleğini boşaltır: header
+    // çipi kalıcı iskelete düşer, dönem seçici kaybolur (bkz. isActiveContext yorumu).
+    if (isActiveContext.value) institutionStore.clear()
   } catch {
     error.value = 'Kurum bilgileri yüklenirken bir hata oluştu.'
   } finally {
@@ -732,7 +726,8 @@ async function loadSchedule() {
   try {
     const res = await institutionApi.getScheduleConfig(institutionId.value)
     scheduleConfig.value = res.data
-    institutionStore.clear()
+    // Aynı gerekçe: yalnız aktif bağlamın kendisi düzenlenirken global store tazelenir.
+    if (isActiveContext.value) institutionStore.clear()
   } catch { /* sessiz */ }
 }
 
@@ -761,6 +756,10 @@ async function openSpecializationDialog(branch: InstitutionBranchDto) {
 
 function openScheduleDialog() {
   scheduleDialog.value = true
+}
+
+function openBrandPaletteDialog() {
+  brandPaletteDialog.value = true
 }
 
 function openPeriodDialog() {
@@ -805,7 +804,11 @@ function confirmClosePeriod(period: AcademicPeriodDto) {
         await institutionApi.closeAcademicPeriod(institutionId.value, period.id)
         notify.success('Dönem kapatıldı.')
         await load()
-        await periodStore.loadPeriods()
+        // periodStore aktif bağlamın dönem listesini taşır (üst bar dönem seçici, isReadOnly).
+        // Görüntülenen kurum aktif bağlamdan FARKLIYSA bu çağrı YANLIŞ kurumun listesini
+        // çeker ve üst bardaki dönem seçici görüntülenen kurumun (genelde boş) verisiyle
+        // tazelenip kaybolur — yalnız aktif bağlamın kendi dönemi kapatılırken çalışır.
+        if (isActiveContext.value) await periodStore.loadPeriods(true)
       } catch (e) {
         notify.apiError(e, 'Dönem kapatılırken bir hata oluştu.')
       } finally {
@@ -817,3 +820,36 @@ function confirmClosePeriod(period: AcademicPeriodDto) {
 
 onMounted(load)
 </script>
+
+<style scoped>
+/*
+ * InfoItem ikonu ikincil tondadır — değer metni birincil kalır.
+ *
+ * Neden bir kural gerekiyor: Quasar `.q-item__section--side` için $grey-7 atar,
+ * ama `.q-item__section--avatar` bunu `color: inherit` ile geri alır
+ * (quasar/src/components/item/QItem.sass) — InfoItem ikonu gövde metni rengine
+ * yükseliyordu.
+ *
+ * Ton ESKİDEN (çağrı yerindeki `color="grey-6"`) #9e9e9e idi ve InfoItem'a
+ * inerken düştü. Birebir geri GETİRİLMEDİ, bilerek bir kademe koyulaştırıldı:
+ * ikon DEKORATİFTİR — InfoItem şablonu (components/InfoItem.vue) ikonun hemen
+ * yanına koşulsuz bir `q-item-label caption` basar (Adres, Telefon, E-posta,
+ * Konum …) ve aynı bilgiyi görünür veriyor. Bu yüzden WCAG 1.4.11 muafiyeti
+ * geçerlidir ve 3:1 grafik nesnesi eşiği YÜRÜRLÜKTE DEĞİLDİR.
+ * #757575 bir erişilebilirlik zorunluluğu değil, bilinçli hiyerarşi kararıdır.
+ *
+ * Ölçüm (WCAG 2.x, sRGB relative luminance; beyaz zemin #FFFFFF):
+ *   grey-6 #9e9e9e → 2,68:1  — muafiyet olmasaydı 3:1'i geçemezdi
+ *   grey-7 #757575 → 4,61:1  — muafiyete güvenmeden de her iki eşiği geçer
+ * Muafiyet varken bile koyu ton seçildi: bu ikonlar bir gün etiketsiz bir
+ * bağlama taşınırsa (etiket InfoItem'dan kalkarsa) muafiyet düşer ve ton
+ * sessizce eşik altına inerdi.
+ *
+ * Hex Quasar'ın $grey-7 token'ıdır (quasar/src/css/variables.sass:360) — aynı
+ * zamanda Quasar'ın kendi `.q-item__section--side` rengi, uydurma bir ton değil.
+ * Değeri değiştirmeden önce kontrastı yeniden ölç.
+ */
+.info-items :deep(.q-item__section--avatar .q-icon) {
+  color: #757575;
+}
+</style>

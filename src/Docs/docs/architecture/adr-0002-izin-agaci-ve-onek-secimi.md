@@ -112,8 +112,8 @@ Wildcard'lar genişletilmiş hâliyle.
 
 | Rol | İzin | Wildcard önekleri |
 | --- | ---: | --- |
-| Kurum Müdürü (`InstitutionManager`) | 77 | `attendance:*` `communication:*` `company:*` `coordinator:*` `department:*` `document:*` `institution:*` `internship:*` `salary:*` `student:*` `user:*` |
-| Müdür Yardımcısı (`DeputyDirector`) | 43 | `department:*` `user:*` |
+| Kurum Müdürü (`InstitutionManager`) | 79 | `attendance:*` `communication:*` `company:*` `coordinator:*` `department:*` `document:*` `institution:*` `internship:*` `salary:*` `student:*` `user:*` |
+| Müdür Yardımcısı (`DeputyDirector`) | 45 | `department:*` `user:*` |
 | Kurum Personeli (`InstitutionStaff`) | 18 | — |
 | Alan Şefi (`DepartmentHead`) | 14 | `department:*` |
 | Koordinatör Öğretmen (`Teacher`) | 22 | — |
@@ -122,6 +122,8 @@ Wildcard'lar genişletilmiş hâliyle.
 | İşletme İnsan Kaynakları (`CompanyHR`) | 8 | — |
 | Öğrenci (`Student`) | 11 | — |
 | Veli (`Parent`) | 9 | — |
+| İl MEM Yetkilisi (`ProvincialAdmin`) | 6 | — |
+| İlçe MEM Yetkilisi (`DistrictAdmin`) | 6 | — |
 | Sistem Yöneticisi (`SystemAdmin`) | 5 | — |
 
 ### Domainler
@@ -131,10 +133,12 @@ Wildcard'lar genişletilmiş hâliyle.
 | `institution:` | 9 | Kurum Müdürü |
 | `student:` | 6 | Kurum Müdürü |
 | `company:` | 10 | Kurum Müdürü |
-| `internship:` | 8 | Kurum Müdürü |
+| `internship:` | 9 | Kurum Müdürü |
 | `attendance:` | 12 | Kurum Müdürü |
 | `salary:` | 6 | Kurum Müdürü |
 | `platform:` | 2 | — (her rol tek tek alır) |
+| `directorate:` | 1 | — (her rol tek tek alır) |
+| `audit:` | 1 | — (her rol tek tek alır) |
 | `coordinator:` | 5 | Kurum Müdürü |
 | `department:` | 5 | Kurum Müdürü, Müdür Yardımcısı, Alan Şefi |
 | `document:` | 6 | Kurum Müdürü |
@@ -147,99 +151,104 @@ Wildcard'lar genişletilmiş hâliyle.
 
 Ayrım önemlidir: açık satır silinirse izin kaybolur, wildcard'dan gelen kaybolmaz.
 
-| İzin | MÜD | MYRD | PERS | AŞEF | ÖĞRT | İŞYT | USTA | İİK | ÖĞRC | VELİ | SİSY |
-| --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| **`institution:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `institution:view` | ○ | ● | ● | · | · | · | · | · | · | · | · |
-| `institution:manage` | ○ | · | · | · | · | · | · | · | · | · | · |
-| `institution:delete` | ○ | · | · | · | · | · | · | · | · | · | · |
-| `institution:staff:manage` | ○ | · | · | · | · | · | · | · | · | · | · |
-| `institution:report:view` | ○ | · | · | · | · | · | · | · | · | · | · |
-| `institution:grade-window:manage` | ○ | · | · | · | · | · | · | · | · | · | · |
-| `institution:distribution:all-branches` | ● | ● | · | · | · | · | · | · | · | · | · |
-| `institution:coordination-config:manage` | ● | ● | · | · | · | · | · | · | · | · | · |
-| `institution:school-grade:enter` | ● | ● | · | ● | · | · | · | · | · | · | · |
-| **`student:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `student:view` | ○ | ● | ● | ● | ● | · | ● | ● | · | · | · |
-| `student:manage` | ○ | ● | ● | · | ● | · | · | · | · | · | · |
-| `student:view-own` | ○ | · | · | · | · | · | · | · | ● | ● | · |
-| `student:update-own` | ○ | · | · | · | · | · | · | · | ● | · | · |
-| `student:attendance:manage` | ○ | · | · | · | · | · | · | · | · | · | · |
-| `student:salary:manage` | ○ | · | · | · | · | · | · | · | · | · | · |
-| **`company:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `company:view` | ○ | ● | ● | · | · | ● | · | ● | · | · | · |
-| `company:manage` | ○ | ● | · | · | · | ● | · | · | · | · | · |
-| `company:document:manage` | ○ | ● | · | · | · | ● | · | · | · | · | · |
-| `company:student:manage` | ○ | · | · | · | · | ● | · | · | · | · | · |
-| `company:visit:manage` | ○ | · | · | · | · | · | · | · | · | · | · |
-| `company:student:request` | ○ | · | · | · | · | ● | · | · | · | · | · |
-| `company:attendance:manage` | ○ | · | · | · | · | ● | ● | ● | · | · | · |
-| `company:receipt:upload` | ○ | · | · | · | · | ● | · | · | · | · | · |
-| `company:trainer:manage` | ○ | · | · | · | · | ● | · | · | · | · | · |
-| `company:grade:enter` | ○ | · | · | · | · | ● | ● | · | · | · | · |
-| **`internship:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `internship:apply` | ○ | · | · | · | · | · | · | · | ● | · | · |
-| `internship:view` | ○ | ● | ● | · | ● | · | · | · | · | · | · |
-| `internship:review` | ○ | · | · | · | ● | · | · | · | · | · | · |
-| `internship:approve` | ○ | ● | · | · | ● | · | · | · | · | · | · |
-| `internship:view-own` | ○ | · | · | · | · | ● | · | · | ● | ● | · |
-| `internship:manage` | ○ | ● | · | · | · | · | · | · | · | · | · |
-| `internship:contract:manage` | ○ | ● | · | · | · | · | · | · | · | · | · |
-| `internship:report:manage` | ○ | · | · | · | · | · | · | · | · | · | · |
-| **`attendance:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `attendance:view` | ○ | ● | ● | ● | ● | · | · | · | · | · | · |
-| `attendance:view-own` | ○ | · | · | · | · | · | · | · | ● | ● | · |
-| `attendance:manage` | ○ | ● | ● | · | ● | ● | ● | ● | · | · | · |
-| `attendance:report` | ○ | ● | ● | ● | ● | · | · | · | · | · | · |
-| `attendance:upload` | ● | ● | ● | · | ● | ● | ● | ● | ● | ● | · |
-| `attendance:approve` | ○ | ● | · | · | ● | · | · | · | · | · | · |
-| `attendance:direct-entry` | ● | ● | ● | · | ● | · | · | · | · | · | · |
-| `attendance:health-report:direct` | ● | ● | · | · | ● | · | · | · | · | · | · |
-| `attendance:leave:request` | ○ | · | · | · | · | · | · | · | ● | ● | · |
-| `attendance:leave:business-approve` | ○ | · | · | · | · | ● | ● | ● | · | · | · |
-| `attendance:leave:approve` | ● | ● | · | · | · | · | · | · | · | · | · |
-| `attendance:delete` | ○ | · | · | ● | · | · | · | · | · | · | · |
-| **`salary:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `salary:view` | ○ | ● | ● | · | ● | · | · | · | · | · | · |
-| `salary:view-own` | ○ | · | · | · | · | · | · | · | ● | ● | · |
-| `salary:calculate` | ○ | ● | ● | · | · | · | · | · | · | · | · |
-| `salary:approve` | ○ | ● | · | · | ● | · | · | · | · | · | · |
-| `salary:receipt:manage` | ○ | · | · | · | · | · | · | · | · | · | · |
-| `salary:parameter:view` | ○ | ● | · | · | · | · | · | · | · | · | ● |
-| **`platform:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `platform:parameter:manage` | · | · | · | · | · | · | · | · | · | · | ● |
-| `platform:tenant:manage` | · | · | · | · | · | · | · | · | · | · | ● |
-| **`coordinator:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `coordinator:assign` | ○ | · | · | · | · | · | · | · | · | · | · |
-| `coordinator:schedule:manage` | ○ | · | · | ● | ● | · | · | · | · | · | · |
-| `coordinator:visit:manage` | ○ | · | · | · | ● | · | · | · | · | · | · |
-| `coordinator:report:manage` | ○ | · | · | · | ● | · | · | · | · | · | · |
-| `coordinator:communication` | ○ | · | · | · | ● | · | · | · | · | · | · |
-| **`department:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `department:distribution:manage` | ○ | ○ | · | ○ | · | · | · | · | · | · | · |
-| `department:workload:view` | ○ | ○ | · | ○ | · | · | · | · | · | · | · |
-| `department:teacher:assign` | ○ | ○ | · | ○ | · | · | · | · | · | · | · |
-| `department:schedule:view` | ○ | ○ | · | ○ | · | · | · | · | · | · | · |
-| `department:weekly-visit:manage` | ○ | ○ | · | ○ | · | · | · | · | · | · | · |
-| **`document:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `document:view` | ○ | ● | ● | ● | ● | · | · | · | · | · | · |
-| `document:upload` | ○ | ● | ● | · | ● | · | · | · | · | · | · |
-| `document:approve` | ○ | ● | · | · | · | · | · | · | · | · | · |
-| `document:scan` | ○ | · | · | · | · | · | · | · | · | · | · |
-| `document:verify` | ○ | ● | ● | · | · | · | · | · | · | · | · |
-| `document:track` | ○ | ● | ● | · | · | · | · | · | · | · | · |
-| **`communication:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `communication:send` | ○ | ● | ● | ● | ● | ● | ○ | ● | ● | ● | · |
-| `communication:view` | ○ | ● | ● | ● | ● | ● | ○ | ● | ● | ● | · |
-| `communication:issue:report` | ○ | · | · | · | · | · | ○ | · | ● | ● | · |
-| `communication:issue:manage` | ○ | · | · | · | · | · | ○ | · | · | · | · |
-| **`user:`** |  |  |  |  |  |  |  |  |  |  |  |
-| `user:view` | ○ | ○ | · | · | · | · | · | · | · | · | · |
-| `user:create` | ○ | ○ | · | · | · | · | · | · | · | · | ● |
-| `user:update` | ○ | ○ | · | · | · | · | · | · | · | · | · |
-| `user:delete` | ○ | ○ | · | · | · | · | · | · | · | · | · |
-| `user:roles:manage` | ○ | ○ | · | · | · | · | · | · | · | · | ● |
-| `user:approve` | ○ | ○ | · | · | · | · | · | · | · | · | · |
+| İzin | MÜD | MYRD | PERS | AŞEF | ÖĞRT | İŞYT | USTA | İİK | ÖĞRC | VELİ | İLMEM | İLÇMEM | SİSY |
+| --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| **`institution:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `institution:view` | ○ | ● | ● | · | · | · | · | · | · | · | ● | ● | · |
+| `institution:manage` | ○ | · | · | · | · | · | · | · | · | · | ● | ● | · |
+| `institution:delete` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `institution:staff:manage` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `institution:report:view` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `institution:grade-window:manage` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `institution:distribution:all-branches` | ● | ● | · | · | · | · | · | · | · | · | · | · | · |
+| `institution:coordination-config:manage` | ● | ● | · | · | · | · | · | · | · | · | · | · | · |
+| `institution:school-grade:enter` | ● | ● | · | ● | · | · | · | · | · | · | · | · | · |
+| **`student:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `student:view` | ○ | ● | ● | ● | ● | · | ● | ● | · | · | · | · | · |
+| `student:manage` | ○ | ● | ● | · | ● | · | · | · | · | · | · | · | · |
+| `student:view-own` | ○ | · | · | · | · | · | · | · | ● | ● | · | · | · |
+| `student:update-own` | ○ | · | · | · | · | · | · | · | ● | · | · | · | · |
+| `student:attendance:manage` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `student:salary:manage` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| **`company:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `company:view` | ○ | ● | ● | · | · | ● | · | ● | · | · | · | · | · |
+| `company:manage` | ○ | ● | · | · | · | ● | · | · | · | · | · | · | · |
+| `company:document:manage` | ○ | ● | · | · | · | ● | · | · | · | · | · | · | · |
+| `company:student:manage` | ○ | · | · | · | · | ● | · | · | · | · | · | · | · |
+| `company:visit:manage` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `company:student:request` | ○ | · | · | · | · | ● | · | · | · | · | · | · | · |
+| `company:attendance:manage` | ○ | · | · | · | · | ● | ● | ● | · | · | · | · | · |
+| `company:receipt:upload` | ○ | · | · | · | · | ● | · | · | · | · | · | · | · |
+| `company:trainer:manage` | ○ | · | · | · | · | ● | · | · | · | · | · | · | · |
+| `company:grade:enter` | ○ | · | · | · | · | ● | ● | · | · | · | · | · | · |
+| **`internship:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `internship:apply` | ○ | · | · | · | · | · | · | · | ● | · | · | · | · |
+| `internship:view` | ○ | ● | ● | · | ● | · | · | · | · | · | ● | ● | · |
+| `internship:review` | ○ | · | · | · | ● | · | · | · | · | · | · | · | · |
+| `internship:approve` | ○ | ● | · | · | ● | · | · | · | · | · | · | · | · |
+| `internship:view-own` | ○ | · | · | · | · | ● | · | · | ● | ● | · | · | · |
+| `internship:manage` | ○ | ● | · | · | · | · | · | · | · | · | · | · | · |
+| `internship:contract:manage` | ○ | ● | · | · | · | · | · | · | · | · | · | · | · |
+| `internship:report:manage` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `internship:approval:override` | ● | ● | · | · | · | · | · | · | · | · | ● | ● | · |
+| **`attendance:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `attendance:view` | ○ | ● | ● | ● | ● | · | · | · | · | · | · | · | · |
+| `attendance:view-own` | ○ | · | · | · | · | · | · | · | ● | ● | · | · | · |
+| `attendance:manage` | ○ | ● | ● | · | ● | ● | ● | ● | · | · | · | · | · |
+| `attendance:report` | ○ | ● | ● | ● | ● | · | · | · | · | · | · | · | · |
+| `attendance:upload` | ● | ● | ● | · | ● | ● | ● | ● | ● | ● | · | · | · |
+| `attendance:approve` | ○ | ● | · | · | ● | · | · | · | · | · | · | · | · |
+| `attendance:direct-entry` | ● | ● | ● | · | ● | · | · | · | · | · | · | · | · |
+| `attendance:health-report:direct` | ● | ● | · | · | ● | · | · | · | · | · | · | · | · |
+| `attendance:leave:request` | ○ | · | · | · | · | · | · | · | ● | ● | · | · | · |
+| `attendance:leave:business-approve` | ○ | · | · | · | · | ● | ● | ● | · | · | · | · | · |
+| `attendance:leave:approve` | ● | ● | · | · | · | · | · | · | · | · | · | · | · |
+| `attendance:delete` | ○ | · | · | ● | · | · | · | · | · | · | · | · | · |
+| **`salary:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `salary:view` | ○ | ● | ● | · | ● | · | · | · | · | · | · | · | · |
+| `salary:view-own` | ○ | · | · | · | · | · | · | · | ● | ● | · | · | · |
+| `salary:calculate` | ○ | ● | ● | · | · | · | · | · | · | · | · | · | · |
+| `salary:approve` | ○ | ● | · | · | ● | · | · | · | · | · | · | · | · |
+| `salary:receipt:manage` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `salary:parameter:view` | ○ | ● | · | · | · | · | · | · | · | · | · | · | ● |
+| **`platform:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `platform:parameter:manage` | · | · | · | · | · | · | · | · | · | · | · | · | ● |
+| `platform:tenant:manage` | · | · | · | · | · | · | · | · | · | · | · | · | ● |
+| **`directorate:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `directorate:institution-bootstrap` | · | · | · | · | · | · | · | · | · | · | ● | ● | · |
+| **`audit:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `audit:view:institution` | ● | ● | · | · | · | · | · | · | · | · | · | · | · |
+| **`coordinator:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `coordinator:assign` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `coordinator:schedule:manage` | ○ | · | · | ● | ● | · | · | · | · | · | · | · | · |
+| `coordinator:visit:manage` | ○ | · | · | · | ● | · | · | · | · | · | · | · | · |
+| `coordinator:report:manage` | ○ | · | · | · | ● | · | · | · | · | · | · | · | · |
+| `coordinator:communication` | ○ | · | · | · | ● | · | · | · | · | · | · | · | · |
+| **`department:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `department:distribution:manage` | ○ | ○ | · | ○ | · | · | · | · | · | · | · | · | · |
+| `department:workload:view` | ○ | ○ | · | ○ | · | · | · | · | · | · | · | · | · |
+| `department:teacher:assign` | ○ | ○ | · | ○ | · | · | · | · | · | · | · | · | · |
+| `department:schedule:view` | ○ | ○ | · | ○ | · | · | · | · | · | · | · | · | · |
+| `department:weekly-visit:manage` | ○ | ○ | · | ○ | · | · | · | · | · | · | · | · | · |
+| **`document:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `document:view` | ○ | ● | ● | ● | ● | · | · | · | · | · | · | · | · |
+| `document:upload` | ○ | ● | ● | · | ● | · | · | · | · | · | · | · | · |
+| `document:approve` | ○ | ● | · | · | · | · | · | · | · | · | · | · | · |
+| `document:scan` | ○ | · | · | · | · | · | · | · | · | · | · | · | · |
+| `document:verify` | ○ | ● | ● | · | · | · | · | · | · | · | · | · | · |
+| `document:track` | ○ | ● | ● | · | · | · | · | · | · | · | · | · | · |
+| **`communication:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `communication:send` | ○ | ● | ● | ● | ● | ● | ○ | ● | ● | ● | · | · | · |
+| `communication:view` | ○ | ● | ● | ● | ● | ● | ○ | ● | ● | ● | · | · | · |
+| `communication:issue:report` | ○ | · | · | · | · | · | ○ | · | ● | ● | · | · | · |
+| `communication:issue:manage` | ○ | · | · | · | · | · | ○ | · | · | · | · | · | · |
+| **`user:`** |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `user:view` | ○ | ○ | · | · | · | · | · | · | · | · | ● | ● | · |
+| `user:create` | ○ | ○ | · | · | · | · | · | · | · | · | · | · | ● |
+| `user:update` | ○ | ○ | · | · | · | · | · | · | · | · | · | · | · |
+| `user:delete` | ○ | ○ | · | · | · | · | · | · | · | · | · | · | · |
+| `user:roles:manage` | ○ | ○ | · | · | · | · | · | · | · | · | · | · | ● |
+| `user:approve` | ○ | ○ | · | · | · | · | · | · | · | · | · | · | · |
 
 ### Bireysel (direct) atanamayan izinler
 
@@ -250,7 +259,10 @@ Hiçbir yapılandırmayla tek bir kullanıcıya verilemez —
 - `attendance:direct-entry`
 - `attendance:health-report:direct`
 - `attendance:leave:approve`
+- `audit:view:institution`
+- `directorate:institution-bootstrap`
 - `institution:distribution:all-branches`
+- `internship:approval:override`
 - `platform:parameter:manage`
 
 <!-- END generated: permission-matrix -->

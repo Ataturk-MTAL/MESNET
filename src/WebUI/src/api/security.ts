@@ -49,7 +49,6 @@ export interface InvitationDto {
   approvedById: string | null
   approvedByName: string | null
   expiresAt: string
-  metadata: Record<string, string>
 }
 
 /**
@@ -133,6 +132,15 @@ export interface RoleIntegrityReport {
   keycloakChecked: boolean
   accountsWithoutRealmRole: RolelessAccountDto[]
   keycloakCheckError: string | null
+  /**
+   * Aktör realm bacağını görmeye yetkili mi (#283). Keycloak'ta kurum kavramı yok, o yüzden
+   * bu bacak daraltılamaz ve `platform:tenant:manage` ister.
+   *
+   * `keycloakChecked`'ten AYRI bir alandır: ikisi de "taranmadı" der ama nedenleri farklıdır
+   * ve kullanıcının yapacağı şey de farklıdır — biri "sunucu erişilemedi", diğeri "bu kısım
+   * senin kapsamında değil".
+   */
+  realmScanPermitted: boolean
   totalFindings: number
 }
 

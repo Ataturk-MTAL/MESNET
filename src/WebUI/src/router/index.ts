@@ -41,6 +41,52 @@ const router = createRouter({
           // doldurup Kaydet'te 403 duvarına çarpardı.
           meta: { permissions: ['institution:manage'], formRoute: true },
         },
+        // Kurum ağacı listesi (il/ilçe yetkilisi). Menüde yalnız üst düğüm kullanıcısına
+        // görünür; rota izinle korunur, kapsam sunucudadır (InstitutionScopePolicy).
+        {
+          path: 'institutions',
+          name: 'InstitutionList',
+          component: () => import('pages/institution/InstitutionListPage.vue'),
+          meta: { permissions: ['institution:view'] },
+        },
+        // Detay için ayrı sayfa YOK: mevcut kurum sayfası rota parametresiyle açılır.
+        // Yazma butonları orada institution:manage ile sarılı olduğundan sayfa il
+        // yetkilisinde kendiliğinden salt okunur açılır.
+        {
+          path: 'institutions/:id',
+          name: 'InstitutionDetail',
+          component: () => import('pages/institution/InstitutionPage.vue'),
+          meta: { permissions: ['institution:view'] },
+        },
+        // Ağaçtan açılan kurumun düzenleme rotası. `institution/edit` ile AYNI bileşen ama
+        // rota parametresi TAŞIR: parametresiz rotada hedef davranılan kuruma düşüyor ve
+        // müdürlüğü düzenlediğini sanan kullanıcı başka bir kurumu düzenliyordu
+        // (ölçüldü 30.08.2026 — bkz. utils/institutionRoutes.ts).
+        {
+          path: 'institutions/:id/edit',
+          name: 'InstitutionDetailEdit',
+          component: () => import('pages/institution/InstitutionFormPage.vue'),
+          meta: { permissions: ['institution:manage'], formRoute: true },
+        },
+
+        // Bağlam seçimi — il/ilçe yetkilisinin tek çalışma modu okulun bağlamına geçmektir.
+        // İzin institution:view'dir: seçim listesi zaten o izinle geliyor ve kapsam
+        // sunucudadır (InstitutionScopePolicy).
+        {
+          path: 'context',
+          name: 'ContextSelect',
+          component: () => import('pages/institution/ContextSelectPage.vue'),
+          meta: { permissions: ['institution:view'] },
+        },
+
+        // Denetim izi (C parçası). Rota "İşlemlerim" kapsamıyla açılır ve o kapsam EK İZİN
+        // GEREKTİRMEZ — kullanıcının kendi geçmişini görmesi bir yetki sorusu değildir.
+        // Kurum kapsamı sayfa içinde `audit:view:institution` ile açılır.
+        {
+          path: 'audit',
+          name: 'AuditLog',
+          component: () => import('pages/audit/AuditLogPage.vue'),
+        },
 
         // İşletme (Company)
         {
@@ -117,11 +163,14 @@ const router = createRouter({
             // Fesih onay zinciri (#191) — okul tarafının adımları.
             // Görüntüleme internship:view; her adımın butonu KENDİ iznine bakar ve o izin
             // sunucudan gelen adım tanımından okunur.
+            // İzin listesi sunucunun AnyOf politikasıyla aynıdır (internship:approval:override
+            // eklendi, #281): müdürlük yalnız o izni taşır, liste daha darsa sayfaya hiç
+            // ulaşamaz — sunucunun kabul ettiği aktör ön yüzden düşer.
             {
               path: 'terminations',
               name: 'InternshipTerminations',
               component: () => import('pages/internship/TerminationsPage.vue'),
-              meta: { permissions: ['internship:view', 'internship:manage'] },
+              meta: { permissions: ['internship:view', 'internship:manage', 'internship:approval:override'] },
             },
             // Veli ve işletme yetkilisi için fesih DURUM sayfası (#191, #218).
             // Salt okunur: onaylar okul tarafında verilir. Kapsamı SUNUCU çözer
@@ -203,6 +252,15 @@ const router = createRouter({
           name: 'BusinessEvaluations',
           component: () => import('pages/coordination/BusinessEvaluationsPage.vue'),
           meta: { permissions: ['coordinator:visit:manage'] },
+        },
+        {
+          path: 'coordination/evaluations/new',
+          name: 'BusinessEvaluationNew',
+          component: () => import('pages/coordination/BusinessEvaluationFormPage.vue'),
+          // Form YAZMA yapar (POST /coordination/business-evaluations →
+          // coordinator:visit:manage). Liste sayfasındaki tetikleyiciyi saran
+          // PermissionGuard ile aynı izin — biri gizlerken diğeri açık kalmasın.
+          meta: { permissions: ['coordinator:visit:manage'], formRoute: true },
         },
 
         // Beceri Sınavları
@@ -308,11 +366,15 @@ const router = createRouter({
         {
           path: 'admin',
           children: [
+            // İzin listesi sunucunun AnyOf politikasıyla aynıdır
+            // (PermissionPolicies.UserInstitutionAssignOrBootstrap, #281): il/ilçe yetkilisi
+            // yalnız directorate:institution-bootstrap taşır, liste daha darsa okula ilk
+            // yöneticiyi bağlayacağı tek arayüze — kullanıcı listesine — hiç ulaşamaz.
             {
               path: 'users',
               name: 'UserManagement',
               component: () => import('pages/admin/UserManagementPage.vue'),
-              meta: { permissions: ['user:view', 'user:create'] },
+              meta: { permissions: ['user:view', 'user:create', 'directorate:institution-bootstrap'] },
             },
             {
               path: 'roles',
@@ -325,6 +387,15 @@ const router = createRouter({
               name: 'PermissionScope',
               component: () => import('pages/admin/PermissionScopePage.vue'),
               meta: { permissions: ['user:roles:manage'] },
+            },
+            // Ulusal parametre katmanının ilk ekranı (Görev 11) — devamsızlık sınırları
+            // buraya taşınmadı, yalnız tıkanma eşiği. Yazma izniyle korunur: yalnız okuyabilen
+            // kullanıcının bu ayar sayfasında işi yoktur.
+            {
+              path: 'parameters',
+              name: 'PlatformParameters',
+              component: () => import('pages/admin/PlatformParametersPage.vue'),
+              meta: { permissions: ['platform:parameter:manage'] },
             },
           ],
         },

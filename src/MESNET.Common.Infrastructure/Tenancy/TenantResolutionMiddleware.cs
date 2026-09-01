@@ -53,7 +53,8 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next, ILogger<Ten
 
         var tenantId = TenantResolution.Resolve(
             InstitutionIdOf(context.User),
-            context.User.FindAll("permissions").Select(c => c.Value));
+            context.User.FindAll("permissions").Select(c => c.Value),
+            ActiveInstitutionIdOf(context.User));
 
         if (tenantId is not null)
         {
@@ -78,4 +79,7 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next, ILogger<Ten
 
     private static Guid? InstitutionIdOf(ClaimsPrincipal user) =>
         Guid.TryParse(user.FindFirst("institution_id")?.Value, out var id) ? id : null;
+
+    private static Guid? ActiveInstitutionIdOf(ClaimsPrincipal user) =>
+        Guid.TryParse(user.FindFirst("active_institution_id")?.Value, out var id) ? id : null;
 }

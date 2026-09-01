@@ -1,6 +1,7 @@
 using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
+using MESNET.Common.Shared.Pagination;
 using MESNET.Institution.Application.Commands;
 using MESNET.Institution.Application.Dtos;
 using MESNET.Institution.Application.Queries;
@@ -23,6 +24,10 @@ public static class InstitutionEndpoints
         group.MapGet("/provinces", GetProvinceList).RequireAuthorization(Permissions.Institution.View);
         group.MapGet("/provinces/{provinceCode}/districts", GetDistrictList)
             .RequireAuthorization(Permissions.Institution.View);
+        // Küratörlü marka paleti kataloğu — kurum kapsamı yok (katalog her okulda aynı ve
+        // koddan gelir). Aynı gerekçeyle /{institutionId:guid} kalıbından ÖNCE kaydedilir.
+        group.MapGet("/brand-palettes", GetBrandPaletteCatalog)
+            .RequireAuthorization(Permissions.Institution.View);
 
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Institution.View);
         group.MapGet("/{institutionId:guid}", Get).RequireAuthorization(Permissions.Institution.View);
@@ -31,6 +36,9 @@ public static class InstitutionEndpoints
         // ile açıkken A okulunun müdürü ikinci bir okul yaratabiliyordu.
         group.MapPost("/", Post).RequireAuthorization(Permissions.Platform.TenantManage);
         group.MapPatch("/{institutionId:guid}", Patch).RequireAuthorization(Permissions.Institution.Manage);
+        // Marka paleti kurum ayarıdır — FieldCatalog/AcademicPeriod ayar uçlarıyla aynı izin.
+        group.MapPut("/{institutionId:guid}/brand-palette", PutBrandPalette)
+            .RequireAuthorization(Permissions.Institution.Manage);
         group.MapPost("/{institutionId:guid}/staff", PostStaff).RequireAuthorization(Permissions.Institution.Staff);
         group.MapPut("/{institutionId:guid}/schedule-config", PutScheduleConfig).RequireAuthorization(Permissions.Institution.Manage);
         group.MapGet("/{institutionId:guid}/schedule-config", GetScheduleConfig).RequireAuthorization(Permissions.Institution.View);
@@ -39,6 +47,13 @@ public static class InstitutionEndpoints
         // (kiracı anahtarı, ADR-0003 adım 2.1). Olay yeniden yayınlanır, Security tüketir —
         // modüller arası doğrudan veri yazma yoktur.
         group.MapPost("/staff/resync-branch-codes", PostResyncStaffBranchCodes).RequireAuthorization(Permissions.Institution.Staff);
+        // Yöneticisi olmayan okullar (D2) — müdürlük panosu bootstrap iş listesi.
+        group.MapGet("/unmanaged", GetUnmanaged).RequireAuthorization(Permissions.Institution.View);
+        // Kurum ağacı geçişi — DAĞITIM ÖN KOŞULU, idempotent. Atlanırsa sessizdir: yollar boş
+        // kalır ve il/ilçe yetkilisi hata değil BOŞ LİSTE görür. Kurum üstü bir iştir:
+        // institution:manage "kurum yönetebilir" der, "bütün ağacı yeniden kurabilir" demez.
+        group.MapPost("/rebuild-hierarchy", PostRebuildHierarchy)
+            .RequireAuthorization(Permissions.Platform.TenantManage);
 
         return app;
     }
@@ -73,6 +88,51 @@ public static class InstitutionEndpoints
             .Build());
     }
 
+    /// <summary>
+    /// Kurum ağacını mevcut okul künyelerinden yeniden kurar. İdempotent — birden çok kez
+    /// çağrılabilir.
+    /// </summary>
+    private static async Task<IResult> PostRebuildHierarchy(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<RebuildInstitutionHierarchyResult>(
+            new RebuildInstitutionHierarchy());
+
+        var uyari = result.SkippedNoProvince > 0
+            ? $" {result.SkippedNoProvince} okulun il kodu yok; kapsamsız kaldılar ve hiçbir "
+              + "il/ilçe yetkilisinin listesinde görünmezler."
+            : string.Empty;
+
+        return Results.Ok(ResponseBuilder.Success()
+            .AddData(result)
+            .AddMessage(
+                $"Kurum ağacı kuruldu: {result.ProvincesCreated} il, {result.DistrictsCreated} ilçe "
+                + $"müdürlüğü açıldı, {result.NodesUpdated} düğümün ağaç bilgisi yazıldı.{uyari}")
+            .Build());
+    }
+
+    /// <summary>
+    /// Seçilebilir palet listesi. Hex'ler buradan gelir — arayüz onları <b>ikinci kez
+    /// tanımlamaz</b>; iki kopya olsaydı biri güncellenir, diğeri ölçülmemiş renkle kalırdı.
+    /// </summary>
+    private static async Task<IResult> GetBrandPaletteCatalog(IMessageBus bus)
+    {
+        var result = await bus.InvokeAsync<BrandPaletteListDto>(new GetBrandPalettes());
+        return Results.Ok(ResponseBuilder.Success().AddData(result.Items).Build());
+    }
+
+    /// <summary>
+    /// Kurumun marka paletini değiştirir. Gövde yalnız <c>paletteName</c> taşır; hex kabul
+    /// edilmez — küme kapalıdır, tanınmayan anahtar 422 döner.
+    /// </summary>
+    private static async Task<IResult> PutBrandPalette(
+        Guid institutionId, SetInstitutionBrandPalette command, IMessageBus bus)
+    {
+        await bus.InvokeAsync(command with { InstitutionId = institutionId });
+        return Results.Ok(ResponseBuilder.Success()
+            .AddMessage("Kurum teması güncellendi.")
+            .Build());
+    }
+
     private static async Task<IResult> GetProvinceList(IMessageBus bus)
     {
         var result = await bus.InvokeAsync<ProvinceListDto>(new GetProvinces());
@@ -85,12 +145,60 @@ public static class InstitutionEndpoints
         return Results.Ok(ResponseBuilder.Success().AddData(result.Items).Build());
     }
 
-    private static async Task<IResult> GetAll(IMessageBus bus)
+    /// <summary>
+    /// Görünür kurumların sayfalı listesi. Kapsam sorgunun İÇİNDE uygulanır (handler);
+    /// uçta kimlik karşılaştırması yapılmaz.
+    /// </summary>
+    /// <param name="nodeType">
+    /// <c>Province</c> / <c>District</c> / <c>School</c>. Verilmezse okullar döner.
+    /// </param>
+    /// <param name="parentId">Belirli bir düğümün doğrudan çocukları.</param>
+    private static async Task<IResult> GetAll(
+        string? nodeType = null,
+        Guid? parentId = null,
+        int page = 1,
+        int pageSize = 20,
+        string? sortBy = null,
+        bool descending = false,
+        string? search = null,
+        IMessageBus bus = default!)
     {
-        var institutions = await bus.InvokeAsync<List<InstitutionDto>>(new GetInstitutions());
-        return Results.Ok(ResponseBuilder.Success()
-            .AddData(institutions)
-            .Build());
+        var result = await bus.InvokeAsync<PagedResult<InstitutionDto>>(
+            new GetInstitutions(nodeType, parentId)
+            {
+                Page = page,
+                PageSize = pageSize,
+                SortBy = sortBy,
+                Descending = descending,
+                Search = search
+            });
+
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
+    }
+
+    /// <summary>
+    /// Yöneticisi olmayan okullar (D2) — müdürlük panosu bootstrap iş listesi. Kapsam sorgunun
+    /// İÇİNDE uygulanır (handler); uçta kimlik karşılaştırması yapılmaz.
+    /// </summary>
+    private static async Task<IResult> GetUnmanaged(
+        int page = 1,
+        int pageSize = 20,
+        string? sortBy = null,
+        bool descending = false,
+        string? search = null,
+        IMessageBus bus = default!)
+    {
+        var result = await bus.InvokeAsync<PagedResult<InstitutionDto>>(
+            new GetUnmanagedInstitutions
+            {
+                Page = page,
+                PageSize = pageSize,
+                SortBy = sortBy,
+                Descending = descending,
+                Search = search
+            });
+
+        return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
 
     private static async Task<IResult> Get(Guid institutionId, IMessageBus bus)

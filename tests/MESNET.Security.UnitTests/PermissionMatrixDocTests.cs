@@ -1,3 +1,4 @@
+using MESNET.Common.Shared.Security;
 using Shouldly;
 using Xunit;
 
@@ -44,6 +45,47 @@ public sealed class PermissionMatrixDocTests
             $"ADR-0002'deki izin matrisi kodla uyuşmuyor.\n" +
             $"Üretilmiş doğru metin: {regeneratedPath}\n" +
             $"Bu dosyanın içeriğini {AdrRelativePath} dosyasındaki işaretçiler arasına yapıştırın.");
+    }
+
+    /// <summary>
+    /// <see cref="PermissionMatrixDoc.RoleOrder"/> ve <see cref="PermissionMatrixDoc.ShortLabels"/>
+    /// <b>elle tutulan</b> listelerdir, <see cref="MesnetRoles.All"/>'dan üretilmez.
+    ///
+    /// <para><b>Neden bu test ayrı gerekiyor:</b> <see cref="ADR_izin_matrisi_kodla_ayni"/> yalnız
+    /// "üretilen metin ADR'deki metinle aynı mı" sorusuna bakar. Bir rol bu listelere hiç
+    /// eklenmezse üretilen metin de o rolü içermez, ADR'deki metin de içermez — ikisi birbiriyle
+    /// eşleşir ve o test yeşil kalır. Yani eksik rol matriste sessizce hiç görünmez ve ADR
+    /// "koddan üretilen tam izin matrisi" iddiasıyla sessizce yanlışa döner. Bu test o kör
+    /// noktayı kapatır: listeleri doğrudan <see cref="MesnetRoles.All"/> ile karşılaştırır ve
+    /// eksik/fazla rolü adıyla söyler.</para>
+    /// </summary>
+    [Fact]
+    public void RoleOrder_ve_ShortLabels_MesnetRoles_All_ile_birebir_ayni()
+    {
+        var missingFromRoleOrder = MesnetRoles.All
+            .Except(PermissionMatrixDoc.RoleOrder, StringComparer.Ordinal)
+            .ToList();
+        var extraInRoleOrder = PermissionMatrixDoc.RoleOrder
+            .Except(MesnetRoles.All, StringComparer.Ordinal)
+            .ToList();
+
+        missingFromRoleOrder.ShouldBeEmpty(
+            $"PermissionMatrixDoc.RoleOrder şu rolleri İÇERMİYOR: {string.Join(", ", missingFromRoleOrder)} " +
+            "— bu roller ADR-0002 matrisinde hiç görünmez.");
+        extraInRoleOrder.ShouldBeEmpty(
+            $"PermissionMatrixDoc.RoleOrder artık var olmayan şu rolleri içeriyor: {string.Join(", ", extraInRoleOrder)}.");
+
+        var missingFromShortLabels = MesnetRoles.All
+            .Except(PermissionMatrixDoc.ShortLabels.Keys, StringComparer.Ordinal)
+            .ToList();
+        var extraInShortLabels = PermissionMatrixDoc.ShortLabels.Keys
+            .Except(MesnetRoles.All, StringComparer.Ordinal)
+            .ToList();
+
+        missingFromShortLabels.ShouldBeEmpty(
+            $"PermissionMatrixDoc.ShortLabels şu roller için kısaltma tanımlamıyor: {string.Join(", ", missingFromShortLabels)}.");
+        extraInShortLabels.ShouldBeEmpty(
+            $"PermissionMatrixDoc.ShortLabels artık var olmayan şu roller için kısaltma tutuyor: {string.Join(", ", extraInShortLabels)}.");
     }
 
     /// <summary>

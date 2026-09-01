@@ -223,9 +223,17 @@ public static class CompleteInvitationHandler
 public static class GetInvitationsHandler
 {
     public static async Task<PagedResult<InvitationDto>> Handle(
-        GetInvitations query, IQuerySession session)
+        GetInvitations query, IQuerySession session,
+        UserScopeResolver scopeResolver, CancellationToken cancellationToken)
     {
         IQueryable<UserInvitation> queryable = session.Query<UserInvitation>();
+
+        // KAPSAM — kullanıcı listesiyle AYNI kapıdan. Kurum bağı olmayan davetler bilerek
+        // GÖRÜNÜR KALIR (yüklemdeki `== null` dalı): CreateInvitation InstitutionId'yi isteğe
+        // bağlı alır ve süzülüp düşen davet onaylanamaz/reddedilemez hâle gelirdi.
+        var visibleIds = await scopeResolver.ResolveAsync(cancellationToken);
+        if (visibleIds is { } ids)
+            queryable = queryable.Where(i => i.InstitutionId == null || ids.Contains(i.InstitutionId.Value));
 
         if (query.InstitutionId.HasValue)
             queryable = queryable.Where(i => i.InstitutionId == query.InstitutionId.Value);
@@ -239,11 +247,11 @@ public static class GetInvitationsHandler
         queryable = queryable.ApplySearch(query.Search, i => i.Email, i => i.FullName);
         queryable = queryable.ApplySort(query.SortBy, query.Descending, defaultSort: i => i.CreatedAt);
 
-        var page = await queryable.ToPagedResultAsync(query, i => i);
+        var page = await queryable.ToPagedResultAsync(query, i => i, cancellationToken);
 
         // Aktör adı saklanmaz, okuma anında çözülür (#137). Security kendi kimlik kaynağıdır;
         // UserAccount aynı modülde olduğu için ayrı UserNameView'a gerek yoktur.
-        var names = await ResolveActorNamesAsync(session, page.Items);
+        var names = await ResolveActorNamesAsync(session, page.Items, cancellationToken);
 
         return new PagedResult<InvitationDto>
         {
@@ -252,7 +260,7 @@ public static class GetInvitationsHandler
                 i.TargetRole, i.Status.ToString(), i.InstitutionId, i.BusinessId,
                 i.CreatedAt, i.CreatedById, NameOf(names, i.CreatedById),
                 i.ApprovedAt, i.ApprovedById, NameOf(names, i.ApprovedById),
-                i.ExpiresAt, i.Metadata))],
+                i.ExpiresAt))],
             TotalCount = page.TotalCount,
             Page = page.Page,
             PageSize = page.PageSize
@@ -261,7 +269,8 @@ public static class GetInvitationsHandler
 
     /// <summary>Sayfadaki tüm aktör kimlikleri için kimlik → ad sözlüğü (tek sorgu).</summary>
     private static async Task<Dictionary<Guid, string>> ResolveActorNamesAsync(
-        IQuerySession session, IReadOnlyList<UserInvitation> invitations)
+        IQuerySession session, IReadOnlyList<UserInvitation> invitations,
+        CancellationToken cancellationToken)
     {
         var ids = invitations
             .SelectMany(i => new[] { i.CreatedById, i.ApprovedById })
@@ -278,7 +287,7 @@ public static class GetInvitationsHandler
 
         var accounts = await session.Query<UserAccount>()
             .Where(a => idStrings.Contains(a.KeycloakUserId))
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return accounts
             .Where(a => Guid.TryParse(a.KeycloakUserId, out _))
@@ -312,6 +321,15 @@ public static class ResendInvitationHandler
     }
 }
 
+/// <summary>
+/// Davet listesi satırı.
+///
+/// <para><b><c>Metadata</c> bilerek YOKTUR.</b> Öğrenci davetinde T.C. kimlik numarası
+/// taşıyordu ve liste ucu onu kendi okulunun her davetini gören herkese veriyordu. Bu bir
+/// veri minimizasyonu kararıdır ve kurum kapsamından BAĞIMSIZDIR — kapsam daraltılsa bile
+/// alan gerekmiyordu. Tüketicisi ölçüldü: ön yüz onu yalnız davet OLUŞTURURKEN gönderiyor,
+/// listede hiç okumuyor.</para>
+/// </summary>
 /// <remarks>
 /// Aktör alanları hem kimlik hem çözümlenmiş ad taşır (#137): kimlik saklanan değerdir,
 /// ad okuma anında türetilir ve bilinmiyorsa <c>null</c> olur (silinmiş kullanıcı vb.).
@@ -321,4 +339,4 @@ public sealed record InvitationDto(
     string TargetRole, string Status, Guid? InstitutionId, Guid? BusinessId,
     DateTime CreatedAt, Guid? CreatedById, string? CreatedByName,
     DateTime? ApprovedAt, Guid? ApprovedById, string? ApprovedByName,
-    DateTime ExpiresAt, Dictionary<string, string> Metadata);
+    DateTime ExpiresAt);

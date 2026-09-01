@@ -1,4 +1,6 @@
+using MESNET.Common.Infrastructure.Deployment;
 using MESNET.Common.Infrastructure.Tenancy;
+using MESNET.Institution.Application.Deployment;
 using MESNET.Institution.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +20,17 @@ public static class ServiceRegistration
         // Kiracı listesi okul kayıtlarından üretilir (#149). Sözleşme altyapıda, uygulama
         // burada — arka plan işleri "hangi kiracı adına" sorusunu bu servisle cevaplar.
         services.AddScoped<ITenantDirectory, InstitutionTenantDirectory>();
+
+        // Alt ağaç kiracı listesi (D2). Aynı gerekçe: sözleşme altyapıda, uygulama burada.
+        services.AddScoped<IInstitutionSubtreeDirectory, InstitutionSubtreeDirectory>();
+
+        // Kiracılar arası okumanın tek kapısı (D2).
+        services.AddScoped<SubtreeTenantScope>();
+
+        // Dağıtım ön koşulu sondaları — açılışta ÖLÇÜLÜR, koşturulmaz. Belge Institution
+        // modülünün şemasındadır; ölçüm bu yüzden burada yaşar (şema izolasyonu).
+        services.AddScoped<IDeploymentPrerequisiteProbe, InstitutionHierarchyProbe>();
+        services.AddScoped<IDeploymentPrerequisiteProbe, InstitutionManagerLinkProbe>();
 
         return services;
     }
