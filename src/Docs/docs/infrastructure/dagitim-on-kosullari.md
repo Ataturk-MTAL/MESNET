@@ -123,7 +123,7 @@ dağıtım betiği, koşmayan betikten kötüdür. Geliştirme için `--dev`.
 | `broken` | Bilinen hatalı, veri bozar | **Atlanır**; `--include-broken` |
 
 Bugün `once`: `students/resync-projections` (#290 — şube öğrenci sayacını her koşuda şişirir).
-Bugün `broken`: `internships/resync-sagas` ve `contracts/resync-internship-links` (#292).
+Bugün `broken`: **yok**.
 
 `placements/resync-projections` **onarıldı (#291)** ve artık `safe`: uç yaşam döngüsü olayını
 (`StudentPlaced`) değil, onarım olayını (`PlacementSnapshotResynced`) yayınlıyor. Ayrıntı aşağıda.
@@ -969,12 +969,31 @@ yerleştirme tümden durur. Aynı biçimde kiracı anahtarında önce **backfill
 24 kardeşten rastgele birine bağlamak demektir.
 
 ```bash
-# 1) Kopya saga'ları birleştir — kiracı başına, platform:tenant:manage
+# 1) Kopya saga'ları birleştir — TÜM kiracılar, tek çağrı, platform:tenant:manage
 curl -X POST /api/internships/resync-sagas
 
-# 2) Aktif sözleşmeleri saga'ya yeniden bağla — kiracı başına, platform:tenant:manage
+# 2) Aktif sözleşmeleri saga'ya yeniden bağla — TÜM kiracılar, tek çağrı, platform:tenant:manage
 curl -X POST /api/contracts/resync-internship-links
 ```
+
+:::warning Bu iki uç eskiden 200 dönüp SIFIR kayıt işliyordu (#292)
+`platform:tenant:manage` taşıyan aktörün kurumu yoktur, dolayısıyla **platform kiracısına**
+düşer. `InternshipSaga` ve `InternshipContract` ise kiracı damgalıdır ve orada **hiçbir satırı
+yoktur**. Enjekte edilen istek session'ıyla çalışan eski sürüm bu yüzden boş sonuç buluyor,
+uç 200 veriyordu — operatör onarımın yapıldığını sanıyordu.
+
+Dev'de görünmemesinin nedeni: `admin` hesabı `InstitutionManager` **ve** `SystemAdmin`
+rollerini birlikte taşıyor, yani kendi okulunun kiracısında koşuyordu.
+
+Her iki uç artık `ITenantDirectory` ile **bütün kiracıları dolaşıyor** ve yanıtta
+`tenantsProcessed` dönüyor — sıfır kiracı, sıfır bulgudan farklı bir şeydir ve ayırt
+edilebilmelidir. Yayınlanan `ContractActivated` da `DeliveryOptions.TenantId` ile
+damgalanıyor; damgalanmasaydı olay yayınlayanın (platform) kiracısını devralır, tüketici
+saga'yı yanlış kiracıda arar ve hiçbir hata vermezdi.
+
+Kilitleyen test: `PlatformScopedTenantDocumentDriftTests` — `platform:tenant:manage` ile
+korunan bir ucun kiracı damgalı belgeye enjekte session'la dokunmasını kırmızıya çevirir.
+:::
 
 **Neden gerekli:** saga'nın modüller arası yarısı çalışmıyordu (#248) — `ContractActivated`,
 `ContractTerminated`, `ContractCompleted` ve `AttendanceLimitExceeded` saga kimliği

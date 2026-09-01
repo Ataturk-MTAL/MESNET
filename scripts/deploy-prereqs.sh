@@ -114,8 +114,8 @@ PHASES=(
   "coord-teachers|safe|POST|/api/coordination/teachers/resync-views||Koordinasyon öğretmen görünümleri"
   "coord-visits|safe|POST|/api/coordination/weekly-visits/resync||Haftalık ziyaret olayları"
   "attendance|safe|POST|/api/attendance/resync-snapshots||Devamsızlık anlık görüntüleri (Payment + Reporting)"
-  "sagas|broken|POST|/api/internships/resync-sagas||#292: platform aktörü kiracı damgalı satırı görmez — 200 + sıfır"
-  "internship-links|broken|POST|/api/contracts/resync-internship-links||#292: aynı neden; ayrıca sagas'tan SONRA gelmelidir"
+  "sagas|safe|POST|/api/internships/resync-sagas|.data.tenantsProcessed > 0|Kopya staj saga'larını birleştirir — TÜM kiracıları dolaşır (#292 onarıldı)"
+  "internship-links|safe|POST|/api/contracts/resync-internship-links|.data.tenantsProcessed > 0|Aktif sözleşmeleri saga'ya bağlar — sagas'tan SONRA gelmelidir (#292 onarıldı)"
   "display-names|safe|POST|/api/security/users/resync-display-names||Kullanıcı görünen adları (kozmetik, en son)"
 )
 
