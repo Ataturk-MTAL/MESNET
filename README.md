@@ -42,6 +42,7 @@ sitesi olarak da derlenir (`src/Docs`), ama dosyalar GitHub üzerinde doğrudan 
 |---|---|
 | [Wolverine Kalıpları](src/Docs/docs/architecture/wolverine-patterns.md) | Handler, saga ve cascading mesaj kuralları — tuzaklarıyla |
 | [Web UI](src/Docs/docs/architecture/web-ui.md) | Vue/Quasar bileşen ve durum yönetimi kuralları |
+| [Yapılandırma ve Ortam Değişkenleri](src/Docs/docs/infrastructure/yapilandirma.md) | `.env`, `appsettings`, test/staging dağıtımı ve sır hijyeni — dört yapılandırma yüzeyi tek yerde |
 | [Keycloak](src/Docs/docs/infrastructure/keycloak.md) | Realm, client ve claim yapılandırması |
 | [GIS & OSRM](src/Docs/docs/infrastructure/gis-osrm.md) | PostGIS ve rota servisi kurulumu |
 | [**Dağıtım Ön Koşulları**](src/Docs/docs/infrastructure/dagitim-on-kosullari.md) | Dağıtımdan sonra elle koşturulması gereken adımlar — **atlanırsa sistem hata vermez, özellik sessizce çalışmaz** |

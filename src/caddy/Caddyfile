@@ -3,6 +3,15 @@
 # /api'yi backend'e, auth.'ı Keycloak'a proxy'ler. Domain/e-posta env'den gelir.
 {
 	email {$ACME_EMAIL}
+
+	# ACME sağlayıcısı — VARSAYILAN ÜRETİM Let's Encrypt'tir, davranış değişmez.
+	#
+	# TEST/STAGING dağıtımında bunu LE staging uç noktasına çevirin:
+	#   ACME_CA=https://acme-staging-v02.api.letsencrypt.org/directory
+	# Üretim LE'nin "aynı alan adı kümesi için haftada 5 sertifika" limiti vardır; test ortamı
+	# sık sık yeniden kurulduğu için o limiti yakar ve limit dolduğunda ORTAM HTTPS'siz kalır.
+	# Staging sertifikaları tarayıcıda güvenilmez görünür — beklenen davranış budur, hata değil.
+	acme_ca {$ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
 }
 
 # ── Ana uygulama: Vue SPA + API ─────────────────────────────────
