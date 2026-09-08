@@ -230,15 +230,14 @@ public static class CoordinationEndpoints
     /// </summary>
     private static async Task<IResult> DeleteAssignment(
         Guid businessId,
-        string? branchCode,
-        Guid? academicPeriodId,
+        string branchCode,
+        Guid academicPeriodId,
         IMessageBus bus,
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
         await bus.InvokeAsync(new UnassignBusinessFromTeacher(
-            businessId, instId,
-            branchCode ?? string.Empty, academicPeriodId ?? Guid.Empty));
+            businessId, instId, branchCode, academicPeriodId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme ataması kaldırıldı.")
@@ -265,16 +264,14 @@ public static class CoordinationEndpoints
 
     private static async Task<IResult> GetAssignmentHistory(
         Guid businessId,
-        string? branchCode,
-        Guid? academicPeriodId,
+        string branchCode,
+        Guid academicPeriodId,
         IMessageBus bus,
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
         var result = await bus.InvokeAsync<List<AssignmentHistoryEntryDto>>(
-            new GetAssignmentHistory(
-                businessId, instId,
-                branchCode ?? string.Empty, academicPeriodId ?? Guid.Empty));
+            new GetAssignmentHistory(businessId, instId, branchCode, academicPeriodId));
 
         return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
@@ -459,15 +456,14 @@ public static class CoordinationEndpoints
         Guid businessId,
         string day,
         int periodNumber,
-        string? branchCode,
-        Guid? academicPeriodId,
+        string branchCode,
+        Guid academicPeriodId,
         IMessageBus bus,
         HttpContext http)
     {
         var instId = GetInstitutionId(http);
         await bus.InvokeAsync(new UnassignBusinessSlot(
-            businessId, day, periodNumber, instId,
-            branchCode ?? string.Empty, academicPeriodId ?? Guid.Empty));
+            businessId, day, periodNumber, instId, branchCode, academicPeriodId));
 
         return Results.Ok(ResponseBuilder.Success()
             .AddMessage("İşletme slot ataması kaldırıldı.")
