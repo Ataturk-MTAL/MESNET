@@ -1,6 +1,8 @@
 using Marten;
 using MESNET.Coordination.Core.ReadModels;
 using MESNET.Enrollment.Shared.Events;
+using Wolverine.Configuration;
+using Wolverine.Transports.Local;
 
 namespace MESNET.Coordination.Application.Consumers;
 
@@ -8,8 +10,18 @@ namespace MESNET.Coordination.Application.Consumers;
 /// Enrollment modülünden gelen toplu senkronizasyon event'ini consume eder.
 /// BranchStudentCountView'u tamamen değiştirir (increment değil, replace).
 /// </summary>
-public static class StudentCountsSyncedConsumer
+public sealed class StudentCountsSyncedConsumer : IConfigureLocalQueue
 {
+    /// <summary>
+    /// Sıralı kuyruk (#262): tüketici sayacı okuyup artırıp geri yazar. Paralel kuyrukta aynı
+    /// alana ait olaylar aynı eski değeri okuyor ve artışlar birbirini eziyordu (ölçüldü: 40
+    /// öğrenci varken sayaç 1/4/7).
+    /// </summary>
+    public static void Configure(LocalQueueConfiguration configuration)
+    {
+        configuration.Sequential();
+    }
+
     public static async Task Consume(
         StudentCountsSynced @event,
         IDocumentSession session,

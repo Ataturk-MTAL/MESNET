@@ -1,6 +1,8 @@
 using Marten;
 using MESNET.Coordination.Core.ReadModels;
 using MESNET.Enrollment.Shared.Events;
+using Wolverine.Configuration;
+using Wolverine.Transports.Local;
 
 namespace MESNET.Coordination.Application.Consumers;
 
@@ -8,8 +10,18 @@ namespace MESNET.Coordination.Application.Consumers;
 /// Öğrenci kaydı silindiğinde BranchStudentCountView'u günceller.
 /// Sınıf bazında öğrenci sayısını azaltır (minimum 0).
 /// </summary>
-public static class StudentDeregisteredCountConsumer
+public sealed class StudentDeregisteredCountConsumer : IConfigureLocalQueue
 {
+    /// <summary>
+    /// Sıralı kuyruk (#262): tüketici sayacı okuyup artırıp geri yazar. Paralel kuyrukta aynı
+    /// alana ait olaylar aynı eski değeri okuyor ve artışlar birbirini eziyordu (ölçüldü: 40
+    /// öğrenci varken sayaç 1/4/7).
+    /// </summary>
+    public static void Configure(LocalQueueConfiguration configuration)
+    {
+        configuration.Sequential();
+    }
+
     public static async Task Consume(
         StudentDeregistered @event,
         IDocumentSession session,

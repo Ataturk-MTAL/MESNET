@@ -4,6 +4,8 @@ using MESNET.Coordination.Core.ReadModels;
 using MESNET.Enrollment.Shared.Events;
 using Wolverine.ErrorHandling;
 using Wolverine.Runtime.Handlers;
+using Wolverine.Configuration;
+using Wolverine.Transports.Local;
 
 namespace MESNET.Coordination.Application.Consumers;
 
@@ -11,13 +13,22 @@ namespace MESNET.Coordination.Application.Consumers;
 /// Yeni öğrenci kaydedildiğinde BranchStudentCountView'u günceller.
 /// Sınıf bazında öğrenci sayısını artırır.
 ///
-/// Not: Concurrent StudentRegistered event'leri aynı branch için paralel çalışabilir.
-/// Marten Store() ilk kez INSERT yaparken ikinci handler aynı ID ile INSERT deneyince
-/// DocumentAlreadyExistsException alır. Wolverine retry mekanizması ile yeni session'da
-/// LoadAsync mevcut kaydı bulur ve UPDATE yapar.
+/// Kuyruk sıralıdır (bkz. <see cref="Configure(LocalQueueConfiguration)"/>). RetryOnce, sıralı
+/// kuyruktan önceki paralel dönemden kalma bir güvencedir: aynı anda ilk INSERT'e giden iki
+/// olayın ikincisi DocumentAlreadyExistsException alır, yeniden denemede kaydı bulup günceller.
 /// </summary>
-public static class StudentRegisteredCountConsumer
+public sealed class StudentRegisteredCountConsumer : IConfigureLocalQueue
 {
+    /// <summary>
+    /// Sıralı kuyruk (#262): tüketici sayacı okuyup artırıp geri yazar. Paralel kuyrukta aynı
+    /// alana ait olaylar aynı eski değeri okuyor ve artışlar birbirini eziyordu (ölçüldü: 40
+    /// öğrenci varken sayaç 1/4/7).
+    /// </summary>
+    public static void Configure(LocalQueueConfiguration configuration)
+    {
+        configuration.Sequential();
+    }
+
     public static void Configure(HandlerChain chain)
     {
         chain.OnException<DocumentAlreadyExistsException>()
