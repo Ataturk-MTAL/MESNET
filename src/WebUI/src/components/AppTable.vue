@@ -1,48 +1,51 @@
 <template>
   <div>
-    <!-- Filtre + arama çubuğu (aynı satır: filtreler solda, arama sağda) -->
-    <div
+    <!-- Filtre + arama çubuğu (filtreler solda, arama sağda) — düzen FilterBar'da -->
+    <FilterBar
       v-if="showSearch || $slots.filters"
-      class="row items-center q-gutter-sm q-mb-md"
+      dense
     >
       <slot name="filters" />
-      <q-space />
-      <q-input
+      <template
         v-if="showSearch"
-        ref="searchInput"
-        :model-value="search"
-        dense
-        outlined
-        placeholder="Ara..."
-        aria-label="Listede ara"
-        style="min-width: 250px"
-        debounce="400"
-        @update:model-value="onSearchInput"
+        #actions
       >
-        <template #prepend>
-          <q-icon name="search" />
-        </template>
-        <template
-          v-if="search"
-          #append
+        <q-input
+          ref="searchInput"
+          :model-value="search"
+          dense
+          outlined
+          placeholder="Ara..."
+          aria-label="Listede ara"
+          style="min-width: 250px"
+          debounce="400"
+          @update:model-value="onSearchInput"
         >
-          <!-- size verilmez: varsayılan 14px font → .q-btn .q-icon 1.715em = 24px ikon,
+          <template #prepend>
+            <q-icon name="search" />
+          </template>
+          <template
+            v-if="search"
+            #append
+          >
+            <!-- size verilmez: varsayılan 14px font → .q-btn .q-icon 1.715em = 24px ikon,
                prepend'deki arama ikonuyla (q-field__marginal 24px) aynı optik ağırlık.
                Dokunma hedefi .q-btn--dense.q-btn--round 2.4em × 14px = 33,6px
                (WCAG 2.2 SC 2.5.8 eşiği 24×24 px, payla birlikte geçilir). -->
-          <q-btn
-            flat
-            dense
-            round
-            icon="close"
-            aria-label="Aramayı temizle"
-            @click="onClearSearch"
-          >
-            <q-tooltip>Aramayı temizle</q-tooltip>
-          </q-btn>
-        </template>
-      </q-input>
-    </div>
+            <q-btn
+              flat
+              dense
+              round
+              icon="close"
+              aria-label="Aramayı temizle"
+              @click="onClearSearch"
+            >
+              <q-tooltip>Aramayı temizle</q-tooltip>
+            </q-btn>
+          </template>
+        </q-input>
+      </template>
+    </FilterBar>
 
     <!-- İlk yükleme: spinner yerine içerik-şekilli skeleton satırlar (layout-shift'siz) -->
     <div
@@ -145,6 +148,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
+import FilterBar from './FilterBar.vue'
 import type { QInput, QTableProps } from 'quasar'
 
 // Kök öğe q-table değil, sarmalayıcı <div>. inheritAttrs açık kalsaydı tanımsız her

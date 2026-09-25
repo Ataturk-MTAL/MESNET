@@ -24,7 +24,6 @@
           dense
           emit-value
           map-options
-          style="min-width: 220px"
         />
 
         <q-select
@@ -36,7 +35,6 @@
           clearable
           emit-value
           map-options
-          style="min-width: 180px"
         />
 
         <!-- `mine` ucu (GetMine) `crossedTenantBoundary` parametresini HİÇ almıyor — bu

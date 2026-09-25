@@ -10,17 +10,15 @@
     />
 
     <!-- Filtreler -->
-    <div class="row q-gutter-sm q-mb-md items-center">
+    <FilterBar dense>
       <BranchSelector
         v-model="branchCodeFilter"
         dense
         force-select
-        style="min-width: 200px"
       />
       <SearchInput
         v-model="searchFilter"
         label="Öğrenci Adı veya Numarası"
-        style="min-width: 220px"
       />
       <q-select
         v-model="phaseFilter"
@@ -31,16 +29,15 @@
         emit-value
         map-options
         clearable
-        style="min-width: 200px"
       />
       <q-input
         v-model="monthFromFilter"
+        class="filter-bar__narrow"
         label="Başlangıç Ayı"
         outlined
         dense
         clearable
         readonly
-        style="min-width: 150px"
       >
         <template #prepend>
           <q-icon name="calendar_month" />
@@ -78,12 +75,12 @@
       </q-input>
       <q-input
         v-model="monthToFilter"
+        class="filter-bar__narrow"
         label="Bitiş Ayı"
         outlined
         dense
         clearable
         readonly
-        style="min-width: 150px"
       >
         <template #prepend>
           <q-icon name="calendar_month" />
@@ -126,7 +123,7 @@
         unelevated
         @click="load"
       />
-    </div>
+    </FilterBar>
 
     <!-- Nadirlik kapısı. Görünen satırların HEPSİ sıradaysa satır rozeti hiçbir şeyi ayırt
          etmez, yalnız "Aşama" sütununu tekrar eder. Bu hâl burada süzgeçle kuruluyor:
@@ -399,6 +396,7 @@ import PermissionGuard from 'components/PermissionGuard.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import PageHeader from 'components/PageHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
 
 const notify = useNotify()
 const periodStore = useAcademicPeriodStore()

@@ -29,7 +29,6 @@
           v-model="branchFilter"
           dense
           force-select
-          style="min-width: 200px"
         />
         <q-select
           v-model="statusFilter"
@@ -40,7 +39,6 @@
           emit-value
           map-options
           clearable
-          style="min-width: 180px"
         />
       </template>
       <template #body-cell-statusSlug="{ row }">

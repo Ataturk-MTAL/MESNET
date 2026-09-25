@@ -24,7 +24,6 @@
           dense
           emit-value
           map-options
-          style="min-width: 220px"
         />
       </template>
 

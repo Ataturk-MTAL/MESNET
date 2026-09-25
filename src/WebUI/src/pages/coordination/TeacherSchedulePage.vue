@@ -3,21 +3,17 @@
     <PageHeader title="Öğretmen Ders Programı" />
 
     <!-- Filtreler -->
-    <div class="row q-col-gutter-md q-mb-lg items-end">
-      <div class="col-12 col-sm-6 col-md-5">
-        <BranchSelector
-          v-model="branchFilter"
-          @update:model-value="onBranchChange"
-        />
-      </div>
-      <div class="col-12 col-sm-6 col-md-5">
-        <TeacherSelector
-          v-model="selectedTeacherId"
-          :branch-code="branchFilter"
-          @update:model-value="onTeacherChange"
-        />
-      </div>
-    </div>
+    <FilterBar>
+      <BranchSelector
+        v-model="branchFilter"
+        @update:model-value="onBranchChange"
+      />
+      <TeacherSelector
+        v-model="selectedTeacherId"
+        :branch-code="branchFilter"
+        @update:model-value="onTeacherChange"
+      />
+    </FilterBar>
 
     <!-- Bilgi Mesajı -->
     <AppNotice
@@ -313,6 +309,7 @@ import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
 import PageHeader from 'components/PageHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
 
 const notify = useNotify()
 const authStore = useAuthStore()

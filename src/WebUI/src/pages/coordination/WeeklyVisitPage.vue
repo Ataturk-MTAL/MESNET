@@ -3,63 +3,54 @@
     <PageHeader title="Haftalık Ziyaretler" />
 
     <!-- Filtreler -->
-    <div class="row q-col-gutter-md q-mb-lg items-end">
+    <FilterBar dense>
       <!-- Hafta seçici — takvimden tıkla, tüm hafta seçilir -->
-      <div class="col-12 col-sm-auto">
-        <q-btn
-          outline
-          icon="event"
-          :label="weekLabel"
-          no-caps
+      <q-btn
+        outline
+        icon="event"
+        :label="weekLabel"
+        no-caps
+      >
+        <q-popup-proxy
+          transition-show="scale"
+          transition-hide="scale"
         >
-          <q-popup-proxy
-            transition-show="scale"
-            transition-hide="scale"
+          <q-date
+            :model-value="dateRangeModel"
+            range
+            first-day-of-week="1"
+            @update:model-value="onDateSelect"
           >
-            <q-date
-              :model-value="dateRangeModel"
-              range
-              first-day-of-week="1"
-              @update:model-value="onDateSelect"
-            >
-              <div class="row items-center justify-end">
-                <q-btn
-                  v-close-popup
-                  label="Tamam"
-                  color="primary"
-                  flat
-                />
-              </div>
-            </q-date>
-          </q-popup-proxy>
-        </q-btn>
-      </div>
+            <div class="row items-center justify-end">
+              <q-btn
+                v-close-popup
+                label="Tamam"
+                color="primary"
+                flat
+              />
+            </div>
+          </q-date>
+        </q-popup-proxy>
+      </q-btn>
 
-      <!-- Kapsam seçici -->
-      <div class="col-12 col-sm-2">
-        <q-select
-          v-model="scope"
-          :options="scopeOptions"
-          label="Kapsam"
-          outlined
-          dense
-          emit-value
-          map-options
-        />
-      </div>
+      <q-select
+        v-model="scope"
+        :options="scopeOptions"
+        label="Kapsam"
+        outlined
+        dense
+        emit-value
+        map-options
+      />
 
       <!-- Alan seçici (Scope=Branch) -->
-      <div
+      <BranchSelector
         v-if="scope === 'Branch'"
-        class="col-12 col-sm-3"
-      >
-        <BranchSelector
-          v-model="scopeBranchCode"
-        />
-      </div>
+        v-model="scopeBranchCode"
+        dense
+      />
 
-      <!-- Oluştur butonu -->
-      <div class="col-12 col-sm-auto">
+      <template #actions>
         <q-btn
           unelevated
           color="primary"
@@ -69,8 +60,8 @@
           :disable="periodStore.isReadOnly || !periodStore.selectedPeriodId || isMissingPrerequisite"
           @click="onGenerate"
         />
-      </div>
-    </div>
+      </template>
+    </FilterBar>
 
     <!-- Ön koşul bilgisi: devre dışı q-btn pointer olayı almadığından q-tooltip açılmaz,
          bu yüzden gerekçe butonun altında nötr bir notla gösterilir. -->
@@ -342,6 +333,7 @@ import DetailDialog from 'src/components/DetailDialog.vue'
 import FormDialog from 'src/components/FormDialog.vue'
 import DataState from 'src/components/DataState.vue'
 import PageHeader from 'src/components/PageHeader.vue'
+import FilterBar from 'src/components/FilterBar.vue'
 import PermissionGuard from 'src/components/PermissionGuard.vue'
 import { Permissions } from 'src/utils/permissions'
 import { useAcademicPeriodStore } from 'src/stores/academicPeriod'

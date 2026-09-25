@@ -71,27 +71,23 @@
           Yerleştirmeler
         </div>
 
-        <div class="row q-col-gutter-sm q-mb-md items-end">
-          <div class="col-12 col-sm-4">
-            <BranchSelector
-              v-model="branchFilter"
-              dense
-              force-select
-            />
-          </div>
-          <div class="col-12 col-sm-4">
-            <q-select
-              v-model="statusFilter"
-              :options="statusOptions"
-              label="Durum"
-              outlined
-              dense
-              emit-value
-              map-options
-              clearable
-            />
-          </div>
-        </div>
+        <FilterBar dense>
+          <BranchSelector
+            v-model="branchFilter"
+            dense
+            force-select
+          />
+          <q-select
+            v-model="statusFilter"
+            :options="statusOptions"
+            label="Durum"
+            outlined
+            dense
+            emit-value
+            map-options
+            clearable
+          />
+        </FilterBar>
 
         <AppTable
           :rows="placements"
@@ -307,6 +303,7 @@ import DetailPanel from 'components/DetailPanel.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import InfoItem from 'components/InfoItem.vue'
 import PageHeader from 'components/PageHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import StatCard from 'components/StatCard.vue'
 import AppNotice from 'components/AppNotice.vue'

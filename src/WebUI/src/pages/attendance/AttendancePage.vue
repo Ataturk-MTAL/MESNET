@@ -21,7 +21,7 @@
     />
 
     <!-- Filtreler -->
-    <div class="row q-gutter-sm q-mb-md">
+    <FilterBar dense>
       <q-select
         v-model="studentIdFilter"
         :options="filterStudentOpts.options.value"
@@ -38,7 +38,6 @@
         option-label="label"
         option-value="value"
         clearable
-        style="min-width: 250px"
         @filter="filterStudentOpts.filter"
       >
         <template #option="{ itemProps, opt }">
@@ -67,10 +66,10 @@
         emit-value
         map-options
         clearable
-        style="min-width: 150px"
       />
       <q-select
         v-model="monthFilter"
+        class="filter-bar__narrow"
         :options="monthOptions"
         label="Ay"
         outlined
@@ -78,10 +77,10 @@
         emit-value
         map-options
         clearable
-        style="min-width: 130px"
       />
       <q-select
         v-model="yearFilter"
+        class="filter-bar__narrow"
         :options="yearOptions"
         label="Yıl"
         outlined
@@ -89,15 +88,13 @@
         emit-value
         map-options
         clearable
-        style="min-width: 100px"
       />
       <BranchSelector
         v-model="branchFilter"
         dense
         force-select
-        style="min-width: 200px"
       />
-    </div>
+    </FilterBar>
 
     <!-- Hepsi sıradaysa satır rozeti hiçbir şeyi AYIRT ETMEZ: yirmi rozet yerine tek cümle.
          Bilgi mavisi (`bg-info-soft` / `text-info-strong`) kullanılır, hardal DEĞİL — iki yüzey
@@ -332,6 +329,7 @@ import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import PageHeader from 'components/PageHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useRouter } from 'vue-router'

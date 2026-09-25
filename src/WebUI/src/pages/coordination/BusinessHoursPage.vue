@@ -6,16 +6,14 @@
     />
 
     <!-- Alan Seçici -->
-    <div class="row q-col-gutter-md q-mb-lg items-end">
-      <div class="col-12 col-sm-3">
-        <!-- Yazma bağlamı (#126): saat dağıtımı kaydedilen sayfa — yetkisiz alan listelenmez -->
-        <BranchSelector
-          v-model="branchFilter"
-          write-context
-          @update:model-value="onBranchChange"
-        />
-      </div>
-    </div>
+    <FilterBar>
+      <!-- Yazma bağlamı (#126): saat dağıtımı kaydedilen sayfa — yetkisiz alan listelenmez -->
+      <BranchSelector
+        v-model="branchFilter"
+        write-context
+        @update:model-value="onBranchChange"
+      />
+    </FilterBar>
 
     <AppNotice
       v-if="!branchFilter"
@@ -598,6 +596,7 @@ import { bucketPresentation } from 'src/utils/allocationBuckets'
 import BranchSelector from 'components/BranchSelector.vue'
 import BusinessClusterMap from 'components/BusinessClusterMap.vue'
 import PageHeader from 'components/PageHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
 import DetailDialog from 'components/DetailDialog.vue'
