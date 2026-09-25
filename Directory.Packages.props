@@ -16,7 +16,7 @@
     <PackageVersion Include="WolverineFx.FluentValidation" Version="6.15.0" />
     <PackageVersion Include="WolverineFx.RuntimeCompilation" Version="6.15.0" />
     <!-- Marten -->
-    <PackageVersion Include="Marten" Version="9.11.0" />
+    <PackageVersion Include="Marten" Version="9.13.0" />
     <!-- SmartEnum -->
     <PackageVersion Include="Ardalis.SmartEnum" Version="8.2.0" />
     <PackageVersion Include="Ardalis.SmartEnum.SystemTextJson" Version="8.1.0" />
