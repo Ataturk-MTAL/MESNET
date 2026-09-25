@@ -146,7 +146,7 @@ jobs:
           KROKI_SERVER: http://localhost:8000
 
   # 233 black-box API testi (#67). Gerçek yığın gerektiriyor: PostgreSQL+PostGIS, RabbitMQ,
-  # Keycloak (realm import), MinIO. Konteynerler .github/compose.ci.yml ile ayağa kalkıyor,
+  # Keycloak (realm import), RustFS (S3). Konteynerler .github/compose.ci.yml ile ayağa kalkıyor,
   # API arka planda çalıştırılıyor, sonra dotnet test koşuyor.
   integration:
     name: Entegrasyon testleri

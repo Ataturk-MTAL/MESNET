@@ -57,15 +57,17 @@ var mailpit = builder.AddMailPit("mailpit")
     .WithDataVolume("mailpit-data")
     .WithLifetime(ContainerLifetime.Persistent);
 
-// MinIO (S3-compatible object storage)
-var minio = builder.AddContainer("minio", "minio/minio", "latest")
+// RustFS (S3 uyumlu nesne deposu). MinIO imajları Docker Hub ve quay.io'dan kaldırıldı
+// (Eylül 2026, ölçüldü: her etiket "pull access denied"). RustFS aynı portlarda (9000 API,
+// 9001 konsol) çalışır; uygulama Minio .NET SDK ile standart S3 konuşur, kod değişmedi.
+// Parametre adları (minio-user/minio-password) mevcut user-secrets bozulmasın diye korundu.
+var rustfs = builder.AddContainer("rustfs", "rustfs/rustfs", "1.0.0")
     .WithHttpEndpoint(port: 9000, targetPort: 9000, name: "api")
     .WithHttpEndpoint(port: 9001, targetPort: 9001, name: "console")
-    .WithEnvironment("MINIO_ROOT_USER", minioUser)
-    .WithEnvironment("MINIO_ROOT_PASSWORD", minioPassword)
-    .WithArgs("server", "/data", "--console-address", ":9001")
-    .WithVolume("minio-data", "/data")
-    .WithHttpHealthCheck("/minio/health/live", endpointName: "api")
+    .WithEnvironment("RUSTFS_ACCESS_KEY", minioUser)
+    .WithEnvironment("RUSTFS_SECRET_KEY", minioPassword)
+    .WithVolume("rustfs-data", "/data")
+    .WithHttpHealthCheck("/health", endpointName: "api")
     .WithEndpoint("api", e => e.IsProxied = false)
     .WithEndpoint("console", e => e.IsProxied = false)
     .WithLifetime(ContainerLifetime.Persistent);
@@ -115,7 +117,7 @@ var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WithReference(postgres)
     .WithReference(rabbitmq)
     .WithReference(keycloak)
-    .WithEnvironment("MinioStorage__Endpoint", minio.GetEndpoint("api"))
+    .WithEnvironment("MinioStorage__Endpoint", rustfs.GetEndpoint("api"))
     .WithEnvironment("MinioStorage__AccessKey", minioUser)
     .WithEnvironment("MinioStorage__SecretKey", minioPassword)
     .WithEnvironment("SmtpSettings__Host", mailpit.Resource.Host)
@@ -131,7 +133,7 @@ var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WaitFor(postgres)
     .WaitFor(rabbitmq)
     .WaitFor(keycloak)
-    .WaitFor(minio)
+    .WaitFor(rustfs)
     .WaitFor(mailpit)
     // WaitFor DEĞİL: log deposu erişilemezse uygulama yine de açılmalıdır. Gözlemlenebilirlik
     // altyapısını başlangıç bağımlılığı yapmak, teşhis aracını arıza kaynağına çevirir.

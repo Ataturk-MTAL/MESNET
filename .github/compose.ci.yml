@@ -5,7 +5,7 @@
 # geliştirme yığını 5432/5672/9000'i zaten tutuyor ve iki yığın aynı anda ayakta durabilmeli.
 #
 # GitHub Actions'ın `services:` bloğu konteynerin CMD'ini değiştiremiyor; Keycloak
-# `start-dev --import-realm`, MinIO ise `server /data` ile başlamak zorunda. Bu yüzden
+# `start-dev --import-realm` ile başlamak zorunda ve RustFS'in sağlık kontrolü gerekiyor. Bu yüzden
 # compose kullanılıyor.
 #
 # Kimlik bilgileri src/MESNET.Presentation/appsettings.Development.json ile birebir aynı
@@ -58,11 +58,16 @@ services:
     ports:
       - '${CI_KEYCLOAK_PORT:-8080}:8080'
 
-  minio:
-    image: minio/minio:latest
-    command: ['server', '/data', '--console-address', ':9001']
+    # MinIO imajları Docker Hub/quay.io'dan kaldırıldı (Eylül 2026). RustFS aynı portlarda S3 konuşur.
+  rustfs:
+    image: rustfs/rustfs:1.0.0
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      RUSTFS_ACCESS_KEY: minioadmin
+      RUSTFS_SECRET_KEY: minioadmin
     ports:
-      - '${CI_MINIO_PORT:-9000}:9000'
+      - '${CI_S3_PORT:-9000}:9000'
+    healthcheck:
+      test: ['CMD', 'curl', '-sf', 'http://localhost:9000/health']
+      interval: 5s
+      timeout: 5s
+      retries: 20
