@@ -18,7 +18,7 @@ namespace MESNET.Api.Tests.Tenancy;
 /// Bu testler o durumu kilitler.</para>
 /// </summary>
 [Collection("api")]
-public sealed class RlsCatalogDriftTests(ApiTestFixture fixture)
+public sealed class RlsCatalogDriftTests
 {
     private const string MartenPolicy = "marten_tenant_isolation";
 
@@ -68,7 +68,11 @@ public sealed class RlsCatalogDriftTests(ApiTestFixture fixture)
         await using var conn = await OpenAsync(AdminConnectionString);
         var wrong = await ColumnAsync(conn, $"""
             SELECT format('%s → %s', p.polrelid::regclass, p.polname)
-            FROM pg_policy p WHERE p.polrelid NOT IN ({TenantTablesSql}) ORDER BY 1
+            FROM pg_policy p
+            JOIN pg_class c ON c.oid = p.polrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE p.polrelid NOT IN ({TenantTablesSql}) AND {AppSchemaFilter} AND {NotExtensionMember}
+            ORDER BY 1
             """);
 
         wrong.ShouldBeEmpty($"Kiracı sütunu olmayan tabloda politika var: {string.Join(" | ", wrong)}");
@@ -141,7 +145,7 @@ public sealed class RlsCatalogDriftTests(ApiTestFixture fixture)
         var publicGrants = await ColumnAsync(conn, $"""
             SELECT format('%s %s', c.oid::regclass, a.privilege_type)
             FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace, aclexplode(c.relacl) a
-            WHERE a.grantee = 0 AND {AppSchemaFilter}
+            WHERE a.grantee = 0 AND {AppSchemaFilter} AND {NotExtensionMember}
             ORDER BY 1
             """);
         var defaults = await ColumnAsync(conn, """

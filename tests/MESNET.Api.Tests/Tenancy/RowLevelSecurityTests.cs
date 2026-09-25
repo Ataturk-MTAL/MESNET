@@ -16,7 +16,7 @@ namespace MESNET.Api.Tests.Tenancy;
 /// <para>Yazma denemeleri transaction içinde yapılır ve geri alınır — veri bırakılmaz.</para>
 /// </summary>
 [Collection("api")]
-public sealed class RowLevelSecurityTests(ApiTestFixture fixture)
+public sealed class RowLevelSecurityTests
 {
     private const string Setting = "app.tenant_id";
     private const string Table = "enrollment.mt_doc_teacherprofile";
