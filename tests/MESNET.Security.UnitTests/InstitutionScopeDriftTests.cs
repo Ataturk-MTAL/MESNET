@@ -122,7 +122,6 @@ public sealed class InstitutionScopeDriftTests
         "Enrollment.MarkAsFailedToComplete",
         "Enrollment.PlaceStudent",
         "Enrollment.RegisterStudent",
-        "Enrollment.RegisterTeacher",
         "Enrollment.RequestStudent",
         "Enrollment.SyncStudentCounts",
 

@@ -48,9 +48,9 @@ public static class EnrollmentSeeder
                 continue;
             }
 
+            // Kurum gövdede gönderilmez — sunucu onu kiracıdan türetir (#309).
             var data = await api.PostAsync("/api/teachers", new
             {
-                institutionId,
                 keycloakUserId = Guid.Parse(kcId),
                 fullName = name,
                 branchCode

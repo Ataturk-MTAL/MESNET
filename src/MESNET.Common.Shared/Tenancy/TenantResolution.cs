@@ -49,6 +49,23 @@ public static class TenantResolution
     /// </summary>
     public static string ForInstitution(Guid institutionId) => institutionId.ToString();
 
+    /// <summary>
+    /// <see cref="ForInstitution"/>'ın tersi: kiracıdan okul kimliğini türetir (#309).
+    ///
+    /// <para><b>Neden gerekli:</b> kurum kimliğini istek gövdesinden alan handler iki ayrı
+    /// kaynaktan beslenir — satırın kiracı damgası <c>IMessageBus.TenantId</c>'den, belgedeki
+    /// <c>InstitutionId</c> alanı gövdeden gelir. İkisi ayrışınca satır bir okulda görünür ama
+    /// başka okulun personeli olduğunu iddia eder (ölçüldü: 12 öğretmen satırı). Alanı kiracıdan
+    /// türetmek çelişkiyi yapısal olarak imkânsız kılar.</para>
+    ///
+    /// <para><b>Okul olmayan kiracıdan kurum UYDURULMAZ:</b> <see cref="Platform"/>, kiracısız
+    /// istek ve boş kimlik <c>null</c> döner; çağıran gürültülü biçimde reddetmelidir.</para>
+    /// </summary>
+    public static Guid? InstitutionOf(string? tenantId) =>
+        Guid.TryParse(tenantId, out var institutionId) && institutionId != Guid.Empty
+            ? institutionId
+            : null;
+
     /// <param name="institutionIdClaim">
     /// Çözülmüş kurum kapsamı — <c>null</c> ya da boş olabilir ve bu geçerli bir durumdur.
     /// </param>
