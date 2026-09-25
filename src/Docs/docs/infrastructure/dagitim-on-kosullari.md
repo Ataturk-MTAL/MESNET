@@ -1262,3 +1262,31 @@ okunur — kiracıyı transaction'a kurar, kiracı yoksa hata verir. Kilit: `Raw
 RustFS kapalıyken `Connection refused` ile düşer. `deploy/compose.yml`'de `migrate` artık
 `rustfs`'in sağlıklı olmasını bekler (#316'daki eksik).
 :::
+
+## RLS katalog kilitleri ve ihlal alarmı (#318)
+
+RLS'in en tehlikeli açıkları politikanın içinde değil dışındadır: sonradan eklenen bir permissive
+politika, bir view, bir `SECURITY DEFINER` fonksiyon ya da `tenant_id`'siz bir FK/unique index
+filtreyi **hiçbir davranış testi kırılmadan** etkisiz bırakır. `RlsCatalogDriftTests` çalışan
+veritabanının kataloğunu okur — elle uygulanan bir betik ya da hotfix de yakalanır. Bu testler
+her PR'da entegrasyon işinde koşar; **üretimde elle bir değişiklik yapıldıysa** aynı sorgular
+dağıtım sonrası süper kullanıcıyla çalıştırılabilir (test dosyasındaki SQL'ler kendi başına geçerlidir).
+
+**Ölçüldü:** altı ihlal (USING(true) politika, SECURITY DEFINER fonksiyon, view, kiracısız unique
+index, kiracısız FK, PUBLIC yetkisi) dev veritabanına yerleştirildi — altısı da ilgili testle
+kırmızıya döndü; geri alınınca yeşil.
+
+### Alarm
+
+Row-level security ihlali normal akışta **hiç** oluşmaz: başka okulun damgasıyla yazma (42501) ya
+da kiracı ayarı olmadan kiracılı tabloya dokunma. Oluşuyorsa ya kiracısız bir kod yolu (hata) ya
+da bir saldırı girişimidir. API bu hataları ayrı kategoride kritik loglar:
+
+```
+SourceContext = "MESNET.Security.RowLevelSecurity"   Level = Fatal/Critical
+mesaj: "Row-level security ihlali: {RlsViolation} — {Method} {Path}, kullanıcı {UserId}"
+```
+
+OpenObserve'da bu kategoriye **her olayda** tetiklenen bir alarm kurun (eşik 1). Kapsam: HTTP
+istekleri. Arka plan mesaj işleyicilerindeki ihlaller Wolverine'in hata loguna düşer — orada da
+`row-level security` / `app.tenant_id` metnine arama kurun.

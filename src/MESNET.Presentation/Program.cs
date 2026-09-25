@@ -511,6 +511,19 @@ try
         var feature = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
         var ex = feature?.Error;
 
+        // Row-level security ihlali normal akışta HİÇ oluşmaz — oluşuyorsa hata ya da saldırı
+        // girişimidir (#318). Genel 500'lerin arasında kaybolmasın diye ayrı kategoride kritik
+        // loglanır; alarm bu kategoriye kurulur. Yanıt değişmez.
+        if (MESNET.Common.Infrastructure.Tenancy.RlsViolationClassifier.Classify(ex) is { } rlsViolation)
+        {
+            ctx.RequestServices.GetRequiredService<ILoggerFactory>()
+                .CreateLogger("MESNET.Security.RowLevelSecurity")
+                .LogCritical(ex,
+                    "Row-level security ihlali: {RlsViolation} — {Method} {Path}, kullanıcı {UserId}",
+                    rlsViolation, ctx.Request.Method, ctx.Request.Path,
+                    ctx.User.FindFirst("sub")?.Value ?? "(anonim)");
+        }
+
         // InnerException kontrolü — Wolverine bazen exception'ı wrap edebilir
         var domainEx = ex as MESNET.Common.Shared.DomainException
             ?? ex?.InnerException as MESNET.Common.Shared.DomainException;

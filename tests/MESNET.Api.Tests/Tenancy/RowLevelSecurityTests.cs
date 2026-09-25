@@ -16,20 +16,13 @@ namespace MESNET.Api.Tests.Tenancy;
 /// <para>Yazma denemeleri transaction içinde yapılır ve geri alınır — veri bırakılmaz.</para>
 /// </summary>
 [Collection("api")]
-public sealed class RowLevelSecurityTests(ApiTestFixture fixture)
+public sealed class RowLevelSecurityTests
 {
     private const string Setting = "app.tenant_id";
     private const string Table = "enrollment.mt_doc_teacherprofile";
 
-    /// <summary>API'nin çalışma zamanı rolü (#316) — CI'daki compose kimlikleri; yerelde env ile.</summary>
-    private static string AppConnectionString =>
-        Environment.GetEnvironmentVariable("MESNET_APP_CONNECTION")
-        ?? "Host=localhost;Port=5432;Database=mesnet;Username=mesnet_app;Password=mesnet_app_dev";
-
-    /// <summary>Katalog okuması için süper kullanıcı (RLS'i atlar — yalnız pg_class okunur).</summary>
-    private static string AdminConnectionString =>
-        Environment.GetEnvironmentVariable("ConnectionStrings__mesnet")
-        ?? "Host=localhost;Port=5432;Database=mesnet;Username=mesnet;Password=mesnet_dev";
+    private static string AppConnectionString => TenancyDatabase.AppConnectionString;
+    private static string AdminConnectionString => TenancyDatabase.AdminConnectionString;
 
     [Fact]
     public async Task Kiracisiz_okuma_hata_verir_sessiz_bos_donmez()
@@ -116,12 +109,8 @@ public sealed class RowLevelSecurityTests(ApiTestFixture fixture)
         inherited.ShouldNotBe("rls-test-a", "Havuzdan alınan bağlantı önceki kiracıyı taşıyor.");
     }
 
-    private static async Task<NpgsqlConnection> OpenAsync(string cs, bool pooling)
-    {
-        var conn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(cs) { Pooling = pooling }.ConnectionString);
-        await conn.OpenAsync();
-        return conn;
-    }
+    private static Task<NpgsqlConnection> OpenAsync(string cs, bool pooling) =>
+        TenancyDatabase.OpenAsync(cs, pooling);
 
     private static Task SetTenantAsync(NpgsqlConnection conn, NpgsqlTransaction tx, string tenant) =>
         ExecAsync(conn, tx, $"SELECT set_config('{Setting}', '{tenant}', true)");
