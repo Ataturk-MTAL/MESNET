@@ -1,6 +1,10 @@
 <Project Sdk="Aspire.AppHost.Sdk/13.5.4">
 
   <PropertyGroup>
+    <!-- ASPIRE010: CLI paketi (AspireUseCliBundle) kapalı. AppHost `dotnet run` ile başlar
+         (scripts/run-apphost.sh); Aspire CLI'ın `aspire run`/`publish` özellikleri kullanılmıyor.
+         Paketi açmak kullanılmayan bir bağımlılık indirtirdi. -->
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
     <OutputType>Exe</OutputType>
     <IsAspireHost>true</IsAspireHost>
   </PropertyGroup>

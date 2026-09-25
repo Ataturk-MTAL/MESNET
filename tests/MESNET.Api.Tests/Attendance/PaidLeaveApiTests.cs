@@ -35,7 +35,7 @@ public sealed class PaidLeaveApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci; kapsam sunucuda claim'lerden çözülür
         // When — başvurular sayfalı olarak istenir
-        var response = await _fixture.Client.GetAsync("/api/attendance/paid-leave/");
+        var response = await _fixture.Client.GetAsync("/api/attendance/paid-leave/", Ct);
 
         // Then — boş liste de geçerli sonuçtur; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -47,8 +47,7 @@ public sealed class PaidLeaveApiTests(ApiTestFixture fixture)
     {
         // Given — geçerli bir durum filtresi
         // When
-        var response = await _fixture.Client.GetAsync(
-            "/api/attendance/paid-leave/?status=PendingSchool&page=1&pageSize=10");
+        var response = await _fixture.Client.GetAsync("/api/attendance/paid-leave/?status=PendingSchool&page=1&pageSize=10", Ct);
 
         // Then
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -60,8 +59,7 @@ public sealed class PaidLeaveApiTests(ApiTestFixture fixture)
     {
         // Given — SmartEnum'da karşılığı olmayan durum adı
         // When
-        var response = await _fixture.Client.GetAsync(
-            "/api/attendance/paid-leave/?status=OlmayanDurum");
+        var response = await _fixture.Client.GetAsync("/api/attendance/paid-leave/?status=OlmayanDurum", Ct);
 
         // Then — bilinmeyen filtre yok sayılır; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -72,8 +70,7 @@ public sealed class PaidLeaveApiTests(ApiTestFixture fixture)
     {
         // Given — gerekçesiz/tarihsiz gövde
         // When
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/paid-leave/?academicPeriodId={Guid.NewGuid()}", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/attendance/paid-leave/?academicPeriodId={Guid.NewGuid()}", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx) beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -93,8 +90,7 @@ public sealed class PaidLeaveApiTests(ApiTestFixture fixture)
             """;
 
         // When
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/paid-leave/?academicPeriodId={Guid.NewGuid()}", Json(body));
+        var response = await _fixture.Client.PostAsync($"/api/attendance/paid-leave/?academicPeriodId={Guid.NewGuid()}", Json(body), Ct);
 
         // Then — kapsam/dönem reddi (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -107,8 +103,7 @@ public sealed class PaidLeaveApiTests(ApiTestFixture fixture)
         var requestId = Guid.NewGuid();
 
         // When
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/paid-leave/{requestId}/business-approve", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/attendance/paid-leave/{requestId}/business-approve", EmptyJson(), Ct);
 
         // Then — not-found (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -121,8 +116,7 @@ public sealed class PaidLeaveApiTests(ApiTestFixture fixture)
         var requestId = Guid.NewGuid();
 
         // When
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/paid-leave/{requestId}/approve", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/attendance/paid-leave/{requestId}/approve", EmptyJson(), Ct);
 
         // Then
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -135,8 +129,7 @@ public sealed class PaidLeaveApiTests(ApiTestFixture fixture)
         var requestId = Guid.NewGuid();
 
         // When
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/paid-leave/{requestId}/business-reject", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/attendance/paid-leave/{requestId}/business-reject", EmptyJson(), Ct);
 
         // Then — validation/not-found (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -149,8 +142,7 @@ public sealed class PaidLeaveApiTests(ApiTestFixture fixture)
         var requestId = Guid.NewGuid();
 
         // When
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/paid-leave/{requestId}/reject", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/attendance/paid-leave/{requestId}/reject", EmptyJson(), Ct);
 
         // Then
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -161,7 +153,7 @@ public sealed class PaidLeaveApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız istemci
         // When
-        var response = await _fixture.Anonymous.GetAsync("/api/attendance/paid-leave/");
+        var response = await _fixture.Anonymous.GetAsync("/api/attendance/paid-leave/", Ct);
 
         // Then
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

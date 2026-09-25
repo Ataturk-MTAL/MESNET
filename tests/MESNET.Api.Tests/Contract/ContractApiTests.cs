@@ -48,7 +48,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili (Bearer token'lı) bir kullanıcı
         // When — sözleşme listesi istenir (zorunlu filtre yok, hepsi opsiyonel)
-        var response = await _fixture.Client.GetAsync("/api/contracts");
+        var response = await _fixture.Client.GetAsync("/api/contracts", Ct);
 
         // Then — liste okuması başarılı olmalı, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -63,9 +63,8 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var academicPeriodId = Guid.NewGuid();
 
         // When — filtreli + sayfalı liste istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/contracts?studentId={studentId}&academicPeriodId={academicPeriodId}" +
-            "&status=Active&page=1&pageSize=10&sortBy=createdAt&descending=true&search=test");
+        var response = await _fixture.Client.GetAsync($"/api/contracts?studentId={studentId}&academicPeriodId={academicPeriodId}" +
+            "&status=Active&page=1&pageSize=10&sortBy=createdAt&descending=true&search=test", Ct);
 
         // Then — eşleşme olmasa bile boş sayfalı sonuç döner, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -84,7 +83,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — o sözleşmenin detayı istenir
-        var response = await _fixture.Client.GetAsync($"/api/contracts/{contractId}");
+        var response = await _fixture.Client.GetAsync($"/api/contracts/{contractId}", Ct);
 
         // Then — bulunamadı = geçerli durum → 404 (NotFound), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -100,7 +99,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
     {
         // Given — kimlik doğrulaması yapılmamış (token'sız) bir istemci
         // When — auth gerektiren liste endpoint'ine istek atılır
-        var response = await _fixture.Anonymous.GetAsync("/api/contracts");
+        var response = await _fixture.Anonymous.GetAsync("/api/contracts", Ct);
 
         // Then — yetkisiz erişim reddedilir → 401 (Unauthorized)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -113,7 +112,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — auth gerektiren detay endpoint'ine istek atılır
-        var response = await _fixture.Anonymous.GetAsync($"/api/contracts/{contractId}");
+        var response = await _fixture.Anonymous.GetAsync($"/api/contracts/{contractId}", Ct);
 
         // Then — yetkisiz erişim reddedilir → 401 (Unauthorized)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -124,7 +123,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız istemci
         // When — auth gerektiren yazma (create) endpoint'ine istek atılır
-        var response = await _fixture.Anonymous.PostAsync("/api/contracts/", EmptyJson());
+        var response = await _fixture.Anonymous.PostAsync("/api/contracts/", EmptyJson(), Ct);
 
         // Then — yetkisiz erişim reddedilir → 401 (Unauthorized)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -140,7 +139,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili kullanıcı ama geçersiz/boş bir create gövdesi
         // When — boş JSON gövdeyle sözleşme oluşturma denenir
-        var response = await _fixture.Client.PostAsync("/api/contracts/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/contracts/", EmptyJson(), Ct);
 
         // Then — validation/business-rule reddi (4xx) beklenir, sunucu hatası DEĞİL
         // (eksik zorunlu alanlar → 400/422; gerçek sözleşme OLUŞTURULMAZ)
@@ -161,8 +160,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — o sözleşme imzaya gönderilmeye çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/contracts/{contractId}/submit", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/contracts/{contractId}/submit", EmptyJson(), Ct);
 
         // Then — bulunamadı/geçersiz durum → 4xx, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -181,8 +179,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — sözleşme imzalanmaya çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/contracts/{contractId}/sign", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/contracts/{contractId}/sign", EmptyJson(), Ct);
 
         // Then — validation/not-found reddi (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -201,8 +198,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — sözleşme aktifleştirilmeye çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/contracts/{contractId}/activate", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/contracts/{contractId}/activate", EmptyJson(), Ct);
 
         // Then — not-found/geçersiz durum reddi (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -221,8 +217,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — sözleşme askıya alınmaya çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/contracts/{contractId}/suspend", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/contracts/{contractId}/suspend", EmptyJson(), Ct);
 
         // Then — validation/not-found reddi (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -241,8 +236,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — sözleşme devam ettirilmeye çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/contracts/{contractId}/resume", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/contracts/{contractId}/resume", EmptyJson(), Ct);
 
         // Then — not-found/geçersiz durum reddi (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -261,8 +255,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — sözleşme feshedilmeye çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/contracts/{contractId}/terminate", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/contracts/{contractId}/terminate", EmptyJson(), Ct);
 
         // Then — validation/not-found reddi (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -281,8 +274,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — sözleşme tamamlanmaya çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/contracts/{contractId}/complete", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/contracts/{contractId}/complete", EmptyJson(), Ct);
 
         // Then — not-found/geçersiz durum reddi (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -301,8 +293,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — işletme fesih talebi oluşturmaya çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/contracts/{contractId}/request-termination", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/contracts/{contractId}/request-termination", EmptyJson(), Ct);
 
         // Then — validation/not-found reddi (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -321,8 +312,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — fesih talebi reddedilmeye çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/contracts/{contractId}/reject-termination", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/contracts/{contractId}/reject-termination", EmptyJson(), Ct);
 
         // Then — validation/not-found reddi (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -342,8 +332,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         var contractId = Guid.NewGuid();
 
         // When — yanlış content-type ile evrak yükleme denenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/contracts/{contractId}/documents", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/contracts/{contractId}/documents", EmptyJson(), Ct);
 
         // Then — endpoint "Multipart form-data bekleniyor" → 400, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -361,8 +350,7 @@ public sealed class ContractApiTests(ApiTestFixture fixture)
         };
 
         // When — eksik form-data ile evrak yükleme denenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/contracts/{contractId}/documents", form);
+        var response = await _fixture.Client.PostAsync($"/api/contracts/{contractId}/documents", form, Ct);
 
         // Then — eksik zorunlu alan → 400 (BadRequest), sunucu hatası DEĞİL; evrak YÜKLENMEZ
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);

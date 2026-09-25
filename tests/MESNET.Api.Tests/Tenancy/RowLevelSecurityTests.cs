@@ -38,7 +38,7 @@ public sealed class RowLevelSecurityTests
     public async Task A_kiracisinin_satirini_B_goremez()
     {
         await using var conn = await OpenAsync(AppConnectionString, pooling: false);
-        await using var tx = await conn.BeginTransactionAsync();
+        await using var tx = await conn.BeginTransactionAsync(Ct);
 
         await SetTenantAsync(conn, tx, "rls-test-a");
         await ExecAsync(conn, tx, $"INSERT INTO {Table} (id, data, tenant_id) VALUES (gen_random_uuid(), '{{}}'::jsonb, 'rls-test-a')");
@@ -47,14 +47,14 @@ public sealed class RowLevelSecurityTests
         await SetTenantAsync(conn, tx, "rls-test-b");
         (await CountAsync(conn, tx)).ShouldBe(0L, "B kiracısı A'nın satırını GÖRMEMELİ.");
 
-        await tx.RollbackAsync();
+        await tx.RollbackAsync(Ct);
     }
 
     [Fact]
     public async Task B_kiracisi_A_damgasiyla_yazamaz()
     {
         await using var conn = await OpenAsync(AppConnectionString, pooling: false);
-        await using var tx = await conn.BeginTransactionAsync();
+        await using var tx = await conn.BeginTransactionAsync(Ct);
 
         await SetTenantAsync(conn, tx, "rls-test-b");
 
@@ -81,7 +81,7 @@ public sealed class RowLevelSecurityTests
                           WHERE a.attrelid = c.oid AND a.attname = 'tenant_id' AND NOT a.attisdropped)
             """, conn);
 
-        var unprotected = await cmd.ExecuteScalarAsync() as string;
+        var unprotected = await cmd.ExecuteScalarAsync(Ct) as string;
 
         unprotected.ShouldBeNull($"RLS'siz (ya da FORCE'suz) kiracılı tablo var: {unprotected}");
     }

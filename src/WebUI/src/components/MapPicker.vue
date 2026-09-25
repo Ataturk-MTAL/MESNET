@@ -119,7 +119,7 @@ interface NominatimResult {
 }
 
 const props = withDefaults(defineProps<{
-  modelValue: GeoLocation | null
+  modelValue?: GeoLocation | null
   readonly?: boolean
   height?: string
 }>(), {

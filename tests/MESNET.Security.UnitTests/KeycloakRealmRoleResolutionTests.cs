@@ -50,7 +50,7 @@ public sealed class KeycloakRealmRoleResolutionTests
     {
         var (service, handler) = CreateService();
 
-        var result = await service.AssignRealmRolesAsync("kc-user-1", ["deputy_director"]);
+        var result = await service.AssignRealmRolesAsync("kc-user-1", ["deputy_director"], TestContext.Current.CancellationToken);
 
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("Security.RealmRolesUnresolved");
@@ -63,8 +63,7 @@ public sealed class KeycloakRealmRoleResolutionTests
         var (service, handler) = CreateService();
 
         // Karışık liste: biri geçerli, biri değil. "Kısmi uygula" yapılmaz.
-        var result = await service.AssignRealmRolesAsync(
-            "kc-user-1", [MesnetRoles.Teacher, "master_trainer_yanlis"]);
+        var result = await service.AssignRealmRolesAsync("kc-user-1", [MesnetRoles.Teacher, "master_trainer_yanlis"], TestContext.Current.CancellationToken);
 
         result.IsFailure.ShouldBeTrue();
         handler.RoleMappingRequests.ShouldBeEmpty();
@@ -75,8 +74,7 @@ public sealed class KeycloakRealmRoleResolutionTests
     {
         var (service, handler) = CreateService();
 
-        var result = await service.AssignRealmRolesAsync(
-            "kc-user-1", [MesnetRoles.DeputyDirector, MesnetRoles.Teacher]);
+        var result = await service.AssignRealmRolesAsync("kc-user-1", [MesnetRoles.DeputyDirector, MesnetRoles.Teacher], TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         handler.RoleMappingRequests.Count.ShouldBe(1);
@@ -88,7 +86,7 @@ public sealed class KeycloakRealmRoleResolutionTests
     {
         var (service, handler) = CreateService();
 
-        var result = await service.RemoveRealmRolesAsync("kc-user-1", ["coordinator_teacher"]);
+        var result = await service.RemoveRealmRolesAsync("kc-user-1", ["coordinator_teacher"], TestContext.Current.CancellationToken);
 
         result.IsFailure.ShouldBeTrue();
         result.Error.Code.ShouldBe("Security.RealmRolesUnresolved");
@@ -101,7 +99,7 @@ public sealed class KeycloakRealmRoleResolutionTests
     {
         var (service, handler) = CreateService();
 
-        var result = await service.AssignRealmRolesAsync("kc-user-1", []);
+        var result = await service.AssignRealmRolesAsync("kc-user-1", [], TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         handler.RoleMappingRequests.ShouldBeEmpty();
@@ -112,7 +110,7 @@ public sealed class KeycloakRealmRoleResolutionTests
     {
         var (service, _) = CreateService();
 
-        var result = await service.AssignRealmRolesAsync("kc-user-1", ["deputydirector"]);
+        var result = await service.AssignRealmRolesAsync("kc-user-1", ["deputydirector"], TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
     }

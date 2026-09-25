@@ -18,15 +18,15 @@ jobs:
     name: Backend — derleme
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5 # node24
+      - uses: actions/checkout@v7 # node24
 
       - name: .NET SDK kur (global.json)
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
       - name: NuGet cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
@@ -63,15 +63,15 @@ jobs:
       run:
         working-directory: src/WebUI
     steps:
-      - uses: actions/checkout@v5 # node24
+      - uses: actions/checkout@v7 # node24
 
       - name: pnpm kur
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.15.4
 
       - name: Node kur
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -120,15 +120,15 @@ jobs:
           KROKI_COMMAND_TIMEOUT: 60s
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: pnpm kur
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.15.4
 
       - name: Node kur
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -153,15 +153,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v5 # node24
+      - uses: actions/checkout@v7 # node24
 
       - name: .NET SDK kur (global.json)
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
       - name: NuGet cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}

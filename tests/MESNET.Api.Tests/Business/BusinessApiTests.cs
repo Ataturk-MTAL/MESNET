@@ -29,7 +29,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — işletme detayı istenir
-        var response = await _fixture.Client.GetAsync($"/api/businesses/{businessId}");
+        var response = await _fixture.Client.GetAsync($"/api/businesses/{businessId}", Ct);
 
         // Then — bulunamadı = geçerli durum (404/422), sunucu hatası DEĞİL (null-return 500 bug'ını yakalar)
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -40,7 +40,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
     {
         // Given — eksik/geçersiz bir kayıt gövdesi
         // When — POST /api/businesses çağrılır
-        var response = await _fixture.Client.PostAsync("/api/businesses/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/businesses/", EmptyJson(), Ct);
 
         // Then — validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -51,7 +51,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
     {
         // Given — eksik/geçersiz bir self-register gövdesi
         // When — POST /api/businesses/self-register çağrılır
-        var response = await _fixture.Client.PostAsync("/api/businesses/self-register", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/businesses/self-register", EmptyJson(), Ct);
 
         // Then — validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -64,7 +64,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — PATCH /api/businesses/{id} çağrılır
-        var response = await _fixture.Client.PatchAsync($"/api/businesses/{businessId}", EmptyJson());
+        var response = await _fixture.Client.PatchAsync($"/api/businesses/{businessId}", EmptyJson(), Ct);
 
         // Then — validation/not-found reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -77,7 +77,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — POST /api/businesses/{id}/approve çağrılır (gövdesiz)
-        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/approve", null);
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/approve", null, Ct);
 
         // Then — not-found/validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -90,7 +90,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — POST /api/businesses/{id}/reject çağrılır
-        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/reject", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/reject", EmptyJson(), Ct);
 
         // Then — not-found/validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -103,7 +103,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — POST /api/businesses/{id}/deactivate çağrılır
-        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/deactivate", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/deactivate", EmptyJson(), Ct);
 
         // Then — not-found/validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -116,7 +116,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — POST /api/businesses/{id}/activate çağrılır (gövdesiz)
-        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/activate", null);
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/activate", null, Ct);
 
         // Then — not-found/validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -129,7 +129,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — POST /api/businesses/{id}/close çağrılır (gövdesiz)
-        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/close", null);
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/close", null, Ct);
 
         // Then — not-found/validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -144,7 +144,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili admin client
         // When — GET /api/businesses sayfalama parametreleriyle çağrılır
-        var response = await _fixture.Client.GetAsync("/api/businesses/?page=1&pageSize=20");
+        var response = await _fixture.Client.GetAsync("/api/businesses/?page=1&pageSize=20", Ct);
 
         // Then — listeleme başarılı olmalı (200), her halükarda sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -161,8 +161,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
     {
         // Given — sıralanabilir skaler tipte OLMAYAN (veya hiç var olmayan) bir alan adı (#65)
         // When — GET /api/businesses bu sortBy ile çağrılır
-        var response = await _fixture.Client.GetAsync(
-            $"/api/businesses/?page=1&pageSize=20&sortBy={sortBy}");
+        var response = await _fixture.Client.GetAsync($"/api/businesses/?page=1&pageSize=20&sortBy={sortBy}", Ct);
 
         // Then — sessizce defaultSort'a düşmeli (200), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -174,8 +173,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
     {
         // Given — string tipte, sıralanabilir bir alan
         // When — GET /api/businesses sortBy=Name ile çağrılır
-        var response = await _fixture.Client.GetAsync(
-            "/api/businesses/?page=1&pageSize=20&sortBy=Name&descending=true");
+        var response = await _fixture.Client.GetAsync("/api/businesses/?page=1&pageSize=20&sortBy=Name&descending=true", Ct);
 
         // Then — sıralama uygulanmalı ve liste dönmeli (200)
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -186,7 +184,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili admin client
         // When — GET /api/businesses/sectors çağrılır (DB'ye dokunmaz, SmartEnum listesi)
-        var response = await _fixture.Client.GetAsync("/api/businesses/sectors");
+        var response = await _fixture.Client.GetAsync("/api/businesses/sectors", Ct);
 
         // Then — sektör listesi başarıyla dönmeli (200)
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -198,8 +196,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
     {
         // Given — makul koordinat ve yarıçap değerleri (Ankara civarı, 5km)
         // When — GET /api/businesses/nearby çağrılır
-        var response = await _fixture.Client.GetAsync(
-            "/api/businesses/nearby?lat=39.9334&lng=32.8597&radius=5000");
+        var response = await _fixture.Client.GetAsync("/api/businesses/nearby?lat=39.9334&lng=32.8597&radius=5000", Ct);
 
         // Then — spatial sorgu başarılı olmalı, en azından sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -212,7 +209,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — PUT /api/businesses/{id}/capacity çağrılır
-        var response = await _fixture.Client.PutAsync($"/api/businesses/{businessId}/capacity", EmptyJson());
+        var response = await _fixture.Client.PutAsync($"/api/businesses/{businessId}/capacity", EmptyJson(), Ct);
 
         // Then — validation/not-found reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -233,7 +230,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         };
 
         // When — POST /api/businesses/{id}/documents çağrılır (dosya eksik)
-        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/documents/", form);
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/documents/", form, Ct);
 
         // Then — bad request/validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -247,8 +244,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — POST /api/businesses/{id}/documents/{docId}/approve çağrılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/businesses/{businessId}/documents/{documentId}/approve", null);
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/documents/{documentId}/approve", null, Ct);
 
         // Then — not-found/validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -262,8 +258,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — GET /api/businesses/{id}/documents/{docId}/url çağrılır
-        var response = await _fixture.Client.GetAsync(
-            $"/api/businesses/{businessId}/documents/{documentId}/url");
+        var response = await _fixture.Client.GetAsync($"/api/businesses/{businessId}/documents/{documentId}/url", Ct);
 
         // Then — bulunamadı = geçerli durum (404/422), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -277,8 +272,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — DELETE /api/businesses/{id}/documents/{docId} çağrılır
-        var response = await _fixture.Client.DeleteAsync(
-            $"/api/businesses/{businessId}/documents/{documentId}");
+        var response = await _fixture.Client.DeleteAsync($"/api/businesses/{businessId}/documents/{documentId}", Ct);
 
         // Then — not-found/validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -295,8 +289,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — POST /api/businesses/{id}/instructor-document çağrılır (form-data değil)
-        var response = await _fixture.Client.PostAsync(
-            $"/api/businesses/{businessId}/instructor-document/", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/instructor-document/", EmptyJson(), Ct);
 
         // Then — "Multipart form-data bekleniyor" bad request (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -310,8 +303,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — POST /api/businesses/{id}/instructor-document/{docId}/invalidate çağrılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/businesses/{businessId}/instructor-document/{documentId}/invalidate", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/instructor-document/{documentId}/invalidate", EmptyJson(), Ct);
 
         // Then — not-found/validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -325,8 +317,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — POST /api/businesses/{id}/instructor-document/{docId}/delete çağrılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/businesses/{businessId}/instructor-document/{documentId}/delete", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/instructor-document/{documentId}/delete", EmptyJson(), Ct);
 
         // Then — not-found/validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -339,8 +330,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — POST /api/businesses/{id}/instructor-document/request çağrılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/businesses/{businessId}/instructor-document/request", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/instructor-document/request", EmptyJson(), Ct);
 
         // Then — validation/not-found reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -353,7 +343,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — POST /api/businesses/{id}/suspend çağrılır
-        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/suspend", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/businesses/{businessId}/suspend", EmptyJson(), Ct);
 
         // Then — not-found/validation reddi beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -368,7 +358,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) client
         // When — GET /api/businesses çağrılır
-        var response = await _fixture.Anonymous.GetAsync("/api/businesses/?page=1&pageSize=20");
+        var response = await _fixture.Anonymous.GetAsync("/api/businesses/?page=1&pageSize=20", Ct);
 
         // Then — kimlik doğrulama gerekli → 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -381,7 +371,7 @@ public sealed class BusinessApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — GET /api/businesses/{id} çağrılır
-        var response = await _fixture.Anonymous.GetAsync($"/api/businesses/{businessId}");
+        var response = await _fixture.Anonymous.GetAsync($"/api/businesses/{businessId}", Ct);
 
         // Then — kimlik doğrulama gerekli → 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

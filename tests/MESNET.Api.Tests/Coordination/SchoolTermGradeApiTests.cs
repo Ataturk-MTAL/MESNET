@@ -30,8 +30,7 @@ public sealed class SchoolTermGradeApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci; kapsam institution_id claim'inden çözülür
         // When
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/term-grades/school-students?academicPeriodId={Guid.NewGuid()}");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/term-grades/school-students?academicPeriodId={Guid.NewGuid()}", Ct);
 
         // Then — boş liste de geçerli sonuçtur; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -43,8 +42,7 @@ public sealed class SchoolTermGradeApiTests(ApiTestFixture fixture)
     {
         // Given — öğrencisiz/dönemsiz gövde
         // When
-        var response = await _fixture.Client.PostAsync(
-            "/api/coordination/term-grades/school", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/coordination/term-grades/school", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -64,9 +62,7 @@ public sealed class SchoolTermGradeApiTests(ApiTestFixture fixture)
             """;
 
         // When
-        var response = await _fixture.Client.PostAsync(
-            "/api/coordination/term-grades/school",
-            new StringContent(body, Encoding.UTF8, "application/json"));
+        var response = await _fixture.Client.PostAsync("/api/coordination/term-grades/school", new StringContent(body, Encoding.UTF8, "application/json"), Ct);
 
         // Then — kapsam/pencere reddi (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -79,8 +75,7 @@ public sealed class SchoolTermGradeApiTests(ApiTestFixture fixture)
         var gradeId = Guid.NewGuid();
 
         // When
-        var response = await _fixture.Client.PostAsync(
-            $"/api/coordination/term-grades/school/{gradeId}/submit", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/coordination/term-grades/school/{gradeId}/submit", EmptyJson(), Ct);
 
         // Then — not-found (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -91,8 +86,7 @@ public sealed class SchoolTermGradeApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız istemci
         // When
-        var response = await _fixture.Anonymous.GetAsync(
-            $"/api/coordination/term-grades/school-students?academicPeriodId={Guid.NewGuid()}");
+        var response = await _fixture.Anonymous.GetAsync($"/api/coordination/term-grades/school-students?academicPeriodId={Guid.NewGuid()}", Ct);
 
         // Then
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -104,8 +98,7 @@ public sealed class SchoolTermGradeApiTests(ApiTestFixture fixture)
     [Fact]
     public async Task Isletme_ogrenci_listesi_calismaya_devam_eder()
     {
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/term-grades/my-students?academicPeriodId={Guid.NewGuid()}");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/term-grades/my-students?academicPeriodId={Guid.NewGuid()}", Ct);
 
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);

@@ -149,7 +149,7 @@ public class AuditMiddlewareContractTests
         var bus = host.Services.GetRequiredService<IMessageBus>();
 
         // Act
-        var sonuc = await bus.InvokeAsync<string>(new OrnekKomut(Guid.NewGuid(), Reddet: false));
+        var sonuc = await bus.InvokeAsync<string>(new OrnekKomut(Guid.NewGuid(), Reddet: false), TestContext.Current.CancellationToken);
 
         // Assert
         sonuc.ShouldBe("tamam");
@@ -157,7 +157,7 @@ public class AuditMiddlewareContractTests
         yazici.Yazilanlar[0].CommandType.ShouldBe(nameof(OrnekKomut));
         yazici.Yazilanlar[0].Exception.ShouldBeNull();
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -169,13 +169,13 @@ public class AuditMiddlewareContractTests
         using var _ = host;
         var bus = host.Services.GetRequiredService<IMessageBus>();
 
-        await bus.InvokeAsync<string>(new OrnekKomut(Guid.NewGuid(), Reddet: false));
+        await bus.InvokeAsync<string>(new OrnekKomut(Guid.NewGuid(), Reddet: false), TestContext.Current.CancellationToken);
 
         yazici.Baglamlar.Count.ShouldBe(1);
         yazici.Baglamlar[0].ActiveInstitutionId.ShouldBe(BaskaKurum);
         yazici.Baglamlar[0].ActorInstitutionId.ShouldBe(AktorKurumu);
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -192,7 +192,7 @@ public class AuditMiddlewareContractTests
         yazici.Yazilanlar.Count.ShouldBe(1);
         yazici.Yazilanlar[0].Exception.ShouldBeOfType<DomainException>();
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -210,7 +210,7 @@ public class AuditMiddlewareContractTests
 
         ex.Error.Code.ShouldBe("KURAL_IHLALI");
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -227,7 +227,7 @@ public class AuditMiddlewareContractTests
 
         yazici.Yazilanlar.Count.ShouldBe(1);
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -241,11 +241,11 @@ public class AuditMiddlewareContractTests
         using var _ = host;
         var bus = host.Services.GetRequiredService<IMessageBus>();
 
-        var sonuc = await bus.InvokeAsync<string>(new OrnekKomut(Guid.NewGuid(), Reddet: false));
+        var sonuc = await bus.InvokeAsync<string>(new OrnekKomut(Guid.NewGuid(), Reddet: false), TestContext.Current.CancellationToken);
 
         sonuc.ShouldBe("tamam");
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -265,6 +265,6 @@ public class AuditMiddlewareContractTests
 
         ex.Error.Code.ShouldBe("KURAL_IHLALI");
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 }

@@ -32,7 +32,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — kimlik doğrulaması olmayan istemci
         // When — doküman listesi token'sız istenir
-        var response = await _fixture.Anonymous.GetAsync("/api/reports/documents/");
+        var response = await _fixture.Anonymous.GetAsync("/api/reports/documents/", Ct);
 
         // Then — yetkisiz erişim reddedilir
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -43,8 +43,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — kimlik doğrulaması olmayan istemci
         // When — staj sözleşmesi üretim isteği token'sız gönderilir
-        var response = await _fixture.Anonymous.PostAsync(
-            "/api/reports/internship-contract", EmptyJson());
+        var response = await _fixture.Anonymous.PostAsync("/api/reports/internship-contract", EmptyJson(), Ct);
 
         // Then — yetkisiz erişim reddedilir
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -57,8 +56,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — doküman detayı token'sız istenir
-        var response = await _fixture.Anonymous.GetAsync(
-            $"/api/reports/documents/{documentId}");
+        var response = await _fixture.Anonymous.GetAsync($"/api/reports/documents/{documentId}", Ct);
 
         // Then — yetkisiz erişim reddedilir
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -69,11 +67,10 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — kimlik doğrulaması olmayan istemci
         // When — Form 7 aylık devamsızlık önizleme PDF'i token'sız istenir
-        var response = await _fixture.Anonymous.GetAsync(
-            "/api/reports/monthly-attendance/preview" +
+        var response = await _fixture.Anonymous.GetAsync("/api/reports/monthly-attendance/preview" +
             $"?institutionId={Guid.NewGuid()}&academicPeriodId={Guid.NewGuid()}" +
             $"&businessId={Guid.NewGuid()}&year=2026&month=6" +
-            "&institutionName=Test&academicYear=2025-2026");
+            "&institutionName=Test&academicYear=2025-2026", Ct);
 
         // Then — yetkisiz erişim reddedilir
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -86,8 +83,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — doküman silme isteği token'sız gönderilir
-        var response = await _fixture.Anonymous.DeleteAsync(
-            $"/api/reports/documents/{documentId}");
+        var response = await _fixture.Anonymous.DeleteAsync($"/api/reports/documents/{documentId}", Ct);
 
         // Then — yetkisiz erişim reddedilir
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -104,8 +100,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — o doküman için detay istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/reports/documents/{documentId}");
+        var response = await _fixture.Client.GetAsync($"/api/reports/documents/{documentId}", Ct);
 
         // Then — 404/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -118,8 +113,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — o doküman için PDF indirme isteği yapılır
-        var response = await _fixture.Client.GetAsync(
-            $"/api/reports/documents/{documentId}/pdf");
+        var response = await _fixture.Client.GetAsync($"/api/reports/documents/{documentId}/pdf", Ct);
 
         // Then — 404/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -134,8 +128,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci
         // When — sayfalı doküman listesi istenir
-        var response = await _fixture.Client.GetAsync(
-            "/api/reports/documents/?page=1&pageSize=20");
+        var response = await _fixture.Client.GetAsync("/api/reports/documents/?page=1&pageSize=20", Ct);
 
         // Then — başarılı yanıt döner, sunucu hatası olmaz
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -147,8 +140,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci
         // When — sayfalı doküman listesi istenir
-        var response = await _fixture.Client.GetAsync(
-            "/api/reports/documents/?page=1&pageSize=20");
+        var response = await _fixture.Client.GetAsync("/api/reports/documents/?page=1&pageSize=20", Ct);
 
         // Then — yanıt başarılı olmalı ve data zarfı sayfalama alanlarını içermeli
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -166,10 +158,9 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — filtreli ve aramalı doküman listesi istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/reports/documents/?status=Pending&formType=InternshipContract" +
+        var response = await _fixture.Client.GetAsync($"/api/reports/documents/?status=Pending&formType=InternshipContract" +
             $"&teacherId={teacherId}&institutionId={institutionId}" +
-            $"&page=1&pageSize=10&sortBy=createdAt&descending=true&search=test");
+            $"&page=1&pageSize=10&sortBy=createdAt&descending=true&search=test", Ct);
 
         // Then — boş sonuç geçerlidir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -183,8 +174,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var studentId = Guid.NewGuid();
 
         // When — o öğrencinin dokümanları istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/reports/documents/by-student/{studentId}");
+        var response = await _fixture.Client.GetAsync($"/api/reports/documents/by-student/{studentId}", Ct);
 
         // Then — boş liste geçerlidir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -201,8 +191,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — doküman "yazdırıldı" olarak işaretlenmeye çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/reports/documents/{documentId}/print", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/reports/documents/{documentId}/print", EmptyJson(), Ct);
 
         // Then — 404/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -215,8 +204,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — doküman "imzalanıp teslim edildi" olarak işaretlenmeye çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/reports/documents/{documentId}/sign-and-return", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/reports/documents/{documentId}/sign-and-return", EmptyJson(), Ct);
 
         // Then — 404/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -229,8 +217,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — doküman arşivlenmeye çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/reports/documents/{documentId}/archive", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/reports/documents/{documentId}/archive", EmptyJson(), Ct);
 
         // Then — 404/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -243,8 +230,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var documentId = Guid.NewGuid();
 
         // When — doküman silinmeye çalışılır
-        var response = await _fixture.Client.DeleteAsync(
-            $"/api/reports/documents/{documentId}");
+        var response = await _fixture.Client.DeleteAsync($"/api/reports/documents/{documentId}", Ct);
 
         // Then — 404/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -259,8 +245,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — geçersiz (boş) ZIP indirme isteği gövdesi
         // When — boş gövdeyle ZIP indirme istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/reports/documents/download-zip", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/reports/documents/download-zip", EmptyJson(), Ct);
 
         // Then — validation/bad request beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -271,8 +256,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — geçersiz (boş) toplu belge üretim isteği gövdesi
         // When — boş gövdeyle toplu belge üretimi istenir (mutasyon reddedilir)
-        var response = await _fixture.Client.PostAsync(
-            "/api/reports/documents/generate-batch", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/reports/documents/generate-batch", EmptyJson(), Ct);
 
         // Then — validation/bad request beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -283,8 +267,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — geçersiz (boş) toplu silme isteği gövdesi
         // When — boş gövdeyle toplu silme istenir (mutasyon reddedilir)
-        var response = await _fixture.Client.PostAsync(
-            "/api/reports/documents/batch-delete", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/reports/documents/batch-delete", EmptyJson(), Ct);
 
         // Then — validation/bad request beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -299,8 +282,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — geçersiz (boş) staj sözleşmesi form verisi
         // When — boş gövdeyle staj sözleşmesi üretimi istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/reports/internship-contract", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/reports/internship-contract", EmptyJson(), Ct);
 
         // Then — validation/bad request beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -311,8 +293,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — geçersiz (boş) aylık eğitim faaliyeti form verisi
         // When — boş gövdeyle form üretimi istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/reports/monthly-activity", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/reports/monthly-activity", EmptyJson(), Ct);
 
         // Then — validation/bad request beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -323,8 +304,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — geçersiz (boş) günlük rehberlik form verisi
         // When — boş gövdeyle form üretimi istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/reports/guidance-visit", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/reports/guidance-visit", EmptyJson(), Ct);
 
         // Then — validation/bad request beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -335,8 +315,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — geçersiz (boş) devamsızlık çizelgesi form verisi
         // When — boş gövdeyle form üretimi istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/reports/attendance-sheet", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/reports/attendance-sheet", EmptyJson(), Ct);
 
         // Then — validation/bad request beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -347,8 +326,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — geçersiz (boş) beceri sınavı not fişi form verisi
         // When — boş gövdeyle form üretimi istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/reports/skill-exam", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/reports/skill-exam", EmptyJson(), Ct);
 
         // Then — validation/bad request beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -359,8 +337,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — geçersiz (boş) işletme değerlendirme form verisi
         // When — boş gövdeyle form üretimi istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/reports/business-evaluation", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/reports/business-evaluation", EmptyJson(), Ct);
 
         // Then — validation/bad request beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -371,8 +348,7 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
     {
         // Given — geçersiz (boş) aylık devamsızlık (arşiv) form verisi
         // When — boş gövdeyle form üretimi istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/reports/monthly-attendance", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/reports/monthly-attendance", EmptyJson(), Ct);
 
         // Then — validation/bad request beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -391,11 +367,10 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — aylık devamsızlık önizleme PDF'i istenir (tüm zorunlu query paramları verilir)
-        var response = await _fixture.Client.GetAsync(
-            "/api/reports/monthly-attendance/preview" +
+        var response = await _fixture.Client.GetAsync("/api/reports/monthly-attendance/preview" +
             $"?institutionId={institutionId}&academicPeriodId={academicPeriodId}" +
             $"&businessId={businessId}&year=2026&month=6" +
-            "&institutionName=Test%20MTAL&academicYear=2025-2026");
+            "&institutionName=Test%20MTAL&academicYear=2025-2026", Ct);
 
         // Then — boş veri geçerlidir (404/422/boş PDF), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -409,10 +384,9 @@ public sealed class ReportingApiTests(ApiTestFixture fixture)
         var academicPeriodId = Guid.NewGuid();
 
         // When — tüm öğretmenler için toplu önizleme PDF'i istenir (zorunlu query paramları)
-        var response = await _fixture.Client.GetAsync(
-            "/api/reports/monthly-attendance/preview-batch" +
+        var response = await _fixture.Client.GetAsync("/api/reports/monthly-attendance/preview-batch" +
             $"?institutionId={institutionId}&academicPeriodId={academicPeriodId}" +
-            "&year=2026&month=6&institutionName=Test%20MTAL&academicYear=2025-2026");
+            "&year=2026&month=6&institutionName=Test%20MTAL&academicYear=2025-2026", Ct);
 
         // Then — boş veri geçerlidir (404/422/boş PDF), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);

@@ -113,6 +113,6 @@ public class AuditGuardOrderingRegressionTests
         yazici.Yazilanlar.Count.ShouldBe(1);
         yazici.Yazilanlar[0].Exception.ShouldNotBeNull();
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 }

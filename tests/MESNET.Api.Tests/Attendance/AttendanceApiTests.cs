@@ -44,7 +44,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili (Bearer token'lı) bir istemci
         // When — devamsızlık kayıtları sayfalı olarak istenir (filtre yok)
-        var response = await _fixture.Client.GetAsync("/api/attendance/");
+        var response = await _fixture.Client.GetAsync("/api/attendance/", Ct);
 
         // Then — sunucu hatası DEĞİL, başarılı liste yanıtı (boş olsa bile geçerli)
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -61,10 +61,9 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
         var academicPeriodId = Guid.NewGuid();
 
         // When — tüm opsiyonel filtreler verilerek liste istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/attendance/?studentId={studentId}&businessId={businessId}" +
+        var response = await _fixture.Client.GetAsync($"/api/attendance/?studentId={studentId}&businessId={businessId}" +
             $"&institutionId={institutionId}&academicPeriodId={academicPeriodId}" +
-            "&status=Pending&year=2026&month=6&page=1&pageSize=20");
+            "&status=Pending&year=2026&month=6&page=1&pageSize=20", Ct);
 
         // Then — eşleşme yok = boş sayfa (geçerli), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -82,7 +81,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
         var attendanceId = Guid.NewGuid();
 
         // When — o kaydın detayı istenir
-        var response = await _fixture.Client.GetAsync($"/api/attendance/{attendanceId}");
+        var response = await _fixture.Client.GetAsync($"/api/attendance/{attendanceId}", Ct);
 
         // Then — kayıt yok = geçerli boş durum → 404/422 beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -97,7 +96,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
     {
         // Given — kimlik doğrulamasız (token'sız) istemci
         // When — yetki gerektiren liste endpoint'i çağrılır
-        var response = await _fixture.Anonymous.GetAsync("/api/attendance/");
+        var response = await _fixture.Anonymous.GetAsync("/api/attendance/", Ct);
 
         // Then — yetkilendirme reddi → 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -108,8 +107,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
     {
         // Given — kimlik doğrulamasız (token'sız) istemci
         // When — yetki gerektiren çalışma takvimi endpoint'i çağrılır
-        var response = await _fixture.Anonymous.GetAsync(
-            $"/api/work-calendar/?institutionId={Guid.NewGuid()}&year=2026");
+        var response = await _fixture.Anonymous.GetAsync($"/api/work-calendar/?institutionId={Guid.NewGuid()}&year=2026", Ct);
 
         // Then — yetkilendirme reddi → 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -124,7 +122,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci ve boş/geçersiz JSON gövde
         // When — devamsızlık kaydı oluşturulmaya çalışılır
-        var response = await _fixture.Client.PostAsync("/api/attendance/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/attendance/", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx) beklenir, sunucu hatası (500) DEĞİL; mutasyon olmaz
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -141,8 +139,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
         var attendanceId = Guid.NewGuid();
 
         // When — o kayıt onaylanmaya çalışılır (gövde gerekmiyor)
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/{attendanceId}/approve", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/attendance/{attendanceId}/approve", EmptyJson(), Ct);
 
         // Then — kayıt yok = 404/422 beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -159,8 +156,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
         var attendanceId = Guid.NewGuid();
 
         // When — o kayıt doğrulanmaya çalışılır (gövde gerekmiyor)
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/{attendanceId}/verify", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/attendance/{attendanceId}/verify", EmptyJson(), Ct);
 
         // Then — kayıt yok = 404/422 beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -177,8 +173,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
         var attendanceId = Guid.NewGuid();
 
         // When — düzeltme isteği gönderilir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/{attendanceId}/correct", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/attendance/{attendanceId}/correct", EmptyJson(), Ct);
 
         // Then — validation/not-found (4xx) beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -196,8 +191,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
         using var form = new MultipartFormDataContent();
 
         // When — sağlık raporu yükleme isteği gönderilir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/{attendanceId}/health-report", form);
+        var response = await _fixture.Client.PostAsync($"/api/attendance/{attendanceId}/health-report", form, Ct);
 
         // Then — validation/not-found (4xx) beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -210,8 +204,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
         var attendanceId = Guid.NewGuid();
 
         // When
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/{attendanceId}/health-report", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/attendance/{attendanceId}/health-report", EmptyJson(), Ct);
 
         // Then
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -228,8 +221,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
         var attendanceId = Guid.NewGuid();
 
         // When — rapor onaylanmaya çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/{attendanceId}/health-report/approve", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/attendance/{attendanceId}/health-report/approve", EmptyJson(), Ct);
 
         // Then — validation/not-found (4xx) beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -242,8 +234,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
         var attendanceId = Guid.NewGuid();
 
         // When — rapor reddedilmeye çalışılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/attendance/{attendanceId}/health-report/reject", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/attendance/{attendanceId}/health-report/reject", EmptyJson(), Ct);
 
         // Then — validation/not-found (4xx) beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -260,7 +251,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
         var attendanceId = Guid.NewGuid();
 
         // When — o kayıt silinmeye çalışılır
-        var response = await _fixture.Client.DeleteAsync($"/api/attendance/{attendanceId}");
+        var response = await _fixture.Client.DeleteAsync($"/api/attendance/{attendanceId}", Ct);
 
         // Then — kayıt yok = 404/422 beklenir, sunucu hatası (500) DEĞİL; mutasyon olmaz
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -275,7 +266,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci ve boş/geçersiz JSON gövde
         // When — çalışma takvimi güncellenmeye çalışılır
-        var response = await _fixture.Client.PostAsync("/api/work-calendar/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/work-calendar/", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx) beklenir, sunucu hatası (500) DEĞİL; mutasyon olmaz
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -292,8 +283,7 @@ public sealed class AttendanceApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — o kurum/yıl için çalışma takvimi istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/work-calendar/?institutionId={institutionId}&year=2026");
+        var response = await _fixture.Client.GetAsync($"/api/work-calendar/?institutionId={institutionId}&year=2026", Ct);
 
         // Then — takvim yok = geçerli boş durum → 404/422 beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);

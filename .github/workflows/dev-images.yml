@@ -40,14 +40,14 @@ jobs:
             dockerfile: src/caddy/Dockerfile
     steps:
       - name: Checkout
-        uses: actions/checkout@v5 # node24 (v4 node20 deprecate ediliyordu); docker/* action'ları henüz node20 (Docker güncelleyince node24'e geçecek)
+        uses: actions/checkout@v7 # node24 (v4 node20 deprecate ediliyordu); docker/* action'ları henüz node20 (Docker güncelleyince node24'e geçecek)
 
       - name: Owner'ı küçük harfe çevir (GHCR küçük harf ister)
         id: owner
         run: echo "lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
       - name: GHCR'ye giriş
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -55,7 +55,7 @@ jobs:
 
       - name: İmaj etiketleri (metadata)
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           # '-dev' soneki: dev imajları sürüm imajlarından ayrı paketlerde tutulur.
           images: ghcr.io/${{ steps.owner.outputs.lc }}/mesnet-${{ matrix.name }}-dev
@@ -66,7 +66,7 @@ jobs:
             type=sha,prefix=sha-,format=short
 
       - name: Buildx kur
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # Caddy imajı Vite public config'i build zamanında gömer. Domain deploy'a özeldir;
       # repo değişkenlerinden al (yoksa Dockerfile default'u 'https://auth.localhost').
@@ -84,7 +84,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Derle ve GHCR'ye push (private)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
