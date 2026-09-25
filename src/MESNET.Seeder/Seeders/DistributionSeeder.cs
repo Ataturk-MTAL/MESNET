@@ -35,6 +35,7 @@ public static class DistributionSeeder
         }
         var academicPeriodId = ctx.Get("AcademicPeriod");
 
+        await SyncStudentCountsAsync(api, ctx.Get("Institution"), academicPeriodId);
         await SeedBranchWorkloadsAsync(api, academicPeriodId);
         await SeedTeacherSchedulesAsync(api, ctx, academicPeriodId);
     }
@@ -54,6 +55,26 @@ public static class DistributionSeeder
                 .ToList();
             return new DailySchedule(day, periods);
         }).ToList();
+
+    /// <summary>
+    /// Ders yükü grup sayısını <b>yazma anında</b> Coordination'ın öğrenci sayacından hesaplar
+    /// ve dondurur. Sayaç <c>StudentRegistered</c> olaylarıyla asenkron dolar; seeder öğrencileri
+    /// az önce kaydettiği için sayaç henüz eksiktir. Ölçüldü: her alanda 40 öğrenci varken sayaç
+    /// EET 1 gösteriyordu, grup sayısı 0 çıktı ve havuz yalnız şef saatlerinden (16) oluştu.
+    /// Mutlak eşitleme Enrollment'taki gerçek sayıları yayınlar; tüketicinin işlemesi beklenir.
+    /// </summary>
+    private static async Task SyncStudentCountsAsync(MesnetApiClient api, Guid institutionId, Guid academicPeriodId)
+    {
+        var result = await api.PostAsync("/api/students/sync-counts", new { institutionId, academicPeriodId });
+        if (result is null)
+        {
+            Console.WriteLine("  ⚠ Öğrenci sayısı eşitlenemedi — ders yükü havuzu eksik hesaplanabilir");
+            return;
+        }
+
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        Console.WriteLine("  ✓ Alan öğrenci sayıları eşitlendi");
+    }
 
     /// <summary>
     /// Alan başına ders yükü. Değerler #312 incelemesinde elle girilip zinciri uçtan uca
