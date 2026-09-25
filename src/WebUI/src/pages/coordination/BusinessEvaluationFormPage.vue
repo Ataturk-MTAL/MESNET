@@ -34,6 +34,8 @@
           label="İşletme *"
           outlined
           use-input
+          hide-selected
+          fill-input
           input-debounce="0"
           emit-value
           map-options
