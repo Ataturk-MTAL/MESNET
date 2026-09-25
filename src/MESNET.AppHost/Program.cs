@@ -35,15 +35,22 @@ var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitmqUser, password:
 
 // Keycloak proxy AÇIK kalır: çift http(8080)/https(8443) portu nedeniyle proxy kapatılınca
 // host:8080 yanlışlıkla HTTPS'e (8443) bağlanıyor → ERR_EMPTY_RESPONSE. Proxy'de 8080→8080 HTTP doğru.
+// WithoutHttpsCertificate deneysel API (ASPIRECERTIFICATES001) — tanı ifadenin başına bağlanır.
+#pragma warning disable ASPIRECERTIFICATES001
 var keycloak = builder.AddKeycloak("keycloak", port: 8080, adminPassword: keycloakPassword)
     // Dev, CI ve docker-compose AYNI Keycloak sürümünde tutulur — sürüm sapması, birinde
     // görünmeyen hatayı diğerinde doğurur. Önceden dev 26.6, CI ve compose 26.0 idi.
-    // Not: HTTP/HTTPS sorunu image değil Aspire.Hosting.Keycloak sürümünden geliyor.
     .WithImageTag("26.7.0")
+    // Aspire.Hosting.Keycloak 13.4+ geliştirici sertifikası bulunca ana uç noktayı HTTPS'e
+    // (hedef 8443) çevirir; host:8080 HTTPS'e bağlanır ve http://localhost:8080 kullanan
+    // frontend/API/seeder boş yanıt alır. Paket bu yüzden 13.1.2'de tutuluyordu — kök neden
+    // sürüm değil otomatik sertifikaydı. Dev'de düz HTTP kalsın.
+    .WithoutHttpsCertificate()
     .WithRealmImport("./keycloak")
     .WithBindMount("./keycloak/themes/mesnet", "/opt/keycloak/themes/mesnet")
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent);
+#pragma warning restore ASPIRECERTIFICATES001
 
 // Mailpit (Dev email sunucusu — SMTP:1025, Web UI:8025)
 var mailpit = builder.AddMailPit("mailpit")
