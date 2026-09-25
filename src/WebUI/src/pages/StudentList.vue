@@ -243,6 +243,7 @@ import DetailPanel from 'components/DetailPanel.vue'
 import { useRouter } from 'vue-router'
 import PlaceStudentForm from 'components/forms/student/PlaceStudentForm.vue'
 import DeregisterStudentForm from 'components/forms/student/DeregisterStudentForm.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const periodStore = useAcademicPeriodStore()
 const router = useRouter()
@@ -251,7 +252,7 @@ const selected = ref<StudentProfileDto | null>(null)
 const detailOpen = ref(false)
 const placementDialog = ref(false)
 const deregisterDialog = ref(false)
-const branchFilter = ref<string | null>(null)
+const { branchCode: branchFilter } = useSharedSelection()
 const statusFilter = ref<string | null>(null)
 
 // ── Server-side pagination ──

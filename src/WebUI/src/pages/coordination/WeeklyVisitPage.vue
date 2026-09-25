@@ -340,6 +340,7 @@ import { useAcademicPeriodStore } from 'src/stores/academicPeriod'
 import { useWeeklyVisits, dayLabel, scopeLabel } from 'src/composables/useWeeklyVisits'
 import { useMissingAssignments } from 'src/composables/useMissingAssignments'
 import { coordinationApi, type BusinessAssignmentDto } from 'src/api/coordination'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const $q = useQuasar()
 const periodStore = useAcademicPeriodStore()
@@ -376,6 +377,7 @@ const {
   addAssignment,
 } = useWeeklyVisits({
   academicPeriodId: computed(() => periodStore.selectedPeriodId),
+  scopeBranchCode: useSharedSelection().branchCode,
 })
 
 // ── Eksik Atama Yönetimi (composable'a çıkarıldı) ──

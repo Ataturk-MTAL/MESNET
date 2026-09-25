@@ -600,12 +600,14 @@ import FilterBar from 'components/FilterBar.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
 import DetailDialog from 'components/DetailDialog.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
 
-const branchFilter = ref<string | null>(null)
+// Sayfalar arası korunur; yazma sayfası olduğu için yetkisiz alan seçili gelmez.
+const { branchCode: branchFilter } = useSharedSelection({ writeContext: true })
 const loading = ref(false)
 const assignments = ref<BusinessAssignmentDto[]>([])
 

@@ -778,6 +778,7 @@ import FormDialog from 'components/FormDialog.vue'
 import PageHeader from 'components/PageHeader.vue'
 import FilterBar from 'components/FilterBar.vue'
 import SearchInput from 'components/SearchInput.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const authStore = useAuthStore()
@@ -787,8 +788,9 @@ const periodStore = useAcademicPeriodStore()
 const activeTab = ref('assignment')
 
 // ── Core State ──
-const branchFilter = ref<string | null>(null)
-const selectedTeacherId = ref<string | null>(null)
+// Sayfalar arası korunur; yazma sayfası olduğu için yetkisiz alan seçili gelmez.
+const { branchCode: branchFilter, teacherId: selectedTeacherId } =
+  useSharedSelection({ writeContext: true })
 const businessSearch = ref('')
 const loading = ref(false)
 
@@ -1047,13 +1049,18 @@ onMounted(async () => {
     ? authStore.writableBranchCodes[0]
     : null
 
-  if (scopedBranch) {
-    branchFilter.value = scopedBranch
+  if (scopedBranch) branchFilter.value = scopedBranch
+
+  // Alan, kapsamdan ya da başka sayfadaki seçimden hazır gelebilir.
+  const branch = branchFilter.value
+  if (branch) {
     await Promise.all([
-      teacherOpts.reload({ institutionId: instId, branchCode: scopedBranch }),
+      teacherOpts.reload({ institutionId: instId, branchCode: branch }),
       loadScheduleConfig(),
     ])
     await loadData()
+    loadWorkloadConfig().catch(() => {})
+    if (selectedTeacherId.value) loadTeacherSchedule(selectedTeacherId.value)
   } else {
     await Promise.all([
       teacherOpts.load({ institutionId: instId }),

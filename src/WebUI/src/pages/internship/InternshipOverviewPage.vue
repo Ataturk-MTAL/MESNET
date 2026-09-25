@@ -307,6 +307,7 @@ import FilterBar from 'components/FilterBar.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import StatCard from 'components/StatCard.vue'
 import AppNotice from 'components/AppNotice.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const $q = useQuasar()
 const periodStore = useAcademicPeriodStore()
@@ -315,7 +316,7 @@ const authStore = useAuthStore()
 const selected = ref<InternshipPlacementDto | null>(null)
 const detailOpen = ref(false)
 const statusFilter = ref<string | null>(null)
-const branchFilter = ref<string | null>(null)
+const { branchCode: branchFilter } = useSharedSelection()
 
 // ─── Devamsızlık bölümü ───
 const absenceLoading = ref(false)

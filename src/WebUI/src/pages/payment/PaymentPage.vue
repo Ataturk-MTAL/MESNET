@@ -397,6 +397,7 @@ import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import PageHeader from 'components/PageHeader.vue'
 import FilterBar from 'components/FilterBar.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const periodStore = useAcademicPeriodStore()
@@ -407,7 +408,7 @@ const detailOpen = ref(false)
 const uploadReceiptDialog = ref(false)
 const rejectDialog = ref(false)
 const searchFilter = ref('')
-const branchCodeFilter = ref<string | null>(null)
+const { branchCode: branchCodeFilter } = useSharedSelection()
 const phaseFilter = ref<string | null>(null)
 const monthFromFilter = ref('')
 const monthToFilter = ref('')

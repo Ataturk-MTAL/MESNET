@@ -232,7 +232,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useNotify } from 'src/composables/useNotify'
 import { useWorkloadConfig, estimateGroupCount, EDUCATION_TYPES } from 'src/composables/useWorkloadConfig'
 import { useAuthStore } from 'stores/auth'
@@ -241,12 +241,14 @@ import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import PageHeader from 'components/PageHeader.vue'
 import FilterBar from 'components/FilterBar.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
 
-const branchFilter = ref<string | null>(null)
+// Sayfalar arası korunur; yazma sayfası olduğu için yetkisiz alan seçili gelmez.
+const { branchCode: branchFilter } = useSharedSelection({ writeContext: true })
 
 const institutionId = computed(() => authStore.currentInstitutionId ?? undefined)
 const periodId = computed(() => periodStore.selectedPeriodId)
@@ -274,9 +276,8 @@ onMounted(() => {
     ? authStore.writableBranchCodes[0]
     : null
 
-  if (scopedBranch) {
-    branchFilter.value = scopedBranch
-    loadWorkloadConfig().catch(() => {})
-  }
+  if (scopedBranch) branchFilter.value = scopedBranch
+  // Başka sayfada seçilmiş alan da hazır gelir — veriyi açılışta yükle.
+  if (branchFilter.value) loadWorkloadConfig().catch(() => {})
 })
 </script>

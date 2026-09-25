@@ -310,6 +310,7 @@ import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
 import PageHeader from 'components/PageHeader.vue'
 import FilterBar from 'components/FilterBar.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const authStore = useAuthStore()
@@ -319,8 +320,8 @@ const institutionStore = useInstitutionStore()
 // Ders programı config artık merkezi store cache'inden okunur (doğrudan API çağrısı yok)
 const { periodCount, scheduleConfigMissing } = storeToRefs(institutionStore)
 
-const branchFilter = ref<string | null>(null)
-const selectedTeacherId = ref<string | null>(null)
+// Sayfalar arası korunur (dağıtım ↔ ders programı arasında yeniden seçim yok).
+const { branchCode: branchFilter, teacherId: selectedTeacherId } = useSharedSelection()
 const loading = ref(false)
 const saving = ref(false)
 const editing = ref(false)
@@ -551,8 +552,8 @@ onMounted(async () => {
   const scopedBranch =
     authStore.writableBranchCodes?.length === 1 ? authStore.writableBranchCodes[0] : null
 
-  if (scopedBranch) {
-    branchFilter.value = scopedBranch
-  }
+  if (scopedBranch) branchFilter.value = scopedBranch
+  // Başka sayfada seçilmiş öğretmen hazır gelir — programını açılışta yükle.
+  if (selectedTeacherId.value) await onTeacherChange(selectedTeacherId.value)
 })
 </script>

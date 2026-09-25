@@ -12,6 +12,8 @@ import { useServerPagination } from './useServerPagination'
 
 export interface UseWeeklyVisitsOptions {
   academicPeriodId: Ref<string | null>
+  /** "Alan" kapsamının alanı — verilmezse yerel tutulur (sayfalar arası paylaşım için dışarıdan). */
+  scopeBranchCode?: Ref<string | null>
 }
 
 /** QDate range model tipi */
@@ -124,7 +126,7 @@ export function useWeeklyVisits(options: UseWeeklyVisitsOptions) {
   // ── Kapsam seçimi ──
   const scope = ref<string>('All')
   const scopeTeacherId = ref<string | null>(null)
-  const scopeBranchCode = ref<string | null>(null)
+  const scopeBranchCode = options.scopeBranchCode ?? ref<string | null>(null)
 
   // ── Plan listesi ──
   const planFilters = computed(() => ({

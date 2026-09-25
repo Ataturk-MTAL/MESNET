@@ -338,6 +338,7 @@ import HealthReportUploadForm from 'components/forms/attendance/HealthReportUplo
 import HealthReportRejectForm from 'components/forms/attendance/HealthReportRejectForm.vue'
 import AppNotice from 'components/AppNotice.vue'
 import { useAuthStore } from 'stores/auth'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const router = useRouter()
@@ -405,7 +406,7 @@ const studentIdFilter = ref('')
 const statusFilter = ref<string | null>(null)
 const monthFilter = ref<number | null>(null)
 const yearFilter = ref<number | null>(null)
-const branchFilter = ref<string | null>(null)
+const { branchCode: branchFilter } = useSharedSelection()
 
 const filters = computed(() => ({
   academicPeriodId: periodStore.selectedPeriodId ?? undefined,
