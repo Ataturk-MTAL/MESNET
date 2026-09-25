@@ -72,10 +72,43 @@ function isDuplicate(report: ClientErrorReport): boolean {
 export function describe(value: unknown): string {
   if (value === null || value === undefined) return String(value)
   if (typeof value === 'string') return value
-  if (value instanceof Error) return `${value.name}: ${value.message}`
+  if (value instanceof Error) {
+    const base = `${value.name}: ${value.message}`
+    const http = describeHttpContext(value)
+    return http ? `${base} [${http}]` : base
+  }
 
   // Nesneler serileştirilmez — ne taşıdıkları denetlenemez.
   return Object.prototype.toString.call(value)
+}
+
+/** Axios hata nesnesinden okunan alanlar — yalnız bunlar; gövde ve başlıklar DEĞİL. */
+interface HttpErrorLike {
+  isAxiosError?: boolean
+  config?: { method?: string; url?: string }
+  response?: { status?: number }
+}
+
+/**
+ * Sorgu dizesi atılır: arama terimi (öğrenci adı, T.C. kimlik no) ve benzeri kişisel veri
+ * çoğunlukla orada taşınır. Yol kısmı uç noktayı tanımlamaya yeter.
+ */
+export function stripQuery(url: string): string {
+  return url.split(/[?#]/, 1)[0] ?? ''
+}
+
+/**
+ * HTTP hatasının GÜVENLİ özeti: durum kodu, yöntem ve sorgusuz yol. Token, istek/yanıt gövdesi
+ * ve başlıklar bilerek okunmaz. HTTP hatası değilse `null`.
+ */
+export function describeHttpContext(value: unknown): string | null {
+  const http = value as HttpErrorLike | null | undefined
+  if (!http || typeof http !== 'object' || http.isAxiosError !== true) return null
+
+  const status = http.response?.status ?? 'yanıt yok'
+  const method = http.config?.method?.toUpperCase() ?? '?'
+  const url = http.config?.url ? stripQuery(http.config.url) : '?'
+  return `${status} ${method} ${url}`
 }
 
 function send(report: ClientErrorReport): void {

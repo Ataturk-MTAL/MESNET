@@ -102,8 +102,10 @@
       :selected="selected"
       :pagination="pagination"
       no-data-label="Henüz doküman bulunmuyor"
+      :error="loadError"
       @update:selected="onSelectedUpdate"
       @request="onRequest"
+      @retry="load"
     >
       <template #empty-action>
         <q-btn
@@ -336,10 +338,10 @@ const filterState = reactive({
 const filters = computed(() => ({
   ...(filterState.formType ? { formType: filterState.formType } : {}),
   ...(filterState.status ? { status: filterState.status } : {}),
-  ...(authStore.user?.institutionId ? { institutionId: authStore.user.institutionId } : {}),
+  ...(authStore.currentInstitutionId ? { institutionId: authStore.currentInstitutionId } : {}),
 }))
 
-const { rows: documents, loading, pagination, onRequest, load } =
+const { rows: documents, loading, pagination, onRequest, load, error: loadError, } =
   useServerPagination<GeneratedDocumentSummaryDto>({
     fetchFn: (params) => reportingApi.listDocuments(params),
     filters,
@@ -485,7 +487,7 @@ function deleteDoc(id: string) {
 }
 
 async function resyncForm3() {
-  const institutionId = authStore.user?.institutionId
+  const institutionId = authStore.currentInstitutionId
   const periodId = periodStore.selectedPeriodId
   if (!institutionId || !periodId) {
     notify.error('Kurum veya akademik dönem bilgisi bulunamadı.')

@@ -38,7 +38,6 @@
         clearable
         style="min-width: 250px"
         @filter="filterStudentOpts.filter"
-        @update:model-value="load"
       >
         <template #option="{ itemProps, opt }">
           <q-item v-bind="itemProps">
@@ -67,7 +66,6 @@
         map-options
         clearable
         style="min-width: 150px"
-        @update:model-value="load"
       />
       <q-select
         v-model="monthFilter"
@@ -79,7 +77,6 @@
         map-options
         clearable
         style="min-width: 130px"
-        @update:model-value="load"
       />
       <q-select
         v-model="yearFilter"
@@ -91,14 +88,12 @@
         map-options
         clearable
         style="min-width: 100px"
-        @update:model-value="load"
       />
       <BranchSelector
         v-model="branchFilter"
         dense
         force-select
         style="min-width: 200px"
-        @update:model-value="load"
       />
     </div>
 
@@ -118,7 +113,9 @@
       :columns="columns"
       :loading="loading"
       :pagination="pagination"
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
     >
       <template #body-cell-student="{ row }">
         <q-td>
@@ -319,7 +316,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { QTableProps } from 'quasar'
 
 import { attendanceApi, type AttendanceRecordDto } from 'src/api/attendance'
@@ -419,7 +416,7 @@ const filters = computed(() => ({
   branchCode: branchFilter.value || undefined,
 }))
 
-const { rows: records, loading, pagination, onRequest, load } = useServerPagination<AttendanceRecordDto>({
+const { rows: records, loading, pagination, onRequest, load, error: loadError, } = useServerPagination<AttendanceRecordDto>({
   fetchFn: (params) => attendanceApi.list(params),
   filters,
   defaultSortBy: 'date',
@@ -590,7 +587,6 @@ async function approveHealthReport(row: AttendanceRecordDto) {
   }
 }
 
-watch(() => periodStore.selectedPeriodId, () => load())
 
 onMounted(() => {
   filterStudentOpts.load().catch(() => {})

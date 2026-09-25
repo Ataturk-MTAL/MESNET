@@ -27,7 +27,9 @@
       class="relative-position q-mx-auto"
     >
       <q-inner-loading :showing="loading" />
-      <q-card-section class="q-gutter-md">
+      <!-- Dikey boşluk `gap` ile: q-gutter kapsayıcıda kalsaydı içteki q-col-gutter satırı
+           kendi negatif marginiyle birleşip 8px içeride dururdu. -->
+      <q-card-section class="form-stack">
         <!-- Kullanıcı seçimi yalnız yeni kayıtta -->
         <q-select
           v-if="!isEdit"
@@ -211,7 +213,11 @@
             <q-icon name="phone" />
           </template>
         </q-input>
+        <!-- Doğum tarihi ve öğrenci kategorisi yalnız kayıtta girilir: öğrenci DTO'su bu alanları
+             taşımaz, güncelleme komutu da almaz. Düzenlemede gösterilselerdi boş/varsayılan açılır,
+             değiştirilen değer sessizce kaybolurdu. -->
         <q-input
+          v-if="!isEdit"
           v-model="form.birthDate"
           label="Doğum Tarihi"
           outlined
@@ -223,6 +229,7 @@
           </template>
         </q-input>
         <q-select
+          v-if="!isEdit"
           v-model="form.category"
           :options="studentCategoryOptions"
           label="Öğrenci Kategorisi"
@@ -473,3 +480,11 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+</style>

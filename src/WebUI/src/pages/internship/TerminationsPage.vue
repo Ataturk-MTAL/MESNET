@@ -34,7 +34,9 @@
       :pagination="pagination"
       show-search
       :search="search"
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
       @search="onSearch"
     >
       <template #body-cell-next="props">
@@ -344,7 +346,7 @@ const filters = computed(() => ({
   academicPeriodId: periodStore.selectedPeriodId ?? undefined,
 }))
 
-const { rows, loading, pagination, search, onRequest, onSearch, load } =
+const { rows, loading, pagination, search, onRequest, onSearch, load, error: loadError, } =
   useServerPagination<InternshipSummaryDto>({
     fetchFn: (params) => internshipApi.listInternships(params),
     filters,

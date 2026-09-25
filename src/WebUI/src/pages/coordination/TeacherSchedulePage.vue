@@ -464,7 +464,7 @@ async function saveSchedule() {
     return
   }
 
-  const instId = authStore.user?.institutionId
+  const instId = authStore.currentInstitutionId
   const periodId = periodStore.selectedPeriodId
   if (!instId || !periodId) {
     notify.warning('Kurum veya dönem bilgisi bulunamadı.')

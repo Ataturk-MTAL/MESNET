@@ -249,7 +249,7 @@ const periodStore = useAcademicPeriodStore()
 
 const branchFilter = ref<string | null>(null)
 
-const institutionId = computed(() => authStore.user?.institutionId ?? undefined)
+const institutionId = computed(() => authStore.currentInstitutionId ?? undefined)
 const periodId = computed(() => periodStore.selectedPeriodId)
 
 const {

@@ -171,7 +171,7 @@ async function handleSave() {
   try {
     await coordinationApi.createEvaluation({
       businessId: form.businessId,
-      institutionId: authStore.user?.institutionId ?? '',
+      institutionId: authStore.currentInstitutionId ?? '',
       evaluationDate: new Date(form.evaluationDate).toISOString(),
       result: form.result,
       notes: form.notes || undefined,

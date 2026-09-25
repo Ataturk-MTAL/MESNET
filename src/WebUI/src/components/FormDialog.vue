@@ -32,9 +32,15 @@
         </q-btn>
       </q-toolbar>
 
-      <!-- İçerik: kalan yüksekliği alır ve uzun formlarda kendi içinde kayar -->
-      <q-card-section class="col scroll q-pt-lg q-gutter-md">
-        <slot />
+      <!-- İçerik: kalan yüksekliği alır ve uzun formlarda kendi içinde kayar.
+           Dikey boşluk `q-gutter-md` ile DEĞİL `gap` ile verilir: q-gutter her çocuğa margin
+           basar ve Quasar'da `.q-col-gutter-*` kuralı ondan sonra üretildiği için iç
+           `row q-col-gutter-*` satırlarının kendi negatif margin'i kazanır → satır sola kayıp
+           kart kenarına yapışıyor, üstündeki alanla arasında boşluk kalmıyordu. -->
+      <q-card-section class="col scroll q-pt-lg">
+        <div class="form-dialog__body">
+          <slot />
+        </div>
       </q-card-section>
 
       <q-separator />
@@ -92,3 +98,13 @@ const emit = defineEmits<{
   save: []
 }>()
 </script>
+
+<style lang="scss" scoped>
+// Flex-column + gap: çocuklara margin yazmaz, iç `row q-col-gutter-*` kendi negatif
+// margin'iyle doğru hizalanır. Slot çocuklarından hiçbiri `col` taşımaz; taşısaydı esnerdi.
+.form-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: $space-base;
+}
+</style>

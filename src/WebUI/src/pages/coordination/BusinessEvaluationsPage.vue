@@ -17,7 +17,9 @@
       :columns="evalColumns"
       :loading="loadingEvals"
       :pagination="evalsPagination"
+      :error="evalsError"
       @request="onEvalsRequest"
+      @retry="loadEvaluations"
     >
       <template #body-cell-result="{ row }">
         <q-td>
@@ -49,7 +51,7 @@ import PermissionGuard from 'components/PermissionGuard.vue'
 const router = useRouter()
 
 const evalFilters = computed(() => ({}))
-const { rows: evaluations, loading: loadingEvals, pagination: evalsPagination, onRequest: onEvalsRequest, load: loadEvaluations } = useServerPagination<BusinessEvaluationDto>({
+const { rows: evaluations, loading: loadingEvals, pagination: evalsPagination, onRequest: onEvalsRequest, load: loadEvaluations, error: evalsError } = useServerPagination<BusinessEvaluationDto>({
   fetchFn: (params) => coordinationApi.listEvaluations(params),
   filters: evalFilters,
   defaultSortBy: 'evaluationDate',

@@ -18,7 +18,9 @@
       :loading="loading"
       row-key="id"
       :pagination="pagination"
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
     >
       <template #body-cell-next="props">
         <q-td :props="props">
@@ -249,7 +251,7 @@ const filters = computed(() => ({
   academicPeriodId: periodStore.selectedPeriodId ?? undefined,
 }))
 
-const { rows, loading, pagination, onRequest } = useServerPagination<InternshipSummaryDto>({
+const { rows, loading, pagination, onRequest, error: loadError, load, } = useServerPagination<InternshipSummaryDto>({
   fetchFn: (params) => internshipApi.listInternships(params),
   filters,
   defaultSortBy: 'studentName',

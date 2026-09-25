@@ -61,7 +61,7 @@
                 default-view="Months"
                 mask="YYYY-MM"
                 years-in-month-view
-                :options="(d) => !monthToFilter || d <= monthToFilter"
+                :navigation-max-year-month="toNavYearMonth(monthToFilter)"
               >
                 <div class="row items-center justify-end">
                   <q-btn
@@ -104,7 +104,7 @@
                 default-view="Months"
                 mask="YYYY-MM"
                 years-in-month-view
-                :options="(d) => !monthFromFilter || d >= monthFromFilter"
+                :navigation-min-year-month="toNavYearMonth(monthFromFilter)"
               >
                 <div class="row items-center justify-end">
                   <q-btn
@@ -145,7 +145,9 @@
       :columns="columns"
       :loading="loading"
       :pagination="pagination"
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
     >
       <template #body-cell-phaseSlug="{ row }">
         <q-td>
@@ -411,6 +413,17 @@ const branchCodeFilter = ref<string | null>(null)
 const phaseFilter = ref<string | null>(null)
 const monthFromFilter = ref('')
 const monthToFilter = ref('')
+
+/**
+ * Başlangıç ≤ bitiş kısıtı. Eskiden `:options` ile yapılıyordu ve hiç çalışmıyordu: QDate
+ * `options`'ı yalnız GÜN ızgarasına uygular (ay görünümünde etkisizdir) ve fonksiyona
+ * 'YYYY/MM/DD' verir, model ise 'YYYY-MM'. Ay/yıl düğmelerini QDate yalnız
+ * `navigation-{min,max}-year-month` ('YYYY/MM') ile kapatır; `emit-immediately` ile yıl
+ * değişiminde yayılan değer de bu sınıra kırpılır.
+ */
+function toNavYearMonth(yearMonth: string | null | undefined): string | undefined {
+  return yearMonth ? yearMonth.replace('-', '/') : undefined
+}
 const uploadType = ref<'business' | 'student'>('business')
 
 const phaseOptions = PAYMENT_PHASES.map((p) => ({ label: p.label, value: p.value }))
@@ -432,7 +445,7 @@ const filters = computed(() => {
   }
 })
 
-const { rows: payments, loading, pagination, onRequest, load } = useServerPagination<PaymentSummaryDto>({
+const { rows: payments, loading, pagination, onRequest, load, error: loadError, } = useServerPagination<PaymentSummaryDto>({
   fetchFn: (params) => paymentApi.list(params),
   filters,
   defaultSortBy: 'month',

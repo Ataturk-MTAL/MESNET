@@ -19,7 +19,9 @@
       :pagination="pagination"
       show-search
       :search="search"
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
       @search="onSearch"
     >
       <template #filters>
@@ -28,7 +30,6 @@
           dense
           force-select
           style="min-width: 200px"
-          @update:model-value="load"
         />
         <q-select
           v-model="statusFilter"
@@ -40,7 +41,6 @@
           map-options
           clearable
           style="min-width: 180px"
-          @update:model-value="load"
         />
       </template>
       <template #body-cell-statusSlug="{ row }">
@@ -229,7 +229,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import type { QTableProps } from 'quasar'
 import { enrollmentApi, type StudentProfileDto } from 'src/api/enrollment'
 import { useServerPagination } from 'src/composables/useServerPagination'
@@ -263,7 +263,7 @@ const filters = computed(() => ({
   status: statusFilter.value ?? undefined,
 }))
 
-const { rows: students, loading, pagination, search, onRequest, onSearch, load } =
+const { rows: students, loading, pagination, search, onRequest, onSearch, load, error: loadError, } =
   useServerPagination<StudentProfileDto>({
     fetchFn: (params) => enrollmentApi.listStudents(params),
     filters,
@@ -322,8 +322,7 @@ async function afterFormSaved() {
   }
 }
 
-watch(() => periodStore.selectedPeriodId, () => load())
 onMounted(() => {
-  load()
+  load().catch(() => {})
 })
 </script>

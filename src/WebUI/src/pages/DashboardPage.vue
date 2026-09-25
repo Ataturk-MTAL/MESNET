@@ -22,7 +22,7 @@
         >
           <StatCard
             icon="school"
-            :value="stats.students"
+            :value="stats.students ?? UNAVAILABLE"
             label="Öğrenci"
             color="primary"
             :loading="stats.studentsLoading"
@@ -36,7 +36,7 @@
         >
           <StatCard
             icon="business"
-            :value="stats.businesses"
+            :value="stats.businesses ?? UNAVAILABLE"
             label="Aktif İşletme"
             color="secondary"
             :loading="stats.businessesLoading"
@@ -50,7 +50,7 @@
         >
           <StatCard
             icon="description"
-            :value="stats.activeContracts"
+            :value="stats.activeContracts ?? UNAVAILABLE"
             label="Aktif Sözleşme"
             color="positive"
             :loading="stats.contractsLoading"
@@ -76,7 +76,7 @@
         <div class="col-12 col-sm-6 col-md-3">
           <StatCard
             icon="pending_actions"
-            :value="stats.pendingTotal"
+            :value="stats.pendingTotal ?? UNAVAILABLE"
             label="Bekleyen İşlem"
             color="warning"
             :tone="isMyTurnPending ? 'accent' : undefined"
@@ -193,11 +193,11 @@
               <div class="text-subtitle1 text-weight-medium q-mb-sm">
                 Hızlı Erişim
               </div>
-              <div class="row q-gutter-sm">
+              <div class="row q-col-gutter-sm">
                 <div
                   v-for="link in quickLinks"
                   :key="link.route"
-                  class="col-5"
+                  class="col-12 col-sm-6 col-md-4"
                 >
                   <q-card
                     flat
@@ -264,7 +264,11 @@ const institutionStore = useInstitutionStore()
  */
 const isDirectorate = computed(() => isActingAsDirectorate(institutionStore.institution?.nodeType))
 
-const institutionId = authStore.user?.institutionId ?? ''
+// Aktif bağlamın kurumu — `user.institutionId` ev kurumudur ve bağlam değişince değişmez.
+const institutionId = authStore.currentInstitutionId ?? ''
+
+// Sayaç yüklenemediğinde gösterilen nötr değer (uydurma 0 yerine).
+const UNAVAILABLE = '—'
 
 // Greeting
 const greeting = computed(() => {
@@ -394,7 +398,7 @@ const hasActionableQueue = computed(() =>
 const isMyTurnPending = computed(
   () =>
     !stats.pendingLoading &&
-    stats.pendingTotal > 0 &&
+    (stats.pendingTotal ?? 0) > 0 &&
     !periodStore.isReadOnly &&
     hasActionableQueue.value,
 )

@@ -99,7 +99,31 @@
         v-if="!loading && rows.length === 0"
         #no-data
       >
-        <div class="full-width column flex-center q-pa-xl text-grey-7">
+        <div
+          v-if="error"
+          class="full-width column flex-center q-pa-xl text-negative"
+          role="alert"
+        >
+          <q-icon
+            name="error_outline"
+            size="48px"
+            class="q-mb-sm"
+          />
+          <span>{{ errorLabel }}</span>
+          <q-btn
+            flat
+            no-caps
+            color="primary"
+            icon="refresh"
+            label="Yeniden dene"
+            class="q-mt-md"
+            @click="emit('retry')"
+          />
+        </div>
+        <div
+          v-else
+          class="full-width column flex-center q-pa-xl text-grey-7"
+        >
           <q-icon
             name="inbox"
             size="48px"
@@ -141,6 +165,12 @@ interface Props {
   showSearch?: boolean
   /** Mevcut arama terimi (v-model:search yerine prop + emit). */
   search?: string
+  /**
+   * Son yüklemenin hatası (useServerPagination `error`). Doluysa boş durum "Kayıt bulunamadı"
+   * yerine hata + "Yeniden dene" gösterir — yetkisiz/çöken liste boş liste gibi görünmesin.
+   */
+  error?: unknown
+  errorLabel?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -149,11 +179,14 @@ const props = withDefaults(defineProps<Props>(), {
   pagination: undefined,
   showSearch: false,
   search: '',
+  error: undefined,
+  errorLabel: 'Liste yüklenemedi.',
 })
 
 const emit = defineEmits<{
   request: [props: { pagination: QTablePagination }]
   search: [term: string]
+  retry: []
 }>()
 
 const isServerSide = computed(() => props.pagination !== undefined)

@@ -903,7 +903,7 @@ async function loadData() {
 
 // ── Composables ──
 
-const institutionId = computed(() => authStore.user?.institutionId ?? undefined)
+const institutionId = computed(() => authStore.currentInstitutionId ?? undefined)
 const periodId = computed(() => periodStore.selectedPeriodId)
 const semester = computed(() => periodStore.selectedSemester)
 
@@ -1044,7 +1044,7 @@ watch(
 // BranchSelector ve TeacherSelector kendi onMounted'larında yüklenirler.
 // Burada sadece schedule config + sayfa düzeyindeki teacherOpts (isim çözümleme) yüklenir.
 onMounted(async () => {
-  const instId = authStore.user?.institutionId ?? undefined
+  const instId = authStore.currentInstitutionId ?? undefined
 
   // Kapsam tek alansa otomatik seç (#126) — karar rol adına değil, yazma kapsamına bakar.
   const scopedBranch = authStore.writableBranchCodes?.length === 1

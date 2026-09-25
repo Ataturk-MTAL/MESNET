@@ -111,7 +111,7 @@ function onFilter(val: string, update: (fn: () => void) => void) {
 
 // Tüm öğretmenleri yükle — filtreleme client-side yapılır
 onMounted(async () => {
-  const instId = authStore.user?.institutionId ?? undefined
+  const instId = authStore.currentInstitutionId ?? undefined
   await teacherOpts.load({ institutionId: instId })
 })
 

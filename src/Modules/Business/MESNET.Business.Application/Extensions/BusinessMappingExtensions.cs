@@ -8,6 +8,7 @@ public static class BusinessMappingExtensions
     public static BusinessDto ToDto(this Core.Entities.Business entity) => new(
         entity.Id,
         entity.Name,
+        entity.TaxNumber,
         entity.Address,
         entity.PhoneNumber,
         entity.Email,

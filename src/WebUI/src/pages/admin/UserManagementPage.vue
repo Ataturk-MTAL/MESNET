@@ -61,7 +61,6 @@
           v-model="missingBranchOnly"
           label="Yalnız branş atanmamış kullanıcılar"
           class="q-mb-sm"
-          @update:model-value="loadUsers().catch(() => {})"
         />
 
         <AppTable
@@ -71,7 +70,9 @@
           :pagination="usersPagination"
           show-search
           :search="usersSearch"
+          :error="usersError"
           @request="onUsersRequest"
+          @retry="loadUsers"
           @search="onUsersSearch"
         >
           <template #body-cell-isEnabled="{ row }">
@@ -236,7 +237,9 @@
           :pagination="invsPagination"
           show-search
           :search="invsSearch"
+          :error="invsError"
           @request="onInvsRequest"
+          @retry="loadInvitations"
           @search="onInvsSearch"
         >
           <!--
@@ -641,7 +644,7 @@ const studentOpts = useStudentOptions()
 const userFilters = computed(() =>
   missingBranchOnly.value ? { missingBranchOnly: true } : {},
 )
-const { rows: users, loading: usersLoading, pagination: usersPagination, search: usersSearch, onRequest: onUsersRequest, onSearch: onUsersSearch, load: loadUsers } =
+const { rows: users, loading: usersLoading, pagination: usersPagination, search: usersSearch, onRequest: onUsersRequest, onSearch: onUsersSearch, load: loadUsers, error: usersError } =
   useServerPagination<UserAccountDto>({
     fetchFn: (params) => securityApi.listUsers(params),
     filters: userFilters,
@@ -650,7 +653,7 @@ const { rows: users, loading: usersLoading, pagination: usersPagination, search:
 
 // ── Server-side pagination: Invitations ──
 const invFilters = computed(() => ({}))
-const { rows: invitations, loading: invsLoading, pagination: invsPagination, search: invsSearch, onRequest: onInvsRequest, onSearch: onInvsSearch, load: loadInvitations } =
+const { rows: invitations, loading: invsLoading, pagination: invsPagination, search: invsSearch, onRequest: onInvsRequest, onSearch: onInvsSearch, load: loadInvitations, error: invsError } =
   useServerPagination<InvitationDto>({
     fetchFn: (params) => securityApi.listInvitations(params),
     filters: invFilters,

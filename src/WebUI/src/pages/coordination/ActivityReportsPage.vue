@@ -7,7 +7,9 @@
       :columns="reportColumns"
       :loading="loadingReports"
       :pagination="reportsPagination"
+      :error="reportsError"
       @request="onReportsRequest"
+      @retry="loadReports"
     >
       <template #body-cell-status="{ row }">
         <q-td>
@@ -69,7 +71,7 @@ const saving = ref(false)
 const reportFilters = computed(() => ({
   academicPeriodId: periodStore.selectedPeriodId ?? undefined,
 }))
-const { rows: activityReports, loading: loadingReports, pagination: reportsPagination, onRequest: onReportsRequest, load: loadReports } = useServerPagination<MonthlyActivityReportDto>({
+const { rows: activityReports, loading: loadingReports, pagination: reportsPagination, onRequest: onReportsRequest, load: loadReports, error: reportsError } = useServerPagination<MonthlyActivityReportDto>({
   fetchFn: (params) => coordinationApi.listActivityReports(params),
   filters: reportFilters,
   defaultSortBy: 'month',

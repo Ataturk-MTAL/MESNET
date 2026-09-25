@@ -610,7 +610,7 @@ const branchFilter = ref<string | null>(null)
 const loading = ref(false)
 const assignments = ref<BusinessAssignmentDto[]>([])
 
-const institutionId = computed(() => authStore.user?.institutionId ?? undefined)
+const institutionId = computed(() => authStore.currentInstitutionId ?? undefined)
 const periodId = computed(() => periodStore.selectedPeriodId)
 
 const workload = useWorkloadConfig({ branchFilter, periodId, institutionId, notify })

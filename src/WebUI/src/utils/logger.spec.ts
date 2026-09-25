@@ -1,5 +1,27 @@
 import { describe as vitestDescribe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { logger, describe as describeValue, __resetLoggerStateForTests } from './logger'
+import { AxiosError, AxiosHeaders } from 'axios'
+import {
+  logger,
+  describe as describeValue,
+  describeHttpContext,
+  stripQuery,
+  __resetLoggerStateForTests,
+} from './logger'
+
+/** Gövdesinde ve başlığında kişisel veri/token taşıyan bir axios hatası. */
+function sensitiveAxiosError(status?: number): AxiosError {
+  const config = {
+    method: 'get',
+    url: '/students?search=Ay%C5%9Fe&tc=12345678901',
+    headers: new AxiosHeaders({ Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.x.y' }),
+    data: '{"email":"a@b.com"}',
+  }
+  const response =
+    status === undefined
+      ? undefined
+      : { status, statusText: '', headers: {}, config, data: { email: 'a@b.com' } }
+  return new AxiosError('Request failed', 'ERR_BAD_RESPONSE', config, null, response)
+}
 
 /**
  * İstemci logger'ı (#144).
@@ -113,5 +135,38 @@ vitestDescribe('describe', () => {
   it('null ve undefined bozulmaz', () => {
     expect(describeValue(null)).toBe('null')
     expect(describeValue(undefined)).toBe('undefined')
+  })
+
+  it('HTTP hatasına durum, yöntem ve sorgusuz yolu ekler', () => {
+    expect(describeValue(sensitiveAxiosError(500))).toBe(
+      'AxiosError: Request failed [500 GET /students]',
+    )
+  })
+
+  it('HTTP hatasından token, gövde ve sorgu dizesindeki kişisel veriyi SIZDIRMAZ', () => {
+    const result = describeValue(sensitiveAxiosError(403))
+
+    expect(result).not.toContain('eyJ')
+    expect(result).not.toContain('a@b.com')
+    expect(result).not.toContain('12345678901')
+    expect(result).not.toContain('search')
+  })
+})
+
+vitestDescribe('describeHttpContext', () => {
+  it('yanıt yoksa (ağ hatası) bunu açıkça söyler', () => {
+    expect(describeHttpContext(sensitiveAxiosError())).toBe('yanıt yok GET /students')
+  })
+
+  it('HTTP hatası olmayan değer için null döner', () => {
+    expect(describeHttpContext(new Error('x'))).toBeNull()
+    expect(describeHttpContext({ status: 500 })).toBeNull()
+    expect(describeHttpContext(null)).toBeNull()
+  })
+
+  it('sorgu dizesini ve parçayı atar', () => {
+    expect(stripQuery('/a/b?x=1#c')).toBe('/a/b')
+    expect(stripQuery('/a/b#c')).toBe('/a/b')
+    expect(stripQuery('/a/b')).toBe('/a/b')
   })
 })

@@ -100,7 +100,9 @@
           :pagination="pagination"
           show-search
           :search="search"
+          :error="loadError"
           @request="onRequest"
+          @retry="load"
           @search="onSearch"
         >
           <template #body-cell-statusSlug="{ row }">
@@ -367,7 +369,7 @@ const filters = computed(() => ({
   ...(periodStore.selectedPeriodId ? { academicPeriodId: periodStore.selectedPeriodId } : {}),
 }))
 
-const { rows: placements, loading, pagination, onRequest, onSearch, search, load } =
+const { rows: placements, loading, pagination, onRequest, onSearch, search, load, error: loadError, } =
   useServerPagination<InternshipPlacementDto>({
     fetchFn: (params) => enrollmentApi.listPlacements(params),
     filters,

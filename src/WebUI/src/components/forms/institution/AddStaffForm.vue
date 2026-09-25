@@ -117,6 +117,7 @@ const staffRoleOptions = [
   { label: 'Müdür Yardımcısı', value: 'VicePrincipal' },
   { label: 'Koordinatör', value: 'Coordinator' },
   { label: 'Alan Şefi', value: 'DepartmentHead' },
+  { label: 'Atölye Şefi', value: 'WorkshopHead' },
   { label: 'Personel', value: 'Staff' },
 ]
 
@@ -127,7 +128,9 @@ watch(open, (isOpen) => {
     form.role = ''
     form.branchCode = null
     userOpts.reset()
-    userOpts.load({ institutionId: props.institutionId })
+    userOpts
+      .load({ institutionId: props.institutionId })
+      .catch((e: unknown) => notify.apiError(e, 'Kullanıcı listesi yüklenemedi.'))
   }
 })
 

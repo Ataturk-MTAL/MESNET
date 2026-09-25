@@ -1,6 +1,6 @@
 import { Notify } from 'quasar'
 import type { AxiosError } from 'axios'
-import { logger } from '../utils/logger'
+import { describeHttpContext, logger } from '../utils/logger'
 
 /**
  * Backend ApiResponse hata yapısından kullanıcıya gösterilecek mesajı çıkarır.
@@ -31,18 +31,33 @@ export function extractApiErrorCode(err: unknown): string | undefined {
   return axiosErr?.response?.data?.errors?.code
 }
 
-/** Geliştirici için tam teknik detayı tarayıcı konsoluna basar (kullanıcıya gösterilmez). */
+/** Sunucu mesajı telemetri satırını şişirmesin; teşhis için baştaki kısım yeter. */
+const MAX_SERVER_MESSAGE_LENGTH = 300
+
+/**
+ * API hatasının sunucuya gidebilecek GÜVENLİ özeti: durum, yöntem, sorgusuz yol, iş kuralı kodu
+ * ve sunucu mesajı. Eskiden ham nesne `logger.error`'a veriliyor, sunucuya "[object Object]"
+ * olarak gidiyordu; nesne olduğu gibi serileştirilseydi de token/gövde/kişisel veri taşırdı.
+ */
+export function summarizeApiError(err: unknown): string {
+  const axiosErr = err as AxiosError<{ message?: unknown; errors?: { code?: unknown } }>
+  const data = axiosErr?.response?.data
+  const parts = [describeHttpContext(err) ?? (err instanceof Error ? err.name : 'bilinmeyen hata')]
+
+  const domainCode = data?.errors?.code
+  if (typeof domainCode === 'string' && domainCode.length > 0) parts.push(`kod: ${domainCode}`)
+
+  const serverMessage = data?.message
+  if (typeof serverMessage === 'string' && serverMessage.length > 0) {
+    parts.push(`sunucu: ${serverMessage.slice(0, MAX_SERVER_MESSAGE_LENGTH)}`)
+  }
+
+  return parts.join(' | ')
+}
+
+/** Hatanın güvenli özetini konsola ve sunucu telemetrisine yazar (kullanıcıya gösterilmez). */
 function logApiError(err: unknown) {
-  const axiosErr = err as AxiosError<{ message?: string; code?: number | string }>
-  const res = axiosErr?.response
-  logger.error('[API Hatası]', {
-    status: res?.status,
-    method: axiosErr?.config?.method?.toUpperCase(),
-    url: axiosErr?.config?.url,
-    code: res?.data?.code,
-    serverMessage: res?.data?.message,
-    error: err,
-  })
+  logger.error('[API Hatası]', summarizeApiError(err))
 }
 
 export function useNotify() {

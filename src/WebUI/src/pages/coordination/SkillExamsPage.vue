@@ -7,7 +7,9 @@
       :columns="examColumns"
       :loading="loadingExams"
       :pagination="examsPagination"
+      :error="examsError"
       @request="onExamsRequest"
+      @retry="loadExams"
     >
       <template #body-cell-result="{ row }">
         <q-td>
@@ -36,7 +38,7 @@ const periodStore = useAcademicPeriodStore()
 const examFilters = computed(() => ({
   academicPeriodId: periodStore.selectedPeriodId ?? undefined,
 }))
-const { rows: exams, loading: loadingExams, pagination: examsPagination, onRequest: onExamsRequest } = useServerPagination<SkillExamDto>({
+const { rows: exams, loading: loadingExams, pagination: examsPagination, onRequest: onExamsRequest, load: loadExams, error: examsError } = useServerPagination<SkillExamDto>({
   fetchFn: (params) => coordinationApi.listSkillExams(params),
   filters: examFilters,
   defaultSortBy: 'examDate',
