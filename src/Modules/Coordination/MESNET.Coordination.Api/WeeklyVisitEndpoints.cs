@@ -1,3 +1,4 @@
+using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
@@ -167,11 +168,7 @@ public static class WeeklyVisitEndpoints
             .Build());
     }
 
-    private static Guid GetInstitutionId(HttpContext http)
-    {
-        var claim = http.User.FindFirst("institution_id")?.Value;
-        return Guid.TryParse(claim, out var id) ? id : Guid.Empty;
-    }
+    private static Guid GetInstitutionId(HttpContext http) => RequestInstitution.Of(http);
 
     private static string GetUserName(HttpContext http)
     {

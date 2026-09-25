@@ -1,3 +1,4 @@
+using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Attendance.Application.Commands;
 using MESNET.Attendance.Application.Dtos;
 using MESNET.Attendance.Application.Queries;
@@ -128,7 +129,7 @@ public static class PaidLeaveEndpoints
                 BusinessIdClaim = ClaimGuid(http, "business_id"),
                 StudentIdClaim = ClaimGuid(http, "student_id"),
                 LinkedStudentIds = LinkedStudentClaims.Read(http.User),
-                InstitutionIdClaim = ClaimGuid(http, "institution_id"),
+                InstitutionIdClaim = RequestInstitution.Of(http),
                 AcademicPeriodId = academicPeriodId,
                 Page = page,
                 PageSize = pageSize,
