@@ -141,12 +141,22 @@ try
     // SSE Notification Altyapısı
     builder.AddSseNotifications();
 
+    // ── Şemayı kim kurar (#316) ──────────────────────────────────────────────────────
+    // Üretimde API `mesnet_app` rolüyle bağlanır: DDL yetkisi YOKTUR, şemayı kuramaz. Şema
+    // ayrı bir göç adımında, sahip rolüyle (`mesnet_owner`) kurulur:
+    //   dotnet MESNET.Presentation.dll resources setup
+    // Açılışta şema kurmak yalnız geliştirmede açıktır; CI üretim akışını sınamak için bunu
+    // kapatır (Database__AutoCreateSchema=false). Varsayılan ortama bağlıdır, çünkü yanlış
+    // ortamda açık kalan AutoCreate, DDL yetkisi olmayan rolde ilk sorguda patlar.
+    var autoCreateSchema = builder.Configuration.GetValue<bool?>("Database:AutoCreateSchema")
+        ?? builder.Environment.IsDevelopment();
+
     // Marten — PostgreSQL Document DB + Event Store
     builder.Services.AddMarten(opts =>
     {
         opts.Connection(builder.Configuration.GetConnectionString("mesnet")!);
         opts.DatabaseSchemaName = "shared";
-        opts.AutoCreateSchemaObjects = AutoCreate.All;
+        opts.AutoCreateSchemaObjects = autoCreateSchema ? AutoCreate.All : AutoCreate.None;
 
         // SmartEnum → Name-based JSON serialization (tüm modüllerdeki SmartEnum tipleri otomatik tanınır)
         // Marten varsayılan STJ serializer'ını kullanmaya devam et, sadece SmartEnum converter ekle
@@ -217,6 +227,10 @@ try
     // tanıdığı tiplere bakar.
     builder.Services.AddHostedService<
         MESNET.Common.Infrastructure.Tenancy.DocumentTenancyVerificationHostedService>();
+
+    // API hangi veritabanı rolüyle bağlanıyor — süper kullanıcı/BYPASSRLS RLS'i atlar (#316).
+    builder.Services.AddHostedService<
+        MESNET.Common.Infrastructure.Database.DatabaseRoleVerificationHostedService>();
 
     // Dağıtım ön koşulları atlandı mı — modüller kaydolduktan SONRA (sondalar modüllerden gelir).
     // Bu servis yalnız ÖLÇER. Açılıştan resync ucu çağırmak mümkün değildir: Wolverine
@@ -366,6 +380,8 @@ try
         opts.ServiceLocationPolicy = JasperFx.CodeGeneration.Model.ServiceLocationPolicy.AllowedButWarn;
         opts.MultipleHandlerBehavior = MultipleHandlerBehavior.Separated;
         opts.Durability.MessageStorageSchemaName = "wolverine";
+        // Mesaj tabloları da şemanın parçası (#316): kurulumu göç adımına aittir.
+        opts.AutoBuildMessageStorageOnStartup = autoCreateSchema ? AutoCreate.CreateOrUpdate : AutoCreate.None;
         opts.Policies.AutoApplyTransactions();
         opts.Policies.UseDurableLocalQueues();
 
@@ -709,36 +725,20 @@ try
     // SSE Notification Endpoint (Minimal API)
     app.MapSseNotificationEndpoint();
 
-    // PostGIS extension — DBSCAN kümeleme (ST_ClusterDBSCAN) için zorunlu
-    // Persistent container'da init-postgis.sql yalnızca ilk oluşturmada çalışır,
-    // her startup'ta idempotent olarak garanti altına alıyoruz
-    await using (var scope = app.Services.CreateAsyncScope())
-    {
-        var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
-        var conn = store.Storage.Database.CreateConnection();
-        await conn.OpenAsync();
-        await using (conn)
-        {
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "CREATE EXTENSION IF NOT EXISTS postgis";
-            try
-            {
-                await cmd.ExecuteNonQueryAsync();
-            }
-            catch (Npgsql.PostgresException ex) when (ex.SqlState is "23505" or "42710")
-            {
-                // CREATE EXTENSION IF NOT EXISTS PostgreSQL'de concurrency-safe değil:
-                // Marten 9 şema uygulamasıyla eşzamanlı çalışınca pg_extension'da unique
-                // ihlali (23505/42710) atabilir. Extension yine de mevcut → istenen son durum.
-            }
-        }
-    }
+    // PostGIS artık açılışta KURULMAZ (#316): CREATE EXTENSION süper kullanıcı ister ve API
+    // artık süper kullanıcıyla bağlanmaz. Kurulum veritabanı init betiğindedir
+    // (src/Docs/docs/infrastructure/sql/316-veritabani-rolleri.sql).
 
-    app.Run();
+    // RunJasperFxCommands: argümansız çalıştırma normal açılıştır; `resources setup` gibi
+    // komutlar şemayı kurup çıkar (göç adımı, #316).
+    return await app.RunJasperFxCommands(args);
 }
 catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Uygulama başlatılırken beklenmeyen hata oluştu");
+    // Sıfırdan farklı çıkış şart: göç adımı (resources setup) patladığında compose'daki
+    // service_completed_successfully koşulu API'yi AÇMAMALI (#316).
+    return 1;
 }
 finally
 {

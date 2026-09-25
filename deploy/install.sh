@@ -115,6 +115,7 @@ set -a; # shellcheck disable=SC1090
 source "$ENV_FILE"; set +a
 
 zorunlu=(MESNET_VERSION APP_DOMAIN ACME_EMAIL POSTGRES_USER POSTGRES_PASSWORD
+         MESNET_DB_OWNER_PASSWORD MESNET_DB_APP_PASSWORD
          RABBITMQ_USER RABBITMQ_PASSWORD MINIO_ROOT_USER MINIO_ROOT_PASSWORD
          KEYCLOAK_ADMIN_USER KEYCLOAK_ADMIN_PASSWORD SMTP_HOST SMTP_FROM_EMAIL)
 eksik=()
@@ -127,6 +128,11 @@ case "$APP_DOMAIN" in
 esac
 [[ "$MESNET_VERSION" != "latest" ]] || dur "MESNET_VERSION 'latest' olamaz — kararlı kurulum sabit etiket ister."
 iyi ".env eksiksiz — sürüm $MESNET_VERSION, alan adı $APP_DOMAIN"
+
+# Rol betiği depo klonundan bağlanır (compose: db-init). deploy/ tek başına kopyalandıysa
+# betik yoktur ve db-init "dosya bulunamadı" ile düşer — burada, anlaşılır biçimde durulur.
+ROL_BETIGI="$SCRIPT_DIR/../src/Docs/docs/infrastructure/sql/316-veritabani-rolleri.sql"
+[[ -f "$ROL_BETIGI" ]] || dur "Rol betiği yok: $ROL_BETIGI — deploy/ dizini depo klonu içinden kullanılmalı (#316)."
 
 # DNS: üç ad da bu sunucuya gelmeli. auth eksikse giriş HİÇ tamamlanmaz.
 for host in "$APP_DOMAIN" "auth.$APP_DOMAIN" "docs.$APP_DOMAIN"; do
@@ -290,6 +296,23 @@ if calisir uygulama; then
 
     dc pull
     dc up -d
+
+    # db-init ve migrate tek seferlik: API onların BAŞARIYLA bitmesini bekler. Biri düştüyse
+    # API hiç başlamaz ve aşağıdaki bekleme yalnız "sağlıklı olmadı" derdi — asıl sebep
+    # gizlenirdi. Çıkış kodları önce kontrol edilir (#316).
+    for tek in db-init migrate; do
+        for i in $(seq 1 90); do
+            durum="$(dc ps -a --format json 2>/dev/null | jq -r --arg s "$tek" 'select(.Service==$s) | "\(.State) \(.ExitCode)"' 2>/dev/null | head -1)"
+            [[ "$durum" == exited* ]] && break
+            sleep 2
+        done
+        if [[ "$durum" != "exited 0" ]]; then
+            oldu "$tek başarısız ($durum). Son kayıtlar:"
+            dc logs --tail 40 "$tek" >&2 || true
+            exit 1
+        fi
+        iyi "$tek tamamlandı"
+    done
     bilgi "API'nin sağlıklı olması bekleniyor…"
     for i in $(seq 1 90); do
         durum="$(dc ps --format json 2>/dev/null | jq -r 'select(.Service=="api") | .Health' 2>/dev/null | head -1)"

@@ -206,8 +206,30 @@ job_integration() {
   wait_for "Keycloak mesnet realm" \
     "http://localhost:${CI_KEYCLOAK_PORT}/realms/mesnet/.well-known/openid-configuration" 200
 
+  # API süper kullanıcıyla bağlanmaz (#316). ci.yml'deki "Veritabanı rolleri" adımıyla aynı.
+  log "Entegrasyon — veritabanı rolleri (#316)"
+  compose run --rm db-init
+
   log "Entegrasyon — API'yi derle (Release)"
   dotnet build src/MESNET.Presentation/MESNET.Presentation.csproj -c Release
+
+  # Üretim akışı (#316): şemayı sahip rolü kurar, API mesnet_app ile çalışır.
+  log "Entegrasyon — şemayı kur, göç adımı (mesnet_owner)"
+  env \
+    ASPNETCORE_ENVIRONMENT=Development \
+    Database__AutoCreateSchema=false \
+    ConnectionStrings__mesnet="Host=localhost;Port=${CI_PG_PORT};Database=mesnet;Username=mesnet_owner;Password=mesnet_owner_dev" \
+    RabbitMQ__HostName=localhost \
+    RabbitMQ__Port="${CI_RABBIT_PORT}" \
+    RabbitMQ__UserName=mesnet \
+    RabbitMQ__Password=mesnet_dev \
+    "Keycloak__auth-server-url=http://localhost:${CI_KEYCLOAK_PORT}/" \
+    Keycloak__credentials__secret=dev-secret \
+    MinioStorage__Endpoint="localhost:${CI_S3_PORT}" \
+    MinioStorage__AccessKey=minioadmin \
+    MinioStorage__SecretKey=minioadmin \
+    dotnet run --project src/MESNET.Presentation \
+      --no-launch-profile --no-build -c Release -- resources setup
 
   log "Entegrasyon — API'yi başlat (:$API_PORT)"
   # appsettings.Development.json'a DOKUNULMAZ. Ortam değişkenleri JSON'u ezer, yani sizin
@@ -218,7 +240,8 @@ job_integration() {
   env \
     ASPNETCORE_ENVIRONMENT=Development \
     ASPNETCORE_URLS="http://127.0.0.1:${API_PORT}" \
-    ConnectionStrings__mesnet="Host=localhost;Port=${CI_PG_PORT};Database=mesnet;Username=mesnet;Password=mesnet_dev" \
+    Database__AutoCreateSchema=false \
+    ConnectionStrings__mesnet="Host=localhost;Port=${CI_PG_PORT};Database=mesnet;Username=mesnet_app;Password=mesnet_app_dev" \
     RabbitMQ__HostName=localhost \
     RabbitMQ__Port="${CI_RABBIT_PORT}" \
     RabbitMQ__UserName=mesnet \
@@ -239,6 +262,10 @@ job_integration() {
   log "Entegrasyon — realm doğrulama çıktısı"
   grep -iE "Realm doğrulan|Realm ayarlar|Realm doğrulaması atlandı|SAPMIŞ" "$API_LOG" \
     || printf '\033[1;33m! Realm doğrulama satırı bulunamadı — kontrol koşmamış olabilir (#195)\033[0m\n'
+
+  log "Entegrasyon — veritabanı rolü doğrulama çıktısı"
+  grep -iE "Veritabanı rolü doğrula" "$API_LOG" \
+    || printf '\033[1;33m! Veritabanı rolü doğrulama satırı bulunamadı — kontrol koşmamış olabilir (#316)\033[0m\n'
 
   log "Entegrasyon — kara-kutu API testleri"
   API_BASE_URL="http://127.0.0.1:${API_PORT}" \

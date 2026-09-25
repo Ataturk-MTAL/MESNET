@@ -13,19 +13,45 @@ var minioPassword = builder.AddParameter("minio-password", secret: true);
 var openObserveUser = builder.AddParameter("openobserve-user", secret: false);
 var openObservePassword = builder.AddParameter("openobserve-password", secret: true);
 
+// Uygulama rolleri (#316) — API süper kullanıcıyla bağlanmaz. Parolalar Aspire tarafından
+// üretilip saklanır (persist): geliştiricinin user-secrets'a elle bir şey eklemesi gerekmez.
+var mesnetOwnerPassword = builder.AddParameter("mesnet-owner-password",
+    new GenerateParameterDefault { MinLength = 24, Special = false }, secret: true, persist: true);
+var mesnetAppPassword = builder.AddParameter("mesnet-app-password",
+    new GenerateParameterDefault { MinLength = 24, Special = false }, secret: true, persist: true);
+
 // Altyapı servisleri — Persistent: AppHost kapansa bile container'lar ayakta kalır
 // Dev'de her restart'ta yeniden oluşturulmazlar, veri ve state korunur
 // Not: Altyapı endpoint'lerinde IsProxied=false — Aspire DCP proxy'si yerine doğrudan podman port
 // publish kullanılır (host:port → container). Host process'ler (API/seeder) ve sabit URL'ler
 // (Keycloak authority localhost:8080) için öngörülebilir; proxy kaynaklı port/JWKS karışıklığını önler.
-var postgres = builder.AddPostgres("postgres", password: postgresPassword)
+var postgresServer = builder.AddPostgres("postgres", password: postgresPassword)
     .WithImage("kartoza/postgis", "18-3.6")
-    .WithBindMount("./postgres", "/docker-entrypoint-initdb.d")
     .WithPgAdmin(pgAdmin => pgAdmin.WithLifetime(ContainerLifetime.Persistent))
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent)
-    .WithEndpoint("tcp", e => e.IsProxied = false)
-    .AddDatabase("mesnet");
+    .WithEndpoint("tcp", e => e.IsProxied = false);
+var postgres = postgresServer.AddDatabase("mesnet");
+var postgresEndpoint = postgresServer.GetEndpoint("tcp");
+
+// Rol betiği (#316) — süper kullanıcıyla, her açılışta, idempotent. Dağıtımla AYNI betik
+// (src/Docs/docs/infrastructure/sql/316-veritabani-rolleri.sql): dev, CI ve üretim tek
+// kaynaktan kurulur. Kartoza'nın initdb dizinine GÜVENİLMEZ — oradaki betik hatayı
+// `|| true` ile yutar ve parolayı başka değişkenden okur (ölçüldü: rol hiç oluşmadı).
+// ON_ERROR_STOP ile çalışan bu adım başarısızsa API açılmaz.
+var dbInit = builder.AddContainer("db-init", "kartoza/postgis", "18-3.6")
+    .WithBindMount("../Docs/docs/infrastructure/sql", "/sql", isReadOnly: true)
+    .WithEnvironment("PGHOST", postgresEndpoint.Property(EndpointProperty.Host))
+    .WithEnvironment("PGPORT", postgresEndpoint.Property(EndpointProperty.TargetPort))
+    .WithEnvironment("PGUSER", "postgres")
+    .WithEnvironment("PGPASSWORD", postgresPassword)
+    .WithEnvironment("PGDATABASE", "mesnet")
+    .WithEnvironment("MESNET_OWNER_PASSWORD", mesnetOwnerPassword)
+    .WithEnvironment("MESNET_APP_PASSWORD", mesnetAppPassword)
+    .WithEntrypoint("/bin/sh")
+    .WithArgs("-c", "psql -v ON_ERROR_STOP=1 -v owner_password=\"$MESNET_OWNER_PASSWORD\" "
+        + "-v app_password=\"$MESNET_APP_PASSWORD\" -f /sql/316-veritabani-rolleri.sql")
+    .WaitFor(postgres);
 
 var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitmqUser, password: rabbitmqPassword)
     .WithImage("rabbitmq", "4-management-alpine")
@@ -114,7 +140,12 @@ var openObserve = builder.AddContainer("openobserve", "public.ecr.aws/zinclabs/o
 
 var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WithExternalHttpEndpoints()
-    .WithReference(postgres)
+    // Süper kullanıcı bağlantısı enjekte EDİLMEZ (WithReference(postgres) bunu yapardı).
+    // Dev'de API şemayı kendisi kurduğu için sahip rolüyle bağlanır; üretim ve CI mesnet_app
+    // kullanır. Açılış kontrolü süper kullanıcı bağlantısında açılışı durdurur (#316).
+    .WithEnvironment("ConnectionStrings__mesnet", ReferenceExpression.Create(
+        $"Host={postgresEndpoint.Property(EndpointProperty.Host)};Port={postgresEndpoint.Property(EndpointProperty.Port)};"
+        + $"Database=mesnet;Username=mesnet_owner;Password={mesnetOwnerPassword}"))
     .WithReference(rabbitmq)
     .WithReference(keycloak)
     .WithEnvironment("MinioStorage__Endpoint", rustfs.GetEndpoint("api"))
@@ -130,7 +161,7 @@ var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WithEnvironment("OpenObserve__Endpoint", openObserve.GetEndpoint("grpc"))
     .WithEnvironment("OpenObserve__User", openObserveUser)
     .WithEnvironment("OpenObserve__Password", openObservePassword)
-    .WaitFor(postgres)
+    .WaitForCompletion(dbInit)
     .WaitFor(rabbitmq)
     .WaitFor(keycloak)
     .WaitFor(rustfs)
