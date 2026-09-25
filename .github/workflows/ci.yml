@@ -170,6 +170,11 @@ jobs:
       - name: Bağımlılık yığınını başlat
         run: docker compose -f .github/compose.ci.yml up -d --wait --wait-timeout 300
 
+      # API süper kullanıcıyla bağlanmaz (#316): mesnet_owner (şema) + mesnet_app (çalışma
+      # zamanı). Dağıtımdakiyle AYNI betik; başarısızsa adım düşer.
+      - name: Veritabanı rolleri (#316)
+        run: docker compose -f .github/compose.ci.yml run --rm db-init
+
       - name: Keycloak realm'ini bekle
         run: |
           for i in $(seq 1 60); do
@@ -192,12 +197,29 @@ jobs:
       - name: API'yi derle
         run: dotnet build src/MESNET.Presentation/MESNET.Presentation.csproj -c Release
 
+      # Üretim akışı (#316): şemayı sahip rolü göç adımında kurar, API DDL yetkisi olmayan
+      # mesnet_app ile çalışır. CI bunu sınayan TEK yerdir — dev şemayı API'yle kurar.
+      # mesnet_app'in yetkisi eksikse entegrasyon testleri "permission denied" ile düşer.
+      - name: Şemayı kur — göç adımı (mesnet_owner)
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          Database__AutoCreateSchema: 'false'
+          ConnectionStrings__mesnet: Host=localhost;Port=5432;Database=mesnet;Username=mesnet_owner;Password=mesnet_owner_dev
+          RabbitMQ__UserName: mesnet
+          RabbitMQ__Password: mesnet_dev
+          Keycloak__credentials__secret: dev-secret
+          MinioStorage__AccessKey: minioadmin
+          MinioStorage__SecretKey: minioadmin
+          MinioStorage__Endpoint: localhost:9000
+        run: dotnet run --project src/MESNET.Presentation --no-launch-profile --no-build -c Release -- resources setup
+
       - name: API'yi başlat
         env:
           ASPNETCORE_ENVIRONMENT: Development
           ASPNETCORE_URLS: http://127.0.0.1:5270
-          # Sample'daki <PLACEHOLDER> değerleri yerine compose.ci.yml'deki dev kimlikleri (#66)
-          ConnectionStrings__mesnet: Host=localhost;Port=5432;Database=mesnet;Username=mesnet;Password=mesnet_dev
+          # Şema göç adımında kuruldu; API DDL yetkisi olmayan rolle bağlanır (#316).
+          Database__AutoCreateSchema: 'false'
+          ConnectionStrings__mesnet: Host=localhost;Port=5432;Database=mesnet;Username=mesnet_app;Password=mesnet_app_dev
           RabbitMQ__UserName: mesnet
           RabbitMQ__Password: mesnet_dev
           Keycloak__credentials__secret: dev-secret
@@ -229,6 +251,12 @@ jobs:
       - name: Realm doğrulama çıktısı
         run: grep -iE "Realm doğrulan|Realm ayarlar|Realm doğrulaması atlandı|SAPMIŞ" /tmp/api.log
              || echo "::warning::Realm doğrulama satırı bulunamadı — kontrol koşmamış olabilir (#195)"
+
+      # Rol kontrolü de Development'ta ihlalde açılışı durdurur; "atlandı" ile "doğrulandı"
+      # aynı görünmesin diye satır basılır (#316).
+      - name: Veritabanı rolü doğrulama çıktısı
+        run: grep -iE "Veritabanı rolü doğrula" /tmp/api.log
+             || echo "::warning::Veritabanı rolü doğrulama satırı bulunamadı — kontrol koşmamış olabilir (#316)"
 
       - name: Testler
         env:

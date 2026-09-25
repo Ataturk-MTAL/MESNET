@@ -33,6 +33,9 @@ services:
     restart: unless-stopped
 
   # ── Backend API (.NET 10) ──────────────────────────────────────
+  # UYARI (#316): API artık şemayı açılışta KURMAZ (Production'da AutoCreate kapalı) ve süper
+  # kullanıcıyla bağlanmamalıdır. Rol betiği + göç adımı yalnız deploy/compose.yml'de kuruludur;
+  # desteklenen üretim/deneme yolu odur.
   api:
     build:
       context: .

@@ -1156,3 +1156,58 @@ ilk yüklemede bucket'ı `EnsureBucketExistsAsync` ile açar; elle bir şey gere
 
 `minio-data` volume'u, dekontların yeni depodan açıldığı birkaç gün gözlendikten sonra
 silinebilir: `docker volume rm mesnet_minio-data`. Geri dönüşü yoktur.
+
+## API süper kullanıcıyla bağlanmaz — iki yeni rol (#316)
+
+API artık PostgreSQL süper kullanıcısıyla **bağlanmaz**. Süper kullanıcı row-level security'yi
+her zaman atlar (FORCE bile işlemez); bu bağlantıyla veritabanında kurulacak her kiracı
+yalıtımı yerinde durur ama hiçbir şeyi süzmez — ve bunu hiçbir test göstermez.
+
+| Rol | Yetki | Kullanan |
+|---|---|---|
+| `mesnet_owner` | Şemanın sahibi, DDL | Yalnız göç adımı (`migrate`) |
+| `mesnet_app` | Yalnız DML, `NOBYPASSRLS` | API çalışma zamanı |
+
+**Şemayı artık API kurmaz.** Üretimde `AutoCreate` kapalıdır; şema `migrate` servisinde,
+API imajının `resources setup` komutuyla, sahip rolüyle kurulur/yükseltilir. API bu servisin
+**başarıyla** bitmesini bekler. PostGIS de API açılışından çıktı — kurulumu rol betiğindedir
+(eklenti güvenilir değildir, süper kullanıcı ister).
+
+### Mevcut kurulumu yükseltme
+
+1. `.env`'e iki parola ekleyin (`;` içermemeli — bağlantı dizesini böler):
+
+   ```bash
+   printf 'MESNET_DB_OWNER_PASSWORD=%s\nMESNET_DB_APP_PASSWORD=%s\n' \
+     "$(openssl rand -hex 24)" "$(openssl rand -hex 24)" >> deploy/.env
+   ```
+
+2. `./install.sh --only uygulama` — ya da elle `docker compose pull && docker compose up -d`.
+   Sıra compose'da kuruludur: `db-init` → `migrate` → `api`.
+   - `db-init` rol betiğini (`sql/316-veritabani-rolleri.sql`) süper kullanıcıyla koşar:
+     rolleri kurar, var olan MESNET nesnelerinin sahipliğini `mesnet_owner`'a **devreder** ve
+     `mesnet_app`'e yetki verir. İdempotenttir, her `up`'ta çalışır.
+   - Kapsam **pozitif** tanımlıdır: yalnız `mt_*`/`wolverine*` nesnesi taşıyan şemalar.
+     `keycloak` şemasına dokunulmaz — "public dışındaki her şema" kuralı `mesnet_app`'e Keycloak
+     tablolarında (parola özetleri dahil) yazma yetkisi verirdi (ölçüldü, düzeltildi).
+
+3. Doğrulayın — API logunda şu satır olmalı:
+
+   ```
+   Veritabanı rolü doğrulandı: mesnet_app (RLS'i atlamıyor).
+   ```
+
+   Süper kullanıcı ya da `BYPASSRLS` rolüyle bağlanılırsa Development'ta açılış **durur**,
+   üretimde `LogCritical` yazılır (`DatabaseRoleVerificationHostedService`).
+
+:::caution Bilinen açık — Keycloak hâlâ süper kullanıcıyla bağlanıyor
+`deploy/compose.yml`'de Keycloak aynı veritabanına `POSTGRES_USER` ile bağlanır. Bu değişiklik
+yalnız API'yi kapsar; Keycloak'ın kendi rolü ayrı iş olarak ele alınmalıdır.
+:::
+
+:::note Dev ve CI
+- **Dev (Aspire):** `db-init` kabı aynı betiği her açılışta koşar; API `mesnet_owner` ile bağlanır
+  ve şemayı kendisi kurar (geliştirme kolaylığı). Parolalar Aspire'da üretilip saklanır.
+- **CI:** üretim akışının aynısı — rol betiği, `mesnet_owner` ile göç, `mesnet_app` ile API.
+  `mesnet_app`'in eksik bir yetkisi entegrasyon testlerinde `permission denied` olarak görünür.
+:::

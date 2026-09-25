@@ -46,10 +46,12 @@ services:
     image: ghcr.io/ataturk-mtal/mesnet-api:${MESNET_VERSION:?MESNET_VERSION zorunlu, ör. v0.2.3}
     expose:
       - "8080"
-    environment:
+    environment: &api-env
       ASPNETCORE_ENVIRONMENT: Production
 
-      ConnectionStrings__mesnet: "Host=postgres;Port=5432;Database=mesnet;Username=${POSTGRES_USER:?};Password=${POSTGRES_PASSWORD:?}"
+      # Süper kullanıcı DEĞİL (#316): mesnet_app yalnız DML yapar, RLS'i atlamaz. Şemayı
+      # `migrate` servisi sahip rolüyle kurar; API açılışta DDL denemez.
+      ConnectionStrings__mesnet: "Host=postgres;Port=5432;Database=mesnet;Username=mesnet_app;Password=${MESNET_DB_APP_PASSWORD:?install.sh ön kontrolü}"
 
       # Doluysa RabbitMQ:* bölümünün TAMAMI yok sayılır — tek anahtar, tek gerçek.
       ConnectionStrings__rabbitmq: "amqp://${RABBITMQ_USER:?}:${RABBITMQ_PASSWORD:?}@rabbitmq:5672"
@@ -82,8 +84,8 @@ services:
 
       Audit__RetentionMonths: ${AUDIT_RETENTION_MONTHS:-24}
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       rustfs:
@@ -91,6 +93,46 @@ services:
       keycloak:
         condition: service_started
     restart: unless-stopped
+
+  # ── Veritabanı rolleri (#316) ──────────────────────────────────────────────
+  # Süper kullanıcıyla, her `up`'ta, idempotent. Dev ve CI ile AYNI betik. Başarısızsa
+  # (çıkış ≠ 0) migrate ve API başlamaz. Betik depo klonundan okunur — deploy/ dizini
+  # depo içinden kullanılır (README).
+  db-init:
+    image: kartoza/postgis:18-3.6
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../src/Docs/docs/infrastructure/sql:/sql:ro
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:?}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+      PGDATABASE: mesnet
+      MESNET_OWNER_PASSWORD: ${MESNET_DB_OWNER_PASSWORD:?install.sh ön kontrolü}
+      MESNET_APP_PASSWORD: ${MESNET_DB_APP_PASSWORD:?install.sh ön kontrolü}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - psql -v ON_ERROR_STOP=1 -v owner_password="$$MESNET_OWNER_PASSWORD" -v app_password="$$MESNET_APP_PASSWORD" -f /sql/316-veritabani-rolleri.sql
+    restart: "no"
+
+  # ── Şema göçü (#316) ───────────────────────────────────────────────────────
+  # API imajı `resources setup` ile, SAHİP rolüyle koşar: Marten + Wolverine şemasını
+  # kurar/yükseltir ve çıkar. API DDL yetkisi olmayan mesnet_app ile bağlandığı için şema
+  # değişikliği YALNIZ burada uygulanır. Ortam API ile aynıdır (anchor), yalnız bağlantı farklı.
+  migrate:
+    image: ghcr.io/ataturk-mtal/mesnet-api:${MESNET_VERSION:?MESNET_VERSION zorunlu, ör. v0.2.3}
+    command: ["resources", "setup"]
+    environment:
+      <<: *api-env
+      ConnectionStrings__mesnet: "Host=postgres;Port=5432;Database=mesnet;Username=mesnet_owner;Password=${MESNET_DB_OWNER_PASSWORD:?install.sh ön kontrolü}"
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    restart: "no"
 
   # ── PostgreSQL + PostGIS ───────────────────────────────────────────────────
   postgres:

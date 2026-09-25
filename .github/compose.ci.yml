@@ -32,6 +32,27 @@ services:
       timeout: 5s
       retries: 20
 
+  # Rol betiği (#316): API süper kullanıcıyla bağlanmaz. Dağıtımla AYNI betik, süper
+  # kullanıcıyla (mesnet). Profil arkasında: `up --wait` tek seferlik servisi beklemeye
+  # çalışmaz; CI onu `compose run --rm db-init` ile ayrı adımda koşturur ve çıkış kodu
+  # adımı düşürür.
+  db-init:
+    profiles: ['init']
+    image: kartoza/postgis:18-3.6
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../src/Docs/docs/infrastructure/sql:/sql:ro
+    environment:
+      PGHOST: postgres
+      PGUSER: mesnet
+      PGPASSWORD: mesnet_dev
+      PGDATABASE: mesnet
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - psql -v ON_ERROR_STOP=1 -v owner_password=mesnet_owner_dev -v app_password=mesnet_app_dev -f /sql/316-veritabani-rolleri.sql
+
   rabbitmq:
     image: rabbitmq:4-alpine
     environment:
