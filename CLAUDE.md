@@ -250,6 +250,32 @@ taşır ve satır düzeyinde süzülür. Kiracısız session **yasaktır**
   Marten'ın kendisiyle çelişen deltası yüzünden API'yi öldürür. Elden iki betik:
   `src/Docs/docs/infrastructure/sql/` + sıra: `dagitim-on-kosullari.md`.
 
+#### Veritabanı katmanı: rol ayrımı + row-level security (KESİN KURAL — #316, #317, #318)
+
+Kiracı yalıtımı yalnız Marten'ın sorguya eklediği `tenant_id` değildir: kiracıya ait **her** tablo
+(conjoined belgeler + olay deposu) PostgreSQL row-level security ile korunur (ENABLE + FORCE).
+
+- **API süper kullanıcıyla bağlanmaz.** Süper kullanıcı ve `BYPASSRLS` rolü RLS'i HER ZAMAN atlar.
+  Üretim/CI `mesnet_app` (yalnız DML), dev `mesnet_owner`. Açılış kontrolü:
+  `DatabaseRoleVerificationHostedService`. Roller: `sql/316-veritabani-rolleri.sql`
+- **Şemayı API kurmaz** (üretim): göç adımı `resources setup`, sahip rolüyle. `AutoCreate` yalnız dev
+- **Ham SQL ile kiracılı tablo okuma** yalnız `TenantScopedConnection` üzerinden. `CreateConnection()`
+  bağlantısında kiracı ayarı `''` olabilir → **hatasız 0 satır**. Kilit: `RawConnectionTenancyDriftTests`
+- **Okullar arası okuma** okul başına session: `CrossTenantQuery`. `TenantIsOneOf` YASAK (RLS yalnız
+  session'ın kiracısını gösterir → eksik sonuç). `BYPASSRLS` rolü YOK. Kilit: `CrossTenantQueryDriftTests`
+- **Async projeksiyon YASAK.** Daemon kiracısız okur, RLS süzer, daemon ilerlemeyi yine taşır — olaylar
+  hatasız ATLANIR (ölçüldü). Kilit: `AsyncProjectionRlsDriftTests`
+- **`set_config` / `"app.tenant_id"` tek yerde** (`TenantScopedConnection` / `TenantRls.SettingName`).
+  Kilit: `TenantSettingWriteDriftTests`
+- **Katalogda RLS'i delen hiçbir şey eklenmez** — `RlsCatalogDriftTests` çalışan veritabanını okur:
+  - Ek **permissive** politika YOK — permissive politikalar OR'lanır; `USING (true)` filtreyi kaldırır
+  - `SECURITY DEFINER` fonksiyon, `security_invoker`'sız view, materialized view YOK
+  - Kiracılı tablodaki her **FK** `tenant_id` içerir — referans kontrolü politikayı GÖRMEZ
+  - Kiracılı tablodaki **unique index** `tenant_id` içerir (ya da gerekçeli izin listesinde) — yoksa
+    başka okuldaki değer `duplicate key` ile sızar
+- **İhlal alarmdır:** 42501 (row-level security) ve tanımsız kiracı ayarı normal akışta oluşmaz;
+  `MESNET.Security.RowLevelSecurity` kategorisinde `LogCritical` yazılır (`RlsViolationClassifier`)
+
 #### Kurum kapsamı (KESİN KURAL — ADR-0003 adım 6)
 
 Kiracılık satırları süzer ama **`Institution` belgesini süzmez**: o belge kiracının kendisidir
