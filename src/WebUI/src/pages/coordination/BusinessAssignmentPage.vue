@@ -333,17 +333,13 @@
                 class="q-mb-md"
               >
                 <q-card-section>
-                  <div class="row items-center q-mb-sm subject-header">
-                    <div class="text-subtitle1 text-weight-medium">
-                      Ders Programı
-                    </div>
-                    <!-- Kimin programı: sürükle-bırak sırasında dikkat kaybını önler -->
-                    <EditingSubject
-                      :name="selectedTeacherName"
-                      :context="branchName"
-                      :editing="pendingChanges.length > 0"
-                    />
-                  </div>
+                  <!-- Kimin programı: sürükle-bırak sırasında dikkat kaybını önler -->
+                  <SubjectHeader
+                    title="Ders Programı"
+                    :name="selectedTeacherName"
+                    :context="branchName"
+                    :editing="pendingChanges.length > 0"
+                  />
 
                   <div
                     v-if="scheduleLoading"
@@ -390,18 +386,16 @@
                 class="q-mb-md"
               >
                 <q-card-section>
-                  <div class="row items-center q-mb-sm subject-header">
-                    <div class="text-subtitle1 text-weight-medium">
-                      Atanmış İşletmeler
-                      <q-badge
-                        color="info"
-                        class="q-ml-sm"
-                      >
+                  <SubjectHeader
+                    title="Atanmış İşletmeler"
+                    :name="selectedTeacherName"
+                  >
+                    <template #badges>
+                      <q-badge color="info">
                         {{ assignedToTeacher.length }}
                       </q-badge>
-                    </div>
-                    <EditingSubject :name="selectedTeacherName" />
-                  </div>
+                    </template>
+                  </SubjectHeader>
                   <q-list
                     dense
                     separator
@@ -788,7 +782,7 @@ import DataState from 'components/DataState.vue'
 import DetailDialog from 'components/DetailDialog.vue'
 import FormDialog from 'components/FormDialog.vue'
 import PageHeader from 'components/PageHeader.vue'
-import EditingSubject from 'components/EditingSubject.vue'
+import SubjectHeader from 'components/SubjectHeader.vue'
 import FilterBar from 'components/FilterBar.vue'
 import SearchInput from 'components/SearchInput.vue'
 import { useSharedSelection } from 'src/composables/useSharedSelection'
@@ -1086,10 +1080,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.subject-header {
-  gap: 8px 16px;
-}
-
 /* Ekran okuyucuya açık, görsel olarak gizli — aria-live duyuruları için (#88).
    display:none veya visibility:hidden KULLANILMAZ; ikisi de içeriği erişilebilirlik
    ağacından çıkarır ve duyuru hiç okunmaz. */

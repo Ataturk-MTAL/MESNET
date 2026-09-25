@@ -75,7 +75,7 @@ const props = withDefaults(defineProps<{
 })
 
 const model = defineModel<string | null>({ default: null })
-/** Seçili öğretmenin adı — sayfa "kimin verisi" etiketinde gösterir (EditingSubject). */
+/** Seçili öğretmenin adı — sayfa "kimin verisi" başlığında gösterir (SubjectHeader). */
 const selectedLabel = defineModel<string | null>('selectedLabel', { default: null })
 
 const authStore = useAuthStore()

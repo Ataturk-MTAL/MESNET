@@ -162,17 +162,11 @@
         bordered
       >
         <q-card-section>
-          <div class="row items-center q-mb-md subject-header">
-            <div class="text-subtitle1 text-weight-medium">
-              İşletme Takdir Edilen Saatler
-            </div>
-            <EditingSubject
-              :name="branchName"
-              kind="Alan"
-              icon="school"
-              :editing="changedHoursCount > 0"
-            />
-          </div>
+          <SubjectHeader
+            title="İşletme Takdir Edilen Saatler"
+            :name="branchName"
+            :editing="changedHoursCount > 0"
+          />
 
           <!-- Otomatik dağıtım araç çubuğu (#118).
             Öneri KAYDETMEZ: değerleri tabloya doldurur, karar koordinatörde kalır. -->
@@ -605,7 +599,7 @@ import { bucketPresentation } from 'src/utils/allocationBuckets'
 import BranchSelector from 'components/BranchSelector.vue'
 import BusinessClusterMap from 'components/BusinessClusterMap.vue'
 import PageHeader from 'components/PageHeader.vue'
-import EditingSubject from 'components/EditingSubject.vue'
+import SubjectHeader from 'components/SubjectHeader.vue'
 import FilterBar from 'components/FilterBar.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
@@ -742,10 +736,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.subject-header {
-  gap: 8px 16px;
-}
-
 /*
  * Dokunma hedefi WCAG 2.2 SC 2.5.8 (en az 24x24 CSS px) — size="xs" ikon butonu
  * görsel olarak bunun altında kalıyor, hedef alanı burada geri veriliyor.

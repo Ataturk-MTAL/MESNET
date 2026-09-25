@@ -35,16 +35,10 @@
       bordered
     >
       <q-card-section>
-        <div class="row items-center q-mb-sm subject-header">
-          <div class="text-subtitle1 text-weight-medium">
-            Alan Ders Yükü Yapılandırması
-          </div>
-          <EditingSubject
-            :name="branchName"
-            kind="Alan"
-            icon="school"
-          />
-        </div>
+        <SubjectHeader
+          title="Alan Ders Yükü Yapılandırması"
+          :name="branchName"
+        />
         <div class="text-caption text-grey-7 q-mb-md">
           Norm Kadro Yönetmeliği Madde 22'ye göre grup sayısı ve şeflik saatleri ile toplam ders yükü havuzu hesaplanır.
         </div>
@@ -248,7 +242,7 @@ import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import PageHeader from 'components/PageHeader.vue'
-import EditingSubject from 'components/EditingSubject.vue'
+import SubjectHeader from 'components/SubjectHeader.vue'
 import FilterBar from 'components/FilterBar.vue'
 import { useSharedSelection } from 'src/composables/useSharedSelection'
 
@@ -293,8 +287,3 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.subject-header {
-  gap: 8px 16px;
-}
-</style>

@@ -46,54 +46,46 @@
           class="q-mb-md"
         >
           <q-card-section>
-            <div class="row items-center q-mb-md">
-              <div class="col">
-                <div class="text-subtitle1 text-weight-medium">
-                  Haftalık Program
-                  <q-badge
-                    v-if="hasExistingSchedule"
-                    color="positive"
-                    class="q-ml-sm"
-                  >
-                    Kayıtlı
-                    <q-tooltip>Versiyon {{ currentVersion }}</q-tooltip>
-                  </q-badge>
-                  <!-- Anlamsal durum taşımayan taslak rozeti → bg-neutral (#465a73):
-                       beyaz metinle 7,07:1. Quasar "grey" (#9e9e9e) zemininde QBadge'in
-                       varsayılan #fff metni 2,68:1'de kalıyordu — ÖLÇÜLDÜ. -->
-                  <q-badge
-                    v-else
-                    color="neutral"
-                    class="q-ml-sm"
-                  >
-                    Yeni
-                  </q-badge>
-                  <q-badge
-                    v-if="viewingHistoryVersion !== null"
-                    color="warning"
-                    class="q-ml-sm"
-                  >
-                    Geçmiş: v{{ viewingHistoryVersion }}
-                  </q-badge>
-                </div>
-                <div
-                  v-if="currentScheduleMeta"
-                  class="text-caption text-grey-7 q-mt-xs"
+            <SubjectHeader
+              title="Haftalık Program"
+              :name="teacherName"
+              :context="branchName"
+              :editing="editing"
+            >
+              <template #badges>
+                <q-badge
+                  v-if="hasExistingSchedule"
+                  color="positive"
                 >
-                  {{ currentScheduleMeta.academicYear }} · {{ semesterLabelOf(currentScheduleMeta.semester) }}
-                  <span v-if="currentScheduleMeta.updatedAt">
-                    &middot; Son güncelleme: {{ formatDate(currentScheduleMeta.updatedAt) }}
-                  </span>
-                </div>
-              </div>
-              <!-- Kimin programı: düzenleme sırasında dikkat kaybını önler -->
-              <EditingSubject
-                :name="teacherName"
-                :context="branchName"
-                :editing="editing"
-                class="q-mx-md"
-              />
-              <div class="col-auto row items-center no-wrap schedule-actions">
+                  Kayıtlı
+                  <q-tooltip>Versiyon {{ currentVersion }}</q-tooltip>
+                </q-badge>
+                <!-- Anlamsal durum taşımayan taslak rozeti → bg-neutral (#465a73):
+                     beyaz metinle 7,07:1. Quasar "grey" (#9e9e9e) zemininde QBadge'in
+                     varsayılan #fff metni 2,68:1'de kalıyordu — ÖLÇÜLDÜ. -->
+                <q-badge
+                  v-else
+                  color="neutral"
+                >
+                  Yeni
+                </q-badge>
+                <q-badge
+                  v-if="viewingHistoryVersion !== null"
+                  color="warning"
+                >
+                  Geçmiş: v{{ viewingHistoryVersion }}
+                </q-badge>
+              </template>
+              <template
+                v-if="currentScheduleMeta"
+                #meta
+              >
+                · {{ currentScheduleMeta.academicYear }} · {{ semesterLabelOf(currentScheduleMeta.semester) }}
+                <span v-if="currentScheduleMeta.updatedAt">
+                  · Son güncelleme: {{ formatDate(currentScheduleMeta.updatedAt) }}
+                </span>
+              </template>
+              <template #actions>
                 <q-btn
                   v-if="viewingHistoryVersion !== null"
                   flat
@@ -127,8 +119,8 @@
                     @click="saveSchedule"
                   />
                 </template>
-              </div>
-            </div>
+              </template>
+            </SubjectHeader>
 
             <ScheduleGrid
               :schedule="scheduleData"
@@ -318,7 +310,7 @@ import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
 import PageHeader from 'components/PageHeader.vue'
-import EditingSubject from 'components/EditingSubject.vue'
+import SubjectHeader from 'components/SubjectHeader.vue'
 import FilterBar from 'components/FilterBar.vue'
 import { useSharedSelection } from 'src/composables/useSharedSelection'
 
@@ -575,8 +567,3 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-.schedule-actions {
-  gap: 8px;
-}
-</style>
