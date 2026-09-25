@@ -30,7 +30,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili (admin) bir istemci
         // When — davet listesi istenir
-        var response = await _fixture.Client.GetAsync("/api/security/invitations/");
+        var response = await _fixture.Client.GetAsync("/api/security/invitations/", Ct);
 
         // Then — liste okuması başarılı olmalı, sunucu hatası olmamalı
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -42,7 +42,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) istemci
         // When — davet listesi istenir
-        var response = await _fixture.Anonymous.GetAsync("/api/security/invitations/");
+        var response = await _fixture.Anonymous.GetAsync("/api/security/invitations/", Ct);
 
         // Then — yetkilendirme gerektiren endpoint 401 döndürmeli
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -53,7 +53,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci ve boş/geçersiz JSON gövde
         // When — davet oluşturma istenir
-        var response = await _fixture.Client.PostAsync("/api/security/invitations/", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync("/api/security/invitations/", EmptyJsonBody(), Ct);
 
         // Then — validation reddi beklenir (4xx), sunucu hatası DEĞİL (mutasyon yapılmaz)
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -66,8 +66,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var invitationId = Guid.NewGuid();
 
         // When — davet onaylanmak istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/security/invitations/{invitationId}/approve", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync($"/api/security/invitations/{invitationId}/approve", EmptyJsonBody(), Ct);
 
         // Then — 404/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -80,8 +79,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var invitationId = Guid.NewGuid();
 
         // When — davet reddedilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/security/invitations/{invitationId}/reject", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync($"/api/security/invitations/{invitationId}/reject", EmptyJsonBody(), Ct);
 
         // Then — 404/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -94,8 +92,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var invitationId = Guid.NewGuid();
 
         // When — anonim istemci ile davet tamamlanmak istenir
-        var response = await _fixture.Anonymous.PostAsync(
-            $"/api/security/invitations/{invitationId}/complete", EmptyJsonBody());
+        var response = await _fixture.Anonymous.PostAsync($"/api/security/invitations/{invitationId}/complete", EmptyJsonBody(), Ct);
 
         // Then — AllowAnonymous → 401 OLMAMALI; var olmayan davet için 4xx, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);
@@ -109,8 +106,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var invitationId = Guid.NewGuid();
 
         // When — davet e-postası yeniden gönderilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/security/invitations/{invitationId}/resend", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync($"/api/security/invitations/{invitationId}/resend", EmptyJsonBody(), Ct);
 
         // Then — 404/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -125,7 +121,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci
         // When — tüm roller istenir
-        var response = await _fixture.Client.GetAsync("/api/security/roles");
+        var response = await _fixture.Client.GetAsync("/api/security/roles", Ct);
 
         // Then — statik rol listesi başarıyla dönmeli
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -137,7 +133,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız istemci
         // When — roller istenir
-        var response = await _fixture.Anonymous.GetAsync("/api/security/roles");
+        var response = await _fixture.Anonymous.GetAsync("/api/security/roles", Ct);
 
         // Then — yetkilendirme gerektiren endpoint 401 döndürmeli
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -150,7 +146,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var roleName = "OlmayanRol_" + Guid.NewGuid().ToString("N");
 
         // When — o rolün izinleri istenir
-        var response = await _fixture.Client.GetAsync($"/api/security/roles/{roleName}/permissions");
+        var response = await _fixture.Client.GetAsync($"/api/security/roles/{roleName}/permissions", Ct);
 
         // Then — bilinmeyen rol = geçerli not-found durumu → 404, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -166,7 +162,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci
         // When — tarama istenir
-        var response = await _fixture.Client.GetAsync("/api/security/role-integrity");
+        var response = await _fixture.Client.GetAsync("/api/security/role-integrity", Ct);
 
         // Then — okuma başarılı olmalı, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -177,7 +173,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız istemci
         // When — tarama istenir
-        var response = await _fixture.Anonymous.GetAsync("/api/security/role-integrity");
+        var response = await _fixture.Anonymous.GetAsync("/api/security/role-integrity", Ct);
 
         // Then — yetkilendirme gerektiren endpoint 401 döndürmeli
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -188,7 +184,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci
         // When — tüm izin kataloğu istenir
-        var response = await _fixture.Client.GetAsync("/api/security/permissions");
+        var response = await _fixture.Client.GetAsync("/api/security/permissions", Ct);
 
         // Then — statik izin listesi başarıyla dönmeli
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -204,7 +200,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci
         // When — kullanıcı listesi istenir
-        var response = await _fixture.Client.GetAsync("/api/security/users/");
+        var response = await _fixture.Client.GetAsync("/api/security/users/", Ct);
 
         // Then — sayfalı liste okuması başarılı olmalı
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -216,7 +212,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız istemci
         // When — kullanıcı listesi istenir
-        var response = await _fixture.Anonymous.GetAsync("/api/security/users/");
+        var response = await _fixture.Anonymous.GetAsync("/api/security/users/", Ct);
 
         // Then — yetkilendirme gerektiren endpoint 401 döndürmeli
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -229,7 +225,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var userAccountId = Guid.NewGuid();
 
         // When — o kullanıcının detayı istenir
-        var response = await _fixture.Client.GetAsync($"/api/security/users/{userAccountId}");
+        var response = await _fixture.Client.GetAsync($"/api/security/users/{userAccountId}", Ct);
 
         // Then — kayıt yok = geçerli durum (404/422), null-return kaynaklı sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -240,7 +236,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci ve boş/geçersiz JSON gövde
         // When — kullanıcı oluşturma istenir
-        var response = await _fixture.Client.PostAsync("/api/security/users/", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync("/api/security/users/", EmptyJsonBody(), Ct);
 
         // Then — validation reddi beklenir (4xx), sunucu hatası DEĞİL (mutasyon yapılmaz)
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -253,8 +249,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var userAccountId = Guid.NewGuid();
 
         // When — kullanıcı güncellenmek istenir
-        var response = await _fixture.Client.PutAsync(
-            $"/api/security/users/{userAccountId}", EmptyJsonBody());
+        var response = await _fixture.Client.PutAsync($"/api/security/users/{userAccountId}", EmptyJsonBody(), Ct);
 
         // Then — validation/not-found beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -267,8 +262,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var userAccountId = Guid.NewGuid();
 
         // When — kullanıcı rolleri değiştirilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/security/users/{userAccountId}/roles", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync($"/api/security/users/{userAccountId}/roles", EmptyJsonBody(), Ct);
 
         // Then — validation/not-found beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -281,8 +275,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var userAccountId = Guid.NewGuid();
 
         // When — kullanıcı yetkileri değiştirilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/security/users/{userAccountId}/permissions", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync($"/api/security/users/{userAccountId}/permissions", EmptyJsonBody(), Ct);
 
         // Then — validation/not-found beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -295,8 +288,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var userAccountId = Guid.NewGuid();
 
         // When — kullanıcı aktif/pasif durumu değiştirilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/security/users/{userAccountId}/toggle-status", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync($"/api/security/users/{userAccountId}/toggle-status", EmptyJsonBody(), Ct);
 
         // Then — validation/not-found beklenir (4xx), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -309,7 +301,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var userAccountId = Guid.NewGuid();
 
         // When — kullanıcı silinmek istenir
-        var response = await _fixture.Anonymous.DeleteAsync($"/api/security/users/{userAccountId}");
+        var response = await _fixture.Anonymous.DeleteAsync($"/api/security/users/{userAccountId}", Ct);
 
         // Then — yetkilendirme gerektiren endpoint 401 döndürmeli (silme gerçekleşmez)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -322,7 +314,7 @@ public sealed class SecurityApiTests(ApiTestFixture fixture)
         var userAccountId = Guid.NewGuid();
 
         // When — yetkili istemci var olmayan kullanıcıyı silmek ister
-        var response = await _fixture.Client.DeleteAsync($"/api/security/users/{userAccountId}");
+        var response = await _fixture.Client.DeleteAsync($"/api/security/users/{userAccountId}", Ct);
 
         // Then — var olmayan kayıt = 404/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);

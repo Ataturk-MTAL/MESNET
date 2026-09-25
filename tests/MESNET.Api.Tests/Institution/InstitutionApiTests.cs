@@ -34,7 +34,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili (admin) bir istemci
         // When — kurum listesi istenir
-        var response = await _fixture.Client.GetAsync("/api/institutions/");
+        var response = await _fixture.Client.GetAsync("/api/institutions/", Ct);
 
         // Then — sunucu hatası değil, başarılı (200) döner
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -42,7 +42,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
 
         // Yanıt artık PagedResult sarmalayıcısıdır: data.items + data.totalCount.
         // Çıplak dizi bekleyen bir iddia burada sessizce boş listeye düşerdi.
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(Ct);
         body.ShouldContain("\"items\"");
         body.ShouldContain("\"totalCount\"");
     }
@@ -54,11 +54,11 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
     [Fact]
     public async Task Kurum_listesi_dugum_tipine_gore_suzulur()
     {
-        var response = await _fixture.Client.GetAsync("/api/institutions/?nodeType=Province");
+        var response = await _fixture.Client.GetAsync("/api/institutions/?nodeType=Province", Ct);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(Ct);
         body.ShouldContain("\"items\"");
     }
 
@@ -69,7 +69,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — kurum detayı istenir
-        var response = await _fixture.Client.GetAsync($"/api/institutions/{institutionId}");
+        var response = await _fixture.Client.GetAsync($"/api/institutions/{institutionId}", Ct);
 
         // Then — 404/422 beklenir; null-return 500 bug'ı OLMAMALI
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -80,7 +80,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci ve boş/geçersiz JSON gövde
         // When — kurum oluşturma denenir (mutasyon yapmaz, reddedilir)
-        var response = await _fixture.Client.PostAsync("/api/institutions/", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync("/api/institutions/", EmptyJsonBody(), Ct);
 
         // Then — 4xx validation/bad request beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -93,8 +93,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — PATCH ile güncelleme denenir
-        var response = await _fixture.Client.PatchAsync(
-            $"/api/institutions/{institutionId}", EmptyJsonBody());
+        var response = await _fixture.Client.PatchAsync($"/api/institutions/{institutionId}", EmptyJsonBody(), Ct);
 
         // Then — 4xx beklenir (validation/not-found), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -107,8 +106,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — personel yetkilendirme denenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/institutions/{institutionId}/staff", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync($"/api/institutions/{institutionId}/staff", EmptyJsonBody(), Ct);
 
         // Then — 4xx beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -121,8 +119,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — schedule-config PUT ile güncellenmeye çalışılır
-        var response = await _fixture.Client.PutAsync(
-            $"/api/institutions/{institutionId}/schedule-config", EmptyJsonBody());
+        var response = await _fixture.Client.PutAsync($"/api/institutions/{institutionId}/schedule-config", EmptyJsonBody(), Ct);
 
         // Then — 4xx beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -135,8 +132,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — schedule-config okunur
-        var response = await _fixture.Client.GetAsync(
-            $"/api/institutions/{institutionId}/schedule-config");
+        var response = await _fixture.Client.GetAsync($"/api/institutions/{institutionId}/schedule-config", Ct);
 
         // Then — 404/422 beklenir; null-return 500 bug'ı OLMAMALI
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -153,8 +149,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — akademik dönem listesi istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/institutions/{institutionId}/academic-periods/");
+        var response = await _fixture.Client.GetAsync($"/api/institutions/{institutionId}/academic-periods/", Ct);
 
         // Then — boş liste geçerli sonuçtur; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -167,8 +162,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — aktif akademik dönem istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/institutions/{institutionId}/academic-periods/active");
+        var response = await _fixture.Client.GetAsync($"/api/institutions/{institutionId}/academic-periods/active", Ct);
 
         // Then — aktif dönem yok = geçerli boş durum (404/422); null-return 500 bug'ı OLMAMALI
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -181,8 +175,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — akademik dönem oluşturma denenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/institutions/{institutionId}/academic-periods/", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync($"/api/institutions/{institutionId}/academic-periods/", EmptyJsonBody(), Ct);
 
         // Then — 4xx validation/bad request beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -196,8 +189,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var periodId = Guid.NewGuid();
 
         // When — dönem kapatma denenir (gövdesiz POST)
-        var response = await _fixture.Client.PostAsync(
-            $"/api/institutions/{institutionId}/academic-periods/{periodId}/close", null);
+        var response = await _fixture.Client.PostAsync($"/api/institutions/{institutionId}/academic-periods/{periodId}/close", null, Ct);
 
         // Then — 4xx beklenir (not-found/validation), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -212,7 +204,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili istemci
         // When — alan kataloğu istenir
-        var response = await _fixture.Client.GetAsync("/api/field-catalog");
+        var response = await _fixture.Client.GetAsync("/api/field-catalog", Ct);
 
         // Then — statik katalog; başarılı (200) döner, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -226,8 +218,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — alan (branch) aktifleştirme denenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/institutions/{institutionId}/branches/", EmptyJsonBody());
+        var response = await _fixture.Client.PostAsync($"/api/institutions/{institutionId}/branches/", EmptyJsonBody(), Ct);
 
         // Then — 4xx validation/bad request beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -240,8 +231,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — alan pasife alma (DELETE) denenir
-        var response = await _fixture.Client.DeleteAsync(
-            $"/api/institutions/{institutionId}/branches/99");
+        var response = await _fixture.Client.DeleteAsync($"/api/institutions/{institutionId}/branches/99", Ct);
 
         // Then — 4xx beklenir (not-found/validation), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -254,8 +244,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — uzmanlık alanları (specializations) PUT ile güncellenmeye çalışılır
-        var response = await _fixture.Client.PutAsync(
-            $"/api/institutions/{institutionId}/branches/99/specializations", EmptyJsonBody());
+        var response = await _fixture.Client.PutAsync($"/api/institutions/{institutionId}/branches/99/specializations", EmptyJsonBody(), Ct);
 
         // Then — 4xx beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -268,8 +257,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — şeflik (supervisors) yapılandırması PUT ile güncellenmeye çalışılır
-        var response = await _fixture.Client.PutAsync(
-            $"/api/institutions/{institutionId}/branches/99/supervisors", EmptyJsonBody());
+        var response = await _fixture.Client.PutAsync($"/api/institutions/{institutionId}/branches/99/supervisors", EmptyJsonBody(), Ct);
 
         // Then — 4xx beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -284,7 +272,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) bir istemci
         // When — kurum listesi istenir
-        var response = await _fixture.Anonymous.GetAsync("/api/institutions/");
+        var response = await _fixture.Anonymous.GetAsync("/api/institutions/", Ct);
 
         // Then — kimlik doğrulama zorunlu → 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -295,7 +283,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) bir istemci
         // When — alan kataloğu istenir
-        var response = await _fixture.Anonymous.GetAsync("/api/field-catalog");
+        var response = await _fixture.Anonymous.GetAsync("/api/field-catalog", Ct);
 
         // Then — kimlik doğrulama zorunlu → 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -308,8 +296,7 @@ public sealed class InstitutionApiTests(ApiTestFixture fixture)
         var institutionId = Guid.NewGuid();
 
         // When — akademik dönem listesi istenir
-        var response = await _fixture.Anonymous.GetAsync(
-            $"/api/institutions/{institutionId}/academic-periods/");
+        var response = await _fixture.Anonymous.GetAsync($"/api/institutions/{institutionId}/academic-periods/", Ct);
 
         // Then — kimlik doğrulama zorunlu → 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

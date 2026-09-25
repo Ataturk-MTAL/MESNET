@@ -62,7 +62,7 @@ public sealed class SubtreeTenantScopeTests
             Unrestricted: false, PathPrefix: "/il-35/ilce-konak", InstitutionId: null);
 
         // Act
-        var tenants = await scope.ResolveAsync(visibility);
+        var tenants = await scope.ResolveAsync(visibility, TestContext.Current.CancellationToken);
 
         // Assert
         tenants.ShouldBe(["okul-a", "okul-b"]);
@@ -79,7 +79,7 @@ public sealed class SubtreeTenantScopeTests
         var visibility = new InstitutionVisibility(
             Unrestricted: true, PathPrefix: null, InstitutionId: null);
 
-        var tenants = await scope.ResolveAsync(visibility);
+        var tenants = await scope.ResolveAsync(visibility, TestContext.Current.CancellationToken);
 
         tenants.Count.ShouldBe(3);
         // Kapsamsız aktörde liste ITenantDirectory'den gelir, alt ağaç dizininden değil.
@@ -97,7 +97,7 @@ public sealed class SubtreeTenantScopeTests
         var visibility = new InstitutionVisibility(
             Unrestricted: false, PathPrefix: null, InstitutionId: institutionId);
 
-        var tenants = await scope.ResolveAsync(visibility);
+        var tenants = await scope.ResolveAsync(visibility, TestContext.Current.CancellationToken);
 
         // Ne dizine ne kiracı listesine gider: kendi kiracısını bilmek için sorguya gerek yok.
         tenants.ShouldBe([institutionId.ToString()]);
@@ -119,7 +119,7 @@ public sealed class SubtreeTenantScopeTests
         var visibility = new InstitutionVisibility(
             Unrestricted: false, PathPrefix: null, InstitutionId: Guid.Empty);
 
-        var tenants = await scope.ResolveAsync(visibility);
+        var tenants = await scope.ResolveAsync(visibility, TestContext.Current.CancellationToken);
 
         tenants.ShouldBeEmpty();
         tenantDirectory.Requested.ShouldBeFalse();

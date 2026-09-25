@@ -22,7 +22,7 @@
 import { computed } from 'vue'
 
 const props = withDefaults(defineProps<{
-  free: number
+  free?: number
   assigned?: number
   total?: number
 }>(), {

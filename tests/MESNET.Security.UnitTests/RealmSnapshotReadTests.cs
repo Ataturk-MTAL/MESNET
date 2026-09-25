@@ -29,7 +29,7 @@ public sealed class RealmSnapshotReadTests
     {
         var service = CreateService(new StubHandler());
 
-        var result = await service.GetRealmSnapshotAsync();
+        var result = await service.GetRealmSnapshotAsync(TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         result.Value.UnmanagedAttributePolicy.ShouldBe("ADMIN_EDIT");
@@ -45,7 +45,7 @@ public sealed class RealmSnapshotReadTests
     {
         var service = CreateService(new StubHandler { Policy = "ENABLED" });
 
-        var result = await service.GetRealmSnapshotAsync();
+        var result = await service.GetRealmSnapshotAsync(TestContext.Current.CancellationToken);
 
         RealmInvariants.Verify(result.Value)
             .ShouldHaveSingleItem().Actual.ShouldBe("ENABLED");
@@ -60,7 +60,7 @@ public sealed class RealmSnapshotReadTests
     {
         var service = CreateService(new StubHandler { ProfileStatus = HttpStatusCode.Forbidden });
 
-        var result = await service.GetRealmSnapshotAsync();
+        var result = await service.GetRealmSnapshotAsync(TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue("Tek alanın okunamaması bütün doğrulamayı düşürmemeli.");
         result.Value.UnmanagedAttributePolicy.ShouldBeNull();
@@ -83,7 +83,7 @@ public sealed class RealmSnapshotReadTests
     {
         var service = CreateService(new StubHandler { TokenStatus = HttpStatusCode.ServiceUnavailable });
 
-        var result = await service.GetRealmSnapshotAsync();
+        var result = await service.GetRealmSnapshotAsync(TestContext.Current.CancellationToken);
 
         result.IsFailure.ShouldBeTrue();
     }
@@ -93,7 +93,7 @@ public sealed class RealmSnapshotReadTests
     {
         var service = CreateService(new StubHandler { WebClientFound = false });
 
-        var result = await service.GetRealmSnapshotAsync();
+        var result = await service.GetRealmSnapshotAsync(TestContext.Current.CancellationToken);
 
         result.Value.WebClientIsPublic.ShouldBeNull();
         RealmInvariants.Verify(result.Value).ShouldBeEmpty();
@@ -106,7 +106,7 @@ public sealed class RealmSnapshotReadTests
     {
         var service = CreateService(new StubHandler());
 
-        var result = await service.GetRealmSnapshotAsync();
+        var result = await service.GetRealmSnapshotAsync(TestContext.Current.CancellationToken);
 
         var assignments = result.Value.SeedUserRoles.ShouldNotBeNull();
         assignments.Count.ShouldBe(RealmInvariants.ExpectedSeedUserRoles.Count);
@@ -123,7 +123,7 @@ public sealed class RealmSnapshotReadTests
     {
         var service = CreateService(new StubHandler { AdminRoles = [MesnetRoles.InstitutionManager] });
 
-        var result = await service.GetRealmSnapshotAsync();
+        var result = await service.GetRealmSnapshotAsync(TestContext.Current.CancellationToken);
 
         result.Value.RealmRoles.ShouldNotBeNull().Count.ShouldBe(MesnetRoles.All.Count);
 
@@ -141,7 +141,7 @@ public sealed class RealmSnapshotReadTests
     {
         var service = CreateService(new StubHandler { UsersFound = false });
 
-        var result = await service.GetRealmSnapshotAsync();
+        var result = await service.GetRealmSnapshotAsync(TestContext.Current.CancellationToken);
 
         result.Value.SeedUserRoles.ShouldNotBeNull().ShouldBeEmpty();
         result.Value.UnreadableFields.ShouldNotBeNull().ShouldBeEmpty();
@@ -153,7 +153,7 @@ public sealed class RealmSnapshotReadTests
     {
         var service = CreateService(new StubHandler { RoleMappingStatus = HttpStatusCode.Forbidden });
 
-        var result = await service.GetRealmSnapshotAsync();
+        var result = await service.GetRealmSnapshotAsync(TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         result.Value.UnreadableFields.ShouldNotBeNull()

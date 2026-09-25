@@ -18,4 +18,8 @@
     <PackageReference Include="Npgsql" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Testin iptal belirteci kısa adla: GetAsync(url, Ct) — xUnit1051. -->
+    <Using Include="MESNET.Api.Tests.Infrastructure.TestCancellation" Static="true" />
+  </ItemGroup>
 </Project>

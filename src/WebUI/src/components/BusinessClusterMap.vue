@@ -272,7 +272,7 @@ interface RouteState {
 
 const props = withDefaults(defineProps<{
   businesses: BusinessClusterDto[]
-  schoolLocation: GeoLocation | null
+  schoolLocation?: GeoLocation | null
   height?: string
   assignedHours?: Record<string, number>
   /** İşletme → fahri (ücretsiz) ziyaret işareti; düzenleme sayfasının canlı state'i (#115) */

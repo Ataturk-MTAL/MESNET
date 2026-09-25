@@ -37,7 +37,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili admin client
         // When — öğretmen listesi istenir
-        var response = await _fixture.Client.GetAsync("/api/teachers/");
+        var response = await _fixture.Client.GetAsync("/api/teachers/", Ct);
 
         // Then — liste okuma sunucu hatası vermez ve OK döner
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -51,7 +51,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
         var teacherId = Guid.NewGuid();
 
         // When — o öğretmenin detayı istenir
-        var response = await _fixture.Client.GetAsync($"/api/teachers/{teacherId}");
+        var response = await _fixture.Client.GetAsync($"/api/teachers/{teacherId}", Ct);
 
         // Then — null dönüş = 404 (Not Found), sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -63,7 +63,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) client
         // When — yetki gerektiren öğretmen listesi istenir
-        var response = await _fixture.Anonymous.GetAsync("/api/teachers/");
+        var response = await _fixture.Anonymous.GetAsync("/api/teachers/", Ct);
 
         // Then — kimlik doğrulaması zorunlu → 401 (Unauthorized)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -74,7 +74,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili client + boş/geçersiz JSON gövde
         // When — eksik veriyle öğretmen kaydı denenir
-        var response = await _fixture.Client.PostAsync("/api/teachers/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/teachers/", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx) beklenir; mutasyon olmaz, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -96,7 +96,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili admin client
         // When — öğrenci listesi istenir
-        var response = await _fixture.Client.GetAsync("/api/students/");
+        var response = await _fixture.Client.GetAsync("/api/students/", Ct);
 
         // Then — liste okuma sunucu hatası vermez ve OK döner
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -110,7 +110,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
         var studentId = Guid.NewGuid();
 
         // When — o öğrencinin detayı istenir
-        var response = await _fixture.Client.GetAsync($"/api/students/{studentId}");
+        var response = await _fixture.Client.GetAsync($"/api/students/{studentId}", Ct);
 
         // Then — null dönüş = 404 (Not Found), sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -122,7 +122,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) client
         // When — yetki gerektiren öğrenci listesi istenir
-        var response = await _fixture.Anonymous.GetAsync("/api/students/");
+        var response = await _fixture.Anonymous.GetAsync("/api/students/", Ct);
 
         // Then — kimlik doğrulaması zorunlu → 401 (Unauthorized)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -133,7 +133,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili client + boş/geçersiz JSON gövde
         // When — eksik veriyle öğrenci kaydı denenir
-        var response = await _fixture.Client.PostAsync("/api/students/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/students/", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx) beklenir; mutasyon olmaz, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -148,7 +148,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
         var studentId = Guid.NewGuid();
 
         // When — eksik veriyle PATCH ile profil güncelleme denenir
-        var response = await _fixture.Client.PatchAsync($"/api/students/{studentId}", EmptyJson());
+        var response = await _fixture.Client.PatchAsync($"/api/students/{studentId}", EmptyJson(), Ct);
 
         // Then — validation/not-found reddi (4xx); mutasyon olmaz, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -163,8 +163,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
         var studentId = Guid.NewGuid();
 
         // When — deregister denenir (boş gövde → Reason eksik)
-        var response = await _fixture.Client.PostAsync(
-            $"/api/students/{studentId}/deregister", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/students/{studentId}/deregister", EmptyJson(), Ct);
 
         // Then — validation/not-found/domain reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -179,8 +178,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
         var studentId = Guid.NewGuid();
 
         // When — yetki gerektiren deregister endpoint'i çağrılır
-        var response = await _fixture.Anonymous.PostAsync(
-            $"/api/students/{studentId}/deregister", EmptyJson());
+        var response = await _fixture.Anonymous.PostAsync($"/api/students/{studentId}/deregister", EmptyJson(), Ct);
 
         // Then — kimlik doğrulaması zorunlu → 401 (Unauthorized)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -191,7 +189,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili client + boş/geçersiz JSON gövde
         // When — sync-counts boş gövdeyle çağrılır
-        var response = await _fixture.Client.PostAsync("/api/students/sync-counts", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/students/sync-counts", EmptyJson(), Ct);
 
         // Then — validation/işleme sonucu sunucu hatası vermemeli (4xx ya da OK)
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -209,7 +207,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili admin client
         // When — yerleştirme listesi istenir
-        var response = await _fixture.Client.GetAsync("/api/placements/");
+        var response = await _fixture.Client.GetAsync("/api/placements/", Ct);
 
         // Then — liste okuma sunucu hatası vermez ve OK döner
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -223,7 +221,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
         var placementId = Guid.NewGuid();
 
         // When — o yerleştirmenin detayı istenir
-        var response = await _fixture.Client.GetAsync($"/api/placements/{placementId}");
+        var response = await _fixture.Client.GetAsync($"/api/placements/{placementId}", Ct);
 
         // Then — null dönüş = 404 (Not Found), sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -235,7 +233,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) client
         // When — yetki gerektiren yerleştirme listesi istenir
-        var response = await _fixture.Anonymous.GetAsync("/api/placements/");
+        var response = await _fixture.Anonymous.GetAsync("/api/placements/", Ct);
 
         // Then — kimlik doğrulaması zorunlu → 401 (Unauthorized)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -246,7 +244,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili client + boş/geçersiz JSON gövde
         // When — eksik veriyle öğrenci yerleştirme denenir
-        var response = await _fixture.Client.PostAsync("/api/placements/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/placements/", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx) beklenir; mutasyon olmaz, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -261,8 +259,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
         var placementId = Guid.NewGuid();
 
         // When — yerleştirme 'tamamlayamadı' olarak işaretlenmeye çalışılır (boş gövde)
-        var response = await _fixture.Client.PostAsync(
-            $"/api/placements/{placementId}/mark-failed", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/placements/{placementId}/mark-failed", EmptyJson(), Ct);
 
         // Then — not-found/domain reddi (4xx); sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -284,8 +281,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız client
         // When — backfill ucu çağrılır
-        var response = await _fixture.Anonymous.PostAsync(
-            "/api/placements/resync-projections", EmptyJson());
+        var response = await _fixture.Anonymous.PostAsync("/api/placements/resync-projections", EmptyJson(), Ct);
 
         // Then — dağıtım adımı da yetki ister
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -301,15 +297,14 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili client
         // When — backfill çağrılır (idempotent: tüketiciler upsert yapar)
-        var response = await _fixture.Client.PostAsync(
-            "/api/placements/resync-projections", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/placements/resync-projections", EmptyJson(), Ct);
 
         // Then — uç bu yolda vardır ve sunucu hatası vermez
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         // Then — yanıt iki sayacı da taşır
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(Ct);
         body.ShouldContain("placementCount");
         body.ShouldContain("skipped");
     }
@@ -324,7 +319,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili client + boş/geçersiz JSON gövde
         // When — eksik veriyle staj başvurusu denenir
-        var response = await _fixture.Client.PostAsync("/api/internship-applications/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/internship-applications/", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx) beklenir; mutasyon olmaz, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -337,8 +332,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) client
         // When — yetki gerektiren staj başvurusu endpoint'i çağrılır
-        var response = await _fixture.Anonymous.PostAsync(
-            "/api/internship-applications/", EmptyJson());
+        var response = await _fixture.Anonymous.PostAsync("/api/internship-applications/", EmptyJson(), Ct);
 
         // Then — kimlik doğrulaması zorunlu → 401 (Unauthorized)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -349,8 +343,7 @@ public sealed class EnrollmentApiTests(ApiTestFixture fixture)
     {
         // Given — yetkili client + boş/geçersiz JSON gövde
         // When — eksik veriyle işletme öğrenci talebi denenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/internship-applications/request", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/internship-applications/request", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx) beklenir; mutasyon olmaz, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);

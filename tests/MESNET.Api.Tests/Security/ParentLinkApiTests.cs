@@ -30,9 +30,7 @@ public sealed class ParentLinkApiTests(ApiTestFixture fixture)
         var userAccountId = Guid.NewGuid();
 
         // When
-        var response = await _fixture.Client.PostAsync(
-            $"/api/security/users/{userAccountId}/students",
-            Json($$"""{"studentIds":["{{Guid.NewGuid()}}"]}"""));
+        var response = await _fixture.Client.PostAsync($"/api/security/users/{userAccountId}/students", Json($$"""{"studentIds":["{{Guid.NewGuid()}}"]}"""), Ct);
 
         // Then — not-found (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -47,9 +45,7 @@ public sealed class ParentLinkApiTests(ApiTestFixture fixture)
     {
         var userAccountId = Guid.NewGuid();
 
-        var response = await _fixture.Client.PostAsync(
-            $"/api/security/users/{userAccountId}/students",
-            Json("""{"studentIds":[]}"""));
+        var response = await _fixture.Client.PostAsync($"/api/security/users/{userAccountId}/students", Json("""{"studentIds":[]}"""), Ct);
 
         // Kullanıcı yok → 4xx; ama 500 ya da "boş liste geçersiz" tipi bir çökme olmamalı.
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -60,9 +56,7 @@ public sealed class ParentLinkApiTests(ApiTestFixture fixture)
     {
         var userAccountId = Guid.NewGuid();
 
-        var response = await _fixture.Client.PostAsync(
-            $"/api/security/users/{userAccountId}/students",
-            Json("""{"studentIds":["gecersiz-guid"]}"""));
+        var response = await _fixture.Client.PostAsync($"/api/security/users/{userAccountId}/students", Json("""{"studentIds":["gecersiz-guid"]}"""), Ct);
 
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
     }
@@ -70,9 +64,7 @@ public sealed class ParentLinkApiTests(ApiTestFixture fixture)
     [Fact]
     public async Task Kimliksiz_istek_401_doner()
     {
-        var response = await _fixture.Anonymous.PostAsync(
-            $"/api/security/users/{Guid.NewGuid()}/students",
-            Json("""{"studentIds":[]}"""));
+        var response = await _fixture.Anonymous.PostAsync($"/api/security/users/{Guid.NewGuid()}/students", Json("""{"studentIds":[]}"""), Ct);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }

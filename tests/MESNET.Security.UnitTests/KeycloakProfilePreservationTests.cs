@@ -41,7 +41,7 @@ public sealed class KeycloakProfilePreservationTests
     {
         var (service, handler) = CreateService();
 
-        var result = await service.SetUserAttributeValuesAsync(UserId, "branch_codes", ["EET"]);
+        var result = await service.SetUserAttributeValuesAsync(UserId, "branch_codes", ["EET"], TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         var body = handler.LastPutBody.ShouldNotBeNull();
@@ -53,8 +53,7 @@ public sealed class KeycloakProfilePreservationTests
     {
         var (service, handler) = CreateService();
 
-        var result = await service.SetUserAttributesAsync(
-            UserId, new Dictionary<string, string> { ["business_id"] = Guid.NewGuid().ToString() });
+        var result = await service.SetUserAttributesAsync(UserId, new Dictionary<string, string> { ["business_id"] = Guid.NewGuid().ToString() }, TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         var body = handler.LastPutBody.ShouldNotBeNull();
@@ -70,7 +69,7 @@ public sealed class KeycloakProfilePreservationTests
     {
         var (service, handler) = CreateService();
 
-        var result = await service.SetUserAttributeValuesAsync(UserId, "branch_codes", []);
+        var result = await service.SetUserAttributeValuesAsync(UserId, "branch_codes", [], TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
         var body = handler.LastPutBody.ShouldNotBeNull();
@@ -88,7 +87,7 @@ public sealed class KeycloakProfilePreservationTests
     {
         var (service, handler) = CreateService();
 
-        await service.SetUserAttributeValuesAsync(UserId, "branch_codes", ["EET", "MTT"]);
+        await service.SetUserAttributeValuesAsync(UserId, "branch_codes", ["EET", "MTT"], TestContext.Current.CancellationToken);
 
         var attributes = handler.LastPutBody.ShouldNotBeNull().GetProperty("attributes");
 

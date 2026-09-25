@@ -36,7 +36,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var internshipId = Guid.NewGuid();
 
         // When — staj detayı istenir
-        var response = await _fixture.Client.GetAsync($"/api/internships/{internshipId}");
+        var response = await _fixture.Client.GetAsync($"/api/internships/{internshipId}", Ct);
 
         // Then — kayıt yok = geçerli durum (404/422), ASLA sunucu hatası (500) değil
         // (null dönen handler'ın 500'e dönüşmesini yakalayan en kritik test)
@@ -53,7 +53,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         // Given — kimliği doğrulanmış admin kullanıcı (geniş izinli)
 
         // When — staj listesi istenir
-        var response = await _fixture.Client.GetAsync("/api/internships/");
+        var response = await _fixture.Client.GetAsync("/api/internships/", Ct);
 
         // Then — liste okuma her zaman başarılı olmalı (sunucu hatası DEĞİL)
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -68,9 +68,8 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var academicPeriodId = Guid.NewGuid();
 
         // When — filtrelenmiş, sayfalı liste istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/internships/?studentId={studentId}&academicPeriodId={academicPeriodId}" +
-            "&phase=Active&minAbsenceDays=1&page=1&pageSize=10&sortBy=createdAt&descending=true&search=test");
+        var response = await _fixture.Client.GetAsync($"/api/internships/?studentId={studentId}&academicPeriodId={academicPeriodId}" +
+            "&phase=Active&minAbsenceDays=1&page=1&pageSize=10&sortBy=createdAt&descending=true&search=test", Ct);
 
         // Then — eşleşme bulunmasa bile boş sayfalı sonuç döner, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -87,7 +86,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         // Given — kimlik doğrulaması yapılmamış (token'sız) istemci
 
         // When — auth gerektiren liste endpoint'ine istek atılır
-        var response = await _fixture.Anonymous.GetAsync("/api/internships/");
+        var response = await _fixture.Anonymous.GetAsync("/api/internships/", Ct);
 
         // Then — yetkisiz erişim reddedilir (401 Unauthorized)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -100,7 +99,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var internshipId = Guid.NewGuid();
 
         // When — auth gerektiren detay endpoint'ine istek atılır
-        var response = await _fixture.Anonymous.GetAsync($"/api/internships/{internshipId}");
+        var response = await _fixture.Anonymous.GetAsync($"/api/internships/{internshipId}", Ct);
 
         // Then — yetkisiz erişim reddedilir (401 Unauthorized)
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -117,8 +116,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var internshipId = Guid.NewGuid();
 
         // When — fesih talebi gönderilir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/internships/{internshipId}/terminate", EmptyBody());
+        var response = await _fixture.Client.PostAsync($"/api/internships/{internshipId}/terminate", EmptyBody(), Ct);
 
         // Then — validation/iş kuralı reddi (4xx) beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -131,8 +129,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var internshipId = Guid.NewGuid();
 
         // When — fesih endpoint'ine yetkisiz istek atılır
-        var response = await _fixture.Anonymous.PostAsync(
-            $"/api/internships/{internshipId}/terminate", EmptyBody());
+        var response = await _fixture.Anonymous.PostAsync($"/api/internships/{internshipId}/terminate", EmptyBody(), Ct);
 
         // Then — 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -149,8 +146,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var internshipId = Guid.NewGuid();
 
         // When — veli onayı verilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/internships/{internshipId}/approve/parent", EmptyBody());
+        var response = await _fixture.Client.PostAsync($"/api/internships/{internshipId}/approve/parent", EmptyBody(), Ct);
 
         // Then — kayıt yok = iş kuralı reddi (4xx/422), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -167,8 +163,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var internshipId = Guid.NewGuid();
 
         // When — koordinatör öğretmen onayı verilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/internships/{internshipId}/approve/teacher", EmptyBody());
+        var response = await _fixture.Client.PostAsync($"/api/internships/{internshipId}/approve/teacher", EmptyBody(), Ct);
 
         // Then — kayıt yok = iş kuralı reddi, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -185,8 +180,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var internshipId = Guid.NewGuid();
 
         // When — müdür yardımcısı onayı verilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/internships/{internshipId}/approve/deputy", EmptyBody());
+        var response = await _fixture.Client.PostAsync($"/api/internships/{internshipId}/approve/deputy", EmptyBody(), Ct);
 
         // Then — kayıt yok = iş kuralı reddi, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -203,8 +197,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var internshipId = Guid.NewGuid();
 
         // When — müdür onayı verilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/internships/{internshipId}/approve/director", EmptyBody());
+        var response = await _fixture.Client.PostAsync($"/api/internships/{internshipId}/approve/director", EmptyBody(), Ct);
 
         // Then — kayıt yok = iş kuralı reddi, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -221,8 +214,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var internshipId = Guid.NewGuid();
 
         // When — işletme yetkilisi onayı verilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/internships/{internshipId}/approve/business", EmptyBody());
+        var response = await _fixture.Client.PostAsync($"/api/internships/{internshipId}/approve/business", EmptyBody(), Ct);
 
         // Then — kayıt yok = iş kuralı reddi, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -239,8 +231,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var internshipId = Guid.NewGuid();
 
         // When — onay zinciri override edilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/internships/{internshipId}/approve/override", EmptyBody());
+        var response = await _fixture.Client.PostAsync($"/api/internships/{internshipId}/approve/override", EmptyBody(), Ct);
 
         // Then — validation/iş kuralı reddi (4xx) beklenir, sunucu hatası (500) DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -253,8 +244,7 @@ public sealed class InternshipApiTests(ApiTestFixture fixture)
         var internshipId = Guid.NewGuid();
 
         // When — override endpoint'ine yetkisiz istek atılır
-        var response = await _fixture.Anonymous.PostAsync(
-            $"/api/internships/{internshipId}/approve/override", EmptyBody());
+        var response = await _fixture.Anonymous.PostAsync($"/api/internships/{internshipId}/approve/override", EmptyBody(), Ct);
 
         // Then — 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

@@ -8,7 +8,7 @@
 import { computed } from 'vue'
 
 const props = withDefaults(defineProps<{
-  assignedHours: number
+  assignedHours?: number
   availableHours?: number
 }>(), {
   assignedHours: 0,

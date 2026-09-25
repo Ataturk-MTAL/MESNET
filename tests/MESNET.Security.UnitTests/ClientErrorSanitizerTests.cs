@@ -30,7 +30,7 @@ public sealed class ClientErrorSanitizerTests
     {
         var jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NSJ9.abcDEF123-_x";
 
-        var result = ClientErrorSanitizer.Redact($"401 döndü, token: {jwt}");
+        var result = ClientErrorSanitizer.Redact($"401 döndü, token: {jwt}").ShouldNotBeNull();
 
         result.ShouldNotContain(jwt);
         result.ShouldContain(ClientErrorSanitizer.RedactionMarker);
@@ -40,6 +40,7 @@ public sealed class ClientErrorSanitizerTests
     public void Bearer_basligi_gizlenir()
     {
         ClientErrorSanitizer.Redact("Authorization: Bearer abc.def.ghi")
+            .ShouldNotBeNull()
             .ShouldNotContain("abc.def.ghi");
     }
 
@@ -48,7 +49,7 @@ public sealed class ClientErrorSanitizerTests
     [Fact]
     public void Eposta_gizlenir()
     {
-        var result = ClientErrorSanitizer.Redact("kullanıcı ahmet.yilmaz@okul.meb.gov.tr bulunamadı");
+        var result = ClientErrorSanitizer.Redact("kullanıcı ahmet.yilmaz@okul.meb.gov.tr bulunamadı").ShouldNotBeNull();
 
         result.ShouldNotContain("ahmet.yilmaz@okul.meb.gov.tr");
         result.ShouldContain(ClientErrorSanitizer.RedactionMarker);
@@ -62,6 +63,7 @@ public sealed class ClientErrorSanitizerTests
     public void Onbir_haneli_sayi_gizlenir()
     {
         ClientErrorSanitizer.Redact("tcKimlikNo: 12345678901 geçersiz")
+            .ShouldNotBeNull()
             .ShouldNotContain("12345678901");
     }
 
@@ -72,7 +74,7 @@ public sealed class ClientErrorSanitizerTests
     [Fact]
     public void Kisa_sayilar_korunur()
     {
-        var result = ClientErrorSanitizer.Redact("HTTP 401, 3. deneme, satır 214");
+        var result = ClientErrorSanitizer.Redact("HTTP 401, 3. deneme, satır 214").ShouldNotBeNull();
 
         result.ShouldContain("401");
         result.ShouldContain("214");
@@ -96,7 +98,7 @@ public sealed class ClientErrorSanitizerTests
     [Fact]
     public void Uzun_mesaj_kirpilir()
     {
-        var result = ClientErrorSanitizer.Truncate(new string('x', 5000), 1000);
+        var result = ClientErrorSanitizer.Truncate(new string('x', 5000), 1000).ShouldNotBeNull();
 
         result.Length.ShouldBeLessThanOrEqualTo(1000 + ClientErrorSanitizer.TruncationSuffix.Length);
         result.ShouldEndWith(ClientErrorSanitizer.TruncationSuffix);
@@ -125,7 +127,7 @@ public sealed class ClientErrorSanitizerTests
     {
         var uzunVeGizli = "token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.sig " + new string('y', 5000);
 
-        var result = ClientErrorSanitizer.Clean(uzunVeGizli, 1000);
+        var result = ClientErrorSanitizer.Clean(uzunVeGizli, 1000).ShouldNotBeNull();
 
         result!.ShouldNotContain("eyJhbGciOiJIUzI1NiJ9");
         result.Length.ShouldBeLessThanOrEqualTo(1000 + ClientErrorSanitizer.TruncationSuffix.Length);

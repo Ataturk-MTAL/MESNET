@@ -45,7 +45,7 @@ public sealed class TenantStampIntegrityTests(ApiTestFixture fixture)
             cmd.CommandText = $"SELECT count(*) FROM \"{schema}\".\"{table}\" WHERE tenant_id = @t";
             cmd.Parameters.AddWithValue("t", DefaultTenant);
 
-            var count = Convert.ToInt64(await cmd.ExecuteScalarAsync());
+            var count = Convert.ToInt64(await cmd.ExecuteScalarAsync(Ct));
             if (count > 0)
                 offenders.Add($"{schema}.{table} → {count} satır");
         }
@@ -74,7 +74,7 @@ public sealed class TenantStampIntegrityTests(ApiTestFixture fixture)
             WHERE c.conrelid = 'shared.mt_streams'::regclass AND c.contype = 'p'
             """;
 
-        var columns = (await cmd.ExecuteScalarAsync())?.ToString();
+        var columns = (await cmd.ExecuteScalarAsync(Ct))?.ToString();
 
         columns.ShouldBe("tenant_id,id",
             "shared.mt_streams birincil anahtarı (tenant_id, id) olmalı. Değilse "
@@ -103,7 +103,7 @@ public sealed class TenantStampIntegrityTests(ApiTestFixture fixture)
         string warmupPath, string schema, string table, bool shouldBeStamped, string reason)
     {
         // Tabloyu var ettir; yanıtın içeriği önemsiz, sorgunun çalışmış olması yeterli.
-        (await fixture.Client.GetAsync($"{warmupPath}?page=1&pageSize=1"))
+        (await fixture.Client.GetAsync($"{warmupPath}?page=1&pageSize=1", Ct))
             .IsSuccessStatusCode.ShouldBeTrue($"{warmupPath} çağrılamadı; tablo doğrulaması anlamsız olurdu.");
 
         await using var conn = await OpenAsync();
@@ -115,7 +115,7 @@ public sealed class TenantStampIntegrityTests(ApiTestFixture fixture)
         cmd.Parameters.AddWithValue("s", schema);
         cmd.Parameters.AddWithValue("t", table);
 
-        var hasStamp = Convert.ToInt64(await cmd.ExecuteScalarAsync()) > 0;
+        var hasStamp = Convert.ToInt64(await cmd.ExecuteScalarAsync(Ct)) > 0;
 
         hasStamp.ShouldBe(shouldBeStamped,
             $"{schema}.{table} damga durumu beklenenden farklı — {reason}. Damgayı sonradan "

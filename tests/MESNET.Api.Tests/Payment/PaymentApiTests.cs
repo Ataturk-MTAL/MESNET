@@ -36,7 +36,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) istemci
         // When — auth gerektiren liste endpoint'ine istek atılır
-        var response = await _fixture.Anonymous.GetAsync("/api/payments/");
+        var response = await _fixture.Anonymous.GetAsync("/api/payments/", Ct);
 
         // Then — kimlik doğrulama zorunlu → 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -49,7 +49,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
         var id = Guid.NewGuid();
 
         // When — auth gerektiren detay endpoint'ine istek atılır
-        var response = await _fixture.Anonymous.GetAsync($"/api/payments/{id}");
+        var response = await _fixture.Anonymous.GetAsync($"/api/payments/{id}", Ct);
 
         // Then — kimlik doğrulama zorunlu → 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -64,7 +64,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
         var id = Guid.NewGuid();
 
         // When — o ödemenin özeti istenir
-        var response = await _fixture.Client.GetAsync($"/api/payments/{id}");
+        var response = await _fixture.Client.GetAsync($"/api/payments/{id}", Ct);
 
         // Then — kayıt yok = 404/422 beklenir, ASLA 500 (null-return sunucu hatası DEĞİL)
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -77,7 +77,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
     {
         // Given — geçerli token'lı admin istemci (tüm filtreler opsiyonel)
         // When — sayfalı ödeme listesi istenir
-        var response = await _fixture.Client.GetAsync("/api/payments/");
+        var response = await _fixture.Client.GetAsync("/api/payments/", Ct);
 
         // Then — liste okuması başarılı olmalı (en azından sunucu hatası olmamalı)
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -93,7 +93,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
                   "&phase=Pending&page=1&pageSize=10&sortBy=month&descending=true&search=test";
 
         // When — filtreli sayfalı liste istenir
-        var response = await _fixture.Client.GetAsync(url);
+        var response = await _fixture.Client.GetAsync(url, Ct);
 
         // Then — filtreler geçerli → başarılı, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -109,8 +109,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
         var id = Guid.NewGuid();
 
         // When — işletme dekontu yükleme endpoint'ine geçersiz gövdeyle istek atılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/payments/{id}/upload-receipt/business", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/payments/{id}/upload-receipt/business", EmptyJson(), Ct);
 
         // Then — "Multipart form-data bekleniyor" → 400 BadRequest, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -124,8 +123,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
         var id = Guid.NewGuid();
 
         // When — öğrenci dekontu yükleme endpoint'ine geçersiz gövdeyle istek atılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/payments/{id}/upload-receipt/student", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/payments/{id}/upload-receipt/student", EmptyJson(), Ct);
 
         // Then — "Multipart form-data bekleniyor" → 400 BadRequest, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -141,8 +139,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
         var id = Guid.NewGuid();
 
         // When — öğrenci maaş alma onayı endpoint'ine boş gövdeyle istek atılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/payments/{id}/confirm", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/payments/{id}/confirm", EmptyJson(), Ct);
 
         // Then — validation/domain reddi (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -155,8 +152,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
         var id = Guid.NewGuid();
 
         // When — koordinatör öğretmen dekont onayı endpoint'ine boş gövdeyle istek atılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/payments/{id}/approve/teacher", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/payments/{id}/approve/teacher", EmptyJson(), Ct);
 
         // Then — validation/domain reddi (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -169,8 +165,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
         var id = Guid.NewGuid();
 
         // When — müdür yardımcısı dekont onayı endpoint'ine boş gövdeyle istek atılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/payments/{id}/approve/deputy", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/payments/{id}/approve/deputy", EmptyJson(), Ct);
 
         // Then — validation/domain reddi (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -183,8 +178,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
         var id = Guid.NewGuid();
 
         // When — dekont reddi endpoint'ine boş gövdeyle istek atılır
-        var response = await _fixture.Client.PostAsync(
-            $"/api/payments/{id}/reject", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/payments/{id}/reject", EmptyJson(), Ct);
 
         // Then — validation/domain reddi (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -197,8 +191,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
     {
         // Given — boş/geçersiz JSON gövde (geçerli asgari ücret parametreleri yok)
         // When — asgari ücret güncelleme endpoint'ine boş gövdeyle istek atılır
-        var response = await _fixture.Client.PutAsync(
-            "/api/payments/config/minimum-wage", EmptyJson());
+        var response = await _fixture.Client.PutAsync("/api/payments/config/minimum-wage", EmptyJson(), Ct);
 
         // Then — validation/domain reddi (4xx) beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -209,8 +202,7 @@ public sealed class PaymentApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) istemci
         // When — auth gerektiren parametre güncelleme endpoint'ine istek atılır
-        var response = await _fixture.Anonymous.PutAsync(
-            "/api/payments/config/minimum-wage", EmptyJson());
+        var response = await _fixture.Anonymous.PutAsync("/api/payments/config/minimum-wage", EmptyJson(), Ct);
 
         // Then — kimlik doğrulama zorunlu → 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

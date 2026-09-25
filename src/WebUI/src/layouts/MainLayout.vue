@@ -17,7 +17,9 @@
         >
           <q-tooltip>Menüyü aç/kapat</q-tooltip>
         </q-btn>
-        <q-toolbar-title class="baslik-daralmaz">MESNET</q-toolbar-title>
+        <q-toolbar-title class="baslik-daralmaz">
+          MESNET
+        </q-toolbar-title>
 
         <!--
           Bağlam göstergesi — HEADER'DA, "MESNET"in hemen sağında (ürün ilkesi #3: kapsam her

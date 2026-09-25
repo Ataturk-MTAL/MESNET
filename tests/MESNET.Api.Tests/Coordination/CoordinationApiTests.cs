@@ -40,8 +40,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var teacherId = Guid.NewGuid();
 
         // When — program stream özetleri istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/teachers/{teacherId}/schedule/streams");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/teachers/{teacherId}/schedule/streams", Ct);
 
         // Then — boş liste geçerlidir; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -54,8 +53,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var teacherId = Guid.NewGuid();
 
         // When — program geçmişi istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/teachers/{teacherId}/schedule/history");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/teachers/{teacherId}/schedule/history", Ct);
 
         // Then — 404/200 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -68,8 +66,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var teacherId = Guid.NewGuid();
 
         // When — yıl ve dönem ile ders programı istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/teachers/{teacherId}/schedule?year=2025&semester=Fall");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/teachers/{teacherId}/schedule?year=2025&semester=Fall", Ct);
 
         // Then — null-return 500 bug'ı yakalanır; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -82,8 +79,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var teacherId = Guid.NewGuid();
 
         // When — boş JSON ile ders programı kaydedilmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/coordination/teachers/{teacherId}/schedule", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/coordination/teachers/{teacherId}/schedule", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL (mutasyon olmaz)
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -96,8 +92,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var teacherId = Guid.NewGuid();
 
         // When — boş slotlar istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/teachers/{teacherId}/free-slots?year=2025&semester=Fall");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/teachers/{teacherId}/free-slots?year=2025&semester=Fall", Ct);
 
         // Then — boş liste geçerlidir; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -110,8 +105,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var teacherId = Guid.NewGuid();
 
         // When — boş JSON ile işletme ataması yapılmak istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/coordination/teachers/{teacherId}/assign-business", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/coordination/teachers/{teacherId}/assign-business", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -124,8 +118,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var teacherId = Guid.NewGuid();
 
         // When — iş yükü istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/teachers/{teacherId}/workload");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/teachers/{teacherId}/workload", Ct);
 
         // Then — 404/200 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -139,9 +132,8 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var academicPeriodId = Guid.NewGuid();
 
         // When — öğretmen özeti istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/teachers/{teacherId}/overview" +
-            $"?academicPeriodId={academicPeriodId}&semester=Fall");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/teachers/{teacherId}/overview" +
+            $"?academicPeriodId={academicPeriodId}&semester=Fall", Ct);
 
         // Then — sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -151,7 +143,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Koordinatorluk_yapilandirmasi_okunur()
     {
         // When — koordinatörlük config istenir (institution claim token'dan gelir)
-        var response = await _fixture.Client.GetAsync("/api/coordination/teachers/config");
+        var response = await _fixture.Client.GetAsync("/api/coordination/teachers/config", Ct);
 
         // Then — sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -161,8 +153,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Koordinatorluk_yapilandirmasi_bos_govdeyle_reddedilir()
     {
         // When — boş JSON ile config güncellenmek istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/coordination/teachers/config", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/coordination/teachers/config", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -172,7 +163,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Atama_icin_isletmeler_listelenir()
     {
         // When — atama listesi istenir (tüm filtreler opsiyonel)
-        var response = await _fixture.Client.GetAsync("/api/coordination/teachers/assignments");
+        var response = await _fixture.Client.GetAsync("/api/coordination/teachers/assignments", Ct);
 
         // Then — boş liste geçerlidir; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -182,8 +173,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Isletme_atama_bos_govdeyle_reddedilir()
     {
         // When — boş JSON ile işletme atanmak istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/coordination/teachers/assignments", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/coordination/teachers/assignments", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -196,8 +186,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — atama kaldırılmak istenir
-        var response = await _fixture.Client.DeleteAsync(
-            $"/api/coordination/teachers/assignments/{businessId}");
+        var response = await _fixture.Client.DeleteAsync($"/api/coordination/teachers/assignments/{businessId}", Ct);
 
         // Then — not-found/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -210,8 +199,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — PATCH ile saat güncellenmek istenir
-        var response = await _fixture.Client.PatchAsync(
-            $"/api/coordination/teachers/assignments/{businessId}/hours", EmptyJson());
+        var response = await _fixture.Client.PatchAsync($"/api/coordination/teachers/assignments/{businessId}/hours", EmptyJson(), Ct);
 
         // Then — validation/not-found (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -224,8 +212,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — slot ataması kaldırılmak istenir
-        var response = await _fixture.Client.DeleteAsync(
-            $"/api/coordination/teachers/assignments/{businessId}/slot?day=Monday&periodNumber=1");
+        var response = await _fixture.Client.DeleteAsync($"/api/coordination/teachers/assignments/{businessId}/slot?day=Monday&periodNumber=1", Ct);
 
         // Then — not-found/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -238,8 +225,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — manuel mesafe ayarlanmak istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/coordination/teachers/assignments/{businessId}/distance", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/coordination/teachers/assignments/{businessId}/distance", EmptyJson(), Ct);
 
         // Then — validation/not-found (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -252,8 +238,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var businessId = Guid.NewGuid();
 
         // When — atama geçmişi istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/teachers/assignments/{businessId}/history");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/teachers/assignments/{businessId}/history", Ct);
 
         // Then — boş liste/not-found beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -263,7 +248,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Koordinatorluk_ozeti_istenince_500_donmez()
     {
         // When — koordinatörlük özeti istenir
-        var response = await _fixture.Client.GetAsync("/api/coordination/teachers/summary");
+        var response = await _fixture.Client.GetAsync("/api/coordination/teachers/summary", Ct);
 
         // Then — sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -276,9 +261,8 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var academicPeriodId = Guid.NewGuid();
 
         // When — tüm öğretmenlerin özeti istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/teachers/overview-all" +
-            $"?academicPeriodId={academicPeriodId}&semester=Fall");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/teachers/overview-all" +
+            $"?academicPeriodId={academicPeriodId}&semester=Fall", Ct);
 
         // Then — boş liste geçerlidir; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -289,8 +273,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     {
         // Given — zorunlu epsMeters + minPoints query parametreleri
         // When — DBSCAN tabanlı işletme kümeleri istenir
-        var response = await _fixture.Client.GetAsync(
-            "/api/coordination/teachers/business-clusters?epsMeters=500&minPoints=2");
+        var response = await _fixture.Client.GetAsync("/api/coordination/teachers/business-clusters?epsMeters=500&minPoints=2", Ct);
 
         // Then — boş liste geçerlidir; sunucu hatası DEĞİL (PostGIS raw SQL yolu)
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -300,8 +283,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Mesafe_yeniden_hesaplama_500_donmez()
     {
         // When — mesafeler yeniden hesaplanmak istenir (gövdesiz POST)
-        var response = await _fixture.Client.PostAsync(
-            "/api/coordination/teachers/recalculate-distances", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/coordination/teachers/recalculate-distances", EmptyJson(), Ct);
 
         // Then — sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -314,9 +296,8 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var academicPeriodId = Guid.NewGuid();
 
         // When — alan ders yükü config istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/teachers/branch-workload/MAK" +
-            $"?academicPeriodId={academicPeriodId}&educationType=Normal");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/teachers/branch-workload/MAK" +
+            $"?academicPeriodId={academicPeriodId}&educationType=Normal", Ct);
 
         // Then — boş/not-found geçerlidir; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -327,8 +308,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     {
         // Given — branchCode rota parametresi + boş gövde
         // When — PUT ile config güncellenmek istenir
-        var response = await _fixture.Client.PutAsync(
-            "/api/coordination/teachers/branch-workload/MAK", EmptyJson());
+        var response = await _fixture.Client.PutAsync("/api/coordination/teachers/branch-workload/MAK", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -342,9 +322,8 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var academicPeriodId = Guid.NewGuid();
 
         // When — güncel ders programı istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/teachers/{teacherId}/schedule/current" +
-            $"?academicPeriodId={academicPeriodId}&semester=Fall");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/teachers/{teacherId}/schedule/current" +
+            $"?academicPeriodId={academicPeriodId}&semester=Fall", Ct);
 
         // Then — "program yok" geçerli boş durumdur (404); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -358,8 +337,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Haftalik_ziyaret_planlari_listelenir()
     {
         // When — ziyaret planları (sayfalı) istenir
-        var response = await _fixture.Client.GetAsync(
-            "/api/coordination/weekly-visits/plans?page=1&pageSize=20");
+        var response = await _fixture.Client.GetAsync("/api/coordination/weekly-visits/plans?page=1&pageSize=20", Ct);
 
         // Then — boş sayfa geçerlidir; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -369,8 +347,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Haftalik_ziyaret_olusturma_bos_govdeyle_reddedilir()
     {
         // When — boş JSON ile plan oluşturulmak istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/coordination/weekly-visits/generate", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/coordination/weekly-visits/generate", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -383,8 +360,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var planId = Guid.NewGuid();
 
         // When — plan silinmek istenir
-        var response = await _fixture.Client.DeleteAsync(
-            $"/api/coordination/weekly-visits/plans/{planId}");
+        var response = await _fixture.Client.DeleteAsync($"/api/coordination/weekly-visits/plans/{planId}", Ct);
 
         // Then — not-found/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -397,8 +373,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var planId = Guid.NewGuid();
 
         // When — plan atamaları (sayfalı) istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/weekly-visits/plans/{planId}/assignments");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/weekly-visits/plans/{planId}/assignments", Ct);
 
         // Then — boş sayfa/not-found geçerlidir; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -411,8 +386,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var planId = Guid.NewGuid();
 
         // When — boş JSON ile atama eklenmek istenir
-        var response = await _fixture.Client.PostAsync(
-            $"/api/coordination/weekly-visits/plans/{planId}/assignments", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/coordination/weekly-visits/plans/{planId}/assignments", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -426,8 +400,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var assignmentId = Guid.NewGuid();
 
         // When — atama silinmek istenir
-        var response = await _fixture.Client.DeleteAsync(
-            $"/api/coordination/weekly-visits/plans/{planId}/assignments/{assignmentId}");
+        var response = await _fixture.Client.DeleteAsync($"/api/coordination/weekly-visits/plans/{planId}/assignments/{assignmentId}", Ct);
 
         // Then — not-found/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -437,8 +410,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Ziyaret_olaylarini_yeniden_senkronize_etme_bos_govdeyle_reddedilir()
     {
         // When — boş JSON ile resync istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/coordination/weekly-visits/resync", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/coordination/weekly-visits/resync", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -452,8 +424,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Beceri_sinavlari_listelenir()
     {
         // When — beceri sınavları (sayfalı) istenir
-        var response = await _fixture.Client.GetAsync(
-            "/api/coordination/skill-exams?page=1&pageSize=20");
+        var response = await _fixture.Client.GetAsync("/api/coordination/skill-exams?page=1&pageSize=20", Ct);
 
         // Then — boş sayfa geçerlidir; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -466,8 +437,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var examId = Guid.NewGuid();
 
         // When — sınav detayı istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/skill-exams/{examId}");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/skill-exams/{examId}", Ct);
 
         // Then — null-return 500 bug'ı yakalanır; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -477,8 +447,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Beceri_sinavi_olusturma_bos_govdeyle_reddedilir()
     {
         // When — boş JSON ile sınav oluşturulmak istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/coordination/skill-exams/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/coordination/skill-exams/", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -491,8 +460,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var examId = Guid.NewGuid();
 
         // When — PUT ile sınav güncellenmek istenir
-        var response = await _fixture.Client.PutAsync(
-            $"/api/coordination/skill-exams/{examId}", EmptyJson());
+        var response = await _fixture.Client.PutAsync($"/api/coordination/skill-exams/{examId}", EmptyJson(), Ct);
 
         // Then — validation/not-found (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -506,8 +474,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Rehberlik_ziyaretleri_listelenir()
     {
         // When — rehberlik ziyaretleri (sayfalı) istenir
-        var response = await _fixture.Client.GetAsync(
-            "/api/coordination/guidance-visits?page=1&pageSize=20");
+        var response = await _fixture.Client.GetAsync("/api/coordination/guidance-visits?page=1&pageSize=20", Ct);
 
         // Then — boş sayfa geçerlidir; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -520,8 +487,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var visitId = Guid.NewGuid();
 
         // When — ziyaret detayı istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/guidance-visits/{visitId}");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/guidance-visits/{visitId}", Ct);
 
         // Then — null-return 500 bug'ı yakalanır; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -531,8 +497,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Rehberlik_ziyareti_olusturma_bos_govdeyle_reddedilir()
     {
         // When — boş JSON ile ziyaret oluşturulmak istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/coordination/guidance-visits/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/coordination/guidance-visits/", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -545,8 +510,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var visitId = Guid.NewGuid();
 
         // When — PUT ile ziyaret güncellenmek istenir
-        var response = await _fixture.Client.PutAsync(
-            $"/api/coordination/guidance-visits/{visitId}", EmptyJson());
+        var response = await _fixture.Client.PutAsync($"/api/coordination/guidance-visits/{visitId}", EmptyJson(), Ct);
 
         // Then — validation/not-found (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -559,8 +523,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var visitId = Guid.NewGuid();
 
         // When — ziyaret submit edilmek istenir (gövdesiz)
-        var response = await _fixture.Client.PostAsync(
-            $"/api/coordination/guidance-visits/{visitId}/submit", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/coordination/guidance-visits/{visitId}/submit", EmptyJson(), Ct);
 
         // Then — not-found/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -573,8 +536,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var visitId = Guid.NewGuid();
 
         // When — ziyaret approve edilmek istenir (gövdesiz)
-        var response = await _fixture.Client.PostAsync(
-            $"/api/coordination/guidance-visits/{visitId}/approve", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/coordination/guidance-visits/{visitId}/approve", EmptyJson(), Ct);
 
         // Then — not-found/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -588,8 +550,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Isletme_degerlendirmeleri_listelenir()
     {
         // When — işletme değerlendirmeleri (sayfalı) istenir
-        var response = await _fixture.Client.GetAsync(
-            "/api/coordination/business-evaluations?page=1&pageSize=20");
+        var response = await _fixture.Client.GetAsync("/api/coordination/business-evaluations?page=1&pageSize=20", Ct);
 
         // Then — boş sayfa geçerlidir; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -602,8 +563,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var evaluationId = Guid.NewGuid();
 
         // When — değerlendirme detayı istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/business-evaluations/{evaluationId}");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/business-evaluations/{evaluationId}", Ct);
 
         // Then — null-return 500 bug'ı yakalanır; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -613,8 +573,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Isletme_degerlendirmesi_olusturma_bos_govdeyle_reddedilir()
     {
         // When — boş JSON ile değerlendirme oluşturulmak istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/coordination/business-evaluations/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/coordination/business-evaluations/", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -627,8 +586,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var evaluationId = Guid.NewGuid();
 
         // When — PUT ile değerlendirme güncellenmek istenir
-        var response = await _fixture.Client.PutAsync(
-            $"/api/coordination/business-evaluations/{evaluationId}", EmptyJson());
+        var response = await _fixture.Client.PutAsync($"/api/coordination/business-evaluations/{evaluationId}", EmptyJson(), Ct);
 
         // Then — validation/not-found (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -642,8 +600,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Aylik_faaliyet_raporlari_listelenir()
     {
         // When — aylık faaliyet raporları (sayfalı) istenir
-        var response = await _fixture.Client.GetAsync(
-            "/api/coordination/activity-reports?page=1&pageSize=20");
+        var response = await _fixture.Client.GetAsync("/api/coordination/activity-reports?page=1&pageSize=20", Ct);
 
         // Then — boş sayfa geçerlidir; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -656,8 +613,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var reportId = Guid.NewGuid();
 
         // When — rapor detayı istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/activity-reports/{reportId}");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/activity-reports/{reportId}", Ct);
 
         // Then — null-return 500 bug'ı yakalanır; sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -667,8 +623,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     public async Task Aylik_faaliyet_raporu_olusturma_bos_govdeyle_reddedilir()
     {
         // When — boş JSON ile rapor oluşturulmak istenir
-        var response = await _fixture.Client.PostAsync(
-            "/api/coordination/activity-reports/", EmptyJson());
+        var response = await _fixture.Client.PostAsync("/api/coordination/activity-reports/", EmptyJson(), Ct);
 
         // Then — validation reddi (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -681,8 +636,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var reportId = Guid.NewGuid();
 
         // When — PUT ile rapor güncellenmek istenir
-        var response = await _fixture.Client.PutAsync(
-            $"/api/coordination/activity-reports/{reportId}", EmptyJson());
+        var response = await _fixture.Client.PutAsync($"/api/coordination/activity-reports/{reportId}", EmptyJson(), Ct);
 
         // Then — validation/not-found (4xx); sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -695,8 +649,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var reportId = Guid.NewGuid();
 
         // When — rapor submit edilmek istenir (gövdesiz)
-        var response = await _fixture.Client.PostAsync(
-            $"/api/coordination/activity-reports/{reportId}/submit", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/coordination/activity-reports/{reportId}/submit", EmptyJson(), Ct);
 
         // Then — not-found/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -709,8 +662,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
         var reportId = Guid.NewGuid();
 
         // When — rapor approve edilmek istenir (gövdesiz)
-        var response = await _fixture.Client.PostAsync(
-            $"/api/coordination/activity-reports/{reportId}/approve", EmptyJson());
+        var response = await _fixture.Client.PostAsync($"/api/coordination/activity-reports/{reportId}/approve", EmptyJson(), Ct);
 
         // Then — not-found/422 beklenir, sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
@@ -725,8 +677,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) client
         // When — atama listesi istenir
-        var response = await _fixture.Anonymous.GetAsync(
-            "/api/coordination/teachers/assignments");
+        var response = await _fixture.Anonymous.GetAsync("/api/coordination/teachers/assignments", Ct);
 
         // Then — kimlik doğrulama gerekir → 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -737,8 +688,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) client
         // When — ziyaret planları istenir
-        var response = await _fixture.Anonymous.GetAsync(
-            "/api/coordination/weekly-visits/plans");
+        var response = await _fixture.Anonymous.GetAsync("/api/coordination/weekly-visits/plans", Ct);
 
         // Then — 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -749,8 +699,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) client
         // When — beceri sınavları istenir
-        var response = await _fixture.Anonymous.GetAsync(
-            "/api/coordination/skill-exams");
+        var response = await _fixture.Anonymous.GetAsync("/api/coordination/skill-exams", Ct);
 
         // Then — 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -761,8 +710,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) client
         // When — rehberlik ziyaretleri istenir
-        var response = await _fixture.Anonymous.GetAsync(
-            "/api/coordination/guidance-visits");
+        var response = await _fixture.Anonymous.GetAsync("/api/coordination/guidance-visits", Ct);
 
         // Then — 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -773,8 +721,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) client
         // When — işletme değerlendirmeleri istenir
-        var response = await _fixture.Anonymous.GetAsync(
-            "/api/coordination/business-evaluations");
+        var response = await _fixture.Anonymous.GetAsync("/api/coordination/business-evaluations", Ct);
 
         // Then — 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -785,8 +732,7 @@ public sealed class CoordinationApiTests(ApiTestFixture fixture)
     {
         // Given — token'sız (anonim) client
         // When — aylık faaliyet raporları istenir
-        var response = await _fixture.Anonymous.GetAsync(
-            "/api/coordination/activity-reports");
+        var response = await _fixture.Anonymous.GetAsync("/api/coordination/activity-reports", Ct);
 
         // Then — 401 Unauthorized
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

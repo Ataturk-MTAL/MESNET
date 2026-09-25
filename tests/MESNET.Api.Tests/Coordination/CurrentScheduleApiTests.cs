@@ -22,9 +22,8 @@ public sealed class CurrentScheduleApiTests(ApiTestFixture fixture)
         var academicPeriodId = Guid.NewGuid();
 
         // When — o öğretmen/dönem için güncel ders programı istenir
-        var response = await _fixture.Client.GetAsync(
-            $"/api/coordination/teachers/{teacherId}/schedule/current" +
-            $"?academicPeriodId={academicPeriodId}&semester=Fall");
+        var response = await _fixture.Client.GetAsync($"/api/coordination/teachers/{teacherId}/schedule/current" +
+            $"?academicPeriodId={academicPeriodId}&semester=Fall", Ct);
 
         // Then — program yok = geçerli boş durum → 404 (Not Found), sunucu hatası DEĞİL
         response.StatusCode.ShouldNotBe(HttpStatusCode.InternalServerError);
