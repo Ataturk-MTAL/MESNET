@@ -12,8 +12,8 @@
     </div>
 
     <!-- Filtreler -->
-    <div class="row q-col-gutter-md q-mb-lg items-end">
-      <div class="col-12 col-sm-3">
+    <div class="row q-col-gutter-md q-mb-lg items-center">
+      <div class="col-12 col-sm-6 col-md-5">
         <!-- Yazma bağlamı (#126): atama/saat değişikliği yapılan sayfa — yetkisiz alan listelenmez -->
         <BranchSelector
           v-model="branchFilter"
@@ -22,7 +22,7 @@
         />
       </div>
 
-      <div class="col-12 col-sm-3">
+      <div class="col-12 col-sm-6 col-md-5">
         <TeacherSelector
           v-model="selectedTeacherId"
           :branch-code="branchFilter"
@@ -30,12 +30,13 @@
           @update:model-value="onTeacherChange"
         />
       </div>
-      <div class="col-12 col-sm-auto q-gutter-sm">
+      <div class="col-12 col-md-2">
         <q-btn
           unelevated
           color="primary"
           icon="save"
           label="Kaydet"
+          class="full-width filter-action"
           :loading="saving"
           :disable="pendingChanges.length === 0 || periodStore.isReadOnly"
           @click="saveAll"
@@ -1068,6 +1069,11 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Kaydet, yanındaki outlined q-select'lerle aynı yükseklikte dursun (Quasar alan yüksekliği 56px). */
+.filter-action {
+  min-height: 56px;
+}
+
 /* Ekran okuyucuya açık, görsel olarak gizli — aria-live duyuruları için (#88).
    display:none veya visibility:hidden KULLANILMAZ; ikisi de içeriği erişilebilirlik
    ağacından çıkarır ve duyuru hiç okunmaz. */
