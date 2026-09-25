@@ -26,7 +26,8 @@ if command -v pg_isready &>/dev/null; then
 fi
 
 echo "[1/2] Build ediliyor..."
-dotnet build "$ROOT_DIR/MESNET.slnx" -c "$CONFIG" --no-incremental -q
+# -q değil -v:m: SDK 10.0.401 sessiz modu bilgi mesajlarını hata sayıyor (bkz. run-apphost.sh).
+dotnet build "$ROOT_DIR/MESNET.slnx" -c "$CONFIG" --no-incremental -v:m
 
 echo "[2/2] API başlatılıyor..."
 ASPNETCORE_ENVIRONMENT=Development dotnet run --project "$API_DIR" -c "$CONFIG" --no-build

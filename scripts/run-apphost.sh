@@ -27,7 +27,10 @@ if ! podman info &>/dev/null; then
 fi
 
 echo "[1/2] Build ediliyor..."
-dotnet build "$ROOT_DIR/MESNET.slnx" -c "$CONFIG" --no-incremental -q
+# -q DEĞİL, -v:m: .NET SDK 10.0.401'in sessiz modu sıradan bilgi mesajlarını ("Building target
+# ... completely", MSB3492) HATA olarak raporluyor ve çıkış kodu 1 veriyor (ölçüldü: aynı derleme
+# -v:m ile 0 hata, -q ile 72). Sessiz mod geri alınmadan önce SDK sürümü doğrulanmalı.
+dotnet build "$ROOT_DIR/MESNET.slnx" -c "$CONFIG" --no-incremental -v:m
 
 echo "[2/2] Aspire AppHost başlatılıyor..."
 dotnet run --project "$APPHOST_DIR" -c "$CONFIG"
