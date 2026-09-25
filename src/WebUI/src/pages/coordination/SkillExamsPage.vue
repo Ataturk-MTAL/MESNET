@@ -28,7 +28,8 @@ import { computed } from 'vue'
 import type { QTableProps } from 'quasar'
 import { coordinationApi, type SkillExamDto } from 'src/api/coordination'
 import { useServerPagination } from 'src/composables/useServerPagination'
-import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useEntityNames } from 'src/composables/useEntityNames'
+import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
 import AppTable from 'components/AppTable.vue'
 import PageHeader from 'components/PageHeader.vue'
 import StatusBadge from 'components/StatusBadge.vue'
@@ -45,10 +46,19 @@ const { rows: exams, loading: loadingExams, pagination: examsPagination, onReque
   defaultDescending: true,
 })
 
+const names = useEntityNames()
+names.load().catch(() => {})
+
 const examColumns: QTableProps['columns'] = [
+  { name: 'student', label: 'Öğrenci', field: (row) => names.studentName((row as SkillExamDto).studentId), align: 'left' },
+  { name: 'business', label: 'İşletme', field: (row) => names.businessName((row as SkillExamDto).businessId), align: 'left' },
   { name: 'examDate', label: 'Sınav Tarihi', field: 'examDate', align: 'left', sortable: true },
   { name: 'academicYear', label: 'Yıl', field: 'academicYear', align: 'left' },
-  { name: 'semester', label: 'Dönem', field: (row) => (row as SkillExamDto).semester === 'Fall' ? 'Güz' : 'Bahar', align: 'left' },
+  // MEB terimi: "1. Dönem" / "2. Dönem" (Güz/Bahar değil). Tek kaynak: semesterOptions.
+  {
+    name: 'semester', label: 'Dönem', align: 'left',
+    field: (row) => semesterOptions.find((o) => o.value === (row as SkillExamDto).semester)?.label ?? (row as SkillExamDto).semester,
+  },
   { name: 'score', label: 'Puan', field: 'score', align: 'center' },
   { name: 'result', label: 'Sonuç', field: 'result', align: 'left' },
 ]

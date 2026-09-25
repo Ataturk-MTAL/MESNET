@@ -56,6 +56,7 @@ import type { QTableProps } from 'quasar'
 import { coordinationApi, type MonthlyActivityReportDto } from 'src/api/coordination'
 import { useNotify } from 'src/composables/useNotify'
 import { useServerPagination } from 'src/composables/useServerPagination'
+import { useEntityNames } from 'src/composables/useEntityNames'
 import { Permissions } from 'utils/permissions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import AppTable from 'components/AppTable.vue'
@@ -78,9 +79,20 @@ const { rows: activityReports, loading: loadingReports, pagination: reportsPagin
   defaultDescending: true,
 })
 
+const names = useEntityNames()
+names.load().catch(() => {})
+
+const monthFormat = new Intl.DateTimeFormat('tr-TR', { month: 'long' })
+
 const reportColumns: QTableProps['columns'] = [
+  { name: 'student', label: 'Öğrenci', field: (row) => names.studentName((row as MonthlyActivityReportDto).studentId), align: 'left' },
+  { name: 'business', label: 'İşletme', field: (row) => names.businessName((row as MonthlyActivityReportDto).businessId), align: 'left' },
   { name: 'year', label: 'Yıl', field: 'year', align: 'left' },
-  { name: 'month', label: 'Ay', field: 'month', align: 'left' },
+  {
+    name: 'month', label: 'Ay', field: 'month', align: 'left',
+    // Ay adı (ör. "Eylül"); sıralama yine sayısal alan üzerinden çalışır.
+    format: (month: number) => monthFormat.format(new Date(2000, month - 1, 1)),
+  },
   { name: 'status', label: 'Durum', field: 'status', align: 'left' },
   { name: 'reportActions', label: '', field: 'id', align: 'right' },
 ]
