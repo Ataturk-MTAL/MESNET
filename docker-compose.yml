@@ -49,6 +49,9 @@ services:
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      # Depo servisi minio → rustfs oldu. Ortam değişkeni, kurulumlarda örnekten kopyalanmış
+      # appsettings.Production.json'daki eski "minio:9000"ı ezer.
+      MinioStorage__Endpoint: rustfs:9000
       FRONTEND_URL: ${FRONTEND_URL}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
@@ -57,7 +60,7 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      minio:
+      rustfs:
         condition: service_healthy
     restart: unless-stopped
 
@@ -125,21 +128,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ── MinIO ──────────────────────────────────────────────────────
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address :9001
+  # ── RustFS (S3) ────────────────────────────────────────────────
+  # MinIO imajları Docker Hub/quay.io'dan kaldırıldı (Eylül 2026). RustFS aynı portlarda S3 konuşur.
+  # .env adları (MINIO_ROOT_*) mevcut kurulumlar bozulmasın diye korundu.
+  rustfs:
+    image: rustfs/rustfs:1.0.0
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      RUSTFS_ACCESS_KEY: ${MINIO_ROOT_USER}
+      RUSTFS_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
     volumes:
-      - minio-data:/data
+      - rustfs-data:/data
     expose:
       - "9000"
     ports:
-      - "9001:9001"    # MinIO Console — production'da kapat
+      - "9001:9001"    # RustFS konsolu — production'da kapat
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/health"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -149,6 +153,6 @@ services:
 volumes:
   postgres-data:
   rabbitmq-data:
-  minio-data:
+  rustfs-data:
   caddy-data:      # Caddy ACME sertifikaları (kalıcı)
   caddy-config:

@@ -1097,3 +1097,62 @@ Kod düzeltildi ama **geçmiş kendiliğinden düzelmez**, çünkü olaylar bir 
 
 > **Atlanırsa:** stajlar sözleşmeleriyle bağlanmaz, `AwaitingContract` durumunda çakılı kalır ve
 > hangi saga'nın gerçek olduğu belirsizleşir. Hata görünmez; yalnız fesih ve kapanış hiç çalışmaz.
+
+## MinIO → RustFS: dekont dosyaları elle taşınır
+
+MinIO imajları Docker Hub ve quay.io'dan **kaldırıldı** (Eylül 2026, ölçüldü: her etiket
+`pull access denied`). Nesne deposu **RustFS** oldu; uygulama Minio .NET SDK ile standart S3
+konuştuğu için kod değişmedi. Değişen: servis adı (`minio` → `rustfs`), imaj ve volume.
+
+**Veri kendiliğinden taşınmaz.** RustFS yeni `rustfs-data` volume'unu kullanır; eski
+`minio-data` silinmez ama okunmaz da. Taşıma yapılmadan yükseltilen kurulumda eski dekontların
+indirme bağlantıları **404** verir — hata yeni yüklemede değil, eski kaydı açınca çıkar.
+
+Yeni kurulumda bu adım yoktur. Mevcut kurulumda, yükseltmeden **sonra** ve API'yi açmadan önce:
+
+```bash
+cd /opt/mesnet            # deploy/compose.yml'nin bulunduğu dizin (proje adı: mesnet)
+set -a; . ./.env; set +a  # MINIO_ROOT_USER / MINIO_ROOT_PASSWORD
+
+# 1) Yazmayı durdur — taşıma sırasında yeni dekont gelmesin
+docker compose stop api
+
+# 2) Hedefi aç (yeni, boş)
+docker compose up -d --wait rustfs
+
+# 3) Eski MinIO'yu eski volume ile GEÇİCİ aç. İmaj artık çekilemez; sunucuda önbellekteki
+#    sürüm kullanılır (yoksa: docker save/load ile başka makineden getirin).
+docker run -d --rm --name minio-old --network mesnet_default \
+  -e MINIO_ROOT_USER="$MINIO_ROOT_USER" -e MINIO_ROOT_PASSWORD="$MINIO_ROOT_PASSWORD" \
+  -v mesnet_minio-data:/data minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+
+# 4) Kopyala ve doğrula. --metadata ŞART: content-type ve uygulamanın yazdığı meta veri
+#    (form-type, generated-by, ...) onunla taşınır.
+rc() { docker run --rm --network mesnet_default \
+  -e RCLONE_CONFIG_SRC_TYPE=s3 -e RCLONE_CONFIG_SRC_PROVIDER=Minio \
+  -e RCLONE_CONFIG_SRC_ENDPOINT=http://minio-old:9000 \
+  -e RCLONE_CONFIG_SRC_ACCESS_KEY_ID="$MINIO_ROOT_USER" -e RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY="$MINIO_ROOT_PASSWORD" \
+  -e RCLONE_CONFIG_DST_TYPE=s3 -e RCLONE_CONFIG_DST_PROVIDER=Other -e RCLONE_CONFIG_DST_FORCE_PATH_STYLE=true \
+  -e RCLONE_CONFIG_DST_ENDPOINT=http://rustfs:9000 \
+  -e RCLONE_CONFIG_DST_ACCESS_KEY_ID="$MINIO_ROOT_USER" -e RCLONE_CONFIG_DST_SECRET_ACCESS_KEY="$MINIO_ROOT_PASSWORD" \
+  rclone/rclone:latest "$@"; }
+rc sync src: dst: --metadata
+rc check src: dst: --one-way      # beklenen: "0 differences found"
+
+# 5) Eskiyi kapat, uygulamayı aç
+docker stop minio-old
+docker compose up -d api
+```
+
+**Ölçüldü (dev verisiyle, 25.09.2026):** 3 bucket, 130 nesne, 5.2 MiB → `check` 130 eşleşme,
+0 fark; örnek bir form PDF'inin content-type'ı ve meta verisi (`form-type`, `generated-at`,
+`generated-by`) birebir korundu. Uygulamanın kullandığı SDK çağrılarının tamamı (bucket
+kontrol/oluşturma, yükleme, indirme, presigned GET, silme, listeleme) RustFS 1.0.0'da denendi.
+
+:::caution Boş bucket'lar taşınmaz — ve bu sorun değildir
+`rclone` içi boş bucket oluşturmaz (ölçüldü: boş `business-documents` hedefte yoktu). Uygulama
+ilk yüklemede bucket'ı `EnsureBucketExistsAsync` ile açar; elle bir şey gerekmez.
+:::
+
+`minio-data` volume'u, dekontların yeni depodan açıldığı birkaç gün gözlendikten sonra
+silinebilir: `docker volume rm mesnet_minio-data`. Geri dönüşü yoktur.

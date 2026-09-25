@@ -35,30 +35,39 @@ var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitmqUser, password:
 
 // Keycloak proxy AÇIK kalır: çift http(8080)/https(8443) portu nedeniyle proxy kapatılınca
 // host:8080 yanlışlıkla HTTPS'e (8443) bağlanıyor → ERR_EMPTY_RESPONSE. Proxy'de 8080→8080 HTTP doğru.
+// WithoutHttpsCertificate deneysel API (ASPIRECERTIFICATES001) — tanı ifadenin başına bağlanır.
+#pragma warning disable ASPIRECERTIFICATES001
 var keycloak = builder.AddKeycloak("keycloak", port: 8080, adminPassword: keycloakPassword)
     // Dev, CI ve docker-compose AYNI Keycloak sürümünde tutulur — sürüm sapması, birinde
     // görünmeyen hatayı diğerinde doğurur. Önceden dev 26.6, CI ve compose 26.0 idi.
-    // Not: HTTP/HTTPS sorunu image değil Aspire.Hosting.Keycloak sürümünden geliyor.
     .WithImageTag("26.7.0")
+    // Aspire.Hosting.Keycloak 13.4+ geliştirici sertifikası bulunca ana uç noktayı HTTPS'e
+    // (hedef 8443) çevirir; host:8080 HTTPS'e bağlanır ve http://localhost:8080 kullanan
+    // frontend/API/seeder boş yanıt alır. Paket bu yüzden 13.1.2'de tutuluyordu — kök neden
+    // sürüm değil otomatik sertifikaydı. Dev'de düz HTTP kalsın.
+    .WithoutHttpsCertificate()
     .WithRealmImport("./keycloak")
     .WithBindMount("./keycloak/themes/mesnet", "/opt/keycloak/themes/mesnet")
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent);
+#pragma warning restore ASPIRECERTIFICATES001
 
 // Mailpit (Dev email sunucusu — SMTP:1025, Web UI:8025)
 var mailpit = builder.AddMailPit("mailpit")
     .WithDataVolume("mailpit-data")
     .WithLifetime(ContainerLifetime.Persistent);
 
-// MinIO (S3-compatible object storage)
-var minio = builder.AddContainer("minio", "minio/minio", "latest")
+// RustFS (S3 uyumlu nesne deposu). MinIO imajları Docker Hub ve quay.io'dan kaldırıldı
+// (Eylül 2026, ölçüldü: her etiket "pull access denied"). RustFS aynı portlarda (9000 API,
+// 9001 konsol) çalışır; uygulama Minio .NET SDK ile standart S3 konuşur, kod değişmedi.
+// Parametre adları (minio-user/minio-password) mevcut user-secrets bozulmasın diye korundu.
+var rustfs = builder.AddContainer("rustfs", "rustfs/rustfs", "1.0.0")
     .WithHttpEndpoint(port: 9000, targetPort: 9000, name: "api")
     .WithHttpEndpoint(port: 9001, targetPort: 9001, name: "console")
-    .WithEnvironment("MINIO_ROOT_USER", minioUser)
-    .WithEnvironment("MINIO_ROOT_PASSWORD", minioPassword)
-    .WithArgs("server", "/data", "--console-address", ":9001")
-    .WithVolume("minio-data", "/data")
-    .WithHttpHealthCheck("/minio/health/live", endpointName: "api")
+    .WithEnvironment("RUSTFS_ACCESS_KEY", minioUser)
+    .WithEnvironment("RUSTFS_SECRET_KEY", minioPassword)
+    .WithVolume("rustfs-data", "/data")
+    .WithHttpHealthCheck("/health", endpointName: "api")
     .WithEndpoint("api", e => e.IsProxied = false)
     .WithEndpoint("console", e => e.IsProxied = false)
     .WithLifetime(ContainerLifetime.Persistent);
@@ -108,7 +117,7 @@ var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WithReference(postgres)
     .WithReference(rabbitmq)
     .WithReference(keycloak)
-    .WithEnvironment("MinioStorage__Endpoint", minio.GetEndpoint("api"))
+    .WithEnvironment("MinioStorage__Endpoint", rustfs.GetEndpoint("api"))
     .WithEnvironment("MinioStorage__AccessKey", minioUser)
     .WithEnvironment("MinioStorage__SecretKey", minioPassword)
     .WithEnvironment("SmtpSettings__Host", mailpit.Resource.Host)
@@ -124,7 +133,7 @@ var api = builder.AddProject<Projects.MESNET_Presentation>("mesnet-api")
     .WaitFor(postgres)
     .WaitFor(rabbitmq)
     .WaitFor(keycloak)
-    .WaitFor(minio)
+    .WaitFor(rustfs)
     .WaitFor(mailpit)
     // WaitFor DEĞİL: log deposu erişilemezse uygulama yine de açılmalıdır. Gözlemlenebilirlik
     // altyapısını başlangıç bağımlılığı yapmak, teşhis aracını arıza kaynağına çevirir.
@@ -156,7 +165,10 @@ if (!builder.ExecutionContext.IsPublishMode)
         .WithLifetime(ContainerLifetime.Persistent);
 
     // Docusaurus docs site
-    builder.AddNpmApp("docs", "../../src/Docs", scriptName: "start")
+    // Aspire.Hosting.JavaScript (NodeJs paketinin Aspire 13 devamı). Depo pnpm kullanır;
+    // install:false — eski AddNpmApp paket kurmuyordu, davranış korunur.
+    builder.AddJavaScriptApp("docs", "../../src/Docs", runScriptName: "start")
+        .WithPnpm(install: false)
         .WithHttpEndpoint(port: 8100, env: "PORT")
         .WithEnvironment("KROKI_SERVER", kroki.GetEndpoint("kroki"))
         .WaitFor(kroki);
@@ -172,7 +184,10 @@ if (builder.ExecutionContext.IsPublishMode)
 else
 {
     // Dev: Vite dev server — Aspire dashboard'dan izlenir
-    builder.AddNpmApp("frontend", "../../src/WebUI", scriptName: "dev")
+    // AddViteApp kendi "http" uç noktasını ekler; aşağıdaki WithHttpEndpoint aynı adı
+    // günceller (sabit 5173 — Keycloak redirect URI'leri buna bağlı).
+    builder.AddViteApp("frontend", "../../src/WebUI")
+        .WithPnpm(install: false)
         .WithExternalHttpEndpoints()
         .WithReference(api)
         .WithEnvironment("VITE_API_URL", api.GetEndpoint("http"))

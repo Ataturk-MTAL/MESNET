@@ -42,7 +42,7 @@ RABBIT_NAME="mesnet-ci-rabbit"
 export CI_PG_PORT="${CI_PG_PORT:-5433}"
 export CI_RABBIT_PORT="${CI_RABBIT_PORT:-5673}"
 export CI_KEYCLOAK_PORT="${CI_KEYCLOAK_PORT:-8081}"
-export CI_MINIO_PORT="${CI_MINIO_PORT:-9010}"
+export CI_S3_PORT="${CI_S3_PORT:-9010}"
 API_PORT="${CI_API_PORT:-5271}"
 
 # Docs işi diyagramları Kroki ile render ediyor. Geliştirme yığınında zaten bir Kroki var;
@@ -71,7 +71,7 @@ job_backend() {
 
   for project in "${projects[@]}"; do
     printf '  • %s\n' "$project"
-    dotnet test "$project" -c Release --no-build --logger 'console;verbosity=quiet'
+    dotnet test --project "$project" -c Release --no-build
   done
   ok "Backend"
 }
@@ -168,13 +168,13 @@ job_integration() {
 
   trap integration_cleanup EXIT
 
-  log "Entegrasyon — bağımlılık yığını (pg:$CI_PG_PORT kc:$CI_KEYCLOAK_PORT minio:$CI_MINIO_PORT)"
+  log "Entegrasyon — bağımlılık yığını (pg:$CI_PG_PORT kc:$CI_KEYCLOAK_PORT s3:$CI_S3_PORT)"
   # ÖNCE ZORLA TEMİZLE: `compose down` podman'da sessizce başarısız olabiliyor ve `up -d`
   # var olan konteyneri YENİ YAPILANDIRMAYI UYGULAMADAN yeniden kullanıyor. Ölçüldü: tmpfs
   # ayarı değiştirildiği hâlde bir saatlik eski konteyner ayakta kalmıştı.
   podman ps -aq --filter "name=${PROJECT}" | xargs -r podman rm -f >/dev/null 2>&1 || true
   # rabbitmq compose DIŞINDA başlatılır — gerekçe compose.ci.local.yml içinde.
-  compose up -d --force-recreate postgres keycloak minio
+  compose up -d --force-recreate postgres keycloak rustfs
 
   log "Entegrasyon — RabbitMQ (compose dışı, :$CI_RABBIT_PORT)"
   podman rm -f "${RABBIT_NAME}" >/dev/null 2>&1 || true
@@ -225,7 +225,7 @@ job_integration() {
     RabbitMQ__Password=mesnet_dev \
     "Keycloak__auth-server-url=http://localhost:${CI_KEYCLOAK_PORT}/" \
     Keycloak__credentials__secret=dev-secret \
-    MinioStorage__Endpoint="localhost:${CI_MINIO_PORT}" \
+    MinioStorage__Endpoint="localhost:${CI_S3_PORT}" \
     MinioStorage__AccessKey=minioadmin \
     MinioStorage__SecretKey=minioadmin \
     dotnet run --project src/MESNET.Presentation \
@@ -243,8 +243,8 @@ job_integration() {
   log "Entegrasyon — kara-kutu API testleri"
   API_BASE_URL="http://127.0.0.1:${API_PORT}" \
   KEYCLOAK_TOKEN_URL="http://localhost:${CI_KEYCLOAK_PORT}/realms/mesnet/protocol/openid-connect/token" \
-    dotnet test tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj -c Release \
-      --logger 'console;verbosity=normal'
+    dotnet test --project tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj -c Release \
+      --output Detailed
 
   # Seeder BOŞ veritabanında koşar — asıl idempotency sınavı bu (#80). Testlerden SONRA
   # çalışır ki seed edilen veri test beklentilerini bozmasın.

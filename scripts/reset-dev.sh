@@ -12,7 +12,7 @@ echo "═══ MESNET Dev Ortamı Sıfırlama ═══"
 echo ""
 echo "Bu script şunları yapacak:"
 echo "  1. MESNET süreçlerini durdur, Aspire container'larını sil"
-echo "  2. Veri volume'larını sil (PostgreSQL, Keycloak, RabbitMQ, MinIO, Mailpit, OpenObserve, pgAdmin)"
+echo "  2. Veri volume'larını sil (PostgreSQL, Keycloak, RabbitMQ, RustFS, Mailpit, OpenObserve, pgAdmin)"
 echo "  3. Aspire AppHost'u yeniden başlat"
 echo "     → Marten schema'ları otomatik oluşturulur"
 echo "     → Keycloak realm yeniden import edilir"
@@ -20,7 +20,8 @@ echo "     → Seeder otomatik çalışır (kurum, personel, öğrenci, vb.)"
 echo ""
 
 read -rp "Devam etmek istiyor musunuz? [e/H] " confirm
-if [[ ! "$confirm" =~ ^[eEyY]$ ]]; then
+# "evet"/"yes" de kabul edilir — yalnız tek harf beklemek, "evet" yazanı sessizce iptal ediyordu.
+if [[ ! "$confirm" =~ ^([eE](vet)?|[yY](es)?)$ ]]; then
     echo "İptal edildi."
     exit 0
 fi
