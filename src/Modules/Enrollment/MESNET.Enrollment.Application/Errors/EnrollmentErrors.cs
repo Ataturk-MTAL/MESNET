@@ -10,6 +10,10 @@ public static class EnrollmentErrors
     public static Error TeacherNotFound(Guid id) =>
         new("Enrollment.TeacherNotFound", $"Öğretmen bulunamadı: {id}");
 
+    public static Error SchoolScopeMissing =>
+        new("Enrollment.SchoolScopeMissing",
+            "Bu işlem bir okul kapsamında yapılmalıdır. Hesabınız bir okula bağlı değil.");
+
     public static Error PlacementNotFound(Guid id) =>
         new("Enrollment.PlacementNotFound", $"Yerleştirme bulunamadı: {id}");
 

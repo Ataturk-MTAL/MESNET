@@ -43,6 +43,31 @@ public sealed class TenantIdentityMappingTests
     }
 
     /// <summary>
+    /// Ters çevrim (#309): kurum kimliği gövdeden değil kiracıdan türetilir; türetme de
+    /// eşleşmenin yaşadığı tek noktada durur.
+    /// </summary>
+    [Fact]
+    public void Ters_cevrim_okul_kiracisindan_okulu_geri_verir()
+    {
+        TenantResolution.InstitutionOf(TenantResolution.ForInstitution(Okul)).ShouldBe(Okul);
+    }
+
+    /// <summary>
+    /// Platform kiracısı bir okul değildir; kiracısız istek de. İkisinden kurum
+    /// <b>uydurulmaz</b> — çağıran gürültülü biçimde reddetmelidir.
+    /// </summary>
+    [Theory]
+    [InlineData(TenantResolution.Platform)]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("*DEFAULT*")]
+    [InlineData("00000000-0000-0000-0000-000000000000")]
+    public void Okul_olmayan_kiracidan_kurum_turetilmez(string? tenantId)
+    {
+        TenantResolution.InstitutionOf(tenantId).ShouldBeNull();
+    }
+
+    /// <summary>
     /// Arka plan kiracı dizini çevrimi <b>kopyalamamalı</b>, tek noktayı çağırmalı. Kopya,
     /// eksenin taşındığı gün sessizce geride kalır.
     /// </summary>
