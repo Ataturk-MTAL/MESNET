@@ -61,6 +61,22 @@ try
     // Step 1: Institution (kurum, branch, personel, schedule) + Keycloak güncelleme
     await InstitutionSeeder.SeedAsync(api, ctx, keycloak);
 
+    // Okul verisi yazılmadan önce kiracı doğrulanır (#309) — yanlış kiracıda sessizce devam
+    // etmek, verinin başka kuruma düşmesi ve her koşunun yeni kopya üretmesi demekti.
+    var me = await api.GetAsync("/api/auth/me");
+    var mismatch = (ctx.Has("Institution"), me) switch
+    {
+        (false, _) => "Kurum oluşturulamadı ya da bulunamadı — okul adımları atlanıyor.",
+        (true, { } meData) => SeedTenantPolicy.Mismatch(meData, ctx.Get("Institution")),
+        (true, null) => "GET /api/auth/me başarısız — kiracı doğrulanamadı.",
+    };
+    if (mismatch is not null)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"✗ {mismatch}");
+        return 3;
+    }
+
     // Her seeder kendi GET kontrolünü yapar — bağımsız idempotency
     // Step 2: Businesses
     await BusinessSeeder.SeedAsync(api, ctx);
@@ -79,6 +95,9 @@ try
 
     // Step 9: Coordination
     await CoordinationSeeder.SeedAsync(api, ctx);
+
+    // Step 10: Dağıtım ön koşulları — ders programı + alan ders yükü (#312)
+    await DistributionSeeder.SeedAsync(api, ctx);
 }
 catch (HttpRequestException ex)
 {
