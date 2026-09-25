@@ -127,10 +127,14 @@ services:
     environment:
       <<: *api-env
       ConnectionStrings__mesnet: "Host=postgres;Port=5432;Database=mesnet;Username=mesnet_owner;Password=${MESNET_DB_OWNER_PASSWORD:?install.sh ön kontrolü}"
+    # `resources setup` YALNIZ veritabanını kurmaz: RabbitMQ kuyruklarını ve nesne deposunu da
+    # hazırlar. RustFS beklenmezse göç "Connection refused" ile düşer (ölçüldü, #317).
     depends_on:
       db-init:
         condition: service_completed_successfully
       rabbitmq:
+        condition: service_healthy
+      rustfs:
         condition: service_healthy
     restart: "no"
 

@@ -8,16 +8,15 @@ namespace MESNET.Common.Infrastructure.Tenancy;
 /// okumanın kararı burada verilir.
 ///
 /// <para><b>Üretim/uygulama ayrımı:</b> bu sınıf listeyi kurar, sorguya
-/// <b>uygulamaz</b>. Listeyi <c>TenantIsOneOf(...)</c> ile fiilen sorguya bağlayan ayrı bir
-/// nokta daha vardır — <c>GetStuckApprovalsHandler</c>. Bölünme kasıtlıdır: bu sınıf
-/// <see cref="InstitutionVisibility"/>'yi kiracı kimliklerine çevirir, handler onları sorguya
-/// uygular; ikisi ayrı sorumluluktur ve <c>CrossTenantQueryDriftTests</c>'in izin listesi
-/// bilerek yalnız bu iki dosyayı kabul eder — üçüncü bir dosya kabul edilmez.</para>
+/// <b>uygulamaz</b>. Liste <c>CrossTenantQuery.CollectAsync</c> ile OKUL BAŞINA session açılarak
+/// okunur (#317) — <c>TenantIsOneOf</c> row-level security altında yalnız session'ın kiracısını
+/// gösterdiği için artık hiç kullanılmaz. Bölünme kasıtlıdır: bu sınıf
+/// <see cref="InstitutionVisibility"/>'yi kiracı kimliklerine çevirir, handler onları okur;
+/// kiracılar arası okuyabilecek dosyalar <c>CrossTenantQueryDriftTests</c> ile kilitlidir.</para>
 ///
-/// <para><b>Girdi güvenliği burada tektir:</b> <c>TenantIsOneOf(...)</c> operatörü kiracı
-/// yalıtımını bilerek deler; ürettiği SQL <c>tenant_id IN (...)</c>'dir. Serbest bırakılırsa
-/// bir gün biri onu <b>istekten gelen</b> kimliklerle çağırır ve kapsam sessizce açılır — hata
-/// değil, fazla veri. Bu sınıf listeyi yalnız <see cref="InstitutionVisibility"/>'den üretir;
+/// <para><b>Girdi güvenliği burada tektir:</b> kiracılar arası okuma yalıtımı bilerek aşar.
+/// Serbest bırakılırsa bir gün biri onu <b>istekten gelen</b> kimliklerle çağırır ve kapsam
+/// sessizce açılır — hata değil, fazla veri. Bu sınıf listeyi yalnız <see cref="InstitutionVisibility"/>'den üretir;
 /// istekten gelen hiçbir değer buraya giremez. Handler tarafı bu listeyi olduğu gibi kullanır,
 /// kendi kaynağını türetmez.</para>
 ///
@@ -46,8 +45,7 @@ public sealed class SubtreeTenantScope
     /// Kapsamı kiracı kimliklerine çevirir.
     /// </summary>
     /// <returns>
-    /// Kiracı kimlikleri; kapsamsız aktörde <b>boş liste</b>. Çağıran boş listede sorguyu HİÇ
-    /// kurmamalıdır — parametresiz <c>TenantIsOneOf()</c>'un davranışına güvenilmez.
+    /// Kiracı kimlikleri; kapsamsız aktörde <b>boş liste</b> — okunacak okul yoktur.
     /// </returns>
     public async Task<IReadOnlyList<string>> ResolveAsync(
         InstitutionVisibility scope, CancellationToken cancellationToken = default)

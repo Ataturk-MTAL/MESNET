@@ -25,7 +25,13 @@ public static class ServiceRegistration
             opts.Schema.For<AttendanceRecord>().Index(x => x.BusinessId);
             opts.Schema.For<AttendanceRecord>().Index(x => x.InstitutionId);
             opts.Schema.For<AttendanceRecord>().Index(x => x.Date);
-            opts.Projections.Add<AttendanceViewProjection>(ProjectionLifecycle.Async);
+            // INLINE (#317): row-level security açıkken async daemon olayları kendi bağlantısında,
+            // kiracı ayarı OLMADAN okur — politika onları süzer, daemon boş aralığı "işlendi"
+            // sayıp ilerler. Ölçüldü: 6 devamsızlık kaydı, ilerleme 29'a taşındı, görünüm 0 belge,
+            // logda hata yok. Olaylar KALICI atlanır. Inline projeksiyon yazan session'da, kiracısı
+            // kurulu bağlantıda çalışır.
+            // Not: AttendanceView hiçbir handler'da OKUNMUYOR (#249 sayacı AttendanceRecord'a taşıdı).
+            opts.Projections.Add<AttendanceViewProjection>(ProjectionLifecycle.Inline);
 
             // Ücretli izin başvurusu (#177) — durum geçişi olan varlık, event sourcing.
             opts.Projections.Snapshot<PaidLeaveRequest>(SnapshotLifecycle.Inline);

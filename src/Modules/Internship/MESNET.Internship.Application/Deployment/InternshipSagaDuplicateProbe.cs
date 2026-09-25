@@ -52,17 +52,17 @@ public sealed class InternshipSagaDuplicateProbe(
         if (tenants.Count == 0)
             return null;
 
-        await using var session = store.QuerySession(TenantResolution.Platform);
-
-        var tenantIds = tenants.ToArray();
-
         // Yalnız tek sütun okunur (Guid). SmartEnum alanı (Phase) projeksiyona ALINMAZ: Marten
         // onu data->'phase'->>'Name' olarak çevirir ve her zaman NULL döner.
-        var placementIds = await session.Query<InternshipSaga>()
-            .Where(s => s.TenantIsOneOf(tenantIds))
-            .Select(s => s.PlacementId)
-            .Take(MaxScannedSagas)
-            .ToListAsync(cancellationToken);
+        //
+        // Okul başına session (#317): platform kiracısındaki tek session row-level security
+        // altında HİÇBİR okulun saga'sını görmez ve sonda "kopya yok" derdi. Kopya tespiti
+        // okullar arası birleşik liste üzerinde yapılır; üst sınır toplamdır.
+        var placementIds = await CrossTenantQuery.CollectAsync(store, tenants, async (session, remaining, ct) =>
+            await session.Query<InternshipSaga>()
+                .Select(s => s.PlacementId)
+                .Take(remaining)
+                .ToListAsync(ct), cancellationToken, limit: MaxScannedSagas);
 
         var scanned = placementIds.Count;
         if (scanned == 0)
