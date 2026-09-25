@@ -13,6 +13,20 @@ public static class EnrollmentSeeder
         await SeedPlacements(api, ctx, institutionId, academicPeriodId);
     }
 
+    /// <summary>
+    /// 6 öğretmen, her alandan 2. <see cref="DistributionSeeder"/> ders programını aynı
+    /// listeden üretir — alan eşleşmesi tek yerde kalır.
+    /// </summary>
+    internal static readonly (string Key, string KeycloakId, string Name, string BranchCode)[] Teachers =
+    [
+        ("Teacher1", "51000000-0000-0000-0000-000000000001", "Ayşe Çelik",    "EET"),  // Elektrik-Elektronik
+        ("Teacher2", "51000000-0000-0000-0000-000000000002", "Mustafa Yılmaz", "EET"),  // Elektrik-Elektronik
+        ("Teacher3", "51000000-0000-0000-0000-000000000003", "Hasan Kara",     "BT"),   // Bilişim
+        ("Teacher4", "51000000-0000-0000-0000-000000000004", "Fatma Özdemir",  "BT"),   // Bilişim
+        ("Teacher5", "51000000-0000-0000-0000-000000000005", "Ali Demir",      "MTT"),  // Makine
+        ("Teacher6", "51000000-0000-0000-0000-000000000006", "Zeynep Arslan",  "MTT"),  // Makine
+    ];
+
     private static async Task SeedTeachers(MesnetApiClient api, SeedContext ctx, Guid institutionId)
     {
         Console.WriteLine();
@@ -28,18 +42,7 @@ public static class EnrollmentSeeder
             existingByName[name] = id;
         }
 
-        // 6 öğretmen: her alandan 2
-        var teachers = new[]
-        {
-            ("Teacher1", "51000000-0000-0000-0000-000000000001", "Ayşe Çelik",    "EET"),  // Elektrik-Elektronik
-            ("Teacher2", "51000000-0000-0000-0000-000000000002", "Mustafa Yılmaz", "EET"),  // Elektrik-Elektronik
-            ("Teacher3", "51000000-0000-0000-0000-000000000003", "Hasan Kara",     "BT"),   // Bilişim
-            ("Teacher4", "51000000-0000-0000-0000-000000000004", "Fatma Özdemir",  "BT"),   // Bilişim
-            ("Teacher5", "51000000-0000-0000-0000-000000000005", "Ali Demir",      "MTT"),  // Makine
-            ("Teacher6", "51000000-0000-0000-0000-000000000006", "Zeynep Arslan",  "MTT"),  // Makine
-        };
-
-        foreach (var (key, kcId, name, branchCode) in teachers)
+        foreach (var (key, kcId, name, branchCode) in Teachers)
         {
             if (existingByName.TryGetValue(name, out var existingId))
             {

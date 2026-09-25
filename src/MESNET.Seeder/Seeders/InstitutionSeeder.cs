@@ -25,7 +25,7 @@ public static class InstitutionSeeder
         await api.PutAsync($"/api/institutions/{institutionId.Value}/schedule-config", new
         {
             institutionId = institutionId.Value,
-            dailyPeriodCount = 8
+            dailyPeriodCount = DistributionSeeder.DailyPeriodCount
             // updatedBy gönderilmez — aktör artık token'dan damgalanır (#137).
         });
         Console.WriteLine("  ✓ Ders programı (8 ders) ayarlandı");
