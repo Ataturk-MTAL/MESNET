@@ -2,7 +2,8 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type Keycloak from 'keycloak-js'
 import api from 'boot/axios'
-import { classifyAuthFailure, decodeTokenExp } from 'src/utils/authFailure'
+import { tryGetKeycloak } from 'boot/auth'
+import { classifyAuthFailure, clockSkewOf, decodeTokenExp } from 'src/utils/authFailure'
 import { logger } from '../utils/logger'
 
 /**
@@ -208,6 +209,7 @@ export const useAuthStore = defineStore('auth', () => {
         // geçerli token + 401 = JWKS soğuk → tekrar dene; ölü token + 401 → yeniden giriş.
         const action = classifyAuthFailure({
           status, code, tokenExp, now: Date.now(), attempt, maxAttempts: maxRetries,
+          clockSkewSeconds: clockSkewOf(tryGetKeycloak()),
         })
 
         if (action === 'retry') {
