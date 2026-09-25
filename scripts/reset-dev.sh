@@ -20,7 +20,8 @@ echo "     → Seeder otomatik çalışır (kurum, personel, öğrenci, vb.)"
 echo ""
 
 read -rp "Devam etmek istiyor musunuz? [e/H] " confirm
-if [[ ! "$confirm" =~ ^[eEyY]$ ]]; then
+# "evet"/"yes" de kabul edilir — yalnız tek harf beklemek, "evet" yazanı sessizce iptal ediyordu.
+if [[ ! "$confirm" =~ ^([eE](vet)?|[yY](es)?)$ ]]; then
     echo "İptal edildi."
     exit 0
 fi
