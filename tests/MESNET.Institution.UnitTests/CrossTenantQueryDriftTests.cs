@@ -12,35 +12,35 @@ namespace MESNET.Institution.UnitTests;
 /// yazarsa hiçbir davranış testi kırılmaz — kiracılar arası okuma <b>sessizce</b> açılır ve
 /// kimse fark etmez. Tek savunma, çağrının kaynakta hiç bulunmamasıdır.</para>
 ///
-/// <para><b>Doğrusu:</b> kapsam <c>SubtreeTenantScope.ResolveAsync</c> ile
-/// <c>InstitutionVisibility</c>'den türetilir; sorgu o listeyle
-/// <c>TenantIsOneOf(tenants.ToArray())</c> çağırır.</para>
+/// <para><b>Doğrusu (#317 sonrası):</b> kapsam <c>SubtreeTenantScope.ResolveAsync</c> ya da
+/// <c>ITenantDirectory</c>'den türetilir; sorgu <c>CrossTenantQuery.CollectAsync</c> ile OKUL
+/// BAŞINA session açar. <c>TenantIsOneOf</c> artık HİÇBİR yerde kullanılmaz: row-level security
+/// yalnız session'ın kiracısını gösterir ve operatörün listesini bilmez — tek sorgu hata değil
+/// EKSİK sonuç döndürürdü.</para>
 /// </summary>
 public sealed class CrossTenantQueryDriftTests
 {
     /// <summary>Kapsamı tümden kaldıran operatör — hiçbir gerekçeyle kullanılmaz.</summary>
     private static readonly Regex AnyTenantCall = new(@"\bAnyTenant\s*\(", RegexOptions.Compiled);
 
-    /// <summary>Kapsamı listeye daraltan operatör — yalnız izinli dosyalarda.</summary>
+    /// <summary>Kapsamı listeye daraltan operatör — RLS altında sessizce eksik sonuç verir.</summary>
     private static readonly Regex TenantIsOneOfCall =
         new(@"\bTenantIsOneOf\s*\(", RegexOptions.Compiled);
 
+    /// <summary>Okul başına session açan kapı (#317).</summary>
+    private static readonly Regex CrossTenantQueryCall =
+        new(@"\bCrossTenantQuery\.CollectAsync\s*\(", RegexOptions.Compiled);
+
     /// <summary>
-    /// Operatörü kullanabilecek tek üretim dosyaları — depo köküne göre TAM YOL. Yalnız dosya
-    /// adını karşılaştırmak, başka bir yerde aynı adı taşıyan bir dosyanın (ör. başka bir modülde
-    /// yeniden yazılmış bir <c>SubtreeTenantScope.cs</c>) sessizce izinli sayılmasına yol açardı
-    /// ve tek kapı garantisini delerdi. Karşılaştırma <see cref="Relative"/>'in ürettiği, her
-    /// zaman <c>/</c> ile ayrılmış göreli yol üzerinden yapılır. Sorgu handler'ı listeyi buradan
-    /// alır ama operatörü kendisi çağırır; bu yüzden handler dosyası da izinlidir.
+    /// Kiracılar arası okuyabilecek tek üretim dosyaları — depo köküne göre TAM YOL. Yalnız dosya
+    /// adını karşılaştırmak, başka bir yerde aynı adı taşıyan bir dosyanın sessizce izinli
+    /// sayılmasına yol açardı. Her birinin kiracı listesi istekten DEĞİL, sunucu tarafından gelir.
     /// </summary>
     private static readonly string[] AllowedFiles =
     [
-        "src/MESNET.Common.Infrastructure/Tenancy/SubtreeTenantScope.cs",
+        // İl/ilçe kapsamı — liste SubtreeTenantScope'tan (aktörün kurum yolundan).
         "src/Modules/Internship/MESNET.Internship.Application/Handlers/GetStuckApprovalsHandler.cs",
-        // Dağıtım ön koşulu sondası (açılışta ÖLÇER, yazmaz). Kapsamı istekten DEĞİL
-        // ITenantDirectory'den alır — girdisi bir kullanıcı isteği değil, kiracı listesinin
-        // kendisidir. Tek kiracıda okusaydı yalnız bir okulun kopyalarını görürdü; platform
-        // kiracısında okusaydı hiçbir satır görmezdi — hata değil, sessiz sıfır.
+        // Dağıtım ön koşulu sondası (açılışta ÖLÇER, yazmaz) — liste ITenantDirectory'den.
         "src/Modules/Internship/MESNET.Internship.Application/Deployment/InternshipSagaDuplicateProbe.cs",
     ];
 
@@ -72,24 +72,33 @@ public sealed class CrossTenantQueryDriftTests
     }
 
     [Fact]
-    public void TenantIsOneOf_yalniz_izinli_dosyalarda()
+    public void Kaynakta_TenantIsOneOf_cagrisi_yok()
     {
-        var violations = new List<string>();
-
-        foreach (var file in SourceFiles())
-        {
-            var code = StripComments(File.ReadAllText(file));
-            if (!TenantIsOneOfCall.IsMatch(code))
-                continue;
-
-            if (!AllowedFiles.Contains(Relative(file), StringComparer.Ordinal))
-                violations.Add(Relative(file));
-        }
+        var violations = SourceFiles()
+            .Where(file => TenantIsOneOfCall.IsMatch(StripComments(File.ReadAllText(file))))
+            .Select(Relative)
+            .ToList();
 
         violations.ShouldBeEmpty(
-            "TenantIsOneOf(...) kiracı yalıtımını deler ve yalnız tek kapıdan kullanılır. "
-            + "Kapsamı SubtreeTenantScope.ResolveAsync'ten alın; listeyi istekten ALMAYIN. "
+            "TenantIsOneOf(...) row-level security altında EKSİK sonuç verir: politika yalnız "
+            + "session'ın kiracısını gösterir, operatörün listesini bilmez (#317). Kiracılar arası "
+            + "okumayı CrossTenantQuery.CollectAsync ile okul başına session açarak yapın. "
             + $"İhlaller: {string.Join(" | ", violations)}");
+    }
+
+    [Fact]
+    public void Kiracilar_arasi_okuma_yalniz_izinli_dosyalarda()
+    {
+        var violations = SourceFiles()
+            .Where(file => CrossTenantQueryCall.IsMatch(StripComments(File.ReadAllText(file))))
+            .Select(Relative)
+            .Where(path => !AllowedFiles.Contains(path, StringComparer.Ordinal))
+            .ToList();
+
+        violations.ShouldBeEmpty(
+            "Kiracılar arası okuma yalnız tek kapıdan yapılır. Kiracı listesini SubtreeTenantScope "
+            + "ya da ITenantDirectory'den alın, istekten ALMAYIN; dosyayı gerekçesiyle izin "
+            + $"listesine ekleyin. İhlaller: {string.Join(" | ", violations)}");
     }
 
     /// <summary>

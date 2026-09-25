@@ -268,6 +268,10 @@ job_integration() {
     || printf '\033[1;33m! Veritabanı rolü doğrulama satırı bulunamadı — kontrol koşmamış olabilir (#316)\033[0m\n'
 
   log "Entegrasyon — kara-kutu API testleri"
+  # Veritabanına doğrudan bakan testler (kiracı damgası, RLS #317) varsayılan olarak CI'daki
+  # 5432'yi kullanır; yerelde yığın başka portta — bağlantılar açıkça verilir.
+  ConnectionStrings__mesnet="Host=localhost;Port=${CI_PG_PORT};Database=mesnet;Username=mesnet;Password=mesnet_dev" \
+  MESNET_APP_CONNECTION="Host=localhost;Port=${CI_PG_PORT};Database=mesnet;Username=mesnet_app;Password=mesnet_app_dev" \
   API_BASE_URL="http://127.0.0.1:${API_PORT}" \
   KEYCLOAK_TOKEN_URL="http://localhost:${CI_KEYCLOAK_PORT}/realms/mesnet/protocol/openid-connect/token" \
     dotnet test --project tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj -c Release \

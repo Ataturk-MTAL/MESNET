@@ -31,6 +31,7 @@ public static class GetStuckApprovalsHandler
     public static async Task<StuckApprovalSummaryDto> Handle(
         GetStuckApprovals query,
         IQuerySession session,
+        IDocumentStore store,
         ICurrentUserService currentUser,
         SubtreeTenantScope tenantScope,
         CancellationToken cancellationToken)
@@ -52,7 +53,6 @@ public static class GetStuckApprovalsHandler
 
         var now = DateTime.UtcNow;
         var cutoff = now.AddDays(-thresholdDays);
-        var tenantIds = tenants.ToArray();
 
         // IsCompleteOrOverridden() bir metottur ve SQL'e çevrilemez; koşul AÇILARAK yazılır.
         // Bu açılımın politikayla aynı şeyi söylediği StuckApprovalPolicyTests içindeki
@@ -60,16 +60,19 @@ public static class GetStuckApprovalsHandler
         //
         // Talep zamanı NULL olan kayıt bilerek İÇERİDE bırakılır: eksik veri sınırı
         // gevşetemez (#252).
-        var stuck = await session.Query<InternshipSaga>()
-            .Where(x => x.TenantIsOneOf(tenantIds)
-                        && x.ApprovalChain != null
+        //
+        // Okul başına session (#317): row-level security yalnız session'ın kiracısını gösterir;
+        // TenantIsOneOf ile tek sorgu il yöneticisine yalnız KENDİ kiracısını döndürürdü.
+        var stuck = await CrossTenantQuery.CollectAsync(store, tenants, async (tenantSession, _, ct) =>
+            await tenantSession.Query<InternshipSaga>()
+            .Where(x => x.ApprovalChain != null
                         && !x.ApprovalChain.IsOverridden
                         && !(x.ApprovalChain.TeacherApproved
                              && x.ApprovalChain.DeputyApproved
                              && x.ApprovalChain.DirectorApproved)
                         && (x.TerminationRequestedAt == null
                             || x.TerminationRequestedAt <= cutoff))
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct), cancellationToken);
 
         var byInstitution = stuck
             .GroupBy(x => x.InstitutionId)

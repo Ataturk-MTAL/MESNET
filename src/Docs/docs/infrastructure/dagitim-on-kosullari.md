@@ -1211,3 +1211,54 @@ yalnız API'yi kapsar; Keycloak'ın kendi rolü ayrı iş olarak ele alınmalıd
 - **CI:** üretim akışının aynısı — rol betiği, `mesnet_owner` ile göç, `mesnet_app` ile API.
   `mesnet_app`'in eksik bir yetkisi entegrasyon testlerinde `permission denied` olarak görünür.
 :::
+
+## Row-level security — kiracı yalıtımı veritabanında (#317)
+
+Kiracı yalıtımı artık yalnız Marten'ın sorguya eklediği `tenant_id = ?` değildir: kiracıya ait
+**her** tablo (conjoined belgeler + olay deposu `mt_events`/`mt_streams`) PostgreSQL
+row-level security ile korunur (`ENABLE` + `FORCE`). Marten'ın dışından geçen yol — ham
+ADO.NET, psql, rapor aracı — da süzülür. Ön koşul #316: API `mesnet_app` ile bağlanır.
+
+**Ayrı bir betik YOK.** Politikalar şemanın parçasıdır ve göç adımında (`migrate`,
+`resources setup`) Marten delta'sı olarak uygulanır. Var olan veritabanında ölçüldü: gerçek
+veriyle göç 0 hatayla geçti (#149'daki FK çakışması yok), korunmasız kiracılı tablo 0,
+`mesnet_app` kendi okulunun bütün satırlarını görür, başka okulunkini görmez.
+
+Doğrulama (süper kullanıcıyla):
+
+```sql
+SELECT format('%s.%s', n.nspname, c.relname)
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind IN ('r','p') AND NOT (c.relrowsecurity AND c.relforcerowsecurity)
+  AND EXISTS (SELECT 1 FROM pg_attribute a
+              WHERE a.attrelid = c.oid AND a.attname = 'tenant_id' AND NOT a.attisdropped);
+-- beklenen: 0 satır
+```
+
+### Davranış — "sessiz boş sonuç" nerede oluşabilir
+
+| Durum | Sonuç |
+|---|---|
+| Kiracı ayarı hiç kurulmamış bağlantı | **Hata** (`unrecognized configuration parameter "app.tenant_id"`) |
+| Başka okulun damgasıyla yazma | **Hata** (42501, row-level security) |
+| Havuzdan dönen bağlantı (önceki session sıfırlamış) | Ayar `''` → **hatasız 0 satır** |
+
+Üçüncü satır yüzünden kiracıya ait tablo ham SQL ile **yalnız** `TenantScopedConnection` üzerinden
+okunur — kiracıyı transaction'a kurar, kiracı yoksa hata verir. Kilit: `RawConnectionTenancyDriftTests`.
+
+### Değişen iki davranış
+
+- **Okullar arası okumalar** (il/ilçe takılan onaylar, saga kopya sondası) okul başına ayrı
+  session açar (`CrossTenantQuery`). `TenantIsOneOf` RLS altında yalnız session'ın kiracısını
+  gösterdiği için artık yasaktır. RLS'i atlayan (`BYPASSRLS`) bir rol **kurulmadı**.
+- **`AttendanceViewProjection` inline oldu.** Async daemon olayları kiracı ayarı olmadan okur;
+  politika onları süzer ve daemon boş aralığı "işlendi" sayıp ilerler — ölçüldü: 6 kayıt,
+  ilerleme 29'a çıktı, görünüm 0 belge, logda hata yok. Async projeksiyon artık yasaktır
+  (`AsyncProjectionRlsDriftTests`). Görünüm hiçbir handler'da okunmadığı için geçmişe dönük
+  yeniden inşa gerekmez.
+
+:::caution Göç adımı RustFS'i de bekler
+`resources setup` yalnız veritabanını değil RabbitMQ kuyruklarını ve nesne deposunu da hazırlar;
+RustFS kapalıyken `Connection refused` ile düşer. `deploy/compose.yml`'de `migrate` artık
+`rustfs`'in sağlıklı olmasını bekler (#316'daki eksik).
+:::

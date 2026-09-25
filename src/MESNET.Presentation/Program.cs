@@ -180,6 +180,14 @@ try
         // kılık değiştirmiş hâli. false iken kapsamsız session FIRLATIR ve unutmak ilk
         // entegrasyon testinde çöker.
         opts.Advanced.DefaultTenantUsageEnabled = false;
+
+        // ── Row-level security (#317) ───────────────────────────────────────────────
+        // Yalıtım sorgunun değil TABLONUN özelliği olur: Marten'ın dışından geçen yol (ham ADO.NET,
+        // psql, rapor aracı) da süzülür. Marten her session bağlantısında set_config ile kiracıyı
+        // kurar ve conjoined belge tablolarına politika koyar. Olay deposu (mt_events/mt_streams)
+        // o politikayı ALMIYOR (ölçüldü) — ayrı özellikle eklenir.
+        opts.UseRowLevelSecurity(MESNET.Common.Infrastructure.Tenancy.TenantRls.SettingName);
+        opts.Storage.Add(new MESNET.Common.Infrastructure.Tenancy.EventStoreRlsFeature(opts.Events.DatabaseSchemaName));
     })
     .InitializeWith(new FieldOfStudySeedData())
     // ── ApplyAllDatabaseChangesOnStartup() BİLEREK YOK (#149) ───────────────────────────

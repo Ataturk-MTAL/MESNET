@@ -1,6 +1,8 @@
 using Marten;
+using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Coordination.Application.Dtos;
 using MESNET.Coordination.Application.Queries;
+using Wolverine;
 
 namespace MESNET.Coordination.Application.Handlers;
 
@@ -67,6 +69,7 @@ public static class GetBusinessClustersHandler
     public static async Task<List<BusinessClusterDto>> Handle(
         GetBusinessClusters query,
         IDocumentStore store,
+        Envelope envelope,
         CancellationToken cancellationToken)
     {
         var result = new List<BusinessClusterDto>();
@@ -76,12 +79,12 @@ public static class GetBusinessClustersHandler
         await store.Storage.Database.EnsureStorageExistsAsync(
             typeof(Core.ReadModels.BusinessCoordinationView), cancellationToken);
 
-        var conn = store.Storage.Database.CreateConnection();
-        await conn.OpenAsync(cancellationToken);
-        await using (conn)
+        // Kiracılı tablo ham SQL ile okunuyor: bağlantı kiracıyı kurmalı, yoksa row-level
+        // security satırları hatasız süzer ve harita sessizce boşalır (#317).
+        var scoped = await TenantScopedConnection.OpenAsync(store, envelope.TenantId, cancellationToken);
+        await using (scoped)
         {
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = ClusterSql;
+            await using var cmd = scoped.CreateCommand(ClusterSql);
             cmd.Parameters.AddWithValue("institutionId", query.InstitutionId);
             cmd.Parameters.AddWithValue("eps", query.EpsMeters);
             cmd.Parameters.AddWithValue("minPoints", query.MinPoints);
