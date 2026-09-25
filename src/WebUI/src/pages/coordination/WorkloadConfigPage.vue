@@ -7,6 +7,7 @@
       <!-- Yazma bağlamı (#126): ders yükü havuzu kaydedilen sayfa — yetkisiz alan listelenmez -->
       <BranchSelector
         v-model="branchFilter"
+        v-model:selected-label="branchName"
         write-context
         @update:model-value="onBranchChange"
       />
@@ -34,8 +35,15 @@
       bordered
     >
       <q-card-section>
-        <div class="text-subtitle1 text-weight-medium q-mb-sm">
-          Alan Ders Yükü Yapılandırması
+        <div class="row items-center q-mb-sm subject-header">
+          <div class="text-subtitle1 text-weight-medium">
+            Alan Ders Yükü Yapılandırması
+          </div>
+          <EditingSubject
+            :name="branchName"
+            kind="Alan"
+            icon="school"
+          />
         </div>
         <div class="text-caption text-grey-7 q-mb-md">
           Norm Kadro Yönetmeliği Madde 22'ye göre grup sayısı ve şeflik saatleri ile toplam ders yükü havuzu hesaplanır.
@@ -232,7 +240,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useNotify } from 'src/composables/useNotify'
 import { useWorkloadConfig, estimateGroupCount, EDUCATION_TYPES } from 'src/composables/useWorkloadConfig'
 import { useAuthStore } from 'stores/auth'
@@ -240,6 +248,7 @@ import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import PageHeader from 'components/PageHeader.vue'
+import EditingSubject from 'components/EditingSubject.vue'
 import FilterBar from 'components/FilterBar.vue'
 import { useSharedSelection } from 'src/composables/useSharedSelection'
 
@@ -249,6 +258,8 @@ const periodStore = useAcademicPeriodStore()
 
 // Sayfalar arası korunur; yazma sayfası olduğu için yetkisiz alan seçili gelmez.
 const { branchCode: branchFilter } = useSharedSelection({ writeContext: true })
+// Seçicinin çözdüğü alan adı — "kimin verisi" etiketi için
+const branchName = ref<string | null>(null)
 
 const institutionId = computed(() => authStore.currentInstitutionId ?? undefined)
 const periodId = computed(() => periodStore.selectedPeriodId)
@@ -281,3 +292,9 @@ onMounted(() => {
   if (branchFilter.value) loadWorkloadConfig().catch(() => {})
 })
 </script>
+
+<style scoped>
+.subject-header {
+  gap: 8px 16px;
+}
+</style>

@@ -49,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watchEffect } from 'vue'
 import { useBranchOptions } from 'src/composables/useEntityOptions'
 import { useAuthStore } from 'stores/auth'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
@@ -78,6 +78,8 @@ const props = withDefaults(defineProps<{
 })
 
 const model = defineModel<string | null>({ default: null })
+/** Seçili alanın görünen adı — sayfa "kimin verisi" etiketinde gösterir (EditingSubject). */
+const selectedLabel = defineModel<string | null>('selectedLabel', { default: null })
 
 const authStore = useAuthStore()
 const branchOpts = useBranchOptions()
@@ -107,6 +109,10 @@ const displayLabel = computed(() => {
   return branchOpts.allOptions?.value.find(
     (o: { value: string; label: string }) => o.value === model.value,
   )?.label ?? model.value
+})
+
+watchEffect(() => {
+  selectedLabel.value = displayLabel.value || null
 })
 
 onMounted(async () => {

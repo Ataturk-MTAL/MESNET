@@ -1,13 +1,13 @@
 <template>
-  <!-- Sayfa/tablo üstü filtre satırı — tek düzen kuralı burada yaşar.
-       Neden grid kolonu (col-sm-3) değil: sabit yüzde, içeriği bilmez; "EET — Elektrik-Elektronik
-       Teknolojisi" gibi uzun etiketler dar kolonda kesiliyordu. Burada her alan okunabilir bir
-       en az genişlikle esner, sığmazsa alt satıra geçer. Boşluk `gap` ile verilir: q-gutter
-       çocuklara negatif/pozitif margin basıp butonları alanlardan kaydırıyordu. -->
   <div
     class="filter-bar"
     :class="{ 'filter-bar--dense': dense }"
   >
+    <!-- Sayfa/tablo üstü filtre satırı — tek düzen kuralı burada yaşar.
+         Neden grid kolonu (col-sm-3) değil: sabit yüzde, içeriği bilmez; "EET — Elektrik-Elektronik
+         Teknolojisi" gibi uzun etiketler dar kolonda kesiliyordu. Burada her alan okunabilir bir
+         en az genişlikle esner, sığmazsa alt satıra geçer. Boşluk `gap` ile verilir: q-gutter
+         çocuklara negatif/pozitif margin basıp butonları alanlardan kaydırıyordu. -->
     <slot />
     <div
       v-if="$slots.actions"

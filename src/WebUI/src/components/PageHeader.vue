@@ -1,8 +1,8 @@
 <template>
-  <!-- Dar ekranda (xs) başlık ve aksiyonlar alt alta, sm ve üstünde aynı satırda.
-       Boşluk `q-gutter` ile değil `gap` ile verilir: q-gutter col öğesine negatif margin
-       basıp grubu yukarı-sola kaydırıyordu. -->
   <div class="page-header row items-center q-mb-lg">
+    <!-- Dar ekranda (xs) başlık ve aksiyonlar alt alta, sm ve üstünde aynı satırda.
+         Boşluk `q-gutter` ile değil `gap` ile verilir: q-gutter col öğesine negatif margin
+         basıp grubu yukarı-sola kaydırıyordu. -->
     <div class="col-12 col-sm">
       <h1 class="text-h5 text-weight-bold q-my-none">
         {{ title }}

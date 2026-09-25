@@ -6,10 +6,12 @@
     <FilterBar>
       <BranchSelector
         v-model="branchFilter"
+        v-model:selected-label="branchName"
         @update:model-value="onBranchChange"
       />
       <TeacherSelector
         v-model="selectedTeacherId"
+        v-model:selected-label="teacherName"
         :branch-code="branchFilter"
         @update:model-value="onTeacherChange"
       />
@@ -78,13 +80,20 @@
                   v-if="currentScheduleMeta"
                   class="text-caption text-grey-7 q-mt-xs"
                 >
-                  {{ currentScheduleMeta.academicYear }} - {{ currentScheduleMeta.semester }}
+                  {{ currentScheduleMeta.academicYear }} · {{ semesterLabelOf(currentScheduleMeta.semester) }}
                   <span v-if="currentScheduleMeta.updatedAt">
                     &middot; Son güncelleme: {{ formatDate(currentScheduleMeta.updatedAt) }}
                   </span>
                 </div>
               </div>
-              <div class="col-auto q-gutter-sm">
+              <!-- Kimin programı: düzenleme sırasında dikkat kaybını önler -->
+              <EditingSubject
+                :name="teacherName"
+                :context="branchName"
+                :editing="editing"
+                class="q-mx-md"
+              />
+              <div class="col-auto row items-center no-wrap schedule-actions">
                 <q-btn
                   v-if="viewingHistoryVersion !== null"
                   flat
@@ -301,7 +310,7 @@ import { useNotify } from 'src/composables/useNotify'
 import { useTeacherScheduleHistory } from 'src/composables/useTeacherScheduleHistory'
 import { useTeacherScheduleFormat } from 'src/composables/useTeacherScheduleFormat'
 import { useAuthStore } from 'stores/auth'
-import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
 import { useInstitutionStore } from 'stores/institution'
 import ScheduleGrid from 'components/ScheduleGrid.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
@@ -309,6 +318,7 @@ import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
 import PageHeader from 'components/PageHeader.vue'
+import EditingSubject from 'components/EditingSubject.vue'
 import FilterBar from 'components/FilterBar.vue'
 import { useSharedSelection } from 'src/composables/useSharedSelection'
 
@@ -322,6 +332,13 @@ const { periodCount, scheduleConfigMissing } = storeToRefs(institutionStore)
 
 // Sayfalar arası korunur (dağıtım ↔ ders programı arasında yeniden seçim yok).
 const { branchCode: branchFilter, teacherId: selectedTeacherId } = useSharedSelection()
+// Seçicilerin çözdüğü görünen adlar — "kimin programı" etiketi için
+const branchName = ref<string | null>(null)
+const teacherName = ref<string | null>(null)
+
+function semesterLabelOf(semester: string): string {
+  return semesterOptions.find((s) => s.value === semester)?.label ?? semester
+}
 const loading = ref(false)
 const saving = ref(false)
 const editing = ref(false)
@@ -557,3 +574,9 @@ onMounted(async () => {
   if (selectedTeacherId.value) await onTeacherChange(selectedTeacherId.value)
 })
 </script>
+
+<style scoped>
+.schedule-actions {
+  gap: 8px;
+}
+</style>

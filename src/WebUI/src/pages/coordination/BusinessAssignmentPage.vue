@@ -16,6 +16,7 @@
       <!-- Yazma bağlamı (#126): atama/saat değişikliği yapılan sayfa — yetkisiz alan listelenmez -->
       <BranchSelector
         v-model="branchFilter"
+        v-model:selected-label="branchName"
         write-context
         @update:model-value="onBranchChange"
       />
@@ -332,8 +333,16 @@
                 class="q-mb-md"
               >
                 <q-card-section>
-                  <div class="text-subtitle1 text-weight-medium q-mb-sm">
-                    {{ selectedTeacherName }} — Ders Programı
+                  <div class="row items-center q-mb-sm subject-header">
+                    <div class="text-subtitle1 text-weight-medium">
+                      Ders Programı
+                    </div>
+                    <!-- Kimin programı: sürükle-bırak sırasında dikkat kaybını önler -->
+                    <EditingSubject
+                      :name="selectedTeacherName"
+                      :context="branchName"
+                      :editing="pendingChanges.length > 0"
+                    />
                   </div>
 
                   <div
@@ -381,14 +390,17 @@
                 class="q-mb-md"
               >
                 <q-card-section>
-                  <div class="text-subtitle1 text-weight-medium q-mb-sm">
-                    Atanmış İşletmeler
-                    <q-badge
-                      color="info"
-                      class="q-ml-sm"
-                    >
-                      {{ assignedToTeacher.length }}
-                    </q-badge>
+                  <div class="row items-center q-mb-sm subject-header">
+                    <div class="text-subtitle1 text-weight-medium">
+                      Atanmış İşletmeler
+                      <q-badge
+                        color="info"
+                        class="q-ml-sm"
+                      >
+                        {{ assignedToTeacher.length }}
+                      </q-badge>
+                    </div>
+                    <EditingSubject :name="selectedTeacherName" />
                   </div>
                   <q-list
                     dense
@@ -776,6 +788,7 @@ import DataState from 'components/DataState.vue'
 import DetailDialog from 'components/DetailDialog.vue'
 import FormDialog from 'components/FormDialog.vue'
 import PageHeader from 'components/PageHeader.vue'
+import EditingSubject from 'components/EditingSubject.vue'
 import FilterBar from 'components/FilterBar.vue'
 import SearchInput from 'components/SearchInput.vue'
 import { useSharedSelection } from 'src/composables/useSharedSelection'
@@ -791,6 +804,8 @@ const activeTab = ref('assignment')
 // Sayfalar arası korunur; yazma sayfası olduğu için yetkisiz alan seçili gelmez.
 const { branchCode: branchFilter, teacherId: selectedTeacherId } =
   useSharedSelection({ writeContext: true })
+// Seçicinin çözdüğü alan adı — "kimin verisi" etiketi için
+const branchName = ref<string | null>(null)
 const businessSearch = ref('')
 const loading = ref(false)
 
@@ -1071,6 +1086,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.subject-header {
+  gap: 8px 16px;
+}
+
 /* Ekran okuyucuya açık, görsel olarak gizli — aria-live duyuruları için (#88).
    display:none veya visibility:hidden KULLANILMAZ; ikisi de içeriği erişilebilirlik
    ağacından çıkarır ve duyuru hiç okunmaz. */

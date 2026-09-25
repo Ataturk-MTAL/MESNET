@@ -10,6 +10,7 @@
       <!-- Yazma bağlamı (#126): saat dağıtımı kaydedilen sayfa — yetkisiz alan listelenmez -->
       <BranchSelector
         v-model="branchFilter"
+        v-model:selected-label="branchName"
         write-context
         @update:model-value="onBranchChange"
       />
@@ -161,8 +162,16 @@
         bordered
       >
         <q-card-section>
-          <div class="text-subtitle1 text-weight-medium q-mb-md">
-            İşletme Takdir Edilen Saatler
+          <div class="row items-center q-mb-md subject-header">
+            <div class="text-subtitle1 text-weight-medium">
+              İşletme Takdir Edilen Saatler
+            </div>
+            <EditingSubject
+              :name="branchName"
+              kind="Alan"
+              icon="school"
+              :editing="changedHoursCount > 0"
+            />
           </div>
 
           <!-- Otomatik dağıtım araç çubuğu (#118).
@@ -596,6 +605,7 @@ import { bucketPresentation } from 'src/utils/allocationBuckets'
 import BranchSelector from 'components/BranchSelector.vue'
 import BusinessClusterMap from 'components/BusinessClusterMap.vue'
 import PageHeader from 'components/PageHeader.vue'
+import EditingSubject from 'components/EditingSubject.vue'
 import FilterBar from 'components/FilterBar.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
@@ -608,6 +618,8 @@ const periodStore = useAcademicPeriodStore()
 
 // Sayfalar arası korunur; yazma sayfası olduğu için yetkisiz alan seçili gelmez.
 const { branchCode: branchFilter } = useSharedSelection({ writeContext: true })
+// Seçicinin çözdüğü alan adı — "kimin verisi" etiketi için
+const branchName = ref<string | null>(null)
 const loading = ref(false)
 const assignments = ref<BusinessAssignmentDto[]>([])
 
@@ -730,6 +742,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.subject-header {
+  gap: 8px 16px;
+}
+
 /*
  * Dokunma hedefi WCAG 2.2 SC 2.5.8 (en az 24x24 CSS px) — size="xs" ikon butonu
  * görsel olarak bunun altında kalıyor, hedef alanı burada geri veriliyor.

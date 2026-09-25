@@ -53,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watchEffect } from 'vue'
 import { useTeacherOptions } from 'src/composables/useEntityOptions'
 import { useAuthStore } from 'stores/auth'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
@@ -75,6 +75,8 @@ const props = withDefaults(defineProps<{
 })
 
 const model = defineModel<string | null>({ default: null })
+/** Seçili öğretmenin adı — sayfa "kimin verisi" etiketinde gösterir (EditingSubject). */
+const selectedLabel = defineModel<string | null>('selectedLabel', { default: null })
 
 const authStore = useAuthStore()
 const teacherOpts = useTeacherOptions()
@@ -110,6 +112,11 @@ function onFilter(val: string, update: (fn: () => void) => void) {
     filterNeedle.value = val
   })
 }
+
+watchEffect(() => {
+  selectedLabel.value =
+    teacherOpts.allOptions.value.find((o) => o.value === model.value)?.label ?? null
+})
 
 // Tüm öğretmenleri yükle — filtreleme client-side yapılır
 onMounted(async () => {
