@@ -95,6 +95,9 @@ try
 
     // Step 9: Coordination
     await CoordinationSeeder.SeedAsync(api, ctx);
+
+    // Step 10: Dağıtım ön koşulları — ders programı + alan ders yükü (#312)
+    await DistributionSeeder.SeedAsync(api, ctx);
 }
 catch (HttpRequestException ex)
 {
