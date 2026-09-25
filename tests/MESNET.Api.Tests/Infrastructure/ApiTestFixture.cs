@@ -34,7 +34,8 @@ public sealed class ApiTestFixture : IAsyncLifetime
     /// <summary>Token'sız client — auth gerektiren endpoint'lerin 401 döndüğünü doğrulamak için.</summary>
     public HttpClient Anonymous { get; private set; } = default!;
 
-    public async Task InitializeAsync()
+    // xunit.v3: IAsyncLifetime ValueTask döndürür.
+    public async ValueTask InitializeAsync()
     {
         Anonymous = new HttpClient { BaseAddress = new Uri(ApiBaseUrl) };
         // Authed client, API'nin aralıklı JWKS-warmup 401'lerine (IDX10500) karşı retry'li handler kullanır.
@@ -47,11 +48,11 @@ public sealed class ApiTestFixture : IAsyncLifetime
         Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         Client?.Dispose();
         Anonymous?.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     private async Task<string> FetchTokenAsync()

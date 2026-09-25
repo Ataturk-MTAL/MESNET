@@ -71,7 +71,7 @@ job_backend() {
 
   for project in "${projects[@]}"; do
     printf '  • %s\n' "$project"
-    dotnet test "$project" -c Release --no-build --logger 'console;verbosity=quiet'
+    dotnet test --project "$project" -c Release --no-build
   done
   ok "Backend"
 }
@@ -243,8 +243,8 @@ job_integration() {
   log "Entegrasyon — kara-kutu API testleri"
   API_BASE_URL="http://127.0.0.1:${API_PORT}" \
   KEYCLOAK_TOKEN_URL="http://localhost:${CI_KEYCLOAK_PORT}/realms/mesnet/protocol/openid-connect/token" \
-    dotnet test tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj -c Release \
-      --logger 'console;verbosity=normal'
+    dotnet test --project tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj -c Release \
+      --output Detailed
 
   # Seeder BOŞ veritabanında koşar — asıl idempotency sınavı bu (#80). Testlerden SONRA
   # çalışır ki seed edilen veri test beklentilerini bozmasın.

@@ -163,7 +163,10 @@ if (!builder.ExecutionContext.IsPublishMode)
         .WithLifetime(ContainerLifetime.Persistent);
 
     // Docusaurus docs site
-    builder.AddNpmApp("docs", "../../src/Docs", scriptName: "start")
+    // Aspire.Hosting.JavaScript (NodeJs paketinin Aspire 13 devamı). Depo pnpm kullanır;
+    // install:false — eski AddNpmApp paket kurmuyordu, davranış korunur.
+    builder.AddJavaScriptApp("docs", "../../src/Docs", runScriptName: "start")
+        .WithPnpm(install: false)
         .WithHttpEndpoint(port: 8100, env: "PORT")
         .WithEnvironment("KROKI_SERVER", kroki.GetEndpoint("kroki"))
         .WaitFor(kroki);
@@ -179,7 +182,10 @@ if (builder.ExecutionContext.IsPublishMode)
 else
 {
     // Dev: Vite dev server — Aspire dashboard'dan izlenir
-    builder.AddNpmApp("frontend", "../../src/WebUI", scriptName: "dev")
+    // AddViteApp kendi "http" uç noktasını ekler; aşağıdaki WithHttpEndpoint aynı adı
+    // günceller (sabit 5173 — Keycloak redirect URI'leri buna bağlı).
+    builder.AddViteApp("frontend", "../../src/WebUI")
+        .WithPnpm(install: false)
         .WithExternalHttpEndpoints()
         .WithReference(api)
         .WithEnvironment("VITE_API_URL", api.GetEndpoint("http"))

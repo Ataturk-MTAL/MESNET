@@ -53,7 +53,7 @@ jobs:
           fi
           for project in "${projects[@]}"; do
             echo "▶ $project"
-            dotnet test "$project" -c Release --no-build --logger 'console;verbosity=normal'
+            dotnet test --project "$project" -c Release --no-build --output Detailed
           done
 
   frontend:
@@ -234,7 +234,7 @@ jobs:
         env:
           API_BASE_URL: http://127.0.0.1:5270
           KEYCLOAK_TOKEN_URL: http://localhost:8080/realms/mesnet/protocol/openid-connect/token
-        run: dotnet test tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj -c Release --logger 'console;verbosity=normal'
+        run: dotnet test --project tests/MESNET.Api.Tests/MESNET.Api.Tests.csproj -c Release --output Detailed
 
       # Seeder BOŞ veritabanında koşar — asıl idempotency/gövde sınavı bu (#80). Testlerden
       # SONRA çalışır ki seed edilen veri test beklentilerini bozmasın. Seeder artık başarısız
