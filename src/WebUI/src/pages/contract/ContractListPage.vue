@@ -31,7 +31,6 @@
         emit-value
         map-options
         style="min-width: 180px"
-        @update:model-value="load"
       />
     </div>
 
@@ -52,7 +51,9 @@
       :columns="columns"
       :loading="loading"
       :pagination="pagination"
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
     >
       <template #body-cell-student="{ row }">
         <q-td>
@@ -593,7 +594,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import type { QTableProps } from 'quasar'
 import { contractApi, type InternshipContractDto } from 'src/api/contract'
@@ -681,7 +682,7 @@ const filters = computed(() => ({
   status: statusFilter.value ?? undefined,
 }))
 
-const { rows: contracts, loading, pagination, onRequest, load } = useServerPagination<InternshipContractDto>({
+const { rows: contracts, loading, pagination, onRequest, load, error: loadError, } = useServerPagination<InternshipContractDto>({
   fetchFn: (params) => contractApi.list(params),
   filters,
   defaultSortBy: 'createdAt',
@@ -880,7 +881,6 @@ async function afterUploadSaved() {
   }
 }
 
-watch(() => periodStore.selectedPeriodId, () => load())
 
 onMounted(async () => {
   studentOpts.load().catch(() => {})

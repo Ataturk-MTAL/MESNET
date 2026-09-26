@@ -13,6 +13,11 @@ export function getKeycloak(): Keycloak {
   return _keycloak
 }
 
+/** Başlatılmadıysa `null` — yalnız okuyup vazgeçebilecek çağıranlar için. */
+export function tryGetKeycloak(): Keycloak | null {
+  return _keycloak
+}
+
 /**
  * Yeniden giriş denemelerinin zaman damgaları (#136).
  *
@@ -65,11 +70,21 @@ function clearReauthLog(): void {
  * <p>Limit aşılırsa yönlendirme YAPILMAZ: kullanıcıya Türkçe ekran gösterilir ve oradaki
  * düğme <b>çıkış</b> yapar — döngüyü besleyen Keycloak oturumunu yok eden tek işlem odur.</p>
  */
+/**
+ * Döngü bu sayfa yüklemesinde kırıldı mı? Bellekte tutulur, bilerek: ekran gösterilince sayaç
+ * sıfırlanır (sonraki gerçek girişte temiz başlasın diye) ama aynı anda bekleyen öteki
+ * istekler hâlâ buraya gelir. Mandal olmadan boş sayaçla `login()` çağırıp ekranı ezerler.
+ */
+let isReauthHalted = false
+
 export function reauthenticate(reason: string): void {
+  if (isReauthHalted) return
+
   const now = Date.now()
   const log = readReauthLog()
 
   if (decideReauth(log, now) === 'halt') {
+    isReauthHalted = true
     logger.error(`[Auth] Yeniden giriş döngüsü kırıldı (${reason}) — oturum ekranı gösteriliyor.`)
     clearReauthLog()
     showSessionExpiredScreen({

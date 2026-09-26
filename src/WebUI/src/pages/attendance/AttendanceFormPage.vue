@@ -34,11 +34,15 @@
           label="Öğrenci *"
           outlined
           use-input
+          hide-selected
+          fill-input
           input-debounce="0"
           emit-value
           map-options
           option-label="label"
           option-value="value"
+          :error="!!errors.studentId"
+          :error-message="errors.studentId"
           @filter="placementOpts.filter"
         >
           <template #prepend>
@@ -67,6 +71,8 @@
           outlined
           readonly
           :hint="form.businessId ? '' : 'Öğrenci seçildiğinde otomatik doldurulacaktır'"
+          :error="!!errors.businessId"
+          :error-message="errors.businessId"
         >
           <template #prepend>
             <q-icon name="business" />
@@ -80,6 +86,8 @@
           :min="weekBounds.min"
           :max="weekBounds.max"
           hint="Sadece geçerli hafta içi tarih seçilebilir"
+          :error="!!errors.date"
+          :error-message="errors.date"
         >
           <template #prepend>
             <q-icon name="calendar_today" />
@@ -92,6 +100,8 @@
           outlined
           emit-value
           map-options
+          :error="!!errors.absenceType"
+          :error-message="errors.absenceType"
         >
           <template #prepend>
             <q-icon name="category" />
@@ -124,6 +134,7 @@
           color="primary"
           label="Kaydet"
           :loading="saving"
+          :disable="submitAttempted && !isValid"
           @click="handleSave"
         />
       </q-card-actions>
@@ -134,8 +145,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { date as qDate } from 'quasar'
 import { attendanceApi, ABSENCE_TYPES } from 'src/api/attendance'
+import { createAttendanceSchema } from 'src/schemas/attendance'
 import { useNotify } from 'src/composables/useNotify'
+import { zodValidate } from 'src/composables/useZodValidation'
 import { usePlacementOptions } from 'src/composables/useEntityOptions'
 import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import { useAuthStore } from 'stores/auth'
@@ -157,6 +171,7 @@ const form = reactive({
   absenceType: 'Unexcused',
   reason: '',
 })
+const errors = reactive<Record<string, string>>({})
 
 // İşletme resmî izin veremez, yalnız devamsızlık bildirir (#175). Sınıflandırma — mazeret,
 // izin, sağlık raporu — okul tarafındadır. Sunucu da aynı kuralı uygular; bu yalnız kullanıcıya
@@ -180,8 +195,21 @@ const weekBounds = computed(() => {
   monday.setDate(today.getDate() + diffToMonday)
   const sunday = new Date(monday)
   sunday.setDate(monday.getDate() + 6)
-  const fmt = (d: Date) => d.toISOString().slice(0, 10)
+  // Yerel tarih: toISOString() UTC'ye çevirir; Türkiye'de (UTC+3) gece 00:00-03:00 arasında
+  // gün bir önceki güne kayar ve hafta sınırı yanlış hesaplanırdı.
+  const fmt = (d: Date) => qDate.formatDate(d, 'YYYY-MM-DD')
   return { min: fmt(monday), max: fmt(sunday) }
+})
+
+const attendanceSchema = computed(() => createAttendanceSchema(weekBounds.value))
+
+// İlk "Kaydet" denemesine kadar alanlar kırmızıya boyanmaz; sonrasında hata mesajları
+// kullanıcı düzelttikçe canlı güncellenir ve form geçerli olana dek buton kapalı kalır.
+const submitAttempted = ref(false)
+const isValid = computed(() => attendanceSchema.value.safeParse(form).success)
+
+watch(form, () => {
+  if (submitAttempted.value) zodValidate(attendanceSchema.value, form, errors)
 })
 
 watch(
@@ -203,12 +231,21 @@ function goBack() {
 }
 
 async function handleSave() {
+  submitAttempted.value = true
+  if (!zodValidate(attendanceSchema.value, form, errors)) return
+
+  const institutionId = authStore.currentInstitutionId
+  if (!institutionId) {
+    notify.error('Kurum bağlamı bulunamadı; devamsızlık bir okula bağlanmadan kaydedilemez.')
+    return
+  }
+
   saving.value = true
   try {
     await attendanceApi.create({
       studentId: form.studentId,
       businessId: form.businessId,
-      institutionId: authStore.user?.institutionId ?? '',
+      institutionId,
       academicPeriodId: periodStore.selectedPeriodId ?? '',
       date: new Date(form.date).toISOString(),
       absenceType: form.absenceType,
@@ -225,6 +262,8 @@ async function handleSave() {
 
 onMounted(() => {
   placementOpts.reset()
-  placementOpts.load({ academicPeriodId: periodStore.selectedPeriodId ?? undefined })
+  placementOpts
+    .load({ academicPeriodId: periodStore.selectedPeriodId ?? undefined })
+    .catch((e: unknown) => notify.apiError(e, 'Öğrenci listesi yüklenemedi.'))
 })
 </script>

@@ -172,6 +172,7 @@ export const menuDefinition: NavGroup[] = [
       { title: 'İşletme Saat Ayarları', icon: 'schedule', to: { name: 'BusinessHours' }, permissions: ['department:distribution:manage'] },
       { title: 'İşletme Dağıtımı', icon: 'assignment_ind', to: { name: 'BusinessAssignment' }, permissions: ['department:distribution:manage'] },
       { title: 'Haftalık Ziyaretler', icon: 'event_note', to: { name: 'WeeklyVisits' }, permissions: ['department:weekly-visit:manage'] },
+      { title: 'Rehberlik Ziyaretleri', icon: 'directions_walk', to: { name: 'GuidanceVisits' }, permissions: ['coordinator:visit:manage'] },
       { title: 'Değerlendirmeler', icon: 'rate_review', to: { name: 'BusinessEvaluations' }, permissions: ['coordinator:visit:manage'] },
       { title: 'Beceri Sınavları', icon: 'quiz', to: { name: 'SkillExams' }, permissions: ['coordinator:visit:manage'] },
       { title: 'Faaliyet Raporları', icon: 'description', to: { name: 'ActivityReports' }, permissions: ['coordinator:report:manage'] },

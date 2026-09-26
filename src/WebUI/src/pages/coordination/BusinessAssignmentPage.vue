@@ -12,25 +12,21 @@
     </div>
 
     <!-- Filtreler -->
-    <div class="row q-col-gutter-md q-mb-lg items-end">
-      <div class="col-12 col-sm-3">
-        <!-- Yazma bağlamı (#126): atama/saat değişikliği yapılan sayfa — yetkisiz alan listelenmez -->
-        <BranchSelector
-          v-model="branchFilter"
-          write-context
-          @update:model-value="onBranchChange"
-        />
-      </div>
-
-      <div class="col-12 col-sm-3">
-        <TeacherSelector
-          v-model="selectedTeacherId"
-          :branch-code="branchFilter"
-          :show-cross-branch="authStore.canManageAllBranches && !!branchFilter"
-          @update:model-value="onTeacherChange"
-        />
-      </div>
-      <div class="col-12 col-sm-auto q-gutter-sm">
+    <FilterBar>
+      <!-- Yazma bağlamı (#126): atama/saat değişikliği yapılan sayfa — yetkisiz alan listelenmez -->
+      <BranchSelector
+        v-model="branchFilter"
+        v-model:selected-label="branchName"
+        write-context
+        @update:model-value="onBranchChange"
+      />
+      <TeacherSelector
+        v-model="selectedTeacherId"
+        :branch-code="branchFilter"
+        :show-cross-branch="authStore.canManageAllBranches && !!branchFilter"
+        @update:model-value="onTeacherChange"
+      />
+      <template #actions>
         <q-btn
           unelevated
           color="primary"
@@ -49,8 +45,8 @@
             {{ pendingChanges.length }}
           </q-badge>
         </q-btn>
-      </div>
-    </div>
+      </template>
+    </FilterBar>
 
     <!-- Bilgi Mesajı -->
     <AppNotice
@@ -337,9 +333,13 @@
                 class="q-mb-md"
               >
                 <q-card-section>
-                  <div class="text-subtitle1 text-weight-medium q-mb-sm">
-                    {{ selectedTeacherName }} — Ders Programı
-                  </div>
+                  <!-- Kimin programı: sürükle-bırak sırasında dikkat kaybını önler -->
+                  <SubjectHeader
+                    title="Ders Programı"
+                    :name="selectedTeacherName"
+                    :context="branchName"
+                    :editing="pendingChanges.length > 0"
+                  />
 
                   <div
                     v-if="scheduleLoading"
@@ -386,15 +386,16 @@
                 class="q-mb-md"
               >
                 <q-card-section>
-                  <div class="text-subtitle1 text-weight-medium q-mb-sm">
-                    Atanmış İşletmeler
-                    <q-badge
-                      color="info"
-                      class="q-ml-sm"
-                    >
-                      {{ assignedToTeacher.length }}
-                    </q-badge>
-                  </div>
+                  <SubjectHeader
+                    title="Atanmış İşletmeler"
+                    :name="selectedTeacherName"
+                  >
+                    <template #badges>
+                      <q-badge color="info">
+                        {{ assignedToTeacher.length }}
+                      </q-badge>
+                    </template>
+                  </SubjectHeader>
                   <q-list
                     dense
                     separator
@@ -781,7 +782,10 @@ import DataState from 'components/DataState.vue'
 import DetailDialog from 'components/DetailDialog.vue'
 import FormDialog from 'components/FormDialog.vue'
 import PageHeader from 'components/PageHeader.vue'
+import SubjectHeader from 'components/SubjectHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
 import SearchInput from 'components/SearchInput.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const authStore = useAuthStore()
@@ -791,8 +795,11 @@ const periodStore = useAcademicPeriodStore()
 const activeTab = ref('assignment')
 
 // ── Core State ──
-const branchFilter = ref<string | null>(null)
-const selectedTeacherId = ref<string | null>(null)
+// Sayfalar arası korunur; yazma sayfası olduğu için yetkisiz alan seçili gelmez.
+const { branchCode: branchFilter, teacherId: selectedTeacherId } =
+  useSharedSelection({ writeContext: true })
+// Seçicinin çözdüğü alan adı — "kimin verisi" etiketi için
+const branchName = ref<string | null>(null)
 const businessSearch = ref('')
 const loading = ref(false)
 
@@ -903,7 +910,7 @@ async function loadData() {
 
 // ── Composables ──
 
-const institutionId = computed(() => authStore.user?.institutionId ?? undefined)
+const institutionId = computed(() => authStore.currentInstitutionId ?? undefined)
 const periodId = computed(() => periodStore.selectedPeriodId)
 const semester = computed(() => periodStore.selectedSemester)
 
@@ -1044,20 +1051,25 @@ watch(
 // BranchSelector ve TeacherSelector kendi onMounted'larında yüklenirler.
 // Burada sadece schedule config + sayfa düzeyindeki teacherOpts (isim çözümleme) yüklenir.
 onMounted(async () => {
-  const instId = authStore.user?.institutionId ?? undefined
+  const instId = authStore.currentInstitutionId ?? undefined
 
   // Kapsam tek alansa otomatik seç (#126) — karar rol adına değil, yazma kapsamına bakar.
   const scopedBranch = authStore.writableBranchCodes?.length === 1
     ? authStore.writableBranchCodes[0]
     : null
 
-  if (scopedBranch) {
-    branchFilter.value = scopedBranch
+  if (scopedBranch) branchFilter.value = scopedBranch
+
+  // Alan, kapsamdan ya da başka sayfadaki seçimden hazır gelebilir.
+  const branch = branchFilter.value
+  if (branch) {
     await Promise.all([
-      teacherOpts.reload({ institutionId: instId, branchCode: scopedBranch }),
+      teacherOpts.reload({ institutionId: instId, branchCode: branch }),
       loadScheduleConfig(),
     ])
     await loadData()
+    loadWorkloadConfig().catch(() => {})
+    if (selectedTeacherId.value) loadTeacherSchedule(selectedTeacherId.value)
   } else {
     await Promise.all([
       teacherOpts.load({ institutionId: instId }),

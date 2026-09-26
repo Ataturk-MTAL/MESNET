@@ -61,10 +61,12 @@ function dismiss() {
     <slot>{{ message }}</slot>
 
     <template
-      v-if="dismissible"
+      v-if="dismissible || $slots.action"
       #action
     >
+      <slot name="action" />
       <q-btn
+        v-if="dismissible"
         flat
         dense
         round

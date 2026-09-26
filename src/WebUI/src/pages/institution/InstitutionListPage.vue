@@ -10,7 +10,9 @@
       show-search
       :search="search"
       no-data-label="Kapsamınızda kurum bulunamadı."
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
       @search="onSearch"
     >
       <template #filters>
@@ -22,7 +24,6 @@
           dense
           emit-value
           map-options
-          style="min-width: 220px"
         />
       </template>
 
@@ -93,7 +94,7 @@ const nodeTypeOptions = [
 
 const filters = computed(() => buildInstitutionListFilters(nodeTypeFilter.value))
 
-const { rows: institutions, loading, pagination, search, onRequest, onSearch, load } =
+const { rows: institutions, loading, pagination, search, onRequest, onSearch, load, error: loadError, } =
   useServerPagination<InstitutionDto>({
     fetchFn: (params) => institutionApi.list(params),
     filters,

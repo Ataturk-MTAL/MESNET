@@ -61,7 +61,6 @@
           v-model="missingBranchOnly"
           label="Yalnız branş atanmamış kullanıcılar"
           class="q-mb-sm"
-          @update:model-value="loadUsers().catch(() => {})"
         />
 
         <AppTable
@@ -71,7 +70,9 @@
           :pagination="usersPagination"
           show-search
           :search="usersSearch"
+          :error="usersError"
           @request="onUsersRequest"
+          @retry="loadUsers"
           @search="onUsersSearch"
         >
           <template #body-cell-isEnabled="{ row }">
@@ -175,6 +176,21 @@
                 >
                   <q-tooltip>Bağlı öğrencileri yönet (veli)</q-tooltip>
                 </q-btn>
+                <!-- İşletme bağı (#229): işletme yetkilisinin KAPSAMI. Bağ yoksa işletme
+                     onay adımları (ücretli izin vb.) ona boş gelir. -->
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="storefront"
+                  :color="row.businessId ? 'secondary' : undefined"
+                  aria-label="İşletme bağını yönet"
+                  @click="openBusiness(row)"
+                >
+                  <q-tooltip>
+                    {{ row.businessId ? `İşletme: ${businessName(row.businessId)}` : 'İşletme bağını yönet (işletme yetkilisi)' }}
+                  </q-tooltip>
+                </q-btn>
               </PermissionGuard>
               <!--
                 Kurum (kiracı) bağı — ADR-0003 adım 2. Token'dan gelen institution_id artık
@@ -236,7 +252,9 @@
           :pagination="invsPagination"
           show-search
           :search="invsSearch"
+          :error="invsError"
           @request="onInvsRequest"
+          @retry="loadInvitations"
           @search="onInvsSearch"
         >
           <!--
@@ -543,6 +561,48 @@
     </FormDialog>
 
     <!--
+      İşletme bağı (#229). Tekli seçim; temizlenip kaydedilirse bağ çözülür. İşletme kataloğu
+      okullar arası paylaşımlıdır, bu yüzden kapsam kontrolü kurum bağındaki gibi değildir.
+    -->
+    <FormDialog
+      v-model="businessDialog"
+      :title="`İşletme Bağı: ${selectedUser?.fullName ?? ''}`"
+      icon="storefront"
+      color="secondary"
+      :saving="saving"
+      @save="saveBusiness"
+    >
+      <AppNotice
+        type="info"
+        message="İşletme yetkilisi yalnız bağlı olduğu işletmenin kayıtlarını görür ve onaylar (ücretli izin, not girişi). Boş bırakıp kaydetmek bağı çözer."
+      />
+      <q-select
+        v-model="selectedBusiness"
+        :options="businessOpts.options.value"
+        :loading="businessOpts.loading.value"
+        label="İşletme"
+        outlined
+        clearable
+        use-input
+        hide-selected
+        fill-input
+        input-debounce="0"
+        emit-value
+        map-options
+        option-label="label"
+        option-value="value"
+        @filter="businessOpts.filter"
+      >
+        <template #prepend>
+          <q-icon name="storefront" />
+        </template>
+        <template #no-option>
+          <SelectEmptyOption />
+        </template>
+      </q-select>
+    </FormDialog>
+
+    <!--
       Veli–öğrenci bağı (#174).
 
       KAPATMA DAVRANIŞI (bilinçli): FormDialog `persistent`tir — ESC ve arka plana tıklama
@@ -607,7 +667,7 @@ import PageHeader from 'components/PageHeader.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 import StatusBadge from 'components/StatusBadge.vue'
-import { useBranchOptions, useStudentOptions } from 'src/composables/useEntityOptions'
+import { useBranchOptions, useBusinessOptions, useStudentOptions } from 'src/composables/useEntityOptions'
 import { resolveBranchCellState } from 'utils/branchAssignment'
 
 const notify = useNotify()
@@ -635,13 +695,23 @@ const selectedStudents = ref<string[]>([])
 const missingBranchOnly = ref(false)
 const branchOpts = useBranchOptions()
 const studentOpts = useStudentOptions()
+// ── İşletme bağı (#229) ──
+const businessDialog = ref(false)
+const selectedBusiness = ref<string | null>(null)
+const businessOpts = useBusinessOptions()
+const businessNames = computed(
+  () => new Map(businessOpts.allOptions.value.map((o) => [o.value, o.label])),
+)
+function businessName(id: string): string {
+  return businessNames.value.get(id) ?? 'yükleniyor…'
+}
 
 // ── Server-side pagination: Users ──
 // Boş liste yöneticide normaldir; filtre yalnız "beklenip girilmemiş" olanları getirir.
 const userFilters = computed(() =>
   missingBranchOnly.value ? { missingBranchOnly: true } : {},
 )
-const { rows: users, loading: usersLoading, pagination: usersPagination, search: usersSearch, onRequest: onUsersRequest, onSearch: onUsersSearch, load: loadUsers } =
+const { rows: users, loading: usersLoading, pagination: usersPagination, search: usersSearch, onRequest: onUsersRequest, onSearch: onUsersSearch, load: loadUsers, error: usersError } =
   useServerPagination<UserAccountDto>({
     fetchFn: (params) => securityApi.listUsers(params),
     filters: userFilters,
@@ -650,7 +720,7 @@ const { rows: users, loading: usersLoading, pagination: usersPagination, search:
 
 // ── Server-side pagination: Invitations ──
 const invFilters = computed(() => ({}))
-const { rows: invitations, loading: invsLoading, pagination: invsPagination, search: invsSearch, onRequest: onInvsRequest, onSearch: onInvsSearch, load: loadInvitations } =
+const { rows: invitations, loading: invsLoading, pagination: invsPagination, search: invsSearch, onRequest: onInvsRequest, onSearch: onInvsSearch, load: loadInvitations, error: invsError } =
   useServerPagination<InvitationDto>({
     fetchFn: (params) => securityApi.listInvitations(params),
     filters: invFilters,
@@ -820,6 +890,30 @@ async function saveInstitution(institutionId: string | null) {
   await loadUsers().catch(() => {})
 }
 
+function openBusiness(row: UserAccountDto) {
+  selectedUser.value = row
+  selectedBusiness.value = row.businessId
+  businessDialog.value = true
+  businessOpts.load().catch(() => {})
+}
+
+async function saveBusiness() {
+  if (!selectedUser.value) return
+  saving.value = true
+  try {
+    await securityApi.changeBusiness(selectedUser.value.id, { businessId: selectedBusiness.value })
+    notify.success(selectedBusiness.value ? 'İşletme bağı kuruldu.' : 'İşletme bağı çözüldü.')
+    businessDialog.value = false
+  } catch (e) {
+    notify.apiError(e, 'İşletme bağı güncellenirken bir hata oluştu.')
+    return
+  } finally {
+    saving.value = false
+  }
+
+  await loadUsers().catch(() => {})
+}
+
 function openStudents(row: UserAccountDto) {
   selectedUser.value = row
   selectedStudents.value = [...row.linkedStudentIds]
@@ -941,4 +1035,6 @@ loadInvitations()
 roleCatalog.load().catch(() => {})
 // Alan kataloğu — davet ve alan yönetimi dialoglarında kullanılır (#126)
 branchOpts.load().catch(() => {})
+// İşletme kataloğu — satırdaki işletme bağı ipucu adı buradan çözer (#229)
+businessOpts.load().catch(() => {})
 </script>

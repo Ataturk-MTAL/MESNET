@@ -3,16 +3,15 @@
     <PageHeader title="Ders Yükü Havuzu" />
 
     <!-- Alan Seçici -->
-    <div class="row q-col-gutter-md q-mb-lg items-end">
-      <div class="col-12 col-sm-3">
-        <!-- Yazma bağlamı (#126): ders yükü havuzu kaydedilen sayfa — yetkisiz alan listelenmez -->
-        <BranchSelector
-          v-model="branchFilter"
-          write-context
-          @update:model-value="onBranchChange"
-        />
-      </div>
-    </div>
+    <FilterBar>
+      <!-- Yazma bağlamı (#126): ders yükü havuzu kaydedilen sayfa — yetkisiz alan listelenmez -->
+      <BranchSelector
+        v-model="branchFilter"
+        v-model:selected-label="branchName"
+        write-context
+        @update:model-value="onBranchChange"
+      />
+    </FilterBar>
 
     <AppNotice
       v-if="!branchFilter"
@@ -36,9 +35,10 @@
       bordered
     >
       <q-card-section>
-        <div class="text-subtitle1 text-weight-medium q-mb-sm">
-          Alan Ders Yükü Yapılandırması
-        </div>
+        <SubjectHeader
+          title="Alan Ders Yükü Yapılandırması"
+          :name="branchName"
+        />
         <div class="text-caption text-grey-7 q-mb-md">
           Norm Kadro Yönetmeliği Madde 22'ye göre grup sayısı ve şeflik saatleri ile toplam ders yükü havuzu hesaplanır.
         </div>
@@ -242,14 +242,20 @@ import { useAcademicPeriodStore } from 'stores/academicPeriod'
 import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import PageHeader from 'components/PageHeader.vue'
+import SubjectHeader from 'components/SubjectHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
 
-const branchFilter = ref<string | null>(null)
+// Sayfalar arası korunur; yazma sayfası olduğu için yetkisiz alan seçili gelmez.
+const { branchCode: branchFilter } = useSharedSelection({ writeContext: true })
+// Seçicinin çözdüğü alan adı — "kimin verisi" etiketi için
+const branchName = ref<string | null>(null)
 
-const institutionId = computed(() => authStore.user?.institutionId ?? undefined)
+const institutionId = computed(() => authStore.currentInstitutionId ?? undefined)
 const periodId = computed(() => periodStore.selectedPeriodId)
 
 const {
@@ -275,9 +281,9 @@ onMounted(() => {
     ? authStore.writableBranchCodes[0]
     : null
 
-  if (scopedBranch) {
-    branchFilter.value = scopedBranch
-    loadWorkloadConfig().catch(() => {})
-  }
+  if (scopedBranch) branchFilter.value = scopedBranch
+  // Başka sayfada seçilmiş alan da hazır gelir — veriyi açılışta yükle.
+  if (branchFilter.value) loadWorkloadConfig().catch(() => {})
 })
 </script>
+

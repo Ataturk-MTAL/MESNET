@@ -1,8 +1,21 @@
 import { ref, watch, onUnmounted, getCurrentInstance, type Ref, type ComputedRef } from 'vue'
 import type { QTableProps } from 'quasar'
+import type { AxiosError } from 'axios'
 import type { PagedResponse, PaginationParams } from 'src/types/pagination'
+import { useNotify } from './useNotify'
 
 type QTablePagination = NonNullable<QTableProps['pagination']>
+
+const LOAD_ERROR_MESSAGE = 'Liste yüklenirken bir hata oluştu.'
+
+/**
+ * Oturum düşmüşse (401 ya da istek öncesi yakalanan süresi dolmuş token) yeniden giriş
+ * hunisi zaten çalışıyor (`boot/axios.ts`); üstüne bir de hata bildirimi göstermek gürültüdür.
+ */
+function isAuthRedirectError(err: unknown): boolean {
+  const axiosErr = err as AxiosError | undefined
+  return axiosErr?.response?.status === 401 || axiosErr?.code === 'AUTH_EXPIRED'
+}
 
 export interface UseServerPaginationOptions<T, F extends Record<string, unknown> = Record<string, unknown>> {
   /** API çağrısı — filter + pagination parametreleri alır, PagedResponse döner. */
@@ -31,6 +44,12 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
   const rows = ref<T[]>([]) as Ref<T[]>
   const loading = ref(false)
   const search = ref('')
+  /**
+   * Son yüklemenin hatası; başarılı yüklemede `null`. Boş listeyi ("Kayıt bulunamadı") hata
+   * durumundan ayırt etmek içindir — eskiden 403/500 dönen liste sessizce boş görünüyordu.
+   */
+  const error = ref<unknown>(null)
+  const notify = useNotify()
 
   const pagination = ref<QTablePagination>({
     page: 1,
@@ -48,7 +67,14 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
   // numarası alır; yalnız en son başlatılan yazma hakkına sahiptir.
   let latestRequestId = 0
 
-  async function load() {
+  /**
+   * Sayfayı yükler. Hata FIRLATMAZ: hatayı `error`'a yazar, satırları boşaltır ve kullanıcıya
+   * bildirir. Fırlatsaydı, "işlem yap → başarı bildir → await load()" deseni kullanan sayfalar
+   * başarılı işlemden sonra liste yenilemesi düştüğünde işlemin kendisi başarısız olmuş gibi
+   * ikinci bir yanıltıcı hata gösterirdi; `onMounted` içindeki yakalanmamış `await load()` da
+   * işlenmemiş promise reddi üretirdi.
+   */
+  async function load(): Promise<void> {
     const requestId = ++latestRequestId
     loading.value = true
     try {
@@ -72,6 +98,14 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
         sortBy: p.sortBy,
         descending: p.descending,
       }
+      error.value = null
+    } catch (err) {
+      if (requestId !== latestRequestId) return // bayat isteğin hatası yeni sonucu ezmez
+      error.value = err
+      // Önceki filtrenin satırları yeni filtrenin sonucuymuş gibi ekranda kalmasın.
+      rows.value = []
+      pagination.value = { ...pagination.value, rowsNumber: 0 }
+      if (!isAuthRedirectError(err)) notify.apiError(err, LOAD_ERROR_MESSAGE)
     } finally {
       // Yükleniyor göstergesi yalnız en son istek bitince kapanır; yoksa erken dönen bayat
       // istek, hâlâ süren yeni isteğin göstergesini söndürür.
@@ -89,7 +123,9 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
     pagination.value.rowsPerPage = rowsPerPage ?? defaultPageSize
     pagination.value.sortBy = sortBy ?? null
     pagination.value.descending = descending ?? false
-    load()
+    // load() hatayı kendi içinde ele alır; buradaki catch yalnız beklenmeyen bir kusurun
+    // işlenmemiş promise reddine dönüşmemesi içindir.
+    load().catch(() => {})
   }
 
   /** Arama terimi değiştiğinde debounce ile çağrılır. */
@@ -98,7 +134,7 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       pagination.value.page = 1
-      load()
+      load().catch(() => {})
     }, 400)
   }
 
@@ -116,7 +152,7 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
   if (filters) {
     watch(filters, () => {
       pagination.value.page = 1
-      load()
+      load().catch(() => {})
     }, { deep: true })
   }
 
@@ -125,6 +161,7 @@ export function useServerPagination<T, F extends Record<string, unknown> = Recor
     loading,
     search,
     pagination,
+    error,
     load,
     onRequest,
     onSearch,

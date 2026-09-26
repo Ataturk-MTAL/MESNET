@@ -34,6 +34,8 @@
           label="İşletme *"
           outlined
           use-input
+          hide-selected
+          fill-input
           input-debounce="0"
           emit-value
           map-options
@@ -171,7 +173,7 @@ async function handleSave() {
   try {
     await coordinationApi.createEvaluation({
       businessId: form.businessId,
-      institutionId: authStore.user?.institutionId ?? '',
+      institutionId: authStore.currentInstitutionId ?? '',
       evaluationDate: new Date(form.evaluationDate).toISOString(),
       result: form.result,
       notes: form.notes || undefined,

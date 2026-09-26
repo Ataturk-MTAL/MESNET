@@ -5,6 +5,11 @@ namespace MESNET.Business.Application.Dtos;
 public sealed record BusinessDto(
     Guid Id,
     string Name,
+    /// <summary>
+    /// VKN (10 hane) / TCKN (11 hane) — paylaşımlı kataloğun doğal anahtarı (#150).
+    /// Düzenleme formu mevcut değeri gösterebilsin diye taşınır; eski kayıtlarda boş olabilir.
+    /// </summary>
+    string? TaxNumber,
     string Address,
     string? PhoneNumber,
     string? Email,

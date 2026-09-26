@@ -3,21 +3,19 @@
     <PageHeader title="Öğretmen Ders Programı" />
 
     <!-- Filtreler -->
-    <div class="row q-col-gutter-md q-mb-lg items-end">
-      <div class="col-12 col-sm-6 col-md-5">
-        <BranchSelector
-          v-model="branchFilter"
-          @update:model-value="onBranchChange"
-        />
-      </div>
-      <div class="col-12 col-sm-6 col-md-5">
-        <TeacherSelector
-          v-model="selectedTeacherId"
-          :branch-code="branchFilter"
-          @update:model-value="onTeacherChange"
-        />
-      </div>
-    </div>
+    <FilterBar>
+      <BranchSelector
+        v-model="branchFilter"
+        v-model:selected-label="branchName"
+        @update:model-value="onBranchChange"
+      />
+      <TeacherSelector
+        v-model="selectedTeacherId"
+        v-model:selected-label="teacherName"
+        :branch-code="branchFilter"
+        @update:model-value="onTeacherChange"
+      />
+    </FilterBar>
 
     <!-- Bilgi Mesajı -->
     <AppNotice
@@ -48,47 +46,46 @@
           class="q-mb-md"
         >
           <q-card-section>
-            <div class="row items-center q-mb-md">
-              <div class="col">
-                <div class="text-subtitle1 text-weight-medium">
-                  Haftalık Program
-                  <q-badge
-                    v-if="hasExistingSchedule"
-                    color="positive"
-                    class="q-ml-sm"
-                  >
-                    Kayıtlı
-                    <q-tooltip>Versiyon {{ currentVersion }}</q-tooltip>
-                  </q-badge>
-                  <!-- Anlamsal durum taşımayan taslak rozeti → bg-neutral (#465a73):
-                       beyaz metinle 7,07:1. Quasar "grey" (#9e9e9e) zemininde QBadge'in
-                       varsayılan #fff metni 2,68:1'de kalıyordu — ÖLÇÜLDÜ. -->
-                  <q-badge
-                    v-else
-                    color="neutral"
-                    class="q-ml-sm"
-                  >
-                    Yeni
-                  </q-badge>
-                  <q-badge
-                    v-if="viewingHistoryVersion !== null"
-                    color="warning"
-                    class="q-ml-sm"
-                  >
-                    Geçmiş: v{{ viewingHistoryVersion }}
-                  </q-badge>
-                </div>
-                <div
-                  v-if="currentScheduleMeta"
-                  class="text-caption text-grey-7 q-mt-xs"
+            <SubjectHeader
+              title="Haftalık Program"
+              :name="teacherName"
+              :context="branchName"
+              :editing="editing"
+            >
+              <template #badges>
+                <q-badge
+                  v-if="hasExistingSchedule"
+                  color="positive"
                 >
-                  {{ currentScheduleMeta.academicYear }} - {{ currentScheduleMeta.semester }}
-                  <span v-if="currentScheduleMeta.updatedAt">
-                    &middot; Son güncelleme: {{ formatDate(currentScheduleMeta.updatedAt) }}
-                  </span>
-                </div>
-              </div>
-              <div class="col-auto q-gutter-sm">
+                  Kayıtlı
+                  <q-tooltip>Versiyon {{ currentVersion }}</q-tooltip>
+                </q-badge>
+                <!-- Anlamsal durum taşımayan taslak rozeti → bg-neutral (#465a73):
+                     beyaz metinle 7,07:1. Quasar "grey" (#9e9e9e) zemininde QBadge'in
+                     varsayılan #fff metni 2,68:1'de kalıyordu — ÖLÇÜLDÜ. -->
+                <q-badge
+                  v-else
+                  color="neutral"
+                >
+                  Yeni
+                </q-badge>
+                <q-badge
+                  v-if="viewingHistoryVersion !== null"
+                  color="warning"
+                >
+                  Geçmiş: v{{ viewingHistoryVersion }}
+                </q-badge>
+              </template>
+              <template
+                v-if="currentScheduleMeta"
+                #meta
+              >
+                · {{ currentScheduleMeta.academicYear }} · {{ semesterLabelOf(currentScheduleMeta.semester) }}
+                <span v-if="currentScheduleMeta.updatedAt">
+                  · Son güncelleme: {{ formatDate(currentScheduleMeta.updatedAt) }}
+                </span>
+              </template>
+              <template #actions>
                 <q-btn
                   v-if="viewingHistoryVersion !== null"
                   flat
@@ -122,8 +119,8 @@
                     @click="saveSchedule"
                   />
                 </template>
-              </div>
-            </div>
+              </template>
+            </SubjectHeader>
 
             <ScheduleGrid
               :schedule="scheduleData"
@@ -305,7 +302,7 @@ import { useNotify } from 'src/composables/useNotify'
 import { useTeacherScheduleHistory } from 'src/composables/useTeacherScheduleHistory'
 import { useTeacherScheduleFormat } from 'src/composables/useTeacherScheduleFormat'
 import { useAuthStore } from 'stores/auth'
-import { useAcademicPeriodStore } from 'stores/academicPeriod'
+import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
 import { useInstitutionStore } from 'stores/institution'
 import ScheduleGrid from 'components/ScheduleGrid.vue'
 import TeacherSelector from 'components/TeacherSelector.vue'
@@ -313,6 +310,9 @@ import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
 import PageHeader from 'components/PageHeader.vue'
+import SubjectHeader from 'components/SubjectHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const authStore = useAuthStore()
@@ -322,8 +322,15 @@ const institutionStore = useInstitutionStore()
 // Ders programı config artık merkezi store cache'inden okunur (doğrudan API çağrısı yok)
 const { periodCount, scheduleConfigMissing } = storeToRefs(institutionStore)
 
-const branchFilter = ref<string | null>(null)
-const selectedTeacherId = ref<string | null>(null)
+// Sayfalar arası korunur (dağıtım ↔ ders programı arasında yeniden seçim yok).
+const { branchCode: branchFilter, teacherId: selectedTeacherId } = useSharedSelection()
+// Seçicilerin çözdüğü görünen adlar — "kimin programı" etiketi için
+const branchName = ref<string | null>(null)
+const teacherName = ref<string | null>(null)
+
+function semesterLabelOf(semester: string): string {
+  return semesterOptions.find((s) => s.value === semester)?.label ?? semester
+}
 const loading = ref(false)
 const saving = ref(false)
 const editing = ref(false)
@@ -464,7 +471,7 @@ async function saveSchedule() {
     return
   }
 
-  const instId = authStore.user?.institutionId
+  const instId = authStore.currentInstitutionId
   const periodId = periodStore.selectedPeriodId
   if (!instId || !periodId) {
     notify.warning('Kurum veya dönem bilgisi bulunamadı.')
@@ -554,8 +561,9 @@ onMounted(async () => {
   const scopedBranch =
     authStore.writableBranchCodes?.length === 1 ? authStore.writableBranchCodes[0] : null
 
-  if (scopedBranch) {
-    branchFilter.value = scopedBranch
-  }
+  if (scopedBranch) branchFilter.value = scopedBranch
+  // Başka sayfada seçilmiş öğretmen hazır gelir — programını açılışta yükle.
+  if (selectedTeacherId.value) await onTeacherChange(selectedTeacherId.value)
 })
 </script>
+

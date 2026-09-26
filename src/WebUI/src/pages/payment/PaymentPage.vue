@@ -10,17 +10,15 @@
     />
 
     <!-- Filtreler -->
-    <div class="row q-gutter-sm q-mb-md items-center">
+    <FilterBar dense>
       <BranchSelector
         v-model="branchCodeFilter"
         dense
         force-select
-        style="min-width: 200px"
       />
       <SearchInput
         v-model="searchFilter"
         label="Öğrenci Adı veya Numarası"
-        style="min-width: 220px"
       />
       <q-select
         v-model="phaseFilter"
@@ -31,16 +29,15 @@
         emit-value
         map-options
         clearable
-        style="min-width: 200px"
       />
       <q-input
         v-model="monthFromFilter"
+        class="filter-bar__narrow"
         label="Başlangıç Ayı"
         outlined
         dense
         clearable
         readonly
-        style="min-width: 150px"
       >
         <template #prepend>
           <q-icon name="calendar_month" />
@@ -61,7 +58,7 @@
                 default-view="Months"
                 mask="YYYY-MM"
                 years-in-month-view
-                :options="(d) => !monthToFilter || d <= monthToFilter"
+                :navigation-max-year-month="toNavYearMonth(monthToFilter)"
               >
                 <div class="row items-center justify-end">
                   <q-btn
@@ -78,12 +75,12 @@
       </q-input>
       <q-input
         v-model="monthToFilter"
+        class="filter-bar__narrow"
         label="Bitiş Ayı"
         outlined
         dense
         clearable
         readonly
-        style="min-width: 150px"
       >
         <template #prepend>
           <q-icon name="calendar_month" />
@@ -104,7 +101,7 @@
                 default-view="Months"
                 mask="YYYY-MM"
                 years-in-month-view
-                :options="(d) => !monthFromFilter || d >= monthFromFilter"
+                :navigation-min-year-month="toNavYearMonth(monthFromFilter)"
               >
                 <div class="row items-center justify-end">
                   <q-btn
@@ -126,7 +123,7 @@
         unelevated
         @click="load"
       />
-    </div>
+    </FilterBar>
 
     <!-- Nadirlik kapısı. Görünen satırların HEPSİ sıradaysa satır rozeti hiçbir şeyi ayırt
          etmez, yalnız "Aşama" sütununu tekrar eder. Bu hâl burada süzgeçle kuruluyor:
@@ -145,7 +142,9 @@
       :columns="columns"
       :loading="loading"
       :pagination="pagination"
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
     >
       <template #body-cell-phaseSlug="{ row }">
         <q-td>
@@ -397,6 +396,8 @@ import PermissionGuard from 'components/PermissionGuard.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import AppNotice from 'components/AppNotice.vue'
 import PageHeader from 'components/PageHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const periodStore = useAcademicPeriodStore()
@@ -407,10 +408,21 @@ const detailOpen = ref(false)
 const uploadReceiptDialog = ref(false)
 const rejectDialog = ref(false)
 const searchFilter = ref('')
-const branchCodeFilter = ref<string | null>(null)
+const { branchCode: branchCodeFilter } = useSharedSelection()
 const phaseFilter = ref<string | null>(null)
 const monthFromFilter = ref('')
 const monthToFilter = ref('')
+
+/**
+ * Başlangıç ≤ bitiş kısıtı. Eskiden `:options` ile yapılıyordu ve hiç çalışmıyordu: QDate
+ * `options`'ı yalnız GÜN ızgarasına uygular (ay görünümünde etkisizdir) ve fonksiyona
+ * 'YYYY/MM/DD' verir, model ise 'YYYY-MM'. Ay/yıl düğmelerini QDate yalnız
+ * `navigation-{min,max}-year-month` ('YYYY/MM') ile kapatır; `emit-immediately` ile yıl
+ * değişiminde yayılan değer de bu sınıra kırpılır.
+ */
+function toNavYearMonth(yearMonth: string | null | undefined): string | undefined {
+  return yearMonth ? yearMonth.replace('-', '/') : undefined
+}
 const uploadType = ref<'business' | 'student'>('business')
 
 const phaseOptions = PAYMENT_PHASES.map((p) => ({ label: p.label, value: p.value }))
@@ -432,7 +444,7 @@ const filters = computed(() => {
   }
 })
 
-const { rows: payments, loading, pagination, onRequest, load } = useServerPagination<PaymentSummaryDto>({
+const { rows: payments, loading, pagination, onRequest, load, error: loadError, } = useServerPagination<PaymentSummaryDto>({
   fetchFn: (params) => paymentApi.list(params),
   filters,
   defaultSortBy: 'month',

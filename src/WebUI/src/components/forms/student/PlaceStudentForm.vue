@@ -38,6 +38,8 @@
       label="İşletme *"
       outlined
       use-input
+      hide-selected
+      fill-input
       input-debounce="0"
       emit-value
       map-options
@@ -77,6 +79,7 @@
     <TeacherSelector
       v-model="form.teacherId"
       :label="form.isSchoolBased ? 'Gözetmen (opsiyonel)' : 'Koordinatör Öğretmen (opsiyonel)'"
+      :branch-code="studentBranchCode"
     />
   </FormDialog>
 </template>
@@ -122,7 +125,7 @@ watch(open, (isOpen) => {
     Object.assign(form, { businessId: '', teacherId: '', isSchoolBased: false })
     for (const key of Object.keys(errors)) errors[key] = ''
     businessOpts.reset()
-    businessOpts.load()
+    businessOpts.load().catch((e: unknown) => notify.apiError(e, 'İşletme listesi yüklenemedi.'))
   }
 })
 

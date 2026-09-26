@@ -9,6 +9,8 @@ import { contractApi } from 'src/api/contract'
 import { attendanceApi } from 'src/api/attendance'
 import { securityApi } from 'src/api/security'
 import { useInstitutionStore } from 'stores/institution'
+import { logger } from 'utils/logger'
+import type { PagedResponse } from 'src/types/pagination'
 
 export interface UseDashboardStatsOptions {
   authStore: ReturnType<typeof useAuthStore>
@@ -16,12 +18,17 @@ export interface UseDashboardStatsOptions {
 }
 
 // Status label maps
+// Sıra = backend StudentStatus değer sırası. Adlar backend SmartEnum Name'leriyle BİREBİR
+// aynı olmalı: geçersiz ad TryFromName'de düşer ve süzgeç SESSİZCE atlanır (tüm kayıtlar sayılır).
+const STUDENT_STATUSES = ['Registered', 'Applied', 'Placed', 'ActiveInternship', 'Completed', 'Deregistered'] as const
+
 const STUDENT_STATUS_LABELS: Record<string, string> = {
   Registered: 'Kayıtlı',
   Applied: 'Başvurdu',
   Placed: 'Yerleştirildi',
   ActiveInternship: 'Aktif Staj',
   Completed: 'Tamamladı',
+  Deregistered: 'Kayıt Silindi',
 }
 
 // Grafik renkleri tema değişkeninden türer (#104) ve StatusBadge tonlarıyla eşleşir —
@@ -33,13 +40,20 @@ const STUDENT_STATUS_COLORS: Record<string, () => string> = {
   Placed: statusTone.progress,
   ActiveInternship: statusTone.active,
   Completed: statusTone.success,
+  Deregistered: statusTone.negative,
 }
+
+// Sıra = backend ContractStatus değer sırası (grafik bu sırayla çizilir).
+const CONTRACT_STATUSES = [
+  'Draft', 'AwaitingSignature', 'Active', 'Suspended', 'TerminationRequested', 'Terminated', 'Completed',
+] as const
 
 const CONTRACT_STATUS_LABELS: Record<string, string> = {
   Draft: 'Taslak',
   AwaitingSignature: 'İmza Bekliyor',
   Active: 'Aktif',
   Suspended: 'Askıda',
+  TerminationRequested: 'Fesih Talep Edildi',
   Terminated: 'Feshedildi',
   Completed: 'Tamamlandı',
 }
@@ -49,8 +63,31 @@ const CONTRACT_STATUS_COLORS: Record<string, () => string> = {
   AwaitingSignature: statusTone.pending,
   Active: statusTone.active,
   Suspended: statusTone.warning,
+  TerminationRequested: statusTone.warning,
   Terminated: statusTone.negative,
   Completed: statusTone.success,
+}
+
+/**
+ * Sayım için tek satırlık sayfa istenir; sayı yanıttaki `totalCount`tan okunur. Sayfadaki
+ * satırları saymak (`items.length` / `filter`) sayfa boyutunu aşan veride YANLIŞ sonuç verir.
+ */
+const COUNT_PAGE_SIZE = 1
+
+type CountFetcher = (params: { status?: string; pageSize: number }) => Promise<{ data: PagedResponse<unknown> }>
+
+async function fetchCount(fetcher: CountFetcher, status?: string): Promise<number> {
+  const res = await fetcher({ status, pageSize: COUNT_PAGE_SIZE })
+  return res.data?.totalCount ?? 0
+}
+
+/** Durum başına toplam sayım — sayfalamadan bağımsız, tüm veri çekilmez. */
+async function fetchStatusCounts(
+  fetcher: CountFetcher,
+  statuses: readonly string[],
+): Promise<Record<string, number>> {
+  const counts = await Promise.all(statuses.map((status) => fetchCount(fetcher, status)))
+  return Object.fromEntries(statuses.map((status, i) => [status, counts[i] ?? 0]))
 }
 
 export function useDashboardStats(options: UseDashboardStatsOptions) {
@@ -59,15 +96,16 @@ export function useDashboardStats(options: UseDashboardStatsOptions) {
   const institutionStore = useInstitutionStore()
   const institutionName = computed(() => institutionStore.institution?.fullName ?? '')
 
-  // Stats
+  // Stats — `null` = yüklenemedi. Kart bunu nötr "—" olarak gösterir; 0 gibi uydurma bir
+  // sayı gösterilmez (0 "hiç kayıt yok" demektir, hata değil).
   const stats = reactive({
-    students: 0,
+    students: null as number | null,
     studentsLoading: true,
-    businesses: 0,
+    businesses: null as number | null,
     businessesLoading: true,
-    activeContracts: 0,
+    activeContracts: null as number | null,
     contractsLoading: true,
-    pendingTotal: 0,
+    pendingTotal: null as number | null,
     pendingLoading: true,
   })
 
@@ -75,18 +113,9 @@ export function useDashboardStats(options: UseDashboardStatsOptions) {
   const studentChartOption = ref<EChartsOption | null>(null)
   const contractChartOption = ref<EChartsOption | null>(null)
 
-  // Raw data holders for chart generation
-  const allStudents = ref<{ status: string }[]>([])
-  const allContracts = ref<{ status: string }[]>([])
-
   // Chart builders
-  function buildStudentChart() {
-    const grouped: Record<string, number> = {}
-    for (const s of allStudents.value) {
-      grouped[s.status] = (grouped[s.status] ?? 0) + 1
-    }
-
-    const data = Object.entries(grouped).map(([status, count]) => ({
+  function buildStudentChart(grouped: Record<string, number>) {
+    const data = Object.entries(grouped).filter(([, count]) => count > 0).map(([status, count]) => ({
       name: STUDENT_STATUS_LABELS[status] ?? status,
       value: count,
       itemStyle: { color: (STUDENT_STATUS_COLORS[status] ?? (() => NEUTRAL_GREY))() },
@@ -109,18 +138,12 @@ export function useDashboardStats(options: UseDashboardStatsOptions) {
     }
   }
 
-  function buildContractChart() {
-    const grouped: Record<string, number> = {}
-    for (const c of allContracts.value) {
-      grouped[c.status] = (grouped[c.status] ?? 0) + 1
-    }
-
-    const order = ['Draft', 'AwaitingSignature', 'Active', 'Suspended', 'Terminated', 'Completed']
+  function buildContractChart(grouped: Record<string, number>) {
     const categories: string[] = []
     const values: number[] = []
     const colors: string[] = []
 
-    for (const status of order) {
+    for (const status of CONTRACT_STATUSES) {
       if (grouped[status]) {
         categories.push(CONTRACT_STATUS_LABELS[status] ?? status)
         values.push(grouped[status])
@@ -143,80 +166,84 @@ export function useDashboardStats(options: UseDashboardStatsOptions) {
     }
   }
 
-  // Data loaders
+  // Data loaders — hata yutulmaz: loglanır ve kart "—" gösterir (değer null kalır).
   async function loadStudents() {
     try {
-      const res = await enrollmentApi.listStudents({ pageSize: 100 })
-      const data = res.data?.items ?? []
-      stats.students = res.data?.totalCount ?? 0
-      allStudents.value = data
-      buildStudentChart()
-    } catch { /* sessiz */ }
-    stats.studentsLoading = false
+      const [total, byStatus] = await Promise.all([
+        fetchCount(enrollmentApi.listStudents),
+        fetchStatusCounts(enrollmentApi.listStudents, STUDENT_STATUSES),
+      ])
+      stats.students = total
+      buildStudentChart(byStatus)
+    } catch (error: unknown) {
+      logger.warn('[Pano] Öğrenci sayıları yüklenemedi', error)
+    } finally {
+      stats.studentsLoading = false
+    }
   }
 
   async function loadBusinesses() {
     try {
-      const res = await businessApi.list({ status: 'Approved', pageSize: 1 })
-      stats.businesses = res.data?.totalCount ?? 0
-    } catch { /* sessiz */ }
-    stats.businessesLoading = false
+      stats.businesses = await fetchCount(businessApi.list, 'Active')
+    } catch (error: unknown) {
+      logger.warn('[Pano] Aktif işletme sayısı yüklenemedi', error)
+    } finally {
+      stats.businessesLoading = false
+    }
   }
 
   async function loadContracts() {
     try {
-      const res = await contractApi.list({ pageSize: 100 })
-      const data = res.data?.items ?? []
-      stats.activeContracts = data.filter((c: { status: string }) => c.status === 'Active').length
-      allContracts.value = data
-      buildContractChart()
-    } catch { /* sessiz */ }
-    stats.contractsLoading = false
+      const byStatus = await fetchStatusCounts(contractApi.list, CONTRACT_STATUSES)
+      stats.activeContracts = byStatus.Active ?? 0
+      buildContractChart(byStatus)
+    } catch (error: unknown) {
+      logger.warn('[Pano] Sözleşme sayıları yüklenemedi', error)
+    } finally {
+      stats.contractsLoading = false
+    }
   }
 
+  /**
+   * Bekleyen iş toplamı. Kuyruklardan biri bile yüklenemezse toplam "—" olur: eksik kuyrukla
+   * toplanmış sayı gerçek iş yükünden az görünür ve "sıra sizde" sinyalini yanlış söndürür.
+   */
   async function loadPendingActions() {
-    let total = 0
-    const tasks: Promise<void>[] = []
+    const tasks: Promise<number>[] = []
 
     if (authStore.hasPermission(Permissions.Internship.Contract)) {
-      tasks.push(
-        contractApi.list({ status: 'AwaitingSignature', pageSize: 1 })
-          .then((res) => { total += res.data?.totalCount ?? 0 })
-          .catch(() => {}),
-      )
+      tasks.push(fetchCount(contractApi.list, 'AwaitingSignature'))
     }
 
     if (authStore.hasPermission(Permissions.Attendance.View)) {
-      tasks.push(
-        // 'Recorded' onaylanmış kayıttır — bekleyen iş değildir; sayaç yanlış satırı sayıyordu.
-        // İşletmenin bildirdiği kayıt 'Pending' doğar ve onaylanana kadar fesih sayacına da
-        // girmez (#252), yani öğretmenin onay kuyruğu artık hükmün tek kapısıdır.
-        attendanceApi.list({ status: 'Pending', pageSize: 1 })
-          .then((res) => { total += res.data?.totalCount ?? 0 })
-          .catch(() => {}),
-      )
+      // 'Recorded' onaylanmış kayıttır — bekleyen iş değildir; sayaç yanlış satırı sayıyordu.
+      // İşletmenin bildirdiği kayıt 'Pending' doğar ve onaylanana kadar fesih sayacına da
+      // girmez (#252), yani öğretmenin onay kuyruğu artık hükmün tek kapısıdır.
+      tasks.push(fetchCount(attendanceApi.list, 'Pending'))
     }
 
     if (authStore.hasPermission(Permissions.Company.View)) {
-      tasks.push(
-        businessApi.list({ status: 'PendingApproval', pageSize: 1 })
-          .then((res) => { total += res.data?.totalCount ?? 0 })
-          .catch(() => {}),
-      )
+      tasks.push(fetchCount(businessApi.list, 'PendingApproval'))
     }
 
     if (authStore.hasPermission(Permissions.UserManagement.View)) {
-      tasks.push(
-        // 'Pending' geçerli bir InvitationStatus adı DEĞİLDİR; TryFromName başarısız olur ve
-        // durum süzgeci SESSİZCE düşerdi — kart tüm durumların davetini sayıyordu.
-        securityApi.listInvitations({ status: 'PendingApproval', pageSize: 1 })
-          .then((res) => { total += res.data?.totalCount ?? 0 })
-          .catch(() => {}),
-      )
+      // 'Pending' geçerli bir InvitationStatus adı DEĞİLDİR; TryFromName başarısız olur ve
+      // durum süzgeci SESSİZCE düşerdi — kart tüm durumların davetini sayıyordu.
+      tasks.push(fetchCount(securityApi.listInvitations, 'PendingApproval'))
     }
 
-    await Promise.allSettled(tasks)
-    stats.pendingTotal = total
+    const results = await Promise.allSettled(tasks)
+    const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+
+    if (failures.length > 0) {
+      logger.warn('[Pano] Bekleyen işlem sayılarından bazıları yüklenemedi', ...failures.map((f) => f.reason))
+      stats.pendingTotal = null
+    } else {
+      stats.pendingTotal = results.reduce(
+        (sum, r) => sum + (r.status === 'fulfilled' ? r.value : 0),
+        0,
+      )
+    }
     stats.pendingLoading = false
   }
 

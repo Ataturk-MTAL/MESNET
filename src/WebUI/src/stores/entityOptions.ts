@@ -60,7 +60,10 @@ export const useEntityOptionsStore = defineStore('entityOptions', () => {
     studentsLoaded.value = false
   }
 
-  // ── İşletmeler (onaylı) ──
+  // ── İşletmeler (aktif) ──
+  // Durum adı backend BusinessStatus.Name ile BİREBİR aynı olmalı ('Approved' diye bir değer
+  // YOK): geçersiz adda TryFromName başarısız olur ve süzgeç SESSİZCE atlanır — seçicide
+  // reddedilmiş/kapalı/onay bekleyen işletmeler de listelenir.
   const businesses = ref<BusinessOption[]>([])
   const businessesLoading = ref(false)
   const businessesLoaded = ref(false)
@@ -70,7 +73,7 @@ export const useEntityOptionsStore = defineStore('entityOptions', () => {
     businessesLoading.value = true
     try {
       const items = await fetchAllItems((page, pageSize) =>
-        businessApi.list({ status: 'Approved', page, pageSize }),
+        businessApi.list({ status: 'Active', page, pageSize }),
       )
       businesses.value = items.map((b) => ({
         label: b.name,

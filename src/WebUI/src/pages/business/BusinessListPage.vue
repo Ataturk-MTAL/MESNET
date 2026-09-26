@@ -43,7 +43,6 @@
         map-options
         clearable
         style="min-width: 180px"
-        @update:model-value="load"
       />
       <q-select
         v-model="sectorFilter"
@@ -55,7 +54,6 @@
         map-options
         clearable
         style="min-width: 240px"
-        @update:model-value="load"
       />
       <q-space />
       <SearchInput
@@ -87,7 +85,9 @@
       :columns="columns"
       :loading="loading"
       :pagination="pagination"
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
     >
       <template #body-cell-sectors="{ row }">
         <q-td>
@@ -522,7 +522,9 @@
             İşlemler
           </div>
           <PermissionGuard :permission="Permissions.Company.Manage">
-            <div class="q-gutter-sm">
+            <!-- Yalnız dikey aralık: q-gutter-sm her çocuğa sol boşluk da verir ve full-width
+                 butonları 8px sağa taşırıp panelde yatay kaydırma açıyordu. -->
+            <div class="column q-gutter-y-sm">
               <!-- PendingApproval → Onayla / Reddet -->
               <template v-if="selected.status === 'PendingApproval'">
                 <q-btn
@@ -679,7 +681,7 @@ const filters = computed(() => ({
   ...(sectorFilter.value ? { sector: sectorFilter.value } : {}),
 }))
 
-const { rows: businesses, loading, pagination, search, onRequest, onSearch, load } =
+const { rows: businesses, loading, pagination, search, onRequest, onSearch, load, error: loadError, } =
   useServerPagination<BusinessDto>({
     fetchFn: (params) => businessApi.list(params),
     filters,

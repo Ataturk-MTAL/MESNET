@@ -3,74 +3,88 @@
     <PageHeader title="Haftalık Ziyaretler" />
 
     <!-- Filtreler -->
-    <div class="row q-col-gutter-md q-mb-lg items-end">
+    <FilterBar dense>
       <!-- Hafta seçici — takvimden tıkla, tüm hafta seçilir -->
-      <div class="col-12 col-sm-auto">
-        <q-btn
-          outline
-          icon="event"
-          :label="weekLabel"
-          no-caps
+      <q-btn
+        outline
+        icon="event"
+        :label="weekLabel"
+        no-caps
+      >
+        <q-popup-proxy
+          transition-show="scale"
+          transition-hide="scale"
         >
-          <q-popup-proxy
-            transition-show="scale"
-            transition-hide="scale"
+          <q-date
+            :model-value="dateRangeModel"
+            range
+            first-day-of-week="1"
+            @update:model-value="onDateSelect"
           >
-            <q-date
-              :model-value="dateRangeModel"
-              range
-              first-day-of-week="1"
-              @update:model-value="onDateSelect"
-            >
-              <div class="row items-center justify-end">
-                <q-btn
-                  v-close-popup
-                  label="Tamam"
-                  color="primary"
-                  flat
-                />
-              </div>
-            </q-date>
-          </q-popup-proxy>
-        </q-btn>
-      </div>
+            <div class="row items-center justify-end">
+              <q-btn
+                v-close-popup
+                label="Tamam"
+                color="primary"
+                flat
+              />
+            </div>
+          </q-date>
+        </q-popup-proxy>
+      </q-btn>
 
-      <!-- Kapsam seçici -->
-      <div class="col-12 col-sm-2">
-        <q-select
-          v-model="scope"
-          :options="scopeOptions"
-          label="Kapsam"
-          outlined
-          dense
-          emit-value
-          map-options
-        />
-      </div>
+      <q-select
+        v-model="scope"
+        :options="scopeOptions"
+        label="Kapsam"
+        outlined
+        dense
+        emit-value
+        map-options
+      />
 
       <!-- Alan seçici (Scope=Branch) -->
-      <div
+      <BranchSelector
         v-if="scope === 'Branch'"
-        class="col-12 col-sm-3"
-      >
-        <BranchSelector
-          v-model="scopeBranchCode"
-        />
-      </div>
+        v-model="scopeBranchCode"
+        dense
+      />
 
-      <!-- Oluştur butonu -->
-      <div class="col-12 col-sm-auto">
+      <template #actions>
         <q-btn
           unelevated
           color="primary"
           icon="add"
           label="Ziyaret Oluştur"
           :loading="generating"
-          :disable="periodStore.isReadOnly || !periodStore.selectedPeriodId"
+          :disable="periodStore.isReadOnly || !periodStore.selectedPeriodId || isMissingPrerequisite"
           @click="onGenerate"
         />
-      </div>
-    </div>
+      </template>
+    </FilterBar>
+
+    <!-- Ön koşul bilgisi: devre dışı q-btn pointer olayı almadığından q-tooltip açılmaz,
+         bu yüzden gerekçe butonun altında nötr bir notla gösterilir. -->
+    <AppNotice
+      v-if="isMissingPrerequisite && !periodStore.isReadOnly"
+      type="info"
+      icon="info"
+      dense
+      message="Bu kapsamda öğretmen atanmış işletme yok — ziyaret oluşturmak için önce koordinatör öğretmen ve ders saati atayın."
+      class="q-mb-md"
+    >
+      <template #action>
+        <PermissionGuard :permission="Permissions.DepartmentHead.Distribution">
+          <q-btn
+            flat
+            no-caps
+            color="primary"
+            label="İşletme Atamasına Git"
+            :to="{ name: 'BusinessAssignment' }"
+          />
+        </PermissionGuard>
+      </template>
+    </AppNotice>
 
     <!-- Salt okunur uyarı -->
     <AppNotice
@@ -309,7 +323,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import type { QTableProps } from 'quasar'
 import AppTable from 'src/components/AppTable.vue'
@@ -319,9 +333,14 @@ import DetailDialog from 'src/components/DetailDialog.vue'
 import FormDialog from 'src/components/FormDialog.vue'
 import DataState from 'src/components/DataState.vue'
 import PageHeader from 'src/components/PageHeader.vue'
+import FilterBar from 'src/components/FilterBar.vue'
+import PermissionGuard from 'src/components/PermissionGuard.vue'
+import { Permissions } from 'src/utils/permissions'
 import { useAcademicPeriodStore } from 'src/stores/academicPeriod'
 import { useWeeklyVisits, dayLabel, scopeLabel } from 'src/composables/useWeeklyVisits'
 import { useMissingAssignments } from 'src/composables/useMissingAssignments'
+import { coordinationApi, type BusinessAssignmentDto } from 'src/api/coordination'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const $q = useQuasar()
 const periodStore = useAcademicPeriodStore()
@@ -358,6 +377,7 @@ const {
   addAssignment,
 } = useWeeklyVisits({
   academicPeriodId: computed(() => periodStore.selectedPeriodId),
+  scopeBranchCode: useSharedSelection().branchCode,
 })
 
 // ── Eksik Atama Yönetimi (composable'a çıkarıldı) ──
@@ -376,6 +396,52 @@ const {
   addDialogOpen,
   addAssignment,
 })
+
+// ── "Ziyaret Oluştur" ön koşulu ──
+// Sunucu (GenerateWeeklyVisitsHandler) plan üretmeden önce, dönemde öğretmen atanmış ve ders
+// saati (slot) taşıyan alan satırı arar; yoksa 422 "Bu kapsam için atanmış işletme
+// bulunamadı" döner. Aynı görünüm (BusinessCoordinationView) aynı kurum/dönem süzgeciyle
+// `listAssignments` ucundan okunur — buton o kararı önceden yansıtır.
+const coordinationAssignments = ref<BusinessAssignmentDto[]>([])
+const isPrerequisiteKnown = ref(false)
+
+async function loadCoordinationAssignments(periodId: string | null): Promise<void> {
+  isPrerequisiteKnown.value = false
+  coordinationAssignments.value = []
+  if (!periodId) return
+  try {
+    const res = await coordinationApi.listAssignments({ assignedOnly: true, academicPeriodId: periodId })
+    // Yanıt beklenirken dönem değiştiyse bu sonuç artık geçerli değil.
+    if (periodStore.selectedPeriodId !== periodId) return
+    coordinationAssignments.value = res.data as unknown as BusinessAssignmentDto[]
+    isPrerequisiteKnown.value = true
+  } catch {
+    // Ön koşul bilinemiyorsa buton KAPATILMAZ: karar sunucunundur, hata iletisini o verir.
+    // Bilinmeyen durumda kapalı buton, geçerli bir işlemi sebepsiz engellerdi.
+    isPrerequisiteKnown.value = false
+  }
+}
+
+/** Seçili kapsamda plana dönüşebilecek (öğretmenli + slotlu) atama var mı — sunucu süzgeciyle aynı. */
+const hasAssignmentsForScope = computed(() =>
+  coordinationAssignments.value.some(
+    (a) =>
+      !!a.assignedTeacherId &&
+      a.assignedSlots.length > 0 &&
+      // Sunucu: alan kodu boşsa Branch kapsamı süzmez (Tümü gibi davranır).
+      (scope.value !== 'Branch' || !scopeBranchCode.value || a.branchCode === scopeBranchCode.value),
+  ),
+)
+
+const isMissingPrerequisite = computed(() => isPrerequisiteKnown.value && !hasAssignmentsForScope.value)
+
+watch(
+  () => periodStore.selectedPeriodId,
+  (periodId) => {
+    loadCoordinationAssignments(periodId).catch(() => {})
+  },
+  { immediate: true },
+)
 
 const scopeOptions = [
   { label: 'Tümü', value: 'All' },

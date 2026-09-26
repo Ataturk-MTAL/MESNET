@@ -21,7 +21,7 @@
     />
 
     <!-- Filtreler -->
-    <div class="row q-gutter-sm q-mb-md">
+    <FilterBar dense>
       <q-select
         v-model="studentIdFilter"
         :options="filterStudentOpts.options.value"
@@ -30,15 +30,15 @@
         outlined
         dense
         use-input
+        hide-selected
+        fill-input
         input-debounce="0"
         emit-value
         map-options
         option-label="label"
         option-value="value"
         clearable
-        style="min-width: 250px"
         @filter="filterStudentOpts.filter"
-        @update:model-value="load"
       >
         <template #option="{ itemProps, opt }">
           <q-item v-bind="itemProps">
@@ -66,11 +66,10 @@
         emit-value
         map-options
         clearable
-        style="min-width: 150px"
-        @update:model-value="load"
       />
       <q-select
         v-model="monthFilter"
+        class="filter-bar__narrow"
         :options="monthOptions"
         label="Ay"
         outlined
@@ -78,11 +77,10 @@
         emit-value
         map-options
         clearable
-        style="min-width: 130px"
-        @update:model-value="load"
       />
       <q-select
         v-model="yearFilter"
+        class="filter-bar__narrow"
         :options="yearOptions"
         label="Yıl"
         outlined
@@ -90,17 +88,13 @@
         emit-value
         map-options
         clearable
-        style="min-width: 100px"
-        @update:model-value="load"
       />
       <BranchSelector
         v-model="branchFilter"
         dense
         force-select
-        style="min-width: 200px"
-        @update:model-value="load"
       />
-    </div>
+    </FilterBar>
 
     <!-- Hepsi sıradaysa satır rozeti hiçbir şeyi AYIRT ETMEZ: yirmi rozet yerine tek cümle.
          Bilgi mavisi (`bg-info-soft` / `text-info-strong`) kullanılır, hardal DEĞİL — iki yüzey
@@ -118,7 +112,9 @@
       :columns="columns"
       :loading="loading"
       :pagination="pagination"
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
     >
       <template #body-cell-student="{ row }">
         <q-td>
@@ -319,7 +315,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { QTableProps } from 'quasar'
 
 import { attendanceApi, type AttendanceRecordDto } from 'src/api/attendance'
@@ -333,6 +329,7 @@ import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import PageHeader from 'components/PageHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
 import SelectEmptyOption from 'components/SelectEmptyOption.vue'
 import { useConfirmDialog } from 'src/composables/useConfirmDialog'
 import { useRouter } from 'vue-router'
@@ -341,6 +338,7 @@ import HealthReportUploadForm from 'components/forms/attendance/HealthReportUplo
 import HealthReportRejectForm from 'components/forms/attendance/HealthReportRejectForm.vue'
 import AppNotice from 'components/AppNotice.vue'
 import { useAuthStore } from 'stores/auth'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const router = useRouter()
@@ -408,7 +406,7 @@ const studentIdFilter = ref('')
 const statusFilter = ref<string | null>(null)
 const monthFilter = ref<number | null>(null)
 const yearFilter = ref<number | null>(null)
-const branchFilter = ref<string | null>(null)
+const { branchCode: branchFilter } = useSharedSelection()
 
 const filters = computed(() => ({
   academicPeriodId: periodStore.selectedPeriodId ?? undefined,
@@ -419,7 +417,7 @@ const filters = computed(() => ({
   branchCode: branchFilter.value || undefined,
 }))
 
-const { rows: records, loading, pagination, onRequest, load } = useServerPagination<AttendanceRecordDto>({
+const { rows: records, loading, pagination, onRequest, load, error: loadError, } = useServerPagination<AttendanceRecordDto>({
   fetchFn: (params) => attendanceApi.list(params),
   filters,
   defaultSortBy: 'date',
@@ -590,7 +588,6 @@ async function approveHealthReport(row: AttendanceRecordDto) {
   }
 }
 
-watch(() => periodStore.selectedPeriodId, () => load())
 
 onMounted(() => {
   filterStudentOpts.load().catch(() => {})

@@ -1,48 +1,51 @@
 <template>
   <div>
-    <!-- Filtre + arama çubuğu (aynı satır: filtreler solda, arama sağda) -->
-    <div
+    <!-- Filtre + arama çubuğu (filtreler solda, arama sağda) — düzen FilterBar'da -->
+    <FilterBar
       v-if="showSearch || $slots.filters"
-      class="row items-center q-gutter-sm q-mb-md"
+      dense
     >
       <slot name="filters" />
-      <q-space />
-      <q-input
+      <template
         v-if="showSearch"
-        ref="searchInput"
-        :model-value="search"
-        dense
-        outlined
-        placeholder="Ara..."
-        aria-label="Listede ara"
-        style="min-width: 250px"
-        debounce="400"
-        @update:model-value="onSearchInput"
+        #actions
       >
-        <template #prepend>
-          <q-icon name="search" />
-        </template>
-        <template
-          v-if="search"
-          #append
+        <q-input
+          ref="searchInput"
+          :model-value="search"
+          dense
+          outlined
+          placeholder="Ara..."
+          aria-label="Listede ara"
+          style="min-width: 250px"
+          debounce="400"
+          @update:model-value="onSearchInput"
         >
-          <!-- size verilmez: varsayılan 14px font → .q-btn .q-icon 1.715em = 24px ikon,
+          <template #prepend>
+            <q-icon name="search" />
+          </template>
+          <template
+            v-if="search"
+            #append
+          >
+            <!-- size verilmez: varsayılan 14px font → .q-btn .q-icon 1.715em = 24px ikon,
                prepend'deki arama ikonuyla (q-field__marginal 24px) aynı optik ağırlık.
                Dokunma hedefi .q-btn--dense.q-btn--round 2.4em × 14px = 33,6px
                (WCAG 2.2 SC 2.5.8 eşiği 24×24 px, payla birlikte geçilir). -->
-          <q-btn
-            flat
-            dense
-            round
-            icon="close"
-            aria-label="Aramayı temizle"
-            @click="onClearSearch"
-          >
-            <q-tooltip>Aramayı temizle</q-tooltip>
-          </q-btn>
-        </template>
-      </q-input>
-    </div>
+            <q-btn
+              flat
+              dense
+              round
+              icon="close"
+              aria-label="Aramayı temizle"
+              @click="onClearSearch"
+            >
+              <q-tooltip>Aramayı temizle</q-tooltip>
+            </q-btn>
+          </template>
+        </q-input>
+      </template>
+    </FilterBar>
 
     <!-- İlk yükleme: spinner yerine içerik-şekilli skeleton satırlar (layout-shift'siz) -->
     <div
@@ -99,7 +102,31 @@
         v-if="!loading && rows.length === 0"
         #no-data
       >
-        <div class="full-width column flex-center q-pa-xl text-grey-7">
+        <div
+          v-if="error"
+          class="full-width column flex-center q-pa-xl text-negative"
+          role="alert"
+        >
+          <q-icon
+            name="error_outline"
+            size="48px"
+            class="q-mb-sm"
+          />
+          <span>{{ errorLabel }}</span>
+          <q-btn
+            flat
+            no-caps
+            color="primary"
+            icon="refresh"
+            label="Yeniden dene"
+            class="q-mt-md"
+            @click="emit('retry')"
+          />
+        </div>
+        <div
+          v-else
+          class="full-width column flex-center q-pa-xl text-grey-7"
+        >
           <q-icon
             name="inbox"
             size="48px"
@@ -121,6 +148,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
+import FilterBar from './FilterBar.vue'
 import type { QInput, QTableProps } from 'quasar'
 
 // Kök öğe q-table değil, sarmalayıcı <div>. inheritAttrs açık kalsaydı tanımsız her
@@ -141,6 +169,12 @@ interface Props {
   showSearch?: boolean
   /** Mevcut arama terimi (v-model:search yerine prop + emit). */
   search?: string
+  /**
+   * Son yüklemenin hatası (useServerPagination `error`). Doluysa boş durum "Kayıt bulunamadı"
+   * yerine hata + "Yeniden dene" gösterir — yetkisiz/çöken liste boş liste gibi görünmesin.
+   */
+  error?: unknown
+  errorLabel?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -149,11 +183,14 @@ const props = withDefaults(defineProps<Props>(), {
   pagination: undefined,
   showSearch: false,
   search: '',
+  error: undefined,
+  errorLabel: 'Liste yüklenemedi.',
 })
 
 const emit = defineEmits<{
   request: [props: { pagination: QTablePagination }]
   search: [term: string]
+  retry: []
 }>()
 
 const isServerSide = computed(() => props.pagination !== undefined)

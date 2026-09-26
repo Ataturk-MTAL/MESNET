@@ -1,3 +1,4 @@
+using MESNET.Common.Infrastructure.Tenancy;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Security;
 using MESNET.Coordination.Application.Commands;
@@ -90,8 +91,7 @@ public static class StudentTermGradeEndpoints
         return Results.Ok(ResponseBuilder.Success().AddData(result).Build());
     }
 
-    private static Guid GetInstitutionId(HttpContext http) =>
-        Guid.TryParse(http.User.FindFirst("institution_id")?.Value, out var id) ? id : Guid.Empty;
+    private static Guid GetInstitutionId(HttpContext http) => RequestInstitution.Of(http);
 
     private static async Task<IResult> PostEnter(
         EnterStudentTermGrade command, IMessageBus bus, HttpContext http)

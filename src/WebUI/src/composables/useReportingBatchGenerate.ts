@@ -51,7 +51,7 @@ export function useReportingBatchGenerate(options: UseReportingBatchGenerateOpti
   ]
 
   async function previewBatchMonthlyAttendance() {
-    const institutionId = authStore.user?.institutionId
+    const institutionId = authStore.currentInstitutionId
     const periodId = periodStore.selectedPeriodId
     const period = periodStore.selectedPeriod
 
@@ -82,7 +82,7 @@ export function useReportingBatchGenerate(options: UseReportingBatchGenerateOpti
   }
 
   async function generateBatch() {
-    const institutionId = authStore.user?.institutionId
+    const institutionId = authStore.currentInstitutionId
     const periodId = periodStore.selectedPeriodId
     const period = periodStore.selectedPeriod
 

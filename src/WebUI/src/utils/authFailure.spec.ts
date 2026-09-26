@@ -69,6 +69,23 @@ describe('isTokenExpired', () => {
     // sonsuz yeniden girişe yol açardı — düzeltilen hatanın aynısı.
     expect(isTokenExpired(null, NOW)).toBe(false)
   })
+
+  it('Keycloak saati geride kalsa da taze token ölü sayılmaz', () => {
+    // Ölçüldü: Podman VM saati Mac'ten 7887 sn gerideydi. Keycloak token'ı kendi saatiyle
+    // damgalar; tarayıcı saatiyle bakılınca her yeni token doğduğu anda "ölü" görünüyor ve
+    // yeniden giriş döngüsü kuruluyordu. keycloak-js farkı `timeSkew` olarak ölçer
+    // (yerel saat − sunucu saati, saniye).
+    const skew = 7887
+    const freshExp = NOW / 1000 - skew + 300 // sunucu saatine göre 5 dk ömürlü
+
+    expect(isTokenExpired(freshExp, NOW)).toBe(true) // fark bilinmezse yanlış alarm
+    expect(isTokenExpired(freshExp, NOW, skew)).toBe(false)
+  })
+
+  it('saat farkı hesaba katılınca gerçekten ölü token yine ölü', () => {
+    const skew = 7887
+    expect(isTokenExpired(NOW / 1000 - skew - 1, NOW, skew)).toBe(true)
+  })
 })
 
 describe('classifyAuthFailure', () => {

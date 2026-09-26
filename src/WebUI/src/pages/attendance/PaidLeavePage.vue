@@ -31,7 +31,6 @@
         map-options
         clearable
         style="min-width: 220px"
-        @update:model-value="load"
       />
     </div>
 
@@ -40,7 +39,9 @@
       :columns="columns"
       :loading="loading"
       :pagination="pagination"
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
     >
       <template #body-cell-student="{ row }">
         <q-td>{{ studentMap[row.studentId] ?? '—' }}</q-td>
@@ -165,7 +166,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useRouter } from 'vue-router'
 
@@ -202,7 +203,7 @@ const filters = computed(() => ({
   status: statusFilter.value ?? undefined,
 }))
 
-const { rows: requests, loading, pagination, onRequest, load } =
+const { rows: requests, loading, pagination, onRequest, load, error: loadError, } =
   useServerPagination<PaidLeaveRequestDto>({
     fetchFn: (params) => paidLeaveApi.list(params),
     filters,
@@ -271,7 +272,6 @@ async function approve(row: PaidLeaveRequestDto) {
   }
 }
 
-watch(() => periodStore.selectedPeriodId, () => load())
 
 onMounted(() => {
   studentOpts.load().catch(() => {})

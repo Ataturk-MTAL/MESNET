@@ -6,16 +6,15 @@
     />
 
     <!-- Alan Seçici -->
-    <div class="row q-col-gutter-md q-mb-lg items-end">
-      <div class="col-12 col-sm-3">
-        <!-- Yazma bağlamı (#126): saat dağıtımı kaydedilen sayfa — yetkisiz alan listelenmez -->
-        <BranchSelector
-          v-model="branchFilter"
-          write-context
-          @update:model-value="onBranchChange"
-        />
-      </div>
-    </div>
+    <FilterBar>
+      <!-- Yazma bağlamı (#126): saat dağıtımı kaydedilen sayfa — yetkisiz alan listelenmez -->
+      <BranchSelector
+        v-model="branchFilter"
+        v-model:selected-label="branchName"
+        write-context
+        @update:model-value="onBranchChange"
+      />
+    </FilterBar>
 
     <AppNotice
       v-if="!branchFilter"
@@ -163,9 +162,11 @@
         bordered
       >
         <q-card-section>
-          <div class="text-subtitle1 text-weight-medium q-mb-md">
-            İşletme Takdir Edilen Saatler
-          </div>
+          <SubjectHeader
+            title="İşletme Takdir Edilen Saatler"
+            :name="branchName"
+            :editing="changedHoursCount > 0"
+          />
 
           <!-- Otomatik dağıtım araç çubuğu (#118).
             Öneri KAYDETMEZ: değerleri tabloya doldurur, karar koordinatörde kalır. -->
@@ -598,19 +599,25 @@ import { bucketPresentation } from 'src/utils/allocationBuckets'
 import BranchSelector from 'components/BranchSelector.vue'
 import BusinessClusterMap from 'components/BusinessClusterMap.vue'
 import PageHeader from 'components/PageHeader.vue'
+import SubjectHeader from 'components/SubjectHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
 import AppNotice from 'components/AppNotice.vue'
 import DataState from 'components/DataState.vue'
 import DetailDialog from 'components/DetailDialog.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const notify = useNotify()
 const authStore = useAuthStore()
 const periodStore = useAcademicPeriodStore()
 
-const branchFilter = ref<string | null>(null)
+// Sayfalar arası korunur; yazma sayfası olduğu için yetkisiz alan seçili gelmez.
+const { branchCode: branchFilter } = useSharedSelection({ writeContext: true })
+// Seçicinin çözdüğü alan adı — "kimin verisi" etiketi için
+const branchName = ref<string | null>(null)
 const loading = ref(false)
 const assignments = ref<BusinessAssignmentDto[]>([])
 
-const institutionId = computed(() => authStore.user?.institutionId ?? undefined)
+const institutionId = computed(() => authStore.currentInstitutionId ?? undefined)
 const periodId = computed(() => periodStore.selectedPeriodId)
 
 const workload = useWorkloadConfig({ branchFilter, periodId, institutionId, notify })

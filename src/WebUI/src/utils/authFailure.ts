@@ -25,6 +25,8 @@ export interface AuthFailureInput {
   tokenExp: number | null
   /** Şu an (milisaniye, epoch). Dışarıdan verilir — test saat kurgusuna bağlı kalmasın. */
   now: number
+  /** keycloak-js `timeSkew` (yerel − sunucu saati, saniye); bilinmiyorsa 0. */
+  clockSkewSeconds?: number
   /** Kaçıncı deneme (1'den başlar). */
   attempt: number
   maxAttempts: number
@@ -67,9 +69,12 @@ export function decodeTokenExp(token: string | null | undefined): number | null 
  * Token yerel saate göre ölmüş mü? `exp` bilinmiyorsa **ölü sayılmaz** — bilinmeyeni
  * ölü saymak, çözülemeyen ama geçerli bir token yüzünden sonsuz yeniden girişe yol açardı.
  */
-export function isTokenExpired(exp: number | null, now: number): boolean {
+export function isTokenExpired(exp: number | null, now: number, clockSkewSeconds = 0): boolean {
   if (exp === null) return false
-  return exp * MS_PER_SECOND <= now
+  // `exp` sunucu (Keycloak) saatiyle damgalıdır. keycloak-js farkı `timeSkew` olarak ölçer
+  // (yerel − sunucu); yerel saati sunucu saatine çevirmeden karşılaştırmak, saatler ayrıştığında
+  // taze token'ı ölü sayıp yeniden giriş döngüsü kurar (ölçüldü: Podman VM 7887 sn geride).
+  return exp * MS_PER_SECOND <= now - clockSkewSeconds * MS_PER_SECOND
 }
 
 /**
@@ -90,10 +95,10 @@ export function isTokenExpired(exp: number | null, now: number): boolean {
  * <c>IncludeErrorDetails</c> açıkken gelir — üretimde gelmez).</p>
  */
 export function classifyAuthFailure(input: AuthFailureInput): AuthFailureAction {
-  const { status, code, tokenExp, now, attempt, maxAttempts } = input
+  const { status, code, tokenExp, now, attempt, maxAttempts, clockSkewSeconds = 0 } = input
 
   // Ölü token ile 401: tekrar denemek aynı sonucu verir. Deneme sayısına BAKILMAZ.
-  if (status === 401 && isTokenExpired(tokenExp, now)) return 'reauth'
+  if (status === 401 && isTokenExpired(tokenExp, now, clockSkewSeconds)) return 'reauth'
 
   const isTransient =
     status === undefined ||
@@ -146,4 +151,10 @@ export function recordReauth(
   windowMs: number = REAUTH_WINDOW_MS,
 ): number[] {
   return [...timestamps.filter((t) => now - t < windowMs), now]
+}
+
+/** keycloak-js'in ölçtüğü saat farkı; Keycloak henüz başlamadıysa ya da ölçmediyse 0. */
+export function clockSkewOf(keycloak: { timeSkew?: number | null } | null | undefined): number {
+  const skew = keycloak?.timeSkew
+  return typeof skew === 'number' && Number.isFinite(skew) ? skew : 0
 }

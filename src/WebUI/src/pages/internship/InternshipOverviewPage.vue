@@ -71,27 +71,23 @@
           Yerleştirmeler
         </div>
 
-        <div class="row q-col-gutter-sm q-mb-md items-end">
-          <div class="col-12 col-sm-4">
-            <BranchSelector
-              v-model="branchFilter"
-              dense
-              force-select
-            />
-          </div>
-          <div class="col-12 col-sm-4">
-            <q-select
-              v-model="statusFilter"
-              :options="statusOptions"
-              label="Durum"
-              outlined
-              dense
-              emit-value
-              map-options
-              clearable
-            />
-          </div>
-        </div>
+        <FilterBar dense>
+          <BranchSelector
+            v-model="branchFilter"
+            dense
+            force-select
+          />
+          <q-select
+            v-model="statusFilter"
+            :options="statusOptions"
+            label="Durum"
+            outlined
+            dense
+            emit-value
+            map-options
+            clearable
+          />
+        </FilterBar>
 
         <AppTable
           :rows="placements"
@@ -100,7 +96,9 @@
           :pagination="pagination"
           show-search
           :search="search"
+          :error="loadError"
           @request="onRequest"
+          @retry="load"
           @search="onSearch"
         >
           <template #body-cell-statusSlug="{ row }">
@@ -305,9 +303,11 @@ import DetailPanel from 'components/DetailPanel.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import InfoItem from 'components/InfoItem.vue'
 import PageHeader from 'components/PageHeader.vue'
+import FilterBar from 'components/FilterBar.vue'
 import BranchSelector from 'components/BranchSelector.vue'
 import StatCard from 'components/StatCard.vue'
 import AppNotice from 'components/AppNotice.vue'
+import { useSharedSelection } from 'src/composables/useSharedSelection'
 
 const $q = useQuasar()
 const periodStore = useAcademicPeriodStore()
@@ -316,7 +316,7 @@ const authStore = useAuthStore()
 const selected = ref<InternshipPlacementDto | null>(null)
 const detailOpen = ref(false)
 const statusFilter = ref<string | null>(null)
-const branchFilter = ref<string | null>(null)
+const { branchCode: branchFilter } = useSharedSelection()
 
 // ─── Devamsızlık bölümü ───
 const absenceLoading = ref(false)
@@ -367,7 +367,7 @@ const filters = computed(() => ({
   ...(periodStore.selectedPeriodId ? { academicPeriodId: periodStore.selectedPeriodId } : {}),
 }))
 
-const { rows: placements, loading, pagination, onRequest, onSearch, search, load } =
+const { rows: placements, loading, pagination, onRequest, onSearch, search, load, error: loadError, } =
   useServerPagination<InternshipPlacementDto>({
     fetchFn: (params) => enrollmentApi.listPlacements(params),
     filters,

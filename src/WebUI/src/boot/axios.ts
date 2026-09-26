@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios'
 import { useAuthStore } from 'stores/auth'
-import { decodeTokenExp, isTokenExpired } from 'src/utils/authFailure'
-import { getKeycloak } from './auth'
+import { clockSkewOf, decodeTokenExp, isTokenExpired } from 'src/utils/authFailure'
+import { getKeycloak, tryGetKeycloak } from './auth'
 
 const api = axios.create({
   baseURL: '/api',
@@ -28,10 +28,11 @@ api.interceptors.request.use(async (config) => {
   }
 
   const token = authStore.accessToken
+  const clockSkewSeconds = clockSkewOf(tryGetKeycloak())
 
   // Öldüğünü ZATEN bildiğimiz token gönderilmez (#136). Karar ağa çıkmadan, yerel `exp`
   // ile verilir: sunucuya sormak için sunucuya ölü token göndermek gerekirdi.
-  if (token && isTokenExpired(decodeTokenExp(token), Date.now())) {
+  if (token && isTokenExpired(decodeTokenExp(token), Date.now(), clockSkewSeconds)) {
     const { reauthenticate } = await import('./auth')
     reauthenticate('istek anında token süresi dolmuş')
 

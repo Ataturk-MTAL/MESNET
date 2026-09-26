@@ -55,6 +55,8 @@
           emit-value
           map-options
           use-input
+          hide-selected
+          fill-input
           input-debounce="0"
           label="İl"
           outlined
@@ -79,6 +81,8 @@
           v-model="form.districtName"
           :options="districtOptions"
           use-input
+          hide-selected
+          fill-input
           input-debounce="0"
           clearable
           label="İlçe"

@@ -10,7 +10,9 @@
       show-search
       :search="search"
       no-data-label="Bu aralıkta kayıtlı işlem yok."
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
       @search="onSearch"
     >
       <template #filters>
@@ -22,7 +24,6 @@
           dense
           emit-value
           map-options
-          style="min-width: 220px"
         />
 
         <q-select
@@ -34,7 +35,6 @@
           clearable
           emit-value
           map-options
-          style="min-width: 180px"
         />
 
         <!-- `mine` ucu (GetMine) `crossedTenantBoundary` parametresini HİÇ almıyor — bu
@@ -137,7 +137,7 @@ const filters = computed(() =>
   buildAuditListFilters(scope.value, outcomeFilter.value, crossedOnly.value),
 )
 
-const { rows: entries, loading, pagination, search, onRequest, onSearch, load } =
+const { rows: entries, loading, pagination, search, onRequest, onSearch, load, error: loadError, } =
   useServerPagination<AuditEntryDto>({
     // Kapsam URL'i DEĞİŞTİRİR, bir sorgu parametresi değildir: iki ucun izni farklıdır ve
     // yetki kararı sunucuda uç seviyesinde verilir. Eşleme kararı `resolveAuditEndpoint`'te

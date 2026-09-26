@@ -48,7 +48,9 @@
       show-search
       :search="search"
       no-data-label="Yetki alanınızda okul bulunamadı."
+      :error="loadError"
       @request="onRequest"
+      @retry="load"
       @search="onSearch"
     >
       <template #body-cell-fullName="{ row }">
@@ -116,7 +118,7 @@ const notify = useNotify()
 // yetkilisine gösterilecek ikinci bir seçenek yoktur.
 const filters = computed(() => buildContextSelectFilters(DEFAULT_NODE_TYPE_FILTER))
 
-const { rows: institutions, loading, pagination, search, onRequest, onSearch, load } =
+const { rows: institutions, loading, pagination, search, onRequest, onSearch, load, error: loadError, } =
   useServerPagination<InstitutionDto>({
     fetchFn: (params) => institutionApi.list(params),
     filters,
