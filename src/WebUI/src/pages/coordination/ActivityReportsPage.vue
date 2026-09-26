@@ -1,6 +1,17 @@
 <template>
   <q-page padding>
-    <PageHeader title="Aylık Faaliyet Raporları" />
+    <PageHeader title="Aylık Faaliyet Raporları">
+      <PermissionGuard :permission="Permissions.Coordinator.Report">
+        <q-btn
+          unelevated
+          color="primary"
+          icon="add"
+          label="Rapor Oluştur"
+          :disable="periodStore.isReadOnly"
+          @click="openNew"
+        />
+      </PermissionGuard>
+    </PageHeader>
 
     <AppTable
       :rows="activityReports"
@@ -8,6 +19,7 @@
       :loading="loadingReports"
       :pagination="reportsPagination"
       :error="reportsError"
+      no-data-label="Bu dönemde faaliyet raporu yok."
       @request="onReportsRequest"
       @retry="loadReports"
     >
@@ -20,6 +32,16 @@
         <q-td class="text-right">
           <PermissionGuard :permission="Permissions.Coordinator.Report">
             <q-btn
+              flat
+              round
+              dense
+              :icon="row.status === 'Draft' ? 'edit' : 'visibility'"
+              :aria-label="row.status === 'Draft' ? 'Raporu düzenle' : 'Raporu görüntüle'"
+              @click="router.push({ name: 'ActivityReportEdit', params: { id: row.id } }).catch(() => {})"
+            >
+              <q-tooltip>{{ row.status === 'Draft' ? 'Düzenle' : 'Görüntüle' }}</q-tooltip>
+            </q-btn>
+            <q-btn
               v-if="row.status === 'Draft'"
               flat
               round
@@ -31,6 +53,10 @@
             >
               <q-tooltip>Gönder</q-tooltip>
             </q-btn>
+          </PermissionGuard>
+          <!-- Onay ucu `internship:manage` ister (raporu yazan öğretmen onaylamaz). Düğme
+               eskiden rapor izninin altındaydı: öğretmen görür, tıklar, 403 alırdı. -->
+          <PermissionGuard :permission="Permissions.Internship.Manage">
             <q-btn
               v-if="row.status === 'Submitted'"
               flat
@@ -46,12 +72,25 @@
           </PermissionGuard>
         </q-td>
       </template>
+      <template #empty-action>
+        <PermissionGuard :permission="Permissions.Coordinator.Report">
+          <q-btn
+            outline
+            color="primary"
+            icon="add"
+            label="İlk raporu oluştur"
+            :disable="periodStore.isReadOnly"
+            @click="openNew"
+          />
+        </PermissionGuard>
+      </template>
     </AppTable>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import type { QTableProps } from 'quasar'
 import { coordinationApi, type MonthlyActivityReportDto } from 'src/api/coordination'
 import { useNotify } from 'src/composables/useNotify'
@@ -64,6 +103,7 @@ import PageHeader from 'components/PageHeader.vue'
 import StatusBadge from 'components/StatusBadge.vue'
 import PermissionGuard from 'components/PermissionGuard.vue'
 
+const router = useRouter()
 const notify = useNotify()
 const periodStore = useAcademicPeriodStore()
 
@@ -96,6 +136,10 @@ const reportColumns: QTableProps['columns'] = [
   { name: 'status', label: 'Durum', field: 'status', align: 'left' },
   { name: 'reportActions', label: '', field: 'id', align: 'right' },
 ]
+
+function openNew() {
+  router.push({ name: 'ActivityReportNew' }).catch(() => {})
+}
 
 /**
  * Rapor durumunun Türkçe etiketi. DTO `statusSlug` taşımadığı için eşleme burada;

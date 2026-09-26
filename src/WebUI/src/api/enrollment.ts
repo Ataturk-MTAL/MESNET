@@ -141,4 +141,11 @@ export const enrollmentApi = {
 
   listTeachers: (params?: { institutionId?: string; academicPeriodId?: string; branchCode?: string } & PaginationParams) =>
     api.get<PagedResponse<TeacherProfileDto>>('/teachers', { params }),
+
+  /**
+   * Oturumdaki kullanıcının öğretmen kaydı (aktif okulda). Kaydı yoksa 404 döner.
+   * Öğretmen rolü öğretmen LİSTESİNİ okuyamaz; kendi kimliğini buradan öğrenir.
+   */
+  getMyTeacher: () =>
+    api.get<TeacherProfileDto>('/teachers/me'),
 }

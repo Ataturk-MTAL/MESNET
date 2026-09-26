@@ -1,3 +1,4 @@
+using MESNET.Common.Infrastructure.Security;
 using MESNET.Common.Shared;
 using MESNET.Common.Shared.Pagination;
 using MESNET.Common.Shared.Security;
@@ -18,6 +19,10 @@ public static class TeacherEndpoints
         var group = app.MapGroup("/api/teachers").RequireAuthorization();
 
         group.MapPost("/", Post).RequireAuthorization(Permissions.Institution.Staff);
+        // Yalnız oturumdaki kullanıcının KENDİ kaydı döner (kimlik token'dan), bu yüzden ek izin
+        // istenmez. Öğretmen rolü `institution:view` taşımaz — listeyi okuyamaz ama rehberlik
+        // ziyareti ve faaliyet raporu formları kendi öğretmen kimliğini bilmek zorundadır.
+        group.MapGet("/me", GetMine);
         group.MapGet("/{teacherId:guid}", Get).RequireAuthorization(Permissions.Institution.View);
         group.MapGet("/", GetAll).RequireAuthorization(Permissions.Institution.View);
 
@@ -40,6 +45,16 @@ public static class TeacherEndpoints
         if (dto is null)
             return Results.NotFound(ResponseBuilder.Fail(404)
                 .AddMessage($"Öğretmen bulunamadı: {teacherId}").Build());
+
+        return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
+    }
+
+    private static async Task<IResult> GetMine(ICurrentUserService currentUser, IMessageBus bus)
+    {
+        var dto = await bus.InvokeAsync<TeacherProfileDto?>(new GetMyTeacherProfile(currentUser.GetUserId()));
+        if (dto is null)
+            return Results.NotFound(ResponseBuilder.Fail(404)
+                .AddMessage("Bu kullanıcının öğretmen kaydı yok.").Build());
 
         return Results.Ok(ResponseBuilder.Success().AddData(dto).Build());
     }

@@ -270,6 +270,19 @@ const router = createRouter({
           component: () => import('pages/coordination/SkillExamsPage.vue'),
           meta: { permissions: ['coordinator:visit:manage'] },
         },
+        {
+          path: 'coordination/skill-exams/new',
+          name: 'SkillExamNew',
+          component: () => import('pages/coordination/SkillExamFormPage.vue'),
+          // POST/PUT /coordination/skill-exams → coordinator:visit:manage
+          meta: { permissions: ['coordinator:visit:manage'], formRoute: true },
+        },
+        {
+          path: 'coordination/skill-exams/:id/edit',
+          name: 'SkillExamEdit',
+          component: () => import('pages/coordination/SkillExamFormPage.vue'),
+          meta: { permissions: ['coordinator:visit:manage'], formRoute: true },
+        },
 
         // Aylık Faaliyet Raporları
         {
@@ -277,6 +290,39 @@ const router = createRouter({
           name: 'ActivityReports',
           component: () => import('pages/coordination/ActivityReportsPage.vue'),
           meta: { permissions: ['coordinator:report:manage'] },
+        },
+        {
+          path: 'coordination/activity-reports/new',
+          name: 'ActivityReportNew',
+          component: () => import('pages/coordination/ActivityReportFormPage.vue'),
+          // POST/PUT /coordination/activity-reports → coordinator:report:manage
+          meta: { permissions: ['coordinator:report:manage'], formRoute: true },
+        },
+        {
+          path: 'coordination/activity-reports/:id/edit',
+          name: 'ActivityReportEdit',
+          component: () => import('pages/coordination/ActivityReportFormPage.vue'),
+          meta: { permissions: ['coordinator:report:manage'], formRoute: true },
+        },
+
+        // Rehberlik (işletme) Ziyaretleri — tüm uçlar coordinator:visit:manage (onay hariç)
+        {
+          path: 'coordination/guidance-visits',
+          name: 'GuidanceVisits',
+          component: () => import('pages/coordination/GuidanceVisitsPage.vue'),
+          meta: { permissions: ['coordinator:visit:manage'] },
+        },
+        {
+          path: 'coordination/guidance-visits/new',
+          name: 'GuidanceVisitNew',
+          component: () => import('pages/coordination/GuidanceVisitFormPage.vue'),
+          meta: { permissions: ['coordinator:visit:manage'], formRoute: true },
+        },
+        {
+          path: 'coordination/guidance-visits/:id/edit',
+          name: 'GuidanceVisitEdit',
+          component: () => import('pages/coordination/GuidanceVisitFormPage.vue'),
+          meta: { permissions: ['coordinator:visit:manage'], formRoute: true },
         },
 
         // Ders Programı

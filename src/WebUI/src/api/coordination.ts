@@ -1,12 +1,19 @@
 import api from 'boot/axios'
 import type { PagedResponse, PaginationParams } from 'src/types/pagination'
 
+export interface StudentVisitNote {
+  studentId: string
+  performanceNote: string
+}
+
 export interface GuidanceVisitDto {
   id: string
   teacherId: string
   businessId: string
   institutionId: string
+  academicPeriodId: string
   visitDate: string
+  studentNotes: StudentVisitNote[]
   instructorMeetingNotes: string | null
   issuesIdentified: string | null
   actionsTaken: string | null
@@ -18,17 +25,59 @@ export interface GuidanceVisitDto {
   approvedAt: string | null
 }
 
+export interface ExamCriterion {
+  name: string
+  maxScore: number
+  score: number
+}
+
+export interface ExamCommitteeMember {
+  fullName: string
+  title: string
+}
+
 export interface SkillExamDto {
   id: string
   studentId: string
   businessId: string
   institutionId: string
+  academicPeriodId: string
   academicYear: number
   semester: string
   examDate: string
   score: number
+  criteria: ExamCriterion[]
+  committeeMembers: ExamCommitteeMember[]
   result: string
   createdAt: string
+}
+
+/** Sınav sonucu — backend `ExamResult` SmartEnum `Name` değerleri. */
+export const EXAM_RESULTS = [
+  { value: 'Passed', label: 'Başarılı' },
+  { value: 'Failed', label: 'Başarısız' },
+] as const
+
+export interface CreateSkillExamRequest {
+  studentId: string
+  businessId: string
+  institutionId: string
+  academicPeriodId: string
+  academicYear: number
+  semester: string
+  examDate: string
+  score: number
+  criteria: ExamCriterion[]
+  committeeMembers: ExamCommitteeMember[]
+  result: string
+}
+
+export type UpdateSkillExamRequest = Pick<
+  CreateSkillExamRequest, 'examDate' | 'score' | 'criteria' | 'committeeMembers' | 'result'>
+
+export interface DailyActivity {
+  dayNumber: number
+  description: string
 }
 
 export interface MonthlyActivityReportDto {
@@ -37,8 +86,10 @@ export interface MonthlyActivityReportDto {
   businessId: string
   institutionId: string
   teacherId: string
+  academicPeriodId: string
   year: number
   month: number
+  activities: DailyActivity[]
   instructorComment: string | null
   teacherComment: string | null
   status: string
@@ -62,12 +113,34 @@ export interface CreateVisitRequest {
   teacherId: string
   businessId: string
   institutionId: string
+  academicPeriodId: string
   visitDate: string
+  studentNotes: StudentVisitNote[]
   instructorMeetingNotes?: string
   issuesIdentified?: string
   actionsTaken?: string
   generalAssessment?: string
 }
+
+/** Güncellemede öğretmen/işletme/kurum/dönem değişmez — backend yalnız bu alanları alır. */
+export type UpdateVisitRequest = Omit<
+  CreateVisitRequest, 'teacherId' | 'businessId' | 'institutionId' | 'academicPeriodId'>
+
+export interface CreateActivityReportRequest {
+  studentId: string
+  businessId: string
+  institutionId: string
+  academicPeriodId: string
+  teacherId: string
+  year: number
+  month: number
+  activities: DailyActivity[]
+  instructorComment?: string
+  teacherComment?: string
+}
+
+export type UpdateActivityReportRequest = Pick<
+  CreateActivityReportRequest, 'activities' | 'instructorComment' | 'teacherComment'>
 
 export interface CreateEvaluationRequest {
   businessId: string
@@ -529,7 +602,7 @@ export const coordinationApi = {
   createVisit: (data: CreateVisitRequest) =>
     api.post<{ visitId: string }>('/coordination/guidance-visits', data),
 
-  updateVisit: (visitId: string, data: Partial<CreateVisitRequest>) =>
+  updateVisit: (visitId: string, data: UpdateVisitRequest) =>
     api.put(`/coordination/guidance-visits/${visitId}`, data),
 
   submitVisit: (visitId: string) =>
@@ -547,8 +620,26 @@ export const coordinationApi = {
   listSkillExams: (params?: { studentId?: string; businessId?: string; academicPeriodId?: string; academicYear?: number } & PaginationParams) =>
     api.get<PagedResponse<SkillExamDto>>('/coordination/skill-exams', { params }),
 
+  getSkillExam: (examId: string) =>
+    api.get<SkillExamDto>(`/coordination/skill-exams/${examId}`),
+
+  createSkillExam: (data: CreateSkillExamRequest) =>
+    api.post<{ examId: string }>('/coordination/skill-exams', data),
+
+  updateSkillExam: (examId: string, data: UpdateSkillExamRequest) =>
+    api.put(`/coordination/skill-exams/${examId}`, data),
+
   listActivityReports: (params?: { studentId?: string; businessId?: string; academicPeriodId?: string; year?: number; month?: number } & PaginationParams) =>
     api.get<PagedResponse<MonthlyActivityReportDto>>('/coordination/activity-reports', { params }),
+
+  getActivityReport: (reportId: string) =>
+    api.get<MonthlyActivityReportDto>(`/coordination/activity-reports/${reportId}`),
+
+  createActivityReport: (data: CreateActivityReportRequest) =>
+    api.post<{ reportId: string }>('/coordination/activity-reports', data),
+
+  updateActivityReport: (reportId: string, data: UpdateActivityReportRequest) =>
+    api.put(`/coordination/activity-reports/${reportId}`, data),
 
   submitActivityReport: (reportId: string) =>
     api.post(`/coordination/activity-reports/${reportId}/submit`),

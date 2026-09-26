@@ -1,6 +1,17 @@
 <template>
   <q-page padding>
-    <PageHeader title="Beceri Sınavları" />
+    <PageHeader title="Beceri Sınavları">
+      <PermissionGuard :permission="Permissions.Coordinator.Visit">
+        <q-btn
+          unelevated
+          color="primary"
+          icon="add"
+          label="Sınav Ekle"
+          :disable="periodStore.isReadOnly"
+          @click="openNew"
+        />
+      </PermissionGuard>
+    </PageHeader>
 
     <AppTable
       :rows="exams"
@@ -8,6 +19,7 @@
       :loading="loadingExams"
       :pagination="examsPagination"
       :error="examsError"
+      no-data-label="Bu dönemde beceri sınavı kaydı yok."
       @request="onExamsRequest"
       @retry="loadExams"
     >
@@ -19,12 +31,42 @@
       <template #body-cell-examDate="{ row }">
         <q-td>{{ formatDate(row.examDate) }}</q-td>
       </template>
+      <template #body-cell-examActions="{ row }">
+        <q-td class="text-right">
+          <PermissionGuard :permission="Permissions.Coordinator.Visit">
+            <q-btn
+              flat
+              round
+              dense
+              icon="edit"
+              aria-label="Sınavı düzenle"
+              :disable="periodStore.isReadOnly"
+              @click="router.push({ name: 'SkillExamEdit', params: { id: row.id } }).catch(() => {})"
+            >
+              <q-tooltip>Düzenle</q-tooltip>
+            </q-btn>
+          </PermissionGuard>
+        </q-td>
+      </template>
+      <template #empty-action>
+        <PermissionGuard :permission="Permissions.Coordinator.Visit">
+          <q-btn
+            outline
+            color="primary"
+            icon="add"
+            label="İlk sınavı ekle"
+            :disable="periodStore.isReadOnly"
+            @click="openNew"
+          />
+        </PermissionGuard>
+      </template>
     </AppTable>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import type { QTableProps } from 'quasar'
 import { coordinationApi, type SkillExamDto } from 'src/api/coordination'
 import { useServerPagination } from 'src/composables/useServerPagination'
@@ -33,7 +75,10 @@ import { useAcademicPeriodStore, semesterOptions } from 'stores/academicPeriod'
 import AppTable from 'components/AppTable.vue'
 import PageHeader from 'components/PageHeader.vue'
 import StatusBadge from 'components/StatusBadge.vue'
+import PermissionGuard from 'components/PermissionGuard.vue'
+import { Permissions } from 'utils/permissions'
 
+const router = useRouter()
 const periodStore = useAcademicPeriodStore()
 
 const examFilters = computed(() => ({
@@ -61,7 +106,12 @@ const examColumns: QTableProps['columns'] = [
   },
   { name: 'score', label: 'Puan', field: 'score', align: 'center' },
   { name: 'result', label: 'Sonuç', field: 'result', align: 'left' },
+  { name: 'examActions', label: '', field: 'id', align: 'right' },
 ]
+
+function openNew() {
+  router.push({ name: 'SkillExamNew' }).catch(() => {})
+}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
