@@ -186,6 +186,16 @@ export const securityApi = {
   changeInstitution: (userAccountId: string, data: { institutionId: string | null }) =>
     api.post(`/security/users/${userAccountId}/institution`, data),
 
+  /**
+   * Kullanıcının işletme bağını yazar — `null` bağı çözer (#229).
+   *
+   * `business_id` kapsamının TEK yazma yoludur: token'daki değer her istekte silinir ve kayıttan
+   * yeniden kurulur. Bağı olmayan işletme yetkilisi ücretli izin onayı gibi işletme adımlarında
+   * hiçbir kayıt görmez (`PaidLeaveApprovalPolicy.CanBusinessApprove`).
+   */
+  changeBusiness: (userAccountId: string, data: { businessId: string | null }) =>
+    api.post(`/security/users/${userAccountId}/business`, data),
+
   changeStudents: (userAccountId: string, data: ChangeStudentsRequest) =>
     api.post(`/security/users/${userAccountId}/students`, data),
 
